@@ -94,6 +94,8 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure OpenProject(var aFileName:TpvUTF8String);
+       procedure MenuOnOpenProject(const aSender:TpvGUIObject);
       public
 
        constructor Create; override;
@@ -210,7 +212,7 @@ end;
 procedure TScreenMain.ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
- if not fNewProjectMessageDialogVisible then begin
+ if not (fGUIInstance.HasModalWindows or fNewProjectMessageDialogVisible) then begin
   fNewProjectMessageDialogVisible:=true;
   MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
                                             'Question',
@@ -248,6 +250,19 @@ begin
                                             fGUIInstance.Skin.IconDialogQuestion);
   MessageDialog.OnButtonClick:=OnTerminationMessageDialogButtonClick;
   MessageDialog.OnDestroy:=OnTerminationMessageDialogDestroy;
+ end;
+end;
+
+procedure TScreenMain.OpenProject(var aFileName:TpvUTF8String);
+begin
+end;
+
+procedure TScreenMain.MenuOnOpenProject(const aSender:TpvGUIObject);
+var FileDialog:TpvGUIFileDialog;
+begin
+ if not fGUIInstance.HasModalWindows then begin
+  FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Open);
+  FileDialog.Path:=GetCurrentDir;
  end;
 end;
 
@@ -333,6 +348,7 @@ begin
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='Open';
    MenuItem.ShortcutHint:='Ctrl+O';
+   MenuItem.OnClick:=MenuOnOpenProject;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Icon:=fGUIInstance.Skin.IconContentCopy;
@@ -562,8 +578,6 @@ begin
 
  end;
 
- TpvGUIFileDialog.Create(fGUIInstance).Path:='';
-
  NewProject;
 
 end;
@@ -730,6 +744,15 @@ begin
                                  TpvApplicationInputKeyModifier.SHIFT,
                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
       ShowNewProjectMessageDialogDestroy(nil);
+      result:=true;
+     end;
+    end;
+    KEYCODE_O:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                 TpvApplicationInputKeyModifier.CTRL,
+                                 TpvApplicationInputKeyModifier.SHIFT,
+                                 TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+      MenuOnOpenProject(nil);
       result:=true;
      end;
     end;

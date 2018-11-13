@@ -1393,6 +1393,7 @@ type TpvGUIObject=class;
        procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
+       function HasModalWindows:boolean;
        procedure PerformLayout; override;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
@@ -13019,6 +13020,11 @@ begin
  result:=fMenu;
 end;
 
+function TpvGUIInstance.HasModalWindows:boolean;
+begin
+ result:=assigned(fModalWindowStack) and (fModalWindowStack.Count>0);
+end;
+
 procedure TpvGUIInstance.PerformLayout;
 var ChildPreferredSize:TpvVector2;
 begin
@@ -14321,6 +14327,8 @@ begin
 
  fSize:=TpvVector2.Null;
 
+ PerformLayout;
+
  Center;
 
 {if length(fButtons)>0 then begin
@@ -14386,20 +14394,25 @@ var Index,KeyCodeIndex:TpvSizeInt;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
-  for Index:=0 to length(fButtons)-1 do begin
-   MessageDialogButton:=@fButtons[Index];
-   for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
-    if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
-     if assigned(fOnButtonClick) then begin
-      fOnButtonClick(self,MessageDialogButton^.fID);
+  if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                              TpvApplicationInputKeyModifier.CTRL,
+                              TpvApplicationInputKeyModifier.SHIFT,
+                              TpvApplicationInputKeyModifier.META])=[] then begin
+   for Index:=0 to length(fButtons)-1 do begin
+    MessageDialogButton:=@fButtons[Index];
+    for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
+     if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
+      if assigned(fOnButtonClick) then begin
+       fOnButtonClick(self,MessageDialogButton^.fID);
+      end;
+      result:=true;
+      Close;
+      break;
      end;
-     result:=true;
-     Close;
+    end;
+    if result then begin
      break;
     end;
-   end;
-   if result then begin
-    break;
    end;
   end;
  end;
@@ -23685,6 +23698,10 @@ begin
  fTextEditFileName.RequestFocus;
 
  fTextEditFileName.SelectAll;
+
+ PerformLayout;
+
+ Center;
 
 end;
 
