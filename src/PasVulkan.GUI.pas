@@ -14837,7 +14837,7 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_SPACE,KEYCODE_RETURN:begin
+   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Down:begin
       ProcessDown(fSize*0.5);
@@ -15183,7 +15183,7 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_SPACE,KEYCODE_RETURN:begin
+   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
@@ -16911,7 +16911,7 @@ begin
       end;
      end;
     end;
-    KEYCODE_SPACE,KEYCODE_RETURN:begin
+    KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
      DeactivateSubmenus;
      fSelectedMenuItem:=nil;
      if assigned(fFocusedMenuItem) then begin
@@ -17241,7 +17241,7 @@ begin
    end;
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
-     KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN:begin
+     KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
       fSelectedMenuItem:=nil;
       if assigned(fFocusedMenuItem) then begin
        fSelectedMenuItem:=fFocusedMenuItem;
@@ -19687,7 +19687,7 @@ function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyE
 begin
  result:=false;
  case aKeyEvent.KeyCode of
-  KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER,KEYCODE_ESCAPE:begin
+  KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER,KEYCODE_ESCAPE:begin
    case aKeyEvent.KeyEventType of
     TpvApplicationInputKeyEventType.Typed:begin
      if fPopupButton.Down then begin
@@ -19842,7 +19842,7 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER:begin
+   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       fPopupButton.SetDown(true);
@@ -21049,7 +21049,7 @@ begin
    end;
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
-     KEYCODE_RETURN,KEYCODE_RETURN2:begin
+     KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
       fView.Enter(fOverwrite);
       fDirty:=true;
       fTime:=0.0;
@@ -21670,7 +21670,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     if fReplace then begin
      ButtonReplaceOnClick(self);
     end else begin
@@ -21687,7 +21687,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     if fReplace then begin
      ButtonReplaceOnClick(self);
     end else begin
@@ -21889,7 +21889,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     ButtonOKOnClick(self);
     result:=true;
    end;
@@ -23669,7 +23669,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     SetPath(fTextEditPath.Text);
     result:=true;
    end;
@@ -23682,7 +23682,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     Accept(-1);
     if Visible then begin
      fListView.ItemIndex:=-1;
@@ -23699,7 +23699,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     Refresh(-1);
     result:=true;
    end;
@@ -23712,7 +23712,7 @@ begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
     Accept(0);
     result:=true;
    end;
@@ -24110,6 +24110,7 @@ begin
 (*if length(fPath)=0 then begin
   SetPath({$ifdef Unix}'/'{$else}'C:\'{$endif});
  end;*)
+ fButtonUp.Enabled:=length(fPath)>{$ifdef Unix}1{$else}0{$endif};
  inherited Check;
 end;
 
