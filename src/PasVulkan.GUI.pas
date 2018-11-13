@@ -2937,12 +2937,13 @@ type TpvGUIObject=class;
        fAlignment:TAlignment;
        fAutoSize:boolean;
        fCaption:TpvUTF8String;
+       fWidth:TpvFloat;
        fStretch:TpvFloat;
        fMinWidth:TpvFloat;
        fMaxWidth:TpvFloat;
        fTag:TpvSizeInt;
        fVisible:boolean;
-       fWidth:TpvFloat;
+       fWorkWidth:TpvFloat;
        fRect:TpvRect;
       protected
        procedure SetIndex(Value:integer); override;
@@ -2956,12 +2957,12 @@ type TpvGUIObject=class;
        property Alignment:TAlignment read fAlignment write fAlignment default TAlignment.Leading;
        property AutoSize:boolean read fAutoSize write fAutoSize default false;
        property Caption:TpvUTF8String read fCaption write fCaption;
+       property Width:TpvFloat read GetStoredWidth write fWidth;
        property Stretch:TpvFloat read fStretch write fStretch;
        property MinWidth:TpvFloat read fMinWidth write fMinWidth;
        property MaxWidth:TpvFloat read fMaxWidth write fMaxWidth;
        property Tag:TpvSizeInt read fTag write fTag default 0;
        property Visible:boolean read fVisible write fVisible default true;
-       property Width:TpvFloat read GetStoredWidth write fWidth;
      end;
 
      TpvGUIListViewColumns=class(TCollection)
@@ -10976,15 +10977,17 @@ begin
         TotalStretch:=TotalStretch+Column.fStretch;
        end else begin
         if Column.fAutoSize then begin
-         Column.fWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
+         Column.fWorkWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
+        end else begin
+         Column.fWorkWidth:=Column.fWidth;
         end;
-        if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
-         Column.fWidth:=Column.fMinWidth;
+        if (Column.fMinWidth>0.0) and (Column.fWorkWidth<Column.fMinWidth) then begin
+         Column.fWorkWidth:=Column.fMinWidth;
         end;
-        if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
-         Column.fWidth:=Column.fMaxWidth;
+        if (Column.fMaxWidth>0.0) and (Column.fWorkWidth>Column.fMaxWidth) then begin
+         Column.fWorkWidth:=Column.fMaxWidth;
         end;
-        SumWidth:=SumWidth+Column.fWidth;
+        SumWidth:=SumWidth+Column.fWorkWidth;
        end;
       end;
      end;
@@ -10995,15 +10998,15 @@ begin
        Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
        if Column.fVisible and (Column.fStretch>0.0) then begin
         TargetWidth:=Max(0.0,Column.fStretch*StretchFactor);
-        Column.fWidth:=TargetWidth;
-        if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
-         Column.fWidth:=Column.fMinWidth;
+        Column.fWorkWidth:=TargetWidth;
+        if (Column.fMinWidth>0.0) and (Column.fWorkWidth<Column.fMinWidth) then begin
+         Column.fWorkWidth:=Column.fMinWidth;
         end;
-        if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
-         Column.fWidth:=Column.fMaxWidth;
+        if (Column.fMaxWidth>0.0) and (Column.fWorkWidth>Column.fMaxWidth) then begin
+         Column.fWorkWidth:=Column.fMaxWidth;
         end;
-        if not SameValue(Column.fWidth,TargetWidth) then begin
-         StretchFactor:=Max(0.0,StretchFactor+((Column.fWidth-TargetWidth)/TotalStretch));
+        if not SameValue(Column.fWorkWidth,TargetWidth) then begin
+         StretchFactor:=Max(0.0,StretchFactor+((Column.fWorkWidth-TargetWidth)/TotalStretch));
         end;
         break;
        end;
@@ -11014,9 +11017,9 @@ begin
      for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
       Column.fRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX,1);
-      Column.fRect.RightBottom:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX+Column.fWidth,
+      Column.fRect.RightBottom:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX+Column.fWorkWidth,
                                                                              aListView.fWorkHeaderHeight-1);
-      LastX:=LastX+Column.fWidth;
+      LastX:=LastX+Column.fWorkWidth;
      end;
 
     end;
@@ -22649,12 +22652,13 @@ begin
  fAlignment:=TAlignment.Leading;
  fAutoSize:=false;
  fCaption:='';
+ fWorkWidth:=100.0;
  fStretch:=0.0;
  fMinWidth:=-1.0;
  fMaxWidth:=-1.0;
  fTag:=0;
  fVisible:=true;
- fWidth:=100;
+ fWorkWidth:=0.0;
 end;
 
 destructor TpvGUIListViewColumn.Destroy;
@@ -22667,13 +22671,14 @@ begin
  if Source is TpvGUIListViewColumn then begin
   fAlignment:=TpvGUIListViewColumn(Source).fAlignment;
   fAutoSize:=TpvGUIListViewColumn(Source).fAutoSize;
-  fStretch:=TpvGUIListViewColumn(Source).fStretch;
   fCaption:=TpvGUIListViewColumn(Source).fCaption;
+  fWidth:=TpvGUIListViewColumn(Source).fWidth;
+  fStretch:=TpvGUIListViewColumn(Source).fStretch;
   fMinWidth:=TpvGUIListViewColumn(Source).fMinWidth;
   fMaxWidth:=TpvGUIListViewColumn(Source).fMaxWidth;
   fTag:=TpvGUIListViewColumn(Source).fTag;
   fVisible:=TpvGUIListViewColumn(Source).fVisible;
-  fWidth:=TpvGUIListViewColumn(Source).fWidth;
+  fWorkWidth:=TpvGUIListViewColumn(Source).fWorkWidth;
  end else begin
   inherited Assign(Source);
  end;
