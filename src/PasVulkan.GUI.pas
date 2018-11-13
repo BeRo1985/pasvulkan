@@ -1543,19 +1543,26 @@ type TpvGUIObject=class;
 
      PpvGUIMessageDialogButton=^TpvGUIMessageDialogButton;
      TpvGUIMessageDialogButton=record
+      public
+       type TKeyCodes=array of TpvInt32;
       private
        fID:TpvInt32;
        fCaption:TpvUTF8String;
        fIcon:TObject;
        fIconHeight:TpvFloat;
-       fKeyCode:TpvInt32;
+       fKeyCodes:TKeyCodes;
        fButton:TpvGUIButton;
       public
        constructor Create(const aID:TpvInt32;
                           const aCaption:TpvUTF8String;
+                          const aKeyCodes:array of TpvInt32;
+                          const aIcon:TObject=nil;
+                          const aIconHeight:TpvFloat=24.0); overload;
+       constructor Create(const aID:TpvInt32;
+                          const aCaption:TpvUTF8String;
                           const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
                           const aIcon:TObject=nil;
-                          const aIconHeight:TpvFloat=24.0);
+                          const aIconHeight:TpvFloat=24.0); overload;
        property ID:TpvInt32 read fID write fID;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Icon:TObject read fIcon write fIcon;
@@ -14196,7 +14203,7 @@ end;
 
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
                                              const aCaption:TpvUTF8String;
-                                             const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
+                                             const aKeyCodes:array of TpvInt32;
                                              const aIcon:TObject=nil;
                                              const aIconHeight:TpvFloat=24.0);
 begin
@@ -14204,8 +14211,33 @@ begin
  fCaption:=aCaption;
  fIcon:=aIcon;
  fIconHeight:=aIconHeight;
- fKeyCode:=aKeyCode;
+ fKeyCodes:=nil;
+ if length(aKeyCodes)>0 then begin
+  SetLength(fKeyCodes,length(aKeyCodes));
+  Move(aKeyCodes[0],fKeyCodes[0],length(aKeyCodes)*SizeOf(TpvInt32));
+ end;
  fButton:=nil;
+end;
+
+constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
+                                             const aCaption:TpvUTF8String;
+                                             const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
+                                             const aIcon:TObject=nil;
+                                             const aIconHeight:TpvFloat=24.0);
+begin
+ if aKeyCode<>KEYCODE_UNKNOWN then begin
+  self:=TpvGUIMessageDialogButton.Create(aID,
+                                         aCaption,
+                                         [aKeyCode],
+                                         aIcon,
+                                         aIconHeight);
+ end else begin
+  self:=TpvGUIMessageDialogButton.Create(aID,
+                                         aCaption,
+                                         [],
+                                         aIcon,
+                                         aIconHeight);
+ end;
 end;
 
 constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
@@ -14349,19 +14381,24 @@ begin
 end;
 
 function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-var Index:TpvSizeInt;
+var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
   for Index:=0 to length(fButtons) do begin
    MessageDialogButton:=@fButtons[Index];
-   if MessageDialogButton^.fKeyCode=aKeyEvent.KeyCode then begin
-    if assigned(fOnButtonClick) then begin
-     fOnButtonClick(self,MessageDialogButton^.fID);
+   for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
+    if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
+     if assigned(fOnButtonClick) then begin
+      fOnButtonClick(self,MessageDialogButton^.fID);
+     end;
+     result:=true;
+     Close;
+     break;
     end;
-    result:=true;
-    Close;
+   end;
+   if result then begin
     break;
    end;
   end;
@@ -20378,7 +20415,7 @@ begin
       MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
                                                 'Replace',
                                                 'Do you want to replace this find?',
-                                                [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_Y,fParent.fInstance.Skin.IconThumbUp,24.0),
+                                                [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fParent.fInstance.Skin.IconThumbUp,24.0),
                                                  TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_N,fParent.fInstance.Skin.IconThumbDown,24.0),
                                                  TpvGUIMessageDialogButton.Create(2,'Cancel',KEYCODE_ESCAPE,fParent.fInstance.Skin.fIconDialogStop,24.0)],
                                                 fParent.fInstance.Skin.fIconDialogQuestion);
@@ -20396,7 +20433,7 @@ begin
       MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
                                                 'Replace',
                                                 'No more founds',
-                                                [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)],
+                                                [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fParent.fInstance.Skin.IconWindowClose,24.0)],
                                                 fParent.fInstance.Skin.fIconDialogInformation);
       MessageDialog.OnButtonClick:=InfoMessageDialogOnButtonClick;
      end;
@@ -20422,7 +20459,7 @@ begin
     MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
                                               'Search',
                                               'No more founds',
-                                              [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)]);
+                                              [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fParent.fInstance.Skin.IconWindowClose,24.0)]);
     MessageDialog.OnButtonClick:=InfoMessageDialogOnButtonClick;
    end;
   end;
@@ -23415,12 +23452,12 @@ begin
                   'Do you really want to overwrite the file named "'+TpvUTF8String(ExtractFileName(String(aPath)))+'"?',
                   [TpvGUIMessageDialogButton.Create(0,
                                                     'Yes',
-                                                    KEYCODE_RETURN,
+                                                    [KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],
                                                     Skin.IconThumbUp,
                                                     24),
                    TpvGUIMessageDialogButton.Create(1,
                                                     'No',
-                                                    KEYCODE_RETURN,
+                                                    [KEYCODE_N,KEYCODE_ESCAPE],
                                                     Skin.IconThumbUp,
                                                     24)],
                   Skin.IconDialogQuestion,
