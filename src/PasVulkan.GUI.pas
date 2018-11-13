@@ -3119,6 +3119,16 @@ type TpvGUIObject=class;
        property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
+     TpvGUIFileDialogOverwritePromptMessageDialog=class(TpvGUIMessageDialog)
+      private
+       fFileDialog:TpvGUIFileDialog;
+       procedure OverwritePromptDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+       procedure OverwritePromptDialogOnDestroy(const aSender:TpvGUIObject);
+      public
+       constructor Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;const aPath:TpvUTF8String); reintroduce;
+       destructor Destroy; override;
+     end;
+
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
        type TMode=
@@ -3156,7 +3166,7 @@ type TpvGUIObject=class;
        fListItems:TListItems;
        fOK:boolean;
        fOverwritePrompt:boolean;
-       fOverwritePromptDialog:TpvGUIMessageDialog;
+       fOverwritePromptDialog:TpvGUIFileDialogOverwritePromptMessageDialog;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3165,8 +3175,6 @@ type TpvGUIObject=class;
        procedure ListViewOnDoubleClick(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
-       procedure OverwritePromptDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
-       procedure OverwritePromptDialogOnDestroy(const aSender:TpvGUIObject);
        procedure Refresh;
        procedure SetPath(const aPath:TpvUTF8String);
       public
@@ -23349,6 +23357,61 @@ begin
  inherited Draw;
 end;
 
+constructor TpvGUIFileDialogOverwritePromptMessageDialog.Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;const aPath:TpvUTF8String);
+begin
+ inherited Create(aParent,
+                  'Overwrite prompt',
+                  'Do you really want to overwrite the file named "'+TpvUTF8String(ExtractFileName(String(aPath)))+'"?',
+                  [TpvGUIMessageDialogButton.Create(0,
+                                                    'Yes',
+                                                    KEYCODE_RETURN,
+                                                    Skin.IconThumbUp,
+                                                    24),
+                   TpvGUIMessageDialogButton.Create(1,
+                                                    'No',
+                                                    KEYCODE_RETURN,
+                                                    Skin.IconThumbUp,
+                                                    24)],
+                  Skin.IconDialogQuestion,
+                  36);
+ fFileDialog:=aFileDialog;
+ fFileDialog.fOverwritePromptDialog:=self;
+ OnButtonClick:=OverwritePromptDialogOnButtonClick;
+ OnDestroy:=OnDestroy;
+end;
+
+destructor TpvGUIFileDialogOverwritePromptMessageDialog.Destroy;
+begin
+ if assigned(fFileDialog) then begin
+  fFileDialog.fOverwritePromptDialog:=nil;
+  fFileDialog:=nil;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvGUIFileDialogOverwritePromptMessageDialog.OverwritePromptDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+var FileDialog:TpvGUIFileDialog;
+begin
+ if assigned(fFileDialog) then begin
+  fFileDialog.fOverwritePromptDialog:=nil;
+  FileDialog:=fFileDialog;
+  fFileDialog:=nil;
+  if aID=0 then begin
+   FileDialog.fFileName:=FileDialog.fOverwritePromptFileName;
+   FileDialog.fOK:=true;
+   FileDialog.Close;
+  end;
+ end;
+end;
+
+procedure TpvGUIFileDialogOverwritePromptMessageDialog.OverwritePromptDialogOnDestroy(const aSender:TpvGUIObject);
+begin
+ if assigned(fFileDialog) then begin
+  fFileDialog.fOverwritePromptDialog:=nil;
+  fFileDialog:=nil;
+ end;
+end;
+
 constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open;const aFilters:TpvUTF8String='*.*');
 var Column:TpvGUIListViewColumn;
     ListViewItem:TpvGUIListViewItem;
@@ -23520,6 +23583,7 @@ var TemporaryWindow:TpvGUIWindow;
 begin
  fListItems.Finalize;
  if assigned(fOverwritePromptDialog) then begin
+  fOverwritePromptDialog.fFileDialog:=nil;
   TemporaryWindow:=fOverwritePromptDialog;
   fOverwritePromptDialog:=nil;
   TemporaryWindow.DisposeWindow;
@@ -23602,21 +23666,6 @@ procedure TpvGUIFileDialog.ButtonCancelOnClick(const aSender:TpvGUIObject);
 begin
  fOK:=false;
  Close;
-end;
-
-procedure TpvGUIFileDialog.OverwritePromptDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
-begin
- fOverwritePromptDialog:=nil;
- if aID=0 then begin
-  fFileName:=fOverwritePromptFileName;
-  fOK:=true;
-  Close;
- end;
-end;
-
-procedure TpvGUIFileDialog.OverwritePromptDialogOnDestroy(const aSender:TpvGUIObject);
-begin
- fOverwritePromptDialog:=nil;
 end;
 
 function TpvGUIFileDialogCompareListItems(const a,b:TpvGUIFileDialog.TListItem):TpvInt32;
@@ -23956,23 +24005,9 @@ begin
  end else if (fMode=TMode.Save) and (length(NewPath)>0) then begin
   if FileExists(String(NewPath)) and fOverwritePrompt then begin
    fOverwritePromptFileName:=NewPath;
-   fOverwritePromptDialog:=TpvGUIMessageDialog.Create(fInstance,
-                                                      'Overwrite prompt',
-                                                      'Do you really want to overwrite the file named "'+TpvUTF8String(ExtractFileName(String(NewPath)))+'"?',
-                                                      [TpvGUIMessageDialogButton.Create(0,
-                                                                                        'Yes',
-                                                                                        KEYCODE_RETURN,
-                                                                                        Skin.IconThumbUp,
-                                                                                        24),
-                                                       TpvGUIMessageDialogButton.Create(1,
-                                                                                        'No',
-                                                                                        KEYCODE_RETURN,
-                                                                                        Skin.IconThumbUp,
-                                                                                        24)],
-                                                      Skin.IconDialogQuestion,
-                                                      36);
-   fOverwritePromptDialog.OnButtonClick:=OverwritePromptDialogOnButtonClick;
-   fOverwritePromptDialog.OnDestroy:=OverwritePromptDialogOnDestroy;
+   fOverwritePromptDialog:=TpvGUIFileDialogOverwritePromptMessageDialog.Create(fInstance,
+                                                                               self,
+                                                                               NewPath);
   end else begin
    fFileName:=NewPath;
    fOK:=true;
