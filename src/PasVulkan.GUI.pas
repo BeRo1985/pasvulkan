@@ -3183,6 +3183,7 @@ type TpvGUIObject=class;
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
        procedure SetPath(const aPath:TpvUTF8String);
+       procedure SetFileName(const aFileName:TpvUTF8String);
        function GetFilter:TpvUTF8String;
        procedure SetFilter(const aFilter:TpvUTF8String);
       public
@@ -3194,7 +3195,7 @@ type TpvGUIObject=class;
        procedure Reject;
       published
        property Path:TpvUTF8String read fPath write SetPath;
-       property FileName:TpvUTF8String read fFileName {write fFileName};
+       property FileName:TpvUTF8String read fFileName write SetFileName;
        property Filter:TpvUTF8String read GetFilter write SetFilter;
        property OK:boolean read fOK write fOK;
        property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
@@ -23643,6 +23644,10 @@ begin
 
  fOnResult:=nil;
 
+ fTextEditFileName.RequestFocus;
+
+ fTextEditFileName.SelectAll;
+
 end;
 
 destructor TpvGUIFileDialog.Destroy;
@@ -24037,6 +24042,13 @@ begin
    end;
   end;
  end;
+end;
+
+procedure TpvGUIFileDialog.SetFileName(const aFileName:TpvUTF8String);
+begin
+ SetPath(ExtractFilePath(aFileName));
+ fTextEditFileName.Text:=ExtractFileName(aFileName);
+ fTextEditFileName.SelectAll;
 end;
 
 function TpvGUIFileDialog.GetFilter:TpvUTF8String;
