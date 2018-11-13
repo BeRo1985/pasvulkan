@@ -96,6 +96,9 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure OpenProject(var aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
+       procedure SaveProject(var aFileName:TpvUTF8String);
+       procedure MenuOnSaveProject(const aSender:TpvGUIObject);
+       procedure MenuOnSaveAsProject(const aSender:TpvGUIObject);
       public
 
        constructor Create; override;
@@ -266,6 +269,24 @@ begin
  end;
 end;
 
+procedure TScreenMain.SaveProject(var aFileName:TpvUTF8String);
+begin
+end;
+
+procedure TScreenMain.MenuOnSaveProject(const aSender:TpvGUIObject);
+begin
+end;
+
+procedure TScreenMain.MenuOnSaveAsProject(const aSender:TpvGUIObject);
+var FileDialog:TpvGUIFileDialog;
+begin
+ if not fGUIInstance.HasModalWindows then begin
+  FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Save);
+  FileDialog.OverwritePrompt:=true;
+  FileDialog.Path:=GetCurrentDir;
+ end;
+end;
+
 procedure TScreenMain.Show;
 var Index:TpvInt32;
     WindowMenu:TpvGUIWindowMenu;
@@ -355,12 +376,14 @@ begin
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='Save';
    MenuItem.ShortcutHint:='Ctrl+S';
+   MenuItem.OnClick:=MenuOnSaveProject;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Icon:=fGUIInstance.Skin.IconContentCopy;
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='Save as';
    MenuItem.ShortcutHint:='Shift+Ctrl+S';
+   MenuItem.OnClick:=MenuOnSaveAsProject;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Caption:='-';
@@ -753,6 +776,21 @@ begin
                                  TpvApplicationInputKeyModifier.SHIFT,
                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
       MenuOnOpenProject(nil);
+      result:=true;
+     end;
+    end;
+    KEYCODE_S:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                 TpvApplicationInputKeyModifier.CTRL,
+                                 TpvApplicationInputKeyModifier.SHIFT,
+                                 TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+      MenuOnSaveProject(nil);
+      result:=true;
+     end else if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                          TpvApplicationInputKeyModifier.CTRL,
+                                          TpvApplicationInputKeyModifier.SHIFT,
+                                          TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+      MenuOnSaveAsProject(nil);
       result:=true;
      end;
     end;

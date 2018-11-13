@@ -23466,14 +23466,14 @@ begin
                   [TpvGUIMessageDialogButton.Create(0,
                                                     'Yes',
                                                     [KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],
-                                                    Skin.IconThumbUp,
+                                                    TpvGUIWidget(aParent).Skin.IconThumbUp,
                                                     24),
                    TpvGUIMessageDialogButton.Create(1,
                                                     'No',
                                                     [KEYCODE_N,KEYCODE_ESCAPE],
-                                                    Skin.IconThumbUp,
+                                                    TpvGUIWidget(aParent).Skin.IconThumbUp,
                                                     24)],
-                  Skin.IconDialogQuestion,
+                  TpvGUIWidget(aParent).Skin.IconDialogQuestion,
                   36);
  fFileDialog:=aFileDialog;
  fFileDialog.fOverwritePromptDialog:=self;
