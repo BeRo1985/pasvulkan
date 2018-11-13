@@ -23706,6 +23706,10 @@ begin
     Accept;
     result:=true;
    end;
+   KEYCODE_BACKSPACE:begin
+    SetPath('..');
+    result:=true;
+   end;
   end;
  end;
 end;
