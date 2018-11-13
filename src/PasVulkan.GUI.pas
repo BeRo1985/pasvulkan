@@ -10966,7 +10966,7 @@ begin
 
      for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-      if not Column.fSizeExpand then begin
+      if Column.fVisible and not Column.fSizeExpand then begin
        if Column.fAutoSize then begin
         Column.fWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
        end;
@@ -10982,7 +10982,7 @@ begin
 
      for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-      if Column.fSizeExpand then begin
+      if Column.fVisible and Column.fSizeExpand then begin
        Column.fWidth:=Max(0.0,ClipRect.Width-SumWidth);
        if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
         Column.fWidth:=Column.fMinWidth;
@@ -11034,10 +11034,19 @@ begin
 
        Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
 
-       Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListBoxHorizontalMargin,
-                                                                                Item.fRect.Top),
-                                                              TpvVector2.Create(Column.fRect.Width-(ListBoxHorizontalMargin*2.0),
-                                                                                Item.fRect.Height));
+       if Column.fVisible then begin
+
+        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListBoxHorizontalMargin,
+                                                                                 Item.fRect.Top),
+                                                               TpvVector2.Create(Column.fRect.Width-(ListBoxHorizontalMargin*2.0),
+                                                                                 Item.fRect.Height));
+
+       end else begin
+
+        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(-16777216.0,-16777216.0),
+                                                               TpvVector2.Create(1.0,1.0));
+
+       end;
 
       end;
 
@@ -11275,70 +11284,79 @@ begin
 
      for ColumnIndex:=0 to length(Item.fColumnRects)-1 do begin
 
-      if assigned(aListView.fOnGetItemText) then begin
-       ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,ColumnIndex);
-      end else begin
-       if ColumnIndex=0 then begin
-        ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
-       end else if (ColumnIndex-1)<aListView.fItems[ItemIndex].fSubItems.Count then begin
-        ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fSubItems[ColumnIndex-1]);
-       end else begin
-        ItemText:='';
-       end;
-      end;
-
-      aDrawEngine.Transparent:=true;
-
-      ColumnRect:=Item.fColumnRects[ColumnIndex];
-
       if ColumnIndex<aListView.fColumns.Count then begin
        Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-       case Column.fAlignment of
-        TpvGUIListViewColumn.TAlignment.Center:begin
-         XOffset:=(ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
-        end;
-        TpvGUIListViewColumn.TAlignment.Tailing:begin
-         XOffset:=ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize);
-        end;
-        else {TpvGUIListViewColumn.TAlignment.Leading:}begin
-         XOffset:=0.0;
+      end else begin
+       Column:=nil;
+      end;
+
+      if (assigned(Column) and Column.fVisible) or not assigned(Column) then begin
+
+       if assigned(aListView.fOnGetItemText) then begin
+        ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,ColumnIndex);
+       end else begin
+        if ColumnIndex=0 then begin
+         ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+        end else if (ColumnIndex-1)<aListView.fItems[ItemIndex].fSubItems.Count then begin
+         ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fSubItems[ColumnIndex-1]);
+        end else begin
+         ItemText:='';
         end;
        end;
-      end else begin
-       XOffset:=0.0;
+
+       aDrawEngine.Transparent:=true;
+
+       ColumnRect:=Item.fColumnRects[ColumnIndex];
+
+       if assigned(Column) then begin
+        case Column.fAlignment of
+         TpvGUIListViewColumn.TAlignment.Center:begin
+          XOffset:=(ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
+         end;
+         TpvGUIListViewColumn.TAlignment.Tailing:begin
+          XOffset:=ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize);
+         end;
+         else {TpvGUIListViewColumn.TAlignment.Leading:}begin
+          XOffset:=0.0;
+         end;
+        end;
+       end else begin
+        XOffset:=0.0;
+       end;
+
+       aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(8.0,8.0),
+                                                    ColumnRect.Size+TpvVector2.InlineableCreate(16.0,16.0)).GetIntersection(ClipRect);
+
+       aDrawEngine.DrawText(ItemText,
+                            ColumnRect.LeftTop+TpvVector2.InlineableCreate(XOffset,
+                                                                           ColumnRect.Height*0.5));
+
       end;
 
-      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(8.0,8.0),
-                                                   ColumnRect.Size+TpvVector2.InlineableCreate(16.0,16.0)).GetIntersection(ClipRect);
-
-      aDrawEngine.DrawText(ItemText,
-                           ColumnRect.LeftTop+TpvVector2.InlineableCreate(XOffset,
-                                                                          ColumnRect.Height*0.5));
-
-     end;
-
-     if aListView.fItemIndex=ItemIndex then begin
-      if aListView.Focused then begin
-       Element:=GUI_ELEMENT_FOCUSED;
-      end else begin
-       Element:=GUI_ELEMENT_HOVERED;
+      if aListView.fItemIndex=ItemIndex then begin
+       if aListView.Focused then begin
+        Element:=GUI_ELEMENT_FOCUSED;
+       end else begin
+        Element:=GUI_ELEMENT_HOVERED;
+       end;
+       Rect:=ClipRect;
+       Rect.Left:=ClipRect.Left-1.0;
+       Rect.Right:=ClipRect.Right+1.0;
+       aDrawEngine.ClipRect:=Rect;
+       Rect:=Item.fRect;
+       aDrawEngine.Transparent:=true;
+       aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                      true,
+                                                      Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                      Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                      Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                      Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                      0.0,
+                                                      TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                      true);
+       aDrawEngine.ClipRect:=ClipRect;
       end;
-      Rect:=ClipRect;
-      Rect.Left:=ClipRect.Left-1.0;
-      Rect.Right:=ClipRect.Right+1.0;
-      aDrawEngine.ClipRect:=Rect;
-      Rect:=Item.fRect;
-      aDrawEngine.Transparent:=true;
-      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
-                                                     true,
-                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
-                                                     Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
-                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
-                                                     Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
-                                                     0.0,
-                                                     TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
-                                                     true);
-      aDrawEngine.ClipRect:=ClipRect;
+
      end;
 
     end;
