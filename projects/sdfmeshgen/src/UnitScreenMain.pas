@@ -265,6 +265,7 @@ var FileDialog:TpvGUIFileDialog;
 begin
  if not fGUIInstance.HasModalWindows then begin
   FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Open);
+  FileDialog.Title:='Open';
   FileDialog.Path:=GetCurrentDir;
  end;
 end;
@@ -282,6 +283,7 @@ var FileDialog:TpvGUIFileDialog;
 begin
  if not fGUIInstance.HasModalWindows then begin
   FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Save);
+  FileDialog.Title:='Save as';
   FileDialog.OverwritePrompt:=true;
   FileDialog.Path:=GetCurrentDir;
  end;
