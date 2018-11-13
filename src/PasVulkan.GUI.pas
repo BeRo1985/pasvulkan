@@ -23508,8 +23508,8 @@ begin
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Filter
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Buttons
  fAdvancedGridLayout.Columns.Add(80.0,0.0);  // Label
- fAdvancedGridLayout.Columns.Add(680.0,1.0); // TextEditor
- fAdvancedGridLayout.Columns.Add(40.0,0.0);  // Button
+ fAdvancedGridLayout.Columns.Add(640.0,1.0); // TextEditor
+ fAdvancedGridLayout.Columns.Add(80.0,0.0);  // Button
 //AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
@@ -23532,11 +23532,11 @@ begin
  begin
 
   fButtonUp:=TpvGUIButton.Create(Content);
-  fAdvancedGridLayout.Anchors[fButtonUp]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
-  fButtonUp.Caption:='';
+  fAdvancedGridLayout.Anchors[fButtonUp]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,4.0,4.0,4.0,4.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+  fButtonUp.Caption:='Up';
   fButtonUp.OnClick:=ButtonUpOnClick;
-  fButtonUp.Icon:=Skin.IconDirectionArrowUp;
-  fButtonUp.IconHeight:=24.0;
+{ fButtonUp.Icon:=Skin.IconDirectionArrowUp;
+  fButtonUp.IconHeight:=24.0;}
 
  end;
 
