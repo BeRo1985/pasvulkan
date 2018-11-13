@@ -3180,8 +3180,10 @@ type TpvGUIObject=class;
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
        procedure SetPath(const aPath:TpvUTF8String);
+       function GetFilter:TpvUTF8String;
+       procedure SetFilter(const aFilter:TpvUTF8String);
       public
-       constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open;const aFilters:TpvUTF8String='*.*'); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Check; override;
@@ -3190,6 +3192,7 @@ type TpvGUIObject=class;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName {write fFileName};
+       property Filter:TpvUTF8String read GetFilter write SetFilter;
        property OK:boolean read fOK write fOK;
        property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
        property OnResult:TpvGUIFileDialogOnResult read fOnResult write fOnResult;
@@ -23421,7 +23424,7 @@ begin
  end;
 end;
 
-constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open;const aFilters:TpvUTF8String='*.*');
+constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
 var Column:TpvGUIListViewColumn;
     ListViewItem:TpvGUIListViewItem;
 begin
@@ -23547,7 +23550,7 @@ begin
   fTextEditFilter:=TpvGUITextEdit.Create(Content);
   fTextEditFilter.MinimumHeight:=32;
   fTextEditFilter.OnKeyEvent:=TextEditFilterOnKeyEvent;
-  fTextEditFilter.Text:=aFilters;
+  fTextEditFilter.Text:='*.*';
   fAdvancedGridLayout.Anchors[fTextEditFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,3,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
@@ -23903,6 +23906,10 @@ begin
 
   fListView.fScrollBar.Value:=0;
 
+  fListView.fItemIndex:=-1;
+
+  fTextEditFileName.Text:='';
+
  finally
   Filters.Finalize;
  end;
@@ -23963,12 +23970,23 @@ begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
     Refresh;
-    fListView.fItemIndex:=-1;
-    fTextEditFileName.Text:='';
    end else begin
     fTextEditPath.Text:=fPath;
    end;
   end;
+ end;
+end;
+
+function TpvGUIFileDialog.GetFilter:TpvUTF8String;
+begin
+ result:=fTextEditFilter.Text;
+end;
+
+procedure TpvGUIFileDialog.SetFilter(const aFilter:TpvUTF8String);
+begin
+ if fTextEditFilter.Text<>aFilter then begin
+  fTextEditFilter.Text:=aFilter;
+  Refresh;
  end;
 end;
 
