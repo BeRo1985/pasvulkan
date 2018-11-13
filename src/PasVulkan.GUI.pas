@@ -3155,6 +3155,7 @@ type TpvGUIObject=class;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fLabelPath:TpvGUILabel;
        fTextEditPath:TpvGUITextEdit;
+       fButtonUp:TpvGUIButton;
        fListView:TpvGUIListView;
        fLabelFileName:TpvGUILabel;
        fTextEditFileName:TpvGUITextEdit;
@@ -3177,6 +3178,7 @@ type TpvGUIObject=class;
        function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
        procedure ListViewOnDoubleClick(const aSender:TpvGUIObject);
+       procedure ButtonUpOnClick(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
@@ -23506,7 +23508,8 @@ begin
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Filter
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Buttons
  fAdvancedGridLayout.Columns.Add(80.0,0.0);  // Label
- fAdvancedGridLayout.Columns.Add(720.0,1.0); // TextEditor
+ fAdvancedGridLayout.Columns.Add(680.0,1.0); // TextEditor
+ fAdvancedGridLayout.Columns.Add(40.0,0.0);  // Button
 //AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
@@ -23528,8 +23531,19 @@ begin
 
  begin
 
+  fButtonUp:=TpvGUIButton.Create(Content);
+  fAdvancedGridLayout.Anchors[fButtonUp]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+  fButtonUp.Caption:='';
+  fButtonUp.OnClick:=ButtonUpOnClick;
+  fButtonUp.Icon:=Skin.IconDirectionArrowUp;
+  fButtonUp.IconHeight:=24.0;
+
+ end;
+
+ begin
+
   fListView:=TpvGUIListView.Create(Content);
-  fAdvancedGridLayout.Anchors[fListView]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+  fAdvancedGridLayout.Anchors[fListView]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,3,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Name';
@@ -23575,7 +23589,7 @@ begin
   fTextEditFileName.MinimumHeight:=32;
   fTextEditFileName.OnKeyEvent:=TextEditFileNameOnKeyEvent;
   fTextEditFileName.Text:='';
-  fAdvancedGridLayout.Anchors[fTextEditFileName]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+  fAdvancedGridLayout.Anchors[fTextEditFileName]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
 
@@ -23590,14 +23604,14 @@ begin
   fTextEditFilter.MinimumHeight:=32;
   fTextEditFilter.OnKeyEvent:=TextEditFilterOnKeyEvent;
   fTextEditFilter.Text:='*.*';
-  fAdvancedGridLayout.Anchors[fTextEditFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,3,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+  fAdvancedGridLayout.Anchors[fTextEditFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,3,2,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
 
  begin
 
   fPanelButtons:=TpvGUIPanel.Create(Content);
-  fAdvancedGridLayout.Anchors[fPanelButtons]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,4,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+  fAdvancedGridLayout.Anchors[fPanelButtons]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,4,3,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
   fPanelButtons.Layout:=TpvGUIGridLayout.Create(Window.Content,
                                                 2,
                                                 TpvGUILayoutAlignment.Fill,
@@ -23708,6 +23722,11 @@ end;
 procedure TpvGUIFileDialog.ListViewOnDoubleClick(const aSender:TpvGUIObject);
 begin
  Accept;
+end;
+
+procedure TpvGUIFileDialog.ButtonUpOnClick(const aSender:TpvGUIObject);
+begin
+ SetPath('..');
 end;
 
 procedure TpvGUIFileDialog.ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
