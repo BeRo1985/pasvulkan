@@ -88,6 +88,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fNewProjectMessageDialogVisible:boolean;
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
+       fFileName:TpvUTF8String;
        procedure NewProject;
        procedure OpenProject(const aFileName:TpvUTF8String);
        procedure SaveProject(const aFileName:TpvUTF8String);
@@ -154,6 +155,8 @@ begin
 
  fLastMouseButtons:=[];
 
+ fFileName:='';
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -199,6 +202,8 @@ begin
 
  fFloatEditWorldSizeDepth.Value:=2.0;
 
+ fFileName:='';
+
 end;
 
 procedure TScreenMain.OpenProject(const aFileName:TpvUTF8String);
@@ -208,6 +213,7 @@ var FileStream:TFileStream;
     JSONRootItemObjectProperty:TPasJSONItemObjectProperty;
 begin
  NewProject;
+ fFileName:=aFileName;
  FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
   JSONRootItem:=TPasJSON.Parse(FileStream,[TPasJSONModeFlag.Comments],TPasJSONEncoding.AutomaticDetection);
@@ -216,9 +222,9 @@ begin
     if JSONRootItem is TPasJSONItemObject then begin
      JSONRootItemObject:=TPasJSONItemObject(JSONRootItem);
      for JSONRootItemObjectProperty in JSONRootItemObject do begin
-      if JSONRootItemObjectProperty.Key='signeddistancefield' then begin
+      if JSONRootItemObjectProperty.Key='signeddistancefieldcode' then begin
        fGUISignedDistanceFieldCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUISignedDistanceFieldCodeEditor.Text);
-      end else if JSONRootItemObjectProperty.Key='meshfragment' then begin
+      end else if JSONRootItemObjectProperty.Key='meshfragmentcode' then begin
        fGUIMeshFragmentCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUIMeshFragmentCodeEditor.Text);
       end else if JSONRootItemObjectProperty.Key='gridsize' then begin
        if assigned(JSONRootItemObjectProperty.Value) and
@@ -249,7 +255,52 @@ begin
 end;
 
 procedure TScreenMain.SaveProject(const aFileName:TpvUTF8String);
+var FileStream:TFileStream;
+    JSONRootItemObject:TPasJSONItemObject;
+    JSONItemArray:TPasJSONItemArray;
+    JSONString:TPasJSONRawByteString;
 begin
+ fFileName:=aFileName;
+ JSONRootItemObject:=TPasJSONItemObject.Create;
+ try
+  JSONRootItemObject.Add('signeddistancefieldcode',TPasJSONItemString.Create(fGUISignedDistanceFieldCodeEditor.Text));
+  JSONRootItemObject.Add('meshfragmentcode',TPasJSONItemString.Create(fGUIMeshFragmentCodeEditor.Text));
+  begin
+   JSONItemArray:=TPasJSONItemArray.Create;
+   try
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeWidth.Value));
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeHeight.Value));
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeDepth.Value));
+   finally
+    JSONRootItemObject.Add('gridsize',JSONItemArray);
+   end;
+  end;
+  begin
+   JSONItemArray:=TPasJSONItemArray.Create;
+   try
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeWidth.Value));
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeHeight.Value));
+    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeDepth.Value));
+   finally
+    JSONRootItemObject.Add('worldsize',JSONItemArray);
+   end;
+  end;
+  JSONString:=TPasJSON.Stringify(JSONRootItemObject,true);
+  try
+   if length(JSONString)>0 then begin
+    FileStream:=TFileStream.Create(aFileName,fmCreate);
+    try
+     FileStream.WriteBuffer(JSONString[1],length(JSONString));
+    finally
+     FreeAndNil(FileStream);
+    end;
+   end;
+  finally
+   JSONString:='';
+  end;
+ finally
+  FreeAndNil(JSONRootItemObject);
+ end;
 end;
 
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
