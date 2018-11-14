@@ -423,6 +423,8 @@ begin
  if not fGUIInstance.HasModalWindows then begin
   FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Open);
   FileDialog.Title:='Open';
+  FileDialog.Filter:='*.sdfmeshgen';
+  FileDialog.DefaultFileExtension:='.sdfmeshgen';
   FileDialog.Path:=GetCurrentDir;
   FileDialog.OnResult:=OpenFileDialogOnResult;
  end;
@@ -443,6 +445,8 @@ begin
  if not fGUIInstance.HasModalWindows then begin
   FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Save);
   FileDialog.Title:='Save as';
+  FileDialog.Filter:='*.sdfmeshgen';
+  FileDialog.DefaultFileExtension:='.sdfmeshgen';
   FileDialog.OverwritePrompt:=true;
   FileDialog.Path:=GetCurrentDir;
   FileDialog.OnResult:=SaveFileDialogOnResult;

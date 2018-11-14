@@ -3174,6 +3174,7 @@ type TpvGUIObject=class;
        fButtonCancel:TpvGUIButton;
        fPath:TpvUTF8String;
        fFileName:TpvUTF8String;
+       fDefaultFileExtension:TpvUTF8String;
        fOverwritePromptFileName:TpvUTF8String;
        fListItems:TListItems;
        fOK:boolean;
@@ -3206,6 +3207,7 @@ type TpvGUIObject=class;
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName write SetFileName;
        property Filter:TpvUTF8String read GetFilter write SetFilter;
+       property DefaultFileExtension:TpvUTF8String read fDefaultFileExtension write fDefaultFileExtension;
        property OK:boolean read fOK write fOK;
        property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
        property OnResult:TpvGUIFileDialogOnResult read fOnResult write fOnResult;
@@ -23538,6 +23540,8 @@ begin
 
  fFileName:='';
 
+ fDefaultFileExtension:='';
+
  fOverwritePromptFileName:='';
 
  fOK:=false;
@@ -24176,46 +24180,64 @@ begin
 end;
 
 procedure TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1);
-var NewPath:TpvUTF8String;
+var NewFileName,FileExtension:TpvUTF8String;
 begin
- NewPath:=fTextEditFileName.Text;
- if Trim(String(NewPath))='..' then begin
-  SetPathEx(NewPath,aNewItemIndex);
+ NewFileName:=fTextEditFileName.Text;
+ if Trim(String(NewFileName))='..' then begin
+  SetPathEx(NewFileName,aNewItemIndex);
  end else begin
-  if (NewPath='/') or (NewPath='\') then begin
-   NewPath:='';
-  end else{$ifndef Unix}if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
-   NewPath:='';
-  end else if (length(NewPath) in [2]) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':') then begin
-   NewPath:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewPath)));
-  end else{$endif}if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
-                         ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
-   NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
+  if (NewFileName='/') or (NewFileName='\') then begin
+   NewFileName:='';
+  end else{$ifndef Unix}if (NewFileName='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
+   NewFileName:='';
+  end else if (length(NewFileName) in [2]) and (NewFileName[1] in ['A'..'Z','a'..'z']) and (NewFileName[2]=':') then begin
+   NewFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewFileName)));
+  end else{$endif}if not (((length(NewFileName)>0) and (NewFileName[1]=PathDelim)){$ifndef Unix} or
+                         ((length(NewFileName)>1) and (NewFileName[1] in ['A'..'Z','a'..'z']) and (NewFileName[2]=':')){$endif}) then begin
+   NewFileName:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewFileName)));
   end;
-  if (length(NewPath)>0) and DirectoryExists(String(NewPath)) then begin
-   SetPathEx(NewPath,aNewItemIndex);
-  end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(String(NewPath)) then begin
-   fFileName:=NewPath;
-   fOK:=true;
-   if assigned(fOnResult) then begin
-    fOnResult(self,true,fFileName);
-    fOnResult:=nil;
+  if (length(NewFileName)>0) and DirectoryExists(String(NewFileName)) then begin
+   SetPathEx(NewFileName,aNewItemIndex);
+  end else if (fMode in [TMode.Open,TMode.Save]) and (length(NewFileName)>0) then begin
+   if (length(fDefaultFileExtension)>0) and not FileExists(String(NewFileName)) then begin
+    FileExtension:=TpvUTF8String(ExtractFileExt(String(NewFileName)));
+    if length(FileExtension)=0 then begin
+     if fDefaultFileExtension[1]<>'.' then begin
+      FileExtension:='.'+fDefaultFileExtension;
+     end else begin
+      FileExtension:=fDefaultFileExtension;
+     end;
+     NewFileName:=TpvUTF8String(ChangeFileExt(String(NewFileName),String(FileExtension)));
+     if fTextEditFileName.Text<>NewFileName then begin
+      fTextEditFileName.Text:=NewFileName;
+     end;
+    end;
    end;
-   Close;
-  end else if (fMode=TMode.Save) and (length(NewPath)>0) then begin
-   if FileExists(String(NewPath)) and fOverwritePrompt then begin
-    fOverwritePromptFileName:=NewPath;
-    fOverwritePromptDialog:=TpvGUIFileDialogOverwritePromptMessageDialog.Create(fInstance,
-                                                                                self,
-                                                                                NewPath);
-   end else begin
-    fFileName:=NewPath;
+   if (fMode=TMode.Open) and (length(NewFileName)>0) and FileExists(String(NewFileName)) then begin
+    fFileName:=NewFileName;
     fOK:=true;
     if assigned(fOnResult) then begin
      fOnResult(self,true,fFileName);
      fOnResult:=nil;
     end;
     Close;
+   end else if (fMode=TMode.Save) and (length(NewFileName)>0) then begin
+    if FileExists(String(NewFileName)) and fOverwritePrompt then begin
+     fOverwritePromptFileName:=NewFileName;
+     fOverwritePromptDialog:=TpvGUIFileDialogOverwritePromptMessageDialog.Create(fInstance,
+                                                                                 self,
+                                                                                 NewFileName);
+    end else begin
+     fFileName:=NewFileName;
+     fOK:=true;
+     if assigned(fOnResult) then begin
+      fOnResult(self,true,fFileName);
+      fOnResult:=nil;
+     end;
+     Close;
+    end;
+   end else begin
+    SetPathEx(fTextEditFileName.Text,aNewItemIndex);
    end;
   end else begin
    SetPathEx(fTextEditFileName.Text,aNewItemIndex);
