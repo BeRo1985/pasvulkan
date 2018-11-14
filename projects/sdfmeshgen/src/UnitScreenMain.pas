@@ -32,7 +32,8 @@ uses SysUtils,
      PasVulkan.GUI,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont,
-     PasVulkan.TextEditor;
+     PasVulkan.TextEditor,
+     PasJSON;
 
 type TScreenMain=class(TpvApplicationScreen)
       private
@@ -88,15 +89,15 @@ type TScreenMain=class(TpvApplicationScreen)
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
        procedure NewProject;
+       procedure OpenProject(const aFileName:TpvUTF8String);
+       procedure SaveProject(const aFileName:TpvUTF8String);
        procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
-       procedure OpenProject(var aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
-       procedure SaveProject(var aFileName:TpvUTF8String);
        procedure MenuOnSaveProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveAsProject(const aSender:TpvGUIObject);
       public
@@ -200,6 +201,57 @@ begin
 
 end;
 
+procedure TScreenMain.OpenProject(const aFileName:TpvUTF8String);
+var FileStream:TFileStream;
+    JSONRootItem:TPasJSONItem;
+    JSONRootItemObject:TPasJSONItemObject;
+    JSONRootItemObjectProperty:TPasJSONItemObjectProperty;
+begin
+ NewProject;
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  JSONRootItem:=TPasJSON.Parse(FileStream,[TPasJSONModeFlag.Comments],TPasJSONEncoding.AutomaticDetection);
+  if assigned(JSONRootItem) then begin
+   try
+    if JSONRootItem is TPasJSONItemObject then begin
+     JSONRootItemObject:=TPasJSONItemObject(JSONRootItem);
+     for JSONRootItemObjectProperty in JSONRootItemObject do begin
+      if JSONRootItemObjectProperty.Key='signeddistancefield' then begin
+       fGUISignedDistanceFieldCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUISignedDistanceFieldCodeEditor.Text);
+      end else if JSONRootItemObjectProperty.Key='meshfragment' then begin
+       fGUIMeshFragmentCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUIMeshFragmentCodeEditor.Text);
+      end else if JSONRootItemObjectProperty.Key='gridsize' then begin
+       if assigned(JSONRootItemObjectProperty.Value) and
+          (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
+          (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
+        fIntegerEditGridSizeWidth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fIntegerEditGridSizeWidth.Value);
+        fIntegerEditGridSizeHeight.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fIntegerEditGridSizeHeight.Value);
+        fIntegerEditGridSizeDepth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fIntegerEditGridSizeDepth.Value);
+       end;
+      end else if JSONRootItemObjectProperty.Key='worldsize' then begin
+       if assigned(JSONRootItemObjectProperty.Value) and
+          (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
+          (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
+        fFloatEditWorldSizeWidth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fFloatEditWorldSizeWidth.Value);
+        fFloatEditWorldSizeHeight.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fFloatEditWorldSizeHeight.Value);
+        fFloatEditWorldSizeDepth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fFloatEditWorldSizeDepth.Value);
+       end;
+      end;
+     end;
+    end;
+   finally
+    FreeAndNil(JSONRootItem);
+   end;
+  end;
+ finally
+  FreeAndNil(FileStream);
+ end;
+end;
+
+procedure TScreenMain.SaveProject(const aFileName:TpvUTF8String);
+begin
+end;
+
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
 begin
  if aID=0 then begin
@@ -256,10 +308,6 @@ begin
  end;
 end;
 
-procedure TScreenMain.OpenProject(var aFileName:TpvUTF8String);
-begin
-end;
-
 procedure TScreenMain.MenuOnOpenProject(const aSender:TpvGUIObject);
 var FileDialog:TpvGUIFileDialog;
 begin
@@ -268,10 +316,6 @@ begin
   FileDialog.Title:='Open';
   FileDialog.Path:=GetCurrentDir;
  end;
-end;
-
-procedure TScreenMain.SaveProject(var aFileName:TpvUTF8String);
-begin
 end;
 
 procedure TScreenMain.MenuOnSaveProject(const aSender:TpvGUIObject);
