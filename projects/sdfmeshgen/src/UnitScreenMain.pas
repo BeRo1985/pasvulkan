@@ -92,17 +92,17 @@ type TScreenMain=class(TpvApplicationScreen)
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
        procedure NewProject;
-       procedure OpenProject(const aFileName:TpvUTF8String);
-       procedure SaveProject(const aFileName:TpvUTF8String);
+       procedure OpenProject(aFileName:TpvUTF8String);
+       procedure SaveProject(aFileName:TpvUTF8String);
        procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
-       procedure ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
        procedure OnOpenProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
-       procedure ShowOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure ShowOpenProjectMessageDialog(const aSender:TpvGUIObject);
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
-       procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure ShowTerminationMessageDialog(const aSender:TpvGUIObject);
        procedure OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
        procedure SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
@@ -144,11 +144,15 @@ type TScreenMain=class(TpvApplicationScreen)
 
      end;
 
+var ScreenMain:TScreenMain=nil;
+
 implementation
 
 constructor TScreenMain.Create;
 begin
  inherited Create;
+
+ ScreenMain:=self;
 
  fReady:=false;
 
@@ -211,6 +215,7 @@ begin
 
  fFloatEditWorldSizeDepth.Value:=2.0;
 
+
  fFileName:='';
 
  fFileNameToDelayedOpen:='';
@@ -221,7 +226,7 @@ begin
 
 end;
 
-procedure TScreenMain.OpenProject(const aFileName:TpvUTF8String);
+procedure TScreenMain.OpenProject(aFileName:TpvUTF8String);
 var FileStream:TFileStream;
     JSONRootItem:TPasJSONItem;
     JSONRootItemObject:TPasJSONItemObject;
@@ -229,94 +234,114 @@ var FileStream:TFileStream;
 begin
  NewProject;
  fFileName:=aFileName;
- FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
-  JSONRootItem:=TPasJSON.Parse(FileStream,[TPasJSONModeFlag.Comments],TPasJSONEncoding.AutomaticDetection);
-  if assigned(JSONRootItem) then begin
-   try
-    if JSONRootItem is TPasJSONItemObject then begin
-     JSONRootItemObject:=TPasJSONItemObject(JSONRootItem);
-     for JSONRootItemObjectProperty in JSONRootItemObject do begin
-      if JSONRootItemObjectProperty.Key='signeddistancefieldcode' then begin
-       fGUISignedDistanceFieldCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUISignedDistanceFieldCodeEditor.Text);
-      end else if JSONRootItemObjectProperty.Key='meshfragmentcode' then begin
-       fGUIMeshFragmentCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUIMeshFragmentCodeEditor.Text);
-      end else if JSONRootItemObjectProperty.Key='gridsize' then begin
-       if assigned(JSONRootItemObjectProperty.Value) and
-          (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
-          (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
-        fIntegerEditGridSizeWidth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fIntegerEditGridSizeWidth.Value);
-        fIntegerEditGridSizeHeight.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fIntegerEditGridSizeHeight.Value);
-        fIntegerEditGridSizeDepth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fIntegerEditGridSizeDepth.Value);
-       end;
-      end else if JSONRootItemObjectProperty.Key='worldsize' then begin
-       if assigned(JSONRootItemObjectProperty.Value) and
-          (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
-          (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
-        fFloatEditWorldSizeWidth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fFloatEditWorldSizeWidth.Value);
-        fFloatEditWorldSizeHeight.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fFloatEditWorldSizeHeight.Value);
-        fFloatEditWorldSizeDepth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fFloatEditWorldSizeDepth.Value);
+  FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+  try
+   JSONRootItem:=TPasJSON.Parse(FileStream,[TPasJSONModeFlag.Comments],TPasJSONEncoding.AutomaticDetection);
+   if assigned(JSONRootItem) then begin
+    try
+     if JSONRootItem is TPasJSONItemObject then begin
+      JSONRootItemObject:=TPasJSONItemObject(JSONRootItem);
+      for JSONRootItemObjectProperty in JSONRootItemObject do begin
+       if JSONRootItemObjectProperty.Key='signeddistancefieldcode' then begin
+        fGUISignedDistanceFieldCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUISignedDistanceFieldCodeEditor.Text);
+       end else if JSONRootItemObjectProperty.Key='meshfragmentcode' then begin
+        fGUIMeshFragmentCodeEditor.Text:=TPasJSON.GetString(JSONRootItemObjectProperty.Value,fGUIMeshFragmentCodeEditor.Text);
+       end else if JSONRootItemObjectProperty.Key='gridsize' then begin
+        if assigned(JSONRootItemObjectProperty.Value) and
+           (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
+           (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
+         fIntegerEditGridSizeWidth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fIntegerEditGridSizeWidth.Value);
+         fIntegerEditGridSizeHeight.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fIntegerEditGridSizeHeight.Value);
+         fIntegerEditGridSizeDepth.Value:=TPasJSON.GetInt64(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fIntegerEditGridSizeDepth.Value);
+        end;
+       end else if JSONRootItemObjectProperty.Key='worldsize' then begin
+        if assigned(JSONRootItemObjectProperty.Value) and
+           (JSONRootItemObjectProperty.Value is TPasJSONItemArray) and
+           (TPasJSONItemArray(JSONRootItemObjectProperty.Value).Count>=3) then begin
+         fFloatEditWorldSizeWidth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[0],fFloatEditWorldSizeWidth.Value);
+         fFloatEditWorldSizeHeight.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[1],fFloatEditWorldSizeHeight.Value);
+         fFloatEditWorldSizeDepth.Value:=TPasJSON.GetNumber(TPasJSONItemArray(JSONRootItemObjectProperty.Value).Items[2],fFloatEditWorldSizeDepth.Value);
+        end;
        end;
       end;
      end;
+    finally
+     FreeAndNil(JSONRootItem);
     end;
-   finally
-    FreeAndNil(JSONRootItem);
    end;
+  finally
+   FreeAndNil(FileStream);
   end;
- finally
-  FreeAndNil(FileStream);
+ except
+  on e:Exception do begin
+   TpvGUIMessageDialog.Create(fGUIInstance,
+                              'Error',
+                              TpvUTF8String(e.ClassName+': '+e.Message),
+                              [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_ESCAPE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER])],
+                              fGUIInstance.Skin.IconDialogError);
+  end;
  end;
  fGUILeftTabPanel.TabIndex:=0;
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
 end;
 
-procedure TScreenMain.SaveProject(const aFileName:TpvUTF8String);
+procedure TScreenMain.SaveProject(aFileName:TpvUTF8String);
 var FileStream:TFileStream;
     JSONRootItemObject:TPasJSONItemObject;
     JSONItemArray:TPasJSONItemArray;
     JSONString:TPasJSONRawByteString;
 begin
  fFileName:=aFileName;
- JSONRootItemObject:=TPasJSONItemObject.Create;
  try
-  JSONRootItemObject.Add('signeddistancefieldcode',TPasJSONItemString.Create(fGUISignedDistanceFieldCodeEditor.Text));
-  JSONRootItemObject.Add('meshfragmentcode',TPasJSONItemString.Create(fGUIMeshFragmentCodeEditor.Text));
-  begin
-   JSONItemArray:=TPasJSONItemArray.Create;
-   try
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeWidth.Value));
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeHeight.Value));
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeDepth.Value));
-   finally
-    JSONRootItemObject.Add('gridsize',JSONItemArray);
-   end;
-  end;
-  begin
-   JSONItemArray:=TPasJSONItemArray.Create;
-   try
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeWidth.Value));
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeHeight.Value));
-    JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeDepth.Value));
-   finally
-    JSONRootItemObject.Add('worldsize',JSONItemArray);
-   end;
-  end;
-  JSONString:=TPasJSON.Stringify(JSONRootItemObject,true);
+  JSONRootItemObject:=TPasJSONItemObject.Create;
   try
-   if length(JSONString)>0 then begin
-    FileStream:=TFileStream.Create(aFileName,fmCreate);
+   JSONRootItemObject.Add('signeddistancefieldcode',TPasJSONItemString.Create(fGUISignedDistanceFieldCodeEditor.Text));
+   JSONRootItemObject.Add('meshfragmentcode',TPasJSONItemString.Create(fGUIMeshFragmentCodeEditor.Text));
+   begin
+    JSONItemArray:=TPasJSONItemArray.Create;
     try
-     FileStream.WriteBuffer(JSONString[1],length(JSONString));
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeWidth.Value));
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeHeight.Value));
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fIntegerEditGridSizeDepth.Value));
     finally
-     FreeAndNil(FileStream);
+     JSONRootItemObject.Add('gridsize',JSONItemArray);
     end;
    end;
+   begin
+    JSONItemArray:=TPasJSONItemArray.Create;
+    try
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeWidth.Value));
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeHeight.Value));
+     JSONItemArray.Add(TPasJSONItemNumber.Create(fFloatEditWorldSizeDepth.Value));
+    finally
+     JSONRootItemObject.Add('worldsize',JSONItemArray);
+    end;
+   end;
+   JSONString:=TPasJSON.Stringify(JSONRootItemObject,true);
+   try
+    if length(JSONString)>0 then begin
+     FileStream:=TFileStream.Create(aFileName,fmCreate);
+     try
+      FileStream.WriteBuffer(JSONString[1],length(JSONString));
+     finally
+      FreeAndNil(FileStream);
+     end;
+    end;
+   finally
+    JSONString:='';
+   end;
   finally
-   JSONString:='';
+   FreeAndNil(JSONRootItemObject);
   end;
- finally
-  FreeAndNil(JSONRootItemObject);
+ except
+  on e:Exception do begin
+   TpvGUIMessageDialog.Create(fGUIInstance,
+                              'Error',
+                              TpvUTF8String(e.ClassName+': '+e.Message),
+                              [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_ESCAPE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER])],
+                              fGUIInstance.Skin.IconDialogError);
+  end;
  end;
  fGUILeftTabPanel.TabIndex:=0;
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
@@ -334,11 +359,12 @@ begin
  fNewProjectMessageDialogVisible:=false;
 end;
 
-procedure TScreenMain.ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+procedure TScreenMain.ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
  if not (fGUIInstance.HasModalWindows or fNewProjectMessageDialogVisible) then begin
   fNewProjectMessageDialogVisible:=true;
+  fFileName:='';
   MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
                                             'Question',
                                             'Do you really want to create a new project?',
@@ -362,7 +388,7 @@ begin
  fOpenProjectMessageDialogVisible:=false;
 end;
 
-procedure TScreenMain.ShowOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+procedure TScreenMain.ShowOpenProjectMessageDialog(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
  if not ({fGUIInstance.HasModalWindows or }fOpenProjectMessageDialogVisible) then begin
@@ -390,7 +416,7 @@ begin
  fTerminationMessageDialogVisible:=false;
 end;
 
-procedure TScreenMain.ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+procedure TScreenMain.ShowTerminationMessageDialog(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
  if not fTerminationMessageDialogVisible then begin
@@ -411,7 +437,7 @@ begin
  if aOK then begin
   if length(fFileName)>0 then begin
    fFileNameToDelayedOpen:=aFileName;
-   ShowOpenProjectMessageDialogDestroy(nil);
+   ShowOpenProjectMessageDialog(nil);
   end else begin
    OpenProject(aFileName);
   end;
@@ -536,7 +562,7 @@ begin
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='New';
    MenuItem.ShortcutHint:='Shift+Ctrl+N';
-   MenuItem.OnClick:=ShowNewProjectMessageDialogDestroy;
+   MenuItem.OnClick:=ShowNewProjectMessageDialog;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Icon:=fGUIInstance.Skin.IconContentPaste;
@@ -567,7 +593,7 @@ begin
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='Exit';
    MenuItem.ShortcutHint:='Alt+F4';
-   MenuItem.OnClick:=ShowTerminationMessageDialogDestroy;
+   MenuItem.OnClick:=ShowTerminationMessageDialog;
 
   end;
 
@@ -931,7 +957,7 @@ begin
                                    TpvApplicationInputKeyModifier.CTRL,
                                    TpvApplicationInputKeyModifier.SHIFT,
                                    TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.ALT])) then begin
-      ShowTerminationMessageDialogDestroy(nil);
+      ShowTerminationMessageDialog(nil);
       result:=true;
      end;
     end;
@@ -940,7 +966,7 @@ begin
                                  TpvApplicationInputKeyModifier.CTRL,
                                  TpvApplicationInputKeyModifier.SHIFT,
                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
-      ShowNewProjectMessageDialogDestroy(nil);
+      ShowNewProjectMessageDialog(nil);
       result:=true;
      end;
     end;

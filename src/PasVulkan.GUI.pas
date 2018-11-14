@@ -59,6 +59,7 @@ unit PasVulkan.GUI;
  {$endif}
 {$endif}
 {$m+}
+{-$define PasVulkanGUIDebug}
 
 interface
 
@@ -344,6 +345,7 @@ type TpvGUIObject=class;
              ChildMarkBit=TPasMPUInt32(1 shl 2);
              ProtectedMarkBit=TPasMPUInt32(1 shl 3);
              ReleasedMarkBit=TPasMPUInt32(1 shl 4);
+             LockedMarkBit=TPasMPUInt32(1 shl 5);
       private
        fInstance:TpvGUIInstance;
        fParent:TpvGUIObject;
@@ -391,7 +393,7 @@ type TpvGUIObject=class;
        constructor Create(const aInstance:TpvGUIInstance); reintroduce;
        destructor Destroy; override;
        procedure AddGarbage(const aObject:TpvGUIObject);
-       procedure DisposeAllGarbage;
+       procedure DisposeAllGarbage(const aForce:boolean);
      end;
 
      TpvGUIObjectHolder=class(TpvGUIObject)
@@ -3198,7 +3200,7 @@ type TpvGUIObject=class;
        procedure SetFileName(const aFileName:TpvUTF8String);
        function GetFilter:TpvUTF8String;
        procedure SetFilter(const aFilter:TpvUTF8String);
-       procedure Accept(const aNewItemIndex:TpvSizeInt=-1);
+       function Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
        procedure Reject;
       public
        constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
@@ -4251,13 +4253,15 @@ begin
  if ((aIndex<0) or (aIndex>=fCount)) or ((aToIndex<0) or (aToIndex>=fCount)) then begin
   raise ERangeError.Create('Out of index range');
  end;
- Temporary:=fItems[aIndex];
- if aIndex<aToIndex then begin
-  System.Move(fItems[aIndex+1],fItems[AIndex],(aToIndex-aIndex)*SizeOf(TpvGUIObject));
- end else if aIndex>aToIndex then begin
-  System.Move(fItems[aToIndex],fItems[aToIndex+1],(aIndex-aToIndex)*SizeOf(TpvGUIObject));
+ if aIndex<>aToIndex then begin
+  Temporary:=fItems[aIndex];
+  if aIndex<aToIndex then begin
+   System.Move(fItems[aIndex+1],fItems[AIndex],(aToIndex-aIndex)*SizeOf(TpvGUIObject));
+  end else if aIndex>aToIndex then begin
+   System.Move(fItems[aToIndex],fItems[aToIndex+1],(aIndex-aToIndex)*SizeOf(TpvGUIObject));
+  end;
+  fItems[aToIndex]:=Temporary;
  end;
- fItems[aToIndex]:=Temporary;
 end;
 
 function TpvGUIObjectList.GetEnumerator:TpvGUIObjectList.TValueEnumerator;
@@ -4413,12 +4417,22 @@ end;
 
 destructor TpvGUIObjectGarbageDisposer.Destroy;
 var Tries:TpvUInt32;
+    OldCountToDisposeObjects:TpvSizeInt;
 begin
 
  Tries:=256;
  while (Tries>0) and (fCountToDisposeObjects>0) do begin
-  dec(Tries);
-  DisposeAllGarbage;
+  OldCountToDisposeObjects:=fCountToDisposeObjects;
+  DisposeAllGarbage(true);
+  if fCountToDisposeObjects<OldCountToDisposeObjects then begin
+   if Tries<256 then begin
+    inc(Tries,Tries);
+   end else begin
+    Tries:=256;
+   end;
+  end else begin
+   dec(Tries);
+  end;
  end;
 
  FreeAndNil(fToDisposeList);
@@ -4447,11 +4461,14 @@ end;
 
 procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
 var Index:TpvSizeInt;
-    OldGarbageDisposerData,NewGarbageDisposerData:TPasMPUInt32;
+    OldGarbageDisposerData,NewGarbageDisposerData,
+    OldMarkBits,NewMarkBits:TPasMPUInt32;
 begin
- case TPasMPInterlocked.Read(aObject.fMarkBits) and (TpvGUIObject.TemporarilyMarkBit or
-                                                     TpvGUIObject.PermanentlyMarkBit) of
-  0:begin
+ OldMarkBits:=TPasMPInterlocked.Read(aObject.fMarkBits);
+ case OldMarkBits and (TpvGUIObject.TemporarilyMarkBit or
+                       TpvGUIObject.PermanentlyMarkBit) of
+  0,
+  TpvGUIObject.PermanentlyMarkBit:begin
    begin
     // Mark it temporarily
     TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.TemporarilyMarkBit);
@@ -4466,13 +4483,15 @@ begin
     repeat
      OldGarbageDisposerData:=TPasMPInterlocked.Read(aObject.fMarkBits);
      NewGarbageDisposerData:=(OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit;
-    if aIsChild then begin
-     // Mark it also as child of an another garbage parent object
-     NewGarbageDisposerData:=NewGarbageDisposerData or TpvGUIObject.ChildMarkBit;
-    end;
+     if aIsChild then begin
+      // Mark it also as child of an another garbage parent object
+      NewGarbageDisposerData:=NewGarbageDisposerData or TpvGUIObject.ChildMarkBit;
+     end;
     until TPasMPInterlocked.CompareExchange(aObject.fMarkBits,NewGarbageDisposerData,OldGarbageDisposerData)=OldGarbageDisposerData;
    end;
-   fTopologicalSortedList.Add(aObject);
+   if (OldMarkBits and TpvGUIObject.PermanentlyMarkBit)=0 then begin
+    fTopologicalSortedList.Add(aObject);
+   end;
   end;
   TpvGUIObject.TemporarilyMarkBit,
   TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit:begin
@@ -4482,7 +4501,7 @@ begin
  end;
 end;
 
-procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage;
+procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage(const aForce:boolean);
 var Index:TpvSizeInt;
     CurrentObject:TpvGUIObject;
 begin
@@ -4492,6 +4511,12 @@ begin
    TPasMPInterlocked.Write(fCountToDisposeObjects,0);
    try
     try
+     if aForce then begin
+      for Index:=0 to fToDisposeList.Count-1 do begin
+       CurrentObject:=TpvGUIObject(fToDisposeList.Items[Index]);
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ProtectedMarkBit));
+      end;
+     end;
      for Index:=0 to fToDisposeList.Count-1 do begin
       Visit(TpvGUIObject(fToDisposeList.Items[Index]),false);
      end;
@@ -4529,6 +4554,7 @@ begin
       end;
      end;
      for Index:=fToFreeList.Count-1 downto 0 do begin
+//    writeln(TpvPtrUint(TpvGUIObject(fToFreeList.Items[Index])),' ',TpvGUIObject(fToFreeList.Items[Index]).ClassName,' ',TpvGUIObject(fToFreeList.Items[Index]).fReferenceCounter);
       TpvGUIObject(fToFreeList.Items[Index]).DecRefWithoutFree;
       TpvGUIObject(fToFreeList.Items[Index]).Free;
      end;
@@ -12695,7 +12721,7 @@ begin
 
   finally
 
-   fObjectGarbageDisposer.DisposeAllGarbage;
+   fObjectGarbageDisposer.DisposeAllGarbage(false);
 
   end;
 
@@ -12711,7 +12737,7 @@ end;
 
 procedure TpvGUIInstance.BeforeDestruction;
 begin
- fObjectGarbageDisposer.DisposeAllGarbage;
+ fObjectGarbageDisposer.DisposeAllGarbage(false);
  TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
  TpvGUIObject.DecRefOrFreeAndNil(fWindow);
  TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
@@ -12721,8 +12747,9 @@ begin
  fWindowList.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
- fObjectGarbageDisposer.DisposeAllGarbage;
+ fObjectGarbageDisposer.DisposeAllGarbage(false);
  DecRefWithoutFree;
+ fObjectGarbageDisposer.DisposeAllGarbage(true);
  inherited BeforeDestruction;
 end;
 
@@ -13460,7 +13487,7 @@ var Index:TpvInt32;
 begin
  fDrawEngine.Clear;
  ClearProtectedObjectList;
- fObjectGarbageDisposer.DisposeAllGarbage;
+ fObjectGarbageDisposer.DisposeAllGarbage(false);
  for Index:=0 to fChildren.Count-1 do begin
   if fChildren[Index] is TpvGUIPopup then begin
    Popup:=fChildren[Index] as TpvGUIPopup;
@@ -14496,7 +14523,7 @@ procedure TpvGUIMessageDialog.MessageDialogOnButtonClick(const aSender:TpvGUIObj
 var Index:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
- for Index:=0 to length(fButtons) do begin
+ for Index:=0 to length(fButtons)-1 do begin
   MessageDialogButton:=@fButtons[Index];
   if MessageDialogButton^.fButton=aSender then begin
    if assigned(fOnButtonClick) then begin
@@ -22791,6 +22818,7 @@ end;
 
 destructor TpvGUIListViewColumn.Destroy;
 begin
+//writeln(fCaption);
  inherited Destroy;
 end;
 
@@ -22977,7 +23005,7 @@ end;
 destructor TpvGUIListView.Destroy;
 begin
  FreeAndNil(fItems);
- FreeandNil(fColumns);
+ FreeAndNil(fColumns);
  fSelectedBitmap:=nil;
  inherited Destroy;
 end;
@@ -23813,8 +23841,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    Accept(-1);
-    if Visible then begin
+    if not Accept(-1) then begin
      fListView.ItemIndex:=-1;
      fTextEditFileName.Text:='';
     end;
@@ -24090,9 +24117,9 @@ begin
      end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
       ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 50)-1))*1000) shr 50) div 100)+' PiB');
      end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
-      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr(TpvInt64(TpvUInt128.Mul64(ListItem^.Size and ((TpvInt64(1) shl 60)-1),1000) div (TpvInt64(1) shl 60)) div 100)+' EiB');
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr(TpvInt64((TpvUInt128.Mul64(ListItem^.Size and ((TpvInt64(1) shl 60)-1),1000) div (TpvInt64(1) shl 60)).Lo) div 100)+' EiB');
      end;
-   end;
+    end;
    end;
  (*try
     DateTimeToString(DateTimeString,FormatSettings. {'d. mmm yyyy, h:mm:ss'},ListItem^.DateTime);
@@ -24182,7 +24209,7 @@ begin
 {$ifend}
   end;
   if fPath<>NewPath then begin
-   if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(String(NewPath)),true) then begin
+   if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(String(NewPath))) then begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
     Refresh(aNewItemIndex);
@@ -24251,9 +24278,10 @@ begin
  inherited Check;
 end;
 
-procedure TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1);
+function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
 var NewFileName,FileExtension:TpvUTF8String;
 begin
+ result:=false;
  NewFileName:=fTextEditFileName.Text;
  if Trim(String(NewFileName))='..' then begin
   SetPathEx(NewFileName,aNewItemIndex);
@@ -24293,6 +24321,7 @@ begin
      fOnResult:=nil;
     end;
     Close;
+    result:=true;
    end else if (fMode=TMode.Save) and (length(NewFileName)>0) then begin
     if FileExists(String(NewFileName)) and fOverwritePrompt then begin
      fOverwritePromptFileName:=NewFileName;
@@ -24306,6 +24335,7 @@ begin
       fOnResult(self,true,fFileName);
       fOnResult:=nil;
      end;
+     result:=true;
      Close;
     end;
    end else begin
