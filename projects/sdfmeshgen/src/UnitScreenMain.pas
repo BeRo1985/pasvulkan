@@ -215,6 +215,10 @@ begin
 
  fFileNameToDelayedOpen:='';
 
+ fGUILeftTabPanel.TabIndex:=0;
+
+ fGUISignedDistanceFieldCodeEditor.RequestFocus;
+
 end;
 
 procedure TScreenMain.OpenProject(const aFileName:TpvUTF8String);
@@ -263,6 +267,8 @@ begin
  finally
   FreeAndNil(FileStream);
  end;
+ fGUILeftTabPanel.TabIndex:=0;
+ fGUISignedDistanceFieldCodeEditor.RequestFocus;
 end;
 
 procedure TScreenMain.SaveProject(const aFileName:TpvUTF8String);
@@ -312,6 +318,8 @@ begin
  finally
   FreeAndNil(JSONRootItemObject);
  end;
+ fGUILeftTabPanel.TabIndex:=0;
+ fGUISignedDistanceFieldCodeEditor.RequestFocus;
 end;
 
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);

@@ -1191,6 +1191,7 @@ type TpvGUIObject=class;
        procedure SetDraggable(const aDraggable:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTopLevelFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1290,6 +1291,7 @@ type TpvGUIObject=class;
        property Draggable:boolean read GetDraggable write SetDraggable;
        property RecursiveVisible:boolean read GetRecursiveVisible;
        property Focused:boolean read GetFocused write SetFocused;
+       property TopLevelFocused:boolean read GetTopLevelFocused write SetFocused;
        property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
        property TabStop:boolean read GetTabStop write SetTabStop;
        property KeyPreview:boolean read GetKeyPreview write SetKeyPreview;
@@ -11728,6 +11730,14 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetTopLevelFocused:boolean;
+begin
+ result:=(TpvGUIWidgetFlag.Focused in fWidgetFlags) and
+         assigned(fInstance) and
+         (fInstance.fCurrentFocusPath.fCount>0) and
+         (fInstance.fCurrentFocusPath.fItems[fInstance.fCurrentFocusPath.fCount-1]=self);
+end;
+
 function TpvGUIWidget.GetPointerFocused:boolean;
 begin
  result:=TpvGUIWidgetFlag.PointerFocused in fWidgetFlags;
@@ -12741,19 +12751,74 @@ end;
 procedure TpvGUIInstance.UpdateFocusForReleaseObject(const aGUIObject:TpvGUIObject);
 var Index:TpvSizeInt;
     OtherObject:TpvGUIObject;
+    RootWidget,OtherWidget:TpvGUIWidget;
+    Found:boolean;
 begin
 
- Index:=fCurrentFocusPath.IndexOf(aGUIObject);
- if Index>0 then begin
-  OtherObject:=fCurrentFocusPath[Index-1];
-  if assigned(OtherObject) and (OtherObject is TpvGUIWidget) then begin
-   UpdateFocus(TpvGUIWidget(OtherObject));
+ repeat
+
+  Index:=fCurrentFocusPath.IndexOf(aGUIObject);
+  if Index>=0 then begin
+
+   Found:=false;
+
+   while Index>0 do begin
+    dec(Index);
+    OtherObject:=fCurrentFocusPath[Index];
+    if assigned(OtherObject) and (OtherObject is TpvGUIWidget) and not TpvGUIWidget(OtherObject).HasParentOrIs(aGUIObject) then begin
+     UpdateFocus(TpvGUIWidget(OtherObject));
+     Found:=true;
+     break;
+    end;
+   end;
+
+   if not Found then begin
+    try
+     RootWidget:=fContent;
+     if fWindowList.Count>0 then begin
+      // Window list is in front-to-back order
+      for Index:=0 to fWindowList.Count-1 do begin
+       OtherWidget:=TpvGUIWidget(fWindowList.Items[Index]);
+       if assigned(OtherWidget) and not OtherWidget.HasParentOrIs(aGUIObject) then begin
+        RootWidget:=OtherWidget;
+        break;
+       end;
+      end;
+     end;
+     if assigned(RootWidget) and (RootWidget is TpvGUIWidget) and not RootWidget.HasParentOrIs(aGUIObject) then begin
+      if (RootWidget is TpvGUIWindow) and
+         assigned(TpvGUIWindow(RootWidget).fLastFocused) and
+         (TpvGUIWindow(RootWidget).fLastFocused is TpvGUIWidget) and
+         not TpvGUIWindow(RootWidget).fLastFocused.HasParentOrIs(aGUIObject) then begin
+       UpdateFocus(TpvGUIWindow(RootWidget).fLastFocused);
+      end else begin
+       OtherWidget:=RootWidget.FindNextWidget(nil,true,true,false);
+       if assigned(OtherWidget) and not OtherWidget.HasParentOrIs(aGUIObject) then begin
+        UpdateFocus(OtherWidget);
+       end else begin
+        OtherWidget:=RootWidget.FindNextWidget(nil,true,false,false);
+        if assigned(OtherWidget) and not OtherWidget.HasParentOrIs(aGUIObject) then begin
+         UpdateFocus(OtherWidget);
+        end else begin
+         UpdateFocus(RootWidget);
+        end;
+       end;
+      end;
+     end else begin
+      UpdateFocus(nil);
+     end;
+    except
+     UpdateFocus(nil);
+    end;
+   end;
+
   end else begin
    UpdateFocus(nil);
   end;
- end else begin
-  UpdateFocus(nil);
- end;
+
+  break;
+
+ until true;
 
  // Just for to be sure
  if fCurrentFocusPath.Contains(aGUIObject) then begin
@@ -13152,6 +13217,13 @@ begin
           if result then begin
            exit;
           end;
+         end;
+        end;
+       end else begin
+        if (fWindowList.Count=0) and assigned(fContent) and (fContent is TpvGUIWidget) then begin
+         result:=ProcessTab(fContent,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
+         if result then begin
+          exit;
          end;
         end;
        end;
@@ -19128,7 +19200,7 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
+     if not TopLevelFocused then begin
       RequestFocus;
      end;
      if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
