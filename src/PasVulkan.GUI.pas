@@ -24196,6 +24196,11 @@ begin
    SetPathEx(NewPath,aNewItemIndex);
   end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(String(NewPath)) then begin
    fFileName:=NewPath;
+   fOK:=true;
+   if assigned(fOnResult) then begin
+    fOnResult(self,true,fFileName);
+    fOnResult:=nil;
+   end;
    Close;
   end else if (fMode=TMode.Save) and (length(NewPath)>0) then begin
    if FileExists(String(NewPath)) and fOverwritePrompt then begin

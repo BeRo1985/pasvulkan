@@ -86,18 +86,25 @@ type TScreenMain=class(TpvApplicationScreen)
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
        fNewProjectMessageDialogVisible:boolean;
+       fOpenProjectMessageDialogVisible:boolean;
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
        fFileName:TpvUTF8String;
+       fFileNameToDelayedOpen:TpvUTF8String;
        procedure NewProject;
        procedure OpenProject(const aFileName:TpvUTF8String);
        procedure SaveProject(const aFileName:TpvUTF8String);
        procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure OnOpenProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+       procedure OnOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure ShowOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+       procedure SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveAsProject(const aSender:TpvGUIObject);
@@ -157,6 +164,8 @@ begin
 
  fFileName:='';
 
+ fFileNameToDelayedOpen:='';
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -203,6 +212,8 @@ begin
  fFloatEditWorldSizeDepth.Value:=2.0;
 
  fFileName:='';
+
+ fFileNameToDelayedOpen:='';
 
 end;
 
@@ -331,6 +342,34 @@ begin
  end;
 end;
 
+procedure TScreenMain.OnOpenProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+begin
+ if aID=0 then begin
+  OpenProject(fFileNameToDelayedOpen);
+ end;
+end;
+
+procedure TScreenMain.OnOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+begin
+ fOpenProjectMessageDialogVisible:=false;
+end;
+
+procedure TScreenMain.ShowOpenProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+var MessageDialog:TpvGUIMessageDialog;
+begin
+ if not ({fGUIInstance.HasModalWindows or }fOpenProjectMessageDialogVisible) then begin
+  fOpenProjectMessageDialogVisible:=true;
+  MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
+                                            'Question',
+                                            'Do you really want to open a project and discard the changes in the current project?',
+                                            [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fGUIInstance.Skin.IconThumbUp,24.0),
+                                             TpvGUIMessageDialogButton.Create(1,'No',[KEYCODE_N,KEYCODE_ESCAPE],fGUIInstance.Skin.IconThumbDown,24.0)],
+                                            fGUIInstance.Skin.IconDialogQuestion);
+  MessageDialog.OnButtonClick:=OnOpenProjectMessageDialogButtonClick;
+  MessageDialog.OnDestroy:=OnOpenProjectMessageDialogDestroy;
+ end;
+end;
+
 procedure TScreenMain.OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
 begin
  if aID=0 then begin
@@ -359,6 +398,25 @@ begin
  end;
 end;
 
+procedure TScreenMain.OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+begin
+ if aOK then begin
+  if length(fFileName)>0 then begin
+   fFileNameToDelayedOpen:=aFileName;
+   ShowOpenProjectMessageDialogDestroy(nil);
+  end else begin
+   OpenProject(aFileName);
+  end;
+ end;
+end;
+
+procedure TScreenMain.SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+begin
+ if aOK then begin
+  SaveProject(aFileName);
+ end;
+end;
+
 procedure TScreenMain.MenuOnOpenProject(const aSender:TpvGUIObject);
 var FileDialog:TpvGUIFileDialog;
 begin
@@ -366,11 +424,17 @@ begin
   FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Open);
   FileDialog.Title:='Open';
   FileDialog.Path:=GetCurrentDir;
+  FileDialog.OnResult:=OpenFileDialogOnResult;
  end;
 end;
 
 procedure TScreenMain.MenuOnSaveProject(const aSender:TpvGUIObject);
 begin
+ if length(fFileName)=0 then begin
+  MenuOnSaveAsProject(nil);
+ end else begin
+  SaveProject(fFileName);
+ end;
 end;
 
 procedure TScreenMain.MenuOnSaveAsProject(const aSender:TpvGUIObject);
@@ -381,6 +445,7 @@ begin
   FileDialog.Title:='Save as';
   FileDialog.OverwritePrompt:=true;
   FileDialog.Path:=GetCurrentDir;
+  FileDialog.OnResult:=SaveFileDialogOnResult;
  end;
 end;
 
