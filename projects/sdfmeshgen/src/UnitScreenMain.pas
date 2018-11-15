@@ -22,6 +22,7 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -85,15 +86,22 @@ type TScreenMain=class(TpvApplicationScreen)
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
+       fChanged:boolean;
        fNewProjectMessageDialogVisible:boolean;
        fOpenProjectMessageDialogVisible:boolean;
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
+       procedure UpdateGUIData;
+       procedure MarkAsChanged;
        procedure NewProject;
        procedure OpenProject(aFileName:TpvUTF8String);
        procedure SaveProject(aFileName:TpvUTF8String);
+       procedure SignedDistanceFieldCodeEditorOnChange(const aSender:TpvGUIObject);
+       procedure MeshFragmentCodeEditorOnChange(const aSender:TpvGUIObject);
+       procedure GridSizeOnChange(const aSender:TpvGUIObject);
+       procedure WorldSizeOnChange(const aSender:TpvGUIObject);
        procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
@@ -156,6 +164,8 @@ begin
 
  fReady:=false;
 
+ fChanged:=false;
+
  fNewProjectMessageDialogVisible:=false;
 
  fTerminationMessageDialogVisible:=false;
@@ -175,6 +185,16 @@ end;
 destructor TScreenMain.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TScreenMain.UpdateGUIData;
+begin
+end;
+
+procedure TScreenMain.MarkAsChanged;
+begin
+ fChanged:=true;
+ UpdateGUIData;
 end;
 
 procedure TScreenMain.NewProject;
@@ -215,7 +235,6 @@ begin
 
  fFloatEditWorldSizeDepth.Value:=2.0;
 
-
  fFileName:='';
 
  fFileNameToDelayedOpen:='';
@@ -223,6 +242,10 @@ begin
  fGUILeftTabPanel.TabIndex:=0;
 
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
+
+ fChanged:=false;
+
+ UpdateGUIData;
 
 end;
 
@@ -273,6 +296,8 @@ begin
   finally
    FreeAndNil(FileStream);
   end;
+  fChanged:=false;
+  UpdateGUIData;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
@@ -334,6 +359,8 @@ begin
   finally
    FreeAndNil(JSONRootItemObject);
   end;
+  fChanged:=false;
+  UpdateGUIData;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
@@ -345,6 +372,26 @@ begin
  end;
  fGUILeftTabPanel.TabIndex:=0;
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
+end;
+
+procedure TScreenMain.SignedDistanceFieldCodeEditorOnChange(const aSender:TpvGUIObject);
+begin
+ MarkAsChanged;
+end;
+
+procedure TScreenMain.MeshFragmentCodeEditorOnChange(const aSender:TpvGUIObject);
+begin
+ MarkAsChanged;
+end;
+
+procedure TScreenMain.GridSizeOnChange(const aSender:TpvGUIObject);
+begin
+ MarkAsChanged;
+end;
+
+procedure TScreenMain.WorldSizeOnChange(const aSender:TpvGUIObject);
+begin
+ MarkAsChanged;
 end;
 
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
@@ -363,16 +410,19 @@ procedure TScreenMain.ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
  if not (fGUIInstance.HasModalWindows or fNewProjectMessageDialogVisible) then begin
-  fNewProjectMessageDialogVisible:=true;
-  fFileName:='';
-  MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
-                                            'Question',
-                                            'Do you really want to create a new project?',
-                                            [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fGUIInstance.Skin.IconThumbUp,24.0),
-                                             TpvGUIMessageDialogButton.Create(1,'No',[KEYCODE_N,KEYCODE_ESCAPE],fGUIInstance.Skin.IconThumbDown,24.0)],
-                                            fGUIInstance.Skin.IconDialogQuestion);
-  MessageDialog.OnButtonClick:=OnNewProjectMessageDialogButtonClick;
-  MessageDialog.OnDestroy:=OnNewProjectMessageDialogDestroy;
+  if fChanged then begin
+   fNewProjectMessageDialogVisible:=true;
+   MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
+                                             'Question',
+                                             'Do you really want to create a new project and discard the changes in the current project?',
+                                             [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fGUIInstance.Skin.IconThumbUp,24.0),
+                                              TpvGUIMessageDialogButton.Create(1,'No',[KEYCODE_N,KEYCODE_ESCAPE],fGUIInstance.Skin.IconThumbDown,24.0)],
+                                             fGUIInstance.Skin.IconDialogQuestion);
+   MessageDialog.OnButtonClick:=OnNewProjectMessageDialogButtonClick;
+   MessageDialog.OnDestroy:=OnNewProjectMessageDialogDestroy;
+  end else begin
+   NewProject;
+  end;
  end;
 end;
 
@@ -435,7 +485,7 @@ end;
 procedure TScreenMain.OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
 begin
  if aOK then begin
-  if length(fFileName)>0 then begin
+  if fChanged then begin
    fFileNameToDelayedOpen:=aFileName;
    ShowOpenProjectMessageDialog(nil);
   end else begin
@@ -657,11 +707,13 @@ begin
  fGUISignedDistanceFieldCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUISignedDistanceFieldCodeEditor.TextEditor);
  fGUISignedDistanceFieldCodeEditor.TextEditor.TabWidth:=2;
  fGUISignedDistanceFieldCodeEditor.LineWrap:=false;
+ fGUISignedDistanceFieldCodeEditor.OnChange:=SignedDistanceFieldCodeEditorOnChange;
 
  fGUIMeshFragmentCodeEditor:=TpvGUIMultiLineTextEdit.Create(fGUIMeshFragmentCodeEditorTab.Content);
  fGUIMeshFragmentCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUIMeshFragmentCodeEditor.TextEditor);
  fGUIMeshFragmentCodeEditor.TextEditor.TabWidth:=2;
  fGUIMeshFragmentCodeEditor.LineWrap:=false;
+ fGUIMeshFragmentCodeEditor.OnChange:=MeshFragmentCodeEditorOnChange;
 
  fGUIUpdateButton:=TpvGUIButton.Create(fGUILeftToolPanel);
  fGUIUpdateButton.Caption:='Update (F9)';
@@ -698,6 +750,7 @@ begin
    fIntegerEditGridSizeWidth.MaximumValue:=4096;
    fIntegerEditGridSizeWidth.SmallStep:=1;
    fIntegerEditGridSizeWidth.LargeStep:=16;
+   fIntegerEditGridSizeWidth.OnChange:=GridSizeOnChange;
   //fIntegerEditGridSizeWidth.OnChange:=IntegerEditGridSizeWidthOnChange;
 
   end;
@@ -715,6 +768,7 @@ begin
    fIntegerEditGridSizeHeight.MaximumValue:=4096;
    fIntegerEditGridSizeHeight.SmallStep:=1;
    fIntegerEditGridSizeHeight.LargeStep:=16;
+   fIntegerEditGridSizeHeight.OnChange:=GridSizeOnChange;
   //fIntegerEditGridSizeHeight.OnChange:=IntegerEditGridSizeHeightOnChange;
 
   end;
@@ -732,6 +786,7 @@ begin
    fIntegerEditGridSizeDepth.MaximumValue:=4096;
    fIntegerEditGridSizeDepth.SmallStep:=1;
    fIntegerEditGridSizeDepth.LargeStep:=16;
+   fIntegerEditGridSizeDepth.OnChange:=GridSizeOnChange;
   //fIntegerEditGridSizeDepth.OnChange:=IntegerEditGridSizeDepthOnChange;
 
   end;
@@ -761,6 +816,7 @@ begin
    fFloatEditWorldSizeWidth.MaximumValue:=4096.0;
    fFloatEditWorldSizeWidth.SmallStep:=0.1;
    fFloatEditWorldSizeWidth.LargeStep:=1.0;
+   fFloatEditWorldSizeWidth.OnChange:=WorldSizeOnChange;
   //fFloatEditWorldSizeWidth.OnChange:=FloatEditWorldSizeWidthOnChange;
 
   end;
@@ -778,6 +834,7 @@ begin
    fFloatEditWorldSizeHeight.MaximumValue:=4096.0;
    fFloatEditWorldSizeHeight.SmallStep:=0.1;
    fFloatEditWorldSizeHeight.LargeStep:=1.0;
+   fFloatEditWorldSizeHeight.OnChange:=WorldSizeOnChange;
   //fFloatEditWorldSizeHeight.OnChange:=FloatEditWorldSizeHeightOnChange;
 
   end;
@@ -795,6 +852,7 @@ begin
    fFloatEditWorldSizeDepth.MaximumValue:=4096.0;
    fFloatEditWorldSizeDepth.SmallStep:=0.1;
    fFloatEditWorldSizeDepth.LargeStep:=1.0;
+   fFloatEditWorldSizeDepth.OnChange:=WorldSizeOnChange;
   //fFloatEditWorldSizeDepth.OnChange:=FloatEditWorldSizeDepthOnChange;
 
   end;
@@ -1068,17 +1126,6 @@ begin
 
  fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
-{$if false}
- fVulkanCanvas.Color:=TpvVector4.Create(IfThen(TpvApplicationInputPointerButton.Left in fLastMouseButtons,1.0,0.0),
-                                        IfThen(TpvApplicationInputPointerButton.Right in fLastMouseButtons,1.0,0.0),
-                                        1.0,
-                                        1.0);
- fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);
- fVulkanCanvas.Color:=TpvVector4.Create(0.5,1.0,0.5,1.0);
- fVulkanCanvas.DrawFilledCircle(fLastMousePosition,4.0);
- fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-{$ifend}
-
 // fGUIUpdateProgressBar.Value:=trunc(fTime*65536) and $ffff;
 
  fGUIInstance.DrawWidgetBounds:=false;
@@ -1086,6 +1133,20 @@ begin
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;
  fGUIInstance.Draw;
+
+{$if false}
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
+ fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.Identity;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+ fVulkanCanvas.Color:=TpvVector4.Create(IfThen(TpvApplicationInputPointerButton.Left in fLastMouseButtons,1.0,0.0),
+                                        IfThen(TpvApplicationInputPointerButton.Right in fLastMouseButtons,1.0,0.0),
+                                        1.0,
+                                        0.5);
+ fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(0.5,1.0,0.5,0.5);
+ fVulkanCanvas.DrawFilledCircle(fLastMousePosition,4.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,0.5);
+{$ifend}
 
  fVulkanCanvas.Stop;
 

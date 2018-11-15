@@ -24001,7 +24001,7 @@ begin
 
   fListItems.Clear;
   try
- {$ifndef Unix}
+{$ifndef Unix}
    if length(fPath)=0 then begin
     for Index:=0 to 25 do begin
      if DirectoryExists(String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':\')) then begin
@@ -24012,11 +24012,11 @@ begin
      end;
     end;
    end else{$endif}begin
- {$ifdef Unix}
+{$ifdef Unix}
     if length(fPath)=0 then begin
      fPath:=PathDelim;
     end;
- {$endif}
+{$endif}
     if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
  {   Add(PathDelim,
          true,
