@@ -11288,8 +11288,10 @@ begin
     end;
 
     if LastX<ClipRect.Width then begin
-     DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,1);
-     DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fWorkHeaderHeight-1);
+     DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+
+                       TpvVector2.InlineableCreate(LastX+1,1);
+     DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,
+                                                       aListView.fWorkHeaderHeight-1);
      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                     true,
                                                     DrawRect.LeftTop,
@@ -11305,9 +11307,12 @@ begin
 
     aDrawEngine.Transparent:=true;
 
+    aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+    aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     TextPosition:=Column.fRect.LeftTop+((Column.fRect.Size+TpvVector2.InlineableCreate(-CurrentFont.TextWidth(Column.fCaption,CurrentFontSize),0.0))*0.5);
+     TextPosition:=Column.fRect.LeftTop+(Column.fRect.Size*0.5);
      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+Column.fRect.LeftTop,
                                                   Column.fRect.Size);
      aDrawEngine.DrawText(Column.fCaption,TextPosition);
