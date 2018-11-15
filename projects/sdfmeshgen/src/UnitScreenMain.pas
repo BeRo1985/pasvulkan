@@ -112,6 +112,7 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure MeshFragmentCodeEditorOnChange(const aSender:TpvGUIObject);
        procedure GridSizeOnChange(const aSender:TpvGUIObject);
        procedure WorldSizeOnChange(const aSender:TpvGUIObject);
+       procedure UpdateButtonOnClick(const aSender:TpvGUIObject);
        procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
@@ -254,8 +255,16 @@ begin
 end;
 
 procedure TScreenMain.UpdateProject;
+var OutputString:UnicodeString;
 begin
+ if ExecuteCommand(ExtractFilePath(String(fVulkanGLSLangValidatorPath)),
+                   String(fVulkanGLSLangValidatorPath),
+                   ['--help'],
+                   OutputString)=0 then begin
+ end else begin
 
+ end;
+ writeln(OutputString);
 end;
 
 procedure TScreenMain.NewProject;
@@ -449,6 +458,11 @@ end;
 procedure TScreenMain.WorldSizeOnChange(const aSender:TpvGUIObject);
 begin
  MarkAsModified;
+end;
+
+procedure TScreenMain.UpdateButtonOnClick(const aSender:TpvGUIObject);
+begin
+ UpdateProject;
 end;
 
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
@@ -796,6 +810,7 @@ begin
 
  fGUIUpdateButton:=TpvGUIButton.Create(fGUILeftToolPanel);
  fGUIUpdateButton.Caption:='Update (F9)';
+ fGUIUpdateButton.OnClick:=UpdateButtonOnClick;
 
  fGUIUpdateProgressBar:=TpvGUIProgressBar.Create(fGUILeftToolPanel);
  fGUIUpdateProgressBar.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
