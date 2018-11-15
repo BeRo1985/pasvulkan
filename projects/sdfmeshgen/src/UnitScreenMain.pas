@@ -51,6 +51,9 @@ type TScreenMain=class(TpvApplicationScreen)
        fVulkanCanvas:TpvCanvas;
        fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
+       fGUIStatusPanel:TpvGUIPanel;
+       fGUIStatusFileNameLabel:TpvGUILabel;
+       fGUIStatusModifiedLabel:TpvGUILabel;
        fGUIRootPanel:TpvGUIPanel;
        fGUIRootSplitterPanel0:TpvGUISplitterPanel;
        fGUIRootSplitterPanel1:TpvGUISplitterPanel;
@@ -86,7 +89,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
-       fChanged:boolean;
+       fModified:boolean;
        fNewProjectMessageDialogVisible:boolean;
        fOpenProjectMessageDialogVisible:boolean;
        fTerminationMessageDialogVisible:boolean;
@@ -94,8 +97,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
        procedure UpdateGUIData;
-       procedure MarkAsUnchanged;
-       procedure MarkAsChanged;
+       procedure MarkAsNotModified;
+       procedure MarkAsModified;
        procedure NewProject;
        procedure OpenProject(aFileName:TpvUTF8String);
        procedure SaveProject(aFileName:TpvUTF8String);
@@ -165,7 +168,7 @@ begin
 
  fReady:=false;
 
- fChanged:=false;
+ fModified:=false;
 
  fNewProjectMessageDialogVisible:=false;
 
@@ -190,17 +193,29 @@ end;
 
 procedure TScreenMain.UpdateGUIData;
 begin
+ if length(fFileName)>0 then begin
+  fGUIStatusFileNameLabel.Caption:=fFileName;
+ end else begin
+  fGUIStatusFileNameLabel.Caption:='<Unnamed>';
+ end;
+ if fModified then begin
+  fGUIStatusModifiedLabel.Caption:='Modified';
+ end else if length(fFileName)>0 then begin
+  fGUIStatusModifiedLabel.Caption:='Saved';
+ end else begin
+  fGUIStatusModifiedLabel.Caption:='Unsaved';
+ end;
 end;
 
-procedure TScreenMain.MarkAsUnchanged;
+procedure TScreenMain.MarkAsNotModified;
 begin
- fChanged:=false;
+ fModified:=false;
  UpdateGUIData;
 end;
 
-procedure TScreenMain.MarkAsChanged;
+procedure TScreenMain.MarkAsModified;
 begin
- fChanged:=true;
+ fModified:=true;
  UpdateGUIData;
 end;
 
@@ -250,7 +265,7 @@ begin
 
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
 
- MarkAsUnchanged;
+ MarkAsNotModified;
 
 end;
 
@@ -301,7 +316,7 @@ begin
   finally
    FreeAndNil(FileStream);
   end;
-  MarkAsUnchanged;
+  MarkAsNotModified;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
@@ -363,7 +378,7 @@ begin
   finally
    FreeAndNil(JSONRootItemObject);
   end;
-  MarkAsUnchanged;
+  MarkAsNotModified;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
@@ -379,22 +394,22 @@ end;
 
 procedure TScreenMain.SignedDistanceFieldCodeEditorOnChange(const aSender:TpvGUIObject);
 begin
- MarkAsChanged;
+ MarkAsModified;
 end;
 
 procedure TScreenMain.MeshFragmentCodeEditorOnChange(const aSender:TpvGUIObject);
 begin
- MarkAsChanged;
+ MarkAsModified;
 end;
 
 procedure TScreenMain.GridSizeOnChange(const aSender:TpvGUIObject);
 begin
- MarkAsChanged;
+ MarkAsModified;
 end;
 
 procedure TScreenMain.WorldSizeOnChange(const aSender:TpvGUIObject);
 begin
- MarkAsChanged;
+ MarkAsModified;
 end;
 
 procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
@@ -413,7 +428,7 @@ procedure TScreenMain.ShowNewProjectMessageDialog(const aSender:TpvGUIObject);
 var MessageDialog:TpvGUIMessageDialog;
 begin
  if not (fGUIInstance.HasModalWindows or fNewProjectMessageDialogVisible) then begin
-  if fChanged then begin
+  if fModified then begin
    fNewProjectMessageDialogVisible:=true;
    MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
                                              'Question',
@@ -488,7 +503,7 @@ end;
 procedure TScreenMain.OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
 begin
  if aOK then begin
-  if fChanged then begin
+  if fModified then begin
    fFileNameToDelayedOpen:=aFileName;
    ShowOpenProjectMessageDialog(nil);
   end else begin
@@ -652,9 +667,31 @@ begin
 
  end;
 
- fGUIInstance.Content.Layout:=TpvGUIFillLayout.Create(fGUIInstance.Content,0.0);
+ fGUIInstance.Content.Layout:=TpvGUIAdvancedGridLayout.Create(fGUIInstance.Content,0.0);
+ TpvGUIAdvancedGridLayout(fGUIInstance.Content.Layout).Rows.Add(640.0,1.0);
+ TpvGUIAdvancedGridLayout(fGUIInstance.Content.Layout).Rows.Add(32.0,0.0);
+ TpvGUIAdvancedGridLayout(fGUIInstance.Content.Layout).Columns.Add(0.0,1.0);
+
+ fGUIStatusPanel:=TpvGUIPanel.Create(fGUIInstance.Content);
+ TpvGUIAdvancedGridLayout(fGUIInstance.Content.Layout).Anchors[fGUIStatusPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1,0.0,0.0,0.0,0.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+ fGUIStatusPanel.Background:=true;
+ fGUIStatusPanel.Layout:=TpvGUIAdvancedGridLayout.Create(fGUIStatusPanel,0.0);
+ TpvGUIAdvancedGridLayout(fGUIStatusPanel.Layout).Rows.Add(10.0,1.0);
+ TpvGUIAdvancedGridLayout(fGUIStatusPanel.Layout).Columns.Add(10.0,0.75);
+ TpvGUIAdvancedGridLayout(fGUIStatusPanel.Layout).Columns.Add(10.0,0.25);
+
+ fGUIStatusFileNameLabel:=TpvGUILabel.Create(fGUIStatusPanel);
+ TpvGUIAdvancedGridLayout(fGUIStatusPanel.Layout).Anchors[fGUIStatusFileNameLabel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,12.0,0.0,8.0,0.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+ fGUIStatusFileNameLabel.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+ fGUIStatusFileNameLabel.TextVerticalAlignment:=TpvGUITextAlignment.Middle;
+
+ fGUIStatusModifiedLabel:=TpvGUILabel.Create(fGUIStatusPanel);
+ TpvGUIAdvancedGridLayout(fGUIStatusPanel.Layout).Anchors[fGUIStatusModifiedLabel]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,8.0,0.0,12.0,0.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+ fGUIStatusModifiedLabel.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+ fGUIStatusModifiedLabel.TextVerticalAlignment:=TpvGUITextAlignment.Middle;
 
  fGUIRootPanel:=TpvGUIPanel.Create(fGUIInstance.Content);
+ TpvGUIAdvancedGridLayout(fGUIInstance.Content.Layout).Anchors[fGUIRootPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1);
  fGUIRootPanel.Background:=true;
  fGUIRootPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootPanel,0.0);
 
