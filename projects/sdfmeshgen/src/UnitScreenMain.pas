@@ -24,6 +24,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -38,6 +39,15 @@ uses SysUtils,
      UnitExternalProcess;
 
 type TScreenMain=class(TpvApplicationScreen)
+      public
+       type TUpdateThread=class(TThread)
+             private
+              fScreenMain:TScreenMain;
+              fProgress:TPasMPInt32;
+             protected
+              constructor Create(const aScreenMain:TScreenMain); reintroduce;
+              procedure Execute; override;
+            end;
       private
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -101,9 +111,11 @@ type TScreenMain=class(TpvApplicationScreen)
        fVulkanSDKFound:boolean;
        fVulkanGLSLangValidatorPath:TpvUTF8String;
        fVulkanGLSLangValidatorFound:boolean;
+       fUpdateThread:TUpdateThread;
        procedure UpdateGUIData;
        procedure MarkAsNotModified;
        procedure MarkAsModified;
+       procedure CheckUpdateThread;
        procedure UpdateProject;
        procedure NewProject;
        procedure OpenProject(aFileName:TpvUTF8String);
@@ -167,11 +179,39 @@ var ScreenMain:TScreenMain=nil;
 
 implementation
 
+{ TScreenMain.TUpdateThread }
+
+constructor TScreenMain.TUpdateThread.Create(const aScreenMain:TScreenMain);
+begin
+ fScreenMain:=aScreenMain;
+ fProgress:=0;
+ inherited Create(false);
+end;
+
+procedure TScreenMain.TUpdateThread.Execute;
+var OutputString:UnicodeString;
+begin
+ if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLangValidatorPath)),
+                   String(fScreenMain.fVulkanGLSLangValidatorPath),
+                   ['--help'],
+                   OutputString)=0 then begin
+ end else begin
+
+ end;
+ writeln(OutputString);
+ TPasMPInterlocked.Write(fProgress,65535);
+ Sleep(10);
+end;
+
+{ TScreenMain }
+
 constructor TScreenMain.Create;
 begin
  inherited Create;
 
  ScreenMain:=self;
+
+ fUpdateThread:=nil;
 
  fReady:=false;
 
@@ -223,6 +263,11 @@ end;
 
 destructor TScreenMain.Destroy;
 begin
+ if assigned(fUpdateThread) then begin
+  fUpdateThread.Terminate;
+  fUpdateThread.WaitFor;
+  FreeAndNil(fUpdateThread);
+ end;
  inherited Destroy;
 end;
 
@@ -254,17 +299,29 @@ begin
  UpdateGUIData;
 end;
 
-procedure TScreenMain.UpdateProject;
-var OutputString:UnicodeString;
+procedure TScreenMain.CheckUpdateThread;
 begin
- if ExecuteCommand(ExtractFilePath(String(fVulkanGLSLangValidatorPath)),
-                   String(fVulkanGLSLangValidatorPath),
-                   ['--help'],
-                   OutputString)=0 then begin
- end else begin
-
+ if assigned(fUpdateThread) then begin
+  if fUpdateThread.Finished then begin
+   fUpdateThread.WaitFor;
+   FreeAndNil(fUpdateThread);
+   fGUIUpdateButton.Enabled:=true;
+   fGUIUpdateProgressBar.Value:=0;
+  end else begin
+   fGUIUpdateProgressBar.Value:=TPasMPInterlocked.Read(fUpdateThread.fProgress);
+  end;
  end;
- writeln(OutputString);
+end;
+
+procedure TScreenMain.UpdateProject;
+begin
+ if not assigned(fUpdateThread) then begin
+  fGUIUpdateButton.Enabled:=false;
+  fGUIUpdateProgressBar.MinimumValue:=0;
+  fGUIUpdateProgressBar.MaximumValue:=65535;
+  fGUIUpdateProgressBar.Value:=0;
+  fUpdateThread:=TUpdateThread.Create(self);
+ end;
 end;
 
 procedure TScreenMain.NewProject;
@@ -974,6 +1031,11 @@ end;
 procedure TScreenMain.Hide;
 var Index:TpvInt32;
 begin
+ if assigned(fUpdateThread) then begin
+  fUpdateThread.Terminate;
+  fUpdateThread.WaitFor;
+  FreeAndNil(fUpdateThread);
+ end;
  FreeAndNil(fGUIInstance);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
@@ -1211,6 +1273,8 @@ procedure TScreenMain.Check(const aDeltaTime:TpvDouble);
 begin
 
  inherited Check(aDeltaTime);
+
+ CheckUpdateThread;
 
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
