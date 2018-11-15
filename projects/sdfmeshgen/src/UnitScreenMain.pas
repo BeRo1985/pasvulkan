@@ -34,7 +34,8 @@ uses SysUtils,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont,
      PasVulkan.TextEditor,
-     PasJSON;
+     PasJSON,
+     UnitExternalProcess;
 
 type TScreenMain=class(TpvApplicationScreen)
       private
@@ -96,9 +97,14 @@ type TScreenMain=class(TpvApplicationScreen)
        fTime:TpvDouble;
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
+       fVulkanSDKPath:TpvUTF8String;
+       fVulkanSDKFound:boolean;
+       fVulkanGLSLangValidatorPath:TpvUTF8String;
+       fVulkanGLSLangValidatorFound:boolean;
        procedure UpdateGUIData;
        procedure MarkAsNotModified;
        procedure MarkAsModified;
+       procedure UpdateProject;
        procedure NewProject;
        procedure OpenProject(aFileName:TpvUTF8String);
        procedure SaveProject(aFileName:TpvUTF8String);
@@ -184,6 +190,34 @@ begin
 
  fFileNameToDelayedOpen:='';
 
+ fVulkanSDKPath:=TpvUTF8String(GetEnvironmentVariable('VULKAN_SDK'));
+ if length(fVulkanSDKPath)>0 then begin
+  fVulkanSDKPath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(String(fVulkanSDKPath))));
+  fVulkanSDKFound:=DirectoryExists(ExcludeTrailingPathDelimiter(String(fVulkanSDKPath)));
+  fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin64')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
+  fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+  if not fVulkanGLSLangValidatorFound then begin
+{$ifdef Unix}
+   fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin64')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
+   fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+   if not fVulkanGLSLangValidatorFound then begin
+    fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
+    fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+    if not fVulkanGLSLangValidatorFound then begin
+     fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
+     fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+    end;
+   end;
+{$else}
+   fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
+   fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+{$endif}
+  end;
+ end else begin
+  fVulkanSDKFound:=false;
+  fVulkanGLSLangValidatorFound:=false;
+ end;
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -217,6 +251,11 @@ procedure TScreenMain.MarkAsModified;
 begin
  fModified:=true;
  UpdateGUIData;
+end;
+
+procedure TScreenMain.UpdateProject;
+begin
+
 end;
 
 procedure TScreenMain.NewProject;
@@ -900,6 +939,20 @@ begin
  end;
 
  NewProject;
+
+ if not fVulkanSDKFound then begin
+  TpvGUIMessageDialog.Create(fGUIInstance,
+                             'No installed Vulkan SDK found!',
+                             'This application requires an installed Vulkan SDK on your system for its full functionality.',
+                             [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_ESCAPE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER])],
+                             fGUIInstance.Skin.IconDialogError);
+ end else if not fVulkanGLSLangValidatorFound then begin
+  TpvGUIMessageDialog.Create(fGUIInstance,
+                             'Incomplete Vulkan SDK found!',
+                             'This application requires an complete installed Vulkan SDK on your system for its full functionality.',
+                             [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_ESCAPE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER])],
+                             fGUIInstance.Skin.IconDialogError);
+ end;
 
 end;
 
