@@ -94,6 +94,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
        procedure UpdateGUIData;
+       procedure MarkAsUnchanged;
        procedure MarkAsChanged;
        procedure NewProject;
        procedure OpenProject(aFileName:TpvUTF8String);
@@ -191,6 +192,12 @@ procedure TScreenMain.UpdateGUIData;
 begin
 end;
 
+procedure TScreenMain.MarkAsUnchanged;
+begin
+ fChanged:=false;
+ UpdateGUIData;
+end;
+
 procedure TScreenMain.MarkAsChanged;
 begin
  fChanged:=true;
@@ -243,9 +250,7 @@ begin
 
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
 
- fChanged:=false;
-
- UpdateGUIData;
+ MarkAsUnchanged;
 
 end;
 
@@ -296,8 +301,7 @@ begin
   finally
    FreeAndNil(FileStream);
   end;
-  fChanged:=false;
-  UpdateGUIData;
+  MarkAsUnchanged;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
@@ -359,8 +363,7 @@ begin
   finally
    FreeAndNil(JSONRootItemObject);
   end;
-  fChanged:=false;
-  UpdateGUIData;
+  MarkAsUnchanged;
  except
   on e:Exception do begin
    TpvGUIMessageDialog.Create(fGUIInstance,
