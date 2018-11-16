@@ -66,6 +66,14 @@ type TScreenMain=class(TpvApplicationScreen)
             end;
             PVolumeTriangles=^TVolumeTriangles;
             TUpdateThread=class(TThread)
+             public
+              type TComputePushConstants=record
+                    GridOffsetX:TpvUInt32;
+                    GridOffsetY:TpvUInt32;
+                    GridOffsetZ:TpvUInt32;
+                    GridOffsetW:TpvUInt32;
+                   end;
+                   PComputePushConstants=^TComputePushConstants;
              private
               fScreenMain:TScreenMain;
               fSignedDistanceFieldCode:TpvUTF8String;
@@ -87,6 +95,7 @@ type TScreenMain=class(TpvApplicationScreen)
               fSignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
               fMeshVertexShaderSPVStream:TMemoryStream;
               fMeshFragmentShaderSPVStream:TMemoryStream;
+              fComputePushConstants:TComputePushConstants;
              protected
               constructor Create(const aScreenMain:TScreenMain); reintroduce;
               destructor Destroy; override;
@@ -734,6 +743,11 @@ var SignedDistanceFieldComputeShaderGLSLFile,
     ErrorString:UnicodeString;
     SignedDistanceFieldComputeShaderModule:TpvVulkanShaderModule;
     SignedDistanceFieldComputePipelineShaderStage:TpvVulkanPipelineShaderStage;
+    SignedDistanceFieldComputeDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+    SignedDistanceFieldComputePipelineLayout:TpvVulkanPipelineLayout;
+    SignedDistanceFieldComputePipeline:TpvVulkanComputePipeline;
+    SignedDistanceFieldComputeDescriptorPool:TpvVulkanDescriptorPool;
+    SignedDistanceFieldComputeDescriptorSet:TpvVulkanDescriptorSet;
 begin
  ErrorString:='';
  try
@@ -842,6 +856,64 @@ begin
                                                                                        'main');
     try
      SignedDistanceFieldComputePipelineShaderStage.Initialize;
+     SignedDistanceFieldComputeDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+     try
+      SignedDistanceFieldComputeDescriptorSetLayout.AddBinding(0,
+                                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                               1,
+                                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                               []);
+      SignedDistanceFieldComputeDescriptorSetLayout.Initialize;
+      SignedDistanceFieldComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+                                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                               1);
+      try
+       SignedDistanceFieldComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+       SignedDistanceFieldComputeDescriptorPool.Initialize;
+       SignedDistanceFieldComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(SignedDistanceFieldComputeDescriptorPool,
+                                                                              SignedDistanceFieldComputeDescriptorSetLayout);
+       try
+        SignedDistanceFieldComputeDescriptorSet.WriteToDescriptorSet(0,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [fScreenMain.fVolumeTriangleBuffer.DescriptorBufferInfo],
+                                                                     [],
+                                                                     false
+                                                                    );
+        SignedDistanceFieldComputeDescriptorSet.Flush;
+        SignedDistanceFieldComputePipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+        try
+         SignedDistanceFieldComputePipelineLayout.AddDescriptorSetLayout(SignedDistanceFieldComputeDescriptorSetLayout);
+         SignedDistanceFieldComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                                       0,
+                                                                       SizeOf(TComputePushConstants));
+         SignedDistanceFieldComputePipelineLayout.Initialize;
+         SignedDistanceFieldComputePipeline:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+                                                                             pvApplication.VulkanPipelineCache,
+                                                                             0,
+                                                                             SignedDistanceFieldComputePipelineShaderStage,
+                                                                             SignedDistanceFieldComputePipelineLayout,
+                                                                             nil,
+                                                                             0);
+         try
+
+         finally
+          FreeAndNil(SignedDistanceFieldComputePipeline);
+         end;
+        finally
+         FreeAndNil(SignedDistanceFieldComputePipelineLayout);
+        end;
+       finally
+        FreeAndNil(SignedDistanceFieldComputeDescriptorSet);
+       end;
+      finally
+       FreeAndNil(SignedDistanceFieldComputeDescriptorPool);
+      end;
+     finally
+      FreeAndNil(SignedDistanceFieldComputeDescriptorSetLayout);
+     end;
     finally
      FreeAndNil(SignedDistanceFieldComputePipelineShaderStage);
     end;
