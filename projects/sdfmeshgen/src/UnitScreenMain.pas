@@ -924,11 +924,14 @@ begin
                                                                                        pvApplication.VulkanDevice.TransferQueueFamilyIndex,
                                                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
             try
+             TPasMPInterlocked.Write(fProgress,7968);
              SignedDistanceFieldComputeTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(SignedDistanceFieldComputeTransferCommandPool,
                                                                                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
              try
+              TPasMPInterlocked.Write(fProgress,8000);
               SignedDistanceFieldComputeTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
               try
+               TPasMPInterlocked.Write(fProgress,8192);
                repeat
                 fScreenMain.fVolumeTriangles.MetaData.Count:=0;
                 fScreenMain.fVolumeTriangles.MetaData.MaxCount:=MaxTrianglesPerIteration;
@@ -960,6 +963,19 @@ begin
                                                                     GridCellSizePerIteration div ComputeLocalSize,
                                                                     GridCellSizePerIteration div ComputeLocalSize);
                 SignedDistanceFieldComputeCommandBuffer.EndRecording;
+                SignedDistanceFieldComputeCommandBuffer.Execute(pvApplication.VulkanDevice.ComputeQueue,
+                                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                                nil,
+                                                                nil,
+                                                                SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                                true);
+                fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
+                                                               SignedDistanceFieldComputeTransferCommandBuffer,
+                                                               SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                               fScreenMain.fVolumeTriangles.MetaData,
+                                                               0,
+                                                               SizeOf(TVolumeTriangles),
+                                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
                 break;
                until true;
               finally
