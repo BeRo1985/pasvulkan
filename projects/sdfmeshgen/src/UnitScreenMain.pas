@@ -44,6 +44,7 @@ type TScreenMain=class(TpvApplicationScreen)
              private
               fScreenMain:TScreenMain;
               fSignedDistanceFieldCode:TpvUTF8String;
+              fMeshFragmentCode:TpvUTF8String;
               fGridSizeX:TpvInt64;
               fGridSizeY:TpvInt64;
               fGridSizeZ:TpvInt64;
@@ -219,6 +220,7 @@ constructor TScreenMain.TUpdateThread.Create(const aScreenMain:TScreenMain);
 begin
  fScreenMain:=aScreenMain;
  fSignedDistanceFieldCode:=LineNumberizeCode(fScreenMain.fGUISignedDistanceFieldCodeEditor.Text,'Signed distance field');
+ fMeshFragmentCode:=LineNumberizeCode(fScreenMain.fGUIMeshFragmentCodeEditor.Text,'Mesh fragment');
  fGridSizeX:=fScreenMain.fIntegerEditGridSizeWidth.Value;
  fGridSizeY:=fScreenMain.fIntegerEditGridSizeHeight.Value;
  fGridSizeZ:=fScreenMain.fIntegerEditGridSizeDepth.Value;
@@ -237,7 +239,7 @@ begin
 end;
 
 procedure TScreenMain.TUpdateThread.Execute;
- function GetComputeShaderCode:TpvUTF8String;
+ function GetSignedDistanceFieldComputeShaderCode:TpvUTF8String;
  begin
   result:='#version 450 core'#13#10+
 
@@ -614,6 +616,64 @@ procedure TScreenMain.TUpdateThread.Execute;
 
           '}'#13#10;
  end;
+ function GetMeshVertexShaderCode:TpvUTF8String;
+ begin
+  result:='#version 450 core'#13#10+
+          'layout(location = 0) in vec3 inPosition;'#13#10+
+          'layout(location = 1) in vec4 inQTangent;'#13#10+
+          'layout(location = 2) in vec4 inParameters0;'#13#10+
+          'layout(location = 3) in vec4 inParameters1;'#13#10+
+          'layout(location = 0) out vec3 outPosition;'#13#10+
+          'layout(location = 1) out vec3 outViewSpacePosition;'#13#10+
+          'layout(location = 2) out mat3 outTangentSpace;'#13#10+
+          'layout(location = 5) out mat2x4 outParameters;'#13#10+
+          'layout(push_constant) uniform pushConstants {'#13#10+
+          '  mat4 modelViewMatrix;'#13#10+
+          '  mat4 modelViewProjectionMatrix;'#13#10+
+          '} uPushConstants;'#13#10+
+          'mat3 qTangentToMatrix(vec4 q){'#13#10+
+          '  q = normalize(q);'#13#10+
+          '  float qx2 = q.x + q.x,'#13#10+
+          '        qy2 = q.y + q.y,'#13#10+
+          '        qz2 = q.z + q.z,'#13#10+
+          '        qxqx2 = q.x * qx2,'#13#10+
+          '        qxqy2 = q.x * qy2,'#13#10+
+          '        qxqz2 = q.x * qz2,'#13#10+
+          '        qxqw2 = q.w * qx2,'#13#10+
+          '        qyqy2 = q.y * qy2,'#13#10+
+          '        qyqz2 = q.y * qz2,'#13#10+
+          '        qyqw2 = q.w * qy2,'#13#10+
+          '        qzqz2 = q.z * qz2,'#13#10+
+          '        qzqw2 = q.w * qz2;'#13#10+
+          '  mat3 m = mat3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2,'#13#10+
+          '                qxqy2 - qzqw2, 1.0 - (qxqx2 + qzqz2), qyqz2 + qxqw2,'#13#10+
+          '                qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));'#13#10+
+          '  m[2] = normalize(cross(m[0], m[1])) * ((q.w < 0.0) ? -1.0 : 1.0);'#13#10+
+          '  return m;'#13#10+
+          '}'#13#10+
+          'void main(){'#13#10+
+          '  outTangentSpace = qTangentToMatrix(inQTangent);'#13#10+
+          '  outParameters = mat2x4(inParameters0, inParameters1);'#13#10+
+          '  outViewSpacePosition = (uPushConstants.modelViewMatrix * vec4(inPosition, 1.0)).xyz;'#13#10+
+          '  gl_Position = uPushConstants.modelViewProjectionMatrix * vec4(inPosition, 1.0);'#13#10+
+          '}'#13#10;
+ end;
+ function GetMeshFragmentShaderCode:TpvUTF8String;
+ begin
+  result:='#version 450 core'#13#10+
+          'layout(location = 0) in vec3 inPosition;'#13#10+
+          'layout(location = 1) in vec3 inViewSpacePosition;'#13#10+
+          'layout(location = 2) in mat3 inTangentSpace;'#13#10+
+          'layout(location = 5) in mat2x4 inParameters;'#13#10+
+          'layout(location = 0) out vec4 outColor;'#13#10+
+          fMeshFragmentCode+#13#10+
+          'void main(){'#13#10+
+          '  outColor = getFragmentColor(inPosition,'#13#10+
+          '                              inTangentSpace,'#13#10+
+          '                              inParameters,'#13#10+
+          '                              normalize(inViewSpacePosition));'#13#10+
+          '}'#13#10;
+ end;
  procedure WriteFile(const aFileName:string;const aCode:TpvUTF8String);
  var FileStream:TFileStream;
  begin
@@ -626,19 +686,19 @@ procedure TScreenMain.TUpdateThread.Execute;
    FreeAndNil(FileStream);
   end;
  end;
-var ComputeShaderGLSLFile,
-    ComputeShaderSPVFile:string;
-    ComputeShaderSPVStream:TMemoryStream;
+var SignedDistanceFieldComputeShaderGLSLFile,
+    SignedDistanceFieldComputeShaderSPVFile:string;
+    SignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
     OutputString,
     ErrorString:UnicodeString;
 begin
  ErrorString:='';
  try
-  ComputeShaderSPVStream:=TMemoryStream.Create;
+  SignedDistanceFieldComputeShaderSPVStream:=TMemoryStream.Create;
   try
-   ComputeShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.glsl');
-   ComputeShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.spv');
-   WriteFile(ComputeShaderGLSLFile,GetComputeShaderCode);
+   SignedDistanceFieldComputeShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.glsl');
+   SignedDistanceFieldComputeShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.spv');
+   WriteFile(SignedDistanceFieldComputeShaderGLSLFile,GetSignedDistanceFieldComputeShaderCode);
    try
     if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLCPath)),
                       String(fScreenMain.fVulkanGLSLCPath),
@@ -647,25 +707,25 @@ begin
                        '-fshader-stage=comp',
                        '-fentry-point=main',
                        '-O',
-                       '-o',ComputeShaderSPVFile,
-                       ComputeShaderGLSLFile],
+                       '-o',SignedDistanceFieldComputeShaderSPVFile,
+                       SignedDistanceFieldComputeShaderGLSLFile],
                       OutputString)=0 then begin
-     if FileExists(ComputeShaderSPVFile) then begin
-      ComputeShaderSPVStream.LoadFromFile(ComputeShaderSPVFile);
+     if FileExists(SignedDistanceFieldComputeShaderSPVFile) then begin
+      SignedDistanceFieldComputeShaderSPVStream.LoadFromFile(SignedDistanceFieldComputeShaderSPVFile);
      end;
     end else begin
      ErrorString:=ErrorString+OutputString;
     end;
    finally
-    if FileExists(ComputeShaderGLSLFile) then begin
-     DeleteFile(ComputeShaderGLSLFile);
+    if FileExists(SignedDistanceFieldComputeShaderGLSLFile) then begin
+     DeleteFile(SignedDistanceFieldComputeShaderGLSLFile);
     end;
-    if FileExists(ComputeShaderSPVFile) then begin
-     DeleteFile(ComputeShaderSPVFile);
+    if FileExists(SignedDistanceFieldComputeShaderSPVFile) then begin
+     DeleteFile(SignedDistanceFieldComputeShaderSPVFile);
     end;
    end;
   finally
-   FreeAndNil(ComputeShaderSPVStream);
+   FreeAndNil(SignedDistanceFieldComputeShaderSPVStream);
   end;
  finally
   try
