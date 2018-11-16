@@ -40,7 +40,7 @@ uses SysUtils,
 
 type TScreenMain=class(TpvApplicationScreen)
       public
-       const GridCellSizePerIteration=16;
+       const GridCellSizePerIteration=32;
              ComputeLocalSize=4;
              MaxTrianglesPerIteration=GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration*6*2;
        type TVolumeTriangleVertex=record
@@ -968,7 +968,8 @@ begin
                                                                       GridCellSizePerIteration div ComputeLocalSize);
                   SignedDistanceFieldComputeCommandBuffer.EndRecording;
                   SignedDistanceFieldComputeCommandBuffer.Execute(pvApplication.VulkanDevice.ComputeQueue,
-                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                                   nil,
                                                                   nil,
                                                                   SignedDistanceFieldComputeTransferCommandBufferFence,
@@ -978,7 +979,15 @@ begin
                                                                  SignedDistanceFieldComputeTransferCommandBufferFence,
                                                                  fScreenMain.fVolumeTriangles.MetaData,
                                                                  0,
-                                                                 SizeOf(TVolumeTriangles),
+                                                                 SizeOf(TVolumeTrianglesMetaData),
+                                                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+//                writeln(fScreenMain.fVolumeTriangles.MetaData.Count);
+                  fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
+                                                                 SignedDistanceFieldComputeTransferCommandBuffer,
+                                                                 SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                                 fScreenMain.fVolumeTriangles,
+                                                                 0,
+                                                                 SizeOf(TVolumeTrianglesMetaData)+(TpvSizeInt(fScreenMain.fVolumeTriangles.MetaData.Count)*SizeOf(TVolumeTriangle)),
                                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
                   GridCells:=Min(MaxGridCells,
                                  GridCells+(GridCellSizePerIteration*
