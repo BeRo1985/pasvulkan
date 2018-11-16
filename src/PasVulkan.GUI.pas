@@ -13980,6 +13980,23 @@ end;
 function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if not result then begin
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_F4:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                 TpvApplicationInputKeyModifier.CTRL,
+                                 TpvApplicationInputKeyModifier.SHIFT,
+                                 TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+      if assigned(fCloseButton) and assigned(fCloseButton.fOnClick) then begin
+       fCloseButton.fOnClick(fCloseButton);
+       result:=true;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;

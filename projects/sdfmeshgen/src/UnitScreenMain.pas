@@ -43,7 +43,21 @@ type TScreenMain=class(TpvApplicationScreen)
        type TUpdateThread=class(TThread)
              private
               fScreenMain:TScreenMain;
+              fSignedDistanceFieldCode:TpvUTF8String;
+              fGridSizeX:TpvInt64;
+              fGridSizeY:TpvInt64;
+              fGridSizeZ:TpvInt64;
+              fWorldSizeX:TpvDouble;
+              fWorldSizeY:TpvDouble;
+              fWorldSizeZ:TpvDouble;
+              fWorldMinX:TpvDouble;
+              fWorldMinY:TpvDouble;
+              fWorldMinZ:TpvDouble;
+              fWorldMaxX:TpvDouble;
+              fWorldMaxY:TpvDouble;
+              fWorldMaxZ:TpvDouble;
               fProgress:TPasMPInt32;
+              fErrorString:TpvUTF8String;
              protected
               constructor Create(const aScreenMain:TScreenMain); reintroduce;
               procedure Execute; override;
@@ -107,10 +121,11 @@ type TScreenMain=class(TpvApplicationScreen)
        fTime:TpvDouble;
        fFileName:TpvUTF8String;
        fFileNameToDelayedOpen:TpvUTF8String;
+       fTemporaryDirectory:TpvUTF8String;
        fVulkanSDKPath:TpvUTF8String;
        fVulkanSDKFound:boolean;
-       fVulkanGLSLangValidatorPath:TpvUTF8String;
-       fVulkanGLSLangValidatorFound:boolean;
+       fVulkanGLSLCPath:TpvUTF8String;
+       fVulkanGLSLCFound:boolean;
        fUpdateThread:TUpdateThread;
        procedure UpdateGUIData;
        procedure MarkAsNotModified;
@@ -179,28 +194,487 @@ var ScreenMain:TScreenMain=nil;
 
 implementation
 
+uses {$ifndef fpc}System.IOUtils,{$endif}PasDblStrUtils;
+
 { TScreenMain.TUpdateThread }
+
+function LineNumberizeCode(const aCode,aWhere:TpvUTF8String):TpvUTF8String;
+var StringList:TStringList;
+    Index:TpvSizeInt;
+begin
+ result:='';
+ StringList:=TStringList.Create;
+ try
+  StringList.Text:=String(aCode);
+  for Index:=0 to StringList.Count-1 do begin
+   result:=result+TpvUTF8String('#line '+IntToStr(Index+1)+' "'+String(aWhere)+'"'+#13#10+
+                                TrimRight(StringList.Strings[Index])+#13#10);
+  end;
+ finally
+  FreeAndNil(StringList);
+ end;
+end;
 
 constructor TScreenMain.TUpdateThread.Create(const aScreenMain:TScreenMain);
 begin
  fScreenMain:=aScreenMain;
+ fSignedDistanceFieldCode:=LineNumberizeCode(fScreenMain.fGUISignedDistanceFieldCodeEditor.Text,'Signed distance field');
+ fGridSizeX:=fScreenMain.fIntegerEditGridSizeWidth.Value;
+ fGridSizeY:=fScreenMain.fIntegerEditGridSizeHeight.Value;
+ fGridSizeZ:=fScreenMain.fIntegerEditGridSizeDepth.Value;
+ fWorldSizeX:=fScreenMain.fFloatEditWorldSizeWidth.Value;
+ fWorldSizeY:=fScreenMain.fFloatEditWorldSizeHeight.Value;
+ fWorldSizeZ:=fScreenMain.fFloatEditWorldSizeDepth.Value;
+ fWorldMinX:=-(fWorldSizeX*0.5);
+ fWorldMinY:=-(fWorldSizeY*0.5);
+ fWorldMinZ:=-(fWorldSizeZ*0.5);
+ fWorldMaxX:=fWorldSizeX*0.5;
+ fWorldMaxY:=fWorldSizeY*0.5;
+ fWorldMaxZ:=fWorldSizeZ*0.5;
+ fErrorString:='';
  fProgress:=0;
  inherited Create(false);
 end;
 
 procedure TScreenMain.TUpdateThread.Execute;
-var OutputString:UnicodeString;
-begin
- if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLangValidatorPath)),
-                   String(fScreenMain.fVulkanGLSLangValidatorPath),
-                   ['--help'],
-                   OutputString)=0 then begin
- end else begin
+ function GetComputeShaderCode:TpvUTF8String;
+ begin
+  result:='#version 450 core'#13#10+
 
+          'layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;'#13#10+
+
+          'struct VolumeTriangleVertex {'#13#10+ // 16 floats, 64 bytes per vertex
+          '  vec4 position;'#13#10+
+          '  vec4 qtangent;'#13#10+
+          '  vec4 parameters0;'#13#10+
+          '  vec4 parameters1;'#13#10+
+          '};'#13#10+
+
+          'struct VolumeTriangle {'#13#10+ // 64 * (3 + 1) = 256 bytes per triangle
+          '  VolumeTriangleVertex vertices[4];'#13#10+ // 3 plus 1 for alignment padding
+          '};'#13#10+
+
+          'layout(std430, set = 0, binding = 0) buffer ssboTriangleGlobals {'#13#10+
+          '  uint volumeTriangleCounter;'#13#10+
+          '  uint volumeMaxTriangleCount;'#13#10+
+          '};'#13#10+
+
+          'layout(std430, set = 0, binding = 1) buffer ssboTriangles {'#13#10+
+          '  VolumeTriangle volumeTriangles[];'#13#10+
+          '};'#13#10+
+
+          'layout(push_constant) uniform pushConstants {'#13#10+
+          '  ivec3 baseGridOffset;'#13#10+
+          '} uPushConstants;'#13#10+
+
+          'const ivec3 gridSize = ivec3('+TpvUTF8String(IntToStr(fGridSizeX))+','+TpvUTF8String(IntToStr(fGridSizeY))+','+TpvUTF8String(IntToStr(fGridSizeZ))+');'#13#10+
+
+          'const vec3 worldMin = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMinX,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMinY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMinZ,omStandard))+');'#13#10+
+
+          'const vec3 worldMax = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMaxX,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMaxY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMaxZ,omStandard))+');'#13#10+
+
+          fSignedDistanceFieldCode+#13#10+
+
+          'const uvec4 tetbits = uvec4(0x487d210u, 0x11282844u, 0x2e71b7ecu, 0x3bde4db8u);'#13#10+
+          'const uint tetbits_q = 0x16696994u;'#13#10+
+
+          // returns the mix factor x required to interpolate two vectors given two
+          // density values, such that the interpolated vector is at the position where
+          // a + (b-a)*x = 0
+          'float tetlerp(float a, float b) {'#13#10+
+          '  float d = (b - a);'#13#10+
+          '  return (abs(d) < 1e-12) ? 0.0 : ((-a) / d);'#13#10+
+          '}'#13#10+
+
+          // takes the density values at the four endpoints (> 0 = outside / not on surface)
+          // and returns the indices of the triangle / quad to be generated
+          // returns 0 if no triangle is to be generated
+          // 1 if the result is a tri (interpolate edges x-y x-z x-w)
+          // 2 if the result is a quad (interpolate edges x-z x-w y-w y-z)
+          'uint tetfaces(in vec4 d, out uvec4 i) {'#13#10+
+          '  uint k = ((d[0] > 0.0) ? 2u : 0u) | ((d[1] > 0.0) ? 4u : 0u) | ((d[2] > 0.0) ? 8u : 0u) | ((d[3] > 0.0) ? 16u : 0u);'#13#10+
+          '  i = (tetbits >> k) & 3u;'#13#10+
+          '  return (tetbits_q >> k) & 3u;'#13#10+
+          '}'#13#10+
+
+          'const uvec4 btetbits = uvec4(0x1c008000u, 0x28404000u, 0x30c00000u, 0x14404000u);'#13#10+
+
+          // takes four binary values (0 = outside, 1 = surface / inside)
+          // returns w=1 if a triangle is to be generated,
+          // and the indices of the triangle in xyz
+          'uvec4 btetfaces(in bvec4 d) {'#13#10+
+          '    uint k = (d[0] ? 2u : 0u) | (d[1] ? 4u : 0u) | (d[2] ? 8u : 0u) | (d[3] ? 16u :0u);'#13#10+
+          '    return (btetbits >> k) & 3u;'#13#10+
+          '}'#13#10+
+
+          'const vec3 offsets[8] = vec3[]('#13#10+
+          '  vec3(0.0, 0.0, 0.0),'#13#10+
+          '  vec3(1.0, 0.0, 0.0),'#13#10+
+          '  vec3(0.0, 0.0, 1.0),'#13#10+
+          '  vec3(1.0, 0.0, 1.0),'#13#10+
+          '  vec3(0.0, 1.0, 0.0),'#13#10+
+          '  vec3(1.0, 1.0, 0.0),'#13#10+
+          '  vec3(0.0, 1.0, 1.0),'#13#10+
+          '  vec3(1.0, 1.0, 1.0)'#13#10+
+          ');'#13#10+
+
+          'const ivec4 indices[6] = ivec4[]('#13#10+
+          '  ivec4(4, 6, 0, 7),'#13#10+
+          '  ivec4(6, 0, 7, 2),'#13#10+
+          '  ivec4(0, 7, 2, 3),'#13#10+
+          '  ivec4(4, 5, 7, 0),'#13#10+
+          '  ivec4(1, 7, 0, 3),'#13#10+
+          '  ivec4(0, 5, 7, 1)'#13#10+
+          ');'#13#10+
+
+          'vec4 matrixToQTangent(mat3 m){'#13#10+
+          '  float f = 1.0;'#13#10+
+          '  if(((((((m[0][0] * m[1][1] * m[2][2])+'#13#10+
+          '         (m[0][1] * m[1][2] * m[2][0])'#13#10+
+          '        )+'#13#10+
+          '        (m[0][2] * m[1][0] * m[2][1])'#13#10+
+          '       )-'#13#10+
+          '       (m[0][2] * m[1][1] * m[2][0])'#13#10+
+          '      )-'#13#10+
+          '      (m[0][1] * m[1][0] * m[2][2])'#13#10+
+          '     )-'#13#10+
+          '     (m[0][0] * m[1][2] * m[2][1]))<0.0){'#13#10+
+          '    f = -1.0;'#13#10+
+          '    m[2] = -m[2];'#13#10+
+          '  }'#13#10+
+          '  float t = m[0][0] + (m[1][1] + m[2][2]);'#13#10+
+          '  vec4 r;'#13#10+
+          '  if(t > 2.9999999){'#13#10+
+          '    r = vec4(0.0, 0.0, 0.0, 1.0);'#13#10+
+          '  }else if(t > 0.0000001){'#13#10+
+          '    float s = sqrt(1.0 + t) * 2.0;'#13#10+
+          '    r = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);'#13#10+
+          '  }else if((m[0][0] > m[1][1]) && (m[0][0] > m[2][2])){'#13#10+
+          '    float s = sqrt(1.0 + (m[0][0] - (m[1][1] + m[2][2]))) * 2.0;'#13#10+
+          '    r = vec4(s * 0.25, vec3(m[1][0] - m[0][1], m[2][0] - m[0][2], m[0][2] - m[2][1]) / s);'#13#10+
+          '  }else if(m[1][1] > m[2][2]){'#13#10+
+          '    float s = sqrt(1.0 + (m[1][1] - (m[0][0] + m[2][2]))) * 2.0;'#13#10+
+          '    r = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;'#13#10+
+          '  }else{'#13#10+
+          '    float s = sqrt(1.0 + (m[2][2] - (m[0][0] + m[1][1]))) * 2.0;'#13#10+
+          '    r = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz;'#13#10+
+          '  }'#13#10+
+          '  r = normalize(r);'#13#10+
+          '  const float threshold = 1e-5;'#13#10+
+          '  if(r.w <= threshold){'#13#10+
+          '    r = vec4(r.xyz * sqrt(1.0 - (threshold * threshold)), (r.w > 0.0) ? threshold : -threshold);'#13#10+
+          '  }'#13#10+
+          '  if(((f < 0.0) && (r.w >= 0.0)) || ((f >= 0.0) && (r.w < 0.0))){'#13#10+
+          '    r = -r;'#13#10+
+          '  }'#13#10+
+          '  return r;'#13#10+
+          '}'#13#10+
+
+          'mat3 qTangentToMatrix(vec4 q){'#13#10+
+          '  q = normalize(q);'#13#10+
+          '  float qx2 = q.x + q.x,'#13#10+
+          '        qy2 = q.y + q.y,'#13#10+
+          '        qz2 = q.z + q.z,'#13#10+
+          '        qxqx2 = q.x * qx2,'#13#10+
+          '        qxqy2 = q.x * qy2,'#13#10+
+          '        qxqz2 = q.x * qz2,'#13#10+
+          '        qxqw2 = q.w * qx2,'#13#10+
+          '        qyqy2 = q.y * qy2,'#13#10+
+          '        qyqz2 = q.y * qz2,'#13#10+
+          '        qyqw2 = q.w * qy2,'#13#10+
+          '        qzqz2 = q.z * qz2,'#13#10+
+          '        qzqw2 = q.w * qz2;'#13#10+
+          '  mat3 m = mat3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2,'#13#10+
+          '                qxqy2 - qzqw2, 1.0 - (qxqx2 + qzqz2), qyqz2 + qxqw2,'#13#10+
+          '                qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));'#13#10+
+          '  m[2] = normalize(cross(m[0], m[1])) * ((q.w < 0.0) ? -1.0 : 1.0);'#13#10+
+          '  return m;'#13#10+
+          '}'#13#10+
+
+          'void addTriangle(vec3 p0,'#13#10+
+          '                 vec3 p1,'#13#10+
+          '                 vec3 p2,'#13#10+
+          '                 mat3 ts0,'#13#10+
+          '                 mat3 ts1,'#13#10+
+          '                 mat3 ts2,'#13#10+
+          '                 mat2x4 mp0,'#13#10+
+          '                 mat2x4 mp1,'#13#10+
+          '                 mat2x4 mp2){'#13#10+
+          '  if(volumeTriangleCounter < volumeMaxTriangleCount){'#13#10+
+          '    uint triangleIndex = atomicAdd(volumeTriangleCounter, 1);'#13#10+
+          '    vec3 normal = normalize(cross(normalize(p2 - p0),'#13#10+
+          '                                  normalize(p1 - p0)));'#13#10+
+          '    VolumeTriangle volumeTriangle;'#13#10+
+          '    if(dot(normalize(ts0[2] +'#13#10+
+          '                     ts1[2] +'#13#10+
+          '                     ts2[2]), normal) < 0.0){'#13#10+
+          '      normal = -normal;'#13#10+
+          '    }'#13#10+
+          '    volumeTriangle.vertices[0].position = vec4(p0, normal.x);'#13#10+
+          '    volumeTriangle.vertices[1].position = vec4(p1, normal.y);'#13#10+
+          '    volumeTriangle.vertices[2].position = vec4(p2, normal.z);'#13#10+
+          '    volumeTriangle.vertices[0].qtangent = matrixToQTangent(ts0);'#13#10+
+          '    volumeTriangle.vertices[1].qtangent = matrixToQTangent(ts0);'#13#10+
+          '    volumeTriangle.vertices[2].qtangent = matrixToQTangent(ts0);'#13#10+
+          '    volumeTriangle.vertices[0].parameters0 = mp0[0];'#13#10+
+          '    volumeTriangle.vertices[1].parameters0 = mp1[0];'#13#10+
+          '    volumeTriangle.vertices[2].parameters0 = mp2[0];'#13#10+
+          '    volumeTriangle.vertices[0].parameters1 = mp0[1];'#13#10+
+          '    volumeTriangle.vertices[1].parameters1 = mp1[1];'#13#10+
+          '    volumeTriangle.vertices[2].parameters1 = mp2[1];'#13#10+
+          '    volumeTriangles[triangleIndex] = volumeTriangle;'#13#10+
+          '  }'#13#10+
+          '}'#13#10+
+
+          'void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){'#13#10+
+          '#if 1'#13#10+
+          '  vec3 c = vec3(1.0, n.y, -n.x) * (n.y / (1.0 + abs(n.z))),'#13#10+
+          '       d = vec3(n.y, c.yz) * ((n.z >= 0.0) ? 1.0 : -1.0);'#13#10+
+          '  t = vec3(vec2(n.z, 0.0) + d.yz, -n.x);'#13#10+
+          '  b = vec3(c.z, 1.0 - c.y, -d.x);'#13#10+
+          '#else'#13#10+
+          '  float s = (n.z >= 0.0) ? 1.0 : -1.0, c = n.y / (1.0 + abs(n.z)), d = n.y * c, e = -n.x * c;'#13#10+
+          '  t = vec3(n.z + (s * d), (s * e), -n.x);'#13#10+
+          '  b = vec3(e, 1.0 - d, -s * n.y);'#13#10+
+          '#endif'#13#10+
+          '}'#13#10+
+
+          'mat3 getTangentSpaceFromNormal(vec3 n){'#13#10+
+          '   n = normalize(n);'#13#10+
+          '#if 0'#13#10+
+          '   vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
+          '        t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
+          '        t = normalize(length(t0) < length(t1) ? t1 : t0),'#13#10+
+          '        b = normalize(cross(n, t));'#13#10+
+          '   return mat3(normalize(cross(b, n)), b, n);'#13#10+
+          '#else'#13#10+
+          '   vec3 t, b;'#13#10+
+          '   getTangentSpaceBasisFromNormal(n, t, b);'#13#10+
+          '   return mat3(t, b, n);'#13#10+
+          '#endif'#13#10+
+          '}'#13#10+
+
+          'void main(){'#13#10+
+          '  ivec3 pb = uPushConstants.baseGridOffset + ivec3(gl_GlobalInvocationID.xyz);'#13#10+
+          '  const vec3 s = vec3(gridSize),'#13#10+
+          '             si = vec3(1.0) / s;'#13#10+
+          ' 	const vec2 e = vec2(0.0, normalOffsetFactor);'#13#10+
+          '  vec3 ap[8], an[8], at[8], ab[8];'#13#10+
+          '  float ad[8];'#13#10+
+          '  mat2x4 amp[8];'#13#10+
+          '  for(int i = 0; i < 8; i++){'#13#10+
+          '    vec3 p = mix(worldMin, worldMax, (vec3(pb) + offsets[i]) * si);'#13#10+
+          '    vec3 n = normalize(vec3(getDistance(p + e.yxx) - getDistance(p - e.yxx),'#13#10+
+          '                            getDistance(p + e.xyx) - getDistance(p - e.xyx),'#13#10+
+          '                            getDistance(p + e.xxy) - getDistance(p - e.xxy)));'#13#10+
+          '#if 0'#13#10+
+          '    vec3 uu = vec3(n.z, n.y, -n.x),'#13#10+
+          '         vv = vec3(-n.x, n.z, -n.y);'#13#10+
+          '#elif 0'#13#10+
+          '    vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
+          '         t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
+          '         uu = (length(t0) > length(t1)) ? t0: t1,'#13#10+
+          '         vv = cross(uu, n);'#13#10+
+          '         uu = cross(n, vv);'#13#10+
+          '         vv = cross(uu, n);'#13#10+
+          '#elif 0'#13#10+
+          '    float sz = n.z >= 0.0 ? 1.0 : -1.0;'#13#10+
+          '    float a  =  n.y / (1.0 + abs(n.z));'#13#10+
+          '    float b  =  n.y * a;'#13#10+
+          '    float c  = -n.x * a;'#13#10+
+          '    vec3 uu = normalize(vec3(n.z + (sz * b), sz * c, -n.x));'#13#10+
+          '    vec3 vv = normalize(vec3(c, 1.0 - b, -sz * n.y));'#13#10+
+          '#elif 0'#13#10+
+          '    float a =  n.y / (1.0 + n.z);'#13#10+
+          '    float b =  n.y * a;'#13#10+
+          '    float c = -n.x * a;'#13#10+
+          '    vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : normalize(vec3(n.z + b, c, -n.x));'#13#10+
+          '    vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : normalize(vec3(c, 1.0 - b, -n.y));'#13#10+
+          '#elif 0'#13#10+
+          '    vec3 tc = vec3((1.0 + n.z) - (n.xy * n.xy), -n.x * n.y) / (1.0 + n.z);'#13#10+
+          '    vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : vec3(tc.x, tc.z, -n.x);'#13#10+
+          '    vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : vec3(tc.z, tc.y, -n.y);'#13#10+
+          '#else'#13#10+
+          '    vec3 uu = normalize(cross(n, vec3(1.0, 0.0, 0.0)));'#13#10+
+          '		vec3 vv = normalize(cross(uu, n));'#13#10+
+          '		uu = normalize(cross(n, vv));'#13#10+
+          '		vv = normalize(cross(uu, n));'#13#10+
+          '		uu = normalize(cross(n, vv));'#13#10+
+          '		vv = normalize(cross(uu, n));'#13#10+
+          '#endif'#13#10+
+          '    ap[i] = p;'#13#10+
+          '    an[i] = n;'#13#10+
+          '    at[i] = vv;'#13#10+
+          '    ab[i] = uu;'#13#10+
+          '    ad[i] = getDistance(p);'#13#10+
+          '    amp[i] = getParameters(p);'#13#10+
+          '  }'#13#10+
+          '  for(int i = 0; i < 6; i++){'#13#10+
+          '    ivec4 t = indices[i];'#13#10+
+          '    vec4 d = vec4(ad[t.x], ad[t.y], ad[t.z], ad[t.w]);'#13#10+
+          '    uvec4 j;'#13#10+
+          '    uint c = tetfaces(d, j);'#13#10+
+          '    if(c == 1u){'#13#10+
+          '      vec3 w0 = vec3(tetlerp(d[j.x], d[j.y]),'#13#10+
+          '                     tetlerp(d[j.x], d[j.z]),'#13#10+
+          '                     tetlerp(d[j.x], d[j.w]));'#13#10+
+          '      addTriangle(mix(ap[t[j.x]], ap[t[j.y]], w0.x),'#13#10+
+          '                  mix(ap[t[j.x]], ap[t[j.z]], w0.y),'#13#10+
+          '                  mix(ap[t[j.x]], ap[t[j.w]], w0.z),'#13#10+
+          '                  mat3('#13#10+
+          '                    normalize(mix(at[t[j.x]], at[t[j.y]], w0.x)),'#13#10+
+          '                    normalize(mix(ab[t[j.x]], ab[t[j.y]], w0.x)),'#13#10+
+          '                    normalize(mix(an[t[j.x]], an[t[j.y]], w0.x))'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    normalize(mix(at[t[j.x]], at[t[j.z]], w0.y)),'#13#10+
+          '                    normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.y)),'#13#10+
+          '                    normalize(mix(an[t[j.x]], an[t[j.z]], w0.y))'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    normalize(mix(at[t[j.x]], at[t[j.w]], w0.z)),'#13#10+
+          '                    normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.z)),'#13#10+
+          '                    normalize(mix(an[t[j.x]], an[t[j.w]], w0.z))'#13#10+
+          '                  ),'#13#10+
+          '                  (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.y]] * w0.x),'#13#10+
+          '                  (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.z]] * w0.y),'#13#10+
+          '                  (amp[t[j.x]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z)'#13#10+
+          '                 );'#13#10+
+          '    }else if(c == 2u){'#13#10+
+          '      vec4 w0 = vec4(tetlerp(d[j.x], d[j.z]),'#13#10+
+          '                     tetlerp(d[j.x], d[j.w]),'#13#10+
+          '                     tetlerp(d[j.y], d[j.w]),'#13#10+
+          '                     tetlerp(d[j.y], d[j.z]));'#13#10+
+          '      vec3 p0 = mix(ap[t[j.x]], ap[t[j.z]], w0.x),'#13#10+
+          '           p1 = mix(ap[t[j.x]], ap[t[j.w]], w0.y),'#13#10+
+          '           p2 = mix(ap[t[j.y]], ap[t[j.w]], w0.z),'#13#10+
+          '           p3 = mix(ap[t[j.y]], ap[t[j.z]], w0.w),'#13#10+
+          '           n0 = normalize(mix(an[t[j.x]], an[t[j.z]], w0.x)),'#13#10+
+          '           n1 = normalize(mix(an[t[j.x]], an[t[j.w]], w0.y)),'#13#10+
+          '           n2 = normalize(mix(an[t[j.y]], an[t[j.w]], w0.z)),'#13#10+
+          '           n3 = normalize(mix(an[t[j.y]], an[t[j.z]], w0.w)),'#13#10+
+          '           t0 = normalize(mix(at[t[j.x]], at[t[j.z]], w0.x)),'#13#10+
+          '           t1 = normalize(mix(at[t[j.x]], at[t[j.w]], w0.y)),'#13#10+
+          '           t2 = normalize(mix(at[t[j.y]], at[t[j.w]], w0.z)),'#13#10+
+          '           t3 = normalize(mix(at[t[j.y]], at[t[j.z]], w0.w)),'#13#10+
+          '           b0 = normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.x)),'#13#10+
+          '           b1 = normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.y)),'#13#10+
+          '           b2 = normalize(mix(ab[t[j.y]], ab[t[j.w]], w0.z)),'#13#10+
+          '           b3 = normalize(mix(ab[t[j.y]], ab[t[j.z]], w0.w));'#13#10+
+          '      mat2x4 mp0 = (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.z]] * w0.x),'#13#10+
+          '             mp1 = (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.w]] * w0.y),'#13#10+
+          '             mp2 = (amp[t[j.y]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z),'#13#10+
+          '             mp3 = (amp[t[j.y]] * (1.0 - w0.w)) + (amp[t[j.z]] * w0.w);'#13#10+
+          '      addTriangle(p0,'#13#10+
+          '                  p1,'#13#10+
+          '                  p2,'#13#10+
+          '                  mat3('#13#10+
+          '                    t0,'#13#10+
+          '                    b0,'#13#10+
+          '                    n0'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    t1,'#13#10+
+          '                    b1,'#13#10+
+          '                    n1'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    t2,'#13#10+
+          '                    b2,'#13#10+
+          '                    n2'#13#10+
+          '                  ),'#13#10+
+          '                  mp0,'#13#10+
+          '                  mp1,'#13#10+
+          '                  mp2'#13#10+
+          '                 );'#13#10+
+          '      addTriangle(p2,'#13#10+
+          '                  p3,'#13#10+
+          '                  p0,'#13#10+
+          '                  mat3('#13#10+
+          '                    t2,'#13#10+
+          '                    b2,'#13#10+
+          '                    n2'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    t3,'#13#10+
+          '                    b3,'#13#10+
+          '                    n3'#13#10+
+          '                  ),'#13#10+
+          '                  mat3('#13#10+
+          '                    t0,'#13#10+
+          '                    b0,'#13#10+
+          '                    n0'#13#10+
+          '                  ),'#13#10+
+          '                  mp2,'#13#10+
+          '                  mp3,'#13#10+
+          '                  mp0'#13#10+
+          '                 );'#13#10+
+          '    }'#13#10+
+          '  }'#13#10+
+
+          '}'#13#10;
  end;
- writeln(OutputString);
+ procedure WriteFile(const aFileName:string;const aCode:TpvUTF8String);
+ var FileStream:TFileStream;
+ begin
+  FileStream:=TFileStream.Create(aFileName,fmCreate);
+  try
+   if length(aCode)>0 then begin
+    FileStream.WriteBuffer(aCode[1],length(aCode));
+   end;
+  finally
+   FreeAndNil(FileStream);
+  end;
+ end;
+var ComputeShaderGLSLFile,
+    ComputeShaderSPVFile:string;
+    ComputeShaderSPVStream:TMemoryStream;
+    OutputString,
+    ErrorString:UnicodeString;
+begin
+ ErrorString:='';
+ try
+  ComputeShaderSPVStream:=TMemoryStream.Create;
+  try
+   ComputeShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.glsl');
+   ComputeShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.spv');
+   WriteFile(ComputeShaderGLSLFile,GetComputeShaderCode);
+   try
+    if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLCPath)),
+                      String(fScreenMain.fVulkanGLSLCPath),
+                      ['--target-env=vulkan1.0',
+                       '-x','glsl',
+                       '-fshader-stage=comp',
+                       '-fentry-point=main',
+                       '-O',
+                       '-o',ComputeShaderSPVFile,
+                       ComputeShaderGLSLFile],
+                      OutputString)=0 then begin
+     if FileExists(ComputeShaderSPVFile) then begin
+      ComputeShaderSPVStream.LoadFromFile(ComputeShaderSPVFile);
+     end;
+    end else begin
+     ErrorString:=ErrorString+OutputString;
+    end;
+   finally
+    if FileExists(ComputeShaderGLSLFile) then begin
+     DeleteFile(ComputeShaderGLSLFile);
+    end;
+    if FileExists(ComputeShaderSPVFile) then begin
+     DeleteFile(ComputeShaderSPVFile);
+    end;
+   end;
+  finally
+   FreeAndNil(ComputeShaderSPVStream);
+  end;
+ finally
+  try
+   fErrorString:=TpvUTF8String(ErrorString);
+  finally
+   ErrorString:='';
+  end;
+ end;
  TPasMPInterlocked.Write(fProgress,65535);
- Sleep(10);
 end;
 
 { TScreenMain }
@@ -231,32 +705,36 @@ begin
 
  fFileNameToDelayedOpen:='';
 
+ fTemporaryDirectory:=TpvUTF8String(IncludeTrailingPathDelimiter(GetEnvironmentVariable('TEMP')));
+ if (length(fTemporaryDirectory)<2) or not DirectoryExists(ExcludeTrailingPathDelimiter(String(fTemporaryDirectory))) then begin
+{$ifdef fpc}
+  fTemporaryDirectory:=TpvUTF8String(IncludeTrailingPathDelimiter(SysUtils.GetTempDir));
+{$else}
+  fTemporaryDirectory:=TpvUTF8String(IncludeTrailingPathDelimiter(System.IOUtils.TPath.GetTempPath));
+{$endif}
+ end;
+
  fVulkanSDKPath:=TpvUTF8String(GetEnvironmentVariable('VULKAN_SDK'));
  if length(fVulkanSDKPath)>0 then begin
   fVulkanSDKPath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(String(fVulkanSDKPath))));
   fVulkanSDKFound:=DirectoryExists(ExcludeTrailingPathDelimiter(String(fVulkanSDKPath)));
-  fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin64')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
-  fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
-  if not fVulkanGLSLangValidatorFound then begin
-{$ifdef Unix}
-   fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin64')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
-   fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
-   if not fVulkanGLSLangValidatorFound then begin
-    fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
-    fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
-    if not fVulkanGLSLangValidatorFound then begin
-     fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
-     fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
+  fVulkanGLSLCPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin64')+'glslc'{$ifdef Windows}+'.exe'{$endif};
+  fVulkanGLSLCFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLCPath)));
+  if not fVulkanGLSLCFound then begin
+   fVulkanGLSLCPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin64')+'glslc'{$ifdef Windows}+'.exe'{$endif};
+   fVulkanGLSLCFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLCPath)));
+   if not fVulkanGLSLCFound then begin
+    fVulkanGLSLCPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin')+'glslc'{$ifdef Windows}+'.exe'{$endif};
+    fVulkanGLSLCFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLCPath)));
+    if not fVulkanGLSLCFound then begin
+     fVulkanGLSLCPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'bin')+'glslc'{$ifdef Windows}+'.exe'{$endif};
+     fVulkanGLSLCFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLCPath)));
     end;
    end;
-{$else}
-   fVulkanGLSLangValidatorPath:=IncludeTrailingPathDelimiter(fVulkanSDKPath+'Bin')+'glslangValidator'{$ifdef Windows}+'.exe'{$endif};
-   fVulkanGLSLangValidatorFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLangValidatorPath)));
-{$endif}
   end;
  end else begin
   fVulkanSDKFound:=false;
-  fVulkanGLSLangValidatorFound:=false;
+  fVulkanGLSLCFound:=false;
  end;
 
 end;
@@ -300,10 +778,34 @@ begin
 end;
 
 procedure TScreenMain.CheckUpdateThread;
+ procedure ShowErrorWindow(const aErrorString:TpvUTF8String);
+ var ErrorWindow:TpvGUIWindow;
+     ErrorMultilineTextEdit:TpvGUIMultiLineTextEdit;
+ begin
+  ErrorWindow:=TpvGUIWindow.Create(fGUIInstance);
+  ErrorWindow.Title:='Error';
+  ErrorWindow.Content.Layout:=TpvGUIFillLayout.Create(ErrorWindow.Content,4.0);
+  ErrorWindow.AddMinimizationButton;
+  ErrorWindow.AddMaximizationButton;
+  ErrorWindow.AddCloseButton;
+  ErrorMultilineTextEdit:=TpvGUIMultiLineTextEdit.Create(ErrorWindow.Content);
+  ErrorMultilineTextEdit.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.txt').Create(ErrorMultilineTextEdit.TextEditor);
+  ErrorMultilineTextEdit.TextEditor.TabWidth:=2;
+  ErrorMultilineTextEdit.Text:=aErrorString;
+  ErrorMultilineTextEdit.Editable:=true;
+  ErrorWindow.Width:=fGUIInstance.Width*0.9;
+  ErrorWindow.Height:=fGUIInstance.Height*0.6;
+  ErrorWindow.PerformLayout;
+  ErrorWindow.Center;
+  ErrorMultilineTextEdit.RequestFocus;
+ end;
 begin
  if assigned(fUpdateThread) then begin
   if fUpdateThread.Finished then begin
    fUpdateThread.WaitFor;
+   if length(Trim(String(fUpdateThread.fErrorString)))>0 then begin
+    ShowErrorWindow(fUpdateThread.fErrorString);
+   end;
    FreeAndNil(fUpdateThread);
    fGUIUpdateButton.Enabled:=true;
    fGUIUpdateProgressBar.Value:=0;
@@ -1018,7 +1520,7 @@ begin
                              'This application requires an installed Vulkan SDK on your system for its full functionality.',
                              [TpvGUIMessageDialogButton.Create(0,'OK',[KEYCODE_ESCAPE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER])],
                              fGUIInstance.Skin.IconDialogError);
- end else if not fVulkanGLSLangValidatorFound then begin
+ end else if not fVulkanGLSLCFound then begin
   TpvGUIMessageDialog.Create(fGUIInstance,
                              'Incomplete Vulkan SDK found!',
                              'This application requires an complete installed Vulkan SDK on your system for its full functionality.',
@@ -1219,6 +1721,15 @@ begin
                                           TpvApplicationInputKeyModifier.SHIFT,
                                           TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
       MenuOnSaveAsProject(nil);
+      result:=true;
+     end;
+    end;
+    KEYCODE_F9:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                 TpvApplicationInputKeyModifier.CTRL,
+                                 TpvApplicationInputKeyModifier.SHIFT,
+                                 TpvApplicationInputKeyModifier.META])=[] then begin
+      UpdateButtonOnClick(nil);
       result:=true;
      end;
     end;

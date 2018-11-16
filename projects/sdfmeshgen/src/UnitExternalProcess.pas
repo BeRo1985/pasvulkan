@@ -35,11 +35,14 @@ implementation
 
 function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString;out aOutput:UnicodeString):Int32;
 {$if (defined(Win32) or defined(Win64) or defined(Windows))} // and not defined(fpc)}
+{$define UseANSI}
 const BufferSize=4096;
-type TBuffer=array[0..BufferSize] of AnsiChar; // Size+1 for as additional small headroom
+type TBuffer=array[0..BufferSize*2] of AnsiChar; // Size+1 for as additional small headroom
      PBuffer=^TBuffer;
+{$ifndef UseANSI}
      TBufferW=array[0..(BufferSize*8)] of WideChar;
      PBufferW=^TBufferW;
+{$endif}
 var SecurityAttributes:TSecurityAttributes;
     StartupInfo:Windows.TStartupInfoW;
     ProcessInformation:TProcessInformation;
@@ -50,7 +53,7 @@ var SecurityAttributes:TSecurityAttributes;
     Parameter:UnicodeString;
     Running,CountAvailable,CountRead,ExitCode:DWORD;
     RawBuffer:PBuffer;
-    FinalBuffer:PBufferW;
+    FinalBuffer:{$ifdef UseANSI}PBuffer{$else}PBufferW{$endif};
 begin
  result:=-1;
  aOutput:='';
@@ -97,7 +100,7 @@ begin
       try
        GetMem(RawBuffer,SizeOf(TBuffer));
        try
-        GetMem(FinalBuffer,SizeOf(TBufferW));
+        GetMem(FinalBuffer,SizeOf({$ifdef UseANSI}TBuffer{$else}TBufferW{$endif}));
         try
          repeat
           Running:=WaitForSingleObject(ProcessInformation.hProcess,10);
@@ -107,9 +110,15 @@ begin
             CountRead:=0;
             ReadFile(ReadableEndOfPipe,RawBuffer^[0],BufferSize,CountRead,nil);
             RawBuffer^[CountRead]:=AnsiChar(#0);
+{$ifdef UseANSI}
+            FillChar(FinalBuffer^,SizeOf(TBuffer),#0);
+            OemToAnsi(@RawBuffer[0],@FinalBuffer[0]);
+            aOutput:=aOutput+UnicodeString(AnsiString(PAnsiChar(@FinalBuffer[0])));
+{$else}
             FillChar(FinalBuffer^,SizeOf(TBufferW),#0);
             OemToCharW(@RawBuffer[0],@FinalBuffer[0]);
-            aOutput:=aOutput+UniCodeString(WideString(PWideChar(@FinalBuffer[0])));
+            aOutput:=aOutput+UnicodeString(WideString(PWideChar(@FinalBuffer[0])));
+{$endif}
            until CountRead<BufferSize;
           end;
          until Running<>WAIT_TIMEOUT;
