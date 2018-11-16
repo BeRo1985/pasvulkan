@@ -53,6 +53,7 @@ var SecurityAttributes:TSecurityAttributes;
     FinalBuffer:PBufferW;
 begin
  result:=-1;
+ aOutput:='';
  SecurityAttributes.nLength:=SizeOf(TSecurityAttributes);
  SecurityAttributes.bInheritHandle:=true;
  SecurityAttributes.lpSecurityDescriptor:=nil;
