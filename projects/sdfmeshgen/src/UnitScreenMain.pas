@@ -980,13 +980,16 @@ begin
                                                                  0,
                                                                  SizeOf(TVolumeTriangles),
                                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-                  GridCells:=Min(GridCells+(GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration),MaxGridCells);
+                  GridCells:=Min(MaxGridCells,
+                                 GridCells+(GridCellSizePerIteration*
+                                            GridCellSizePerIteration*
+                                            GridCellSizePerIteration));
                   TPasMPInterlocked.Write(fProgress,Min(8192+(GridCells*TpvInt64(65535-8192)) div MaxGridCells,TpvInt64(65535)));
                   fComputePushConstants.GridOffsetX:=fComputePushConstants.GridOffsetX+GridCellSizePerIteration;
                  end;
                  fComputePushConstants.GridOffsetY:=fComputePushConstants.GridOffsetY+GridCellSizePerIteration;
                 end;
-                fComputePushConstants.GridOffsetX:=fComputePushConstants.GridOffsetX+GridCellSizePerIteration;
+                fComputePushConstants.GridOffsetZ:=fComputePushConstants.GridOffsetZ+GridCellSizePerIteration;
                end;
               finally
                FreeAndNil(SignedDistanceFieldComputeTransferCommandBufferFence);
