@@ -40,7 +40,32 @@ uses SysUtils,
 
 type TScreenMain=class(TpvApplicationScreen)
       public
-       type TUpdateThread=class(TThread)
+       const GridCellSizePerIteration=16;
+             MaxTrianglesPerIteration=GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration*6*2;
+       type TVolumeTriangleVertex=record
+             Position:TpvVector4;
+             QTantent:TpvQuaternion;
+             Parameters0:TpvVector4;
+             Parameters1:TpvVector4;
+            end;
+            PVolumeTriangleVertex=^TVolumeTriangleVertex;
+            TVolumeTriangle=record
+             Vertices:array[0..3] of TVolumeTriangleVertex;
+            end;
+            PVolumeTriangle=^TVolumeTriangle;
+            TVolumeTrianglesMetaData=record
+             Count:TpvUInt32;
+             MaxCount:TpvUInt32;
+             Reserved0:TpvUInt32;
+             Reserved1:TpvUInt32;
+            end;
+            PVolumeTrianglesMetaData=^TVolumeTrianglesMetaData;
+            TVolumeTriangles=record
+             MetaData:TVolumeTrianglesMetaData;
+             Triangles:array[0..MaxTrianglesPerIteration-1] of TVolumeTriangle;
+            end;
+            PVolumeTriangles=^TVolumeTriangles;
+            TUpdateThread=class(TThread)
              private
               fScreenMain:TScreenMain;
               fSignedDistanceFieldCode:TpvUTF8String;
@@ -132,6 +157,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fVulkanGLSLCPath:TpvUTF8String;
        fVulkanGLSLCFound:boolean;
        fUpdateThread:TUpdateThread;
+       fVolumeTriangles:TVolumeTriangles;
+       fVolumeTriangleBuffer:TpvVulkanBuffer;
        procedure UpdateGUIData;
        procedure MarkAsNotModified;
        procedure MarkAsModified;
@@ -1368,6 +1395,30 @@ begin
 
  fVulkanRenderPass:=nil;
 
+ FillChar(fVolumeTriangles,SizeOf(TVolumeTriangles),#0);
+
+ fVolumeTriangleBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                               SizeOf(TVolumeTriangles),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                               pvApplication.VulkanDevice.QueueFamilyIndices.ItemArray,
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               [TpvVulkanBufferFlag.PersistentMapped]);
+ fVolumeTriangleBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                  fVulkanTransferCommandBuffer,
+                                  fVulkanTransferCommandBufferFence,
+                                  fVolumeTriangles,
+                                  0,
+                                  SizeOf(TVolumeTriangles),
+                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
  fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
                                  pvApplication.VulkanDevice.GraphicsQueue,
                                  fVulkanGraphicsCommandBuffer,
@@ -1695,6 +1746,7 @@ begin
  end;
  FreeAndNil(fGUIInstance);
  FreeAndNil(fVulkanCanvas);
+ FreeAndNil(fVolumeTriangleBuffer);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
