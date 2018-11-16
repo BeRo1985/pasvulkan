@@ -44,6 +44,7 @@ var SecurityAttributes:TSecurityAttributes;
     StartupInfo:Windows.TStartupInfoW;
     ProcessInformation:TProcessInformation;
     ReadableEndOfPipe,WriteableEndOfPipe:THandle;
+    DummyReadableEndOfPipe,DummyWriteableEndOfPipe:THandle;
     Index:Int32;
     CommandLine,CurrentDirectory:WideString;
     Parameter:UnicodeString;
@@ -56,16 +57,14 @@ begin
  SecurityAttributes.bInheritHandle:=true;
  SecurityAttributes.lpSecurityDescriptor:=nil;
  if CreatePipe(ReadableEndOfPipe,WriteableEndOfPipe,@SecurityAttributes,0) then begin
-  GetMem(RawBuffer,SizeOf(TBuffer));
   try
-   GetMem(FinalBuffer,SizeOf(TBufferW));
-   try
+   if CreatePipe(DummyReadableEndOfPipe,DummyWriteableEndOfPipe,@SecurityAttributes,0) then begin
     try
      FillChar(StartupInfo,SizeOf(TStartupInfoW),#0);
      StartupInfo.cb:=SizeOf(TStartupInfoW);
      StartupInfo.dwFlags:=STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
      StartupInfo.wShowWindow:=SW_HIDE;
-     StartupInfo.hStdInput:=ReadableEndOfPipe;
+     StartupInfo.hStdInput:=DummyReadableEndOfPipe;
      StartupInfo.hStdOutput:=WriteableEndOfPipe;
      StartupInfo.hStdError:=WriteableEndOfPipe;
      CommandLine:='';
@@ -95,22 +94,32 @@ begin
                        StartupInfo,
                        ProcessInformation) then begin
       try
-       repeat
-        Running:=WaitForSingleObject(ProcessInformation.hProcess,10);
-        PeekNamedPipe(ReadableEndOfPipe,nil,0,nil,@CountAvailable,nil);
-        if CountAvailable>0 then begin
+       GetMem(RawBuffer,SizeOf(TBuffer));
+       try
+        GetMem(FinalBuffer,SizeOf(TBufferW));
+        try
          repeat
-          CountRead:=0;
-          ReadFile(ReadableEndOfPipe,RawBuffer^[0],BufferSize,CountRead,nil);
-          RawBuffer^[CountRead]:=AnsiChar(#0);
-          FillChar(FinalBuffer^,SizeOf(TBufferW),#0);
-          OemToCharW(@RawBuffer[0],@FinalBuffer[0]);
-          aOutput:=aOutput+WideString(PWideChar(@FinalBuffer[0]));
-         until CountRead<BufferSize;
+          Running:=WaitForSingleObject(ProcessInformation.hProcess,10);
+          PeekNamedPipe(ReadableEndOfPipe,nil,0,nil,@CountAvailable,nil);
+          if CountAvailable>0 then begin
+           repeat
+            CountRead:=0;
+            ReadFile(ReadableEndOfPipe,RawBuffer^[0],BufferSize,CountRead,nil);
+            RawBuffer^[CountRead]:=AnsiChar(#0);
+            FillChar(FinalBuffer^,SizeOf(TBufferW),#0);
+            OemToCharW(@RawBuffer[0],@FinalBuffer[0]);
+            aOutput:=aOutput+UniCodeString(WideString(PWideChar(@FinalBuffer[0])));
+           until CountRead<BufferSize;
+          end;
+         until Running<>WAIT_TIMEOUT;
+         if GetExitCodeProcess(ProcessInformation.hProcess,DWORD(ExitCode)) then begin
+          result:=ExitCode;
+         end;
+        finally
+         FreeMem(FinalBuffer);
         end;
-       until Running<>WAIT_TIMEOUT;
-       if GetExitCodeProcess(ProcessInformation.hProcess,DWORD(ExitCode)) then begin
-        result:=ExitCode;
+       finally
+        FreeMem(RawBuffer);
        end;
       finally
        CloseHandle(ProcessInformation.hProcess);
@@ -118,10 +127,9 @@ begin
       end;
      end;
     finally
-     FreeMem(FinalBuffer);
+     CloseHandle(DummyReadableEndOfPipe);
+     CloseHandle(DummyWriteableEndOfPipe);
     end;
-   finally
-    FreeMem(RawBuffer);
    end;
   finally
    CloseHandle(ReadableEndOfPipe);
