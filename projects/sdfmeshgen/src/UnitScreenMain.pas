@@ -851,11 +851,13 @@ begin
    SignedDistanceFieldComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,
                                                                         fSignedDistanceFieldComputeShaderSPVStream);
    try
+    TPasMPInterlocked.Write(fProgress,4608);
     SignedDistanceFieldComputePipelineShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,
                                                                                        SignedDistanceFieldComputeShaderModule,
                                                                                        'main');
     try
      SignedDistanceFieldComputePipelineShaderStage.Initialize;
+     TPasMPInterlocked.Write(fProgress,5120);
      SignedDistanceFieldComputeDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
      try
       SignedDistanceFieldComputeDescriptorSetLayout.AddBinding(0,
@@ -864,12 +866,14 @@ begin
                                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                                []);
       SignedDistanceFieldComputeDescriptorSetLayout.Initialize;
+      TPasMPInterlocked.Write(fProgress,5632);
       SignedDistanceFieldComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                                1);
       try
        SignedDistanceFieldComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
        SignedDistanceFieldComputeDescriptorPool.Initialize;
+       TPasMPInterlocked.Write(fProgress,6144);
        SignedDistanceFieldComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(SignedDistanceFieldComputeDescriptorPool,
                                                                               SignedDistanceFieldComputeDescriptorSetLayout);
        try
@@ -883,6 +887,7 @@ begin
                                                                      false
                                                                     );
         SignedDistanceFieldComputeDescriptorSet.Flush;
+        TPasMPInterlocked.Write(fProgress,6656);
         SignedDistanceFieldComputePipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
         try
          SignedDistanceFieldComputePipelineLayout.AddDescriptorSetLayout(SignedDistanceFieldComputeDescriptorSetLayout);
@@ -890,6 +895,7 @@ begin
                                                                        0,
                                                                        SizeOf(TComputePushConstants));
          SignedDistanceFieldComputePipelineLayout.Initialize;
+         TPasMPInterlocked.Write(fProgress,7168);
          SignedDistanceFieldComputePipeline:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
                                                                              pvApplication.VulkanPipelineCache,
                                                                              0,
@@ -898,6 +904,7 @@ begin
                                                                              nil,
                                                                              0);
          try
+          TPasMPInterlocked.Write(fProgress,7680);
 
          finally
           FreeAndNil(SignedDistanceFieldComputePipeline);
