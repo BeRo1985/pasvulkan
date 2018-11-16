@@ -59,8 +59,12 @@ type TScreenMain=class(TpvApplicationScreen)
               fWorldMaxZ:TpvDouble;
               fProgress:TPasMPInt32;
               fErrorString:TpvUTF8String;
+              fSignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
+              fMeshVertexShaderSPVStream:TMemoryStream;
+              fMeshFragmentShaderSPVStream:TMemoryStream;
              protected
               constructor Create(const aScreenMain:TScreenMain); reintroduce;
+              destructor Destroy; override;
               procedure Execute; override;
             end;
       private
@@ -235,7 +239,18 @@ begin
  fWorldMaxZ:=fWorldSizeZ*0.5;
  fErrorString:='';
  fProgress:=0;
+ fSignedDistanceFieldComputeShaderSPVStream:=TMemoryStream.Create;
+ fMeshVertexShaderSPVStream:=TMemoryStream.Create;
+ fMeshFragmentShaderSPVStream:=TMemoryStream.Create;
  inherited Create(false);
+end;
+
+destructor TScreenMain.TUpdateThread.Destroy;
+begin
+ FreeAndNil(fSignedDistanceFieldComputeShaderSPVStream);
+ FreeAndNil(fMeshVertexShaderSPVStream);
+ FreeAndNil(fMeshFragmentShaderSPVStream);
+ inherited Destroy;
 end;
 
 procedure TScreenMain.TUpdateThread.Execute;
@@ -683,21 +698,19 @@ procedure TScreenMain.TUpdateThread.Execute;
   end;
  end;
 var SignedDistanceFieldComputeShaderGLSLFile,
-    SignedDistanceFieldComputeShaderSPVFile:string;
-    SignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
+    SignedDistanceFieldComputeShaderSPVFile,
     MeshVertexShaderGLSLFile,
-    MeshVertexShaderSPVFile:string;
-    MeshVertexShaderSPVStream:TMemoryStream;
+    MeshVertexShaderSPVFile,
     MeshFragmentShaderGLSLFile,
     MeshFragmentShaderSPVFile:string;
-    MeshFragmentShaderSPVStream:TMemoryStream;
     OutputString,
     ErrorString:UnicodeString;
+    SignedDistanceFieldComputeShaderModule:TpvVulkanShaderModule;
+    SignedDistanceFieldComputePipelineShaderStage:TpvVulkanPipelineShaderStage;
 begin
  ErrorString:='';
  try
   TPasMPInterlocked.Write(fProgress,0);
-  SignedDistanceFieldComputeShaderSPVStream:=TMemoryStream.Create;
   try
    SignedDistanceFieldComputeShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.glsl');
    SignedDistanceFieldComputeShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.spv');
@@ -714,7 +727,7 @@ begin
                        SignedDistanceFieldComputeShaderGLSLFile],
                       OutputString)=0 then begin
      if FileExists(SignedDistanceFieldComputeShaderSPVFile) then begin
-      SignedDistanceFieldComputeShaderSPVStream.LoadFromFile(SignedDistanceFieldComputeShaderSPVFile);
+      fSignedDistanceFieldComputeShaderSPVStream.LoadFromFile(SignedDistanceFieldComputeShaderSPVFile);
      end;
     end else begin
      ErrorString:=ErrorString+OutputString;
@@ -728,10 +741,8 @@ begin
     end;
    end;
   finally
-   FreeAndNil(SignedDistanceFieldComputeShaderSPVStream);
   end;
   TPasMPInterlocked.Write(fProgress,2048);
-  MeshVertexShaderSPVStream:=TMemoryStream.Create;
   try
    MeshVertexShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_vertex_'+IntToStr(GetTickCount),'.glsl');
    MeshVertexShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_vertex_'+IntToStr(GetTickCount),'.spv');
@@ -748,7 +759,7 @@ begin
                        MeshVertexShaderGLSLFile],
                       OutputString)=0 then begin
      if FileExists(MeshVertexShaderSPVFile) then begin
-      MeshVertexShaderSPVStream.LoadFromFile(MeshVertexShaderSPVFile);
+      fMeshVertexShaderSPVStream.LoadFromFile(MeshVertexShaderSPVFile);
      end;
     end else begin
      ErrorString:=ErrorString+OutputString;
@@ -762,9 +773,7 @@ begin
     end;
    end;
   finally
-   FreeAndNil(MeshVertexShaderSPVStream);
   end;
-  MeshFragmentShaderSPVStream:=TMemoryStream.Create;
   try
    MeshFragmentShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_fragment_'+IntToStr(GetTickCount),'.glsl');
    MeshFragmentShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_fragment_'+IntToStr(GetTickCount),'.spv');
@@ -781,7 +790,7 @@ begin
                        MeshFragmentShaderGLSLFile],
                       OutputString)=0 then begin
      if FileExists(MeshFragmentShaderSPVFile) then begin
-      MeshFragmentShaderSPVStream.LoadFromFile(MeshFragmentShaderSPVFile);
+      fMeshFragmentShaderSPVStream.LoadFromFile(MeshFragmentShaderSPVFile);
      end;
     end else begin
      ErrorString:=ErrorString+OutputString;
@@ -795,9 +804,24 @@ begin
     end;
    end;
   finally
-   FreeAndNil(MeshFragmentShaderSPVStream);
   end;
   TPasMPInterlocked.Write(fProgress,4096);
+  if (length(ErrorString)=0) and (fSignedDistanceFieldComputeShaderSPVStream.Size>0) then begin
+   SignedDistanceFieldComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,
+                                                                        fSignedDistanceFieldComputeShaderSPVStream);
+   try
+    SignedDistanceFieldComputePipelineShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,
+                                                                                       SignedDistanceFieldComputeShaderModule,
+                                                                                       'main');
+    try
+     SignedDistanceFieldComputePipelineShaderStage.Initialize;
+    finally
+     FreeAndNil(SignedDistanceFieldComputePipelineShaderStage);
+    end;
+   finally
+    FreeAndNil(SignedDistanceFieldComputeShaderModule);
+   end;
+  end;
  finally
   try
    fErrorString:=TpvUTF8String(ErrorString);
