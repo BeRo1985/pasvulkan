@@ -256,12 +256,8 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  VolumeTriangleVertex vertices[4];'#13#10+ // 3 plus 1 for alignment padding
           '};'#13#10+
 
-          'layout(std430, set = 0, binding = 0) buffer ssboTriangleGlobals {'#13#10+
-          '  uint volumeTriangleCounter;'#13#10+
-          '  uint volumeMaxTriangleCount;'#13#10+
-          '};'#13#10+
-
-          'layout(std430, set = 0, binding = 1) buffer ssboTriangles {'#13#10+
+          'layout(std430, set = 0, binding = 0) buffer ssboTriangles {'#13#10+
+          '  uvec4 volumeTrianglesMetaData;'#13#10+
           '  VolumeTriangle volumeTriangles[];'#13#10+
           '};'#13#10+
 
@@ -402,8 +398,8 @@ procedure TScreenMain.TUpdateThread.Execute;
           '                 mat2x4 mp0,'#13#10+
           '                 mat2x4 mp1,'#13#10+
           '                 mat2x4 mp2){'#13#10+
-          '  if(volumeTriangleCounter < volumeMaxTriangleCount){'#13#10+
-          '    uint triangleIndex = atomicAdd(volumeTriangleCounter, 1);'#13#10+
+          '  if(volumeTrianglesMetaData.x < volumeTrianglesMetaData.y){'#13#10+
+          '    uint triangleIndex = atomicAdd(volumeTrianglesMetaData.x, 1);'#13#10+
           '    vec3 normal = normalize(cross(normalize(p2 - p0),'#13#10+
           '                                  normalize(p1 - p0)));'#13#10+
           '    VolumeTriangle volumeTriangle;'#13#10+
