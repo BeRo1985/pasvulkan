@@ -689,11 +689,18 @@ procedure TScreenMain.TUpdateThread.Execute;
 var SignedDistanceFieldComputeShaderGLSLFile,
     SignedDistanceFieldComputeShaderSPVFile:string;
     SignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
+    MeshVertexShaderGLSLFile,
+    MeshVertexShaderSPVFile:string;
+    MeshVertexShaderSPVStream:TMemoryStream;
+    MeshFragmentShaderGLSLFile,
+    MeshFragmentShaderSPVFile:string;
+    MeshFragmentShaderSPVStream:TMemoryStream;
     OutputString,
     ErrorString:UnicodeString;
 begin
  ErrorString:='';
  try
+  TPasMPInterlocked.Write(fProgress,0);
   SignedDistanceFieldComputeShaderSPVStream:=TMemoryStream.Create;
   try
    SignedDistanceFieldComputeShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_compute_'+IntToStr(GetTickCount),'.glsl');
@@ -727,6 +734,74 @@ begin
   finally
    FreeAndNil(SignedDistanceFieldComputeShaderSPVStream);
   end;
+  TPasMPInterlocked.Write(fProgress,2048);
+  MeshVertexShaderSPVStream:=TMemoryStream.Create;
+  try
+   MeshVertexShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_vertex_'+IntToStr(GetTickCount),'.glsl');
+   MeshVertexShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_vertex_'+IntToStr(GetTickCount),'.spv');
+   WriteFile(MeshVertexShaderGLSLFile,GetMeshVertexShaderCode);
+   try
+    if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLCPath)),
+                      String(fScreenMain.fVulkanGLSLCPath),
+                      ['--target-env=vulkan1.0',
+                       '-x','glsl',
+                       '-fshader-stage=vert',
+                       '-fentry-point=main',
+                       '-O',
+                       '-o',MeshVertexShaderSPVFile,
+                       MeshVertexShaderGLSLFile],
+                      OutputString)=0 then begin
+     if FileExists(MeshVertexShaderSPVFile) then begin
+      MeshVertexShaderSPVStream.LoadFromFile(MeshVertexShaderSPVFile);
+     end;
+    end else begin
+     ErrorString:=ErrorString+OutputString;
+    end;
+   finally
+    if FileExists(MeshVertexShaderGLSLFile) then begin
+     DeleteFile(MeshVertexShaderGLSLFile);
+    end;
+    if FileExists(MeshVertexShaderSPVFile) then begin
+     DeleteFile(MeshVertexShaderSPVFile);
+    end;
+   end;
+  finally
+   FreeAndNil(MeshVertexShaderSPVStream);
+  end;
+  MeshFragmentShaderSPVStream:=TMemoryStream.Create;
+  try
+   MeshFragmentShaderGLSLFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_fragment_'+IntToStr(GetTickCount),'.glsl');
+   MeshFragmentShaderSPVFile:=IncludeTrailingPathDelimiter(String(fScreenMain.fTemporaryDirectory))+ChangeFileExt('sdfmeshgen_fragment_'+IntToStr(GetTickCount),'.spv');
+   WriteFile(MeshFragmentShaderGLSLFile,GetMeshFragmentShaderCode);
+   try
+    if ExecuteCommand(ExtractFilePath(String(fScreenMain.fVulkanGLSLCPath)),
+                      String(fScreenMain.fVulkanGLSLCPath),
+                      ['--target-env=vulkan1.0',
+                       '-x','glsl',
+                       '-fshader-stage=frag',
+                       '-fentry-point=main',
+                       '-O',
+                       '-o',MeshFragmentShaderSPVFile,
+                       MeshFragmentShaderGLSLFile],
+                      OutputString)=0 then begin
+     if FileExists(MeshFragmentShaderSPVFile) then begin
+      MeshFragmentShaderSPVStream.LoadFromFile(MeshFragmentShaderSPVFile);
+     end;
+    end else begin
+     ErrorString:=ErrorString+OutputString;
+    end;
+   finally
+    if FileExists(MeshFragmentShaderGLSLFile) then begin
+     DeleteFile(MeshFragmentShaderGLSLFile);
+    end;
+    if FileExists(MeshFragmentShaderSPVFile) then begin
+     DeleteFile(MeshFragmentShaderSPVFile);
+    end;
+   end;
+  finally
+   FreeAndNil(MeshFragmentShaderSPVStream);
+  end;
+  TPasMPInterlocked.Write(fProgress,4096);
  finally
   try
    fErrorString:=TpvUTF8String(ErrorString);
