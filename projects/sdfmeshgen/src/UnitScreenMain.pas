@@ -1186,8 +1186,10 @@ begin
    fUpdateThread.WaitFor;
    if length(Trim(String(fUpdateThread.fErrorString)))>0 then begin
     ShowErrorWindow(fUpdateThread.fErrorString);
+   end else begin
+    pvApplication.VulkanDevice.WaitIdle;
+    fMesh:=fUpdateThread.fMesh;
    end;
-   fMesh:=fUpdateThread.fMesh;
    FreeAndNil(fUpdateThread);
    fGUIUpdateButton.Enabled:=true;
    fGUIUpdateProgressBar.Value:=0;
