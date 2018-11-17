@@ -28,6 +28,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
+     PasVulkan.Collections,
      PasVulkan.Application,
      PasVulkan.Sprites,
      PasVulkan.Canvas,
@@ -66,6 +67,13 @@ type TScreenMain=class(TpvApplicationScreen)
              Triangles:array[0..MaxTrianglesPerIteration-1] of TVolumeTriangle;
             end;
             PVolumeTriangles=^TVolumeTriangles;
+            TMeshVertices=TpvDynamicArray<TVolumeTriangleVertex>;
+            TMeshIndices=TpvDynamicArray<TpvUInt32>;
+            TMesh=record
+             Vertices:TMeshVertices;
+             Indices:TMeshIndices;
+            end;
+            PMesh=^TMesh;
             TUpdateThread=class(TThread)
              public
               type TComputePushConstants=record
@@ -100,6 +108,7 @@ type TScreenMain=class(TpvApplicationScreen)
               fLocalSizeX:TpvSizeInt;
               fLocalSizeY:TpvSizeInt;
               fLocalSizeZ:TpvSizeInt;
+              fMesh:TMesh;
               fComputePushConstants:TComputePushConstants;
              protected
               constructor Create(const aScreenMain:TScreenMain); reintroduce;
@@ -315,6 +324,8 @@ begin
  if (fLocalSizeZ>1) and ((GridCellSizePerIteration mod fLocalSizeZ)<>0) then begin
   dec(fLocalSizeZ,GridCellSizePerIteration mod fLocalSizeZ);
  end;
+ fMesh.Vertices.Initialize;
+ fMesh.Indices.Initialize;
  inherited Create(false);
 end;
 
