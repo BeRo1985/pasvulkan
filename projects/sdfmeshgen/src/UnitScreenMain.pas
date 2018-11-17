@@ -40,9 +40,9 @@ uses SysUtils,
 
 type TScreenMain=class(TpvApplicationScreen)
       public
-       const GridCellSizePerIteration=32;
-             ComputeLocalSize=4;
-             MaxTrianglesPerIteration=GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration*6*2;
+       const GridCellSizePerIteration=16;
+             MaxGridCellsPerIteration=GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration;
+             MaxTrianglesPerIteration=MaxGridCellsPerIteration*6*2;
        type TVolumeTriangleVertex=record
              Position:TpvVector4;
              QTantent:TpvQuaternion;
@@ -96,6 +96,10 @@ type TScreenMain=class(TpvApplicationScreen)
               fSignedDistanceFieldComputeShaderSPVStream:TMemoryStream;
               fMeshVertexShaderSPVStream:TMemoryStream;
               fMeshFragmentShaderSPVStream:TMemoryStream;
+              fMaxComputeWorkGroupInvocations:TpvSizeInt;
+              fLocalSizeX:TpvSizeInt;
+              fLocalSizeY:TpvSizeInt;
+              fLocalSizeZ:TpvSizeInt;
               fComputePushConstants:TComputePushConstants;
              protected
               constructor Create(const aScreenMain:TScreenMain); reintroduce;
@@ -258,6 +262,7 @@ begin
 end;
 
 constructor TScreenMain.TUpdateThread.Create(const aScreenMain:TScreenMain);
+var Counter:TpvSizeInt;
 begin
  fScreenMain:=aScreenMain;
  fSignedDistanceFieldCode:=LineNumberizeCode(fScreenMain.fGUISignedDistanceFieldCodeEditor.Text,'Signed distance field');
@@ -279,6 +284,37 @@ begin
  fSignedDistanceFieldComputeShaderSPVStream:=TMemoryStream.Create;
  fMeshVertexShaderSPVStream:=TMemoryStream.Create;
  fMeshFragmentShaderSPVStream:=TMemoryStream.Create;
+ fMaxComputeWorkGroupInvocations:=pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations;
+ fLocalSizeX:=trunc(Power(fMaxComputeWorkGroupInvocations,1.0/3.0));
+ fLocalSizeY:=fLocalSizeX;
+ fLocalSizeZ:=fLocalSizeX;
+ Counter:=0;
+ while ((fLocalSizeX*fLocalSizeY*fLocalSizeZ)>fMaxComputeWorkGroupInvocations) or
+       ((fLocalSizeX*fLocalSizeY*fLocalSizeZ)>MaxGridCellsPerIteration) do begin
+  case Counter of
+   0:begin
+    dec(fLocalSizeX);
+    Counter:=1;
+   end;
+   1:begin
+    dec(fLocalSizeY);
+    Counter:=2;
+   end;
+   2:begin
+    dec(fLocalSizeZ);
+    Counter:=0;
+   end;
+  end;
+ end;
+ if (fLocalSizeX>1) and ((GridCellSizePerIteration mod fLocalSizeX)<>0) then begin
+  dec(fLocalSizeX,GridCellSizePerIteration mod fLocalSizeX);
+ end;
+ if (fLocalSizeY>1) and ((GridCellSizePerIteration mod fLocalSizeY)<>0) then begin
+  dec(fLocalSizeY,GridCellSizePerIteration mod fLocalSizeY);
+ end;
+ if (fLocalSizeZ>1) and ((GridCellSizePerIteration mod fLocalSizeZ)<>0) then begin
+  dec(fLocalSizeZ,GridCellSizePerIteration mod fLocalSizeZ);
+ end;
  inherited Create(false);
 end;
 
@@ -295,7 +331,7 @@ procedure TScreenMain.TUpdateThread.Execute;
  begin
   result:='#version 450 core'#13#10+
 
-          'layout(local_size_x = '+TpvUTF8String(IntToStr(ComputeLocalSize))+', local_size_y = '+TpvUTF8String(IntToStr(ComputeLocalSize))+', local_size_z = '+TpvUTF8String(IntToStr(ComputeLocalSize))+') in;'#13#10+
+          'layout(local_size_x = '+TpvUTF8String(IntToStr(fLocalSizeX))+', local_size_y = '+TpvUTF8String(IntToStr(fLocalSizeY))+', local_size_z = '+TpvUTF8String(IntToStr(fLocalSizeZ))+') in;'#13#10+
 
           'struct VolumeTriangleVertex {'#13#10+ // 16 floats, 64 bytes per vertex
           '  vec4 position;'#13#10+
@@ -963,9 +999,9 @@ begin
                                                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                                            0,SizeOf(TComputePushConstants),
                                                                            @fComputePushConstants);
-                  SignedDistanceFieldComputeCommandBuffer.CmdDispatch(GridCellSizePerIteration div ComputeLocalSize,
-                                                                      GridCellSizePerIteration div ComputeLocalSize,
-                                                                      GridCellSizePerIteration div ComputeLocalSize);
+                  SignedDistanceFieldComputeCommandBuffer.CmdDispatch(GridCellSizePerIteration div fLocalSizeX,
+                                                                      GridCellSizePerIteration div fLocalSizeY,
+                                                                      GridCellSizePerIteration div fLocalSizeZ);
                   SignedDistanceFieldComputeCommandBuffer.EndRecording;
                   SignedDistanceFieldComputeCommandBuffer.Execute(pvApplication.VulkanDevice.ComputeQueue,
                                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
