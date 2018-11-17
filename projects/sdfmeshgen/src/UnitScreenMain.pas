@@ -361,7 +361,7 @@ procedure TScreenMain.TUpdateThread.Execute;
           '};'#13#10+
 
           'layout(push_constant) uniform pushConstants {'#13#10+
-          '  ivec3 baseGridOffset;'#13#10+
+          '  ivec4 baseGridOffset;'#13#10+
           '} uPushConstants;'#13#10+
 
           'const ivec3 gridSize = ivec3('+TpvUTF8String(IntToStr(fGridSizeX))+','+TpvUTF8String(IntToStr(fGridSizeY))+','+TpvUTF8String(IntToStr(fGridSizeZ))+');'#13#10+
@@ -552,160 +552,163 @@ procedure TScreenMain.TUpdateThread.Execute;
           '}'#13#10+
 
           'void main(){'#13#10+
-          '  ivec3 pb = uPushConstants.baseGridOffset + ivec3(gl_GlobalInvocationID.xyz);'#13#10+
-          '  const vec3 s = vec3(gridSize),'#13#10+
-          '             si = vec3(1.0) / s;'#13#10+
-          ' 	const vec2 e = vec2(0.0, normalOffsetFactor);'#13#10+
-          '  vec3 ap[8], an[8], at[8], ab[8];'#13#10+
-          '  float ad[8];'#13#10+
-          '  mat2x4 amp[8];'#13#10+
-          '  for(int i = 0; i < 8; i++){'#13#10+
-          '    vec3 p = mix(worldMin, worldMax, (vec3(pb) + offsets[i]) * si);'#13#10+
-          '    vec3 n = normalize(vec3(getDistance(p + e.yxx) - getDistance(p - e.yxx),'#13#10+
-          '                            getDistance(p + e.xyx) - getDistance(p - e.xyx),'#13#10+
-          '                            getDistance(p + e.xxy) - getDistance(p - e.xxy)));'#13#10+
+          '  ivec3 gridPositionBase = uPushConstants.baseGridOffset.xyz + ivec3(gl_GlobalInvocationID.xyz);'#13#10+
+          '  if(all(greaterThanEqual(gridPositionBase, ivec3(0))) &&'#13#10+
+          '     all(lessThan(gridPositionBase, ivec3(gridSize)))){'#13#10+
+          '    const vec3 s = vec3(gridSize),'#13#10+
+          '               si = vec3(1.0) / s;'#13#10+
+          '    const vec2 e = vec2(0.0, normalOffsetFactor);'#13#10+
+          '    vec3 ap[8], an[8], at[8], ab[8];'#13#10+
+          '    float ad[8];'#13#10+
+          '    mat2x4 amp[8];'#13#10+
+          '    for(int i = 0; i < 8; i++){'#13#10+
+          '      vec3 p = mix(worldMin, worldMax, (vec3(gridPositionBase) + offsets[i]) * si);'#13#10+
+          '      vec3 n = normalize(vec3(getDistance(p + e.yxx) - getDistance(p - e.yxx),'#13#10+
+          '                              getDistance(p + e.xyx) - getDistance(p - e.xyx),'#13#10+
+          '                              getDistance(p + e.xxy) - getDistance(p - e.xxy)));'#13#10+
           '#if 0'#13#10+
-          '    vec3 uu = vec3(n.z, n.y, -n.x),'#13#10+
-          '         vv = vec3(-n.x, n.z, -n.y);'#13#10+
+          '      vec3 uu = vec3(n.z, n.y, -n.x),'#13#10+
+          '           vv = vec3(-n.x, n.z, -n.y);'#13#10+
           '#elif 0'#13#10+
-          '    vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
-          '         t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
-          '         uu = (length(t0) > length(t1)) ? t0: t1,'#13#10+
-          '         vv = cross(uu, n);'#13#10+
-          '         uu = cross(n, vv);'#13#10+
-          '         vv = cross(uu, n);'#13#10+
+          '      vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
+          '           t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
+          '           uu = (length(t0) > length(t1)) ? t0: t1,'#13#10+
+          '           vv = cross(uu, n);'#13#10+
+          '           uu = cross(n, vv);'#13#10+
+          '           vv = cross(uu, n);'#13#10+
           '#elif 0'#13#10+
-          '    float sz = n.z >= 0.0 ? 1.0 : -1.0;'#13#10+
-          '    float a  =  n.y / (1.0 + abs(n.z));'#13#10+
-          '    float b  =  n.y * a;'#13#10+
-          '    float c  = -n.x * a;'#13#10+
-          '    vec3 uu = normalize(vec3(n.z + (sz * b), sz * c, -n.x));'#13#10+
-          '    vec3 vv = normalize(vec3(c, 1.0 - b, -sz * n.y));'#13#10+
+          '      float sz = n.z >= 0.0 ? 1.0 : -1.0;'#13#10+
+          '      float a  =  n.y / (1.0 + abs(n.z));'#13#10+
+          '      float b  =  n.y * a;'#13#10+
+          '      float c  = -n.x * a;'#13#10+
+          '      vec3 uu = normalize(vec3(n.z + (sz * b), sz * c, -n.x));'#13#10+
+          '      vec3 vv = normalize(vec3(c, 1.0 - b, -sz * n.y));'#13#10+
           '#elif 0'#13#10+
-          '    float a =  n.y / (1.0 + n.z);'#13#10+
-          '    float b =  n.y * a;'#13#10+
-          '    float c = -n.x * a;'#13#10+
-          '    vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : normalize(vec3(n.z + b, c, -n.x));'#13#10+
-          '    vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : normalize(vec3(c, 1.0 - b, -n.y));'#13#10+
+          '      float a =  n.y / (1.0 + n.z);'#13#10+
+          '      float b =  n.y * a;'#13#10+
+          '      float c = -n.x * a;'#13#10+
+          '      vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : normalize(vec3(n.z + b, c, -n.x));'#13#10+
+          '      vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : normalize(vec3(c, 1.0 - b, -n.y));'#13#10+
           '#elif 0'#13#10+
-          '    vec3 tc = vec3((1.0 + n.z) - (n.xy * n.xy), -n.x * n.y) / (1.0 + n.z);'#13#10+
-          '    vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : vec3(tc.x, tc.z, -n.x);'#13#10+
-          '    vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : vec3(tc.z, tc.y, -n.y);'#13#10+
+          '      vec3 tc = vec3((1.0 + n.z) - (n.xy * n.xy), -n.x * n.y) / (1.0 + n.z);'#13#10+
+          '      vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : vec3(tc.x, tc.z, -n.x);'#13#10+
+          '      vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : vec3(tc.z, tc.y, -n.y);'#13#10+
           '#else'#13#10+
-          '    vec3 uu = normalize(cross(n, vec3(1.0, 0.0, 0.0)));'#13#10+
-          '		vec3 vv = normalize(cross(uu, n));'#13#10+
-          '		uu = normalize(cross(n, vv));'#13#10+
-          '		vv = normalize(cross(uu, n));'#13#10+
-          '		uu = normalize(cross(n, vv));'#13#10+
-          '		vv = normalize(cross(uu, n));'#13#10+
+          '      vec3 uu = normalize(cross(n, vec3(1.0, 0.0, 0.0)));'#13#10+
+          '      vec3 vv = normalize(cross(uu, n));'#13#10+
+          '      uu = normalize(cross(n, vv));'#13#10+
+          '      vv = normalize(cross(uu, n));'#13#10+
+          '      uu = normalize(cross(n, vv));'#13#10+
+          '      vv = normalize(cross(uu, n));'#13#10+
           '#endif'#13#10+
-          '    ap[i] = p;'#13#10+
-          '    an[i] = n;'#13#10+
-          '    at[i] = vv;'#13#10+
-          '    ab[i] = uu;'#13#10+
-          '    ad[i] = getDistance(p);'#13#10+
-          '    amp[i] = getParameters(p);'#13#10+
-          '  }'#13#10+
-          '  for(int i = 0; i < 6; i++){'#13#10+
-          '    ivec4 t = indices[i];'#13#10+
-          '    vec4 d = vec4(ad[t.x], ad[t.y], ad[t.z], ad[t.w]);'#13#10+
-          '    uvec4 j;'#13#10+
-          '    uint c = tetfaces(d, j);'#13#10+
-          '    if(c == 1u){'#13#10+
-          '      vec3 w0 = vec3(tetlerp(d[j.x], d[j.y]),'#13#10+
-          '                     tetlerp(d[j.x], d[j.z]),'#13#10+
-          '                     tetlerp(d[j.x], d[j.w]));'#13#10+
-          '      addTriangle(mix(ap[t[j.x]], ap[t[j.y]], w0.x),'#13#10+
-          '                  mix(ap[t[j.x]], ap[t[j.z]], w0.y),'#13#10+
-          '                  mix(ap[t[j.x]], ap[t[j.w]], w0.z),'#13#10+
-          '                  mat3('#13#10+
-          '                    normalize(mix(at[t[j.x]], at[t[j.y]], w0.x)),'#13#10+
-          '                    normalize(mix(ab[t[j.x]], ab[t[j.y]], w0.x)),'#13#10+
-          '                    normalize(mix(an[t[j.x]], an[t[j.y]], w0.x))'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    normalize(mix(at[t[j.x]], at[t[j.z]], w0.y)),'#13#10+
-          '                    normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.y)),'#13#10+
-          '                    normalize(mix(an[t[j.x]], an[t[j.z]], w0.y))'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    normalize(mix(at[t[j.x]], at[t[j.w]], w0.z)),'#13#10+
-          '                    normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.z)),'#13#10+
-          '                    normalize(mix(an[t[j.x]], an[t[j.w]], w0.z))'#13#10+
-          '                  ),'#13#10+
-          '                  (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.y]] * w0.x),'#13#10+
-          '                  (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.z]] * w0.y),'#13#10+
-          '                  (amp[t[j.x]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z)'#13#10+
-          '                 );'#13#10+
-          '    }else if(c == 2u){'#13#10+
-          '      vec4 w0 = vec4(tetlerp(d[j.x], d[j.z]),'#13#10+
-          '                     tetlerp(d[j.x], d[j.w]),'#13#10+
-          '                     tetlerp(d[j.y], d[j.w]),'#13#10+
-          '                     tetlerp(d[j.y], d[j.z]));'#13#10+
-          '      vec3 p0 = mix(ap[t[j.x]], ap[t[j.z]], w0.x),'#13#10+
-          '           p1 = mix(ap[t[j.x]], ap[t[j.w]], w0.y),'#13#10+
-          '           p2 = mix(ap[t[j.y]], ap[t[j.w]], w0.z),'#13#10+
-          '           p3 = mix(ap[t[j.y]], ap[t[j.z]], w0.w),'#13#10+
-          '           n0 = normalize(mix(an[t[j.x]], an[t[j.z]], w0.x)),'#13#10+
-          '           n1 = normalize(mix(an[t[j.x]], an[t[j.w]], w0.y)),'#13#10+
-          '           n2 = normalize(mix(an[t[j.y]], an[t[j.w]], w0.z)),'#13#10+
-          '           n3 = normalize(mix(an[t[j.y]], an[t[j.z]], w0.w)),'#13#10+
-          '           t0 = normalize(mix(at[t[j.x]], at[t[j.z]], w0.x)),'#13#10+
-          '           t1 = normalize(mix(at[t[j.x]], at[t[j.w]], w0.y)),'#13#10+
-          '           t2 = normalize(mix(at[t[j.y]], at[t[j.w]], w0.z)),'#13#10+
-          '           t3 = normalize(mix(at[t[j.y]], at[t[j.z]], w0.w)),'#13#10+
-          '           b0 = normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.x)),'#13#10+
-          '           b1 = normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.y)),'#13#10+
-          '           b2 = normalize(mix(ab[t[j.y]], ab[t[j.w]], w0.z)),'#13#10+
-          '           b3 = normalize(mix(ab[t[j.y]], ab[t[j.z]], w0.w));'#13#10+
-          '      mat2x4 mp0 = (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.z]] * w0.x),'#13#10+
-          '             mp1 = (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.w]] * w0.y),'#13#10+
-          '             mp2 = (amp[t[j.y]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z),'#13#10+
-          '             mp3 = (amp[t[j.y]] * (1.0 - w0.w)) + (amp[t[j.z]] * w0.w);'#13#10+
-          '      addTriangle(p0,'#13#10+
-          '                  p1,'#13#10+
-          '                  p2,'#13#10+
-          '                  mat3('#13#10+
-          '                    t0,'#13#10+
-          '                    b0,'#13#10+
-          '                    n0'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    t1,'#13#10+
-          '                    b1,'#13#10+
-          '                    n1'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    t2,'#13#10+
-          '                    b2,'#13#10+
-          '                    n2'#13#10+
-          '                  ),'#13#10+
-          '                  mp0,'#13#10+
-          '                  mp1,'#13#10+
-          '                  mp2'#13#10+
-          '                 );'#13#10+
-          '      addTriangle(p2,'#13#10+
-          '                  p3,'#13#10+
-          '                  p0,'#13#10+
-          '                  mat3('#13#10+
-          '                    t2,'#13#10+
-          '                    b2,'#13#10+
-          '                    n2'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    t3,'#13#10+
-          '                    b3,'#13#10+
-          '                    n3'#13#10+
-          '                  ),'#13#10+
-          '                  mat3('#13#10+
-          '                    t0,'#13#10+
-          '                    b0,'#13#10+
-          '                    n0'#13#10+
-          '                  ),'#13#10+
-          '                  mp2,'#13#10+
-          '                  mp3,'#13#10+
-          '                  mp0'#13#10+
-          '                 );'#13#10+
+          '      ap[i] = p;'#13#10+
+          '      an[i] = n;'#13#10+
+          '      at[i] = vv;'#13#10+
+          '      ab[i] = uu;'#13#10+
+          '      ad[i] = getDistance(p);'#13#10+
+          '      amp[i] = getParameters(p);'#13#10+
+          '    }'#13#10+
+          '    for(int i = 0; i < 6; i++){'#13#10+
+          '      ivec4 t = indices[i];'#13#10+
+          '      vec4 d = vec4(ad[t.x], ad[t.y], ad[t.z], ad[t.w]);'#13#10+
+          '      uvec4 j;'#13#10+
+          '      uint c = tetfaces(d, j);'#13#10+
+          '      if(c == 1u){'#13#10+
+          '        vec3 w0 = vec3(tetlerp(d[j.x], d[j.y]),'#13#10+
+          '                       tetlerp(d[j.x], d[j.z]),'#13#10+
+          '                       tetlerp(d[j.x], d[j.w]));'#13#10+
+          '        addTriangle(mix(ap[t[j.x]], ap[t[j.y]], w0.x),'#13#10+
+          '                    mix(ap[t[j.x]], ap[t[j.z]], w0.y),'#13#10+
+          '                    mix(ap[t[j.x]], ap[t[j.w]], w0.z),'#13#10+
+          '                    mat3('#13#10+
+          '                      normalize(mix(at[t[j.x]], at[t[j.y]], w0.x)),'#13#10+
+          '                      normalize(mix(ab[t[j.x]], ab[t[j.y]], w0.x)),'#13#10+
+          '                      normalize(mix(an[t[j.x]], an[t[j.y]], w0.x))'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      normalize(mix(at[t[j.x]], at[t[j.z]], w0.y)),'#13#10+
+          '                      normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.y)),'#13#10+
+          '                      normalize(mix(an[t[j.x]], an[t[j.z]], w0.y))'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      normalize(mix(at[t[j.x]], at[t[j.w]], w0.z)),'#13#10+
+          '                      normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.z)),'#13#10+
+          '                      normalize(mix(an[t[j.x]], an[t[j.w]], w0.z))'#13#10+
+          '                    ),'#13#10+
+          '                    (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.y]] * w0.x),'#13#10+
+          '                    (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.z]] * w0.y),'#13#10+
+          '                    (amp[t[j.x]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z)'#13#10+
+          '                   );'#13#10+
+          '      }else if(c == 2u){'#13#10+
+          '        vec4 w0 = vec4(tetlerp(d[j.x], d[j.z]),'#13#10+
+          '                       tetlerp(d[j.x], d[j.w]),'#13#10+
+          '                       tetlerp(d[j.y], d[j.w]),'#13#10+
+          '                       tetlerp(d[j.y], d[j.z]));'#13#10+
+          '        vec3 p0 = mix(ap[t[j.x]], ap[t[j.z]], w0.x),'#13#10+
+          '             p1 = mix(ap[t[j.x]], ap[t[j.w]], w0.y),'#13#10+
+          '             p2 = mix(ap[t[j.y]], ap[t[j.w]], w0.z),'#13#10+
+          '             p3 = mix(ap[t[j.y]], ap[t[j.z]], w0.w),'#13#10+
+          '             n0 = normalize(mix(an[t[j.x]], an[t[j.z]], w0.x)),'#13#10+
+          '             n1 = normalize(mix(an[t[j.x]], an[t[j.w]], w0.y)),'#13#10+
+          '             n2 = normalize(mix(an[t[j.y]], an[t[j.w]], w0.z)),'#13#10+
+          '             n3 = normalize(mix(an[t[j.y]], an[t[j.z]], w0.w)),'#13#10+
+          '             t0 = normalize(mix(at[t[j.x]], at[t[j.z]], w0.x)),'#13#10+
+          '             t1 = normalize(mix(at[t[j.x]], at[t[j.w]], w0.y)),'#13#10+
+          '             t2 = normalize(mix(at[t[j.y]], at[t[j.w]], w0.z)),'#13#10+
+          '             t3 = normalize(mix(at[t[j.y]], at[t[j.z]], w0.w)),'#13#10+
+          '             b0 = normalize(mix(ab[t[j.x]], ab[t[j.z]], w0.x)),'#13#10+
+          '             b1 = normalize(mix(ab[t[j.x]], ab[t[j.w]], w0.y)),'#13#10+
+          '             b2 = normalize(mix(ab[t[j.y]], ab[t[j.w]], w0.z)),'#13#10+
+          '             b3 = normalize(mix(ab[t[j.y]], ab[t[j.z]], w0.w));'#13#10+
+          '        mat2x4 mp0 = (amp[t[j.x]] * (1.0 - w0.x)) + (amp[t[j.z]] * w0.x),'#13#10+
+          '               mp1 = (amp[t[j.x]] * (1.0 - w0.y)) + (amp[t[j.w]] * w0.y),'#13#10+
+          '               mp2 = (amp[t[j.y]] * (1.0 - w0.z)) + (amp[t[j.w]] * w0.z),'#13#10+
+          '               mp3 = (amp[t[j.y]] * (1.0 - w0.w)) + (amp[t[j.z]] * w0.w);'#13#10+
+          '        addTriangle(p0,'#13#10+
+          '                    p1,'#13#10+
+          '                    p2,'#13#10+
+          '                    mat3('#13#10+
+          '                      t0,'#13#10+
+          '                      b0,'#13#10+
+          '                      n0'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      t1,'#13#10+
+          '                      b1,'#13#10+
+          '                      n1'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      t2,'#13#10+
+          '                      b2,'#13#10+
+          '                      n2'#13#10+
+          '                    ),'#13#10+
+          '                    mp0,'#13#10+
+          '                    mp1,'#13#10+
+          '                    mp2'#13#10+
+          '                   );'#13#10+
+          '        addTriangle(p2,'#13#10+
+          '                    p3,'#13#10+
+          '                    p0,'#13#10+
+          '                    mat3('#13#10+
+          '                      t2,'#13#10+
+          '                      b2,'#13#10+
+          '                      n2'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      t3,'#13#10+
+          '                      b3,'#13#10+
+          '                      n3'#13#10+
+          '                    ),'#13#10+
+          '                    mat3('#13#10+
+          '                      t0,'#13#10+
+          '                      b0,'#13#10+
+          '                      n0'#13#10+
+          '                    ),'#13#10+
+          '                    mp2,'#13#10+
+          '                    mp3,'#13#10+
+          '                    mp0'#13#10+
+          '                   );'#13#10+
+          '      }'#13#10+
           '    }'#13#10+
           '  }'#13#10+
 
@@ -1017,7 +1020,8 @@ begin
                                                                                  nil);
                    SignedDistanceFieldComputeCommandBuffer.CmdPushConstants(SignedDistanceFieldComputePipelineLayout.Handle,
                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                                            0,SizeOf(TComputePushConstants),
+                                                                            0,
+                                                                            SizeOf(TComputePushConstants),
                                                                             @fComputePushConstants);
                    SignedDistanceFieldComputeCommandBuffer.CmdDispatch(GridCellSizePerIteration div fLocalSizeX,
                                                                        GridCellSizePerIteration div fLocalSizeY,
@@ -1049,6 +1053,7 @@ begin
                     Triangle:=@fScreenMain.fVolumeTriangles.Triangles[TriangleIndex];
                     for TriangleVertexIndex:=0 to 2 do begin
                      Vertex:=@Triangle^.Vertices[TriangleVertexIndex];
+                     Vertex^.Position.w:=0.0;
                      if not VertexIndexHashMap.TryGet(Vertex^,VertexIndex) then begin
                       VertexIndex:=fMesh.Vertices.Add(Vertex^);
                       VertexIndexHashMap.Add(Vertex^,VertexIndex);
