@@ -157,9 +157,14 @@ type TScreenMain=class(TpvApplicationScreen)
               fBoxAlbedoTexture:TpvVulkanTexture;
               fState:TState;
               fStates:TStates;
+              fRadius:TpvFloat;
               fMesh:TMesh;
              public
-              constructor Create(const aParent:TpvGUIObject;const aMesh:TMesh;const aVertexShaderStream,aFragmentShaderStream:TStream); reintroduce;
+              constructor Create(const aParent:TpvGUIObject;
+                                 const aMesh:TMesh;
+                                 const aVertexShaderStream:TStream;
+                                 const aFragmentShaderStream:TStream;
+                                 const aRadius:TpvFloat); reintroduce;
               destructor Destroy; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
@@ -511,7 +516,7 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  }'#13#10+
           '  r = normalize(r);'#13#10+
           '  const float threshold = 1e-5;'#13#10+
-          '  if(r.w <= threshold){'#13#10+
+          '  if(abs(r.w) <= threshold){'#13#10+
           '    r = vec4(r.xyz * sqrt(1.0 - (threshold * threshold)), (r.w > 0.0) ? threshold : -threshold);'#13#10+
           '  }'#13#10+
           '  if(((f < 0.0) && (r.w >= 0.0)) || ((f >= 0.0) && (r.w < 0.0))){'#13#10+
@@ -556,16 +561,16 @@ procedure TScreenMain.TUpdateThread.Execute;
           '}'#13#10+
 
           'void getTangentSpaceBasisFromNormal(vec3 n, out vec3 t, out vec3 b){'#13#10+
-          '#if 1'#13#10+
-          '  vec3 c = vec3(1.0, n.y, -n.x) * (n.y / (1.0 + abs(n.z))),'#13#10+
-          '       d = vec3(n.y, c.yz) * ((n.z >= 0.0) ? 1.0 : -1.0);'#13#10+
-          '  t = vec3(vec2(n.z, 0.0) + d.yz, -n.x);'#13#10+
-          '  b = vec3(c.z, 1.0 - c.y, -d.x);'#13#10+
-          '#else'#13#10+
           '  float s = (n.z >= 0.0) ? 1.0 : -1.0, c = n.y / (1.0 + abs(n.z)), d = n.y * c, e = -n.x * c;'#13#10+
-          '  t = vec3(n.z + (s * d), (s * e), -n.x);'#13#10+
-          '  b = vec3(e, 1.0 - d, -s * n.y);'#13#10+
-          '#endif'#13#10+
+          '  t = normalize(vec3(n.z + (s * d), (s * e), -n.x));'#13#10+
+          '  b = normalize(vec3(e, 1.0 - d, -s * n.y));'#13#10+
+{         '  b = normalize(cross(n, t));'#13#10+
+          '  t = normalize(cross(b, n));'#13#10+}
+(*        '  b = vec3(n.z, n.y, -n.x);'#13#10+
+          '  t = vec3(-n.x, n.z, -n.y);'#13#10+*)
+(*        '  vec3 tc = vec3((1.0 + n.z) - (n.xy * n.xy), -n.x * n.y) / (1.0 + n.z);'#13#10+
+          '  t = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : vec3(tc.x, tc.z, -n.x);'#13#10+
+          '  b = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : vec3(tc.z, tc.y, -n.y);'#13#10+*)
           '}'#13#10+
 
           'void main(){'#13#10+
@@ -1112,11 +1117,17 @@ end;
 
 { TScreenMain.TMeshVulkanCanvas }
 
-constructor TScreenMain.TMeshVulkanCanvas.Create(const aParent:TpvGUIObject;const aMesh:TMesh;const aVertexShaderStream,aFragmentShaderStream:TStream);
+constructor TScreenMain.TMeshVulkanCanvas.Create(const aParent:TpvGUIObject;
+                                                 const aMesh:TMesh;
+                                                 const aVertexShaderStream:TStream;
+                                                 const aFragmentShaderStream:TStream;
+                                                 const aRadius:TpvFloat);
 var Index:TpvInt32;
 begin
 
  inherited Create(aParent);
+
+ fRadius:=aRadius;
 
  fMesh:=aMesh;
 
@@ -1351,8 +1362,8 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
- fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
- fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+ fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+ fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
@@ -1447,8 +1458,9 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
                TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
-  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,aDrawRect.Width/aDrawRect.Height,1.0,128.0);
+  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-(fRadius*1.0));
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(45.0,aDrawRect.Width/aDrawRect.Height,1.0,(fRadius*10.0))*
+                    TpvMatrix4x4.FlipYClipSpace;
 
   fUniformBuffer.ModelViewMatrix:=ModelMatrix*ViewMatrix;
   fUniformBuffer.ModelViewProjectionMatrix:=fUniformBuffer.ModelViewMatrix*ProjectionMatrix;
@@ -1635,7 +1647,9 @@ begin
     fGUIVulkanCanvas:=TScreenMain.TMeshVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel,
                                                            fUpdateThread.fMesh,
                                                            fUpdateThread.fMeshVertexShaderSPVStream,
-                                                           fUpdateThread.fMeshFragmentShaderSPVStream);
+                                                           fUpdateThread.fMeshFragmentShaderSPVStream,
+                                                           sqrt(sqr(fUpdateThread.fWorldSizeX)+sqr(fUpdateThread.fWorldSizeY)+sqr(fUpdateThread.fWorldSizeZ))
+                                                          );
     fGUIVulkanCanvas.AfterCreateSwapChain;
     fGUIRootSplitterPanel1.LeftTopPanel.PerformLayout;
     fMesh:=fUpdateThread.fMesh;
