@@ -120,6 +120,7 @@ type TScreenMain=class(TpvApplicationScreen)
               type TUniformBuffer=record
                     ModelViewMatrix:TpvMatrix4x4;
                     ModelViewProjectionMatrix:TpvMatrix4x4;
+                    ModelViewNormalMatrix:TpvMatrix4x4;
                    end;
                    PUniformBuffer=^TUniformBuffer;
                    TState=record
@@ -705,10 +706,15 @@ procedure TScreenMain.TUpdateThread.Execute;
           'layout(location = 1) out vec3 outViewSpacePosition;'#13#10+
           'layout(location = 2) out mat3 outTangentSpace;'#13#10+
           'layout(location = 5) out mat2x4 outParameters;'#13#10+
-          'layout(push_constant) uniform pushConstants {'#13#10+
+          'layout(binding = 0) uniform UBO {'#13#10+
+          '	mat4 modelViewMatrix;'#13#10+
+          '	mat4 modelViewProjectionMatrix;'#13#10+
+          '	mat4 modelViewNormalMatrix;'#13#10+
+          '} ubo;'#13#10+
+(*        'layout(push_constant) uniform pushConstants {'#13#10+
           '  mat4 modelViewMatrix;'#13#10+
           '  mat4 modelViewProjectionMatrix;'#13#10+
-          '} uPushConstants;'#13#10+
+          '} uPushConstants;'#13#10+*)
           'mat3 qTangentToMatrix(vec4 q){'#13#10+
           '  q = normalize(q);'#13#10+
           '  float qx2 = q.x + q.x,'#13#10+
@@ -730,10 +736,10 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  return m;'#13#10+
           '}'#13#10+
           'void main(){'#13#10+
-          '  outTangentSpace = qTangentToMatrix(inQTangent);'#13#10+
+          '  outTangentSpace = mat3(ubo.modelViewNormalMatrix) * qTangentToMatrix(inQTangent);'#13#10+
           '  outParameters = mat2x4(inParameters0, inParameters1);'#13#10+
-          '  outViewSpacePosition = (uPushConstants.modelViewMatrix * vec4(inPosition, 1.0)).xyz;'#13#10+
-          '  gl_Position = uPushConstants.modelViewProjectionMatrix * vec4(inPosition, 1.0);'#13#10+
+          '  outViewSpacePosition = (ubo.modelViewMatrix * vec4(inPosition, 1.0)).xyz;'#13#10+
+          '  gl_Position = ubo.modelViewProjectionMatrix * vec4(inPosition, 1.0);'#13#10+
           '}'#13#10;
  end;
  function GetMeshFragmentShaderCode:TpvUTF8String;
@@ -1446,7 +1452,7 @@ begin
 
   fUniformBuffer.ModelViewMatrix:=ModelMatrix*ViewMatrix;
   fUniformBuffer.ModelViewProjectionMatrix:=fUniformBuffer.ModelViewMatrix*ProjectionMatrix;
-//fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create(fUniformBuffer.ModelViewMatrix.ToMatrix3x3.Inverse.Transpose);
+  fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create(fUniformBuffer.ModelViewMatrix.ToMatrix3x3.Inverse.Transpose);
 
   p:=fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TUniformBuffer));
   if assigned(p) then begin
