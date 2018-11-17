@@ -44,15 +44,15 @@ type TScreenMain=class(TpvApplicationScreen)
        const GridCellSizePerIteration=16;
              MaxGridCellsPerIteration=GridCellSizePerIteration*GridCellSizePerIteration*GridCellSizePerIteration;
              MaxTrianglesPerIteration=MaxGridCellsPerIteration*6*2;
-       type TVolumeTriangleVertex=record
+       type TVertex=record
              Position:TpvVector4;
              QTantent:TpvQuaternion;
              Parameters0:TpvVector4;
              Parameters1:TpvVector4;
             end;
-            PVolumeTriangleVertex=^TVolumeTriangleVertex;
+            PVertex=^TVertex;
             TVolumeTriangle=record
-             Vertices:array[0..3] of TVolumeTriangleVertex;
+             Vertices:array[0..3] of TVertex;
             end;
             PVolumeTriangle=^TVolumeTriangle;
             TVolumeTrianglesMetaData=record
@@ -67,7 +67,7 @@ type TScreenMain=class(TpvApplicationScreen)
              Triangles:array[0..MaxTrianglesPerIteration-1] of TVolumeTriangle;
             end;
             PVolumeTriangles=^TVolumeTriangles;
-            TMeshVertices=TpvDynamicArray<TVolumeTriangleVertex>;
+            TMeshVertices=TpvDynamicArray<TVertex>;
             TMeshIndices=TpvDynamicArray<TpvUInt32>;
             TMesh=record
              Vertices:TMeshVertices;
@@ -781,7 +781,10 @@ procedure TScreenMain.TUpdateThread.Execute;
    FreeAndNil(FileStream);
   end;
  end;
-var SignedDistanceFieldComputeShaderGLSLFile,
+type TVertexIndexHashMap=TpvHashMap<TVertex,TpvUInt32>;
+var TriangleIndex,TriangleVertexIndex:TpvSizeInt;
+    MaxGridCells,GridCells:TpvInt64;
+    SignedDistanceFieldComputeShaderGLSLFile,
     SignedDistanceFieldComputeShaderSPVFile,
     MeshVertexShaderGLSLFile,
     MeshVertexShaderSPVFile,
@@ -801,7 +804,10 @@ var SignedDistanceFieldComputeShaderGLSLFile,
     SignedDistanceFieldComputeTransferCommandPool:TpvVulkanCommandPool;
     SignedDistanceFieldComputeTransferCommandBuffer:TpvVulkanCommandBuffer;
     SignedDistanceFieldComputeTransferCommandBufferFence:TpvVulkanFence;
-    MaxGridCells,GridCells:TpvInt64;
+    VertexIndexHashMap:TVertexIndexHashMap;
+    VertexIndex:TpvUInt32;
+    Triangle:PVolumeTriangle;
+    Vertex:PVertex;
 begin
  ErrorString:='';
  try
@@ -979,74 +985,93 @@ begin
               TPasMPInterlocked.Write(fProgress,8000);
               SignedDistanceFieldComputeTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
               try
-               TPasMPInterlocked.Write(fProgress,8192);
-               MaxGridCells:=fGridSizeX*fGridSizeY*fGridSizeZ;
-               fComputePushConstants.GridOffsetZ:=0;
-               while fComputePushConstants.GridOffsetZ<fGridSizeZ do begin
-                fComputePushConstants.GridOffsetY:=0;
-                while fComputePushConstants.GridOffsetY<fGridSizeY do begin
-                 fComputePushConstants.GridOffsetX:=0;
-                 while fComputePushConstants.GridOffsetX<fGridSizeX do begin
-                  fScreenMain.fVolumeTriangles.MetaData.Count:=0;
-                  fScreenMain.fVolumeTriangles.MetaData.MaxCount:=MaxTrianglesPerIteration;
-                  fScreenMain.fVolumeTriangleBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                                               SignedDistanceFieldComputeTransferCommandBuffer,
-                                                               SignedDistanceFieldComputeTransferCommandBufferFence,
-                                                               fScreenMain.fVolumeTriangles.MetaData,
-                                                               0,
-                                                               SizeOf(TVolumeTrianglesMetaData),
-                                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-                  SignedDistanceFieldComputeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),nil);
-                  SignedDistanceFieldComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                                          SignedDistanceFieldComputePipeline.Handle);
-                  SignedDistanceFieldComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                                                SignedDistanceFieldComputePipelineLayout.Handle,
-                                                                                0,
-                                                                                1,
-                                                                                @SignedDistanceFieldComputeDescriptorSet.Handle,
-                                                                                0,
-                                                                                nil);
-                  SignedDistanceFieldComputeCommandBuffer.CmdPushConstants(SignedDistanceFieldComputePipelineLayout.Handle,
-                                                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                                           0,SizeOf(TComputePushConstants),
-                                                                           @fComputePushConstants);
-                  SignedDistanceFieldComputeCommandBuffer.CmdDispatch(GridCellSizePerIteration div fLocalSizeX,
-                                                                      GridCellSizePerIteration div fLocalSizeY,
-                                                                      GridCellSizePerIteration div fLocalSizeZ);
-                  SignedDistanceFieldComputeCommandBuffer.EndRecording;
-                  SignedDistanceFieldComputeCommandBuffer.Execute(pvApplication.VulkanDevice.ComputeQueue,
-                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
-                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                                  nil,
-                                                                  nil,
+               TPasMPInterlocked.Write(fProgress,8064);
+               VertexIndexHashMap:=TVertexIndexHashMap.Create(0);
+               try
+                TPasMPInterlocked.Write(fProgress,8192);
+                MaxGridCells:=fGridSizeX*fGridSizeY*fGridSizeZ;
+                fComputePushConstants.GridOffsetZ:=0;
+                while fComputePushConstants.GridOffsetZ<fGridSizeZ do begin
+                 fComputePushConstants.GridOffsetY:=0;
+                 while fComputePushConstants.GridOffsetY<fGridSizeY do begin
+                  fComputePushConstants.GridOffsetX:=0;
+                  while fComputePushConstants.GridOffsetX<fGridSizeX do begin
+                   fScreenMain.fVolumeTriangles.MetaData.Count:=0;
+                   fScreenMain.fVolumeTriangles.MetaData.MaxCount:=MaxTrianglesPerIteration;
+                   fScreenMain.fVolumeTriangleBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                                                SignedDistanceFieldComputeTransferCommandBuffer,
+                                                                SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                                fScreenMain.fVolumeTriangles.MetaData,
+                                                                0,
+                                                                SizeOf(TVolumeTrianglesMetaData),
+                                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                   SignedDistanceFieldComputeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),nil);
+                   SignedDistanceFieldComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                                           SignedDistanceFieldComputePipeline.Handle);
+                   SignedDistanceFieldComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                                                 SignedDistanceFieldComputePipelineLayout.Handle,
+                                                                                 0,
+                                                                                 1,
+                                                                                 @SignedDistanceFieldComputeDescriptorSet.Handle,
+                                                                                 0,
+                                                                                 nil);
+                   SignedDistanceFieldComputeCommandBuffer.CmdPushConstants(SignedDistanceFieldComputePipelineLayout.Handle,
+                                                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                                            0,SizeOf(TComputePushConstants),
+                                                                            @fComputePushConstants);
+                   SignedDistanceFieldComputeCommandBuffer.CmdDispatch(GridCellSizePerIteration div fLocalSizeX,
+                                                                       GridCellSizePerIteration div fLocalSizeY,
+                                                                       GridCellSizePerIteration div fLocalSizeZ);
+                   SignedDistanceFieldComputeCommandBuffer.EndRecording;
+                   SignedDistanceFieldComputeCommandBuffer.Execute(pvApplication.VulkanDevice.ComputeQueue,
+                                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                                   nil,
+                                                                   nil,
+                                                                   SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                                   true);
+                   fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
+                                                                  SignedDistanceFieldComputeTransferCommandBuffer,
                                                                   SignedDistanceFieldComputeTransferCommandBufferFence,
-                                                                  true);
-                  fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
-                                                                 SignedDistanceFieldComputeTransferCommandBuffer,
-                                                                 SignedDistanceFieldComputeTransferCommandBufferFence,
-                                                                 fScreenMain.fVolumeTriangles.MetaData,
-                                                                 0,
-                                                                 SizeOf(TVolumeTrianglesMetaData),
-                                                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-//                writeln(fScreenMain.fVolumeTriangles.MetaData.Count);
-                  fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
-                                                                 SignedDistanceFieldComputeTransferCommandBuffer,
-                                                                 SignedDistanceFieldComputeTransferCommandBufferFence,
-                                                                 fScreenMain.fVolumeTriangles,
-                                                                 0,
-                                                                 SizeOf(TVolumeTrianglesMetaData)+(TpvSizeInt(fScreenMain.fVolumeTriangles.MetaData.Count)*SizeOf(TVolumeTriangle)),
-                                                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-                  GridCells:=Min(MaxGridCells,
-                                 GridCells+(GridCellSizePerIteration*
-                                            GridCellSizePerIteration*
-                                            GridCellSizePerIteration));
-                  TPasMPInterlocked.Write(fProgress,Min(8192+(GridCells*TpvInt64(65535-8192)) div MaxGridCells,TpvInt64(65535)));
-                  fComputePushConstants.GridOffsetX:=fComputePushConstants.GridOffsetX+GridCellSizePerIteration;
+                                                                  fScreenMain.fVolumeTriangles.MetaData,
+                                                                  0,
+                                                                  SizeOf(TVolumeTrianglesMetaData),
+                                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+ //                writeln(fScreenMain.fVolumeTriangles.MetaData.Count);
+                   fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
+                                                                  SignedDistanceFieldComputeTransferCommandBuffer,
+                                                                  SignedDistanceFieldComputeTransferCommandBufferFence,
+                                                                  fScreenMain.fVolumeTriangles,
+                                                                  0,
+                                                                  SizeOf(TVolumeTrianglesMetaData)+(TpvSizeInt(fScreenMain.fVolumeTriangles.MetaData.Count)*SizeOf(TVolumeTriangle)),
+                                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                   for TriangleIndex:=0 to TpvSizeInt(fScreenMain.fVolumeTriangles.MetaData.Count)-1 do begin
+                    Triangle:=@fScreenMain.fVolumeTriangles.Triangles[TriangleIndex];
+                    for TriangleVertexIndex:=0 to 2 do begin
+                     Vertex:=@Triangle^.Vertices[TriangleVertexIndex];
+                     if not VertexIndexHashMap.TryGet(Vertex^,VertexIndex) then begin
+                      VertexIndex:=fMesh.Vertices.Add(Vertex^);
+                      VertexIndexHashMap.Add(Vertex^,VertexIndex);
+                     end;
+                     fMesh.Indices.Add(VertexIndex);
+                    end;
+                   end;
+                   GridCells:=Min(MaxGridCells,
+                                  GridCells+(GridCellSizePerIteration*
+                                             GridCellSizePerIteration*
+                                             GridCellSizePerIteration));
+                   TPasMPInterlocked.Write(fProgress,Min(8192+(GridCells*TpvInt64(65535-8192)) div MaxGridCells,TpvInt64(65535)));
+                   fComputePushConstants.GridOffsetX:=fComputePushConstants.GridOffsetX+GridCellSizePerIteration;
+                  end;
+                  fComputePushConstants.GridOffsetY:=fComputePushConstants.GridOffsetY+GridCellSizePerIteration;
                  end;
-                 fComputePushConstants.GridOffsetY:=fComputePushConstants.GridOffsetY+GridCellSizePerIteration;
+                 fComputePushConstants.GridOffsetZ:=fComputePushConstants.GridOffsetZ+GridCellSizePerIteration;
                 end;
-                fComputePushConstants.GridOffsetZ:=fComputePushConstants.GridOffsetZ+GridCellSizePerIteration;
+               finally
+                FreeAndNil(VertexIndexHashMap);
                end;
+               fMesh.Vertices.Finish;
+               fMesh.Indices.Finish;
               finally
                FreeAndNil(SignedDistanceFieldComputeTransferCommandBufferFence);
               end;
