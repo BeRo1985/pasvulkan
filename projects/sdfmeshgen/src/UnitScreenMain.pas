@@ -1992,14 +1992,181 @@ begin
 end;
 
 procedure TScreenMain.ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
-var GLTFDocument:TPasGLTF.TDocument;
+var Index:TpvSizeInt;
+    GLTFDocument:TPasGLTF.TDocument;
     FileStream:TFileStream;
+    Buffer:TPasGLTF.TBuffer;
+    BufferView:TPasGLTF.TBufferView;
+    Accessor:TPasGLTF.TAccessor;
+    Vertex:PVertex;
+    Matrix:TpvMatrix3x3;
+    Vector:TpvVector4;
 begin
  if aOK then begin
   GLTFDocument:=TPasGLTF.TDocument.Create;
   try
    GLTFDocument.Asset.Generator:='sdfmeshgen';
    GLTFDocument.Asset.Version:='2.0';
+   begin
+    Buffer:=TPasGLTF.TBuffer.Create(GLTFDocument);
+    GLTFDocument.Buffers.Add(Buffer);
+    if fMesh.Indices.Count>0 then begin
+     Buffer.Data.WriteBuffer(fMesh.Indices.Items[0],SizeOf(TpvUInt32)*fMesh.Indices.Count);
+    end;
+    for Index:=0 to fMesh.Vertices.Count-1 do begin
+     Vertex:=@fMesh.Vertices.Items[Index];
+     Buffer.Data.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
+     Matrix:=TpvMatrix3x3.CreateFromQTangent(Vertex^.QTantent);
+     Vector:=TpvVector4.InlineableCreate(Matrix.Tangent,0.0);
+     Buffer.Data.WriteBuffer(Vector,SizeOf(TpvVector3));
+     Vector:=TpvVector4.InlineableCreate(Matrix.Bitangent,0.0);
+     Buffer.Data.WriteBuffer(Vector,SizeOf(TpvVector3));
+     Vector:=TpvVector4.InlineableCreate(Matrix.Normal,0.0);
+     Buffer.Data.WriteBuffer(Vector,SizeOf(TpvVector3));
+     Buffer.Data.WriteBuffer(Vertex^.Parameters0,SizeOf(TpvVector4));
+     Buffer.Data.WriteBuffer(Vertex^.Parameters1,SizeOf(TpvVector4));
+    end;
+    Buffer.ByteLength:=Buffer.Data.Size;
+   end;
+   begin
+    // Index
+    BufferView:=TPasGLTF.TBufferView.Create(GLTFDocument);
+    GLTFDocument.BufferViews.Add(BufferView);
+    BufferView.Name:='Indices';
+    BufferView.Buffer:=0;
+    BufferView.ByteOffset:=0;
+    BufferView.ByteLength:=SizeOf(TpvUInt32)*fMesh.Indices.Count;
+    BufferView.ByteStride:=SizeOf(TpvUInt32);
+    BufferView.Target:=TPasGLTF.TBufferView.TTargetType.ElementArrayBuffer;
+   end;
+   begin
+    // Vertices
+    BufferView:=TPasGLTF.TBufferView.Create(GLTFDocument);
+    GLTFDocument.BufferViews.Add(BufferView);
+    BufferView.Name:='Vertices';
+    BufferView.Buffer:=0;
+    BufferView.ByteOffset:=SizeOf(TpvUInt32)*fMesh.Indices.Count;
+    BufferView.ByteLength:=((SizeOf(TpvVector3)*4)+(SizeOf(TpvVector4)*2))*fMesh.Vertices.Count;
+    BufferView.ByteStride:=(SizeOf(TpvVector3)*4)+(SizeOf(TpvVector4)*2);
+    BufferView.Target:=TPasGLTF.TBufferView.TTargetType.ArrayBuffer;
+   end;
+   begin
+    // Index
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.UnsignedInt;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Scalar;
+    Accessor.BufferView:=0;
+    Accessor.ByteOffset:=0;
+    Accessor.Count:=fMesh.Indices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Position
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec3;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=0;
+    Accessor.MinArray.Add(-(fFloatEditWorldSizeWidth.Value*0.5));
+    Accessor.MinArray.Add(-(fFloatEditWorldSizeHeight.Value*0.5));
+    Accessor.MinArray.Add(-(fFloatEditWorldSizeDepth.Value*0.5));
+    Accessor.MaxArray.Add(fFloatEditWorldSizeWidth.Value*0.5);
+    Accessor.MaxArray.Add(fFloatEditWorldSizeHeight.Value*0.5);
+    Accessor.MaxArray.Add(fFloatEditWorldSizeDepth.Value*0.5);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Tangent
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec3;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=SizeOf(TpvVector3);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Bitangent
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec3;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Normal
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec3;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector3);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MinArray.Add(-1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Parameters 0
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec4;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector3);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
+   begin
+    // Parameters 1
+    Accessor:=TPasGLTF.TAccessor.Create(GLTFDocument);
+    GLTFDocument.Accessors.Add(Accessor);
+    Accessor.ComponentType:=TPasGLTF.TAccessor.TComponentType.Float;
+    Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec4;
+    Accessor.BufferView:=1;
+    Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector4);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MinArray.Add(-MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.Count:=fMesh.Vertices.Count;
+    Accessor.Normalized:=false;
+   end;
    FileStream:=TFileStream.Create(aFileName,fmCreate);
    try
     GLTFDocument.SaveToBinary(FileStream);
