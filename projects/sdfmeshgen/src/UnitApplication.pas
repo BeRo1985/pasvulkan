@@ -76,7 +76,7 @@ begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
- Title:='sdfmeshgen';
+ Title:='sdfmeshgen - Copyright (C) 2018, Benjamin Rosseaux - Marching Tetrahedrons GLSL code based on paniq''s work';
  PathName:='sdfmeshgen.pasvulkan';
  StartScreen:=TScreenMain;
  VisibleMouseCursor:=true;
