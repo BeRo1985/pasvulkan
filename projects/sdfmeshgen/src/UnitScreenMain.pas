@@ -1716,6 +1716,15 @@ begin
 
  fFileNameToDelayedOpen:='';
 
+ fGUIVulkanCanvas.Release;
+
+ fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
+
+ fGUIRootSplitterPanel1.LeftTopPanel.PerformLayout;
+
+ fMesh.Vertices.Clear;
+ fMesh.Indices.Clear;
+
  fGUILeftTabPanel.TabIndex:=0;
 
  fGUISignedDistanceFieldCodeEditor.RequestFocus;
