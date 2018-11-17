@@ -1843,8 +1843,8 @@ begin
                               fGUIInstance.Skin.IconDialogError);
   end;
  end;
- fGUILeftTabPanel.TabIndex:=0;
- fGUISignedDistanceFieldCodeEditor.RequestFocus;
+{fGUILeftTabPanel.TabIndex:=0;
+ fGUISignedDistanceFieldCodeEditor.RequestFocus;}
 end;
 
 procedure TScreenMain.SignedDistanceFieldCodeEditorOnChange(const aSender:TpvGUIObject);
