@@ -1631,6 +1631,13 @@ begin
     ShowErrorWindow(fUpdateThread.fErrorString);
    end else begin
     pvApplication.VulkanDevice.WaitIdle;
+    fGUIVulkanCanvas.Release;
+    fGUIVulkanCanvas:=TScreenMain.TMeshVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel,
+                                                           fUpdateThread.fMesh,
+                                                           fUpdateThread.fMeshVertexShaderSPVStream,
+                                                           fUpdateThread.fMeshFragmentShaderSPVStream);
+    fGUIVulkanCanvas.AfterCreateSwapChain;
+    fGUIRootSplitterPanel1.LeftTopPanel.PerformLayout;
     fMesh:=fUpdateThread.fMesh;
    end;
    FreeAndNil(fUpdateThread);
