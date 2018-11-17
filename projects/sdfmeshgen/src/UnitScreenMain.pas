@@ -182,6 +182,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fUpdateThread:TUpdateThread;
        fVolumeTriangles:TVolumeTriangles;
        fVolumeTriangleBuffer:TpvVulkanBuffer;
+       fMesh:TMesh;
        procedure UpdateGUIData;
        procedure MarkAsNotModified;
        procedure MarkAsModified;
@@ -1070,6 +1071,9 @@ begin
 
  fTerminationMessageDialogVisible:=false;
 
+ fMesh.Vertices.Initialize;
+ fMesh.Indices.Initialize;
+
  fTime:=0.48;
 
  fLastMousePosition:=TpvVector2.Null;
@@ -1121,6 +1125,8 @@ begin
   fUpdateThread.WaitFor;
   FreeAndNil(fUpdateThread);
  end;
+ fMesh.Vertices.Finalize;
+ fMesh.Indices.Finalize;
  inherited Destroy;
 end;
 
@@ -1181,6 +1187,7 @@ begin
    if length(Trim(String(fUpdateThread.fErrorString)))>0 then begin
     ShowErrorWindow(fUpdateThread.fErrorString);
    end;
+   fMesh:=fUpdateThread.fMesh;
    FreeAndNil(fUpdateThread);
    fGUIUpdateButton.Enabled:=true;
    fGUIUpdateProgressBar.Value:=0;
