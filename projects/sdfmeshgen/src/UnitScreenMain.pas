@@ -37,6 +37,7 @@ uses SysUtils,
      PasVulkan.TrueTypeFont,
      PasVulkan.TextEditor,
      PasJSON,
+     PasGLTF,
      UnitExternalProcess;
 
 type TScreenMain=class(TpvApplicationScreen)
@@ -264,9 +265,11 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure ShowTerminationMessageDialog(const aSender:TpvGUIObject);
        procedure OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
        procedure SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+       procedure ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveAsProject(const aSender:TpvGUIObject);
+       procedure MenuOnExportAsProject(const aSender:TpvGUIObject);
       public
 
        constructor Create; override;
@@ -1988,6 +1991,27 @@ begin
  end;
 end;
 
+procedure TScreenMain.ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+var GLTFDocument:TPasGLTF.TDocument;
+    FileStream:TFileStream;
+begin
+ if aOK then begin
+  GLTFDocument:=TPasGLTF.TDocument.Create;
+  try
+   GLTFDocument.Asset.Generator:='sdfmeshgen';
+   GLTFDocument.Asset.Version:='2.0';
+   FileStream:=TFileStream.Create(aFileName,fmCreate);
+   try
+    GLTFDocument.SaveToBinary(FileStream);
+   finally
+    FreeAndNil(FileStream);
+   end;
+  finally
+   FreeAndNil(GLTFDocument);
+  end;
+ end;
+end;
+
 procedure TScreenMain.MenuOnOpenProject(const aSender:TpvGUIObject);
 var FileDialog:TpvGUIFileDialog;
 begin
@@ -2021,6 +2045,20 @@ begin
   FileDialog.OverwritePrompt:=true;
   FileDialog.Path:=GetCurrentDir;
   FileDialog.OnResult:=SaveFileDialogOnResult;
+ end;
+end;
+
+procedure TScreenMain.MenuOnExportAsProject(const aSender:TpvGUIObject);
+var FileDialog:TpvGUIFileDialog;
+begin
+ if not fGUIInstance.HasModalWindows then begin
+  FileDialog:=TpvGUIFileDialog.Create(fGUIInstance,TpvGUIFileDialog.TMode.Save);
+  FileDialog.Title:='Export as';
+  FileDialog.Filter:='*.glb';
+  FileDialog.DefaultFileExtension:='.glb';
+  FileDialog.OverwritePrompt:=true;
+  FileDialog.Path:=GetCurrentDir;
+  FileDialog.OnResult:=ExportFileDialogOnResult;
  end;
 end;
 
@@ -2145,6 +2183,16 @@ begin
    MenuItem.Caption:='Save as';
    MenuItem.ShortcutHint:='Shift+Ctrl+S';
    MenuItem.OnClick:=MenuOnSaveAsProject;
+
+   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+   MenuItem.Caption:='-';
+
+   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+   MenuItem.Icon:=fGUIInstance.Skin.IconContentCopy;
+   MenuItem.IconHeight:=12;
+   MenuItem.Caption:='Export as';
+   MenuItem.ShortcutHint:='Shift+Ctrl+E';
+   MenuItem.OnClick:=MenuOnExportAsProject;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Caption:='-';
@@ -2603,6 +2651,15 @@ begin
                                           TpvApplicationInputKeyModifier.SHIFT,
                                           TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
       MenuOnSaveAsProject(nil);
+      result:=true;
+     end;
+    end;
+    KEYCODE_E:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                          TpvApplicationInputKeyModifier.CTRL,
+                                          TpvApplicationInputKeyModifier.SHIFT,
+                                          TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+      MenuOnExportAsProject(nil);
       result:=true;
      end;
     end;
