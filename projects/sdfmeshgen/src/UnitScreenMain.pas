@@ -364,11 +364,11 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  ivec4 baseGridOffset;'#13#10+
           '} uPushConstants;'#13#10+
 
-          'const ivec3 gridSize = ivec3('+TpvUTF8String(IntToStr(fGridSizeX))+','+TpvUTF8String(IntToStr(fGridSizeY))+','+TpvUTF8String(IntToStr(fGridSizeZ))+');'#13#10+
+          'const ivec3 gridSize = ivec3('+TpvUTF8String(IntToStr(fGridSizeX))+', '+TpvUTF8String(IntToStr(fGridSizeY))+', '+TpvUTF8String(IntToStr(fGridSizeZ))+');'#13#10+
 
-          'const vec3 worldMin = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMinX,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMinY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMinZ,omStandard))+');'#13#10+
+          'const vec3 worldMin = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMinX,omStandard))+', '+TpvUTF8String(ConvertDoubleToString(fWorldMinY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMinZ,omStandard))+');'#13#10+
 
-          'const vec3 worldMax = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMaxX,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMaxY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMaxZ,omStandard))+');'#13#10+
+          'const vec3 worldMax = vec3('+TpvUTF8String(ConvertDoubleToString(fWorldMaxX,omStandard))+', '+TpvUTF8String(ConvertDoubleToString(fWorldMaxY,omStandard))+','+TpvUTF8String(ConvertDoubleToString(fWorldMaxZ,omStandard))+');'#13#10+
 
           fSignedDistanceFieldCode+#13#10+
 
@@ -467,27 +467,6 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  return r;'#13#10+
           '}'#13#10+
 
-          'mat3 qTangentToMatrix(vec4 q){'#13#10+
-          '  q = normalize(q);'#13#10+
-          '  float qx2 = q.x + q.x,'#13#10+
-          '        qy2 = q.y + q.y,'#13#10+
-          '        qz2 = q.z + q.z,'#13#10+
-          '        qxqx2 = q.x * qx2,'#13#10+
-          '        qxqy2 = q.x * qy2,'#13#10+
-          '        qxqz2 = q.x * qz2,'#13#10+
-          '        qxqw2 = q.w * qx2,'#13#10+
-          '        qyqy2 = q.y * qy2,'#13#10+
-          '        qyqz2 = q.y * qz2,'#13#10+
-          '        qyqw2 = q.w * qy2,'#13#10+
-          '        qzqz2 = q.z * qz2,'#13#10+
-          '        qzqw2 = q.w * qz2;'#13#10+
-          '  mat3 m = mat3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2,'#13#10+
-          '                qxqy2 - qzqw2, 1.0 - (qxqx2 + qzqz2), qyqz2 + qxqw2,'#13#10+
-          '                qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));'#13#10+
-          '  m[2] = normalize(cross(m[0], m[1])) * ((q.w < 0.0) ? -1.0 : 1.0);'#13#10+
-          '  return m;'#13#10+
-          '}'#13#10+
-
           'void addTriangle(vec3 p0,'#13#10+
           '                 vec3 p1,'#13#10+
           '                 vec3 p2,'#13#10+
@@ -523,7 +502,7 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  }'#13#10+
           '}'#13#10+
 
-          'void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){'#13#10+
+          'void getTangentSpaceBasisFromNormal(vec3 n, out vec3 t, out vec3 b){'#13#10+
           '#if 1'#13#10+
           '  vec3 c = vec3(1.0, n.y, -n.x) * (n.y / (1.0 + abs(n.z))),'#13#10+
           '       d = vec3(n.y, c.yz) * ((n.z >= 0.0) ? 1.0 : -1.0);'#13#10+
@@ -533,21 +512,6 @@ procedure TScreenMain.TUpdateThread.Execute;
           '  float s = (n.z >= 0.0) ? 1.0 : -1.0, c = n.y / (1.0 + abs(n.z)), d = n.y * c, e = -n.x * c;'#13#10+
           '  t = vec3(n.z + (s * d), (s * e), -n.x);'#13#10+
           '  b = vec3(e, 1.0 - d, -s * n.y);'#13#10+
-          '#endif'#13#10+
-          '}'#13#10+
-
-          'mat3 getTangentSpaceFromNormal(vec3 n){'#13#10+
-          '   n = normalize(n);'#13#10+
-          '#if 0'#13#10+
-          '   vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
-          '        t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
-          '        t = normalize(length(t0) < length(t1) ? t1 : t0),'#13#10+
-          '        b = normalize(cross(n, t));'#13#10+
-          '   return mat3(normalize(cross(b, n)), b, n);'#13#10+
-          '#else'#13#10+
-          '   vec3 t, b;'#13#10+
-          '   getTangentSpaceBasisFromNormal(n, t, b);'#13#10+
-          '   return mat3(t, b, n);'#13#10+
           '#endif'#13#10+
           '}'#13#10+
 
@@ -566,45 +530,9 @@ procedure TScreenMain.TUpdateThread.Execute;
           '      vec3 n = normalize(vec3(getDistance(p + e.yxx) - getDistance(p - e.yxx),'#13#10+
           '                              getDistance(p + e.xyx) - getDistance(p - e.xyx),'#13#10+
           '                              getDistance(p + e.xxy) - getDistance(p - e.xxy)));'#13#10+
-          '#if 0'#13#10+
-          '      vec3 uu = vec3(n.z, n.y, -n.x),'#13#10+
-          '           vv = vec3(-n.x, n.z, -n.y);'#13#10+
-          '#elif 0'#13#10+
-          '      vec3 t0 = cross(vec3(0.0, 1.0, 0.0), n),'#13#10+
-          '           t1 = cross(vec3(0.0, 0.0, 1.0), n),'#13#10+
-          '           uu = (length(t0) > length(t1)) ? t0: t1,'#13#10+
-          '           vv = cross(uu, n);'#13#10+
-          '           uu = cross(n, vv);'#13#10+
-          '           vv = cross(uu, n);'#13#10+
-          '#elif 0'#13#10+
-          '      float sz = n.z >= 0.0 ? 1.0 : -1.0;'#13#10+
-          '      float a  =  n.y / (1.0 + abs(n.z));'#13#10+
-          '      float b  =  n.y * a;'#13#10+
-          '      float c  = -n.x * a;'#13#10+
-          '      vec3 uu = normalize(vec3(n.z + (sz * b), sz * c, -n.x));'#13#10+
-          '      vec3 vv = normalize(vec3(c, 1.0 - b, -sz * n.y));'#13#10+
-          '#elif 0'#13#10+
-          '      float a =  n.y / (1.0 + n.z);'#13#10+
-          '      float b =  n.y * a;'#13#10+
-          '      float c = -n.x * a;'#13#10+
-          '      vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : normalize(vec3(n.z + b, c, -n.x));'#13#10+
-          '      vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : normalize(vec3(c, 1.0 - b, -n.y));'#13#10+
-          '#elif 0'#13#10+
-          '      vec3 tc = vec3((1.0 + n.z) - (n.xy * n.xy), -n.x * n.y) / (1.0 + n.z);'#13#10+
-          '      vec3 uu = (n.z < -0.999999) ? vec3(0.0, -1.0, 0.0) : vec3(tc.x, tc.z, -n.x);'#13#10+
-          '      vec3 vv = (n.z < -0.999999) ? vec3(-1.0, 0.0, 0.0) : vec3(tc.z, tc.y, -n.y);'#13#10+
-          '#else'#13#10+
-          '      vec3 uu = normalize(cross(n, vec3(1.0, 0.0, 0.0)));'#13#10+
-          '      vec3 vv = normalize(cross(uu, n));'#13#10+
-          '      uu = normalize(cross(n, vv));'#13#10+
-          '      vv = normalize(cross(uu, n));'#13#10+
-          '      uu = normalize(cross(n, vv));'#13#10+
-          '      vv = normalize(cross(uu, n));'#13#10+
-          '#endif'#13#10+
           '      ap[i] = p;'#13#10+
           '      an[i] = n;'#13#10+
-          '      at[i] = vv;'#13#10+
-          '      ab[i] = uu;'#13#10+
+          '      getTangentSpaceBasisFromNormal(n, at[i], ab[i]);'#13#10+
           '      ad[i] = getDistance(p);'#13#10+
           '      amp[i] = getParameters(p);'#13#10+
           '    }'#13#10+
