@@ -2021,9 +2021,10 @@ begin
     for Index:=0 to fMesh.Vertices.Count-1 do begin
      Vertex:=@fMesh.Vertices.Items[Index];
      Buffer.Data.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
+     Matrix:=TpvMatrix3x3.CreateFromQTangent(Vertex^.QTantent);
+     Matrix:=Matrix.RobustOrthoNormalize;
      Vector:=TpvVector4.InlineableCreate(Matrix.Normal,0.0);
      Buffer.Data.WriteBuffer(Vector,SizeOf(TpvVector3));
-     Matrix:=TpvMatrix3x3.CreateFromQTangent(Vertex^.QTantent);
      Vector:=TpvVector4.InlineableCreate(Matrix.Tangent,Sign(Matrix.Tangent.Cross(Matrix.Normal).Dot(Matrix.Bitangent)));
      Buffer.Data.WriteBuffer(Vector,SizeOf(TpvVector4));
      Buffer.Data.WriteBuffer(Vertex^.Parameters0,SizeOf(TpvVector4));
@@ -2039,7 +2040,7 @@ begin
     BufferView.Buffer:=0;
     BufferView.ByteOffset:=0;
     BufferView.ByteLength:=SizeOf(TpvUInt32)*fMesh.Indices.Count;
-    BufferView.ByteStride:=SizeOf(TpvUInt32);
+    BufferView.ByteStride:=0; //SizeOf(TpvUInt32);
     BufferView.Target:=TPasGLTF.TBufferView.TTargetType.ElementArrayBuffer;
    end;
    begin
@@ -2089,12 +2090,12 @@ begin
     Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec3;
     Accessor.BufferView:=1;
     Accessor.ByteOffset:=SizeOf(TpvVector3);
-    Accessor.MinArray.Add(-1.0);
+{   Accessor.MinArray.Add(-1.0);
     Accessor.MinArray.Add(-1.0);
     Accessor.MinArray.Add(-1.0);
     Accessor.MaxArray.Add(1.0);
     Accessor.MaxArray.Add(1.0);
-    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);}
     Accessor.Count:=fMesh.Vertices.Count;
     Accessor.Normalized:=false;
    end;
@@ -2106,14 +2107,14 @@ begin
     Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec4;
     Accessor.BufferView:=1;
     Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3);
-    Accessor.MinArray.Add(-1.0);
+{   Accessor.MinArray.Add(-1.0);
     Accessor.MinArray.Add(-1.0);
     Accessor.MinArray.Add(-1.0);
     Accessor.MinArray.Add(-1.0);
     Accessor.MaxArray.Add(1.0);
     Accessor.MaxArray.Add(1.0);
     Accessor.MaxArray.Add(1.0);
-    Accessor.MaxArray.Add(1.0);
+    Accessor.MaxArray.Add(1.0);}
     Accessor.Count:=fMesh.Vertices.Count;
     Accessor.Normalized:=false;
    end;
@@ -2125,14 +2126,14 @@ begin
     Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec4;
     Accessor.BufferView:=1;
     Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector4);
-    Accessor.MinArray.Add(-MaxSingle);
+{   Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
-    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);}
     Accessor.Count:=fMesh.Vertices.Count;
     Accessor.Normalized:=false;
    end;
@@ -2144,14 +2145,14 @@ begin
     Accessor.Type_:=TPasGLTF.TAccessor.TType.Vec4;
     Accessor.BufferView:=1;
     Accessor.ByteOffset:=SizeOf(TpvVector3)+SizeOf(TpvVector3)+SizeOf(TpvVector4)+SizeOf(TpvVector4);
-    Accessor.MinArray.Add(-MaxSingle);
+{   Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MinArray.Add(-MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
     Accessor.MaxArray.Add(MaxSingle);
-    Accessor.MaxArray.Add(MaxSingle);
+    Accessor.MaxArray.Add(MaxSingle);}
     Accessor.Count:=fMesh.Vertices.Count;
     Accessor.Normalized:=false;
    end;
