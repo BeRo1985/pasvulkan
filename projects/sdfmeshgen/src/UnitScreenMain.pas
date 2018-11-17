@@ -490,8 +490,8 @@ procedure TScreenMain.TUpdateThread.Execute;
           '    volumeTriangle.vertices[1].position = vec4(p1, normal.y);'#13#10+
           '    volumeTriangle.vertices[2].position = vec4(p2, normal.z);'#13#10+
           '    volumeTriangle.vertices[0].qtangent = matrixToQTangent(ts0);'#13#10+
-          '    volumeTriangle.vertices[1].qtangent = matrixToQTangent(ts0);'#13#10+
-          '    volumeTriangle.vertices[2].qtangent = matrixToQTangent(ts0);'#13#10+
+          '    volumeTriangle.vertices[1].qtangent = matrixToQTangent(ts1);'#13#10+
+          '    volumeTriangle.vertices[2].qtangent = matrixToQTangent(ts2);'#13#10+
           '    volumeTriangle.vertices[0].parameters0 = mp0[0];'#13#10+
           '    volumeTriangle.vertices[1].parameters0 = mp1[0];'#13#10+
           '    volumeTriangle.vertices[2].parameters0 = mp2[0];'#13#10+
