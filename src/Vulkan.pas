@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=92;
+      VK_HEADER_VERSION=93;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -719,8 +719,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_220_EXTENSION_NAME='VK_EXT_extension_220';
       VK_KHR_EXTENSION_221_SPEC_VERSION=0;
       VK_KHR_EXTENSION_221_EXTENSION_NAME='VK_KHR_extension_221';
-      VK_EXT_EXTENSION_222_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_222_EXTENSION_NAME='VK_EXT_extension_222';
+      VK_EXT_SCALAR_BLOCK_LAYOUT_SPEC_VERSION=1;
+      VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME='VK_EXT_scalar_block_layout';
       VK_EXT_EXTENSION_223_SPEC_VERSION=0;
       VK_EXT_EXTENSION_223_EXTENSION_NAME='VK_EXT_extension_223';
       VK_GOOGLE_HLSL_FUNCTIONALITY1_SPEC_VERSION=0;
@@ -769,8 +769,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_245_EXTENSION_NAME='VK_NV_extension_245';
       VK_EXT_EXTENSION_246_SPEC_VERSION=0;
       VK_EXT_EXTENSION_246_EXTENSION_NAME='VK_EXT_extension_246';
-      VK_EXT_EXTENSION_247_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_247_EXTENSION_NAME='VK_EXT_extension_247';
+      VK_EXT_SEPARATE_STENCIL_USAGE_SPEC_VERSION=1;
+      VK_EXT_SEPARATE_STENCIL_USAGE_EXTENSION_NAME='VK_EXT_separate_stencil_usage';
       VK_EXT_EXTENSION_248_SPEC_VERSION=0;
       VK_EXT_EXTENSION_248_EXTENSION_NAME='VK_EXT_extension_248';
 
@@ -1569,6 +1569,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUERY_TYPE_OCCLUSION=0,
        VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      //< Optional
        VK_QUERY_TYPE_TIMESTAMP=2,
+       VK_QUERY_TYPE_RESERVED_8=1000023008,
+       VK_QUERY_TYPE_RESERVED_4=1000024004,
        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT=1000028004,
        VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_NV=1000165000
       );
@@ -2429,6 +2431,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT=1000212000,
        VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA=1000214000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT=1000221000,
+       VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT=1000246000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
@@ -2623,7 +2627,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUEUE_COMPUTE_BIT=$00000002,                                           //< Queue supports compute operations
        VK_QUEUE_TRANSFER_BIT=$00000004,                                          //< Queue supports transfer operations
        VK_QUEUE_SPARSE_BINDING_BIT=$00000008,                                    //< Queue supports sparse resource memory management operations
-       VK_QUEUE_PROTECTED_BIT=$00000010
+       VK_QUEUE_PROTECTED_BIT=$00000010,
+       VK_QUEUE_RESERVED_5_BIT_KHR=$00000020,
+       VK_QUEUE_RESERVED_6_BIT_KHR=$00000040
       );
 
      PPVkRenderPassCreateFlagBits=^PVkRenderPassCreateFlagBits;
@@ -2665,6 +2671,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkAccessFlagBits=^TVkAccessFlagBits;
      TVkAccessFlagBits=
       (
+       VK_ACCESS_RESERVED_31_BIT_KHR=$80000000,
        VK_ACCESS_INDIRECT_COMMAND_READ_BIT=$00000001,                            //< Controls coherency of indirect command reads
        VK_ACCESS_INDEX_READ_BIT=$00000002,                                       //< Controls coherency of index reads
        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT=$00000004,                            //< Controls coherency of vertex attribute reads
@@ -2692,7 +2699,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_RESERVED_24_BIT_EXT=$01000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT=$02000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT=$04000000,
-       VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT=$08000000
+       VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT=$08000000,
+       VK_ACCESS_RESERVED_28_BIT_KHR=$10000000,
+       VK_ACCESS_RESERVED_29_BIT_KHR=$20000000,
+       VK_ACCESS_RESERVED_30_BIT_KHR=$40000000
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
@@ -2711,7 +2721,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200,
        VK_BUFFER_USAGE_RAY_TRACING_BIT_NV=$00000400,
        VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT=$00000800,
-       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT=$00001000
+       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT=$00001000,
+       VK_BUFFER_USAGE_RESERVED_13_BIT_KHR=$00002000,
+       VK_BUFFER_USAGE_RESERVED_14_BIT_KHR=$00004000
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
@@ -2759,7 +2771,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040,                        //< Image data not needed outside of rendering
        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080,                            //< Can be used as framebuffer input attachment
        VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV=$00000100,
-       VK_IMAGE_USAGE_RESERVED_9_BIT_EXT=$00000200
+       VK_IMAGE_USAGE_RESERVED_9_BIT_EXT=$00000200,
+       VK_IMAGE_USAGE_RESERVED_10_BIT_KHR=$00000400,
+       VK_IMAGE_USAGE_RESERVED_11_BIT_KHR=$00000800,
+       VK_IMAGE_USAGE_RESERVED_12_BIT_KHR=$00001000,
+       VK_IMAGE_USAGE_RESERVED_13_BIT_KHR=$00002000,
+       VK_IMAGE_USAGE_RESERVED_14_BIT_KHR=$00004000,
+       VK_IMAGE_USAGE_RESERVED_15_BIT_KHR=$00008000
       );
 
      PPVkImageCreateFlagBits=^PVkImageCreateFlagBits;
@@ -2849,6 +2867,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_DISJOINT_BIT=$00400000,
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT=$00800000,
        VK_FORMAT_FEATURE_RESERVED_24_BIT_EXT=$01000000,
+       VK_FORMAT_FEATURE_RESERVED_25_BIT_KHR=$02000000,
+       VK_FORMAT_FEATURE_RESERVED_26_BIT_KHR=$04000000,
+       VK_FORMAT_FEATURE_RESERVED_27_BIT_KHR=$08000000,
+       VK_FORMAT_FEATURE_RESERVED_28_BIT_KHR=$10000000,
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT,
        VK_FORMAT_FEATURE_DISJOINT_BIT_KHR=VK_FORMAT_FEATURE_DISJOINT_BIT,
        VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT,
@@ -2968,7 +2990,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV=$00400000,
        VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000,
        VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT=$01000000,
-       VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV=$02000000
+       VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV=$02000000,
+       VK_PIPELINE_STAGE_RESERVED_26_BIT_KHR=$04000000,
+       VK_PIPELINE_STAGE_RESERVED_27_BIT_KHR=$08000000
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
@@ -3656,7 +3680,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR=6,                                //< Intel Corporation
        VK_DRIVER_ID_IMAGINATION_PROPRIETARY_KHR=7,                               //< Imagination Technologies
        VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR=8,                                  //< Qualcomm Technologies, Inc.
-       VK_DRIVER_ID_ARM_PROPRIETARY_KHR=9                                        //< Arm Limited
+       VK_DRIVER_ID_ARM_PROPRIETARY_KHR=9,                                       //< Arm Limited
+       VK_DRIVER_ID_GOOGLE_PASTEL_KHR=10                                         //< Google LLC
       );
 
      PPVkConditionalRenderingFlagBitsEXT=^PVkConditionalRenderingFlagBitsEXT;
@@ -11797,6 +11822,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkImageStencilUsageCreateInfoEXT=^PVkImageStencilUsageCreateInfoEXT;
+     PVkImageStencilUsageCreateInfoEXT=^TVkImageStencilUsageCreateInfoEXT;
+     TVkImageStencilUsageCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       stencilUsage:TVkImageUsageFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aStencilUsage:TVkImageUsageFlags);
+{$endif}
+     end;
+
      PPVkDeviceMemoryOverallocationCreateInfoAMD=^PVkDeviceMemoryOverallocationCreateInfoAMD;
      PVkDeviceMemoryOverallocationCreateInfoAMD=^TVkDeviceMemoryOverallocationCreateInfoAMD;
      TVkDeviceMemoryOverallocationCreateInfoAMD=record
@@ -11808,6 +11847,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        overallocationBehavior:TVkMemoryOverallocationBehaviorAMD;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aOverallocationBehavior:TVkMemoryOverallocationBehaviorAMD);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceScalarBlockLayoutFeaturesEXT=^PVkPhysicalDeviceScalarBlockLayoutFeaturesEXT;
+     PVkPhysicalDeviceScalarBlockLayoutFeaturesEXT=^TVkPhysicalDeviceScalarBlockLayoutFeaturesEXT;
+     TVkPhysicalDeviceScalarBlockLayoutFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT
+       pNext:PVkVoid;
+       scalarBlockLayout:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aScalarBlockLayout:TVkBool32);
 {$endif}
      end;
 
@@ -22086,11 +22139,25 @@ begin
  drmFormatModifier:=aDrmFormatModifier;
 end;
 
+constructor TVkImageStencilUsageCreateInfoEXT.Create(const aStencilUsage:TVkImageUsageFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT;
+ pNext:=nil;
+ stencilUsage:=aStencilUsage;
+end;
+
 constructor TVkDeviceMemoryOverallocationCreateInfoAMD.Create(const aOverallocationBehavior:TVkMemoryOverallocationBehaviorAMD);
 begin
  sType:=VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
  pNext:=nil;
  overallocationBehavior:=aOverallocationBehavior;
+end;
+
+constructor TVkPhysicalDeviceScalarBlockLayoutFeaturesEXT.Create(const aScalarBlockLayout:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
+ pNext:=nil;
+ scalarBlockLayout:=aScalarBlockLayout;
 end;
 {$endif}
 
