@@ -1243,7 +1243,7 @@ type EpvApplication=class(Exception)
 
       protected
 
-       procedure VulkanDebugLn(const What:string);
+       class procedure VulkanDebugLn(const What:string); static;
 
        function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 
@@ -5263,6 +5263,37 @@ begin
  inherited Destroy;
 end;
 
+class procedure TpvApplication.VulkanDebugLn(const What:string);
+{$if defined(Windows)}
+{$if defined(Debug) or not defined(Release)}
+var StdOut:Windows.THandle;
+    TemporaryString:WideString;
+{$ifend}
+begin
+{$if defined(Debug) or not defined(Release)}
+ TemporaryString:=What;
+ OutputDebugStringW(PWideChar(TemporaryString));
+ StdOut:=GetStdHandle(Std_Output_Handle);
+ Win32Check(StdOut<>Invalid_Handle_Value);
+ if StdOut<>0 then begin
+  WriteLn(What);
+ end;
+{$ifend}
+end;
+{$elseif defined(fpc) and defined(android)}
+begin
+{$if defined(Debug) or not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
+{$ifend}
+end;
+{$else}
+begin
+{$if defined(Debug) or not defined(Release)}
+ WriteLn(What);
+{$ifend}
+end;
+{$ifend}
+
 class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:string);
 begin
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
@@ -5287,16 +5318,16 @@ begin
   LOG_NONE:begin
   end;
   LOG_INFO:begin
-   WriteLn('[Info] ',aWhere,': ',aWhat);
+   VulkanDebugLn('[Info] '+aWhere+': '+aWhat);
   end;
   LOG_VERBOSE:begin
-   WriteLn('[Verbose] ',aWhere,': ',aWhat);
+   VulkanDebugLn('[Verbose] '+aWhere+': '+aWhat);
   end;
   LOG_DEBUG:begin
-   WriteLn('[Debug] ',aWhere,': ',aWhat);
+   VulkanDebugLn('[Debug] '+aWhere+': '+aWhat);
   end;
   LOG_ERROR:begin
-   WriteLn('[Error] ',aWhere,': ',aWhat);
+   VulkanDebugLn('[Error] '+aWhere+': '+aWhat);
   end;
  end;
 {$ifend}
@@ -5312,34 +5343,6 @@ begin
   fDesiredCountSwapChainImages:=aDesiredCountSwapChainImages;
  end;
 end;
-
-procedure TpvApplication.VulkanDebugLn(const What:string);
-{$if defined(Windows)}
-{$if defined(Debug) or not defined(Release)}
-var StdOut:Windows.THandle;
-{$ifend}
-begin
-{$if defined(Debug) or not defined(Release)}
- StdOut:=GetStdHandle(Std_Output_Handle);
- Win32Check(StdOut<>Invalid_Handle_Value);
- if StdOut<>0 then begin
-  WriteLn(What);
- end;
-{$ifend}
-end;
-{$elseif defined(fpc) and defined(android)}
-begin
-{$if defined(Debug) or not defined(Release)}
- __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
-{$ifend} 
-end;
-{$else}
-begin
-{$if defined(Debug) or not defined(Release)}
- WriteLn(What);
-{$ifend} 
-end;
-{$ifend}
 
 function TpvApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 var Prefix:string;
