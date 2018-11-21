@@ -151,11 +151,12 @@ type EpvResource=class(Exception);
       public
        type TQueueItem=class
              private
+              fResourceBackgroundLoader:TpvResourceBackgroundLoader;
               fResource:IpvResource;
               fDependencies:TpvDynamicArray<IpvResource>;
               fDependents:TpvDynamicArray<IpvResource>;
              public
-              constructor Create; reintroduce;
+              constructor Create(const aResourceBackgroundLoader:TpvResourceBackgroundLoader;const aResource:IpvResource); reintroduce;
               destructor Destroy; override;
             end;
            TQueueItems=TpvDynamicArray<TQueueItem>;
@@ -397,16 +398,36 @@ end;
 
 { TpvResourceBackgroundLoader.TQueueItem }
 
-constructor TpvResourceBackgroundLoader.TQueueItem.Create;
+constructor TpvResourceBackgroundLoader.TQueueItem.Create(const aResourceBackgroundLoader:TpvResourceBackgroundLoader;const aResource:IpvResource);
 begin
  inherited Create;
- fResource:=nil;
+ fResourceBackgroundLoader:=aResourceBackgroundLoader;
+ fResource:=aResource;
  fDependencies.Initialize;
  fDependents.Initialize;
+ fResourceBackgroundLoader.fQueueItems.Add(self);
+ if assigned(fResourceBackgroundLoader) and assigned(fResource) then begin
+  fResourceBackgroundLoader.fQueueItemFileNameMap.Add(fResource.GetResource.fFileName,self);
+ end;
 end;
 
 destructor TpvResourceBackgroundLoader.TQueueItem.Destroy;
+var Index:TpvSizeInt;
 begin
+ if assigned(fResourceBackgroundLoader) then begin
+  try
+   if assigned(fResource) then begin
+    fResourceBackgroundLoader.fQueueItemFileNameMap.Delete(fResource.GetResource.fFileName);
+   end;
+  finally
+   for Index:=0 to fResourceBackgroundLoader.fQueueItems.Count-1 do begin
+    if fResourceBackgroundLoader.fQueueItems.Items[Index]=self then begin
+     fResourceBackgroundLoader.fQueueItems.Delete(Index);
+     break;
+    end;
+   end;
+  end;
+ end;
  fDependencies.Finalize;
  fDependents.Finalize;
  fResource:=nil;
@@ -426,10 +447,9 @@ begin
 end;
 
 destructor TpvResourceBackgroundLoader.Destroy;
-var Index:TpvSizeInt;
 begin
- for Index:=0 to fQueueItems.Count-1 do begin
-  FreeAndNil(fQueueItems.Items[Index]);
+ while fQueueItems.Count>0 do begin
+  fQueueItems.Items[0].Free;
  end;
  fQueueItems.Finalize;
  FreeAndNil(fQueueItemFileNameMap);
@@ -561,73 +581,60 @@ begin
 
   if not fQueueItemFileNameMap.ExistKey(aFileName) then begin
 
-   QueueItem:=nil;
+   IResource:=fResourceManager.GetResourceByFileName(aFileName);
 
-   try
+   if assigned(IResource) then begin
 
-    IResource:=fResourceManager.GetResourceByFileName(aFileName);
+    Resource:=IResource.GetResource;
 
-    if assigned(IResource) then begin
-
-     Resource:=IResource.GetResource;
-
-     if not (Resource is aResourceClass) then begin
-      raise EpvResourceClassMismatch.Create('Resource class mismatch');
-     end;
-
-    end else begin
-
-     Resource:=aResourceClass.Create(fResourceManager,aFileName,aOnFinish);
-     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
-
-     IResource:=Resource.fInstanceInterface;
-
+    if not (Resource is aResourceClass) then begin
+     raise EpvResourceClassMismatch.Create('Resource class mismatch');
     end;
 
-    QueueItem:=TQueueItem.Create;
-    QueueItem.fResource:=IResource;
+   end else begin
 
-    fQueueItems.Add(QueueItem);
+    Resource:=aResourceClass.Create(fResourceManager,aFileName,aOnFinish);
+    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
 
-    if assigned(aParent) then begin
+    IResource:=Resource.fInstanceInterface;
 
-     TemporaryQueueItem:=fQueueItemFileNameMap.Values[aParent.GetResource.fFileName];
-
-     if assigned(TemporaryQueueItem) then begin
-
-      Found:=false;
-      for Index:=0 to QueueItem.fDependents.Count-1 do begin
-       if QueueItem.fDependents.Items[Index]=aParent then begin
-        Found:=true;
-        break;
-       end;
-      end;
-      if not Found then begin
-       QueueItem.fDependents.Add(aParent);
-      end;
-
-      Found:=false;
-      for Index:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
-       if TemporaryQueueItem.fDependencies.Items[Index]=IResource then begin
-        Found:=true;
-        break;
-       end;
-      end;
-      if not Found then begin
-       TemporaryQueueItem.fDependencies.Add(IResource);
-      end;
-
-     end;
-
-    end;
-
-    result:=true;
-
-   finally
-    if assigned(QueueItem) then begin
-     fQueueItemFileNameMap.Add(aFileName,QueueItem);
-    end;
    end;
+
+   QueueItem:=TQueueItem.Create(self,IResource);
+
+   if assigned(aParent) then begin
+
+    TemporaryQueueItem:=fQueueItemFileNameMap.Values[aParent.GetResource.fFileName];
+
+    if assigned(TemporaryQueueItem) then begin
+
+     Found:=false;
+     for Index:=0 to QueueItem.fDependents.Count-1 do begin
+      if QueueItem.fDependents.Items[Index]=aParent then begin
+       Found:=true;
+       break;
+      end;
+     end;
+     if not Found then begin
+      QueueItem.fDependents.Add(aParent);
+     end;
+
+     Found:=false;
+     for Index:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
+      if TemporaryQueueItem.fDependencies.Items[Index]=IResource then begin
+       Found:=true;
+       break;
+      end;
+     end;
+     if not Found then begin
+      TemporaryQueueItem.fDependencies.Add(IResource);
+     end;
+
+    end;
+
+   end;
+
+   result:=true;
 
   end;
 
@@ -705,20 +712,7 @@ begin
 
     FinishBackgroundLoading(QueueItem);
 
-    try
-     for Index:=0 to fQueueItems.Count-1 do begin
-      if fQueueItems.Items[Index]=QueueItem then begin
-       fQueueItems.Delete(Index);
-       break;
-      end;
-     end;
-    finally
-     try
-      fQueueItemFileNameMap.Delete(Resource.fFileName);
-     finally
-      FreeAndNil(QueueItem);
-     end;
-    end;
+    FreeAndNil(QueueItem);
 
    end;
 
@@ -755,9 +749,11 @@ begin
     Resource:=IResource.GetResource;
 
     if (QueueItem.fDependencies.Count>0) or
-          (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
-                                        TpvResource.TAsyncLoadState.Loading]) then begin
+       (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
+                                     TpvResource.TAsyncLoadState.Loading]) then begin
+
      inc(Index);
+
     end else begin
 
      fLock.Release;
@@ -767,15 +763,7 @@ begin
       fLock.Acquire;
      end;
 
-     try
-      fQueueItemFileNameMap.Delete(Resource.fFileName);
-     finally
-      try
-       FreeAndNil(QueueItem);
-      finally
-       fQueueItems.Delete(Index);
-      end;
-     end;
+     FreeAndNil(QueueItem);
 
     end;
 

@@ -1003,6 +1003,8 @@ type EpvApplication=class(Exception)
        fTerminationWithAltF4:boolean;
        fTerminationOnQuitEvent:boolean;
 
+       fBackgroundResourceLoaderFrameTimeout:TpvInt64;
+
 {$if defined(PasVulkanUseSDL2)}
        fSDLVersion:TSDL_Version;
 
@@ -1430,6 +1432,8 @@ type EpvApplication=class(Exception)
        property TerminationWithAltF4:boolean read fTerminationWithAltF4 write fTerminationWithAltF4;
 
        property TerminationOnQuitEvent:boolean read fTerminationOnQuitEvent write fTerminationOnQuitEvent;
+
+       property BackgroundResourceLoaderFrameTimeout:TpvInt64 read fBackgroundResourceLoaderFrameTimeout write fBackgroundResourceLoaderFrameTimeout;
 
        property Debugging:boolean read fDebugging;
        
@@ -5123,6 +5127,8 @@ begin
  fTerminationWithAltF4:=true;
  fTerminationOnQuitEvent:=true;
 
+ fBackgroundResourceLoaderFrameTimeout:=5;
+
  fMaximumFramesPerSecond:=0.0;
 
  fActive:=true;
@@ -7663,6 +7669,8 @@ begin
  end;
 
  if fGraphicsReady and IsVisibleToUser then begin
+
+  fResourceManager.BackgroundLoader.FinishResources(fBackgroundResourceLoaderFrameTimeout);
 
   if fSkipNextDrawFrame then begin
 
