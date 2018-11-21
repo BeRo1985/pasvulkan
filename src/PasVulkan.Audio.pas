@@ -483,6 +483,16 @@ type PpvAudioInt32=^TpvInt32;
        property Sample:TpvAudioSoundSample read fSample;
      end;
 
+     TpvAudioSoundOGGResource=class(TpvResource)
+      private
+       fOGG:TpvAudioSoundOGG;
+      public
+       destructor Destroy; override;
+       function BeginLoad(const aStream:TStream):boolean; override;
+      published
+       property OGG:TpvAudioSoundOGG read fOGG;
+     end;
+
      TpvAudioSoundSamples=class(TList)
       private
        function GetItem(Index:TpvInt32):TpvAudioSoundSample;
@@ -2853,6 +2863,20 @@ begin
                                             1);
  end;
  result:=assigned(fSample);
+end;
+
+destructor TpvAudioSoundOGGResource.Destroy;
+begin
+ FreeAndNil(fOGG);
+ inherited Destroy;
+end;
+
+function TpvAudioSoundOGGResource.BeginLoad(const aStream:TStream):boolean;
+begin
+ fOGG:=pvApplication.Audio.OGGs.Load(FileName,
+                                     aStream,
+                                     false);
+ result:=assigned(fOGG);
 end;
 
 constructor TpvAudioSoundSamples.Create(AAudioEngine:TpvAudio);
