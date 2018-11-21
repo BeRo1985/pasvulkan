@@ -89,7 +89,8 @@ uses {$if defined(Unix)}
 {$ifend}
      PasVulkan.HighResolutionTimer,
      PasVulkan.Android,
-     PasVulkan.Audio;
+     PasVulkan.Audio,
+     PasVulkan.Resources;
 
 const MaxSwapChainImages=3;
 
@@ -966,6 +967,8 @@ type EpvApplication=class(Exception)
 
        fAudio:TpvAudio;
 
+       fResourceManager:TpvResourceManager;
+
        fRunnableList:TpvApplicationRunnableList;
        fRunnableListCount:TpvInt32;
        fRunnableListCriticalSection:TPasMPCriticalSection;
@@ -1391,6 +1394,8 @@ type EpvApplication=class(Exception)
        property Clipboard:TpvApplicationClipboard read fClipboard;
 
        property Audio:TpvAudio read fAudio;
+
+       property ResourceManager:TpvResourceManager read fResourceManager;
 
        property Title:string read fTitle write fTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
@@ -5073,6 +5078,8 @@ begin
 
  fAudio:=nil;
 
+ fResourceManager:=TpvResourceManager.Create;
+
  fRunnableList:=nil;
  fRunnableListCount:=0;
  fRunnableListCriticalSection:=TPasMPCriticalSection.Create;
@@ -5239,6 +5246,8 @@ begin
  fRunnableList:=nil;
  fRunnableListCount:=0;
  FreeAndNil(fRunnableListCriticalSection);
+
+ FreeAndNil(fResourceManager);
 
  FreeAndNil(fAudio);
 

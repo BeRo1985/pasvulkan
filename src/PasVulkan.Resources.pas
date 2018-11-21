@@ -109,6 +109,7 @@ type EpvResource=class(Exception);
              );
             PAsyncLoadState=^TAsyncLoadState;
       private
+       fResourceManager:TpvResourceManager;
        fFileName:TpvUTF8String;
        fAsyncLoadState:TAsyncLoadState;
        fLoaded:boolean;
@@ -121,7 +122,7 @@ type EpvResource=class(Exception);
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
-       constructor Create(const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil); reintroduce; virtual;
+       constructor Create(const aResourceManager:TpvResourceManager;const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -191,9 +192,6 @@ type EpvResource=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
-       class function AllocateGlobalInstance:TpvResourceManager; static;
-       class procedure FreeGlobalInstance; static;
-       class function GetGlobalInstance:TpvResourceManager; static;
        class function SanitizeFileName(const aFileName:TpvUTF8String):TpvUTF8String; static;
        function GetResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil):IpvResource;
        function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aParent:IpvResource=nil;const aOnFinish:TpvResourceOnFinish=nil):boolean;
@@ -202,42 +200,40 @@ type EpvResource=class(Exception);
        property BackgroundLoader:TpvResourceBackgroundLoader read fBackgroundLoader;
      end;
 
-var ResourceManager:TpvResourceManager=nil;
-    ResourceManagerLock:TpvInt32=0;
-
 implementation
 
 uses PasVulkan.Application;
 
 { TpvResource }
 
-constructor TpvResource.Create(const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil);
+constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil);
 var OldReferenceCounter:TpvInt32;
 begin
  inherited Create;
- fOnFinish:=aOnFinish;
+ fResourceManager:=aResourceManager;
  fFileName:='';
  fAsyncLoadState:=TAsyncLoadState.None;
  fLoaded:=false;
  fMemoryUsage:=0;
  fMetaData:=nil;
+ fOnFinish:=aOnFinish;
  OldReferenceCounter:=fReferenceCounter;
  try
   fInstanceInterface:=self;
  finally
   fReferenceCounter:=OldReferenceCounter;
  end;
- if assigned(ResourceManager) then begin
-  ResourceManager.fResourceLock.AcquireWrite;
+ if assigned(fResourceManager) then begin
+  fResourceManager.fResourceLock.AcquireWrite;
   try
    OldReferenceCounter:=fReferenceCounter;
    try
-    ResourceManager.fResourceList.Add(self);
+    fResourceManager.fResourceList.Add(self);
    finally
     fReferenceCounter:=OldReferenceCounter;
    end;
   finally
-   ResourceManager.fResourceLock.ReleaseWrite;
+   fResourceManager.fResourceLock.ReleaseWrite;
   end;
  end;
  SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
@@ -246,17 +242,17 @@ end;
 destructor TpvResource.Destroy;
 var OldReferenceCounter:TpvInt32;
 begin
- if assigned(ResourceManager) then begin
-  ResourceManager.fResourceLock.AcquireWrite;
+ if assigned(fResourceManager) then begin
+  fResourceManager.fResourceLock.AcquireWrite;
   try
    OldReferenceCounter:=fReferenceCounter;
    try
-    ResourceManager.fResourceList.Remove(self);
+    fResourceManager.fResourceList.Remove(self);
    finally
     fReferenceCounter:=OldReferenceCounter;
    end;
   finally
-   ResourceManager.fResourceLock.ReleaseWrite;
+   fResourceManager.fResourceLock.ReleaseWrite;
   end;
  end;
  SetFileName('');
@@ -270,25 +266,25 @@ var NewFileName:TpvUTF8String;
 begin
  NewFileName:=TpvResourceManager.SanitizeFileName(aFileName);
  if fFileName<>NewFileName then begin
-  if assigned(ResourceManager) then begin
-   ResourceManager.fResourceLock.AcquireWrite;
+  if assigned(fResourceManager) then begin
+   fResourceManager.fResourceLock.AcquireWrite;
   end;
   try
    OldReferenceCounter:=fReferenceCounter;
    try
-    if assigned(ResourceManager) and (length(fFileName)>0) then begin
-     ResourceManager.fResourceFileNameMap.Delete(TpvUTF8String(LowerCase(String(fFileName))));
+    if assigned(fResourceManager) and (length(fFileName)>0) then begin
+     fResourceManager.fResourceFileNameMap.Delete(TpvUTF8String(LowerCase(String(fFileName))));
     end;
     fFileName:=NewFileName;
-    if assigned(ResourceManager) and (length(fFileName)>0) then begin
-     ResourceManager.fResourceFileNameMap.Add(TpvUTF8String(LowerCase(String(fFileName))),fInstanceInterface);
+    if assigned(fResourceManager) and (length(fFileName)>0) then begin
+     fResourceManager.fResourceFileNameMap.Add(TpvUTF8String(LowerCase(String(fFileName))),fInstanceInterface);
     end;
    finally
     fReferenceCounter:=OldReferenceCounter;
    end;
   finally
-   if assigned(ResourceManager) then begin
-    ResourceManager.fResourceLock.ReleaseWrite;
+   if assigned(fResourceManager) then begin
+    fResourceManager.fResourceLock.ReleaseWrite;
    end;
   end;
  end;
@@ -326,7 +322,7 @@ end;
 
 function TpvResource.CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream;
 begin
- result:=TFileStream.Create(IncludeTrailingPathDelimiter(String(ResourceManager.fBaseDataPath))+String(TpvResourceManager.SanitizeFileName(aFileName)),fmCreate);
+ result:=TFileStream.Create(IncludeTrailingPathDelimiter(String(fResourceManager.fBaseDataPath))+String(TpvResourceManager.SanitizeFileName(aFileName)),fmCreate);
 end;
 
 function TpvResource.GetStreamFromFileName(const aFileName:TpvUTF8String):TStream;
@@ -581,7 +577,7 @@ begin
 
     end else begin
 
-     Resource:=aResourceClass.Create(aFileName,aOnFinish);
+     Resource:=aResourceClass.Create(fResourceManager,aFileName,aOnFinish);
      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
 
      IResource:=Resource.fInstanceInterface;
@@ -815,12 +811,6 @@ end;
 constructor TpvResourceManager.Create;
 begin
  inherited Create;
-{$ifdef WordReadsAndWritesAreAtomic}
- ResourceManager:=self;
- TPasMPMemoryBarrier.ReadWrite;
-{$else}
- TPasMPInterlocked.Write(TObject(ResourceManager),TObject(self));
-{$endif}
  fResourceLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fResourceList:=TResourceList.Create;
  fResourceList.OwnsObjects:=false;
@@ -854,79 +844,8 @@ begin
 
  fResourceLock.Free;
 
-{$ifdef WordReadsAndWritesAreAtomic}
- ResourceManager:=nil;
- TPasMPMemoryBarrier.ReadWrite;
-{$else}
- TPasMPInterlocked.Write(TObject(ResourceManager),TObject(nil));
-{$endif}
-
  inherited Destroy;
 
-end;
-
-class function TpvResourceManager.AllocateGlobalInstance:TpvResourceManager;
-begin
- try
-{$ifdef WordReadsAndWritesAreAtomic}
-  TPasMPMemoryBarrier.ReadDependency;
-{$endif}
-  if not assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
-   while TPasMPInterlocked.CompareExchange(ResourceManagerLock,-1,0)<>0 do begin
-    TPasMP.Yield;
-   end;
-   try
-{$ifdef WordReadsAndWritesAreAtomic}
-    TPasMPMemoryBarrier.ReadWrite;
-{$endif}
-    if not assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
-     TpvResourceManager.Create;
-    end;
-   finally
-    TPasMPInterlocked.Write(ResourceManagerLock,0);
-   end;
-  end;
- finally
-{$ifdef WordReadsAndWritesAreAtomic}
-  TPasMPMemoryBarrier.ReadDependency;
-{$endif}
-  result:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
- end;
-end;
-
-class procedure TpvResourceManager.FreeGlobalInstance;
-var TemporaryResourceManager:TpvResourceManager;
-begin
-{$ifdef WordReadsAndWritesAreAtomic}
- TPasMPMemoryBarrier.ReadDependency;
-{$endif}
- if assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
-  while TPasMPInterlocked.CompareExchange(ResourceManagerLock,-1,0)<>0 do begin
-   TPasMP.Yield;
-  end;
-  try
-{$ifdef WordReadsAndWritesAreAtomic}
-   TPasMPMemoryBarrier.ReadWrite;
-{$endif}
-   if assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
-    TemporaryResourceManager:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
-    TemporaryResourceManager.Free;
-   end;
-  finally
-   TPasMPInterlocked.Write(ResourceManagerLock,0);
-  end;
- end;
-end;
-
-class function TpvResourceManager.GetGlobalInstance:TpvResourceManager;
-begin
-{$ifdef WordReadsAndWritesAreAtomic}
- TPasMPMemoryBarrier.ReadDependency;
-{$endif}
- result:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
- if not assigned(result) then begin
-  result:=AllocateGlobalInstance;
- end;
 end;
 
 class function TpvResourceManager.SanitizeFileName(const aFileName:TpvUTF8String):TpvUTF8String;
@@ -957,7 +876,7 @@ begin
   end;
   fBackgroundLoader.WaitForResource(aResourceClass,FileName);
  end else begin
-  Resource:=aResourceClass.Create(FileName,aOnFinish);
+  Resource:=aResourceClass.Create(self,FileName,aOnFinish);
   if Resource.LoadFromFileName(FileName) then begin
    result:=Resource.InstanceInterface;
   end else begin
