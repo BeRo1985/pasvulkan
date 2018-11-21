@@ -419,12 +419,10 @@ begin
   end else begin
    fAsyncLoadState:=TAsyncLoadState.Loading;
   end;
+  LoadMetaData;
   result:=BeginLoad(aStream);
   if result then begin
    result:=EndLoad;
-   if result then begin
-    LoadMetaData;
-   end;
    fAsyncLoadState:=TAsyncLoadState.Done;
    fLoaded:=true;
   end;
@@ -577,7 +575,11 @@ begin
       if assigned(Stream) then begin
 
        try
-        Success:=Resource.BeginLoad(Stream);
+        try
+         Resource.LoadMetaData;
+        finally
+         Success:=Resource.BeginLoad(Stream);
+        end;
        finally
         FreeAndNil(Stream);
        end;
@@ -729,7 +731,6 @@ begin
  if Success then begin
   Success:=Resource.EndLoad;
   if Success then begin
-   Resource.LoadMetaData;
    Resource.fLoaded:=true;
   end;
  end;

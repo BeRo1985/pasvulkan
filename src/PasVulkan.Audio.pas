@@ -63,6 +63,7 @@ interface
 
 uses {$ifdef windows}Windows,{$endif}SysUtils,Classes,Math,SyncObjs,
      PasMP,
+     PasJSON,
      PasVulkan.Types,
      {$ifdef UseExternalOGGVorbisTremorLibrary}
       PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary,
@@ -71,7 +72,8 @@ uses {$ifdef windows}Windows,{$endif}SysUtils,Classes,Math,SyncObjs,
      {$endif}
      PasVulkan.Collections,
      PasVulkan.Math,
-     PasVulkan.Audio.HRTFTables;
+     PasVulkan.Audio.HRTFTables,
+     PasVulkan.Resources;
 
 const SampleFixUp=1024;
 
@@ -228,6 +230,7 @@ type PpvAudioInt32=^TpvInt32;
      end;
 
      TpvAudioSoundSample=class;
+
      TpvAudio=class;
 
      TpvAudioStringHashMap=class(TpvStringHashMap<TpvPointer>);
@@ -470,6 +473,16 @@ type PpvAudioInt32=^TpvInt32;
        function IsPlaying:boolean;
      end;
 
+     TpvAudioSoundSampleResource=class(TpvResource)
+      private
+       fSample:TpvAudioSoundSample;
+      public
+       destructor Destroy; override;
+       function BeginLoad(const aStream:TStream):boolean; override;
+      published
+       property Sample:TpvAudioSoundSample read fSample;
+     end;
+
      TpvAudioSoundSamples=class(TList)
       private
        function GetItem(Index:TpvInt32):TpvAudioSoundSample;
@@ -660,6 +673,8 @@ type PpvAudioInt32=^TpvInt32;
      end;
 
 implementation
+
+uses PasVulkan.Application;
 
 const PositionShift=32;
       PositionFactor:TpvInt64=$100000000;//(1 shl PositionShift);
@@ -2814,6 +2829,30 @@ end;
 function TpvAudioSoundOGG.IsPlaying:boolean;
 begin
  result:=Active;
+end;
+
+destructor TpvAudioSoundSampleResource.Destroy;
+begin
+ FreeAndNil(fSample);
+ inherited Destroy;
+end;
+
+function TpvAudioSoundSampleResource.BeginLoad(const aStream:TStream):boolean;
+begin
+ if assigned(MetaData) then begin
+  fSample:=pvApplication.Audio.Samples.Load(FileName,
+                                            aStream,
+                                            false,
+                                            TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['polyphony'],1),
+                                            TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['loop'],1));
+ end else begin
+  fSample:=pvApplication.Audio.Samples.Load(FileName,
+                                            aStream,
+                                            false,
+                                            1,
+                                            1);
+ end;
+ result:=assigned(fSample);
 end;
 
 constructor TpvAudioSoundSamples.Create(AAudioEngine:TpvAudio);
