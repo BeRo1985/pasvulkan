@@ -477,6 +477,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fSample:TpvAudioSoundSample;
       public
+       constructor Create(const aResourceManager:TpvResourceManager); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
       published
@@ -487,6 +488,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fOGG:TpvAudioSoundOGG;
       public
+       constructor Create(const aResourceManager:TpvResourceManager); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
       published
@@ -2841,6 +2843,12 @@ begin
  result:=Active;
 end;
 
+constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager);
+begin
+ inherited Create(aResourceManager);
+ fSample:=nil;
+end;
+
 destructor TpvAudioSoundSampleResource.Destroy;
 begin
  FreeAndNil(fSample);
@@ -2850,7 +2858,7 @@ end;
 function TpvAudioSoundSampleResource.BeginLoad(const aStream:TStream):boolean;
 begin
  if assigned(MetaData) then begin
-  fSample:=pvApplication.Audio.Samples.Load(FileName,
+  fSample:=pvApplication.Audio.Samples.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
                                             aStream,
                                             false,
                                             TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['polyphony'],1),
@@ -2865,6 +2873,12 @@ begin
  result:=assigned(fSample);
 end;
 
+constructor TpvAudioSoundOGGResource.Create(const aResourceManager:TpvResourceManager);
+begin
+ inherited Create(aResourceManager);
+ fOGG:=nil;
+end;
+
 destructor TpvAudioSoundOGGResource.Destroy;
 begin
  FreeAndNil(fOGG);
@@ -2873,9 +2887,15 @@ end;
 
 function TpvAudioSoundOGGResource.BeginLoad(const aStream:TStream):boolean;
 begin
- fOGG:=pvApplication.Audio.OGGs.Load(FileName,
-                                     aStream,
-                                     false);
+ if assigned(MetaData) then begin
+  fOGG:=pvApplication.Audio.OGGs.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
+                                      aStream,
+                                      false);
+ end else begin
+  fOGG:=pvApplication.Audio.OGGs.Load(FileName,
+                                      aStream,
+                                      false);
+ end;
  result:=assigned(fOGG);
 end;
 

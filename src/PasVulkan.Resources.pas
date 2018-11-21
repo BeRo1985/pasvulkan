@@ -122,7 +122,7 @@ type EpvResource=class(Exception);
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil); reintroduce; virtual;
+       constructor Create(const aResourceManager:TpvResourceManager); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -211,7 +211,7 @@ uses PasVulkan.Application;
 
 { TpvResource }
 
-constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aFileName:TpvUTF8String='';const aOnFinish:TpvResourceOnFinish=nil);
+constructor TpvResource.Create(const aResourceManager:TpvResourceManager);
 var OldReferenceCounter:TpvInt32;
 begin
  inherited Create;
@@ -221,7 +221,7 @@ begin
  fLoaded:=false;
  fMemoryUsage:=0;
  fMetaData:=nil;
- fOnFinish:=aOnFinish;
+ fOnFinish:=nil;
  OldReferenceCounter:=fReferenceCounter;
  try
   fInstanceInterface:=self;
@@ -241,7 +241,7 @@ begin
    fResourceManager.fResourceLock.ReleaseWrite;
   end;
  end;
- SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
+//SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
 end;
 
 destructor TpvResource.Destroy;
@@ -661,7 +661,10 @@ begin
 
    end else begin
 
-    Resource:=aResourceClass.Create(fResourceManager,aFileName,aOnFinish);
+    Resource:=aResourceClass.Create(fResourceManager);
+    Resource.SetFileName(aFileName);
+    Resource.fOnFinish:=aOnFinish;
+
     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
 
     IResource:=Resource.fInstanceInterface;
@@ -932,7 +935,8 @@ begin
   end;
   fBackgroundLoader.WaitForResource(aResourceClass,FileName);
  end else begin
-  Resource:=aResourceClass.Create(self,FileName,aOnFinish);
+  Resource:=aResourceClass.Create(self);
+  Resource.fOnFinish:=aOnFinish;
   if Resource.LoadFromFileName(FileName) then begin
    result:=Resource.InstanceInterface;
   end else begin
