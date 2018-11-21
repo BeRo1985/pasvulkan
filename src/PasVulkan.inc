@@ -2,15 +2,18 @@
  {$mode delphi}
  {$ifdef cpui386}
   {$define cpu386}
-  {$define cpu32}
  {$endif}
  {$ifdef cpu386}
   {$asmmode intel}
-  {$define cpu32}
  {$endif}
  {$ifdef cpuamd64}
   {$asmmode intel}
+  {$define cpux64}
+  {$define cpux86_64}
   {$define cpu64}
+ {$endif}
+ {$ifndef cpu64}
+  {$define cpu32}
  {$endif}
  {$ifdef FPC_LITTLE_ENDIAN}
   {$define LITTLE_ENDIAN}
