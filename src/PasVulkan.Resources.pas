@@ -130,6 +130,10 @@ type EpvResource=class(Exception);
        function GetResourceClass:TpvResourceClass;
        function CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function GetStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
+       function LoadMetaData(const aStream:TStream):boolean; overload; virtual;
+       function SaveMetaData(const aStream:TStream):boolean; overload; virtual;
+       function LoadMetaData:boolean; overload; virtual;
+       function SaveMetaData:boolean; overload; virtual;
        function BeginLoad(const aStream:TStream):boolean; virtual;
        function EndLoad:boolean; virtual;
        function Load(const aStream:TStream):boolean; virtual;
@@ -337,6 +341,65 @@ begin
  end;
 end;
 
+function TpvResource.LoadMetaData(const aStream:TStream):boolean;
+begin
+ FreeAndNil(fMetaData);
+ if assigned(aStream) and (aStream.Size>0) then begin
+  fMetaData:=TPasJSON.Parse(aStream);
+  result:=assigned(fMetaData);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvResource.SaveMetaData(const aStream:TStream):boolean;
+var Data:TpvRawByteString;
+begin
+ if assigned(aStream) and assigned(fMetaData) then begin
+  Data:=TPasJSON.Stringify(fMetaData);
+  if length(Data)>0 then begin
+   aStream.WriteBuffer(Data[1],length(Data));
+   result:=true;
+  end else begin
+   result:=false;
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvResource.LoadMetaData:boolean;
+var MetaFileName:TpvUTF8String;
+    Stream:TStream;
+begin
+ MetaFileName:=TpvResourceManager.SanitizeFileName(TpvUTF8String(ChangeFileExt(String(fFileName),'.meta')));
+ Stream:=GetStreamFromFileName(MetaFileName);
+ if assigned(Stream) then begin
+  try
+   result:=LoadMetaData(Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end;
+end;
+
+function TpvResource.SaveMetaData:boolean;
+var MetaFileName:TpvUTF8String;
+    Stream:TStream;
+begin
+ MetaFileName:=TpvResourceManager.SanitizeFileName(TpvUTF8String(ChangeFileExt(String(fFileName),'.meta')));
+ if assigned(fMetaData) then begin
+  Stream:=CreateNewFileStreamFromFileName(MetaFileName);
+  try
+   result:=SaveMetaData(Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+
 function TpvResource.BeginLoad(const aStream:TStream):boolean;
 begin
  result:=false;
@@ -359,6 +422,9 @@ begin
   result:=BeginLoad(aStream);
   if result then begin
    result:=EndLoad;
+   if result then begin
+    LoadMetaData;
+   end;
    fAsyncLoadState:=TAsyncLoadState.Done;
    fLoaded:=true;
   end;
@@ -663,6 +729,7 @@ begin
  if Success then begin
   Success:=Resource.EndLoad;
   if Success then begin
+   Resource.LoadMetaData;
    Resource.fLoaded:=true;
   end;
  end;
