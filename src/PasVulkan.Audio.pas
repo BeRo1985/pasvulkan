@@ -473,7 +473,10 @@ type PpvAudioInt32=^TpvInt32;
        function IsPlaying:boolean;
      end;
 
-     TpvAudioSoundSampleResource=class(TpvResource)
+     IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
+     end;
+
+     TpvAudioSoundSampleResource=class(TpvResource,IpvAudioSoundSampleResource)
       private
        fSample:TpvAudioSoundSample;
       public
@@ -484,7 +487,10 @@ type PpvAudioInt32=^TpvInt32;
        property Sample:TpvAudioSoundSample read fSample;
      end;
 
-     TpvAudioSoundOGGResource=class(TpvResource)
+     IpvAudioSoundOGGResource=interface(IpvResource)['{4F43005B-109A-4DF4-808E-4ECAA3BF00A6}']
+     end;
+
+     TpvAudioSoundOGGResource=class(TpvResource,IpvAudioSoundOGGResource)
       private
        fOGG:TpvAudioSoundOGG;
       public
