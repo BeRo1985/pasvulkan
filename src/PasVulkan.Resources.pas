@@ -231,37 +231,26 @@ begin
  if assigned(fResourceManager) then begin
   fResourceManager.fResourceLock.AcquireWrite;
   try
-   OldReferenceCounter:=fReferenceCounter;
-   try
-    fResourceManager.fResourceList.Add(self);
-   finally
-    fReferenceCounter:=OldReferenceCounter;
-   end;
+   fResourceManager.fResourceList.Add(self);
   finally
    fResourceManager.fResourceLock.ReleaseWrite;
   end;
  end;
-//SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
 end;
 
 destructor TpvResource.Destroy;
-var OldReferenceCounter:TpvInt32;
 begin
  if assigned(fResourceManager) then begin
   fResourceManager.fResourceLock.AcquireWrite;
   try
-   OldReferenceCounter:=fReferenceCounter;
-   try
-    fResourceManager.fResourceList.Remove(self);
-   finally
-    fReferenceCounter:=OldReferenceCounter;
-   end;
+   fResourceManager.fResourceList.Remove(self);
   finally
    fResourceManager.fResourceLock.ReleaseWrite;
   end;
  end;
  SetFileName('');
  FreeAndNil(fMetaData);
+ FillChar(fInstanceInterface,SizeOf(IpvResource),0);
  inherited Destroy;
 end;
 
@@ -277,6 +266,7 @@ begin
   try
    OldReferenceCounter:=fReferenceCounter;
    try
+    fReferenceCounter:=fReferenceCounter+2; // For to avoid false-positive frees in this situation
     if assigned(fResourceManager) and (length(fFileName)>0) then begin
      fResourceManager.fResourceFileNameMap.Delete(TpvUTF8String(LowerCase(String(fFileName))));
     end;
