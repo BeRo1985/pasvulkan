@@ -60,6 +60,12 @@ unit PasVulkan.Resources;
 {$endif}
 {$m+}
 
+{$if defined(cpu386) or defined(cpuamd64) or defined(cpux86_64) or defined(cpux64)}
+ {$define WordReadsAndWritesAreAtomic}
+{$else}
+ {$undef WordReadsAndWritesAreAtomic}
+{$ifend}
+
 interface
 
 uses SysUtils,
@@ -72,7 +78,7 @@ uses SysUtils,
 
 type TpvResourceManager=class;
 
-     TpvResourceHandle=TpvInt32;
+     TpvResourceHandle=TpvID;
 
      TpvResource=class;
 
@@ -124,6 +130,7 @@ type TpvResourceManager=class;
       public
        constructor Create(const aMetaResource:TpvMetaResource=nil); reintroduce; virtual;
        destructor Destroy; override;
+       class function GetResourceHandleType:TpvUInt32;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
        class function GetMetaResourceClass:TpvMetaResourceClass; virtual;
@@ -134,7 +141,7 @@ type TpvResourceManager=class;
 
      TpvResourceManager=class(TpvPooledObject)
       private
-       type TResourceHandleManager=class(TpvGenericIDManager<TpvResourceHandle>);
+       type TResourceHandleManager=class(TpvIDManager);
             TResourceHandleMap=array of TpvResource;
             TpvMetaResourceList=class(TpvObjectGenericList<TpvMetaResource>);
             TpvMetaResourceUUIDMap=class(TpvHashMap<TpvUUID,TpvMetaResource>);
@@ -160,6 +167,9 @@ type TpvResourceManager=class;
       public
        constructor Create;
        destructor Destroy; override;
+       class function AllocateInstance:TpvResourceManager; static;
+       class procedure FreeInstance; static;
+       class function GetInstance:TpvResourceManager; static;
        function GetNewUUID:TpvUUID;
        property Resources[const aHandle:TpvResourceHandle]:IpvResource read GetResource; default;
        property MetaResourceByUUID[const aUUID:TpvUUID]:TpvMetaResource read GetMetaResourceByUUID;
@@ -169,6 +179,7 @@ type TpvResourceManager=class;
      end;
 
 var ResourceManager:TpvResourceManager=nil;
+    ResourceManagerLock:TpvInt32=0;
 
 implementation
 
@@ -387,6 +398,24 @@ begin
  end;
 end;
 
+class function TpvResource.GetResourceHandleType:TpvUInt32;
+{$ifdef cpu64}
+var Value:TpvUInt64;
+{$endif}
+begin
+{$ifdef cpu64}
+ Value:=TpvPtrUInt(TpvPointer(self));
+ Value:=(not Value)+(Value shl 18);
+ Value:=Value xor (Value shr 31);
+ Value:=Value*21;
+ Value:=Value xor (Value shr 11);
+ inc(Value,Value shl 6);
+ result:=(Value xor (Value shr 22)) and $ffffffff;
+{$else}
+ result:=TpvPtrUInt(TpvPointer(self));
+{$endif}
+end;
+
 procedure TpvResource.AfterConstruction;
 begin
  inherited AfterConstruction;
@@ -431,7 +460,12 @@ end;
 constructor TpvResourceManager.Create;
 begin
  inherited Create;
+{$ifdef WordReadsAndWritesAreAtomic}
  ResourceManager:=self;
+ TPasMPMemoryBarrier.ReadWrite;
+{$else}
+ TPasMPInterlocked.Write(TObject(ResourceManager),TObject(self));
+{$endif}
  fMetaResourceLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fMetaResourceList:=TpvMetaResourceList.Create;
  fMetaResourceList.OwnsObjects:=false;
@@ -468,9 +502,78 @@ begin
 
  fResourceHandleLock.Free;
 
+{$ifdef WordReadsAndWritesAreAtomic}
  ResourceManager:=nil;
+ TPasMPMemoryBarrier.ReadWrite;
+{$else}
+ TPasMPInterlocked.Write(TObject(ResourceManager),TObject(nil));
+{$endif}
 
  inherited Destroy;
+end;
+
+class function TpvResourceManager.AllocateInstance:TpvResourceManager;
+begin
+ try
+{$ifdef WordReadsAndWritesAreAtomic}
+  TPasMPMemoryBarrier.ReadDependency;
+{$endif}
+  if not assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
+   while TPasMPInterlocked.CompareExchange(ResourceManagerLock,-1,0)<>0 do begin
+    TPasMP.Yield;
+   end;
+   try
+{$ifdef WordReadsAndWritesAreAtomic}
+    TPasMPMemoryBarrier.ReadWrite;
+{$endif}
+    if not assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
+     TpvResourceManager.Create;
+    end;
+   finally
+    TPasMPInterlocked.Write(ResourceManagerLock,0);
+   end;
+  end;
+ finally
+{$ifdef WordReadsAndWritesAreAtomic}
+  TPasMPMemoryBarrier.ReadDependency;
+{$endif}
+  result:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
+ end;
+end;
+
+class procedure TpvResourceManager.FreeInstance;
+var TemporaryResourceManager:TpvResourceManager;
+begin
+{$ifdef WordReadsAndWritesAreAtomic}
+ TPasMPMemoryBarrier.ReadDependency;
+{$endif}
+ if assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
+  while TPasMPInterlocked.CompareExchange(ResourceManagerLock,-1,0)<>0 do begin
+   TPasMP.Yield;
+  end;
+  try
+{$ifdef WordReadsAndWritesAreAtomic}
+   TPasMPMemoryBarrier.ReadWrite;
+{$endif}
+   if assigned({$ifndef WordReadsAndWritesAreAtomic}TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic})){$endif}) then begin
+    TemporaryResourceManager:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
+    TemporaryResourceManager.Free;
+   end;
+  finally
+   TPasMPInterlocked.Write(ResourceManagerLock,0);
+  end;
+ end;
+end;
+
+class function TpvResourceManager.GetInstance:TpvResourceManager;
+begin
+{$ifdef WordReadsAndWritesAreAtomic}
+ TPasMPMemoryBarrier.ReadDependency;
+{$endif}
+ result:={$ifndef WordReadsAndWritesAreAtomic}TpvResourceManager(TPasMPInterlocked.Read(TObject({$endif}ResourceManager{$ifndef WordReadsAndWritesAreAtomic}))){$endif};
+ if not assigned(result) then begin
+  result:=AllocateInstance;
+ end;
 end;
 
 function TpvResourceManager.GetMetaResourceByUUID(const aUUID:TpvUUID):TpvMetaResource;
@@ -506,15 +609,16 @@ end;
 function TpvResourceManager.AllocateHandle(const aResource:TpvResource):TpvResourceHandle;
 var OldCount:TpvInt32;
 begin
- result:=fResourceHandleManager.AllocateID;
+ result:=fResourceHandleManager.AllocateID(aResource.GetResourceHandleType);
  fResourceHandleLock.AcquireWrite;
  try
   OldCount:=length(fResourceHandleMap);
-  if OldCount<=result then begin
-   SetLength(fResourceHandleMap,(result+1)*2);
+  if OldCount<=result.Index then begin
+   SetLength(fResourceHandleMap,(result.Index+1)*2);
    FillChar(fResourceHandleMap[OldCount],(length(fResourceHandleMap)-OldCount)*SizeOf(TpvResource),#0);
   end;
-  fResourceHandleMap[result]:=aResource;
+  fResourceHandleMap[result.Index]:=aResource;
+  aResource.fHandle:=result;
  finally
   fResourceHandleLock.ReleaseWrite;
  end;
@@ -524,7 +628,7 @@ procedure TpvResourceManager.FreeHandle(const aHandle:TpvResourceHandle);
 begin
  fResourceHandleLock.AcquireWrite;
  try
-  fResourceHandleMap[aHandle]:=nil;
+  fResourceHandleMap[aHandle.Index]:=nil;
  finally
   fResourceHandleLock.ReleaseWrite;
  end;
@@ -533,11 +637,11 @@ end;
 
 function TpvResourceManager.GetResource(const aHandle:TpvResourceHandle):IpvResource;
 begin
- if aHandle>=0 then begin
+ if aHandle.Index<>0 then begin
   fResourceHandleLock.AcquireRead;
   try
-   if aHandle<length(fResourceHandleMap) then begin
-    result:=fResourceHandleMap[aHandle];
+   if aHandle.Index<length(fResourceHandleMap) then begin
+    result:=fResourceHandleMap[aHandle.Index];
    end else begin
     result:=nil;
    end;

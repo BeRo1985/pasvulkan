@@ -107,6 +107,7 @@ type EpvIDManager=class(Exception);
        constructor Create;
        destructor Destroy; override;
        function AllocateID(const aType:TpvUInt32=0):TpvID;
+       function CheckID(const aID:TpvID):boolean;
        procedure FreeID(const aID:TpvID);
        property IDCounter:TpvUInt32 read fIDCounter;
      end;
@@ -211,6 +212,9 @@ begin
   end;
  end else begin
   Index:=TPasMPInterlocked.Increment(fIDCounter);
+  if Index=0 then begin
+   Index:=TPasMPInterlocked.Increment(fIDCounter);
+  end;
   Generation:=0;
   fMultipleReaderSingleWriterLock.AcquireRead;
   try
@@ -283,8 +287,37 @@ var Index:TpvUInt32;
 begin
  if not fFreeStack.Pop(Index) then begin
   Index:=TPasMPInterlocked.Increment(fIDCounter);
+  if Index=0 then begin
+   Index:=TPasMPInterlocked.Increment(fIDCounter);
+  end;
  end;
  result:=Index;
+end;
+{$endif}
+
+function TpvIDManager.CheckID(const aID:TpvID):boolean;
+{$ifdef Debug}
+var Index,Generation,Type_:TpvUInt32;
+begin
+ Index:=aID and $ffffffff;
+ if Index<>0 then begin
+  Generation:=(aID shr 32) and $ffff;
+  Type_:=(aID shr 48) and $ffff;
+  fMultipleReaderSingleWriterLock.AcquireRead;
+  try
+   result:=((Index<TpvUInt32(length(fGenerationArray))) and (Generation=fGenerationArray[Index])) and
+           ((Index<TpvUInt32(length(fTypeArray))) and  (Type_=fTypeArray[Index])) and
+           ((fUsedBitmap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0);
+  finally
+   fMultipleReaderSingleWriterLock.ReleaseRead;
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+{$else}
+begin
+ result:=(aID and $ffffffff)<>0;
 end;
 {$endif}
 
@@ -293,32 +326,37 @@ procedure TpvIDManager.FreeID(const aID:TpvID);
 var Index,Generation,Type_:TpvUInt32;
 begin
  Index:=aID and $ffffffff;
- Generation:=(aID shr 32) and $ffff;
- Type_:=(aID shr 48) and $ffff;
- fMultipleReaderSingleWriterLock.AcquireRead;
- try
-  if ((Index<TpvUInt32(length(fGenerationArray))) and (Generation=fGenerationArray[Index])) and
-     ((Index<TpvUInt32(length(fTypeArray))) and  (Type_=fTypeArray[Index])) and
-     ((fUsedBitmap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0) then begin
-   fGenerationArray[Index]:=(fGenerationArray[Index]+1) and $ffff;
-   fTypeArray[Index]:=$ffffffff;
-   TPasMPInterlocked.BitwiseAnd(fUsedBitmap[Index shr 5],not (TpvUInt32(1) shl (Index and 31)));
-   fFreeStack.Push(Index);
-  end else begin
-   if (Index<TpvUInt32(length(fGenerationArray))) and (Generation<>fGenerationArray[Index]) then begin
-    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong generation #'+IntToStr(Generation));
-   end else if (Index<TpvUInt32(length(fTypeArray))) and (Type_<>fTypeArray[Index]) then begin
-    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong type #'+IntToStr(Type_));
+ if Index<>0 then begin
+  Generation:=(aID shr 32) and $ffff;
+  Type_:=(aID shr 48) and $ffff;
+  fMultipleReaderSingleWriterLock.AcquireRead;
+  try
+   if ((Index<TpvUInt32(length(fGenerationArray))) and (Generation=fGenerationArray[Index])) and
+      ((Index<TpvUInt32(length(fTypeArray))) and  (Type_=fTypeArray[Index])) and
+      ((fUsedBitmap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0) then begin
+    fGenerationArray[Index]:=(fGenerationArray[Index]+1) and $ffff;
+    fTypeArray[Index]:=$ffffffff;
+    TPasMPInterlocked.BitwiseAnd(fUsedBitmap[Index shr 5],not (TpvUInt32(1) shl (Index and 31)));
+    fFreeStack.Push(Index);
    end else begin
-    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' lookup error');
+    if (Index<TpvUInt32(length(fGenerationArray))) and (Generation<>fGenerationArray[Index]) then begin
+     raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong generation #'+IntToStr(Generation));
+    end else if (Index<TpvUInt32(length(fTypeArray))) and (Type_<>fTypeArray[Index]) then begin
+     raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong type #'+IntToStr(Type_));
+    end else begin
+     raise EpvIDManager.Create('ID #'+IntToStr(Index)+' lookup error');
+    end;
    end;
+  finally
+   fMultipleReaderSingleWriterLock.ReleaseRead;
   end;
- finally
-  fMultipleReaderSingleWriterLock.ReleaseRead;
+ end else begin
+  raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has a null index');
  end;
 end;
 {$else}
 begin
+//Assert((aID and $ffffffff)<>0);
  fFreeStack.Push(aID and $ffffffff);
 end;
 {$endif}

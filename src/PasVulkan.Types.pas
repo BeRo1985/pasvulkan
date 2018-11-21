@@ -218,6 +218,12 @@ type PPpvInt8=^PpvInt8;
      PpvID=^TpvID;
      TpvID=type {$ifdef Debug}TpvUInt64{$else}TpvUInt32{$endif};
 
+     TpvIDHelper=record helper for TpvID
+      public
+       function GetIndex:TpvUInt32; inline;
+       property Index:TpvUInt32 read GetIndex;
+     end;
+
      PPpvUInt128=^PpvUInt128;
      PpvUInt128=^TpvUInt128;
      TpvUInt128=packed record
@@ -502,6 +508,11 @@ begin
  r:=(TpvUInt64(Remainder) shl 32) or a;
  Remainder:=r mod b;
  result:=r div b;
+end;
+
+function TpvIDHelper.GetIndex:TpvUInt32;
+begin
+ result:=self {$ifndef Debug}and $ffffffff{$endif};
 end;
 
 class operator TpvUInt128.Implicit(const a:TpvUInt64):TpvUInt128;
@@ -1103,6 +1114,8 @@ begin
   end;
  end;
 end;
+
+{ TpvIDHelper }
 
 initialization
  GenerateHalfFloatLookUpTables;
