@@ -75,6 +75,11 @@ type TpvSwap<T>=class
      TpvIndirectSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
 
      TpvTypedSort<T>=class
+      private
+       type PStackItem=^TStackItem;
+            TStackItem=record
+             Left,Right,Depth:TpvInt32;
+            end;
       public
        type TpvTypedSortCompareFunction=function(const a,b:T):TpvInt32;
       public
@@ -466,10 +471,6 @@ type PItem=^TItem;
      TItem=T;
      PItemArray=^TItemArray;
      TItemArray=array of TItem;
-     PStackItem=^TStackItem;
-     TStackItem=record
-      Left,Right,Depth:TpvInt32;
-     end;
 var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
@@ -612,10 +613,6 @@ type PItem=^TItem;
      TItem=T;
      PItemArray=^TItemArray;
      TItemArray=array[0..65535] of TItem;
-     PStackItem=^TStackItem;
-     TStackItem=record
-      Left,Right,Depth:TpvInt32;
-     end;
 var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
