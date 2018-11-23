@@ -7670,7 +7670,7 @@ begin
 
  if fGraphicsReady and IsVisibleToUser then begin
 
-  fResourceManager.BackgroundLoader.FinishResources(fBackgroundResourceLoaderFrameTimeout);
+  fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
 
   if fSkipNextDrawFrame then begin
 

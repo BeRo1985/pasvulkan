@@ -171,24 +171,26 @@ type EpvResource=class(Exception);
               destructor Destroy; override;
             end;
            TQueueItems=TpvDynamicArray<TQueueItem>;
+           TQueueItemResourceMap=class(TpvHashMap<TpvResource,TQueueItem>);
            TQueueItemStringMap=class(TpvStringHashMap<TQueueItem>);
       private
        fResourceManager:TpvResourceManager;
        fEvent:TPasMPEvent;
        fLock:TPasMPSlimReaderWriterLock;
        fQueueItems:TQueueItems;
-       fQueueItemFileNameMap:TQueueItemStringMap;
-       procedure FinishBackgroundLoading(const aQueueItem:TQueueItem);
+       fQueueItemResourceMap:TQueueItemResourceMap;
+       function QueueResource(const aResource:IpvResource;const aParent:IpvResource):boolean;
+       procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
+       procedure WaitForResource(const aResource:TpvResource);
+       function ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
+       function Process(const aTimeout:TpvInt64=5):boolean;
+       function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
+       function GetCountOfQueuedResources:TpvSizeInt;
       protected
        procedure Execute; override;
       public
        constructor Create(const aResourceManager:TpvResourceManager); reintroduce;
        destructor Destroy; override;
-       function QueueResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aParent:IpvResource=nil;const aOnFinish:TpvResourceOnFinish=nil):boolean;
-       procedure WaitForResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aDoNewLocking:boolean=true);
-       function FinishResources(const aTimeout:TpvInt64=5):boolean;
-       function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
-       function GetCountOfQueuedResources:TpvSizeInt;
      end;
 
      TpvResourceClassType=class
@@ -215,8 +217,10 @@ type EpvResource=class(Exception);
        type TResourceClassTypeList=class(TpvObjectGenericList<TpvResourceClassType>);
             TResourceClassTypeMap=class(TpvHashMap<TpvResourceClass,TpvResourceClassType>);
       private
-       fResourceLock:TPasMPMultipleReaderSingleWriterLock;
+       fLock:TPasMPMultipleReaderSingleWriterLock;
+       fLocked:TPasMPBool32;
        fResourceClassTypeList:TResourceClassTypeList;
+       fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fBaseDataPath:TpvUTF8String;
@@ -226,13 +230,14 @@ type EpvResource=class(Exception);
        class function SanitizeFileName(const aFileName:TpvUTF8String):TpvUTF8String; static;
        function GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
        function FindResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String):IpvResource;
+       function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:IpvResource=nil):IpvResource;
        function GetResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil):IpvResource;
-       function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aParent:IpvResource=nil;const aOnFinish:TpvResourceOnFinish=nil):boolean;
+       function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aParent:IpvResource=nil):IpvResource;
+       function FinishResources(const aTimeout:TpvInt64=5):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        property ResourceClassTypes[const aResourceClass:TpvResourceClass]:TpvResourceClassType read GetResourceClassType;
        property Resources[const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String]:IpvResource read FindResource;
        property BaseDataPath:TpvUTF8String read fBaseDataPath write fBaseDataPath;
-       property BackgroundLoader:TpvResourceBackgroundLoader read fBackgroundLoader;
      end;
 
 implementation
@@ -270,11 +275,15 @@ begin
  fResourceClassType:=fResourceManager.GetResourceClassType(TpvResourceClass(ClassType));
 
  if assigned(fResourceManager) and assigned(fResourceClassType) then begin
-  fResourceManager.fResourceLock.AcquireWrite;
+  if not fResourceManager.fLocked then begin
+   fResourceManager.fLock.AcquireWrite;
+  end;
   try
    fResourceClassType.fResourceList.Add(self);
   finally
-   fResourceManager.fResourceLock.ReleaseWrite;
+   if not fResourceManager.fLocked then begin
+    fResourceManager.fLock.ReleaseWrite;
+   end;
   end;
  end;
 
@@ -283,11 +292,11 @@ end;
 destructor TpvResource.Destroy;
 begin
  if assigned(fResourceManager) and assigned(fResourceClassType) then begin
-  fResourceManager.fResourceLock.AcquireWrite;
+  fResourceManager.fLock.AcquireWrite;
   try
    fResourceClassType.fResourceList.Remove(self);
   finally
-   fResourceManager.fResourceLock.ReleaseWrite;
+   fResourceManager.fLock.ReleaseWrite;
   end;
  end;
  SetFileName('');
@@ -302,8 +311,8 @@ var NewFileName:TpvUTF8String;
 begin
  NewFileName:=TpvResourceManager.SanitizeFileName(aFileName);
  if fFileName<>NewFileName then begin
-  if assigned(fResourceManager) then begin
-   fResourceManager.fResourceLock.AcquireWrite;
+  if assigned(fResourceManager) and not fResourceManager.fLocked then begin
+   fResourceManager.fLock.AcquireWrite;
   end;
   try
    OldReferenceCounter:=fReferenceCounter;
@@ -320,8 +329,8 @@ begin
     fReferenceCounter:=OldReferenceCounter;
    end;
   finally
-   if assigned(fResourceManager) then begin
-    fResourceManager.fResourceLock.ReleaseWrite;
+   if assigned(fResourceManager) and not fResourceManager.fLocked then begin
+    fResourceManager.fLock.ReleaseWrite;
    end;
   end;
  end;
@@ -412,6 +421,8 @@ begin
   finally
    FreeAndNil(Stream);
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -503,7 +514,7 @@ begin
  fDependents.Initialize;
  fResourceBackgroundLoader.fQueueItems.Add(self);
  if assigned(fResourceBackgroundLoader) and assigned(fResource) then begin
-  fResourceBackgroundLoader.fQueueItemFileNameMap.Add(fResource.GetResource.fFileName,self);
+  fResourceBackgroundLoader.fQueueItemResourceMap.Add(fResource.GetResource,self);
  end;
 end;
 
@@ -513,7 +524,7 @@ begin
  if assigned(fResourceBackgroundLoader) then begin
   try
    if assigned(fResource) then begin
-    fResourceBackgroundLoader.fQueueItemFileNameMap.Delete(fResource.GetResource.fFileName);
+    fResourceBackgroundLoader.fQueueItemResourceMap.Delete(fResource.GetResource);
    end;
   finally
    for Index:=0 to fResourceBackgroundLoader.fQueueItems.Count-1 do begin
@@ -538,7 +549,7 @@ begin
  fEvent:=TPasMPEvent.Create(nil,false,false,'');
  fLock:=TPasMPSlimReaderWriterLock.Create;
  fQueueItems.Initialize;
- fQueueItemFileNameMap:=TQueueItemStringMap.Create(nil);
+ fQueueItemResourceMap:=TQueueItemResourceMap.Create(nil);
  inherited Create(false);
 end;
 
@@ -548,7 +559,7 @@ begin
   fQueueItems.Items[0].Free;
  end;
  fQueueItems.Finalize;
- FreeAndNil(fQueueItemFileNameMap);
+ FreeAndNil(fQueueItemResourceMap);
  FreeAndNil(fEvent);
  FreeAndNil(fLock);
  inherited Destroy;
@@ -586,7 +597,8 @@ begin
     QueueItem:=nil;
     for Index:=0 to fQueueItems.Count-1 do begin
      TemporaryQueueItem:=fQueueItems.Items[Index];
-     if TemporaryQueueItem.fResource.GetResource.fAsyncLoadState=TpvResource.TAsyncLoadState.Queued then begin
+     if (TemporaryQueueItem.fResource.GetResource.fAsyncLoadState=TpvResource.TAsyncLoadState.Queued) and
+        (TemporaryQueueItem.fDependencies.Count=0) then begin
       QueueItem:=TemporaryQueueItem;
       break;
      end;
@@ -665,55 +677,32 @@ begin
  end;
 end;
 
-function TpvResourceBackgroundLoader.QueueResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aParent:IpvResource=nil;const aOnFinish:TpvResourceOnFinish=nil):boolean;
+function TpvResourceBackgroundLoader.QueueResource(const aResource:IpvResource;const aParent:IpvResource):boolean;
 var Index:TpvSizeInt;
     QueueItem,
     TemporaryQueueItem:TQueueItem;
-    ResourceClassType:TpvResourceClassType;
     Resource:TpvResource;
-    IResource:IpvResource;
     Found:boolean;
-    FileName:TpvUTF8String;
 begin
 
  result:=false;
 
- FileName:=TpvResourceManager.SanitizeFileName(aFileName);
-
  fLock.Acquire;
  try
 
-  if not fQueueItemFileNameMap.ExistKey(FileName) then begin
+  Resource:=aResource.GetResource;
 
-   ResourceClassType:=fResourceManager.GetResourceClassType(aResourceClass);
+  QueueItem:=fQueueItemResourceMap.Values[Resource];
 
-   IResource:=ResourceClassType.fResourceFileNameMap[FileName];
+  if not assigned(QueueItem) then begin
 
-   if assigned(IResource) then begin
+   Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
 
-    Resource:=IResource.GetResource;
-
-    if not (Resource is aResourceClass) then begin
-     raise EpvResourceClassMismatch.Create('Resource class mismatch');
-    end;
-
-   end else begin
-
-    Resource:=aResourceClass.Create(fResourceManager);
-    Resource.SetFileName(FileName);
-    Resource.fOnFinish:=aOnFinish;
-
-    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Queued;
-
-    IResource:=Resource.fInstanceInterface;
-
-   end;
-
-   QueueItem:=TQueueItem.Create(self,IResource);
+   QueueItem:=TQueueItem.Create(self,aResource);
 
    if assigned(aParent) then begin
 
-    TemporaryQueueItem:=fQueueItemFileNameMap.Values[aParent.GetResource.fFileName];
+    TemporaryQueueItem:=fQueueItemResourceMap.Values[aParent.GetResource];
 
     if assigned(TemporaryQueueItem) then begin
 
@@ -730,13 +719,13 @@ begin
 
      Found:=false;
      for Index:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
-      if TemporaryQueueItem.fDependencies.Items[Index]=IResource then begin
+      if TemporaryQueueItem.fDependencies.Items[Index]=aResource then begin
        Found:=true;
        break;
       end;
      end;
      if not Found then begin
-      TemporaryQueueItem.fDependencies.Add(IResource);
+      TemporaryQueueItem.fDependencies.Add(aResource);
      end;
 
     end;
@@ -757,7 +746,7 @@ begin
 
 end;
 
-procedure TpvResourceBackgroundLoader.FinishBackgroundLoading(const aQueueItem:TQueueItem);
+procedure TpvResourceBackgroundLoader.FinalizeQueueItem(const aQueueItem:TQueueItem);
 var IResource:IpvResource;
     Resource:TpvResource;
     Success:boolean;
@@ -784,199 +773,116 @@ begin
 
 end;
 
-procedure TpvResourceBackgroundLoader.WaitForResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aDoNewLocking:boolean=true);
-var Index:TpvSizeInt;
-    QueueItem:TQueueItem;
-    ResourceClassType:TpvResourceClassType;
-    IResource:IpvResource;
-    Resource:TpvResource;
-    FileName:TpvUTF8String;
+procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource);
+var QueueItem:TQueueItem;
 begin
 
- FileName:=TpvResourceManager.SanitizeFileName(FileName);
-
- if aDoNewLocking then begin
-  fLock.Acquire;
- end;
+ fLock.Acquire;
  try
 
-  QueueItem:=fQueueItemFileNameMap.Values[FileName];
+  QueueItem:=fQueueItemResourceMap.Values[aResource];
   if assigned(QueueItem) then begin
 
-   ResourceClassType:=fResourceManager.GetResourceClassType(aResourceClass);
-
-   IResource:=ResourceClassType.fResourceFileNameMap[FileName];
-
-   if assigned(IResource) then begin
-
-    Resource:=IResource.GetResource;
-
-    if not (Resource is aResourceClass) then begin
-     raise EpvResourceClassMismatch.Create('Resource class mismatch');
-    end;
-
-    while (QueueItem.fDependencies.Count>0) or
-          (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
+   while (QueueItem.fDependencies.Count>0) or
+         (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
                                         TpvResource.TAsyncLoadState.Loading]) do begin
-     fLock.Release;
-     try
-      TPasMP.Yield;
-      Sleep(1);
-     finally
-      fLock.Acquire;
-     end;
+    fLock.Release;
+    try
+     TPasMP.Yield;
+     Sleep(1);
+    finally
+     fLock.Acquire;
     end;
+   end;
 
-    FinishBackgroundLoading(QueueItem);
+   FinalizeQueueItem(QueueItem);
+
+   FreeAndNil(QueueItem);
+
+  end;
+
+ finally
+  fLock.Release;
+ end;
+
+end;
+
+function TpvResourceBackgroundLoader.ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
+var Index:TpvSizeInt;
+    QueueItem:TQueueItem;
+    IResource:IpvResource;
+    Resource:TpvResource;
+begin
+
+ result:=true;
+
+ Index:=0;
+ while Index<fQueueItems.Count do begin
+
+  QueueItem:=fQueueItems.Items[Index];
+
+  IResource:=QueueItem.fResource;
+  try
+
+   Resource:=IResource.GetResource;
+
+   if (QueueItem.fDependencies.Count>0) or
+      (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
+                                    TpvResource.TAsyncLoadState.Loading]) then begin
+
+    inc(Index);
+
+   end else begin
+
+    fLock.Release;
+    try
+     FinalizeQueueItem(QueueItem);
+    finally
+     fLock.Acquire;
+    end;
 
     FreeAndNil(QueueItem);
 
    end;
 
-  end;
-
- finally
-  if aDoNewLocking then begin
-   fLock.Release;
-  end;
- end;
-
-end;
-
-function TpvResourceBackgroundLoader.FinishResources(const aTimeout:TpvInt64=5):boolean;
-var Index:TpvSizeInt;
-    QueueItem:TQueueItem;
-    IResource:IpvResource;
-    Resource:TpvResource;
-    Start:TpvHighResolutionTime;
-begin
-
- Start:=pvApplication.HighResolutionTimer.GetTime;
-
- fLock.Acquire;
- try
-
-  try
-
-   Index:=0;
-   while Index<fQueueItems.Count do begin
-
-    QueueItem:=fQueueItems.Items[Index];
-
-    IResource:=QueueItem.fResource;
-
-    Resource:=IResource.GetResource;
-
-    if (QueueItem.fDependencies.Count>0) or
-       (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
-                                     TpvResource.TAsyncLoadState.Loading]) then begin
-
-     inc(Index);
-
-    end else begin
-
-     fLock.Release;
-     try
-      FinishBackgroundLoading(QueueItem);
-     finally
-      fLock.Acquire;
-     end;
-
-     FreeAndNil(QueueItem);
-
-    end;
-
-    if (aTimeout>=0) and
-       (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime-Start)>=aTimeout) then begin
-     break;
-    end;
-
-   end;
-
   finally
    IResource:=nil;
   end;
 
-  result:=fQueueItems.Count=0;
+  if (aTimeout>=0) and
+     (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime- aStartTime)>=aTimeout) then begin
+   result:=false;
+   break;
+  end;
 
+ end;
+
+end;
+
+function TpvResourceBackgroundLoader.Process(const aTimeout:TpvInt64=5):boolean;
+begin
+ fLock.Acquire;
+ try
+  ProcessIteration(pvApplication.HighResolutionTimer.GetTime,aTimeOut);
+  result:=fQueueItems.Count=0;
  finally
   fLock.Release;
  end;
-
 end;
 
 function TpvResourceBackgroundLoader.WaitForResources(const aTimeout:TpvInt64=-1):boolean;
-var Index:TpvSizeInt;
-    QueueItem:TQueueItem;
-    IResource:IpvResource;
-    Resource:TpvResource;
-    Start:TpvHighResolutionTime;
-    Timeout:boolean;
+var Start:TpvHighResolutionTime;
 begin
-
  Start:=pvApplication.HighResolutionTimer.GetTime;
-
  fLock.Acquire;
  try
-
-  try
-
-   while fQueueItems.Count>0 do begin
-
-    Timeout:=false;
-
-    Index:=0;
-    while Index<fQueueItems.Count do begin
-
-     QueueItem:=fQueueItems.Items[Index];
-
-     IResource:=QueueItem.fResource;
-
-     Resource:=IResource.GetResource;
-
-     if (QueueItem.fDependencies.Count>0) or
-        (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
-                                      TpvResource.TAsyncLoadState.Loading]) then begin
-
-      inc(Index);
-
-     end else begin
-
-      fLock.Release;
-      try
-       FinishBackgroundLoading(QueueItem);
-      finally
-       fLock.Acquire;
-      end;
-
-      FreeAndNil(QueueItem);
-
-     end;
-
-     if (aTimeout>=0) and
-        (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime-Start)>=aTimeout) then begin
-      Timeout:=true;
-      break;
-     end;
-
-    end;
-
-    if Timeout then begin
-     break;
-    end;
-
-   end;
-
-  finally
-   IResource:=nil;
+  while (fQueueItems.Count>0) and ProcessIteration(Start,aTimeout) do begin
+   TPasMP.Relax;
   end;
-
   result:=fQueueItems.Count=0;
-
  finally
   fLock.Release;
  end;
-
 end;
 
 function TpvResourceBackgroundLoader.GetCountOfQueuedResources:TpvSizeInt;
@@ -1033,14 +939,24 @@ end;
 constructor TpvResourceManager.Create;
 begin
  inherited Create;
- fResourceLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+
+ fLocked:=false;
+
  fResourceClassTypeList:=TResourceClassTypeList.Create;
  fResourceClassTypeList.OwnsObjects:=true;
+
+ fResourceClassTypeListLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+
  fResourceClassTypeMap:=TResourceClassTypeMap.Create(nil);
+
  if assigned(pvApplication) then begin
   fBaseDataPath:=TpvUTF8String(pvApplication.Assets.BasePath);
  end;
+
  fBackgroundLoader:=TpvResourceBackgroundLoader.Create(self);
+
 end;
 
 destructor TpvResourceManager.Destroy;
@@ -1054,11 +970,13 @@ begin
  end;
  FreeAndNil(fBackgroundLoader);
 
- fResourceClassTypeList.Free;
+ FreeAndNil(fResourceClassTypeList);
 
- fResourceClassTypeMap.Free;
+ FreeAndNil(fResourceClassTypeListLock);
 
- fResourceLock.Free;
+ FreeAndNil(fResourceClassTypeMap);
+
+ FreeAndNil(fLock);
 
  inherited Destroy;
 
@@ -1074,71 +992,116 @@ begin
  if not assigned(aResourceClass) then begin
   raise EpvResourceClassNull.Create('Resource class is null');
  end;
- result:=fResourceClassTypeMap[aResourceClass];
- if not assigned(result) then begin
-  result:=TpvResourceClassType.Create(self,aResourceClass);
-  try
-   fResourceClassTypeMap[aResourceClass]:=result;
-  finally
-   fResourceClassTypeList.Add(result);
+ fResourceClassTypeListLock.AcquireRead;
+ try
+  result:=fResourceClassTypeMap[aResourceClass];
+  if not assigned(result) then begin
+   fResourceClassTypeListLock.ReadToWrite;
+   try
+    result:=TpvResourceClassType.Create(self,aResourceClass);
+    try
+     fResourceClassTypeMap[aResourceClass]:=result;
+    finally
+     fResourceClassTypeList.Add(result);
+    end;
+   finally
+    fResourceClassTypeListLock.WriteToRead;
+   end;
   end;
+ finally
+  fResourceClassTypeListLock.ReleaseRead;
  end;
 end;
 
 function TpvResourceManager.FindResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String):IpvResource;
+var ResourceClassType:TpvResourceClassType;
 begin
- fResourceLock.AcquireRead;
+ ResourceClassType:=GetResourceClassType(aResourceClass);
+ fLock.AcquireRead;
  try
-  result:=GetResourceClassType(aResourceClass).fResourceFileNameMap[SanitizeFileName(aFileName)];
+  result:=ResourceClassType.fResourceFileNameMap[SanitizeFileName(aFileName)];
  finally
-  fResourceLock.ReleaseRead;
+  fLock.ReleaseRead;
+ end;
+end;
+
+function TpvResourceManager.LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:IpvResource=nil):IpvResource;
+var ResourceClassType:TpvResourceClassType;
+    Resource:TpvResource;
+    FileName:TpvUTF8String;
+begin
+ FileName:=SanitizeFileName(aFileName);
+ ResourceClassType:=GetResourceClassType(aResourceClass);
+ fLock.AcquireRead;
+ try
+  result:=ResourceClassType.fResourceFileNameMap[FileName];
+  if assigned(result) then begin
+   Resource:=result.GetResource;
+   if not (Resource is aResourceClass) then begin
+    raise EpvResourceClassMismatch.Create('Resource class mismatch');
+   end;
+   if not aLoadInBackground then begin
+    fLock.ReleaseRead;
+    try
+     fBackgroundLoader.WaitForResource(Resource);
+    finally
+     fLock.AcquireRead;
+    end;
+   end;
+  end else begin
+   fLock.ReadToWrite;
+   try
+    fLocked:=true;
+    try
+     Resource:=aResourceClass.Create(self);
+     Resource.SetFileName(FileName);
+     Resource.fOnFinish:=aOnFinish;
+    finally
+     fLocked:=false;
+    end;
+    if aLoadInBackground then begin
+     result:=Resource.InstanceInterface;
+     fBackgroundLoader.QueueResource(result,aParent);
+    end;
+   finally
+    fLock.WriteToRead;
+   end;
+   if not aLoadInBackground then begin
+    fLock.ReleaseRead;
+    try
+     if Resource.LoadFromFileName(FileName) then begin
+      result:=Resource.InstanceInterface;
+     end else begin
+      FreeAndNil(result);
+     end;
+    finally
+     fLock.AcquireRead;
+    end;
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
  end;
 end;
 
 function TpvResourceManager.GetResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil):IpvResource;
-var Resource:TpvResource;
-    FileName:TpvUTF8String;
 begin
- FileName:=SanitizeFileName(aFileName);
- result:=FindResource(aResourceClass,FileName);
- if assigned(result) then begin
-  Resource:=result.GetResource;
-  if not (Resource is aResourceClass) then begin
-   raise EpvResourceClassMismatch.Create('Resource class mismatch');
-  end;
-  fBackgroundLoader.WaitForResource(aResourceClass,FileName);
- end else begin
-  Resource:=aResourceClass.Create(self);
-  Resource.fOnFinish:=aOnFinish;
-  if Resource.LoadFromFileName(FileName) then begin
-   result:=Resource.InstanceInterface;
-  end else begin
-   FreeAndNil(result);
-  end;
- end;
+ result:=LoadResource(aResourceClass,aFileName,aOnFinish,false,nil);
 end;
 
-function TpvResourceManager.BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aParent:IpvResource=nil;const aOnFinish:TpvResourceOnFinish=nil):boolean;
-var Exist:boolean;
-    FileName:TpvUTF8String;
+function TpvResourceManager.BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aParent:IpvResource=nil):IpvResource;
 begin
- FileName:=SanitizeFileName(aFileName);
- fResourceLock.AcquireRead;
- try
-  Exist:=GetResourceClassType(aResourceClass).fResourceFileNameMap.ExistKey(FileName);
- finally
-  fResourceLock.ReleaseRead;
- end;
- if Exist then begin
-  result:=false;
- end else begin
-  result:=fBackgroundLoader.QueueResource(aResourceClass,FileName,aParent,aOnFinish);
- end;
+ result:=LoadResource(aResourceClass,aFileName,aOnFinish,true,aParent);
+end;
+
+function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=5):boolean;
+begin
+ result:=fBackgroundLoader.Process(aTimeout);
 end;
 
 function TpvResourceManager.WaitForResources(const aTimeout:TpvInt64=-1):boolean;
 begin
- result:=fBackgroundLoader.WaitForResources(-1);
+ result:=fBackgroundLoader.WaitForResources(aTimeout);
 end;
 
 initialization
