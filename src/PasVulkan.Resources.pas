@@ -231,7 +231,7 @@ type EpvResource=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
-       class function SanitizeFileName(const aFileName:TpvUTF8String):TpvUTF8String; static;
+       class function SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String; static;
        function GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
        function FindResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String):IpvResource;
        function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:IpvResource=nil):IpvResource;
@@ -1020,9 +1020,41 @@ begin
 
 end;
 
-class function TpvResourceManager.SanitizeFileName(const aFileName:TpvUTF8String):TpvUTF8String;
+class function TpvResourceManager.SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String;
+var Index,LastDirectoryNameBeginIndex,Len:TpvSizeInt;
 begin
- result:=TpvUTF8String(StringReplace(LowerCase(String(aFileName)),'\','/',[rfReplaceAll]));
+ result:=aFileName;
+ Index:=1;
+ LastDirectoryNameBeginIndex:=1;
+ Len:=length(result);
+ while Index<=Len do begin
+  case result[Index] of
+   'A'..'Z':begin
+    inc(result[Index],Ord('a')-Ord('A'));
+    inc(Index);
+   end;
+   '\','/':begin
+    if (LastDirectoryNameBeginIndex<Index) and
+       ((result[LastDirectoryNameBeginIndex]='.') and
+        (((Index-LastDirectoryNameBeginIndex)=1) or
+         (((Index-LastDirectoryNameBeginIndex)=2) and
+          (result[LastDirectoryNameBeginIndex+1]='.')))) then begin
+     // Remove "./" and "../" from string
+     Delete(result,LastDirectoryNameBeginIndex,(Index-LastDirectoryNameBeginIndex)+1);
+     dec(Len,(Index-LastDirectoryNameBeginIndex)+1);
+    end else begin
+     if result[Index]='\' then begin
+      result[Index]:='/';
+     end;
+     inc(Index);
+     LastDirectoryNameBeginIndex:=Index;
+    end;
+   end;
+   else begin
+    inc(Index);
+   end;
+  end;
+ end;
 end;
 
 function TpvResourceManager.GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
