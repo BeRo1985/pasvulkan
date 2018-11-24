@@ -515,10 +515,13 @@ end;
 
 function TpvResource.WaitFor:boolean;
 begin
- if assigned(fResourceManager) and assigned(fResourceManager.fBackgroundLoader) then begin
-  fResourceManager.fBackgroundLoader.WaitForResource(self);
- end;
  result:=fLoaded;
+ if (not result) and
+    assigned(fResourceManager) and
+    assigned(fResourceManager.fBackgroundLoader) then begin
+  fResourceManager.fBackgroundLoader.WaitForResource(self);
+  result:=fLoaded;
+ end;
 end;
 
 { TpvResourceBackgroundLoader.TQueueItem }
