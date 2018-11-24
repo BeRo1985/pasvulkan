@@ -147,6 +147,7 @@ type EpvResource=class(Exception);
        function Save:boolean; virtual;
        function LoadFromFileName(const aFileName:TpvUTF8String):boolean; virtual;
        function SaveToFileName(const aFileName:TpvUTF8String):boolean; virtual;
+       function WaitFor:boolean;
       public
        property InstanceInterface:IpvResource read fInstanceInterface;
        property MemoryUsage:TpvUInt64 read fMemoryUsage write fMemoryUsage;
@@ -510,6 +511,14 @@ function TpvResource.SaveToFileName(const aFileName:TpvUTF8String):boolean;
 begin
  SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
  result:=Save;
+end;
+
+function TpvResource.WaitFor:boolean;
+begin
+ if assigned(fResourceManager) and assigned(fResourceManager.fBackgroundLoader) then begin
+  fResourceManager.fBackgroundLoader.WaitForResource(self);
+ end;
+ result:=fLoaded;
 end;
 
 { TpvResourceBackgroundLoader.TQueueItem }
