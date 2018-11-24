@@ -749,9 +749,6 @@ begin
 
  if result then begin
   fEvent.SetEvent;
-  if not Started then begin
-   Start;
-  end;
  end;
 
 end;
