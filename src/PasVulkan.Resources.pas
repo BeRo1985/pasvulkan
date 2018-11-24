@@ -115,6 +115,7 @@ type EpvResource=class(Exception);
               Fail
              );
             PAsyncLoadState=^TAsyncLoadState;
+       const VirtualFileNamePrefix:TpvUTF8String='virtual://';
       private
        fResourceManager:TpvResourceManager;
        fResourceClassType:TpvResourceClassType;
@@ -1042,6 +1043,10 @@ begin
      // Remove "./" and "../" from string
      Delete(result,LastDirectoryNameBeginIndex,(Index-LastDirectoryNameBeginIndex)+1);
      dec(Len,(Index-LastDirectoryNameBeginIndex)+1);
+    end else if Index=1 then begin
+     // Remove beginning "/" from string
+     Delete(result,1,1);
+     dec(Len);
     end else begin
      if result[Index]='\' then begin
       result[Index]:='/';
