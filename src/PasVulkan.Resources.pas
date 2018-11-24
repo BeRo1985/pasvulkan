@@ -98,6 +98,7 @@ type EpvResource=class(Exception);
      IpvResource=interface(IpvReferenceCountedObject)['{AD2C0315-C8AF-4D79-876E-1FA42FB869F9}']
       function GetResource:TpvResource;
       function GetResourceClass:TpvResourceClass;
+      function WaitFor:boolean;
      end;
 
      TpvResourceOnFinish=procedure(aResource:IpvResource;const aSuccess:boolean) of object;
@@ -135,6 +136,7 @@ type EpvResource=class(Exception);
        procedure BeforeDestruction; override;
        function GetResource:TpvResource;
        function GetResourceClass:TpvResourceClass;
+       function WaitFor:boolean;
        function CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function GetStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function LoadMetaData(const aStream:TStream):boolean; overload; virtual;
@@ -147,7 +149,6 @@ type EpvResource=class(Exception);
        function Save:boolean; virtual;
        function LoadFromFileName(const aFileName:TpvUTF8String):boolean; virtual;
        function SaveToFileName(const aFileName:TpvUTF8String):boolean; virtual;
-       function WaitFor:boolean;
       public
        property InstanceInterface:IpvResource read fInstanceInterface;
        property MemoryUsage:TpvUInt64 read fMemoryUsage write fMemoryUsage;
@@ -374,6 +375,17 @@ begin
  result:=TpvResourceClass(ClassType);
 end;
 
+function TpvResource.WaitFor:boolean;
+begin
+ result:=fLoaded;
+ if (not result) and
+    assigned(fResourceManager) and
+    assigned(fResourceManager.fBackgroundLoader) then begin
+  fResourceManager.fBackgroundLoader.WaitForResource(self);
+  result:=fLoaded;
+ end;
+end;
+
 function TpvResource.CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream;
 begin
  result:=TFileStream.Create(IncludeTrailingPathDelimiter(String(fResourceManager.fBaseDataPath))+String(TpvResourceManager.SanitizeFileName(aFileName)),fmCreate);
@@ -511,17 +523,6 @@ function TpvResource.SaveToFileName(const aFileName:TpvUTF8String):boolean;
 begin
  SetFileName(TpvResourceManager.SanitizeFileName(aFileName));
  result:=Save;
-end;
-
-function TpvResource.WaitFor:boolean;
-begin
- result:=fLoaded;
- if (not result) and
-    assigned(fResourceManager) and
-    assigned(fResourceManager.fBackgroundLoader) then begin
-  fResourceManager.fBackgroundLoader.WaitForResource(self);
-  result:=fLoaded;
- end;
 end;
 
 { TpvResourceBackgroundLoader.TQueueItem }
