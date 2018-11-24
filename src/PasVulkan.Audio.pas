@@ -474,6 +474,18 @@ type PpvAudioInt32=^TpvInt32;
      end;
 
      IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
+       procedure FixUp;
+       procedure SetPolyphony(Polyphony:TpvInt32);
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+       procedure Stop(VoiceNumber:TpvInt32);
+       procedure KeyOff(VoiceNumber:TpvInt32);
+       function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
+       function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
+       function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
+       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+       function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
+       function IsPlaying:boolean;
+       function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
      end;
 
      TpvAudioSoundSampleResource=class(TpvResource,IpvAudioSoundSampleResource)
@@ -483,11 +495,29 @@ type PpvAudioInt32=^TpvInt32;
        constructor Create(const aResourceManager:TpvResourceManager); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
+       procedure FixUp;
+       procedure SetPolyphony(Polyphony:TpvInt32);
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+       procedure Stop(VoiceNumber:TpvInt32);
+       procedure KeyOff(VoiceNumber:TpvInt32);
+       function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
+       function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
+       function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
+       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+       function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
+       function IsPlaying:boolean;
+       function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
       published
        property Sample:TpvAudioSoundSample read fSample;
      end;
 
      IpvAudioSoundOGGResource=interface(IpvResource)['{4F43005B-109A-4DF4-808E-4ECAA3BF00A6}']
+       procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
+       procedure Stop;
+       procedure SetVolume(AVolume:TpvFloat);
+       procedure SetPanning(APanning:TpvFloat);
+       procedure SetRate(ARate:TpvFloat);
+       function IsPlaying:boolean;
      end;
 
      TpvAudioSoundOGGResource=class(TpvResource,IpvAudioSoundOGGResource)
@@ -497,6 +527,12 @@ type PpvAudioInt32=^TpvInt32;
        constructor Create(const aResourceManager:TpvResourceManager); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
+       procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
+       procedure Stop;
+       procedure SetVolume(AVolume:TpvFloat);
+       procedure SetPanning(APanning:TpvFloat);
+       procedure SetRate(ARate:TpvFloat);
+       function IsPlaying:boolean;
       published
        property OGG:TpvAudioSoundOGG read fOGG;
      end;
@@ -2879,6 +2915,66 @@ begin
  result:=assigned(fSample);
 end;
 
+procedure TpvAudioSoundSampleResource.FixUp;
+begin
+ fSample.FixUp;
+end;
+
+procedure TpvAudioSoundSampleResource.SetPolyphony(Polyphony:TpvInt32);
+begin
+ fSample.SetPolyphony(Polyphony);
+end;
+
+function TpvAudioSoundSampleResource.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+begin
+ result:=fSample.Play(Volume,Panning,Rate,VoiceIndexPointer);
+end;
+
+procedure TpvAudioSoundSampleResource.Stop(VoiceNumber:TpvInt32);
+begin
+ fSample.Stop(VoiceNumber);
+end;
+
+procedure TpvAudioSoundSampleResource.KeyOff(VoiceNumber:TpvInt32);
+begin
+ fSample.KeyOff(VoiceNumber);
+end;
+
+function TpvAudioSoundSampleResource.SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
+begin
+ result:=fSample.SetVolume(VoiceNumber,Volume);
+end;
+
+function TpvAudioSoundSampleResource.SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
+begin
+ result:=fSample.SetPanning(VoiceNumber,Panning);
+end;
+
+function TpvAudioSoundSampleResource.SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
+begin
+ result:=fSample.SetRate(VoiceNumber,Rate);
+end;
+
+function TpvAudioSoundSampleResource.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+begin
+ result:=fSample.SetPosition(VoiceNumber,Spatialization,Origin,Velocity);
+end;
+
+function TpvAudioSoundSampleResource.SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
+begin
+ result:=fSample.SetEffectMix(VoiceNumber,Active);
+end;
+
+function TpvAudioSoundSampleResource.IsPlaying:boolean;
+begin
+ result:=fSample.IsPlaying;
+end;
+
+function TpvAudioSoundSampleResource.IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
+begin
+ result:=fSample.IsVoicePlaying(VoiceNumber);
+end;
+
 constructor TpvAudioSoundOGGResource.Create(const aResourceManager:TpvResourceManager);
 begin
  inherited Create(aResourceManager);
@@ -2903,6 +2999,36 @@ begin
                                       false);
  end;
  result:=assigned(fOGG);
+end;
+
+procedure TpvAudioSoundOGGResource.Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
+begin
+ fOGG.Play(AVolume,APanning,ARate,ALoop);
+end;
+
+procedure TpvAudioSoundOGGResource.Stop;
+begin
+ fOGG.Stop;
+end;
+
+procedure TpvAudioSoundOGGResource.SetVolume(AVolume:TpvFloat);
+begin
+ fOGG.SetVolume(AVolume);
+end;
+
+procedure TpvAudioSoundOGGResource.SetPanning(APanning:TpvFloat);
+begin
+ fOGG.SetPanning(APanning);
+end;
+
+procedure TpvAudioSoundOGGResource.SetRate(ARate:TpvFloat);
+begin
+ fOGG.SetRate(ARate);
+end;
+
+function TpvAudioSoundOGGResource.IsPlaying:boolean;
+begin
+ result:=fOGG.IsPlaying;
 end;
 
 constructor TpvAudioSoundSamples.Create(AAudioEngine:TpvAudio);
