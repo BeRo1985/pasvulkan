@@ -161,11 +161,13 @@ type EpvResource=class(Exception);
      TpvResourceBackgroundLoader=class(TPasMPThread)
       public
        type TQueueItem=class
+             public
+              type TResourceInterfaceArray=TpvDynamicArray<IpvResource>;
              private
               fResourceBackgroundLoader:TpvResourceBackgroundLoader;
               fResource:IpvResource;
-              fDependencies:TpvDynamicArray<IpvResource>;
-              fDependents:TpvDynamicArray<IpvResource>;
+              fDependencies:TResourceInterfaceArray;
+              fDependents:TResourceInterfaceArray;
              public
               constructor Create(const aResourceBackgroundLoader:TpvResourceBackgroundLoader;const aResource:IpvResource); reintroduce;
               destructor Destroy; override;
@@ -291,6 +293,7 @@ end;
 
 destructor TpvResource.Destroy;
 begin
+
  if assigned(fResourceManager) and assigned(fResourceClassType) then begin
   fResourceManager.fLock.AcquireWrite;
   try
@@ -299,9 +302,13 @@ begin
    fResourceManager.fLock.ReleaseWrite;
   end;
  end;
+
  SetFileName('');
+
  FreeAndNil(fMetaData);
+
  FillChar(fInstanceInterface,SizeOf(IpvResource),0);
+
  inherited Destroy;
 end;
 
@@ -467,7 +474,9 @@ begin
   if result then begin
    result:=EndLoad;
    fAsyncLoadState:=TAsyncLoadState.Done;
-   fLoaded:=true;
+   if result then begin
+    fLoaded:=true;
+   end;
   end;
  end;
 end;
@@ -575,21 +584,26 @@ var Index,
     Resource:TpvResource;
     Stream:TStream;
     Success,
-    HasMoreItems:boolean;
+    DoWait:boolean;
 begin
- HasMoreItems:=false;
+
+ DoWait:=true;
+
  while not Terminated do begin
 
-  if HasMoreItems then begin
-   HasMoreItems:=false;
-   TPasMP.Yield;
+  if DoWait then begin
+   fEvent.WaitFor(60000);
   end else begin
-   fEvent.WaitFor(1000);
+   TPasMP.Relax;
   end;
 
   if Terminated then begin
+
    break;
+
   end else begin
+
+   DoWait:=true;
 
    fLock.Acquire;
    try
@@ -658,14 +672,7 @@ begin
       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
      end;
 
-     for Index:=0 to fQueueItems.Count-1 do begin
-      TemporaryQueueItem:=fQueueItems.Items[Index];
-      if (TemporaryQueueItem<>QueueItem) and
-         (TemporaryQueueItem.fResource.GetResource.fAsyncLoadState=TpvResource.TAsyncLoadState.Queued) then begin
-       HasMoreItems:=true;
-       break;
-      end;
-     end;
+     DoWait:=false;
 
     end;
 
@@ -742,6 +749,9 @@ begin
 
  if result then begin
   fEvent.SetEvent;
+  if not Started then begin
+   Start;
+  end;
  end;
 
 end;
@@ -752,20 +762,33 @@ var IResource:IpvResource;
     Success:boolean;
 begin
 
- IResource:=aQueueItem.fResource;
+ fLock.Acquire;
+ try
 
- Resource:=IResource.GetResource;
+  IResource:=aQueueItem.fResource;
 
- Success:=Resource.fAsyncLoadState=TpvResource.TAsyncLoadState.Success;
+  Resource:=IResource.GetResource;
 
- if Success then begin
-  Success:=Resource.EndLoad;
+  Success:=Resource.fAsyncLoadState=TpvResource.TAsyncLoadState.Success;
+
+  if Success then begin
+   fLock.Release;
+   try
+    Success:=Resource.EndLoad;
+   finally
+    fLock.Acquire;
+   end;
+  end;
+
+  Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Done;
+
   if Success then begin
    Resource.fLoaded:=true;
   end;
- end;
 
- Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Done;
+ finally
+  fLock.Release;
+ end;
 
  if assigned(Resource.fOnFinish) then begin
   Resource.fOnFinish(IResource,Success);
@@ -795,7 +818,12 @@ begin
     end;
    end;
 
-   FinalizeQueueItem(QueueItem);
+   fLock.Release;
+   try
+    FinalizeQueueItem(QueueItem);
+   finally
+    fLock.Acquire;
+   end;
 
    FreeAndNil(QueueItem);
 
@@ -1040,7 +1068,16 @@ begin
    if not (Resource is aResourceClass) then begin
     raise EpvResourceClassMismatch.Create('Resource class mismatch');
    end;
-   if not aLoadInBackground then begin
+   if aLoadInBackground then begin
+    if not Resource.fLoaded then begin
+     fLock.ReadToWrite;
+     try
+      fBackgroundLoader.QueueResource(result,aParent);
+     finally
+      fLock.WriteToRead;
+     end;
+    end;
+   end else begin
     fLock.ReleaseRead;
     try
      fBackgroundLoader.WaitForResource(Resource);
