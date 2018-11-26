@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=93;
+      VK_HEADER_VERSION=94;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -607,7 +607,7 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_164_EXTENSION_NAME='VK_NV_extension_164';
       VK_NV_SHADING_RATE_IMAGE_SPEC_VERSION=3;
       VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME='VK_NV_shading_rate_image';
-      VK_NV_RAY_TRACING_SPEC_VERSION=2;
+      VK_NV_RAY_TRACING_SPEC_VERSION=3;
       VK_NV_RAY_TRACING_EXTENSION_NAME='VK_NV_ray_tracing';
       VK_NV_REPRESENTATIVE_FRAGMENT_TEST_SPEC_VERSION=1;
       VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME='VK_NV_representative_fragment_test';
@@ -677,8 +677,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_SHADER_SUBGROUP_PARTITIONED_EXTENSION_NAME='VK_NV_shader_subgroup_partitioned';
       VK_KHR_EXTENSION_200_SPEC_VERSION=0;
       VK_KHR_EXTENSION_200_EXTENSION_NAME='VK_KHR_extension_200';
-      VK_KHR_EXTENSION_201_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_201_EXTENSION_NAME='VK_KHR_extension_201';
+      VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_SPEC_VERSION=1;
+      VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME='VK_KHR_swapchain_mutable_format';
       VK_NV_COMPUTE_SHADER_DERIVATIVES_SPEC_VERSION=1;
       VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME='VK_NV_compute_shader_derivatives';
       VK_NV_MESH_SHADER_SPEC_VERSION=1;
@@ -713,8 +713,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_217_EXTENSION_NAME='VK_KHR_extension_217';
       VK_EXT_MACOS_IOS_WINDOW_SPEC_VERSION=0;
       VK_EXT_MACOS_IOS_WINDOW_EXTENSION_NAME='VK_EXT_macos_ios_window';
-      VK_EXT_EXTENSION_219_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_219_EXTENSION_NAME='VK_EXT_extension_219';
+      VK_EXT_FRAGMENT_DENSITY_MAP_SPEC_VERSION=1;
+      VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME='VK_EXT_fragment_density_map';
       VK_EXT_EXTENSION_220_SPEC_VERSION=0;
       VK_EXT_EXTENSION_220_EXTENSION_NAME='VK_EXT_extension_220';
       VK_KHR_EXTENSION_221_SPEC_VERSION=0;
@@ -1470,6 +1470,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL=1000117000,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL=1000117001,
        VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV=1000164003,
+       VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT=1000218000,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
       );
@@ -2431,6 +2432,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT=1000212000,
        VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA=1000214000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT=1000218000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT=1000218001,
+       VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT=1000218002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT=1000221000,
        VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT=1000246000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
@@ -2696,7 +2700,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV=$00200000,
        VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV=$00400000,
        VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV=$00800000,
-       VK_ACCESS_RESERVED_24_BIT_EXT=$01000000,
+       VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT=$01000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT=$02000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT=$04000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT=$08000000,
@@ -2771,7 +2775,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040,                        //< Image data not needed outside of rendering
        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080,                            //< Can be used as framebuffer input attachment
        VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV=$00000100,
-       VK_IMAGE_USAGE_RESERVED_9_BIT_EXT=$00000200,
+       VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT=$00000200,
        VK_IMAGE_USAGE_RESERVED_10_BIT_KHR=$00000400,
        VK_IMAGE_USAGE_RESERVED_11_BIT_KHR=$00000800,
        VK_IMAGE_USAGE_RESERVED_12_BIT_KHR=$00001000,
@@ -2798,13 +2802,28 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_CREATE_PROTECTED_BIT=$00000800,
        VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT=$00001000,
        VK_IMAGE_CREATE_CORNER_SAMPLED_BIT_NV=$00002000,
-       VK_IMAGE_CREATE_RESERVED_14_BIT_EXT=$00004000,
+       VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT=$00004000,
        VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT,
        VK_IMAGE_CREATE_ALIAS_BIT_KHR=VK_IMAGE_CREATE_ALIAS_BIT,
        VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT_KHR=VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT,
        VK_IMAGE_CREATE_DISJOINT_BIT_KHR=VK_IMAGE_CREATE_DISJOINT_BIT,
        VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR=VK_IMAGE_CREATE_EXTENDED_USAGE_BIT,
        VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR=VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT
+      );
+
+     PPVkImageViewCreateFlagBits=^PVkImageViewCreateFlagBits;
+     PVkImageViewCreateFlagBits=^TVkImageViewCreateFlagBits;
+     TVkImageViewCreateFlagBits=
+      (
+       VK_IMAGE_VIEW_CREATE_FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT=$00000001
+      );
+
+     PPVkSamplerCreateFlagBits=^PVkSamplerCreateFlagBits;
+     PVkSamplerCreateFlagBits=^TVkSamplerCreateFlagBits;
+     TVkSamplerCreateFlagBits=
+      (
+       VK_SAMPLER_CREATE_SUBSAMPLED_BIT_EXT=$00000001,
+       VK_SAMPLER_CREATE_SUBSAMPLED_COARSE_RECONSTRUCTION_BIT_EXT=$00000002
       );
 
      PPVkPipelineCreateFlagBits=^PVkPipelineCreateFlagBits;
@@ -2866,7 +2885,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT=$00200000,
        VK_FORMAT_FEATURE_DISJOINT_BIT=$00400000,
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT=$00800000,
-       VK_FORMAT_FEATURE_RESERVED_24_BIT_EXT=$01000000,
+       VK_FORMAT_FEATURE_FRAGMENT_DENSITY_MAP_BIT_EXT=$01000000,
        VK_FORMAT_FEATURE_RESERVED_25_BIT_KHR=$02000000,
        VK_FORMAT_FEATURE_RESERVED_26_BIT_KHR=$04000000,
        VK_FORMAT_FEATURE_RESERVED_27_BIT_KHR=$08000000,
@@ -2988,7 +3007,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV=$00100000,
        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV=$00200000,
        VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV=$00400000,
-       VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000,
+       VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT=$00800000,
        VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT=$01000000,
        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV=$02000000,
        VK_PIPELINE_STAGE_RESERVED_26_BIT_KHR=$04000000,
@@ -3473,7 +3492,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSwapchainCreateFlagBitsKHR=
       (
        VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR=$00000001,
-       VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR=$00000002
+       VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR=$00000002,
+       VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR=$00000004
       );
 
      PPVkViewportCoordinateSwizzleNV=^PVkViewportCoordinateSwizzleNV;
@@ -11847,6 +11867,56 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        overallocationBehavior:TVkMemoryOverallocationBehaviorAMD;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aOverallocationBehavior:TVkMemoryOverallocationBehaviorAMD);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFragmentDensityMapFeaturesEXT=^PVkPhysicalDeviceFragmentDensityMapFeaturesEXT;
+     PVkPhysicalDeviceFragmentDensityMapFeaturesEXT=^TVkPhysicalDeviceFragmentDensityMapFeaturesEXT;
+     TVkPhysicalDeviceFragmentDensityMapFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT
+       pNext:PVkVoid;
+       fragmentDensityMap:TVkBool32;
+       fragmentDensityMapDynamic:TVkBool32;
+       fragmentDensityMapNonSubsampledImages:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFragmentDensityMap:TVkBool32;
+                          const aFragmentDensityMapDynamic:TVkBool32;
+                          const aFragmentDensityMapNonSubsampledImages:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFragmentDensityMapPropertiesEXT=^PVkPhysicalDeviceFragmentDensityMapPropertiesEXT;
+     PVkPhysicalDeviceFragmentDensityMapPropertiesEXT=^TVkPhysicalDeviceFragmentDensityMapPropertiesEXT;
+     TVkPhysicalDeviceFragmentDensityMapPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT
+       pNext:PVkVoid;
+       minFragmentDensityTexelSize:TVkExtent2D;
+       maxFragmentDensityTexelSize:TVkExtent2D;
+       fragmentDensityInvocations:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMinFragmentDensityTexelSize:TVkExtent2D;
+                          const aMaxFragmentDensityTexelSize:TVkExtent2D;
+                          const aFragmentDensityInvocations:TVkBool32);
+{$endif}
+     end;
+
+     PPVkRenderPassFragmentDensityMapCreateInfoEXT=^PVkRenderPassFragmentDensityMapCreateInfoEXT;
+     PVkRenderPassFragmentDensityMapCreateInfoEXT=^TVkRenderPassFragmentDensityMapCreateInfoEXT;
+     TVkRenderPassFragmentDensityMapCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       fragmentDensityMapAttachment:TVkAttachmentReference;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFragmentDensityMapAttachment:TVkAttachmentReference);
 {$endif}
      end;
 
@@ -22151,6 +22221,35 @@ begin
  sType:=VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
  pNext:=nil;
  overallocationBehavior:=aOverallocationBehavior;
+end;
+
+constructor TVkPhysicalDeviceFragmentDensityMapFeaturesEXT.Create(const aFragmentDensityMap:TVkBool32;
+                                                                  const aFragmentDensityMapDynamic:TVkBool32;
+                                                                  const aFragmentDensityMapNonSubsampledImages:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT;
+ pNext:=nil;
+ fragmentDensityMap:=aFragmentDensityMap;
+ fragmentDensityMapDynamic:=aFragmentDensityMapDynamic;
+ fragmentDensityMapNonSubsampledImages:=aFragmentDensityMapNonSubsampledImages;
+end;
+
+constructor TVkPhysicalDeviceFragmentDensityMapPropertiesEXT.Create(const aMinFragmentDensityTexelSize:TVkExtent2D;
+                                                                    const aMaxFragmentDensityTexelSize:TVkExtent2D;
+                                                                    const aFragmentDensityInvocations:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT;
+ pNext:=nil;
+ minFragmentDensityTexelSize:=aMinFragmentDensityTexelSize;
+ maxFragmentDensityTexelSize:=aMaxFragmentDensityTexelSize;
+ fragmentDensityInvocations:=aFragmentDensityInvocations;
+end;
+
+constructor TVkRenderPassFragmentDensityMapCreateInfoEXT.Create(const aFragmentDensityMapAttachment:TVkAttachmentReference);
+begin
+ sType:=VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT;
+ pNext:=nil;
+ fragmentDensityMapAttachment:=aFragmentDensityMapAttachment;
 end;
 
 constructor TVkPhysicalDeviceScalarBlockLayoutFeaturesEXT.Create(const aScalarBlockLayout:TVkBool32);
