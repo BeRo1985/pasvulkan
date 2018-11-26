@@ -821,24 +821,35 @@ end;
 
 {$ifndef HasSAR}
 function SARLongint(Value,Shift:TpvInt32):TpvInt32;
-{$ifdef cpu386}
-{$ifdef fpc} assembler; inline;
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  mov ecx,edx
- SAR eax,cl
-end ['eax','edx','ecx'];
-{$else} assembler; register;
-asm
- mov ecx,edx
- SAR eax,cl
+ sar eax,cl
 end;
-{$endif}
-{$else}
-{$ifdef cpuarm} assembler; inline;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
- mov r0,r0,asr R1
-end ['r0','R1'];
-{$else}{$ifdef fpc}inline;{$endif}
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
+ mov ecx,edx
+{$else}
+ mov eax,edi
+ mov ecx,esi
+{$ifend}
+ sar eax,cl
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
+asm
+ mov r0,r0,asr r1
+{$if defined(cpuarm_has_bx)}
+ bx lr
+{$else}
+ mov pc,lr
+{$ifend}
+end;
+{$else} {$ifdef caninline}inline;{$endif}
 begin
 {$ifdef HasSAR}
  result:=SARLongint(Value,Shift);
@@ -847,8 +858,7 @@ begin
  result:=(TpvUInt32(Value) shr Shift) or (TpvUInt32(TpvInt32(TpvUInt32(0-TpvUInt32(TpvUInt32(Value) shr 31)) and TpvUInt32(0-TpvUInt32(ord(Shift<>0))))) shl (32-Shift));
 {$endif}
 end;
-{$endif}
-{$endif}
+{$ifend}
 {$endif}
 
 function Clamp(x,a,b:TpvDouble):TpvDouble;
