@@ -3305,7 +3305,7 @@ function oggpack_bits(b:Poggpack_buffer):longint;
 function _vorbis_window(type_,left:longint):pointer;
 procedure _vorbis_apply_window(d:PLongints;window_p:PTwoPointers;blocksizes:PLongints;lW,W,nw:longint);
 
-function ilog(v:longword):longint; {$ifdef caninline}inline;{$endif}
+//function ilog(v:longword):longint;
 
 function vorbis_block_init(v:Pvorbis_dsp_state;vb:Pvorbis_block):longint;
 function vorbis_block_clear(vb:Pvorbis_block):longint;
@@ -3529,7 +3529,46 @@ const floor0_exportbundle:vorbis_func_floor=(
 
 implementation
 
-function _ilog(v:longword):longint; {$ifdef caninline}inline;{$endif}
+function _ilog(v:longword):longint;
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ xor ecx,ecx
+ dec ecx
+ bsr eax,eax
+ cmovz eax,ecx
+ inc eax
+end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
+{$else}
+ mov eax,esi
+{$ifend}
+ xor ecx,ecx
+ dec ecx
+ bsr eax,eax
+ cmovz eax,ecx
+ inc eax
+end;
+{$elseif declared(BSRDWord)}{$ifdef caninline}inline;{$endif}
+begin
+ case v of
+  0:begin
+   result:=0;
+  end;
+  $ffffffff:begin
+   result:=32;
+  end;
+  else {1..longword($fffffffe):}begin
+   result:=BSRDWord(v)+1;
+  end;
+ end;
+end;
+{$else}
 begin
  result:=0;
  while v<>0 do begin
@@ -3537,16 +3576,30 @@ begin
   v:=v shr 1;
  end;
 end;
+{$ifend}
 
 {$ifndef HasSAR}
 function SARLongint(Value,Shift:longint):longint;
-{$ifdef cpu386} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  mov ecx,edx
  sar eax,cl
 end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
+ mov ecx,edx
 {$else}
-{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+ mov eax,edi
+ mov ecx,esi
+{$ifend}
+ sar eax,cl
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  mov r0,r0,asr r1
 {$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
@@ -3564,18 +3617,30 @@ begin
  result:=(longword(Value) shr Shift) or (longword(longint(longword(0-longword(longword(Value) shr 31)) and longword(0-longword(ord(Shift<>0))))) shl (32-Shift));
 {$endif}
 end;
-{$endif}
-{$endif}
+{$ifend}
 {$endif}
 
 function MULT32(x,y:longint):longint;
-{$ifdef cpu386} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  imul edx
  mov eax,edx
 end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
 {$else}
-{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+ mov eax,edi
+ mov edx,esi
+{$ifend}
+ imul edx
+ mov eax,edx
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  smull r1,r0,r0,r1
 {$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
@@ -3590,19 +3655,33 @@ begin
  v.Value:=int64(x)*y;
  result:=v.Hi;
 end;
-{$endif}
-{$endif}
+{$ifend}
 
 function MULT31(x,y:longint):longint;
-{$ifdef cpu386} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  imul edx
  shl edx,1
  shr eax,31
  or eax,edx
 end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
 {$else}
-{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+ mov eax,edi
+ mov edx,esi
+{$ifend}
+ imul edx
+ shl edx,1
+ shr eax,31
+ or eax,edx
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  smull r1,r0,r0,r1
  movs r1,r1,lsr #31
@@ -3619,19 +3698,33 @@ begin
  v.Value:=int64(x)*y;
  result:=(v.Hi shl 1) or (v.Lo shr 31);
 end;
-{$endif}
-{$endif}
+{$ifend}
 
 function MULT31_SHIFT15(x,y:longint):longint;
-{$ifdef cpu386} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  imul edx
  shl edx,17
  shr eax,15
  or eax,edx
 end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
 {$else}
-{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+ mov eax,edi
+ mov edx,esi
+{$ifend}
+ imul edx
+ shl edx,17
+ shr eax,15
+ or eax,edx
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  smull r1,r0,r0,r1
  movs r1,r1,lsr #15
@@ -3648,8 +3741,7 @@ begin
  v.Value:=int64(x)*y;
  result:=(v.Hi shl 17) or (v.Lo shr 15);
 end;
-{$endif}
-{$endif}
+{$ifend}
 
 procedure XPROD32(a,b,t,v:longint;x,y:PLongint); {$ifdef caninline}inline;{$endif}
 begin
@@ -3670,7 +3762,33 @@ begin
 end;
 
 function CLIP_TO_15(x:longint):longint;
-{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ mov ecx,32767
+ mov edx,-32768
+ cmp eax,ecx
+ cmovg eax,ecx
+ cmp eax,edx
+ cmovl eax,edx
+end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
+{$else}
+ mov eax,edi
+{$ifend}
+ mov ecx,32767
+ mov edx,-32768
+ cmp eax,ecx
+ cmovg eax,ecx
+ cmp eax,edx
+ cmovl eax,edx
+end;
+{$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  subs r1,r0,#32768
  movpl r0,#32512
@@ -3694,7 +3812,7 @@ begin
  end;}
  result:=(x-(((ord(x<=32767) and 1)-1) and (x-32767)))-(((ord(x>=(-32768)) and 1)-1) and (x+32768));
 end;
-{$endif}
+{$ifend}
 
 function VFLOAT_MULT(a,ap,b,bp:longint;p:PLongint):longint; {$ifdef caninline}inline;{$endif}
 begin
@@ -4238,7 +4356,52 @@ begin
  end;
 end;
 
-function ilog(v:longword):longint; {$ifdef caninline}inline;{$endif}
+function ilog(v:longword):longint;
+{$if defined(cpu386)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ xor edx,edx
+ lea ecx,[edx-1] // or: xor ecx,ecx; dec ecx
+ test eax,eax
+ cmovnz edx,ecx
+ add eax,edx
+ bsr eax,eax
+ cmovz eax,ecx
+ inc eax
+end;
+{$elseif defined(cpux64) or defined(cpuamd64) or defined(cpux86_64)} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+{$if defined(Win32) or defined(Win64) or defined(Windows)}
+ mov eax,ecx
+{$else}
+ mov eax,esi
+{$ifend}
+ xor edx,edx
+ lea ecx,[edx-1] // or: xor ecx,ecx; dec ecx
+ test eax,eax
+ cmovnz edx,ecx
+ add eax,edx
+ bsr eax,eax
+ cmovz eax,ecx
+ inc eax
+end;
+{$elseif declared(BSRDWord)}{$ifdef caninline}inline;{$endif}
+begin
+ case v of
+  0,1:begin
+   result:=0;
+  end;
+  $ffffffff:begin
+   result:=32;
+  end;
+  else {2..longword($fffffffe):}begin
+   result:=BSRDWord(v-1)+1;
+  end;
+ end;
+end;
+{$else}
 begin
  result:=0;
  if v<>0 then begin
@@ -4249,6 +4412,7 @@ begin
   v:=v shr 1;
  end;
 end;
+{$ifend}
 
 function vorbis_block_init(v:Pvorbis_dsp_state;vb:Pvorbis_block):longint;
 begin
