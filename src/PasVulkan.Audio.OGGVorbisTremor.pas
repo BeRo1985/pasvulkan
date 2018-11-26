@@ -3602,10 +3602,10 @@ end;
 {$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  mov r0,r0,asr r1
-{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
- mov pc,lr
-{$else}
+{$if defined(cpuarm_has_bx)}
  bx lr
+{$else}
+ mov pc,lr
 {$ifend}
 end;
 {$else} {$ifdef caninline}inline;{$endif}
@@ -3643,10 +3643,10 @@ end;
 {$elseif defined(cpuarm)} assembler; {$ifdef fpc}nostackframe;{$endif}
 asm
  smull r1,r0,r0,r1
-{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
- mov pc,lr
-{$else}
+{$if defined(cpuarm_has_bx)}
  bx lr
+{$else}
+ mov pc,lr
 {$ifend}
 end;
 {$else} {$ifdef caninline}inline;{$endif}
@@ -3686,10 +3686,10 @@ asm
  smull r1,r0,r0,r1
  movs r1,r1,lsr #31
  adc r0,r1,r0,lsl #1
-{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
- mov pc,lr
-{$else}
+{$if defined(cpuarm_has_bx)}
  bx lr
+{$else}
+ mov pc,lr
 {$ifend}
 end;
 {$else} {$ifdef caninline}inline;{$endif}
@@ -3729,10 +3729,10 @@ asm
  smull r1,r0,r0,r1
  movs r1,r1,lsr #15
  adc r0,r1,r0,lsl #17
-{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
- mov pc,lr
-{$else}
+{$if defined(cpuarm_has_bx)}
  bx lr
+{$else}
+ mov pc,lr
 {$ifend}
 end;
 {$else} {$ifdef caninline}inline;{$endif}
@@ -3795,10 +3795,10 @@ asm
  orrpl r0,r0,#255
  adds r1,r0,#32768
  movmi r0,#32768
-{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
- mov pc,lr
-{$else}
+{$if defined(cpuarm_has_bx)}
  bx lr
+{$else}
+ mov pc,lr
 {$ifend}
 end;
 {$else} {$ifdef caninline}inline;{$endif}
