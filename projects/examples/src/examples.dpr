@@ -36,6 +36,9 @@ uses
    cthreads,
    BaseUnix,
   {$elseif defined(Windows)}
+   {$ifdef PasVulkanUseFastMM4}
+    FastMM4,
+   {$endif} 
    Windows,
   {$ifend}
   SysUtils,
