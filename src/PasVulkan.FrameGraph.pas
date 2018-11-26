@@ -5253,6 +5253,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
            // Same queue family
 
+{$if not (defined(Darwin) or defined(MacOS) or defined(iOS))}
            if ResourceTransition.fPass.fQueue.fPhysicalQueue=OtherResourceTransition.fPass.fQueue.fPhysicalQueue then begin
 
             // Same queue
@@ -5274,9 +5275,12 @@ type TEventBeforeAfter=(Event,Before,After);
 
             NeedSemaphore:=false;
 
-           end else begin
+           end else{$ifend}begin
 
-            // Different queues
+            // Different queues, or we are on MacOS, watchOS or iOS,
+            // where MoltenVK is used which have no support for events in the
+            // current versions of MoltenVK, so therefore the possible overhead is
+            // unfortunately necessary on MacOS/watchOS/iOS.
 
             AddPipelineBarrier(TEventBeforeAfter.Before,
                                nil,
