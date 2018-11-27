@@ -126,6 +126,7 @@ type EpvResource=class(Exception);
        fMetaData:TPasJSONItem;
        fInstanceInterface:IpvResource;
        fOnFinish:TpvResourceOnFinish;
+       fReleaseFrameDelay:TPasMPInt32; // for resources with frane-wise in-flight data stuff
        procedure SetFileName(const aFileName:TpvUTF8String);
       protected
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
@@ -159,6 +160,7 @@ type EpvResource=class(Exception);
        property Loaded:boolean read fLoaded write fLoaded;
        property MetaData:TPasJSONItem read fMetaData write fMetaData;
        property OnFinish:TpvResourceOnFinish read fOnFinish write fOnFinish;
+       property ReleaseFrameDelay:TPasMPInt32 read fReleaseFrameDelay write fReleaseFrameDelay;
      end;
 
      TpvResourceBackgroundLoader=class(TPasMPThread)
@@ -221,12 +223,14 @@ type EpvResource=class(Exception);
       private
        type TResourceClassTypeList=class(TpvObjectGenericList<TpvResourceClassType>);
             TResourceClassTypeMap=class(TpvHashMap<TpvResourceClass,TpvResourceClassType>);
+            TResourceList=class(TpvObjectGenericList<TpvResource>);
       private
        fLock:TPasMPMultipleReaderSingleWriterLock;
        fLocked:TPasMPBool32;
        fResourceClassTypeList:TResourceClassTypeList;
        fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
+       fDelayedToFreeResources:TResourceList;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fBaseDataPath:TpvUTF8String;
       public
@@ -269,6 +273,8 @@ begin
  fMetaData:=nil;
 
  fOnFinish:=nil;
+
+ fReleaseFrameDelay:=0;
 
  OldReferenceCounter:=fReferenceCounter;
  try
@@ -363,7 +369,14 @@ end;
 
 function TpvResource._Release:TpvInt32;
 begin
- result:=inherited _Release;
+ if fReleaseFrameDelay>0 then begin
+  result:=TPasMPInterlocked.Decrement(fReferenceCounter);
+  if result=0 then begin
+   fResourceManager.fDelayedToFreeResources.Add(self);
+  end;
+ end else begin
+  result:=inherited _Release;
+ end;
 end;
 
 function TpvResource.GetResource:TpvResource;
@@ -994,6 +1007,9 @@ begin
   fBaseDataPath:=TpvUTF8String(pvApplication.Assets.BasePath);
  end;
 
+ fDelayedToFreeResources:=TResourceList.Create;
+ fDelayedToFreeResources.OwnsObjects:=true;
+
  fBackgroundLoader:=TpvResourceBackgroundLoader.Create(self);
 
 end;
@@ -1002,12 +1018,15 @@ destructor TpvResourceManager.Destroy;
 var Resource:TpvResource;
 begin
 
+
  if not fBackgroundLoader.Finished then begin
   fBackgroundLoader.Terminate;
   fBackgroundLoader.fEvent.SetEvent;
   fBackgroundLoader.WaitFor;
  end;
  FreeAndNil(fBackgroundLoader);
+
+ FreeAndNil(fDelayedToFreeResources);
 
  FreeAndNil(fResourceClassTypeList);
 
@@ -1179,7 +1198,13 @@ begin
 end;
 
 function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=5):boolean;
+var Index:TpvSizeInt;
 begin
+ for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
+  if TPasMPInterlocked.Decrement(fDelayedToFreeResources[Index].fReleaseFrameDelay)=0 then begin
+   fDelayedToFreeResources.Delete(Index);
+  end;
+ end;
  result:=fBackgroundLoader.Process(aTimeout);
 end;
 
