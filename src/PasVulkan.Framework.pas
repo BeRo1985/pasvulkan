@@ -1903,7 +1903,7 @@ type EpvVulkanException=class(Exception);
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypePointer:(
         PointerStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
-        PointerVariableIndex:TpvUInt32;
+        PointerTypeIndex:TpvUInt32;
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:(
         FunctionResultTypeIndex:TpvUInt32;
@@ -14533,8 +14533,7 @@ begin
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
           Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
-          Type_^.PointerVariableIndex:=SwapEndian(Opcodes^[Position+3]);
-          VariableTypes[Type_^.PointerVariableIndex]:=TypeMap[Index];
+          Type_^.PointerTypeIndex:=TypeMap[Index];
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
           Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
@@ -14708,10 +14707,7 @@ begin
         Variable^.fBinding:=Bindings[Index];
         Variable^.fDescriptorSet:=DescriptorSets[Index];
         Variable^.fOffset:=Offsets[Index];
-        Variable^.fType:=VariableTypes[Index];
-        if Variable^.fType>=0 then begin
-         result.Types[Variable^.fType].PointerVariableIndex:=TpvInt32(CountVariables)-1;
-        end;
+        Variable^.fType:=TypeMap[Index];
        end else begin
         Variable^.fBlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
         Variable^.fLocation:=0;
