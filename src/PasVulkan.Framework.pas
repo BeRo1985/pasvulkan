@@ -14278,8 +14278,8 @@ type PUInt32Array=^TUInt32Array;
      end;
      PShaderMember=^TShaderMember;
 var Position,Size:TpvInt32;
-    Opcode,Index,OtherIndex,NameIndex,CountVariables,CountIDs,CountNames,
-    CountTypes,CountTypeIDs:TpvUInt32;
+    Opcode,Index,OtherIndex,NameIndex,CountIDs,
+    CountTypes,CountVariables:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
     Type_:PpvVulkanShaderModuleReflectionType;
@@ -14291,7 +14291,7 @@ var Position,Size:TpvInt32;
     VariableTypes:array of TpvSizeInt;
     DebugNames:array of TVkCharString;
     ShaderMembers:array of array of TShaderMember;
-    TypeMap:array of TpvSizeInt;
+    TypeMap,ReversedTypeMap:array of TpvSizeInt;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14316,6 +14316,7 @@ begin
  DebugNames:=nil;
  ShaderMembers:=nil;
  TypeMap:=nil;
+ ReversedTypeMap:=nil;
  CountVariables:=0;
  try
   Opcodes:=fData;
@@ -14328,16 +14329,15 @@ begin
    Size:=(fDataSize shr 2)-5;
 
    CountIDs:=0;
-   CountNames:=0;
    CountTypes:=0;
-   CountTypeIDs:=0;
+   CountVariables:=0;
 
    Position:=0;
    while Position<Size do begin
     Opcode:=SwapEndian(Opcodes^[Position]);
     case Opcode and $ffff of
      $0005{OpName}:begin
-      CountNames:=Max(CountNames,SwapEndian(Opcodes^[Position+1])+1);
+      CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
      end;
      $0006{OpMemberName}:begin
       CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
@@ -14366,7 +14366,7 @@ begin
      $0142{OpTypePipeStorage},
      $0147{OpTypeNamedBarrier}:begin
       inc(CountTypes);
-      CountTypeIDs:=Max(CountTypeIDs,SwapEndian(Opcodes^[Position+1])+1);
+      CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
      end;
      $003b{OpVariable}:begin
       inc(CountVariables);
@@ -14391,17 +14391,19 @@ begin
     SetLength(DescriptorSets,CountIDs);
     SetLength(Offsets,CountIDs);
     SetLength(CountMembers,CountIDs);
-    SetLength(DebugNames,CountNames);
+    SetLength(DebugNames,CountIDs);
     SetLength(ShaderMembers,CountIDs,0);
     SetLength(result.Types,CountTypes);
-    SetLength(TypeMap,Max(CountTypeIDs,CountIDs));
-    SetLength(VariableTypes,Max(CountTypeIDs,CountIDs));
+    SetLength(TypeMap,CountIDs);
+    SetLength(ReversedTypeMap,CountTypes);
+    SetLength(VariableTypes,CountIDs);
 
-    for Index:=1 to TpvInt32(CountTypeIDs) do begin
+    for Index:=1 to TpvInt32(CountIDs) do begin
      TypeMap[Index-1]:=-1;
     end;
     for Index:=1 to TpvInt32(CountTypes) do begin
      result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
+     ReversedTypeMap[Index-1]:=-1;
     end;
     try
 
@@ -14435,6 +14437,7 @@ begin
        $0147{OpTypeNamedBarrier}:begin
         Index:=SwapEndian(Opcodes^[Position+1]);
         TypeMap[Index]:=CountTypes;
+        ReversedTypeMap[CountTypes]:=Index;
         inc(CountTypes);
        end;
       end;
@@ -14616,7 +14619,7 @@ begin
      case Opcode and $ffff of
       $0005{OpName}:begin
        Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountNames then begin
+       if Index<CountIDs then begin
         DebugNames[Index]:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
        end;
       end;
@@ -14716,7 +14719,7 @@ begin
         Variable^.fType:=-1;
        end;
        NameIndex:=SwapEndian(Opcodes^[Position+2]);
-       if NameIndex<CountNames then begin
+       if NameIndex<CountIDs then begin
         Variable^.fDebugName:=DebugNames[NameIndex];
        end else begin
         Variable^.fDebugName:='';
@@ -14730,7 +14733,7 @@ begin
     end;
 
     Index:=0;
-    while Index<CountTypeIDs do begin
+    while Index<CountIDs do begin
      if TypeMap[Index]>=0 then begin
       Type_:=@result.Types[TypeMap[Index]];
       if CountMembers[Index]>0 then begin
@@ -14751,9 +14754,6 @@ begin
      inc(Index);
     end;
 
-
-
-
    finally
     BlockTypes:=nil;
     Bindings:=nil;
@@ -14765,6 +14765,7 @@ begin
     DebugNames:=nil;
     ShaderMembers:=nil;
     TypeMap:=nil;
+    ReversedTypeMap:=nil;
    end;
 
   end;
