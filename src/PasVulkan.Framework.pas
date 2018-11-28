@@ -14266,7 +14266,7 @@ begin
 end;
 
 function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflectionData;
-// https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.html
+// https://www.khronos.org/registry/spir-v/specs/1.2/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
      TShaderMember=record
