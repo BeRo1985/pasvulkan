@@ -1745,29 +1745,53 @@ type EpvVulkanException=class(Exception);
 
      PpvVulkanShaderModuleVariableStorageClass=^TpvVulkanShaderModuleVariableStorageClass;
      TpvVulkanShaderModuleVariableStorageClass=
-      (      
-       vsmcscUniformConstant=0,
-       vsmcscInput=1,
-       vsmcscUniform=2,
-       vsmcscOutput=3,
-       vsmcscWorkgroup=4,
-       vsmcscCrossWorkgroup=5,
-       vsmcscPrivate=6,
-       vsmcscFunction=7,
-       vsmcscGeneric=8,
-       vsmcscPushConstant=9,
-       vsmcscAtomicCounter=10,
-       vsmcscImage=11,
-       vsmcscStorageBuffer=12,
-       vsmcscMax=$7fffffff
+      (
+       UniformConstant=0,
+       Input=1,
+       Uniform=2,
+       Output=3,
+       Workgroup=4,
+       CrossWorkgroup=5,
+       Private_=6,
+       Function_=7,
+       Generic=8,
+       PushConstant=9,
+       AtomicCounter=10,
+       Image=11,
+       StorageBuffer=12,
+       Max=$7fffffff
+      );
+
+     PpvVulkanShaderModuleVariableBlockType=^TpvVulkanShaderModuleVariableBlockType;
+     TpvVulkanShaderModuleVariableBlockType=
+      (
+       None,
+       Block,
+       BufferBlock
+      );
+
+     PpvVulkanShaderModuleVariableMatrixType=^TpvVulkanShaderModuleVariableMatrixType;
+     TpvVulkanShaderModuleVariableMatrixType=
+      (
+       None,
+       RowMajor,
+       ColumnMajor
       );
 
      PpvVulkanShaderModuleVariableMember=^TpvVulkanShaderModuleVariableMember;
      TpvVulkanShaderModuleVariableMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
+       fOffset:TpvUInt32;
+       fArrayStride:TpvUInt32;
+       fMatrixStride:TpvUInt32;
+       fMatrixType:TpvVulkanShaderModuleVariableMatrixType;
       public
-       property DebugName:TVkCharString read fDebugName;                                 // The name of the member
+       property DebugName:TVkCharString read fDebugName;                                   // The name of the member
+       property Offset:TpvUInt32 read fOffset;                                             // The offset
+       property ArrayStride:TpvUInt32 read fArrayStride;
+       property MatrixStride:TpvUInt32 read fMatrixStride;
+       property MatrixType:TpvVulkanShaderModuleVariableMatrixType read fMatrixType;
      end;
 
      TpvVulkanShaderModuleVariableMembers=array of TpvVulkanShaderModuleVariableMember;
@@ -1776,20 +1800,24 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
-       fName:TpvInt32;
-       fLocation:TpvInt32;
-       fBinding:TpvInt32;
-       fDescriptorSet:TpvInt32;
-       fInstruction:TpvInt32;
+       fName:TpvUInt32;
+       fBlockType:TpvVulkanShaderModuleVariableBlockType;
+       fLocation:TpvUInt32;
+       fBinding:TpvUInt32;
+       fDescriptorSet:TpvUInt32;
+       fOffset:TpvUInt32;
+       fInstruction:TpvUInt32;
        fStorageClass:TpvVulkanShaderModuleVariableStorageClass;
        fMembers:TpvVulkanShaderModuleVariableMembers;
       public
-       property DebugName:TVkCharString read fDebugName;                                    // The name of the variable
-       property Name:TpvInt32 read fName;                                                  // The internal name (integer) of the variable
-       property Location:TpvInt32 read fLocation;                                          // The location in the binding
-       property Binding:TpvInt32 read fBinding;                                            // The binding in the descriptor set or I/O channel
-       property DescriptorSet:TpvInt32 read fDescriptorSet;                                // The descriptor set (for uniforms)
-       property Instruction:TpvInt32 read fInstruction;                                    // The instruction index
+       property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
+       property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
+       property BlockType:TpvVulkanShaderModuleVariableBlockType read fBlockType;          // The block type
+       property Location:TpvUInt32 read fLocation;                                         // The location in the binding
+       property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
+       property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
+       property Offset:TpvUInt32 read fOffset;                                             // The offset
+       property Instruction:TpvUInt32 read fInstruction;                                   // The instruction index
        property StorageClass:TpvVulkanShaderModuleVariableStorageClass read fStorageClass; // Storage class of the variable
        property Members:TpvVulkanShaderModuleVariableMembers read fMembers;
      end;
@@ -14069,15 +14097,25 @@ function TpvVulkanShaderModule.GetVariables:TpvVulkanShaderModuleVariables;
 // https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
+     TShaderMember=record
+      DebugName:TVkCharString;
+      Offset:TpvUInt32;
+      ArrayStride:TpvUInt32;
+      MatrixStride:TpvUInt32;
+      MatrixType:TpvVulkanShaderModuleVariableMatrixType;
+     end;
+     PShaderMember=^TShaderMember;
 var Position,Size:TpvInt32;
     Opcode,Index,OtherIndex,NameIndex,Count,CountIDs,CountNames:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
     Variable:PpvVulkanShaderModuleVariable;
     Member:PpvVulkanShaderModuleVariableMember;
-    Bindings,Locations,DescriptorSets,CountMembers:array of TpvUInt32;
+    ShaderMember:PShaderMember;
+    BlockTypes:array of TpvVulkanShaderModuleVariableBlockType;
+    Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
     DebugNames:array of TVkCharString;
-    DebugMemberNames:array of array of TVkCharString;
+    ShaderMembers:array of array of TShaderMember;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14091,12 +14129,14 @@ var Position,Size:TpvInt32;
  end;
 begin
  result:=nil;
+ BlockTypes:=nil;
  Bindings:=nil;
  Locations:=nil;
  DescriptorSets:=nil;
+ Offsets:=nil;
  CountMembers:=nil;
  DebugNames:=nil;
- DebugMemberNames:=nil;
+ ShaderMembers:=nil;
  Count:=0;
  try
   Opcodes:=fData;
@@ -14138,14 +14178,21 @@ begin
 
    try
 
+    SetLength(BlockTypes,CountIDs);
     SetLength(Bindings,CountIDs);
     SetLength(Locations,CountIDs);
     SetLength(DescriptorSets,CountIDs);
+    SetLength(Offsets,CountIDs);
     SetLength(CountMembers,CountIDs);
     SetLength(DebugNames,CountNames);
-    SetLength(DebugMemberNames,CountIDs,0);
+    SetLength(ShaderMembers,CountIDs,0);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
+     BlockTypes[Index-1]:=TpvVulkanShaderModuleVariableBlockType.None;
+     Bindings[Index-1]:=0;
+     Locations[Index-1]:=0;
+     DescriptorSets[Index-1]:=0;
+     Offsets[Index-1]:=0;
      CountMembers[Index-1]:=0;
     end;
     try
@@ -14164,9 +14211,14 @@ begin
      end;
     finally
      for Index:=1 to CountIDs do begin
-      SetLength(DebugMemberNames[Index-1],CountMembers[Index-1]);
+      SetLength(ShaderMembers[Index-1],CountMembers[Index-1]);
       for OtherIndex:=1 to CountMembers[Index-1] do begin
-       DebugMemberNames[Index-1,OtherIndex-1]:='';
+       ShaderMember:=@ShaderMembers[Index-1,OtherIndex-1];
+       ShaderMember^.DebugName:='';
+       ShaderMember^.Offset:=0;
+       ShaderMember^.ArrayStride:=0;
+       ShaderMember^.MatrixStride:=0;
+       ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.None;
       end;
      end;
     end;
@@ -14186,7 +14238,8 @@ begin
        if Index<CountIDs then begin
         OtherIndex:=SwapEndian(Opcodes^[Position+2]);
         if OtherIndex<CountMembers[Index] then begin
-         DebugMemberNames[Index,OtherIndex]:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+         ShaderMember:=@ShaderMembers[Index,OtherIndex];
+         ShaderMember^.DebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
         end;
        end;
       end;
@@ -14194,6 +14247,18 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
         case Opcodes^[Position+2] of
+         $00000002{Block}:begin
+          BlockTypes[Index]:=TpvVulkanShaderModuleVariableBlockType.Block;
+         end;
+         $00000003{BufferBlock}:begin
+          BlockTypes[Index]:=TpvVulkanShaderModuleVariableBlockType.BufferBlock;
+         end;
+         $00000005{ColMajor}:begin
+         end;
+         $00000006{ArrayStride}:begin
+         end;
+         $00000007{MatrixStride}:begin
+         end;
          $0000001e{Location}:begin
           Locations[Index]:=SwapEndian(Opcodes^[Position+3]);
          end;
@@ -14202,6 +14267,35 @@ begin
          end;
          $00000022{DescriptorSet}:begin
           DescriptorSets[Index]:=SwapEndian(Opcodes^[Position+3]);
+         end;
+         $00000023{Offset}:begin
+          Offsets[Index]:=SwapEndian(Opcodes^[Position+3]);
+         end;
+        end;
+       end;
+      end;
+      $0048{OpMemberDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<CountMembers[Index] then begin
+         ShaderMember:=@ShaderMembers[Index,OtherIndex];
+         case Opcodes^[Position+3] of
+          $00000004{RowMajor}:begin
+           ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.RowMajor;
+          end;
+          $00000005{ColMajor}:begin
+           ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.ColumnMajor;
+          end;
+          $00000006{ArrayStride}:begin
+           ShaderMember^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000007{MatrixStride}:begin
+           ShaderMember^.MatrixStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000023{Offset}:begin
+           ShaderMember^.Offset:=SwapEndian(Opcodes^[Position+4]);
+          end;
          end;
         end;
        end;
@@ -14220,13 +14314,17 @@ begin
        inc(Count);
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
+        Variable^.fBlockType:=BlockTypes[Index];
         Variable^.fLocation:=Locations[Index];
         Variable^.fBinding:=Bindings[Index];
         Variable^.fDescriptorSet:=DescriptorSets[Index];
+        Variable^.fOffset:=Offsets[Index];
        end else begin
+        Variable^.fBlockType:=TpvVulkanShaderModuleVariableBlockType.None;
         Variable^.fLocation:=0;
         Variable^.fBinding:=0;
         Variable^.fDescriptorSet:=0;
+        Variable^.fOffset:=0;
        end;
        NameIndex:=SwapEndian(Opcodes^[Position+2]);
        if NameIndex<CountNames then begin
@@ -14241,7 +14339,12 @@ begin
         SetLength(Variable^.fMembers,CountMembers[Index]);
         for OtherIndex:=1 to CountMembers[Index] do begin
          Member:=@Variable^.fMembers[Index-1];
-         Member^.fDebugName:=DebugMemberNames[Index-1,OtherIndex-1];
+         ShaderMember:=@ShaderMembers[Index-1,OtherIndex-1];
+         Member^.fDebugName:=ShaderMember^.DebugName;
+         Member^.fOffset:=ShaderMember^.Offset;
+         Member^.fArrayStride:=ShaderMember^.ArrayStride;
+         Member^.fMatrixStride:=ShaderMember^.MatrixStride;
+         Member^.fMatrixType:=ShaderMember^.MatrixType;
         end;
        end else begin
         Variable^.fMembers:=nil;
@@ -14252,12 +14355,14 @@ begin
     end;
 
    finally
+    BlockTypes:=nil;
     Bindings:=nil;
     Locations:=nil;
     DescriptorSets:=nil;
+    Offsets:=nil;
     CountMembers:=nil;
     DebugNames:=nil;
-    DebugMemberNames:=nil;
+    ShaderMembers:=nil;
    end;
 
   end;
