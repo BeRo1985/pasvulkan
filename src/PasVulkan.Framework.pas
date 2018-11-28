@@ -1861,9 +1861,47 @@ type EpvVulkanException=class(Exception);
 
      PpvVulkanShaderModuleReflectionStorageClass=^TpvVulkanShaderModuleReflectionStorageClass;
 
+     TpvVulkanShaderModuleReflectionBlockType=
+      (
+       None,
+       Block,
+       BufferBlock
+      );
+
+     PpvVulkanShaderModuleReflectionBlockType=^TpvVulkanShaderModuleReflectionBlockType;
+
+     TpvVulkanShaderModuleReflectionMatrixType=
+      (
+       None,
+       RowMajor,
+       ColumnMajor
+      );
+
+     PpvVulkanShaderModuleReflectionMatrixType=^TpvVulkanShaderModuleReflectionMatrixType;
+
+     TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
+      private
+       fDebugName:TVkCharString;
+       fOffset:TpvUInt32;
+       fArrayStride:TpvUInt32;
+       fMatrixStride:TpvUInt32;
+       fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
+      public
+       property DebugName:TVkCharString read fDebugName;                                   // The name of the member
+       property Offset:TpvUInt32 read fOffset;                                             // The offset
+       property ArrayStride:TpvUInt32 read fArrayStride;
+       property MatrixStride:TpvUInt32 read fMatrixStride;
+       property MatrixType:TpvVulkanShaderModuleReflectionMatrixType read fMatrixType;
+     end;
+
+     PpvVulkanShaderModuleReflectionMember=^TpvVulkanShaderModuleReflectionMember;
+
+     TpvVulkanShaderModuleReflectionMembers=array of TpvVulkanShaderModuleReflectionMember;
+
      TpvVulkanShaderModuleReflectionType=record
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       StructMemberTypeIndices:TpvUInt32DynamicArray;
+      Members:TpvVulkanShaderModuleReflectionMembers;
       OpaqueName:TVkCharString;
       case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
        TpvVulkanShaderModuleReflectionTypeKind.TypeInt:(
@@ -1921,43 +1959,6 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionTypes=array of TpvVulkanShaderModuleReflectionType;
 
-     TpvVulkanShaderModuleReflectionBlockType=
-      (
-       None,
-       Block,
-       BufferBlock
-      );
-
-     PpvVulkanShaderModuleReflectionBlockType=^TpvVulkanShaderModuleReflectionBlockType;
-
-     TpvVulkanShaderModuleReflectionMatrixType=
-      (
-       None,
-       RowMajor,
-       ColumnMajor
-      );
-
-     PpvVulkanShaderModuleReflectionMatrixType=^TpvVulkanShaderModuleReflectionMatrixType;
-
-     TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
-      private
-       fDebugName:TVkCharString;
-       fOffset:TpvUInt32;
-       fArrayStride:TpvUInt32;
-       fMatrixStride:TpvUInt32;
-       fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
-      public
-       property DebugName:TVkCharString read fDebugName;                                   // The name of the member
-       property Offset:TpvUInt32 read fOffset;                                             // The offset
-       property ArrayStride:TpvUInt32 read fArrayStride;
-       property MatrixStride:TpvUInt32 read fMatrixStride;
-       property MatrixType:TpvVulkanShaderModuleReflectionMatrixType read fMatrixType;
-     end;
-
-     PpvVulkanShaderModuleReflectionMember=^TpvVulkanShaderModuleReflectionMember;
-
-     TpvVulkanShaderModuleReflectionMembers=array of TpvVulkanShaderModuleReflectionMember;
-
      TpvVulkanShaderModuleReflectionVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
@@ -1970,7 +1971,6 @@ type EpvVulkanException=class(Exception);
        fType:TpvInt32;
        fInstruction:TpvUInt32;
        fStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
-       fMembers:TpvVulkanShaderModuleReflectionMembers;
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
        property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
@@ -1982,7 +1982,6 @@ type EpvVulkanException=class(Exception);
        property Type_:TpvInt32 read fType;                                                 // The type
        property Instruction:TpvUInt32 read fInstruction;                                   // The instruction index
        property StorageClass:TpvVulkanShaderModuleReflectionStorageClass read fStorageClass; // Storage class of the variable
-       property Members:TpvVulkanShaderModuleReflectionMembers read fMembers;
      end;
 
      PpvVulkanShaderModuleReflectionVariable=^TpvVulkanShaderModuleReflectionVariable;
@@ -14725,24 +14724,35 @@ begin
        Variable^.fName:=NameIndex;
        Variable^.fInstruction:=Position;
        Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
-       if CountMembers[Index]>0 then begin
-        SetLength(Variable^.fMembers,CountMembers[Index]);
-        for OtherIndex:=1 to CountMembers[Index] do begin
-         Member:=@Variable^.fMembers[Index-1];
-         ShaderMember:=@ShaderMembers[Index-1,OtherIndex-1];
-         Member^.fDebugName:=ShaderMember^.DebugName;
-         Member^.fOffset:=ShaderMember^.Offset;
-         Member^.fArrayStride:=ShaderMember^.ArrayStride;
-         Member^.fMatrixStride:=ShaderMember^.MatrixStride;
-         Member^.fMatrixType:=ShaderMember^.MatrixType;
-        end;
-       end else begin
-        Variable^.fMembers:=nil;
-       end;
       end;
      end;
      inc(Position,Opcode shr 16);
     end;
+
+    Index:=0;
+    while Index<CountTypeIDs do begin
+     if TypeMap[Index]>=0 then begin
+      Type_:=@result.Types[TypeMap[Index]];
+      if CountMembers[Index]>0 then begin
+       SetLength(Type_^.Members,CountMembers[Index]);
+       for OtherIndex:=1 to CountMembers[Index] do begin
+        Member:=@Type_^.Members[Index-1];
+        ShaderMember:=@ShaderMembers[Index-1,OtherIndex-1];
+        Member^.fDebugName:=ShaderMember^.DebugName;
+        Member^.fOffset:=ShaderMember^.Offset;
+        Member^.fArrayStride:=ShaderMember^.ArrayStride;
+        Member^.fMatrixStride:=ShaderMember^.MatrixStride;
+        Member^.fMatrixType:=ShaderMember^.MatrixType;
+       end;
+      end else begin
+       Type_^.Members:=nil;
+      end;
+     end;
+     inc(Index);
+    end;
+
+
+
 
    finally
     BlockTypes:=nil;
