@@ -1861,6 +1861,8 @@ type EpvVulkanException=class(Exception);
        );
      end;
 
+     PpvVulkanShaderModuleType=^TpvVulkanShaderModuleType;
+
      TpvVulkanShaderModuleTypes=array of TpvVulkanShaderModuleType;
 
      PpvVulkanShaderModuleVariableStorageClass=^TpvVulkanShaderModuleVariableStorageClass;
@@ -14235,9 +14237,10 @@ type PUInt32Array=^TUInt32Array;
      PShaderMember=^TShaderMember;
 var Position,Size:TpvInt32;
     Opcode,Index,OtherIndex,NameIndex,CountVariables,CountIDs,CountNames,
-    CountTypes:TpvUInt32;
+    CountTypes,CountTypeIDs:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
+    Type_:PpvVulkanShaderModuleType;
     Variable:PpvVulkanShaderModuleVariable;
     Member:PpvVulkanShaderModuleVariableMember;
     ShaderMember:PShaderMember;
@@ -14245,6 +14248,7 @@ var Position,Size:TpvInt32;
     Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
     DebugNames:array of TVkCharString;
     ShaderMembers:array of array of TShaderMember;
+    TypeMap:array of TpvSizeInt;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14267,6 +14271,7 @@ begin
  CountMembers:=nil;
  DebugNames:=nil;
  ShaderMembers:=nil;
+ TypeMap:=nil;
  CountVariables:=0;
  try
   Opcodes:=fData;
@@ -14281,6 +14286,7 @@ begin
    CountIDs:=0;
    CountNames:=0;
    CountTypes:=0;
+   CountTypeIDs:=0;
 
    Position:=0;
    while Position<Size do begin
@@ -14315,7 +14321,8 @@ begin
      $0027{OpTypeForwardPipe},
      $0142{OpTypePipeStorage},
      $0147{OpTypeNamedBarrier}:begin
-      CountTypes:=Max(CountTypes,SwapEndian(Opcodes^[Position+1])+1);
+      inc(CountTypes);
+      CountTypeIDs:=Max(CountTypeIDs,SwapEndian(Opcodes^[Position+1])+1);
      end;
      $003b{OpVariable}:begin
       inc(CountVariables);
@@ -14342,6 +14349,143 @@ begin
     SetLength(CountMembers,CountIDs);
     SetLength(DebugNames,CountNames);
     SetLength(ShaderMembers,CountIDs,0);
+    SetLength(result.Types,CountTypes);
+    SetLength(TypeMap,CountTypeIDs);
+
+    for Index:=1 to TpvInt32(CountTypeIDs) do begin
+     TypeMap[Index-1]:=-1;
+    end;
+    for Index:=1 to TpvInt32(CountTypes) do begin
+     result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleTypeKind.TypeNone;
+    end;
+    try
+
+     CountTypes:=0;
+     Position:=0;
+     while Position<Size do begin
+      Opcode:=SwapEndian(Opcodes^[Position]);
+      case Opcode and $ffff of
+       $0013{OpTypeVoid},
+       $0014{OpTypeBool},
+       $0015{OpTypeInt},
+       $0016{OpTypeFloat},
+       $0017{OpTypeVector},
+       $0018{OpTypeMatrix},
+       $0019{OpTypeImage},
+       $001a{OpTypeSampler},
+       $001b{OpTypeSampledImage},
+       $001c{OpTypeArray},
+       $001d{OpTypeRuntimeArray},
+       $001e{OpTypeStruct},
+       $001f{OpTypeOpaque},
+       $0020{OpTypePointer},
+       $0021{OpTypeFunction},
+       $0022{OpTypeEvent},
+       $0023{OpTypeDeviceEvent},
+       $0024{OpTypeReserveID},
+       $0025{OpTypeQueue},
+       $0026{OpTypePipe},
+       $0027{OpTypeForwardPipe},
+       $0142{OpTypePipeStorage},
+       $0147{OpTypeNamedBarrier}:begin
+        Index:=SwapEndian(Opcodes^[Position+1]);
+        TypeMap[Index]:=CountTypes;
+        inc(CountTypes);
+       end;
+      end;
+      inc(Position,Opcode shr 16);
+     end;
+
+
+     CountTypes:=0;
+     Position:=0;
+     while Position<Size do begin
+      Opcode:=SwapEndian(Opcodes^[Position]);
+      case Opcode and $ffff of
+       $0013{OpTypeVoid},
+       $0014{OpTypeBool},
+       $0015{OpTypeInt},
+       $0016{OpTypeFloat},
+       $0017{OpTypeVector},
+       $0018{OpTypeMatrix},
+       $0019{OpTypeImage},
+       $001a{OpTypeSampler},
+       $001b{OpTypeSampledImage},
+       $001c{OpTypeArray},
+       $001d{OpTypeRuntimeArray},
+       $001e{OpTypeStruct},
+       $001f{OpTypeOpaque},
+       $0020{OpTypePointer},
+       $0021{OpTypeFunction},
+       $0022{OpTypeEvent},
+       $0023{OpTypeDeviceEvent},
+       $0024{OpTypeReserveID},
+       $0025{OpTypeQueue},
+       $0026{OpTypePipe},
+       $0027{OpTypeForwardPipe},
+       $0142{OpTypePipeStorage},
+       $0147{OpTypeNamedBarrier}:begin
+        Index:=SwapEndian(Opcodes^[Position+1]);
+        Type_:=@result.Types[TypeMap[Index]];
+        Type_^.TypeKind:=TpvVulkanShaderModuleTypeKind(TvkInt32(Opcode and $ffff));
+        case Type_^.TypeKind of
+         TpvVulkanShaderModuleTypeKind.TypeVoid:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeBool:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeInt:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeFloat:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeVector:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeMartix:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeImage:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeSampler:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeSampledImage:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeArray:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeRuntimeArray:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeStruct:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeOpaque:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypePointer:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeFunction:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeEvent:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeDeviceEvent:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeReserveID:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeQueue:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypePipe:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeForwardPipe:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypePipeStorage:begin
+         end;
+         TpvVulkanShaderModuleTypeKind.TypeNamedBarrier:begin
+         end;
+         else {TpvVulkanShaderModuleTypeKind.TypeNone:}begin
+         end;
+        end;
+
+       end;
+      end;
+      inc(Position,Opcode shr 16);
+     end;
+
+    finally
+    end;
 
     for Index:=1 to TpvInt32(CountIDs) do begin
      BlockTypes[Index-1]:=TpvVulkanShaderModuleVariableBlockType.None;
@@ -14519,6 +14663,7 @@ begin
     CountMembers:=nil;
     DebugNames:=nil;
     ShaderMembers:=nil;
+    TypeMap:=nil;
    end;
 
   end;
