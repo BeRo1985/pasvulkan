@@ -436,17 +436,18 @@ begin
   end;
   TpvScene3D.TMaterial.TAlphaMode.Mask:begin
    fShaderData.AlphaCutOff:=fData.AlphaCutOff;
+   fShaderData.Flags:=fShaderData.Flags or (1 shl 4);
   end;
   TpvScene3D.TMaterial.TAlphaMode.Blend:begin
    fShaderData.AlphaCutOff:=0.0;
-   fShaderData.Flags:=fShaderData.Flags or (1 shl 4);
+   fShaderData.Flags:=fShaderData.Flags or (1 shl 5);
   end;
   else begin
    Assert(false);
   end;
  end;
  if fData.DoubleSided then begin
-  fShaderData.Flags:=fShaderData.Flags or (1 shl 5);
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 6);
  end;
  fShaderData.TextureCoords:=$ffffffff;
  fShaderData.Reversed:=$ffffffff;
