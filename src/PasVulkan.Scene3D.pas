@@ -147,8 +147,8 @@ type EpvScene3D=class(Exception);
                     // uvec4 AlphaCutOffFlags begin
                      AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                      Flags:TpvUInt32;
-                     Reversed0:TpvUInt32;
-                     Reversed1:TpvUInt32;
+                     TextureCoords:TpvUInt32;
+                     Reversed:TpvUInt32;
                     // uvec4 uAlphaCutOffFlags end
                    end;
                    PShaderData=^TShaderData;
@@ -448,16 +448,16 @@ begin
  if fData.DoubleSided then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 5);
  end;
- fShaderData.Reversed0:=$ffffffff;
- fShaderData.Reversed1:=$ffffffff;
+ fShaderData.TextureCoords:=$ffffffff;
+ fShaderData.Reversed:=$ffffffff;
  case fData.ShadingModel of
   TMaterial.TShadingModel.PBRMetallicRoughness:begin
    fShaderData.Flags:=fShaderData.Flags or ((0 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
    end;
    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-    fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (1 shl 2))) or ((fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord and $f) shl (1 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or ((fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord and $f) shl (1 shl 2));
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=fData.PBRMetallicRoughness.MetallicFactor;
@@ -468,10 +468,10 @@ begin
   TMaterial.TShadingModel.PBRSpecularGlossiness:begin
    fShaderData.Flags:=fShaderData.Flags or ((1 and $f) shl 0);
    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-    fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (0 shl 2))) or ((fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord and $f) shl (0 shl 2));
    end;
    if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-    fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (1 shl 2))) or ((fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord and $f) shl (1 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or ((fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord and $f) shl (1 shl 2));
    end;
    fShaderData.BaseColorFactor:=fData.PBRSpecularGlossiness.DiffuseFactor;
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=1.0;
@@ -486,7 +486,7 @@ begin
   TMaterial.TShadingModel.Unlit:begin
    fShaderData.Flags:=fShaderData.Flags or ((2 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
   end;
@@ -495,13 +495,13 @@ begin
   end;
  end;
  if assigned(fData.NormalTexture.Texture) then begin
-  fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (2 shl 2))) or ((fData.NormalTexture.TexCoord and $f) shl (2 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (2 shl 2))) or ((fData.NormalTexture.TexCoord and $f) shl (2 shl 2));
  end;
  if assigned(fData.OcclusionTexture.Texture) then begin
-  fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (3 shl 2))) or ((fData.OcclusionTexture.TexCoord and $f) shl (3 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (3 shl 2))) or ((fData.OcclusionTexture.TexCoord and $f) shl (3 shl 2));
  end;
  if assigned(fData.EmissiveTexture.Texture) then begin
-  fShaderData.Reversed0:=(fShaderData.Reversed0 and not ($f shl (4 shl 2))) or ((fData.EmissiveTexture.TexCoord and $f) shl (4 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (4 shl 2))) or ((fData.EmissiveTexture.TexCoord and $f) shl (4 shl 2));
  end;
  fShaderData.EmissiveFactor[0]:=fData.EmissiveFactor[0];
  fShaderData.EmissiveFactor[1]:=fData.EmissiveFactor[1];
