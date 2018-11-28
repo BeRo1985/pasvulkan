@@ -1743,7 +1743,7 @@ type EpvVulkanException=class(Exception);
        property DepthImageFormat:TVkFormat read fDepthImageFormat;
      end;
 
-     TpvVulkanShaderModuleTypeKind=
+     TpvVulkanShaderModuleReflectionTypeKind=
       (
        TypeNone=$0000,
        TypeVoid=$0013{OpTypeVoid},
@@ -1771,9 +1771,9 @@ type EpvVulkanException=class(Exception);
        TypeNamedBarrier=$0147{OpTypeNamedBarrier}
       );
 
-     PpvVulkanShaderModuleTypeKind=^TpvVulkanShaderModuleTypeKind;
+     PpvVulkanShaderModuleReflectionTypeKind=^TpvVulkanShaderModuleReflectionTypeKind;
 
-     TpvVulkanShaderModuleDim=
+     TpvVulkanShaderModuleReflectionDim=
       (
        _1D=0,
        _2D=1,
@@ -1784,9 +1784,9 @@ type EpvVulkanException=class(Exception);
        SubpassData=6
       );
 
-     PpvVulkanShaderModuleDim=^TpvVulkanShaderModuleDim;
+     PpvVulkanShaderModuleReflectionDim=^TpvVulkanShaderModuleReflectionDim;
 
-     TpvVulkanShaderModuleImageFormat=
+     TpvVulkanShaderModuleReflectionImageFormat=
       (
        Unknown=0,
        RGBA32F=1,
@@ -1830,43 +1830,52 @@ type EpvVulkanException=class(Exception);
        R8UI=39
       );
 
-     PpvVulkanShaderModuleImageFormat=^TpvVulkanShaderModuleImageFormat;
+     PpvVulkanShaderModuleReflectionImageFormat=^TpvVulkanShaderModuleReflectionImageFormat;
 
-     TpvVulkanShaderModuleType=record
+     TpvVulkanShaderModuleReflectionAccessQualifier=
+      (
+       ReadOnly=0,
+       WriteOnly=1,
+       ReadWrite=2
+      );
+
+     PpvVulkanShaderModuleReflectionAccessQualifier=^TpvVulkanShaderModuleReflectionAccessQualifier;
+
+     TpvVulkanShaderModuleReflectionType=record
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       StructMemberTypeIndices:TpvUInt32DynamicArray;
       OpaqueName:TVkCharString;
-      case TypeKind:TpvVulkanShaderModuleTypeKind of
-       TpvVulkanShaderModuleTypeKind.TypeArray:(
+      case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
+       TpvVulkanShaderModuleReflectionTypeKind.TypeArray:(
         ArrayTypeIndex:TpvUInt32;
         ArraySize:TpvUInt32;
        );
-       TpvVulkanShaderModuleTypeKind.TypeRuntimeArray:(
+       TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:(
         RuntimeArrayTypeIndex:TpvUInt32;
        );
-       TpvVulkanShaderModuleTypeKind.TypeFunction:(
+       TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:(
         FunctionResultTypeIndex:TpvUInt32;
        );
-       TpvVulkanShaderModuleTypeKind.TypeSampledImage:(
+       TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:(
         SampledImageTypeIndex:TpvUInt32;
        );
-       TpvVulkanShaderModuleTypeKind.TypeImage:(
+       TpvVulkanShaderModuleReflectionTypeKind.TypeImage:(
         ImageTypeIndex:TpvUInt32;
-        ImageDim:TpvVulkanShaderModuleDim;
+        ImageDim:TpvVulkanShaderModuleReflectionDim;
         ImageDepth:TpvUInt32;
         ImageArrayed:TpvUInt32;
         ImageMS:TpvUInt32;
         ImageSampled:TpvUInt32;
-        ImageFormat:TpvVulkanShaderModuleImageFormat;
+        ImageFormat:TpvVulkanShaderModuleReflectionImageFormat;
+        ImageAccessQualifier:TpvVulkanShaderModuleReflectionAccessQualifier;
        );
      end;
 
-     PpvVulkanShaderModuleType=^TpvVulkanShaderModuleType;
+     PpvVulkanShaderModuleReflectionType=^TpvVulkanShaderModuleReflectionType;
 
-     TpvVulkanShaderModuleTypes=array of TpvVulkanShaderModuleType;
+     TpvVulkanShaderModuleReflectionTypes=array of TpvVulkanShaderModuleReflectionType;
 
-     PpvVulkanShaderModuleVariableStorageClass=^TpvVulkanShaderModuleVariableStorageClass;
-     TpvVulkanShaderModuleVariableStorageClass=
+     TpvVulkanShaderModuleReflectionStorageClass=
       (
        UniformConstant=0,
        Input=1,
@@ -1884,72 +1893,78 @@ type EpvVulkanException=class(Exception);
        Max=$7fffffff
       );
 
-     PpvVulkanShaderModuleVariableBlockType=^TpvVulkanShaderModuleVariableBlockType;
-     TpvVulkanShaderModuleVariableBlockType=
+     PpvVulkanShaderModuleReflectionStorageClass=^TpvVulkanShaderModuleReflectionStorageClass;
+
+     TpvVulkanShaderModuleReflectionBlockType=
       (
        None,
        Block,
        BufferBlock
       );
 
-     PpvVulkanShaderModuleVariableMatrixType=^TpvVulkanShaderModuleVariableMatrixType;
-     TpvVulkanShaderModuleVariableMatrixType=
+     PpvVulkanShaderModuleReflectionBlockType=^TpvVulkanShaderModuleReflectionBlockType;
+
+     TpvVulkanShaderModuleReflectionMatrixType=
       (
        None,
        RowMajor,
        ColumnMajor
       );
 
-     PpvVulkanShaderModuleVariableMember=^TpvVulkanShaderModuleVariableMember;
-     TpvVulkanShaderModuleVariableMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
+     PpvVulkanShaderModuleReflectionMatrixType=^TpvVulkanShaderModuleReflectionMatrixType;
+
+     TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
        fOffset:TpvUInt32;
        fArrayStride:TpvUInt32;
        fMatrixStride:TpvUInt32;
-       fMatrixType:TpvVulkanShaderModuleVariableMatrixType;
+       fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the member
        property Offset:TpvUInt32 read fOffset;                                             // The offset
        property ArrayStride:TpvUInt32 read fArrayStride;
        property MatrixStride:TpvUInt32 read fMatrixStride;
-       property MatrixType:TpvVulkanShaderModuleVariableMatrixType read fMatrixType;
+       property MatrixType:TpvVulkanShaderModuleReflectionMatrixType read fMatrixType;
      end;
 
-     TpvVulkanShaderModuleVariableMembers=array of TpvVulkanShaderModuleVariableMember;
+     PpvVulkanShaderModuleReflectionMember=^TpvVulkanShaderModuleReflectionMember;
 
-     PpvVulkanShaderModuleVariable=^TpvVulkanShaderModuleVariable;
-     TpvVulkanShaderModuleVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
+     TpvVulkanShaderModuleReflectionMembers=array of TpvVulkanShaderModuleReflectionMember;
+
+     TpvVulkanShaderModuleReflectionVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
        fName:TpvUInt32;
-       fBlockType:TpvVulkanShaderModuleVariableBlockType;
+       fBlockType:TpvVulkanShaderModuleReflectionBlockType;
        fLocation:TpvUInt32;
        fBinding:TpvUInt32;
        fDescriptorSet:TpvUInt32;
        fOffset:TpvUInt32;
        fInstruction:TpvUInt32;
-       fStorageClass:TpvVulkanShaderModuleVariableStorageClass;
-       fMembers:TpvVulkanShaderModuleVariableMembers;
+       fStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
+       fMembers:TpvVulkanShaderModuleReflectionMembers;
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
        property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
-       property BlockType:TpvVulkanShaderModuleVariableBlockType read fBlockType;          // The block type
+       property BlockType:TpvVulkanShaderModuleReflectionBlockType read fBlockType;          // The block type
        property Location:TpvUInt32 read fLocation;                                         // The location in the binding
        property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
        property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
        property Offset:TpvUInt32 read fOffset;                                             // The offset
        property Instruction:TpvUInt32 read fInstruction;                                   // The instruction index
-       property StorageClass:TpvVulkanShaderModuleVariableStorageClass read fStorageClass; // Storage class of the variable
-       property Members:TpvVulkanShaderModuleVariableMembers read fMembers;
+       property StorageClass:TpvVulkanShaderModuleReflectionStorageClass read fStorageClass; // Storage class of the variable
+       property Members:TpvVulkanShaderModuleReflectionMembers read fMembers;
      end;
 
-     TpvVulkanShaderModuleVariables=array of TpvVulkanShaderModuleVariable;
+     PpvVulkanShaderModuleReflectionVariable=^TpvVulkanShaderModuleReflectionVariable;
+
+     TpvVulkanShaderModuleReflectionVariables=array of TpvVulkanShaderModuleReflectionVariable;
 
      TpvVulkanShaderModuleReflectionData=record
       public
-       Types:TpvVulkanShaderModuleTypes;
-       Variables:TpvVulkanShaderModuleVariables;
+       Types:TpvVulkanShaderModuleReflectionTypes;
+       Variables:TpvVulkanShaderModuleReflectionVariables;
      end;
 
      PpvVulkanShaderModuleReflectionData=^TpvVulkanShaderModuleReflectionData;
@@ -14232,7 +14247,7 @@ type PUInt32Array=^TUInt32Array;
       Offset:TpvUInt32;
       ArrayStride:TpvUInt32;
       MatrixStride:TpvUInt32;
-      MatrixType:TpvVulkanShaderModuleVariableMatrixType;
+      MatrixType:TpvVulkanShaderModuleReflectionMatrixType;
      end;
      PShaderMember=^TShaderMember;
 var Position,Size:TpvInt32;
@@ -14240,11 +14255,11 @@ var Position,Size:TpvInt32;
     CountTypes,CountTypeIDs:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
-    Type_:PpvVulkanShaderModuleType;
-    Variable:PpvVulkanShaderModuleVariable;
-    Member:PpvVulkanShaderModuleVariableMember;
+    Type_:PpvVulkanShaderModuleReflectionType;
+    Variable:PpvVulkanShaderModuleReflectionVariable;
+    Member:PpvVulkanShaderModuleReflectionMember;
     ShaderMember:PShaderMember;
-    BlockTypes:array of TpvVulkanShaderModuleVariableBlockType;
+    BlockTypes:array of TpvVulkanShaderModuleReflectionBlockType;
     Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
     DebugNames:array of TVkCharString;
     ShaderMembers:array of array of TShaderMember;
@@ -14356,7 +14371,7 @@ begin
      TypeMap[Index-1]:=-1;
     end;
     for Index:=1 to TpvInt32(CountTypes) do begin
-     result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleTypeKind.TypeNone;
+     result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
     end;
     try
 
@@ -14427,53 +14442,53 @@ begin
        $0147{OpTypeNamedBarrier}:begin
         Index:=SwapEndian(Opcodes^[Position+1]);
         Type_:=@result.Types[TypeMap[Index]];
-        Type_^.TypeKind:=TpvVulkanShaderModuleTypeKind(TvkInt32(Opcode and $ffff));
+        Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind(TvkInt32(Opcode and $ffff));
         case Type_^.TypeKind of
-         TpvVulkanShaderModuleTypeKind.TypeVoid:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeBool:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeBool:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeInt:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeFloat:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeVector:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeMartix:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeMartix:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeImage:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeImage:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeSampler:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeSampler:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeSampledImage:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeArray:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeRuntimeArray:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeStruct:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeOpaque:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypePointer:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeFunction:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeEvent:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeEvent:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeDeviceEvent:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeDeviceEvent:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeReserveID:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeReserveID:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeQueue:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeQueue:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypePipe:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypePipe:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeForwardPipe:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeForwardPipe:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypePipeStorage:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypePipeStorage:begin
          end;
-         TpvVulkanShaderModuleTypeKind.TypeNamedBarrier:begin
+         TpvVulkanShaderModuleReflectionTypeKind.TypeNamedBarrier:begin
          end;
          else {TpvVulkanShaderModuleTypeKind.TypeNone:}begin
          end;
@@ -14488,7 +14503,7 @@ begin
     end;
 
     for Index:=1 to TpvInt32(CountIDs) do begin
-     BlockTypes[Index-1]:=TpvVulkanShaderModuleVariableBlockType.None;
+     BlockTypes[Index-1]:=TpvVulkanShaderModuleReflectionBlockType.None;
      Bindings[Index-1]:=0;
      Locations[Index-1]:=0;
      DescriptorSets[Index-1]:=0;
@@ -14518,7 +14533,7 @@ begin
        ShaderMember^.Offset:=0;
        ShaderMember^.ArrayStride:=0;
        ShaderMember^.MatrixStride:=0;
-       ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.None;
+       ShaderMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
       end;
      end;
     end;
@@ -14548,10 +14563,10 @@ begin
        if Index<CountIDs then begin
         case Opcodes^[Position+2] of
          $00000002{Block}:begin
-          BlockTypes[Index]:=TpvVulkanShaderModuleVariableBlockType.Block;
+          BlockTypes[Index]:=TpvVulkanShaderModuleReflectionBlockType.Block;
          end;
          $00000003{BufferBlock}:begin
-          BlockTypes[Index]:=TpvVulkanShaderModuleVariableBlockType.BufferBlock;
+          BlockTypes[Index]:=TpvVulkanShaderModuleReflectionBlockType.BufferBlock;
          end;
          $00000005{ColMajor}:begin
          end;
@@ -14582,10 +14597,10 @@ begin
          ShaderMember:=@ShaderMembers[Index,OtherIndex];
          case Opcodes^[Position+3] of
           $00000004{RowMajor}:begin
-           ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.RowMajor;
+           ShaderMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
           end;
           $00000005{ColMajor}:begin
-           ShaderMember^.MatrixType:=TpvVulkanShaderModuleVariableMatrixType.ColumnMajor;
+           ShaderMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
           end;
           $00000006{ArrayStride}:begin
            ShaderMember^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
@@ -14620,7 +14635,7 @@ begin
         Variable^.fDescriptorSet:=DescriptorSets[Index];
         Variable^.fOffset:=Offsets[Index];
        end else begin
-        Variable^.fBlockType:=TpvVulkanShaderModuleVariableBlockType.None;
+        Variable^.fBlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
         Variable^.fLocation:=0;
         Variable^.fBinding:=0;
         Variable^.fDescriptorSet:=0;
@@ -14634,7 +14649,7 @@ begin
        end;
        Variable^.fName:=NameIndex;
        Variable^.fInstruction:=Position;
-       Variable^.fStorageClass:=TpvVulkanShaderModuleVariableStorageClass(SwapEndian(Opcodes^[Position+3]));
+       Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
        if CountMembers[Index]>0 then begin
         SetLength(Variable^.fMembers,CountMembers[Index]);
         for OtherIndex:=1 to CountMembers[Index] do begin
