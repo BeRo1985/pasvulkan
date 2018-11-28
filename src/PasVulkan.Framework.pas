@@ -1743,6 +1743,126 @@ type EpvVulkanException=class(Exception);
        property DepthImageFormat:TVkFormat read fDepthImageFormat;
      end;
 
+     TpvVulkanShaderModuleTypeKind=
+      (
+       TypeNone=$0000,
+       TypeVoid=$0013{OpTypeVoid},
+       TypeBool=$0014{OpTypeBool},
+       TypeInt=$0015{OpTypeInt},
+       TypeFloat=$0016{OpTypeFloat},
+       TypeVector=$0017{OpTypeVector},
+       TypeMartix=$0018{OpTypeMatrix},
+       TypeImage=$0019{OpTypeImage},
+       TypeSampler=$001a{OpTypeSampler},
+       TypeSampledImage=$001b{OpTypeSampledImage},
+       TypeArray=$001c{OpTypeArray},
+       TypeRuntimeArray=$001d{OpTypeRuntimeArray},
+       TypeStruct=$001e{OpTypeStruct},
+       TypeOpaque=$001f{OpTypeOpaque},
+       TypePointer=$0020{OpTypePointer},
+       TypeFunction=$0021{OpTypeFunction},
+       TypeEvent=$0022{OpTypeEvent},
+       TypeDeviceEvent=$0023{OpTypeDeviceEvent},
+       TypeReserveID=$0024{OpTypeReserveID},
+       TypeQueue=$0025{OpTypeQueue},
+       TypePipe=$0026{OpTypePipe},
+       TypeForwardPipe=$0027{OpTypeForwardPipe},
+       TypePipeStorage=$0142{OpTypePipeStorage},
+       TypeNamedBarrier=$0147{OpTypeNamedBarrier}
+      );
+
+     PpvVulkanShaderModuleTypeKind=^TpvVulkanShaderModuleTypeKind;
+
+     TpvVulkanShaderModuleDim=
+      (
+       _1D=0,
+       _2D=1,
+       _3D=2,
+       Cube=3,
+       Rect=4,
+       Buffer=5,
+       SubpassData=6
+      );
+
+     PpvVulkanShaderModuleDim=^TpvVulkanShaderModuleDim;
+
+     TpvVulkanShaderModuleImageFormat=
+      (
+       Unknown=0,
+       RGBA32F=1,
+       RGBA16F=2,
+       R32F=3,
+       RGBA8=4,
+       RGBA8SNORM=5,
+       RG32F=6,
+       RG16F=7,
+       R11FG11FB10F=8,
+       R16F=9,
+       RGBA16=10,
+       RGB10A2=11,
+       RG16=12,
+       RG8=13,
+       R16=14,
+       R8=15,
+       RGBA16SNORM=16,
+       RG16SNORM=17,
+       RG8SNORM=18,
+       R16SNORM=19,
+       R8SNORM=20,
+       RGBA32I=21,
+       RGBA16I=22,
+       RGBA8I=23,
+       R32I=24,
+       RG32I=25,
+       RG16I=26,
+       RG8I=27,
+       R16I=28,
+       R8I=29,
+       RGBA32UI=30,
+       RGBA16UI=31,
+       RGBA8UI=32,
+       R32UI=33,
+       RGB10A2UI=34,
+       RG32UI=35,
+       RG16UI=36,
+       RG8UI=37,
+       R16UI=38,
+       R8UI=39
+      );
+
+     PpvVulkanShaderModuleImageFormat=^TpvVulkanShaderModuleImageFormat;
+
+     TpvVulkanShaderModuleType=record
+      FunctionParameterTypeIndices:TpvUInt32DynamicArray;
+      StructMemberTypeIndices:TpvUInt32DynamicArray;
+      OpaqueName:TVkCharString;
+      case TypeKind:TpvVulkanShaderModuleTypeKind of
+       TpvVulkanShaderModuleTypeKind.TypeArray:(
+        ArrayTypeIndex:TpvUInt32;
+        ArraySize:TpvUInt32;
+       );
+       TpvVulkanShaderModuleTypeKind.TypeRuntimeArray:(
+        RuntimeArrayTypeIndex:TpvUInt32;
+       );
+       TpvVulkanShaderModuleTypeKind.TypeFunction:(
+        FunctionResultTypeIndex:TpvUInt32;
+       );
+       TpvVulkanShaderModuleTypeKind.TypeSampledImage:(
+        SampledImageTypeIndex:TpvUInt32;
+       );
+       TpvVulkanShaderModuleTypeKind.TypeImage:(
+        ImageTypeIndex:TpvUInt32;
+        ImageDim:TpvVulkanShaderModuleDim;
+        ImageDepth:TpvUInt32;
+        ImageArrayed:TpvUInt32;
+        ImageMS:TpvUInt32;
+        ImageSampled:TpvUInt32;
+        ImageFormat:TpvVulkanShaderModuleImageFormat;
+       );
+     end;
+
+     TpvVulkanShaderModuleTypes=array of TpvVulkanShaderModuleType;
+
      PpvVulkanShaderModuleVariableStorageClass=^TpvVulkanShaderModuleVariableStorageClass;
      TpvVulkanShaderModuleVariableStorageClass=
       (
@@ -1824,6 +1944,14 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleVariables=array of TpvVulkanShaderModuleVariable;
 
+     TpvVulkanShaderModuleReflectionData=record
+      public
+       Types:TpvVulkanShaderModuleTypes;
+       Variables:TpvVulkanShaderModuleVariables;
+     end;
+
+     PpvVulkanShaderModuleReflectionData=^TpvVulkanShaderModuleReflectionData;
+
      TpvVulkanShaderModule=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1837,7 +1965,7 @@ type EpvVulkanException=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice;const aStream:TStream); overload;
        constructor Create(const aDevice:TpvVulkanDevice;const aFileName:string); overload;
        destructor Destroy; override;
-       function GetVariables:TpvVulkanShaderModuleVariables;
+       function GetReflectionData:TpvVulkanShaderModuleReflectionData;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkShaderModule read fShaderModuleHandle;
@@ -14093,7 +14221,7 @@ begin
  end;
 end;
 
-function TpvVulkanShaderModule.GetVariables:TpvVulkanShaderModuleVariables;
+function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflectionData;
 // https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
@@ -14106,7 +14234,8 @@ type PUInt32Array=^TUInt32Array;
      end;
      PShaderMember=^TShaderMember;
 var Position,Size:TpvInt32;
-    Opcode,Index,OtherIndex,NameIndex,Count,CountIDs,CountNames:TpvUInt32;
+    Opcode,Index,OtherIndex,NameIndex,CountVariables,CountIDs,CountNames,
+    CountTypes:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
     Variable:PpvVulkanShaderModuleVariable;
@@ -14128,7 +14257,8 @@ var Position,Size:TpvInt32;
   end;
  end;
 begin
- result:=nil;
+ result.Types:=nil;
+ result.Variables:=nil;
  BlockTypes:=nil;
  Bindings:=nil;
  Locations:=nil;
@@ -14137,7 +14267,7 @@ begin
  CountMembers:=nil;
  DebugNames:=nil;
  ShaderMembers:=nil;
- Count:=0;
+ CountVariables:=0;
  try
   Opcodes:=fData;
   if assigned(Opcodes) and (fDataSize>=(6*SizeOf(TpvUInt32))) and ((Opcodes^[0]=$07230203) or (Opcodes^[0]=$03022307)) then begin
@@ -14150,6 +14280,7 @@ begin
 
    CountIDs:=0;
    CountNames:=0;
+   CountTypes:=0;
 
    Position:=0;
    while Position<Size do begin
@@ -14161,8 +14292,33 @@ begin
      $0006{OpMemberName}:begin
       CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
      end;
+     $0013{OpTypeVoid},
+     $0014{OpTypeBool},
+     $0015{OpTypeInt},
+     $0016{OpTypeFloat},
+     $0017{OpTypeVector},
+     $0018{OpTypeMatrix},
+     $0019{OpTypeImage},
+     $001a{OpTypeSampler},
+     $001b{OpTypeSampledImage},
+     $001c{OpTypeArray},
+     $001d{OpTypeRuntimeArray},
+     $001e{OpTypeStruct},
+     $001f{OpTypeOpaque},
+     $0020{OpTypePointer},
+     $0021{OpTypeFunction},
+     $0022{OpTypeEvent},
+     $0023{OpTypeDeviceEvent},
+     $0024{OpTypeReserveID},
+     $0025{OpTypeQueue},
+     $0026{OpTypePipe},
+     $0027{OpTypeForwardPipe},
+     $0142{OpTypePipeStorage},
+     $0147{OpTypeNamedBarrier}:begin
+      CountTypes:=Max(CountTypes,SwapEndian(Opcodes^[Position+1])+1);
+     end;
      $003b{OpVariable}:begin
-      inc(Count);
+      inc(CountVariables);
      end;
      $0047{OpDecorate}:begin
       CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
@@ -14174,7 +14330,7 @@ begin
     inc(Position,Opcode shr 16);
    end;
 
-   SetLength(result,Count);
+   SetLength(result.Variables,CountVariables);
 
    try
 
@@ -14304,14 +14460,14 @@ begin
      inc(Position,Opcode shr 16);
     end;
 
-    Count:=0;
+    CountVariables:=0;
     Position:=0;
     while Position<Size do begin
      Opcode:=SwapEndian(Opcodes^[Position]);
      case Opcode and $ffff of
       $003b{OpVariable}:begin
-       Variable:=@result[Count];
-       inc(Count);
+       Variable:=@result.Variables[CountVariables];
+       inc(CountVariables);
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
         Variable^.fBlockType:=BlockTypes[Index];
@@ -14367,7 +14523,7 @@ begin
 
   end;
  finally
-  SetLength(result,Count);
+  SetLength(result.Variables,CountVariables);
  end;
 end;
 

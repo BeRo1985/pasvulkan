@@ -118,6 +118,7 @@ type EpvResource=class(Exception);
        const VirtualFileNamePrefix:TpvUTF8String='virtual://';
       private
        fResourceManager:TpvResourceManager;
+       fParent:TpvResource;
        fResourceClassType:TpvResourceClassType;
        fFileName:TpvUTF8String;
        fAsyncLoadState:TAsyncLoadState;

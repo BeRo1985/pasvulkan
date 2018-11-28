@@ -93,6 +93,8 @@ type PPpvInt8=^PpvInt8;
      PpvUInt32=^TpvUInt32;
      TpvUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
 
+     TpvUInt32DynamicArray=array of TpvUInt32;
+
      PPpvInt64=^PpvInt64;
      PpvInt64=^TpvInt64;
      TpvInt64=Int64;

@@ -492,7 +492,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fSample:TpvAudioSoundSample;
       public
-       constructor Create(const aResourceManager:TpvResourceManager); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure FixUp;
@@ -524,7 +524,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fOGG:TpvAudioSoundOGG;
       public
-       constructor Create(const aResourceManager:TpvResourceManager); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
@@ -2895,9 +2895,9 @@ begin
  result:=Active;
 end;
 
-constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager);
+constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
- inherited Create(aResourceManager);
+ inherited Create(aResourceManager,aParent);
  fSample:=nil;
 end;
 
@@ -2985,9 +2985,9 @@ begin
  result:=fSample.IsVoicePlaying(VoiceNumber);
 end;
 
-constructor TpvAudioSoundOGGResource.Create(const aResourceManager:TpvResourceManager);
+constructor TpvAudioSoundOGGResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
- inherited Create(aResourceManager);
+ inherited Create(aResourceManager,aParent);
  fOGG:=nil;
 end;
 
