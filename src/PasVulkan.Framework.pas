@@ -14391,7 +14391,7 @@ begin
     SetLength(DebugNames,CountNames);
     SetLength(ShaderMembers,CountIDs,0);
     SetLength(result.Types,CountTypes);
-    SetLength(TypeMap,CountTypeIDs);
+    SetLength(TypeMap,Max(CountTypeIDs,CountIDs));
 
     for Index:=1 to TpvInt32(CountTypeIDs) do begin
      TypeMap[Index-1]:=-1;
@@ -14516,12 +14516,28 @@ begin
           Type_^.RuntimeArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
+          SetLength(Type_^.StructMemberTypeIndices,Max(0,(Opcode shr 16)-2));
+          OtherIndex:=0;
+          while OtherIndex<length(Type_^.StructMemberTypeIndices) do begin
+           Type_^.StructMemberTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+1)+OtherIndex])];
+           inc(OtherIndex);
+          end;
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
+          Type_^.OpaqueName:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
+          Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
+          Type_^.PointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+3])];
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
+          Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+          SetLength(Type_^.FunctionParameterTypeIndices,Max(0,(Opcode shr 16)-3));
+          OtherIndex:=0;
+          while OtherIndex<length(Type_^.FunctionParameterTypeIndices) do begin
+           Type_^.FunctionParameterTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
+           inc(OtherIndex);
+          end;
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeEvent:begin
          end;
@@ -14532,8 +14548,11 @@ begin
          TpvVulkanShaderModuleReflectionTypeKind.TypeQueue:begin
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePipe:begin
+          Type_^.PipeAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier(TVkInt32(SwapEndian(Opcodes^[Position+2])));
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeForwardPointer:begin
+          Type_^.ForwardPointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+          Type_^.ForwardPointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+3])));
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePipeStorage:begin
          end;
