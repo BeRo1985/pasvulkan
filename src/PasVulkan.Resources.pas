@@ -132,7 +132,7 @@ type EpvResource=class(Exception);
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
-       constructor Create(const aResourceManager:TpvResourceManager); reintroduce; virtual;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -255,12 +255,14 @@ uses PasVulkan.Application;
 
 { TpvResource }
 
-constructor TpvResource.Create(const aResourceManager:TpvResourceManager);
+constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 var OldReferenceCounter:TpvInt32;
 begin
  inherited Create;
 
  fResourceManager:=aResourceManager;
+
+ fParent:=aParent;
 
  fFileName:='';
 
