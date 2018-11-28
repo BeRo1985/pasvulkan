@@ -1762,6 +1762,16 @@ type EpvVulkanException=class(Exception);
        vsmcscMax=$7fffffff
       );
 
+     PpvVulkanShaderModuleVariableMember=^TpvVulkanShaderModuleVariableMember;
+     TpvVulkanShaderModuleVariableMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
+      private
+       fDebugName:TVkCharString;
+      public
+       property DebugName:TVkCharString read fDebugName;                                 // The name of the member
+     end;
+
+     TpvVulkanShaderModuleVariableMembers=array of TpvVulkanShaderModuleVariableMember;
+
      PpvVulkanShaderModuleVariable=^TpvVulkanShaderModuleVariable;
      TpvVulkanShaderModuleVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
@@ -1772,14 +1782,16 @@ type EpvVulkanException=class(Exception);
        fDescriptorSet:TpvInt32;
        fInstruction:TpvInt32;
        fStorageClass:TpvVulkanShaderModuleVariableStorageClass;
+       fMembers:TpvVulkanShaderModuleVariableMembers;
       public
-       property DebugName:TVkCharString read fDebugName;                                 // The name of the variable
-       property Name:TpvInt32 read fName;                                                // The internal name (integer) of the variable
-       property Location:TpvInt32 read fLocation;                                        // The location in the binding
-       property Binding:TpvInt32 read fBinding;                                          // The binding in the descriptor set or I/O channel
-       property DescriptorSet:TpvInt32 read fDescriptorSet;                              // The descriptor set (for uniforms)
-       property Instruction:TpvInt32 read fInstruction;                                  // The instruction index
+       property DebugName:TVkCharString read fDebugName;                                    // The name of the variable
+       property Name:TpvInt32 read fName;                                                  // The internal name (integer) of the variable
+       property Location:TpvInt32 read fLocation;                                          // The location in the binding
+       property Binding:TpvInt32 read fBinding;                                            // The binding in the descriptor set or I/O channel
+       property DescriptorSet:TpvInt32 read fDescriptorSet;                                // The descriptor set (for uniforms)
+       property Instruction:TpvInt32 read fInstruction;                                    // The instruction index
        property StorageClass:TpvVulkanShaderModuleVariableStorageClass read fStorageClass; // Storage class of the variable
+       property Members:TpvVulkanShaderModuleVariableMembers read fMembers;
      end;
 
      TpvVulkanShaderModuleVariables=array of TpvVulkanShaderModuleVariable;
@@ -14058,12 +14070,14 @@ function TpvVulkanShaderModule.GetVariables:TpvVulkanShaderModuleVariables;
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
 var Position,Size:TpvInt32;
-    Opcode,Index,NameIndex,Count,CountIDs,CountNames:TpvUInt32;
+    Opcode,Index,OtherIndex,NameIndex,Count,CountIDs,CountNames:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
     Variable:PpvVulkanShaderModuleVariable;
-    Bindings,Locations,DescriptorSets:array of TpvUInt32;
+    Member:PpvVulkanShaderModuleVariableMember;
+    Bindings,Locations,DescriptorSets,CountMembers:array of TpvUInt32;
     DebugNames:array of TVkCharString;
+    DebugMemberNames:array of array of TVkCharString;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14080,7 +14094,9 @@ begin
  Bindings:=nil;
  Locations:=nil;
  DescriptorSets:=nil;
+ CountMembers:=nil;
  DebugNames:=nil;
+ DebugMemberNames:=nil;
  Count:=0;
  try
   Opcodes:=fData;
@@ -14102,10 +14118,16 @@ begin
      $0005{OpName}:begin
       CountNames:=Max(CountNames,SwapEndian(Opcodes^[Position+1])+1);
      end;
+     $0006{OpMemberName}:begin
+      CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
+     end;
      $003b{OpVariable}:begin
       inc(Count);
      end;
-     $0047{OpOpDecorate}:begin
+     $0047{OpDecorate}:begin
+      CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
+     end;
+     $0048{OpMemberDecorate}:begin
       CountIDs:=Max(CountIDs,SwapEndian(Opcodes^[Position+1])+1);
      end;
     end;
@@ -14119,7 +14141,35 @@ begin
     SetLength(Bindings,CountIDs);
     SetLength(Locations,CountIDs);
     SetLength(DescriptorSets,CountIDs);
+    SetLength(CountMembers,CountIDs);
     SetLength(DebugNames,CountNames);
+    SetLength(DebugMemberNames,CountIDs,0);
+
+    for Index:=1 to TpvInt32(CountIDs) do begin
+     CountMembers[Index-1]:=0;
+    end;
+    try
+     Position:=0;
+     while Position<Size do begin
+      Opcode:=SwapEndian(Opcodes^[Position]);
+      case Opcode and $ffff of
+       $0048{OpMemberDecorate}:begin
+        Index:=SwapEndian(Opcodes^[Position+1]);
+        if Index<CountIDs then begin
+         CountMembers[Index]:=Max(CountMembers[Index],SwapEndian(Opcodes^[Position+2])+1);
+        end;
+       end;
+      end;
+      inc(Position,Opcode shr 16);
+     end;
+    finally
+     for Index:=1 to CountIDs do begin
+      SetLength(DebugMemberNames[Index-1],CountMembers[Index-1]);
+      for OtherIndex:=1 to CountMembers[Index-1] do begin
+       DebugMemberNames[Index-1,OtherIndex-1]:='';
+      end;
+     end;
+    end;
 
     Position:=0;
     while Position<Size do begin
@@ -14129,6 +14179,15 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountNames then begin
         DebugNames[Index]:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
+       end;
+      end;
+      $0006{OpMemberName}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<CountMembers[Index] then begin
+         DebugMemberNames[Index,OtherIndex]:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+        end;
        end;
       end;
       $0047{OpDecorate}:begin
@@ -14178,6 +14237,15 @@ begin
        Variable^.fName:=NameIndex;
        Variable^.fInstruction:=Position;
        Variable^.fStorageClass:=TpvVulkanShaderModuleVariableStorageClass(SwapEndian(Opcodes^[Position+3]));
+       if CountMembers[Index]>0 then begin
+        SetLength(Variable^.fMembers,CountMembers[Index]);
+        for OtherIndex:=1 to CountMembers[Index] do begin
+         Member:=@Variable^.fMembers[Index-1];
+         Member^.fDebugName:=DebugMemberNames[Index-1,OtherIndex-1];
+        end;
+       end else begin
+        Variable^.fMembers:=nil;
+       end;
       end;
      end;
      inc(Position,Opcode shr 16);
@@ -14187,7 +14255,9 @@ begin
     Bindings:=nil;
     Locations:=nil;
     DescriptorSets:=nil;
+    CountMembers:=nil;
     DebugNames:=nil;
+    DebugMemberNames:=nil;
    end;
 
   end;
