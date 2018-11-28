@@ -1903,7 +1903,7 @@ type EpvVulkanException=class(Exception);
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypePointer:(
         PointerStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
-        PointerTypeIndex:TpvUInt32;
+        PointerVariableIndex:TpvUInt32;
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:(
         FunctionResultTypeIndex:TpvUInt32;
@@ -1967,17 +1967,19 @@ type EpvVulkanException=class(Exception);
        fBinding:TpvUInt32;
        fDescriptorSet:TpvUInt32;
        fOffset:TpvUInt32;
+       fType:TpvInt32;
        fInstruction:TpvUInt32;
        fStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
        fMembers:TpvVulkanShaderModuleReflectionMembers;
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
        property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
-       property BlockType:TpvVulkanShaderModuleReflectionBlockType read fBlockType;          // The block type
+       property BlockType:TpvVulkanShaderModuleReflectionBlockType read fBlockType;        // The block type
        property Location:TpvUInt32 read fLocation;                                         // The location in the binding
        property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
        property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
        property Offset:TpvUInt32 read fOffset;                                             // The offset
+       property Type_:TpvInt32 read fType;                                                 // The type
        property Instruction:TpvUInt32 read fInstruction;                                   // The instruction index
        property StorageClass:TpvVulkanShaderModuleReflectionStorageClass read fStorageClass; // Storage class of the variable
        property Members:TpvVulkanShaderModuleReflectionMembers read fMembers;
@@ -14287,6 +14289,7 @@ var Position,Size:TpvInt32;
     ShaderMember:PShaderMember;
     BlockTypes:array of TpvVulkanShaderModuleReflectionBlockType;
     Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
+    VariableTypes:array of TpvSizeInt;
     DebugNames:array of TVkCharString;
     ShaderMembers:array of array of TShaderMember;
     TypeMap:array of TpvSizeInt;
@@ -14309,6 +14312,7 @@ begin
  Locations:=nil;
  DescriptorSets:=nil;
  Offsets:=nil;
+ VariableTypes:=nil;
  CountMembers:=nil;
  DebugNames:=nil;
  ShaderMembers:=nil;
@@ -14392,6 +14396,7 @@ begin
     SetLength(ShaderMembers,CountIDs,0);
     SetLength(result.Types,CountTypes);
     SetLength(TypeMap,Max(CountTypeIDs,CountIDs));
+    SetLength(VariableTypes,Max(CountTypeIDs,CountIDs));
 
     for Index:=1 to TpvInt32(CountTypeIDs) do begin
      TypeMap[Index-1]:=-1;
@@ -14528,7 +14533,8 @@ begin
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
           Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
-          Type_^.PointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+3])];
+          Type_^.PointerVariableIndex:=SwapEndian(Opcodes^[Position+3]);
+          VariableTypes[Type_^.PointerVariableIndex]:=TypeMap[Index];
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
           Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
@@ -14576,6 +14582,7 @@ begin
      DescriptorSets[Index-1]:=0;
      Offsets[Index-1]:=0;
      CountMembers[Index-1]:=0;
+     VariableTypes[Index-1]:=-1;
     end;
     try
      Position:=0;
@@ -14701,12 +14708,17 @@ begin
         Variable^.fBinding:=Bindings[Index];
         Variable^.fDescriptorSet:=DescriptorSets[Index];
         Variable^.fOffset:=Offsets[Index];
+        Variable^.fType:=VariableTypes[Index];
+        if Variable^.fType>=0 then begin
+         result.Types[Variable^.fType].PointerVariableIndex:=TpvInt32(CountVariables)-1;
+        end;
        end else begin
         Variable^.fBlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
         Variable^.fLocation:=0;
         Variable^.fBinding:=0;
         Variable^.fDescriptorSet:=0;
         Variable^.fOffset:=0;
+        Variable^.fType:=-1;
        end;
        NameIndex:=SwapEndian(Opcodes^[Position+2]);
        if NameIndex<CountNames then begin
@@ -14742,6 +14754,7 @@ begin
     Locations:=nil;
     DescriptorSets:=nil;
     Offsets:=nil;
+    VariableTypes:=nil;
     CountMembers:=nil;
     DebugNames:=nil;
     ShaderMembers:=nil;
