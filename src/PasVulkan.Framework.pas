@@ -1882,12 +1882,14 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
+       fType:TpvSizeInt;
        fOffset:TpvUInt32;
        fArrayStride:TpvUInt32;
        fMatrixStride:TpvUInt32;
        fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the member
+       property Type_:TpvSizeInt read fType;
        property Offset:TpvUInt32 read fOffset;                                             // The offset
        property ArrayStride:TpvUInt32 read fArrayStride;
        property MatrixStride:TpvUInt32 read fMatrixStride;
@@ -1900,7 +1902,6 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionType=record
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
-      StructMemberTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
       OpaqueName:TVkCharString;
       case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
@@ -14408,180 +14409,265 @@ begin
     SetLength(VariableTypes,CountIDs);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
+     CountMembers[Index-1]:=0;
+    end;
+
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0048{OpMemberDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        CountMembers[Index]:=Max(CountMembers[Index],SwapEndian(Opcodes^[Position+2])+1);
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    for Index:=1 to CountIDs do begin
+     SetLength(TypeMembers[Index-1],CountMembers[Index-1]);
+     for OtherIndex:=1 to CountMembers[Index-1] do begin
+      TypeMember:=@TypeMembers[Index-1,OtherIndex-1];
+      TypeMember^.DebugName:='';
+      TypeMember^.Offset:=0;
+      TypeMember^.ArrayStride:=0;
+      TypeMember^.MatrixStride:=0;
+      TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
+     end;
+    end;
+
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0006{OpMemberName}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<CountMembers[Index] then begin
+         TypeMember:=@TypeMembers[Index,OtherIndex];
+         TypeMember^.DebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+        end;
+       end;
+      end;
+      $0048{OpMemberDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<CountMembers[Index] then begin
+         TypeMember:=@TypeMembers[Index,OtherIndex];
+         case Opcodes^[Position+3] of
+          $00000004{RowMajor}:begin
+           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
+          end;
+          $00000005{ColMajor}:begin
+           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
+          end;
+          $00000006{ArrayStride}:begin
+           TypeMember^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000007{MatrixStride}:begin
+           TypeMember^.MatrixStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000023{Offset}:begin
+           TypeMember^.Offset:=SwapEndian(Opcodes^[Position+4]);
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    for Index:=1 to TpvInt32(CountIDs) do begin
      TypeMap[Index-1]:=-1;
     end;
     for Index:=1 to TpvInt32(CountTypes) do begin
      result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
      ReversedTypeMap[Index-1]:=-1;
     end;
-    try
 
-     CountTypes:=0;
-     Position:=0;
-     while Position<Size do begin
-      Opcode:=SwapEndian(Opcodes^[Position]);
-      case Opcode and $ffff of
-       $0013{OpTypeVoid},
-       $0014{OpTypeBool},
-       $0015{OpTypeInt},
-       $0016{OpTypeFloat},
-       $0017{OpTypeVector},
-       $0018{OpTypeMatrix},
-       $0019{OpTypeImage},
-       $001a{OpTypeSampler},
-       $001b{OpTypeSampledImage},
-       $001c{OpTypeArray},
-       $001d{OpTypeRuntimeArray},
-       $001e{OpTypeStruct},
-       $001f{OpTypeOpaque},
-       $0020{OpTypePointer},
-       $0021{OpTypeFunction},
-       $0022{OpTypeEvent},
-       $0023{OpTypeDeviceEvent},
-       $0024{OpTypeReserveID},
-       $0025{OpTypeQueue},
-       $0026{OpTypePipe},
-       $0027{OpTypeForwardPointer},
-       $0142{OpTypePipeStorage},
-       $0147{OpTypeNamedBarrier}:begin
-        Index:=SwapEndian(Opcodes^[Position+1]);
-        TypeMap[Index]:=CountTypes;
-        ReversedTypeMap[CountTypes]:=Index;
-        inc(CountTypes);
-       end;
+    CountTypes:=0;
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0013{OpTypeVoid},
+      $0014{OpTypeBool},
+      $0015{OpTypeInt},
+      $0016{OpTypeFloat},
+      $0017{OpTypeVector},
+      $0018{OpTypeMatrix},
+      $0019{OpTypeImage},
+      $001a{OpTypeSampler},
+      $001b{OpTypeSampledImage},
+      $001c{OpTypeArray},
+      $001d{OpTypeRuntimeArray},
+      $001e{OpTypeStruct},
+      $001f{OpTypeOpaque},
+      $0020{OpTypePointer},
+      $0021{OpTypeFunction},
+      $0022{OpTypeEvent},
+      $0023{OpTypeDeviceEvent},
+      $0024{OpTypeReserveID},
+      $0025{OpTypeQueue},
+      $0026{OpTypePipe},
+      $0027{OpTypeForwardPointer},
+      $0142{OpTypePipeStorage},
+      $0147{OpTypeNamedBarrier}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       TypeMap[Index]:=CountTypes;
+       ReversedTypeMap[CountTypes]:=Index;
+       inc(CountTypes);
       end;
-      inc(Position,Opcode shr 16);
      end;
+     inc(Position,Opcode shr 16);
+    end;
 
-     CountTypes:=0;
-     Position:=0;
-     while Position<Size do begin
-      Opcode:=SwapEndian(Opcodes^[Position]);
-      case Opcode and $ffff of
-       $0013{OpTypeVoid},
-       $0014{OpTypeBool},
-       $0015{OpTypeInt},
-       $0016{OpTypeFloat},
-       $0017{OpTypeVector},
-       $0018{OpTypeMatrix},
-       $0019{OpTypeImage},
-       $001a{OpTypeSampler},
-       $001b{OpTypeSampledImage},
-       $001c{OpTypeArray},
-       $001d{OpTypeRuntimeArray},
-       $001e{OpTypeStruct},
-       $001f{OpTypeOpaque},
-       $0020{OpTypePointer},
-       $0021{OpTypeFunction},
-       $0022{OpTypeEvent},
-       $0023{OpTypeDeviceEvent},
-       $0024{OpTypeReserveID},
-       $0025{OpTypeQueue},
-       $0026{OpTypePipe},
-       $0027{OpTypeForwardPointer},
-       $0142{OpTypePipeStorage},
-       $0147{OpTypeNamedBarrier}:begin
-        Index:=SwapEndian(Opcodes^[Position+1]);
-        Type_:=@result.Types[TypeMap[Index]];
-        Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind(TvkInt32(Opcode and $ffff));
-        case Type_^.TypeKind of
-         TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
+    CountTypes:=0;
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0013{OpTypeVoid},
+      $0014{OpTypeBool},
+      $0015{OpTypeInt},
+      $0016{OpTypeFloat},
+      $0017{OpTypeVector},
+      $0018{OpTypeMatrix},
+      $0019{OpTypeImage},
+      $001a{OpTypeSampler},
+      $001b{OpTypeSampledImage},
+      $001c{OpTypeArray},
+      $001d{OpTypeRuntimeArray},
+      $001e{OpTypeStruct},
+      $001f{OpTypeOpaque},
+      $0020{OpTypePointer},
+      $0021{OpTypeFunction},
+      $0022{OpTypeEvent},
+      $0023{OpTypeDeviceEvent},
+      $0024{OpTypeReserveID},
+      $0025{OpTypeQueue},
+      $0026{OpTypePipe},
+      $0027{OpTypeForwardPointer},
+      $0142{OpTypePipeStorage},
+      $0147{OpTypeNamedBarrier}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       Type_:=@result.Types[TypeMap[Index]];
+       Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind(TvkInt32(Opcode and $ffff));
+       case Type_^.TypeKind of
+        TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeBool:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
+         Type_^.IntWidth:=SwapEndian(Opcodes^[Position+2]);
+         Type_^.IntSignedness:=SwapEndian(Opcodes^[Position+3]);
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
+         Type_^.FloatWidth:=SwapEndian(Opcodes^[Position+2]);
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
+         Type_^.VectorComponentTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         Type_^.VectorComponentCount:=SwapEndian(Opcodes^[Position+3]);
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeMatrix:begin
+         Type_^.MatrixColumnTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         Type_^.MatrixColumnCount:=SwapEndian(Opcodes^[Position+3]);
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeImage:begin
+         Type_^.ImageTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         Type_^.ImageDim:=TpvVulkanShaderModuleReflectionDim(TVkInt32(SwapEndian(Opcodes^[Position+3])));
+         Type_^.ImageDepth:=SwapEndian(Opcodes^[Position+4]);
+         Type_^.ImageArrayed:=SwapEndian(Opcodes^[Position+5]);
+         Type_^.ImageMS:=SwapEndian(Opcodes^[Position+6]);
+         Type_^.ImageSampled:=SwapEndian(Opcodes^[Position+7]);
+         Type_^.ImageFormat:=TpvVulkanShaderModuleReflectionImageFormat(TVkInt32(SwapEndian(Opcodes^[Position+8])));
+         if (Opcode shr 16)>=10 then begin
+          Type_^.ImageAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier(TVkInt32(SwapEndian(Opcodes^[Position+9])));
+         end else begin
+          Type_^.ImageAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier.ReadOnly;
          end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeBool:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
-          Type_^.IntWidth:=SwapEndian(Opcodes^[Position+2]);
-          Type_^.IntSignedness:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
-          Type_^.FloatWidth:=SwapEndian(Opcodes^[Position+2]);
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
-          Type_^.VectorComponentTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.VectorComponentCount:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeMatrix:begin
-          Type_^.MatrixColumnTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.MatrixColumnCount:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeImage:begin
-          Type_^.ImageTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.ImageDim:=TpvVulkanShaderModuleReflectionDim(TVkInt32(SwapEndian(Opcodes^[Position+3])));
-          Type_^.ImageDepth:=SwapEndian(Opcodes^[Position+4]);
-          Type_^.ImageArrayed:=SwapEndian(Opcodes^[Position+5]);
-          Type_^.ImageMS:=SwapEndian(Opcodes^[Position+6]);
-          Type_^.ImageSampled:=SwapEndian(Opcodes^[Position+7]);
-          Type_^.ImageFormat:=TpvVulkanShaderModuleReflectionImageFormat(TVkInt32(SwapEndian(Opcodes^[Position+8])));
-          if (Opcode shr 16)>=10 then begin
-           Type_^.ImageAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier(TVkInt32(SwapEndian(Opcodes^[Position+9])));
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeSampler:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
+         Type_^.SampledImageTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
+         Type_^.ArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         Type_^.ArraySize:=SwapEndian(Opcodes^[Position+3]);
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
+         Type_^.RuntimeArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
+         SetLength(Type_^.Members,Max(0,(Opcode shr 16)-2));
+         OtherIndex:=0;
+         while OtherIndex<length(Type_^.Members) do begin
+          Member:=@Type_^.Members[OtherIndex];
+          Member^.fType:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
+          if (CountMembers[Index]>0) and (OtherIndex<CountMembers[Index]) then begin
+           TypeMember:=@TypeMembers[Index,OtherIndex];
+           Member^.fDebugName:=TypeMember^.DebugName;
+           Member^.fOffset:=TypeMember^.Offset;
+           Member^.fArrayStride:=TypeMember^.ArrayStride;
+           Member^.fMatrixStride:=TypeMember^.MatrixStride;
+           Member^.fMatrixType:=TypeMember^.MatrixType;
           end else begin
-           Type_^.ImageAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier.ReadOnly;
+           Member^.fDebugName:='';
+           Member^.fOffset:=0;
+           Member^.fArrayStride:=0;
+           Member^.fMatrixStride:=0;
+           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
           end;
+          inc(OtherIndex);
          end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeSampler:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
+         Type_^.OpaqueName:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
+         Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
+         Type_^.PointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+3])];
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
+         Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         SetLength(Type_^.FunctionParameterTypeIndices,Max(0,(Opcode shr 16)-3));
+         OtherIndex:=0;
+         while OtherIndex<length(Type_^.FunctionParameterTypeIndices) do begin
+          Type_^.FunctionParameterTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+3)+OtherIndex])];
+          inc(OtherIndex);
          end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
-          Type_^.SampledImageTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
-          Type_^.ArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.ArraySize:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
-          Type_^.RuntimeArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
-          SetLength(Type_^.StructMemberTypeIndices,Max(0,(Opcode shr 16)-2));
-          OtherIndex:=0;
-          while OtherIndex<length(Type_^.StructMemberTypeIndices) do begin
-           Type_^.StructMemberTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
-           inc(OtherIndex);
-          end;
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
-          Type_^.OpaqueName:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
-          Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
-          Type_^.PointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+3])];
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
-          Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          SetLength(Type_^.FunctionParameterTypeIndices,Max(0,(Opcode shr 16)-3));
-          OtherIndex:=0;
-          while OtherIndex<length(Type_^.FunctionParameterTypeIndices) do begin
-           Type_^.FunctionParameterTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+3)+OtherIndex])];
-           inc(OtherIndex);
-          end;
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeEvent:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeDeviceEvent:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeReserveID:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeQueue:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypePipe:begin
-          Type_^.PipeAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier(TVkInt32(SwapEndian(Opcodes^[Position+2])));
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeForwardPointer:begin
-          Type_^.ForwardPointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.ForwardPointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+3])));
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypePipeStorage:begin
-         end;
-         TpvVulkanShaderModuleReflectionTypeKind.TypeNamedBarrier:begin
-         end;
-         else {TpvVulkanShaderModuleTypeKind.TypeNone:}begin
-         end;
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeEvent:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeDeviceEvent:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeReserveID:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeQueue:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypePipe:begin
+         Type_^.PipeAccessQualifier:=TpvVulkanShaderModuleReflectionAccessQualifier(TVkInt32(SwapEndian(Opcodes^[Position+2])));
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeForwardPointer:begin
+         Type_^.ForwardPointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
+         Type_^.ForwardPointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+3])));
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypePipeStorage:begin
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeNamedBarrier:begin
+        end;
+        else {TpvVulkanShaderModuleTypeKind.TypeNone:}begin
         end;
        end;
       end;
-      inc(Position,Opcode shr 16);
      end;
-
-    finally
+     inc(Position,Opcode shr 16);
     end;
 
     for Index:=1 to TpvInt32(CountIDs) do begin
@@ -14590,35 +14676,7 @@ begin
      Locations[Index-1]:=0;
      DescriptorSets[Index-1]:=0;
      Offsets[Index-1]:=0;
-     CountMembers[Index-1]:=0;
      VariableTypes[Index-1]:=-1;
-    end;
-    try
-     Position:=0;
-     while Position<Size do begin
-      Opcode:=SwapEndian(Opcodes^[Position]);
-      case Opcode and $ffff of
-       $0048{OpMemberDecorate}:begin
-        Index:=SwapEndian(Opcodes^[Position+1]);
-        if Index<CountIDs then begin
-         CountMembers[Index]:=Max(CountMembers[Index],SwapEndian(Opcodes^[Position+2])+1);
-        end;
-       end;
-      end;
-      inc(Position,Opcode shr 16);
-     end;
-    finally
-     for Index:=1 to CountIDs do begin
-      SetLength(TypeMembers[Index-1],CountMembers[Index-1]);
-      for OtherIndex:=1 to CountMembers[Index-1] do begin
-       TypeMember:=@TypeMembers[Index-1,OtherIndex-1];
-       TypeMember^.DebugName:='';
-       TypeMember^.Offset:=0;
-       TypeMember^.ArrayStride:=0;
-       TypeMember^.MatrixStride:=0;
-       TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
-      end;
-     end;
     end;
 
     Position:=0;
@@ -14629,16 +14687,6 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
         DebugNames[Index]:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
-       end;
-      end;
-      $0006{OpMemberName}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
-        if OtherIndex<CountMembers[Index] then begin
-         TypeMember:=@TypeMembers[Index,OtherIndex];
-         TypeMember^.DebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
-        end;
        end;
       end;
       $0047{OpDecorate}:begin
@@ -14668,32 +14716,6 @@ begin
          end;
          $00000023{Offset}:begin
           Offsets[Index]:=SwapEndian(Opcodes^[Position+3]);
-         end;
-        end;
-       end;
-      end;
-      $0048{OpMemberDecorate}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
-        if OtherIndex<CountMembers[Index] then begin
-         TypeMember:=@TypeMembers[Index,OtherIndex];
-         case Opcodes^[Position+3] of
-          $00000004{RowMajor}:begin
-           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
-          end;
-          $00000005{ColMajor}:begin
-           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
-          end;
-          $00000006{ArrayStride}:begin
-           TypeMember^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
-          end;
-          $00000007{MatrixStride}:begin
-           TypeMember^.MatrixStride:=SwapEndian(Opcodes^[Position+4]);
-          end;
-          $00000023{Offset}:begin
-           TypeMember^.Offset:=SwapEndian(Opcodes^[Position+4]);
-          end;
          end;
         end;
        end;
@@ -14738,28 +14760,6 @@ begin
       end;
      end;
      inc(Position,Opcode shr 16);
-    end;
-
-    Index:=0;
-    while Index<CountIDs do begin
-     if TypeMap[Index]>=0 then begin
-      Type_:=@result.Types[TypeMap[Index]];
-      if CountMembers[Index]>0 then begin
-       SetLength(Type_^.Members,CountMembers[Index]);
-       for OtherIndex:=1 to CountMembers[Index] do begin
-        Member:=@Type_^.Members[OtherIndex-1];
-        TypeMember:=@TypeMembers[Index,OtherIndex-1];
-        Member^.fDebugName:=TypeMember^.DebugName;
-        Member^.fOffset:=TypeMember^.Offset;
-        Member^.fArrayStride:=TypeMember^.ArrayStride;
-        Member^.fMatrixStride:=TypeMember^.MatrixStride;
-        Member^.fMatrixType:=TypeMember^.MatrixType;
-       end;
-      end else begin
-       Type_^.Members:=nil;
-      end;
-     end;
-     inc(Index);
     end;
 
    finally
