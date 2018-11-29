@@ -14168,11 +14168,12 @@ begin
     aAlignment:=SizeOf(TVkUInt32);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
-    result:=Type_^.IntWidth;
+    result:=(Type_^.IntWidth+31) shr 5;
+    aAlignment:=(Type_^.IntWidth+31) shr 5;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
-    result:=Type_^.FloatWidth;
-    aAlignment:=Type_^.FloatWidth;
+    result:=(Type_^.FloatWidth+31) shr 5;
+    aAlignment:=(Type_^.FloatWidth+31) shr 5;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
     Size:=GetTypeSize(Type_^.VectorComponentTypeIndex,Alignment);
@@ -14579,7 +14580,6 @@ begin
      inc(Position,Opcode shr 16);
     end;
 
-    CountTypes:=0;
     Position:=0;
     while Position<Size do begin
      Opcode:=SwapEndian(Opcodes^[Position]);
@@ -14805,6 +14805,7 @@ begin
         end else begin
          Variable^.Name:='';
         end;
+        Variable^.Type_:=TypeMap[Index];
         Variable^.ID:=OtherIndex;
         Variable^.Instruction:=Position;
         Variable^.StorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
