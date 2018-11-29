@@ -12,8 +12,15 @@ uses
   System.SysUtils,
   PasVulkan.Framework in '..\..\PasVulkan.Framework.pas';
 
+var ShaderModule:TpvVulkanShaderModule;
 begin
  try
+  ShaderModule:=TpvVulkanShaderModule.Create(nil,'test.spv');
+  try
+
+  finally
+   FreeAndNil(ShaderModule);
+  end;
   readln;
  except
   on E:Exception do begin

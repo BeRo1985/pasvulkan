@@ -14242,7 +14242,7 @@ end;
 
 destructor TpvVulkanShaderModule.Destroy;
 begin
- if fShaderModuleHandle<>VK_NULL_HANDLE then begin
+ if assigned(fDevice) and (fShaderModuleHandle<>VK_NULL_HANDLE) then begin
   fDevice.fDeviceVulkan.DestroyShaderModule(fDevice.fDeviceHandle,fShaderModuleHandle,fDevice.fAllocationCallbacks);
   fShaderModuleHandle:=VK_NULL_HANDLE;
  end;
@@ -14256,7 +14256,7 @@ end;
 procedure TpvVulkanShaderModule.Load;
 var ShaderModuleCreateInfo:TVkShaderModuleCreateInfo;
 begin
- if fShaderModuleHandle=VK_NULL_HANDLE then begin
+ if assigned(fDevice) and (fShaderModuleHandle=VK_NULL_HANDLE) then begin
   FillChar(ShaderModuleCreateInfo,SizeOf(TVkShaderModuleCreateInfo),#0);
   ShaderModuleCreateInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   ShaderModuleCreateInfo.codeSize:=fDataSize;
