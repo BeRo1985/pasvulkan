@@ -1901,6 +1901,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleReflectionMembers=array of TpvVulkanShaderModuleReflectionMember;
 
      TpvVulkanShaderModuleReflectionType=record
+      BlockType:TpvVulkanShaderModuleReflectionBlockType;
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
       OpaqueName:TVkCharString;
@@ -1964,7 +1965,6 @@ type EpvVulkanException=class(Exception);
       private
        fDebugName:TVkCharString;
        fName:TpvUInt32;
-       fBlockType:TpvVulkanShaderModuleReflectionBlockType;
        fLocation:TpvUInt32;
        fBinding:TpvUInt32;
        fDescriptorSet:TpvUInt32;
@@ -1975,7 +1975,6 @@ type EpvVulkanException=class(Exception);
       public
        property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
        property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
-       property BlockType:TpvVulkanShaderModuleReflectionBlockType read fBlockType;        // The block type
        property Location:TpvUInt32 read fLocation;                                         // The location in the binding
        property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
        property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
@@ -14287,7 +14286,6 @@ var Position,Size:TpvInt32;
     Variable:PpvVulkanShaderModuleReflectionVariable;
     Member:PpvVulkanShaderModuleReflectionMember;
     TypeMember:PTypeMember;
-    BlockTypes:array of TpvVulkanShaderModuleReflectionBlockType;
     Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
     VariableTypes:array of TpvSizeInt;
     DebugNames:array of TVkCharString;
@@ -14310,7 +14308,6 @@ begin
 
  result.Variables:=nil;
 
- BlockTypes:=nil;
  Bindings:=nil;
  Locations:=nil;
  DescriptorSets:=nil;
@@ -14396,7 +14393,6 @@ begin
 
    try
 
-    SetLength(BlockTypes,CountIDs);
     SetLength(Bindings,CountIDs);
     SetLength(Locations,CountIDs);
     SetLength(DescriptorSets,CountIDs);
@@ -14486,7 +14482,9 @@ begin
      TypeMap[Index-1]:=-1;
     end;
     for Index:=1 to TpvInt32(CountTypes) do begin
-     result.Types[Index-1].TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
+     Type_:=@result.Types[Index-1];
+     Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
+     Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
      ReversedTypeMap[Index-1]:=-1;
     end;
 
@@ -14670,8 +14668,29 @@ begin
      inc(Position,Opcode shr 16);
     end;
 
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0047{OpDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        Type_:=@result.Types[TypeMap[Index]];
+        case Opcodes^[Position+2] of
+         $00000002{Block}:begin
+          Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.Block;
+         end;
+         $00000003{BufferBlock}:begin
+          Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.BufferBlock;
+         end;
+        end;
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
     for Index:=1 to TpvInt32(CountIDs) do begin
-     BlockTypes[Index-1]:=TpvVulkanShaderModuleReflectionBlockType.None;
      Bindings[Index-1]:=0;
      Locations[Index-1]:=0;
      DescriptorSets[Index-1]:=0;
@@ -14693,12 +14712,6 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
         case Opcodes^[Position+2] of
-         $00000002{Block}:begin
-          BlockTypes[Index]:=TpvVulkanShaderModuleReflectionBlockType.Block;
-         end;
-         $00000003{BufferBlock}:begin
-          BlockTypes[Index]:=TpvVulkanShaderModuleReflectionBlockType.BufferBlock;
-         end;
          $00000005{ColMajor}:begin
          end;
          $00000006{ArrayStride}:begin
@@ -14734,14 +14747,12 @@ begin
        inc(CountVariables);
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
-        Variable^.fBlockType:=BlockTypes[Index];
         Variable^.fLocation:=Locations[Index];
         Variable^.fBinding:=Bindings[Index];
         Variable^.fDescriptorSet:=DescriptorSets[Index];
         Variable^.fOffset:=Offsets[Index];
         Variable^.fType:=TypeMap[Index];
        end else begin
-        Variable^.fBlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
         Variable^.fLocation:=0;
         Variable^.fBinding:=0;
         Variable^.fDescriptorSet:=0;
@@ -14763,7 +14774,6 @@ begin
     end;
 
    finally
-    BlockTypes:=nil;
     Bindings:=nil;
     Locations:=nil;
     DescriptorSets:=nil;
