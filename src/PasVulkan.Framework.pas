@@ -14534,7 +14534,7 @@ begin
           SetLength(Type_^.StructMemberTypeIndices,Max(0,(Opcode shr 16)-2));
           OtherIndex:=0;
           while OtherIndex<length(Type_^.StructMemberTypeIndices) do begin
-           Type_^.StructMemberTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+1)+OtherIndex])];
+           Type_^.StructMemberTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
            inc(OtherIndex);
           end;
          end;
@@ -14543,14 +14543,14 @@ begin
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
           Type_^.PointerStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(TVkInt32(SwapEndian(Opcodes^[Position+2])));
-          Type_^.PointerTypeIndex:=TypeMap[Index];
+          Type_^.PointerTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+3])];
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
           Type_^.FunctionResultTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
           SetLength(Type_^.FunctionParameterTypeIndices,Max(0,(Opcode shr 16)-3));
           OtherIndex:=0;
           while OtherIndex<length(Type_^.FunctionParameterTypeIndices) do begin
-           Type_^.FunctionParameterTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
+           Type_^.FunctionParameterTypeIndices[OtherIndex]:=TypeMap[SwapEndian(Opcodes^[(Position+3)+OtherIndex])];
            inc(OtherIndex);
           end;
          end;
