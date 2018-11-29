@@ -1976,6 +1976,7 @@ type EpvVulkanException=class(Exception);
       public
        Types:TpvVulkanShaderModuleReflectionTypes;
        Variables:TpvVulkanShaderModuleReflectionVariables;
+       function GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64):TpvUInt64;
      end;
 
      PpvVulkanShaderModuleReflectionData=^TpvVulkanShaderModuleReflectionData;
@@ -14149,6 +14150,141 @@ begin
  result:=fFrameBuffers[aIndex];
 end;
 
+function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64):TpvUInt64;
+var Index:TpvSizeInt;
+    Type_:PpvVulkanShaderModuleReflectionType;
+    Member:PpvVulkanShaderModuleReflectionMember;
+    Size,Alignment:TpvUInt64;
+begin
+ if aTypeIndex<length(Types) then begin
+  Type_:=@Types[aTypeIndex];
+  case Type_^.TypeKind of
+   TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
+    result:=SizeOf(TVkUInt32);
+    aAlignment:=SizeOf(TVkUInt32);
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeBool:begin
+    result:=SizeOf(TVkUInt32);
+    aAlignment:=SizeOf(TVkUInt32);
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
+    result:=Type_^.IntWidth;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
+    result:=Type_^.FloatWidth;
+    aAlignment:=Type_^.FloatWidth;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
+    Size:=GetTypeSize(Type_^.VectorComponentTypeIndex,Alignment);
+    result:=Size*Type_^.VectorComponentCount;
+    case Type_^.VectorComponentCount of
+     3:begin
+      aAlignment:=Size*4;
+     end;
+     else begin
+      aAlignment:=Size*Type_^.VectorComponentCount;
+     end;
+    end;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeMatrix:begin
+    Size:=GetTypeSize(Type_^.MatrixColumnTypeIndex,Alignment);
+    result:=Size*Type_^.MatrixColumnCount;
+    case Type_^.MatrixColumnCount of
+     3:begin
+      aAlignment:=Size*4;
+     end;
+     else begin
+      aAlignment:=Size*Type_^.MatrixColumnCount;
+     end;
+    end;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeImage:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeSampler:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
+    Size:=GetTypeSize(Type_^.ArrayTypeIndex,Alignment);
+    result:=Size*Type_^.ArraySize;
+    aAlignment:=Size*Type_^.ArraySize;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
+    Size:=GetTypeSize(Type_^.RuntimeArrayTypeIndex,Alignment);
+    result:=0;
+    aAlignment:=Size;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
+    result:=0;
+    aAlignment:=0;
+    for Index:=0 to length(Type_^.Members)-1 do begin
+     Member:=@Type_^.Members[Index];
+     Size:=GetTypeSize(Member^.Type_,Alignment);
+     result:=Max(result+Size,Member^.Offset+Size);
+     aAlignment:=Max(aAlignment,Alignment);
+    end;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
+    Size:=GetTypeSize(Type_^.PointerTypeIndex,Alignment);
+    result:=Size;
+    aAlignment:=Alignment;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeFunction:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeEvent:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeDeviceEvent:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeReserveID:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeQueue:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypePipe:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeForwardPointer:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypePipeStorage:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeNamedBarrier:begin
+    result:=0;
+    aAlignment:=0;
+   end;
+   else {TpvVulkanShaderModuleTypeKind.TypeNone:}begin
+    result:=0;
+    aAlignment:=0;
+   end;
+  end;
+ end else begin
+  result:=0;
+ end;
+end;
+
 constructor TpvVulkanShaderModule.Create(const aDevice:TpvVulkanDevice;const aData;const aDataSize:TVkSize);
 begin
 
@@ -14253,7 +14389,7 @@ function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflection
 // https://www.khronos.org/registry/spir-v/specs/1.2/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
-var Position,Size:TpvInt32;
+var Position,Size,
     Opcode,Index,OtherIndex,CountIDs,
     CountTypes,CountVariables:TpvUInt32;
     Opcodes:PUInt32Array;
