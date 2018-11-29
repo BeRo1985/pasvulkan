@@ -14720,6 +14720,8 @@ begin
      SpecializationConstant^.Name:='';
      SpecializationConstant^.ConstantID:=0;
      SpecializationConstant^.Type_:=-1;
+     SpecializationConstant^.Size:=0;
+     SpecializationConstant^.Alignment:=0;
      FillChar(SpecializationConstant^.RawValue,SizeOf(SpecializationConstant^.RawValue),#0);
      ReversedSpecializationConstantMap[Index-1]:=-1;
     end;
@@ -15169,7 +15171,7 @@ begin
     for Index:=1 to TpvInt32(CountSpecializationConstants) do begin
      SpecializationConstant:=@result.SpecializationConstants[Index-1];
      if SpecializationConstant^.Type_>=0 then begin
-      SpecializationConstant^.Size:=result.GetTypeSize(SpecializationConstant^.Type_,SpecializationConstant^.Alignment,BufferLayout);
+      SpecializationConstant^.Size:=result.GetTypeSize(SpecializationConstant^.Type_,SpecializationConstant^.Alignment,TpvVulkanShaderModuleReflectionBufferLayout.Undefined);
      end else begin
       SpecializationConstant^.Size:=0;
       SpecializationConstant^.Alignment:=0;
