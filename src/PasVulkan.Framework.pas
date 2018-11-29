@@ -1900,6 +1900,7 @@ type EpvVulkanException=class(Exception);
       Alignment:TpvUInt64;
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
+      ArraySize:TpvUInt32DynamicArray;
       OpaqueName:TVkCharString;
       case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
        TpvVulkanShaderModuleReflectionTypeKind.TypeInt:(
@@ -1932,7 +1933,6 @@ type EpvVulkanException=class(Exception);
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeArray:(
         ArrayTypeIndex:TpvUInt32;
-        ArraySize:TpvUInt32;
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:(
         RuntimeArrayTypeIndex:TpvUInt32;
@@ -14156,7 +14156,7 @@ function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSiz
 var Index:TpvSizeInt;
     Type_:PpvVulkanShaderModuleReflectionType;
     Member:PpvVulkanShaderModuleReflectionMember;
-    Size,Alignment:TpvUInt64;
+    Size,Alignment,ArraySize:TpvUInt64;
 begin
  if aTypeIndex<length(Types) then begin
   Type_:=@Types[aTypeIndex];
@@ -14215,8 +14215,12 @@ begin
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
     Size:=GetTypeSize(Type_^.ArrayTypeIndex,Alignment);
-    result:=Size*Type_^.ArraySize;
-    aAlignment:=Size*Type_^.ArraySize;
+    ArraySize:=1;
+    for Index:=0 to length(Type_^.ArraySize)-1 do begin
+     ArraySize:=ArraySize*Type_^.ArraySize[Index];
+    end;
+    result:=Size*ArraySize;
+    aAlignment:=Size*ArraySize;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
     Size:=GetTypeSize(Type_^.RuntimeArrayTypeIndex,Alignment);
@@ -14544,6 +14548,7 @@ begin
      Type_:=@result.Types[Index-1];
      Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
      Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
+     Type_^.ArraySize:=nil;
      ReversedTypeMap[Index-1]:=-1;
     end;
 
@@ -14706,12 +14711,19 @@ begin
           if OtherIndex<CountIDs then begin
            Constant:=@Constants[OtherIndex];
            if length(Constant^.Values)>0 then begin
-            Type_^.ArraySize:=Constant^.Values[0].UI32;
+            SetLength(Type_^.ArraySize,length(Constant^.Values));
+            OtherIndex:=0;
+            while OtherIndex<TpvUInt32(length(Constant^.Values)) do begin
+             Type_^.ArraySize[OtherIndex]:=Constant^.Values[OtherIndex].UI32;
+             inc(OtherIndex);
+            end;
            end else begin
-            Type_^.ArraySize:=0;
+            Type_^.ArraySize:=nil;
+            Assert(false);
            end;
           end else begin
-           Type_^.ArraySize:=0;
+           Type_^.ArraySize:=nil;
+           Assert(false);
           end;
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
