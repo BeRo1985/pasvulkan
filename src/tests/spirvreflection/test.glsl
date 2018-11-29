@@ -2,6 +2,10 @@
 
 #pragma shader_stage(fragment)
 
+layout(constant_id = 0) const int SSAO_KERNEL_SIZE = 64;
+
+layout(constant_id = 1) const float SSAO_KERNEL_RADIUS = 0.5;
+
 layout(location = 0) in vec4 inColor;
 
 layout(location = 0) out vec4 outColor;
@@ -22,7 +26,7 @@ layout(binding = 1, set = 0) buffer inShaderStorageBuffer {
 } ssboGlobals;
 
 void main(){
-  outColor = inColor;
+  outColor = inColor + vec4(ivec4(SSAO_KERNEL_SIZE));
 }
 
  
