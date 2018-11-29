@@ -1879,21 +1879,14 @@ type EpvVulkanException=class(Exception);
 
      PpvVulkanShaderModuleReflectionMatrixType=^TpvVulkanShaderModuleReflectionMatrixType;
 
-     TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
-      private
-       fName:TVkCharString;
-       fType:TpvSizeInt;
-       fOffset:TpvUInt32;
-       fArrayStride:TpvUInt32;
-       fMatrixStride:TpvUInt32;
-       fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
+     TpvVulkanShaderModuleReflectionMember=record
       public
-       property Name:TVkCharString read fName;
-       property Type_:TpvSizeInt read fType;
-       property Offset:TpvUInt32 read fOffset;
-       property ArrayStride:TpvUInt32 read fArrayStride;
-       property MatrixStride:TpvUInt32 read fMatrixStride;
-       property MatrixType:TpvVulkanShaderModuleReflectionMatrixType read fMatrixType;
+       Name:TVkCharString;
+       Type_:TpvSizeInt;
+       Offset:TpvUInt32;
+       ArrayStride:TpvUInt32;
+       MatrixStride:TpvUInt32;
+       MatrixType:TpvVulkanShaderModuleReflectionMatrixType;
      end;
 
      PpvVulkanShaderModuleReflectionMember=^TpvVulkanShaderModuleReflectionMember;
@@ -1901,6 +1894,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleReflectionMembers=array of TpvVulkanShaderModuleReflectionMember;
 
      TpvVulkanShaderModuleReflectionType=record
+      Name:TVkCharString;
       BlockType:TpvVulkanShaderModuleReflectionBlockType;
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
@@ -1961,27 +1955,17 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionTypes=array of TpvVulkanShaderModuleReflectionType;
 
-     TpvVulkanShaderModuleReflectionVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
-      private
-       fName:TVkCharString;
-       fID:TpvUInt32;
-       fLocation:TpvUInt32;
-       fBinding:TpvUInt32;
-       fDescriptorSet:TpvUInt32;
-       fOffset:TpvUInt32;
-       fType:TpvInt32;
-       fInstruction:TpvUInt32;
-       fStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
+     TpvVulkanShaderModuleReflectionVariable=record
       public
-       property Name:TVkCharString read fName;                                             // The name of the variable
-       property ID:TpvUInt32 read fID;                                                     // The internal ID (integer) of the variable
-       property Location:TpvUInt32 read fLocation;                                         // The location in the binding
-       property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
-       property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
-       property Offset:TpvUInt32 read fOffset;                                             // The offset
-       property Type_:TpvInt32 read fType;                                                 // The type
-       property Instruction:TpvUInt32 read fInstruction;                                   // The instruction index
-       property StorageClass:TpvVulkanShaderModuleReflectionStorageClass read fStorageClass; // Storage class of the variable
+       Name:TVkCharString;
+       ID:TpvUInt32;
+       Location:TpvUInt32;
+       Binding:TpvUInt32;
+       DescriptorSet:TpvUInt32;
+       Offset:TpvUInt32;
+       Type_:TpvInt32;
+       Instruction:TpvUInt32;
+       StorageClass:TpvVulkanShaderModuleReflectionStorageClass;
      end;
 
      PpvVulkanShaderModuleReflectionVariable=^TpvVulkanShaderModuleReflectionVariable;
@@ -14402,8 +14386,8 @@ begin
 
     for Index:=1 to TpvInt32(CountVariables) do begin
      Variable:=@result.Variables[Index-1];
-     Variable^.fName:='';
-     Variable^.fType:=-1;
+     Variable^.Name:='';
+     Variable^.Type_:=-1;
      ReversedVariableMap[Index-1]:=-1;
     end;
 
@@ -14490,6 +14474,7 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
         Type_:=@result.Types[TypeMap[Index]];
+        Type_^.Name:=TypeVariableNames[Index];
         Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind(TvkInt32(Opcode and $ffff));
         case Type_^.TypeKind of
          TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
@@ -14542,12 +14527,12 @@ begin
           OtherIndex:=0;
           while OtherIndex<length(Type_^.Members) do begin
            Member:=@Type_^.Members[OtherIndex];
-           Member^.fName:='';
-           Member^.fType:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
-           Member^.fOffset:=0;
-           Member^.fArrayStride:=0;
-           Member^.fMatrixStride:=0;
-           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
+           Member^.Name:='';
+           Member^.Type_:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
+           Member^.Offset:=0;
+           Member^.ArrayStride:=0;
+           Member^.MatrixStride:=0;
+           Member^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
            inc(OtherIndex);
           end;
          end;
@@ -14605,7 +14590,7 @@ begin
         Type_:=@result.Types[TypeMap[Index]];
         OtherIndex:=SwapEndian(Opcodes^[Position+2]);
         if OtherIndex<TpvUInt32(length(Type_^.Members)) then begin
-         Type_^.Members[OtherIndex].fName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+         Type_^.Members[OtherIndex].Name:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
         end;
        end;
       end;
@@ -14631,16 +14616,16 @@ begin
           Variable:=@result.Variables[VariableMap[Index]];
           case Opcodes^[Position+2] of
            $0000001e{Location}:begin
-            Variable^.fLocation:=SwapEndian(Opcodes^[Position+3]);
+            Variable^.Location:=SwapEndian(Opcodes^[Position+3]);
            end;
            $00000021{Binding}:begin
-            Variable^.fBinding:=SwapEndian(Opcodes^[Position+3]);
+            Variable^.Binding:=SwapEndian(Opcodes^[Position+3]);
            end;
            $00000022{DescriptorSet}:begin
-            Variable^.fDescriptorSet:=SwapEndian(Opcodes^[Position+3]);
+            Variable^.DescriptorSet:=SwapEndian(Opcodes^[Position+3]);
            end;
            $00000023{Offset}:begin
-            Variable^.fOffset:=SwapEndian(Opcodes^[Position+3]);
+            Variable^.Offset:=SwapEndian(Opcodes^[Position+3]);
            end;
           end;
          end;
@@ -14656,19 +14641,19 @@ begin
          Member:=@Type_^.Members[OtherIndex];
          case Opcodes^[Position+3] of
           $00000004{RowMajor}:begin
-           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
+           Member^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
           end;
           $00000005{ColMajor}:begin
-           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
+           Member^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
           end;
           $00000006{ArrayStride}:begin
-           Member^.fArrayStride:=SwapEndian(Opcodes^[Position+4]);
+           Member^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
           end;
           $00000007{MatrixStride}:begin
-           Member^.fMatrixStride:=SwapEndian(Opcodes^[Position+4]);
+           Member^.MatrixStride:=SwapEndian(Opcodes^[Position+4]);
           end;
           $00000023{Offset}:begin
-           Member^.fOffset:=SwapEndian(Opcodes^[Position+4]);
+           Member^.Offset:=SwapEndian(Opcodes^[Position+4]);
           end;
          end;
         end;
@@ -14680,13 +14665,13 @@ begin
         Variable:=@result.Variables[VariableMap[Index]];
         OtherIndex:=SwapEndian(Opcodes^[Position+2]);
         if OtherIndex<CountIDs then begin
-         Variable^.fName:=TypeVariableNames[OtherIndex];
+         Variable^.Name:=TypeVariableNames[OtherIndex];
         end else begin
-         Variable^.fName:='';
+         Variable^.Name:='';
         end;
-        Variable^.fID:=OtherIndex;
-        Variable^.fInstruction:=Position;
-        Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
+        Variable^.ID:=OtherIndex;
+        Variable^.Instruction:=Position;
+        Variable^.StorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
        end;
       end;
 
