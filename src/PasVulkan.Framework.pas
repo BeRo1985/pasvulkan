@@ -1896,6 +1896,8 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleReflectionType=record
       Name:TVkCharString;
       BlockType:TpvVulkanShaderModuleReflectionBlockType;
+      Size:TpvUInt64;
+      Alignment:TpvUInt64;
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
       OpaqueName:TVkCharString;
@@ -14168,12 +14170,12 @@ begin
     aAlignment:=SizeOf(TVkUInt32);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
-    result:=(Type_^.IntWidth+31) shr 5;
-    aAlignment:=(Type_^.IntWidth+31) shr 5;
+    result:=(Type_^.IntWidth+7) shr 3;
+    aAlignment:=(Type_^.IntWidth+7) shr 3;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
-    result:=(Type_^.FloatWidth+31) shr 5;
-    aAlignment:=(Type_^.FloatWidth+31) shr 5;
+    result:=(Type_^.FloatWidth+7) shr 3;
+    aAlignment:=(Type_^.FloatWidth+7) shr 3;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
     Size:=GetTypeSize(Type_^.VectorComponentTypeIndex,Alignment);
@@ -14814,6 +14816,11 @@ begin
 
      end;
      inc(Position,Opcode shr 16);
+    end;
+
+    for Index:=1 to TpvInt32(CountTypes) do begin
+     Type_:=@result.Types[Index-1];
+     Type_^.Size:=result.GetTypeSize(Index-1,Type_^.Alignment);
     end;
 
    finally
