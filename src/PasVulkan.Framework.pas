@@ -14285,6 +14285,7 @@ begin
   end;
  end else begin
   result:=0;
+  aAlignment:=0;
  end;
 end;
 
@@ -14392,6 +14393,22 @@ function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflection
 // https://www.khronos.org/registry/spir-v/specs/1.2/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
+     TConstantValue=record
+      case TpvUInt8 of
+       0:(
+        UI32:TpvUInt32;
+       );
+       1:(
+        F32:TpvFloat;
+       );
+     end;
+     PConstantValue=^TConstantValue;
+     TConstantValues=array of TConstantValue;
+     TConstant=record
+      Type_:TpvSizeInt;
+      Values:TConstantValues;
+     end;
+     PConstant=^TConstant;
 var Position,Size,
     Opcode,Index,OtherIndex,CountIDs,
     CountTypes,CountVariables:TpvUInt32;
@@ -14403,6 +14420,8 @@ var Position,Size,
     TypeVariableNames:array of TVkCharString;
     TypeMap,ReversedTypeMap,
     VariableMap,ReversedVariableMap:array of TpvSizeInt;
+    Constants:array of TConstant;
+    Constant:PConstant;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14419,6 +14438,8 @@ begin
  result.Types:=nil;
 
  result.Variables:=nil;
+
+ Constants:=nil;
 
  TypeVariableNames:=nil;
 
@@ -14505,6 +14526,8 @@ begin
 
     SetLength(TypeVariableNames,CountIDs);
 
+    SetLength(Constants,CountIDs);
+
     SetLength(TypeMap,CountIDs);
     SetLength(ReversedTypeMap,CountTypes);
 
@@ -14512,6 +14535,7 @@ begin
     SetLength(ReversedVariableMap,CountVariables);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
+     Constants[Index-1].Values:=nil;
      TypeMap[Index-1]:=-1;
      VariableMap[Index-1]:=-1;
     end;
@@ -14571,6 +14595,29 @@ begin
        TypeMap[Index]:=CountTypes;
        ReversedTypeMap[CountTypes]:=Index;
        inc(CountTypes);
+      end;
+      $0029{OpConstantTrue}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       Constant:=@Constants[Index];
+       SetLength(Constant^.Values,1);
+       Constant^.Values[0].UI32:=TpvUInt32($ffffffff);
+      end;
+      $002a{OpConstantFalse}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       Constant:=@Constants[Index];
+       SetLength(Constant^.Values,1);
+       Constant^.Values[0].UI32:=0;
+      end;
+      $002b{OpConstant}:begin
+       Index:=SwapEndian(Opcodes^[Position+2]);
+       Constant:=@Constants[Index];
+       SetLength(Constant^.Values,Max(0,(Opcode shr 16)-3));
+       Constant^.Type_:=TypeMap[SwapEndian(Opcodes^[Position+1])];
+       OtherIndex:=0;
+       while OtherIndex<TpvUInt32(length(Constant^.Values)) do begin
+        Constant^.Values[OtherIndex].UI32:=SwapEndian(Opcodes^[(Position+3)+OtherIndex]);
+        inc(OtherIndex);
+       end;
       end;
       $003b{OpVariable}:begin
        Index:=SwapEndian(Opcodes^[Position+1]);
@@ -14655,7 +14702,17 @@ begin
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
           Type_^.ArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
-          Type_^.ArraySize:=SwapEndian(Opcodes^[Position+3]);
+          OtherIndex:=SwapEndian(Opcodes^[Position+3]);
+          if OtherIndex<CountIDs then begin
+           Constant:=@Constants[OtherIndex];
+           if length(Constant^.Values)>0 then begin
+            Type_^.ArraySize:=Constant^.Values[0].UI32;
+           end else begin
+            Type_^.ArraySize:=0;
+           end;
+          end else begin
+           Type_^.ArraySize:=0;
+          end;
          end;
          TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
           Type_^.RuntimeArrayTypeIndex:=TypeMap[SwapEndian(Opcodes^[Position+2])];
@@ -14824,6 +14881,8 @@ begin
     end;
 
    finally
+
+    Constants:=nil;
 
     TypeVariableNames:=nil;
 
