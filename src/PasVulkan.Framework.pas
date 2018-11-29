@@ -14270,16 +14270,16 @@ function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflection
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
 var Position,Size:TpvInt32;
-    Opcode,Index,OtherIndex,NameIndex,CountIDs,
+    Opcode,Index,OtherIndex,CountIDs,
     CountTypes,CountVariables:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
     Type_:PpvVulkanShaderModuleReflectionType;
     Variable:PpvVulkanShaderModuleReflectionVariable;
     Member:PpvVulkanShaderModuleReflectionMember;
-    Bindings,Locations,DescriptorSets,Offsets:array of TpvUInt32;
-    DebugNames:array of TVkCharString;
-    TypeMap,ReversedTypeMap:array of TpvSizeInt;
+    TypeVariableNames:array of TVkCharString;
+    TypeMap,ReversedTypeMap,
+    VariableMap,ReversedVariableMap:array of TpvSizeInt;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14297,13 +14297,13 @@ begin
 
  result.Variables:=nil;
 
- Bindings:=nil;
- Locations:=nil;
- DescriptorSets:=nil;
- Offsets:=nil;
- DebugNames:=nil;
+ TypeVariableNames:=nil;
+
  TypeMap:=nil;
  ReversedTypeMap:=nil;
+
+ VariableMap:=nil;
+ ReversedVariableMap:=nil;
 
  CountTypes:=0;
 
@@ -14321,6 +14321,7 @@ begin
    Size:=(fDataSize shr 2)-5;
 
    CountIDs:=0;
+
    CountTypes:=0;
    CountVariables:=0;
 
@@ -14379,17 +14380,19 @@ begin
 
    try
 
-    SetLength(Bindings,CountIDs);
-    SetLength(Locations,CountIDs);
-    SetLength(DescriptorSets,CountIDs);
-    SetLength(Offsets,CountIDs);
-    SetLength(DebugNames,CountIDs);
+    SetLength(TypeVariableNames,CountIDs);
+
     SetLength(TypeMap,CountIDs);
     SetLength(ReversedTypeMap,CountTypes);
 
+    SetLength(VariableMap,CountIDs);
+    SetLength(ReversedVariableMap,CountVariables);
+
     for Index:=1 to TpvInt32(CountIDs) do begin
      TypeMap[Index-1]:=-1;
+     VariableMap[Index-1]:=-1;
     end;
+
     for Index:=1 to TpvInt32(CountTypes) do begin
      Type_:=@result.Types[Index-1];
      Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
@@ -14397,11 +14400,27 @@ begin
      ReversedTypeMap[Index-1]:=-1;
     end;
 
+    for Index:=1 to TpvInt32(CountVariables) do begin
+     Variable:=@result.Variables[Index-1];
+     Variable^.fName:='';
+     Variable^.fType:=-1;
+     ReversedVariableMap[Index-1]:=-1;
+    end;
+
     CountTypes:=0;
+
+    CountVariables:=0;
+
     Position:=0;
     while Position<Size do begin
      Opcode:=SwapEndian(Opcodes^[Position]);
      case Opcode and $ffff of
+      $0005{OpName}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountIDs then begin
+        TypeVariableNames[Index]:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
+       end;
+      end;
       $0013{OpTypeVoid},
       $0014{OpTypeBool},
       $0015{OpTypeInt},
@@ -14429,6 +14448,12 @@ begin
        TypeMap[Index]:=CountTypes;
        ReversedTypeMap[CountTypes]:=Index;
        inc(CountTypes);
+      end;
+      $003b{OpVariable}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       VariableMap[Index]:=CountVariables;
+       ReversedVariableMap[CountVariables]:=Index;
+       inc(CountVariables);
       end;
      end;
      inc(Position,Opcode shr 16);
@@ -14586,14 +14611,38 @@ begin
       end;
       $0047{OpDecorate}:begin
        Index:=SwapEndian(Opcodes^[Position+1]);
-       if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
-        Type_:=@result.Types[TypeMap[Index]];
-        case Opcodes^[Position+2] of
-         $00000002{Block}:begin
-          Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.Block;
+       case Opcodes^[Position+2] of
+        $00000002{Block},
+        $00000003{BufferBlock}:begin
+         if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
+          Type_:=@result.Types[TypeMap[Index]];
+          case Opcodes^[Position+2] of
+           $00000002{Block}:begin
+            Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.Block;
+           end;
+           $00000003{BufferBlock}:begin
+            Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.BufferBlock;
+           end;
+          end;
          end;
-         $00000003{BufferBlock}:begin
-          Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.BufferBlock;
+        end;
+        else begin
+         if (Index<CountIDs) and (VariableMap[Index]>=0) then begin
+          Variable:=@result.Variables[VariableMap[Index]];
+          case Opcodes^[Position+2] of
+           $0000001e{Location}:begin
+            Variable^.fLocation:=SwapEndian(Opcodes^[Position+3]);
+           end;
+           $00000021{Binding}:begin
+            Variable^.fBinding:=SwapEndian(Opcodes^[Position+3]);
+           end;
+           $00000022{DescriptorSet}:begin
+            Variable^.fDescriptorSet:=SwapEndian(Opcodes^[Position+3]);
+           end;
+           $00000023{Offset}:begin
+            Variable^.fOffset:=SwapEndian(Opcodes^[Position+3]);
+           end;
+          end;
          end;
         end;
        end;
@@ -14625,94 +14674,36 @@ begin
         end;
        end;
       end;
-     end;
-     inc(Position,Opcode shr 16);
-    end;
-
-    for Index:=1 to TpvInt32(CountIDs) do begin
-     Bindings[Index-1]:=0;
-     Locations[Index-1]:=0;
-     DescriptorSets[Index-1]:=0;
-     Offsets[Index-1]:=0;
-    end;
-
-    Position:=0;
-    while Position<Size do begin
-     Opcode:=SwapEndian(Opcodes^[Position]);
-     case Opcode and $ffff of
-      $0005{OpName}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        DebugNames[Index]:=PVkChar(TpvPointer(@Opcodes^[Position+2]));
-       end;
-      end;
-      $0047{OpDecorate}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        case Opcodes^[Position+2] of
-         $0000001e{Location}:begin
-          Locations[Index]:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         $00000021{Binding}:begin
-          Bindings[Index]:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         $00000022{DescriptorSet}:begin
-          DescriptorSets[Index]:=SwapEndian(Opcodes^[Position+3]);
-         end;
-         $00000023{Offset}:begin
-          Offsets[Index]:=SwapEndian(Opcodes^[Position+3]);
-         end;
-        end;
-       end;
-      end;
-     end;
-     inc(Position,Opcode shr 16);
-    end;
-
-    CountVariables:=0;
-    Position:=0;
-    while Position<Size do begin
-     Opcode:=SwapEndian(Opcodes^[Position]);
-     case Opcode and $ffff of
       $003b{OpVariable}:begin
-       Variable:=@result.Variables[CountVariables];
-       inc(CountVariables);
        Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        Variable^.fLocation:=Locations[Index];
-        Variable^.fBinding:=Bindings[Index];
-        Variable^.fDescriptorSet:=DescriptorSets[Index];
-        Variable^.fOffset:=Offsets[Index];
-        Variable^.fType:=TypeMap[Index];
-       end else begin
-        Variable^.fLocation:=0;
-        Variable^.fBinding:=0;
-        Variable^.fDescriptorSet:=0;
-        Variable^.fOffset:=0;
-        Variable^.fType:=-1;
+       if (Index<CountIDs) and (VariableMap[Index]>=0) then begin
+        Variable:=@result.Variables[VariableMap[Index]];
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<CountIDs then begin
+         Variable^.fName:=TypeVariableNames[OtherIndex];
+        end else begin
+         Variable^.fName:='';
+        end;
+        Variable^.fID:=OtherIndex;
+        Variable^.fInstruction:=Position;
+        Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
        end;
-       NameIndex:=SwapEndian(Opcodes^[Position+2]);
-       if NameIndex<CountIDs then begin
-        Variable^.fName:=DebugNames[NameIndex];
-       end else begin
-        Variable^.fName:='';
-       end;
-       Variable^.fID:=NameIndex;
-       Variable^.fInstruction:=Position;
-       Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
       end;
+
      end;
      inc(Position,Opcode shr 16);
     end;
 
    finally
-    Bindings:=nil;
-    Locations:=nil;
-    DescriptorSets:=nil;
-    Offsets:=nil;
-    DebugNames:=nil;
+
+    TypeVariableNames:=nil;
+
     TypeMap:=nil;
     ReversedTypeMap:=nil;
+
+    VariableMap:=nil;
+    ReversedVariableMap:=nil;
+
    end;
 
   end;
