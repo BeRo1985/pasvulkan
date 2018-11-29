@@ -14304,8 +14304,11 @@ var Position,Size:TpvInt32;
   end;
  end;
 begin
+
  result.Types:=nil;
+
  result.Variables:=nil;
+
  BlockTypes:=nil;
  Bindings:=nil;
  Locations:=nil;
@@ -14317,8 +14320,13 @@ begin
  ShaderMembers:=nil;
  TypeMap:=nil;
  ReversedTypeMap:=nil;
+
+ CountTypes:=0;
+
  CountVariables:=0;
+
  try
+
   Opcodes:=fData;
   if assigned(Opcodes) and (fDataSize>=(6*SizeOf(TpvUInt32))) and ((Opcodes^[0]=$07230203) or (Opcodes^[0]=$03022307)) then begin
 
@@ -14381,6 +14389,8 @@ begin
     inc(Position,Opcode shr 16);
    end;
 
+   SetLength(result.Types,CountTypes);
+
    SetLength(result.Variables,CountVariables);
 
    try
@@ -14393,7 +14403,6 @@ begin
     SetLength(CountMembers,CountIDs);
     SetLength(DebugNames,CountIDs);
     SetLength(ShaderMembers,CountIDs,0);
-    SetLength(result.Types,CountTypes);
     SetLength(TypeMap,CountIDs);
     SetLength(ReversedTypeMap,CountTypes);
     SetLength(VariableTypes,CountIDs);
@@ -14443,7 +14452,6 @@ begin
       end;
       inc(Position,Opcode shr 16);
      end;
-
 
      CountTypes:=0;
      Position:=0;
@@ -14739,8 +14747,8 @@ begin
       if CountMembers[Index]>0 then begin
        SetLength(Type_^.Members,CountMembers[Index]);
        for OtherIndex:=1 to CountMembers[Index] do begin
-        Member:=@Type_^.Members[Index-1];
-        ShaderMember:=@ShaderMembers[Index-1,OtherIndex-1];
+        Member:=@Type_^.Members[Index];
+        ShaderMember:=@ShaderMembers[Index,OtherIndex-1];
         Member^.fDebugName:=ShaderMember^.DebugName;
         Member^.fOffset:=ShaderMember^.Offset;
         Member^.fArrayStride:=ShaderMember^.ArrayStride;
@@ -14770,6 +14778,7 @@ begin
 
   end;
  finally
+  SetLength(result.Types,CountTypes);
   SetLength(result.Variables,CountVariables);
  end;
 end;

@@ -13,11 +13,17 @@ uses
   PasVulkan.Framework in '..\..\PasVulkan.Framework.pas';
 
 var ShaderModule:TpvVulkanShaderModule;
+    ReflectionData:TpvVulkanShaderModuleReflectionData;
 begin
  try
   ShaderModule:=TpvVulkanShaderModule.Create(nil,'test.spv');
   try
+   ReflectionData:=ShaderModule.GetReflectionData;
+   try
 
+   finally
+    Finalize(ReflectionData);
+   end;
   finally
    FreeAndNil(ShaderModule);
   end;
