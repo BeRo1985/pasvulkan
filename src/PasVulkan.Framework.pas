@@ -1965,6 +1965,8 @@ type EpvVulkanException=class(Exception);
        Binding:TpvUInt32;
        DescriptorSet:TpvUInt32;
        Offset:TpvUInt32;
+       Size:TpvUInt64;
+       Alignment:TpvUInt64;
        Type_:TpvInt32;
        Instruction:TpvUInt32;
        StorageClass:TpvVulkanShaderModuleReflectionStorageClass;
@@ -1974,11 +1976,18 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionVariables=array of TpvVulkanShaderModuleReflectionVariable;
 
+     TpvVulkanShaderModuleReflectionBufferLayout=
+      (
+       Undefined,
+       STD140,
+       STD430
+      );
+
      TpvVulkanShaderModuleReflectionData=record
       public
        Types:TpvVulkanShaderModuleReflectionTypes;
        Variables:TpvVulkanShaderModuleReflectionVariables;
-       function GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64):TpvUInt64;
+       function GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64;const aBufferLayout:TpvVulkanShaderModuleReflectionBufferLayout):TpvUInt64;
      end;
 
      PpvVulkanShaderModuleReflectionData=^TpvVulkanShaderModuleReflectionData;
@@ -14152,14 +14161,30 @@ begin
  result:=fFrameBuffers[aIndex];
 end;
 
-function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64):TpvUInt64;
+function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64;const aBufferLayout:TpvVulkanShaderModuleReflectionBufferLayout):TpvUInt64;
 var Index:TpvSizeInt;
     Type_:PpvVulkanShaderModuleReflectionType;
     Member:PpvVulkanShaderModuleReflectionMember;
     Size,Alignment,ArraySize:TpvUInt64;
+    BufferLayout:TpvVulkanShaderModuleReflectionBufferLayout;
 begin
  if aTypeIndex<length(Types) then begin
   Type_:=@Types[aTypeIndex];
+  if aBufferLayout=TpvVulkanShaderModuleReflectionBufferLayout.Undefined then begin
+   case Type_^.BlockType of
+    TpvVulkanShaderModuleReflectionBlockType.Block:begin
+     BufferLayout:=TpvVulkanShaderModuleReflectionBufferLayout.STD140;
+    end;
+    TpvVulkanShaderModuleReflectionBlockType.BufferBlock:begin
+     BufferLayout:=TpvVulkanShaderModuleReflectionBufferLayout.STD430;
+    end;
+    else begin
+     BufferLayout:=aBufferLayout;
+    end;
+   end;
+  end else begin
+   BufferLayout:=aBufferLayout;
+  end;
   case Type_^.TypeKind of
    TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
     result:=SizeOf(TVkUInt32);
@@ -14178,28 +14203,41 @@ begin
     aAlignment:=(Type_^.FloatWidth+7) shr 3;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeVector:begin
-    Size:=GetTypeSize(Type_^.VectorComponentTypeIndex,Alignment);
-    result:=Size*Type_^.VectorComponentCount;
+    Size:=GetTypeSize(Type_^.VectorComponentTypeIndex,Alignment,BufferLayout);
     case Type_^.VectorComponentCount of
-     3:begin
+     1,2:begin
+      // A two-component vector, with components of size N, has a base alignment of 2 N.
+      result:=Size*Type_^.VectorComponentCount;
+      aAlignment:=Size*Type_^.VectorComponentCount;
+     end;
+     3,4:begin
+      // A three- or four-component vector, with components of size N, has a base alignment of 4 N.
+      result:=Size*4;
       aAlignment:=Size*4;
      end;
      else begin
+      Assert(false);
+      result:=Size*Type_^.VectorComponentCount;
       aAlignment:=Size*Type_^.VectorComponentCount;
      end;
     end;
+    aAlignment:=RoundUpToPowerOfTwo64(aAlignment);
+    result:=(result+(aAlignment-1)) and not TpvUInt64(aAlignment-1);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeMatrix:begin
-    Size:=GetTypeSize(Type_^.MatrixColumnTypeIndex,Alignment);
-    result:=Size*Type_^.MatrixColumnCount;
+    Size:=GetTypeSize(Type_^.MatrixColumnTypeIndex,Alignment,BufferLayout);
     case Type_^.MatrixColumnCount of
      3:begin
-      aAlignment:=Size*4;
+      result:=Size*4;
+      aAlignment:=Alignment;
      end;
      else begin
-      aAlignment:=Size*Type_^.MatrixColumnCount;
+      result:=Size*Type_^.MatrixColumnCount;
+      aAlignment:=Alignment;
      end;
     end;
+    aAlignment:=RoundUpToPowerOfTwo64(aAlignment);
+    result:=(result+(aAlignment-1)) and not TpvUInt64(aAlignment-1);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeImage:begin
     result:=0;
@@ -14214,35 +14252,47 @@ begin
     aAlignment:=0;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
-    Size:=GetTypeSize(Type_^.ArrayTypeIndex,Alignment);
+    // An array has a base alignment equal to the base alignment of its element type, rounded up to a multiple of 16.
+    Size:=GetTypeSize(Type_^.ArrayTypeIndex,Alignment,BufferLayout);
     ArraySize:=1;
     for Index:=0 to length(Type_^.ArraySize)-1 do begin
      ArraySize:=ArraySize*Type_^.ArraySize[Index];
     end;
     result:=Size*ArraySize;
-    aAlignment:=Size*ArraySize;
+    aAlignment:=Alignment;
+    if BufferLayout=TpvVulkanShaderModuleReflectionBufferLayout.STD140 then begin
+     aAlignment:=Max(aAlignment,16);
+    end;
+    aAlignment:=RoundUpToPowerOfTwo64(aAlignment);
+    result:=(result+(aAlignment-1)) and not TpvUInt64(aAlignment-1);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:begin
-    Size:=GetTypeSize(Type_^.RuntimeArrayTypeIndex,Alignment);
+    Size:=GetTypeSize(Type_^.RuntimeArrayTypeIndex,Alignment,BufferLayout);
     result:=0;
-    aAlignment:=Size;
+    aAlignment:=Alignment;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
+    // A structure has a base alignment equal to the largest base alignment of any of its members, rounded up to a multiple of 16.
     result:=0;
     aAlignment:=0;
     for Index:=0 to length(Type_^.Members)-1 do begin
      Member:=@Type_^.Members[Index];
-     Size:=GetTypeSize(Member^.Type_,Alignment);
+     Size:=GetTypeSize(Member^.Type_,Alignment,BufferLayout);
      result:=Max(result+Size,Member^.Offset+Size);
      aAlignment:=Max(aAlignment,Alignment);
     end;
+    if BufferLayout=TpvVulkanShaderModuleReflectionBufferLayout.STD140 then begin
+     aAlignment:=Max(aAlignment,16);
+    end;
+    aAlignment:=RoundUpToPowerOfTwo64(aAlignment);
+    result:=(result+(aAlignment-1)) and not TpvUInt64(aAlignment-1);
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypeOpaque:begin
     result:=0;
     aAlignment:=0;
    end;
    TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
-    Size:=GetTypeSize(Type_^.PointerTypeIndex,Alignment);
+    Size:=GetTypeSize(Type_^.PointerTypeIndex,Alignment,BufferLayout);
     result:=Size;
     aAlignment:=Alignment;
    end;
@@ -14426,6 +14476,7 @@ var Position,Size,
     VariableMap,ReversedVariableMap:array of TpvSizeInt;
     Constants:array of TConstant;
     Constant:PConstant;
+    BufferLayout:TpvVulkanShaderModuleReflectionBufferLayout;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
   if Endian then begin
@@ -14889,7 +14940,36 @@ begin
 
     for Index:=1 to TpvInt32(CountTypes) do begin
      Type_:=@result.Types[Index-1];
-     Type_^.Size:=result.GetTypeSize(Index-1,Type_^.Alignment);
+     Type_^.Size:=result.GetTypeSize(Index-1,Type_^.Alignment,TpvVulkanShaderModuleReflectionBufferLayout.Undefined);
+    end;
+
+    for Index:=1 to TpvInt32(CountVariables) do begin
+     Variable:=@result.Variables[Index-1];
+     if Variable^.Type_>=0 then begin
+      case Variable^.StorageClass of
+{      TpvVulkanShaderModuleReflectionStorageClass.Uniform:begin
+        BufferLayout:=TpvVulkanShaderModuleReflectionBufferLayout.Undefined;
+       end;}
+       TpvVulkanShaderModuleReflectionStorageClass.PushConstant,
+       TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:begin
+        // Member variables of an OpTypeStruct with a storage class of PushConstant
+        // (push constants), or a storage class of Uniform with a decoration of
+        // BufferBlock (storage buffers), or a storage class of StorageBuffer
+        // with a decoration of Block must be laid out as above, except for array and
+        // structure base alignment which do not need to be rounded up to a multiple
+        // of 16.
+        // The std430 layout in GLSL satisfies these rules.
+        BufferLayout:=TpvVulkanShaderModuleReflectionBufferLayout.STD430;
+       end;
+       else begin
+        BufferLayout:=TpvVulkanShaderModuleReflectionBufferLayout.Undefined;
+       end;
+      end;
+      Variable^.Size:=result.GetTypeSize(Variable^.Type_,Variable^.Alignment,BufferLayout);
+     end else begin
+      Variable^.Size:=0;
+      Variable^.Alignment:=0;
+     end;
     end;
 
    finally
