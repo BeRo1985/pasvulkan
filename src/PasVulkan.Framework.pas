@@ -1881,16 +1881,16 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionMember={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
-       fDebugName:TVkCharString;
+       fName:TVkCharString;
        fType:TpvSizeInt;
        fOffset:TpvUInt32;
        fArrayStride:TpvUInt32;
        fMatrixStride:TpvUInt32;
        fMatrixType:TpvVulkanShaderModuleReflectionMatrixType;
       public
-       property DebugName:TVkCharString read fDebugName;                                   // The name of the member
+       property Name:TVkCharString read fName;
        property Type_:TpvSizeInt read fType;
-       property Offset:TpvUInt32 read fOffset;                                             // The offset
+       property Offset:TpvUInt32 read fOffset;
        property ArrayStride:TpvUInt32 read fArrayStride;
        property MatrixStride:TpvUInt32 read fMatrixStride;
        property MatrixType:TpvVulkanShaderModuleReflectionMatrixType read fMatrixType;
@@ -1963,8 +1963,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
-       fDebugName:TVkCharString;
-       fName:TpvUInt32;
+       fName:TVkCharString;
+       fID:TpvUInt32;
        fLocation:TpvUInt32;
        fBinding:TpvUInt32;
        fDescriptorSet:TpvUInt32;
@@ -1973,8 +1973,8 @@ type EpvVulkanException=class(Exception);
        fInstruction:TpvUInt32;
        fStorageClass:TpvVulkanShaderModuleReflectionStorageClass;
       public
-       property DebugName:TVkCharString read fDebugName;                                   // The name of the variable
-       property Name:TpvUInt32 read fName;                                                 // The internal name (integer) of the variable
+       property Name:TVkCharString read fName;                                             // The name of the variable
+       property ID:TpvUInt32 read fID;                                                     // The internal ID (integer) of the variable
        property Location:TpvUInt32 read fLocation;                                         // The location in the binding
        property Binding:TpvUInt32 read fBinding;                                           // The binding in the descriptor set or I/O channel
        property DescriptorSet:TpvUInt32 read fDescriptorSet;                               // The descriptor set (for uniforms)
@@ -14517,7 +14517,7 @@ begin
           OtherIndex:=0;
           while OtherIndex<length(Type_^.Members) do begin
            Member:=@Type_^.Members[OtherIndex];
-           Member^.fDebugName:='';
+           Member^.fName:='';
            Member^.fType:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
            Member^.fOffset:=0;
            Member^.fArrayStride:=0;
@@ -14580,7 +14580,7 @@ begin
         Type_:=@result.Types[TypeMap[Index]];
         OtherIndex:=SwapEndian(Opcodes^[Position+2]);
         if OtherIndex<TpvUInt32(length(Type_^.Members)) then begin
-         Type_^.Members[OtherIndex].fDebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+         Type_^.Members[OtherIndex].fName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
         end;
        end;
       end;
@@ -14693,11 +14693,11 @@ begin
        end;
        NameIndex:=SwapEndian(Opcodes^[Position+2]);
        if NameIndex<CountIDs then begin
-        Variable^.fDebugName:=DebugNames[NameIndex];
+        Variable^.fName:=DebugNames[NameIndex];
        end else begin
-        Variable^.fDebugName:='';
+        Variable^.fName:='';
        end;
-       Variable^.fName:=NameIndex;
+       Variable^.fID:=NameIndex;
        Variable^.fInstruction:=Position;
        Variable^.fStorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
       end;
