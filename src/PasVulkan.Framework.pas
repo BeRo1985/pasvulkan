@@ -1903,6 +1903,9 @@ type EpvVulkanException=class(Exception);
       ArraySize:TpvUInt32DynamicArray;
       OpaqueName:TVkCharString;
       case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
+       TpvVulkanShaderModuleReflectionTypeKind.TypeNone:(
+        Dummy:array[0..3] of TpvUInt64;
+       );
        TpvVulkanShaderModuleReflectionTypeKind.TypeInt:(
         IntWidth:TpvUInt32;
         IntSignedness:TpvUInt32;
@@ -14597,16 +14600,33 @@ begin
 
     for Index:=1 to TpvInt32(CountTypes) do begin
      Type_:=@result.Types[Index-1];
-     Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
+     Type_^.Name:='';
      Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
      Type_^.ArraySize:=nil;
+     Type_^.Size:=0;
+     Type_^.Alignment:=0;
+     Type_^.FunctionParameterTypeIndices:=nil;
+     Type_^.Members:=nil;
+     Type_^.ArraySize:=0;
+     Type_^.OpaqueName:='';
+     Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
+     FillChar(Type_^.Dummy,SizeOf(Type_^.Dummy),#0);
      ReversedTypeMap[Index-1]:=-1;
     end;
 
     for Index:=1 to TpvInt32(CountVariables) do begin
      Variable:=@result.Variables[Index-1];
      Variable^.Name:='';
+     Variable^.ID:=0;
      Variable^.Type_:=-1;
+     Variable^.Location:=0;
+     Variable^.Binding:=0;
+     Variable^.DescriptorSet:=0;
+     Variable^.Offset:=0;
+     Variable^.Size:=0;
+     Variable^.Alignment:=0;
+     Variable^.Instruction:=0;
+     Variable^.StorageClass:=TpvVulkanShaderModuleReflectionStorageClass.Private_;
      ReversedVariableMap[Index-1]:=-1;
     end;
 
@@ -14676,7 +14696,7 @@ begin
        end;
       end;
       $003b{OpVariable}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
+       Index:=SwapEndian(Opcodes^[Position+2]);
        VariableMap[Index]:=CountVariables;
        ReversedVariableMap[CountVariables]:=Index;
        inc(CountVariables);
@@ -14918,22 +14938,21 @@ begin
        end;
       end;
       $003b{OpVariable}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
+       Index:=SwapEndian(Opcodes^[Position+2]);
        if (Index<CountIDs) and (VariableMap[Index]>=0) then begin
         Variable:=@result.Variables[VariableMap[Index]];
-        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
-        if OtherIndex<CountIDs then begin
-         Variable^.Name:=TypeVariableNames[OtherIndex];
-        end else begin
-         Variable^.Name:='';
-        end;
-        Variable^.Type_:=TypeMap[Index];
-        Variable^.ID:=OtherIndex;
+        Variable^.Name:=TypeVariableNames[Index];
+        Variable^.ID:=Index;
         Variable^.Instruction:=Position;
         Variable^.StorageClass:=TpvVulkanShaderModuleReflectionStorageClass(SwapEndian(Opcodes^[Position+3]));
+        OtherIndex:=SwapEndian(Opcodes^[Position+1]);
+        if (OtherIndex<CountIDs) and (TypeMap[OtherIndex]>=0) then begin
+         Variable^.Type_:=TypeMap[OtherIndex];
+        end else begin
+         Variable^.Type_:=-1;
+        end;
        end;
       end;
-
      end;
      inc(Position,Opcode shr 16);
     end;
