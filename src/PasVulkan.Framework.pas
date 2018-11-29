@@ -1960,6 +1960,41 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanShaderModuleReflectionTypes=array of TpvVulkanShaderModuleReflectionType;
 
+     TpvVulkanShaderModuleReflectionSpecializationConstant=record
+      public
+       Name:TVkCharString;
+       ConstantID:TpvUInt32;
+       Type_:TpvInt32;
+       Size:TpvUInt64;
+       Alignment:TpvUInt64;
+       case TpVInt32 of
+        0:(
+         RawValue:TpvUInt64;
+        );
+        1:(
+         ValueInt32:TpvInt32;
+        );
+        2:(
+         ValueUInt32:TpvUInt32;
+        );
+        3:(
+         ValueInt64:TpvInt64;
+        );
+        4:(
+         ValueUInt64:TpvUInt64;
+        );
+        5:(
+         ValueFloat32:TpvFloat;
+        );
+        6:(
+         ValueFloat64:TpvDouble;
+        );
+     end;
+
+     PpvVulkanShaderModuleReflectionSpecializationConstant=^TpvVulkanShaderModuleReflectionSpecializationConstant;
+
+     TpvVulkanShaderModuleReflectionSpecializationConstants=array of TpvVulkanShaderModuleReflectionSpecializationConstant;
+
      TpvVulkanShaderModuleReflectionVariable=record
       public
        Name:TVkCharString;
@@ -1989,6 +2024,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanShaderModuleReflectionData=record
       public
        Types:TpvVulkanShaderModuleReflectionTypes;
+       SpecializationConstants:TpvVulkanShaderModuleReflectionSpecializationConstants;
        Variables:TpvVulkanShaderModuleReflectionVariables;
        function GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64;const aBufferLayout:TpvVulkanShaderModuleReflectionBufferLayout):TpvUInt64;
      end;
@@ -14468,13 +14504,17 @@ type PUInt32Array=^TUInt32Array;
      PConstant=^TConstant;
 var Position,Size,
     Opcode,Index,OtherIndex,CountIDs,
-    CountTypes,CountVariables:TpvUInt32;
+    CountSpecializationConstants,
+    CountTypes,
+    CountVariables:TpvUInt32;
     Opcodes:PUInt32Array;
     Endian:boolean;
+    SpecializationConstant:PpvVulkanShaderModuleReflectionSpecializationConstant;
     Type_:PpvVulkanShaderModuleReflectionType;
     Variable:PpvVulkanShaderModuleReflectionVariable;
     Member:PpvVulkanShaderModuleReflectionMember;
-    TypeVariableNames:array of TVkCharString;
+    ElementNames:array of TVkCharString;
+    SpecializationConstantMap,ReversedSpecializationConstantMap,
     TypeMap,ReversedTypeMap,
     VariableMap,ReversedVariableMap:array of TpvSizeInt;
     Constants:array of TConstant;
@@ -14496,7 +14536,7 @@ var Position,Size,
   if (aPosition>=0) and (aPosition<Size) then begin
    result:=SwapEndian(Opcodes^[aPosition]);
   end else begin
-   raise  ERangeError.Create('Out of SPIR-V instruction opcode stream array bounds');
+   raise ERangeError.Create('Out of SPIR-V instruction opcode stream array bounds');
   end;
  end;
  function GetOpcodeString(const aPosition:TpvSizeInt):TVkCharString;
@@ -14523,19 +14563,26 @@ begin
 
  result.Types:=nil;
 
+ result.SpecializationConstants:=nil;
+
  result.Variables:=nil;
 
  Constants:=nil;
 
- TypeVariableNames:=nil;
+ ElementNames:=nil;
 
  TypeMap:=nil;
  ReversedTypeMap:=nil;
+
+ SpecializationConstantMap:=nil;
+ ReversedSpecializationConstantMap:=nil;
 
  VariableMap:=nil;
  ReversedVariableMap:=nil;
 
  CountTypes:=0;
+
+ CountSpecializationConstants:=0;
 
  CountVariables:=0;
 
@@ -14553,8 +14600,12 @@ begin
    CountIDs:=0;
 
    CountTypes:=0;
+
+   CountSpecializationConstants:=0;
+
    CountVariables:=0;
 
+   // Counting elements
    Position:=0;
    while Position<Size do begin
     Opcode:=GetOpcode(Position);
@@ -14591,7 +14642,23 @@ begin
       inc(CountTypes);
       CountIDs:=Max(CountIDs,GetOpcode(Position+1)+1);
      end;
+     $0029{OpConstantTrue},
+     $002a{OpConstantFalse},
+     $002b{OpConstant},
+     $002e{OpConstantNull}:begin
+      CountIDs:=Max(CountIDs,GetOpcode(Position+1)+1);
+      CountIDs:=Max(CountIDs,GetOpcode(Position+2)+1);
+     end;
+     $0030{OpSpecConstantTrue},
+     $0031{OpSpecConstantFalse},
+     $0032{OpSpecConstant}:begin
+      CountIDs:=Max(CountIDs,GetOpcode(Position+1)+1);
+      CountIDs:=Max(CountIDs,GetOpcode(Position+2)+1);
+      inc(CountSpecializationConstants);
+     end;
      $003b{OpVariable}:begin
+      CountIDs:=Max(CountIDs,GetOpcode(Position+1)+1);
+      CountIDs:=Max(CountIDs,GetOpcode(Position+2)+1);
       inc(CountVariables);
      end;
      $0047{OpDecorate}:begin
@@ -14606,22 +14673,28 @@ begin
 
    SetLength(result.Types,CountTypes);
 
+   SetLength(result.SpecializationConstants,CountSpecializationConstants);
+
    SetLength(result.Variables,CountVariables);
 
    try
 
-    SetLength(TypeVariableNames,CountIDs);
+    SetLength(ElementNames,CountIDs);
 
     SetLength(Constants,CountIDs);
 
     SetLength(TypeMap,CountIDs);
     SetLength(ReversedTypeMap,CountTypes);
 
+    SetLength(SpecializationConstantMap,CountIDs);
+    SetLength(ReversedSpecializationConstantMap,CountSpecializationConstants);
+
     SetLength(VariableMap,CountIDs);
     SetLength(ReversedVariableMap,CountVariables);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
      Constants[Index-1].Values:=nil;
+     SpecializationConstantMap[Index-1]:=-1;
      TypeMap[Index-1]:=-1;
      VariableMap[Index-1]:=-1;
     end;
@@ -14642,6 +14715,15 @@ begin
      ReversedTypeMap[Index-1]:=-1;
     end;
 
+    for Index:=1 to TpvInt32(CountSpecializationConstants) do begin
+     SpecializationConstant:=@result.SpecializationConstants[Index-1];
+     SpecializationConstant^.Name:='';
+     SpecializationConstant^.ConstantID:=0;
+     SpecializationConstant^.Type_:=-1;
+     FillChar(SpecializationConstant^.RawValue,SizeOf(SpecializationConstant^.RawValue),#0);
+     ReversedSpecializationConstantMap[Index-1]:=-1;
+    end;
+
     for Index:=1 to TpvInt32(CountVariables) do begin
      Variable:=@result.Variables[Index-1];
      Variable^.Name:='';
@@ -14658,10 +14740,13 @@ begin
      ReversedVariableMap[Index-1]:=-1;
     end;
 
+    CountSpecializationConstants:=0;
+
     CountTypes:=0;
 
     CountVariables:=0;
 
+    // Parse element names
     Position:=0;
     while Position<Size do begin
      Opcode:=GetOpcode(Position);
@@ -14669,9 +14754,18 @@ begin
       $0005{OpName}:begin
        Index:=GetOpcode(Position+1);
        if Index<CountIDs then begin
-        TypeVariableNames[Index]:=GetOpcodeString(Position+2);
+        ElementNames[Index]:=GetOpcodeString(Position+2);
        end;
       end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    // Recounting and collect elements
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=GetOpcode(Position);
+     case Opcode and $ffff of
       $0013{OpTypeVoid},
       $0014{OpTypeBool},
       $0015{OpTypeInt},
@@ -14700,15 +14794,50 @@ begin
        ReversedTypeMap[CountTypes]:=Index;
        inc(CountTypes);
       end;
+      $0030{OpSpecConstantTrue}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstantMap[Index]:=CountSpecializationConstants;
+       ReversedSpecializationConstantMap[CountSpecializationConstants]:=Index;
+       inc(CountSpecializationConstants);
+      end;
+      $0031{OpSpecConstantFalse}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstantMap[Index]:=CountSpecializationConstants;
+       ReversedSpecializationConstantMap[CountSpecializationConstants]:=Index;
+       inc(CountSpecializationConstants);
+      end;
+      $0032{OpSpecConstant}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstantMap[Index]:=CountSpecializationConstants;
+       ReversedSpecializationConstantMap[CountSpecializationConstants]:=Index;
+       inc(CountSpecializationConstants);
+      end;
+      $003b{OpVariable}:begin
+       Index:=GetOpcode(Position+2);
+       VariableMap[Index]:=CountVariables;
+       ReversedVariableMap[CountVariables]:=Index;
+       inc(CountVariables);
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    // Parse constants
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=GetOpcode(Position);
+     case Opcode and $ffff of
       $0029{OpConstantTrue}:begin
-       Index:=GetOpcode(Position+1);
+       Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
+       Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
        SetLength(Constant^.Values,1);
        Constant^.Values[0].UI32:=TpvUInt32($ffffffff);
       end;
       $002a{OpConstantFalse}:begin
-       Index:=GetOpcode(Position+1);
+       Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
+       Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
        SetLength(Constant^.Values,1);
        Constant^.Values[0].UI32:=0;
       end;
@@ -14723,16 +14852,56 @@ begin
         inc(OtherIndex);
        end;
       end;
-      $003b{OpVariable}:begin
+      $002e{OpConstantNull}:begin
        Index:=GetOpcode(Position+2);
-       VariableMap[Index]:=CountVariables;
-       ReversedVariableMap[CountVariables]:=Index;
-       inc(CountVariables);
+       Constant:=@Constants[Index];
+       Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
+       SetLength(Constant^.Values,1);
+       Constant^.Values[0].UI32:=0;
       end;
      end;
      inc(Position,Opcode shr 16);
     end;
 
+    // Parse specialization constants
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=GetOpcode(Position);
+     case Opcode and $ffff of
+      $0030{OpSpecConstantTrue}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstant:=@result.SpecializationConstants[SpecializationConstantMap[Index]];
+       SpecializationConstant^.Name:=ElementNames[Index];
+       SpecializationConstant^.Type_:=TypeMap[GetOpcode(Position+1)];
+       FillChar(SpecializationConstant^.RawValue,SizeOf(SpecializationConstant^.RawValue),#$ff);
+      end;
+      $0031{OpSpecConstantFalse}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstant:=@result.SpecializationConstants[SpecializationConstantMap[Index]];
+       SpecializationConstant^.Name:=ElementNames[Index];
+       SpecializationConstant^.Type_:=TypeMap[GetOpcode(Position+1)];
+       FillChar(SpecializationConstant^.RawValue,SizeOf(SpecializationConstant^.RawValue),#0);
+      end;
+      $0032{OpSpecConstant}:begin
+       Index:=GetOpcode(Position+2);
+       SpecializationConstant:=@result.SpecializationConstants[SpecializationConstantMap[Index]];
+       SpecializationConstant^.Name:=ElementNames[Index];
+       SpecializationConstant^.Type_:=TypeMap[GetOpcode(Position+1)];
+       FillChar(SpecializationConstant^.RawValue,SizeOf(SpecializationConstant^.RawValue),#0);
+       case (Opcode shr 16)-3 of
+        1:begin
+         SpecializationConstant^.ValueUInt32:=GetOpcode(Position+3);
+        end;
+        2:begin
+         SpecializationConstant^.ValueUInt64:=GetOpcode(Position+3) or (TpvUInt64(GetOpcode(Position+4)) shl 32);
+        end;
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    // Parse types
     Position:=0;
     while Position<Size do begin
      Opcode:=GetOpcode(Position);
@@ -14763,7 +14932,7 @@ begin
        Index:=GetOpcode(Position+1);
        if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
         Type_:=@result.Types[TypeMap[Index]];
-        Type_^.Name:=TypeVariableNames[Index];
+        Type_^.Name:=ElementNames[Index];
         Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind(TvkInt32(Opcode and $ffff));
         case Type_^.TypeKind of
          TpvVulkanShaderModuleReflectionTypeKind.TypeVoid:begin
@@ -14886,6 +15055,7 @@ begin
      inc(Position,Opcode shr 16);
     end;
 
+    // Parse remaining stuff
     Position:=0;
     while Position<Size do begin
      Opcode:=GetOpcode(Position);
@@ -14903,6 +15073,12 @@ begin
       $0047{OpDecorate}:begin
        Index:=GetOpcode(Position+1);
        case GetOpcode(Position+2) of
+        $00000001{SpecId}:begin
+         if (Index<CountIDs) and (SpecializationConstantMap[Index]>=0) then begin
+          SpecializationConstant:=@result.SpecializationConstants[SpecializationConstantMap[Index]];
+          SpecializationConstant^.ConstantID:=GetOpcode(Position+3);
+         end;
+        end;
         $00000002{Block},
         $00000003{BufferBlock}:begin
          if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
@@ -14969,7 +15145,7 @@ begin
        Index:=GetOpcode(Position+2);
        if (Index<CountIDs) and (VariableMap[Index]>=0) then begin
         Variable:=@result.Variables[VariableMap[Index]];
-        Variable^.Name:=TypeVariableNames[Index];
+        Variable^.Name:=ElementNames[Index];
         Variable^.ID:=Index;
         Variable^.Instruction:=Position;
         Variable^.StorageClass:=TpvVulkanShaderModuleReflectionStorageClass(GetOpcode(Position+3));
@@ -14988,6 +15164,16 @@ begin
     for Index:=1 to TpvInt32(CountTypes) do begin
      Type_:=@result.Types[Index-1];
      Type_^.Size:=result.GetTypeSize(Index-1,Type_^.Alignment,TpvVulkanShaderModuleReflectionBufferLayout.Undefined);
+    end;
+
+    for Index:=1 to TpvInt32(CountSpecializationConstants) do begin
+     SpecializationConstant:=@result.SpecializationConstants[Index-1];
+     if SpecializationConstant^.Type_>=0 then begin
+      SpecializationConstant^.Size:=result.GetTypeSize(SpecializationConstant^.Type_,SpecializationConstant^.Alignment,BufferLayout);
+     end else begin
+      SpecializationConstant^.Size:=0;
+      SpecializationConstant^.Alignment:=0;
+     end;
     end;
 
     for Index:=1 to TpvInt32(CountVariables) do begin
@@ -15023,10 +15209,13 @@ begin
 
     Constants:=nil;
 
-    TypeVariableNames:=nil;
+    ElementNames:=nil;
 
     TypeMap:=nil;
     ReversedTypeMap:=nil;
+
+    SpecializationConstantMap:=nil;
+    ReversedSpecializationConstantMap:=nil;
 
     VariableMap:=nil;
     ReversedVariableMap:=nil;
@@ -15037,6 +15226,7 @@ begin
 
  finally
   SetLength(result.Types,CountTypes);
+  SetLength(result.SpecializationConstants,CountSpecializationConstants);
   SetLength(result.Variables,CountVariables);
  end;
 
