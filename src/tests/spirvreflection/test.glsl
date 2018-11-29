@@ -11,7 +11,10 @@ layout(binding = 0, set = 0) uniform inUniformBuffer {
   vec4 testVector;
 } uboGlobals;
 
-
+layout(push_constant) uniform PushConstants {
+  layout(offset = 0) mat4 transformMatrix;
+  layout(offset = 64) mat4 fillMatrix;
+} pushConstants;
 
 void main(){
   outColor = inColor;
