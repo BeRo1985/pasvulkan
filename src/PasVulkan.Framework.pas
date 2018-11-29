@@ -14269,14 +14269,6 @@ function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflection
 // https://www.khronos.org/registry/spir-v/specs/1.2/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
-     TTypeMember=record
-      DebugName:TVkCharString;
-      Offset:TpvUInt32;
-      ArrayStride:TpvUInt32;
-      MatrixStride:TpvUInt32;
-      MatrixType:TpvVulkanShaderModuleReflectionMatrixType;
-     end;
-     PTypeMember=^TTypeMember;
 var Position,Size:TpvInt32;
     Opcode,Index,OtherIndex,NameIndex,CountIDs,
     CountTypes,CountVariables:TpvUInt32;
@@ -14285,11 +14277,8 @@ var Position,Size:TpvInt32;
     Type_:PpvVulkanShaderModuleReflectionType;
     Variable:PpvVulkanShaderModuleReflectionVariable;
     Member:PpvVulkanShaderModuleReflectionMember;
-    TypeMember:PTypeMember;
-    Bindings,Locations,DescriptorSets,Offsets,CountMembers:array of TpvUInt32;
-    VariableTypes:array of TpvSizeInt;
+    Bindings,Locations,DescriptorSets,Offsets:array of TpvUInt32;
     DebugNames:array of TVkCharString;
-    TypeMembers:array of array of TTypeMember;
     TypeMap,ReversedTypeMap:array of TpvSizeInt;
  function SwapEndian(const Value:TpvUInt32):TpvUInt32;
  begin
@@ -14312,10 +14301,7 @@ begin
  Locations:=nil;
  DescriptorSets:=nil;
  Offsets:=nil;
- VariableTypes:=nil;
- CountMembers:=nil;
  DebugNames:=nil;
- TypeMembers:=nil;
  TypeMap:=nil;
  ReversedTypeMap:=nil;
 
@@ -14397,86 +14383,9 @@ begin
     SetLength(Locations,CountIDs);
     SetLength(DescriptorSets,CountIDs);
     SetLength(Offsets,CountIDs);
-    SetLength(CountMembers,CountIDs);
     SetLength(DebugNames,CountIDs);
-    SetLength(TypeMembers,CountIDs,0);
     SetLength(TypeMap,CountIDs);
     SetLength(ReversedTypeMap,CountTypes);
-    SetLength(VariableTypes,CountIDs);
-
-    for Index:=1 to TpvInt32(CountIDs) do begin
-     CountMembers[Index-1]:=0;
-    end;
-
-    Position:=0;
-    while Position<Size do begin
-     Opcode:=SwapEndian(Opcodes^[Position]);
-     case Opcode and $ffff of
-      $0048{OpMemberDecorate}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        CountMembers[Index]:=Max(CountMembers[Index],SwapEndian(Opcodes^[Position+2])+1);
-       end;
-      end;
-     end;
-     inc(Position,Opcode shr 16);
-    end;
-
-    for Index:=1 to CountIDs do begin
-     SetLength(TypeMembers[Index-1],CountMembers[Index-1]);
-     for OtherIndex:=1 to CountMembers[Index-1] do begin
-      TypeMember:=@TypeMembers[Index-1,OtherIndex-1];
-      TypeMember^.DebugName:='';
-      TypeMember^.Offset:=0;
-      TypeMember^.ArrayStride:=0;
-      TypeMember^.MatrixStride:=0;
-      TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
-     end;
-    end;
-
-    Position:=0;
-    while Position<Size do begin
-     Opcode:=SwapEndian(Opcodes^[Position]);
-     case Opcode and $ffff of
-      $0006{OpMemberName}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
-        if OtherIndex<CountMembers[Index] then begin
-         TypeMember:=@TypeMembers[Index,OtherIndex];
-         TypeMember^.DebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
-        end;
-       end;
-      end;
-      $0048{OpMemberDecorate}:begin
-       Index:=SwapEndian(Opcodes^[Position+1]);
-       if Index<CountIDs then begin
-        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
-        if OtherIndex<CountMembers[Index] then begin
-         TypeMember:=@TypeMembers[Index,OtherIndex];
-         case Opcodes^[Position+3] of
-          $00000004{RowMajor}:begin
-           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
-          end;
-          $00000005{ColMajor}:begin
-           TypeMember^.MatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
-          end;
-          $00000006{ArrayStride}:begin
-           TypeMember^.ArrayStride:=SwapEndian(Opcodes^[Position+4]);
-          end;
-          $00000007{MatrixStride}:begin
-           TypeMember^.MatrixStride:=SwapEndian(Opcodes^[Position+4]);
-          end;
-          $00000023{Offset}:begin
-           TypeMember^.Offset:=SwapEndian(Opcodes^[Position+4]);
-          end;
-         end;
-        end;
-       end;
-      end;
-     end;
-     inc(Position,Opcode shr 16);
-    end;
 
     for Index:=1 to TpvInt32(CountIDs) do begin
      TypeMap[Index-1]:=-1;
@@ -14608,21 +14517,12 @@ begin
           OtherIndex:=0;
           while OtherIndex<length(Type_^.Members) do begin
            Member:=@Type_^.Members[OtherIndex];
+           Member^.fDebugName:='';
            Member^.fType:=TypeMap[SwapEndian(Opcodes^[(Position+2)+OtherIndex])];
-           if (CountMembers[Index]>0) and (OtherIndex<CountMembers[Index]) then begin
-            TypeMember:=@TypeMembers[Index,OtherIndex];
-            Member^.fDebugName:=TypeMember^.DebugName;
-            Member^.fOffset:=TypeMember^.Offset;
-            Member^.fArrayStride:=TypeMember^.ArrayStride;
-            Member^.fMatrixStride:=TypeMember^.MatrixStride;
-            Member^.fMatrixType:=TypeMember^.MatrixType;
-           end else begin
-            Member^.fDebugName:='';
-            Member^.fOffset:=0;
-            Member^.fArrayStride:=0;
-            Member^.fMatrixStride:=0;
-            Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
-           end;
+           Member^.fOffset:=0;
+           Member^.fArrayStride:=0;
+           Member^.fMatrixStride:=0;
+           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.None;
            inc(OtherIndex);
           end;
          end;
@@ -14674,6 +14574,16 @@ begin
     while Position<Size do begin
      Opcode:=SwapEndian(Opcodes^[Position]);
      case Opcode and $ffff of
+      $0006{OpMemberName}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
+        Type_:=@result.Types[TypeMap[Index]];
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<TpvUInt32(length(Type_^.Members)) then begin
+         Type_^.Members[OtherIndex].fDebugName:=PVkChar(TpvPointer(@Opcodes^[Position+3]));
+        end;
+       end;
+      end;
       $0047{OpDecorate}:begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
@@ -14688,6 +14598,33 @@ begin
         end;
        end;
       end;
+      $0048{OpMemberDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if (Index<CountIDs) and (TypeMap[Index]>=0) then begin
+        Type_:=@result.Types[TypeMap[Index]];
+        OtherIndex:=SwapEndian(Opcodes^[Position+2]);
+        if OtherIndex<TpvUInt32(length(Type_^.Members)) then begin
+         Member:=@Type_^.Members[OtherIndex];
+         case Opcodes^[Position+3] of
+          $00000004{RowMajor}:begin
+           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.RowMajor;
+          end;
+          $00000005{ColMajor}:begin
+           Member^.fMatrixType:=TpvVulkanShaderModuleReflectionMatrixType.ColumnMajor;
+          end;
+          $00000006{ArrayStride}:begin
+           Member^.fArrayStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000007{MatrixStride}:begin
+           Member^.fMatrixStride:=SwapEndian(Opcodes^[Position+4]);
+          end;
+          $00000023{Offset}:begin
+           Member^.fOffset:=SwapEndian(Opcodes^[Position+4]);
+          end;
+         end;
+        end;
+       end;
+      end;
      end;
      inc(Position,Opcode shr 16);
     end;
@@ -14697,7 +14634,6 @@ begin
      Locations[Index-1]:=0;
      DescriptorSets[Index-1]:=0;
      Offsets[Index-1]:=0;
-     VariableTypes[Index-1]:=-1;
     end;
 
     Position:=0;
@@ -14714,12 +14650,6 @@ begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountIDs then begin
         case Opcodes^[Position+2] of
-         $00000005{ColMajor}:begin
-         end;
-         $00000006{ArrayStride}:begin
-         end;
-         $00000007{MatrixStride}:begin
-         end;
          $0000001e{Location}:begin
           Locations[Index]:=SwapEndian(Opcodes^[Position+3]);
          end;
@@ -14780,10 +14710,7 @@ begin
     Locations:=nil;
     DescriptorSets:=nil;
     Offsets:=nil;
-    VariableTypes:=nil;
-    CountMembers:=nil;
     DebugNames:=nil;
-    TypeMembers:=nil;
     TypeMap:=nil;
     ReversedTypeMap:=nil;
    end;
