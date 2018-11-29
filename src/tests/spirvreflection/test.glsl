@@ -16,6 +16,11 @@ layout(push_constant) uniform PushConstants {
   layout(offset = 64) mat4 fillMatrix;
 } pushConstants;
 
+layout(binding = 1, set = 0) buffer inShaderStorageBuffer {
+  vec4 testVectors[2];
+  mat4 bones[];
+} ssboGlobals;
+
 void main(){
   outColor = inColor;
 }

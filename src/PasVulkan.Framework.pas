@@ -14777,10 +14777,12 @@ begin
    end;
 
   end;
+
  finally
   SetLength(result.Types,CountTypes);
   SetLength(result.Variables,CountVariables);
  end;
+
 end;
 
 constructor TpvVulkanDescriptorPool.Create(const aDevice:TpvVulkanDevice;
