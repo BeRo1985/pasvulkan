@@ -15087,8 +15087,13 @@ begin
           Type_^.ArrayTypeIndex:=TypeMap[GetOpcode(Position+2)];
           OtherIndex:=GetOpcode(Position+3);
           if OtherIndex<CountIDs then begin
-           Constant:=@Constants[OtherIndex];
-           Type_^.ArraySize:=Constant^.ValueUInt32;
+           if SpecializationConstantMap[OtherIndex]>=0 then begin
+            SpecializationConstant:=@result.SpecializationConstants[SpecializationConstantMap[OtherIndex]];
+            Type_^.ArraySize:=SpecializationConstant^.ValueUInt32;
+           end else begin
+            Constant:=@Constants[OtherIndex];
+            Type_^.ArraySize:=Constant^.ValueUInt32;
+           end;
           end else begin
            Type_^.ArraySize:=0;
            Assert(false);

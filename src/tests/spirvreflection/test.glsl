@@ -6,12 +6,14 @@ layout(constant_id = 0) const int SSAO_KERNEL_SIZE = 64;
 
 layout(constant_id = 1) const float SSAO_KERNEL_RADIUS = 0.5;
 
+layout(constant_id = 2) const int COUNT_VIEWS = 2;
+
 layout(location = 0) in vec4 inColor;
 
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 0, set = 0) uniform inUniformBuffer {
-  mat4 modelViewProjectionMatrix[2];
+  mat4 modelViewProjectionMatrix[COUNT_VIEWS];
   vec4 testVector;
 } uboGlobals;
 
