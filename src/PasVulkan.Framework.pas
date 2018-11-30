@@ -1743,6 +1743,22 @@ type EpvVulkanException=class(Exception);
        property DepthImageFormat:TVkFormat read fDepthImageFormat;
      end;
 
+     TpvVulkanShaderModuleReflectionScalarDataType=
+      (
+       None,
+       Int16,
+       UInt16,
+       Int32,
+       UInt32,
+       Int64,
+       UInt64,
+       Float16,
+       Float32,
+       Float64
+      );
+
+     PpvVulkanShaderModuleReflectionScalarDataType=^TpvVulkanShaderModuleReflectionScalarDataType;
+
      TpvVulkanShaderModuleReflectionTypeKind=
       (
        TypeNone=$0000,
@@ -1967,26 +1983,35 @@ type EpvVulkanException=class(Exception);
        Type_:TpvInt32;
        Size:TpvUInt64;
        Alignment:TpvUInt64;
-       case TpVInt32 of
-        0:(
+       case ScalarDataType:TpvVulkanShaderModuleReflectionScalarDataType of
+        TpvVulkanShaderModuleReflectionScalarDataType.None:(
          RawValue:TpvUInt64;
         );
-        1:(
+        TpvVulkanShaderModuleReflectionScalarDataType.Int16:(
+         ValueInt16:TpvInt16;
+        );
+        TpvVulkanShaderModuleReflectionScalarDataType.UInt16:(
+         ValueUInt16:TpvUInt16;
+        );
+        TpvVulkanShaderModuleReflectionScalarDataType.Int32:(
          ValueInt32:TpvInt32;
         );
-        2:(
+        TpvVulkanShaderModuleReflectionScalarDataType.UInt32:(
          ValueUInt32:TpvUInt32;
         );
-        3:(
+        TpvVulkanShaderModuleReflectionScalarDataType.Int64:(
          ValueInt64:TpvInt64;
         );
-        4:(
+        TpvVulkanShaderModuleReflectionScalarDataType.UInt64:(
          ValueUInt64:TpvUInt64;
         );
-        5:(
+        TpvVulkanShaderModuleReflectionScalarDataType.Float16:(
+         ValueFloat16:TpvHalfFloat;
+        );
+        TpvVulkanShaderModuleReflectionScalarDataType.Float32:(
          ValueFloat32:TpvFloat;
         );
-        6:(
+        TpvVulkanShaderModuleReflectionScalarDataType.Float64:(
          ValueFloat64:TpvDouble;
         );
      end;
@@ -14484,26 +14509,35 @@ type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
      TConstant=record
       Type_:TpvSizeInt;
-      case TpVInt32 of
-       0:(
+      case ScalarDataType:TpvVulkanShaderModuleReflectionScalarDataType of
+       TpvVulkanShaderModuleReflectionScalarDataType.None:(
         RawValue:TpvUInt64;
        );
-       1:(
+       TpvVulkanShaderModuleReflectionScalarDataType.Int16:(
+        ValueInt16:TpvInt16;
+       );
+       TpvVulkanShaderModuleReflectionScalarDataType.UInt16:(
+        ValueUInt16:TpvUInt16;
+       );
+       TpvVulkanShaderModuleReflectionScalarDataType.Int32:(
         ValueInt32:TpvInt32;
        );
-       2:(
+       TpvVulkanShaderModuleReflectionScalarDataType.UInt32:(
         ValueUInt32:TpvUInt32;
        );
-       3:(
+       TpvVulkanShaderModuleReflectionScalarDataType.Int64:(
         ValueInt64:TpvInt64;
        );
-       4:(
+       TpvVulkanShaderModuleReflectionScalarDataType.UInt64:(
         ValueUInt64:TpvUInt64;
        );
-       5:(
+       TpvVulkanShaderModuleReflectionScalarDataType.Float16:(
+        ValueFloat16:TpvHalfFloat;
+       );
+       TpvVulkanShaderModuleReflectionScalarDataType.Float32:(
         ValueFloat32:TpvFloat;
        );
-       6:(
+       TpvVulkanShaderModuleReflectionScalarDataType.Float64:(
         ValueFloat64:TpvDouble;
        );
      end;
