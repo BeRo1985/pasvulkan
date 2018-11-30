@@ -21,7 +21,7 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(binding = 1, set = 0) buffer inShaderStorageBuffer {
-  vec4 testVectors[2];
+  vec4 testVectors[2][2];
   mat4 bones[];
 } ssboGlobals;
 

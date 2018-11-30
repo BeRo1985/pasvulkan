@@ -1900,7 +1900,6 @@ type EpvVulkanException=class(Exception);
       Alignment:TpvUInt64;
       FunctionParameterTypeIndices:TpvUInt32DynamicArray;
       Members:TpvVulkanShaderModuleReflectionMembers;
-      ArraySize:TpvUInt32DynamicArray;
       OpaqueName:TVkCharString;
       case TypeKind:TpvVulkanShaderModuleReflectionTypeKind of
        TpvVulkanShaderModuleReflectionTypeKind.TypeNone:(
@@ -1936,6 +1935,7 @@ type EpvVulkanException=class(Exception);
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeArray:(
         ArrayTypeIndex:TpvUInt32;
+        ArraySize:TpvUInt32;
        );
        TpvVulkanShaderModuleReflectionTypeKind.TypeRuntimeArray:(
         RuntimeArrayTypeIndex:TpvUInt32;
@@ -14204,7 +14204,7 @@ function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSiz
 var Index:TpvSizeInt;
     Type_:PpvVulkanShaderModuleReflectionType;
     Member:PpvVulkanShaderModuleReflectionMember;
-    Size,Alignment,ArraySize:TpvUInt64;
+    Size,Alignment:TpvUInt64;
     BufferLayout:TpvVulkanShaderModuleReflectionBufferLayout;
 begin
  if aTypeIndex<length(Types) then begin
@@ -14293,11 +14293,7 @@ begin
    TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
     // An array has a base alignment equal to the base alignment of its element type, rounded up to a multiple of 16.
     Size:=GetTypeSize(Type_^.ArrayTypeIndex,Alignment,BufferLayout);
-    ArraySize:=1;
-    for Index:=0 to length(Type_^.ArraySize)-1 do begin
-     ArraySize:=ArraySize*Type_^.ArraySize[Index];
-    end;
-    result:=Size*ArraySize;
+    result:=Size*Type_^.ArraySize;
     aAlignment:=Alignment;
     if BufferLayout=TpvVulkanShaderModuleReflectionBufferLayout.STD140 then begin
      aAlignment:=Max(aAlignment,16);
@@ -14486,20 +14482,30 @@ function TpvVulkanShaderModule.GetReflectionData:TpvVulkanShaderModuleReflection
 // https://www.khronos.org/registry/spir-v/specs/1.2/SPIRV.html
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
-     TConstantValue=record
-      case TpvUInt8 of
-       0:(
-        UI32:TpvUInt32;
-       );
-       1:(
-        F32:TpvFloat;
-       );
-     end;
-     PConstantValue=^TConstantValue;
-     TConstantValues=array of TConstantValue;
      TConstant=record
       Type_:TpvSizeInt;
-      Values:TConstantValues;
+      case TpVInt32 of
+       0:(
+        RawValue:TpvUInt64;
+       );
+       1:(
+        ValueInt32:TpvInt32;
+       );
+       2:(
+        ValueUInt32:TpvUInt32;
+       );
+       3:(
+        ValueInt64:TpvInt64;
+       );
+       4:(
+        ValueUInt64:TpvUInt64;
+       );
+       5:(
+        ValueFloat32:TpvFloat;
+       );
+       6:(
+        ValueFloat64:TpvDouble;
+       );
      end;
      PConstant=^TConstant;
 var Position,Size,
@@ -14693,7 +14699,7 @@ begin
     SetLength(ReversedVariableMap,CountVariables);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
-     Constants[Index-1].Values:=nil;
+     Constants[Index-1].ValueUInt64:=0;
      SpecializationConstantMap[Index-1]:=-1;
      TypeMap[Index-1]:=-1;
      VariableMap[Index-1]:=-1;
@@ -14703,12 +14709,10 @@ begin
      Type_:=@result.Types[Index-1];
      Type_^.Name:='';
      Type_^.BlockType:=TpvVulkanShaderModuleReflectionBlockType.None;
-     Type_^.ArraySize:=nil;
      Type_^.Size:=0;
      Type_^.Alignment:=0;
      Type_^.FunctionParameterTypeIndices:=nil;
      Type_^.Members:=nil;
-     Type_^.ArraySize:=nil;
      Type_^.OpaqueName:='';
      Type_^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeNone;
      FillChar(Type_^.Dummy,SizeOf(Type_^.Dummy),#0);
@@ -14833,33 +14837,32 @@ begin
        Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
        Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
-       SetLength(Constant^.Values,1);
-       Constant^.Values[0].UI32:=TpvUInt32($ffffffff);
+       Constant^.ValueUInt64:=TpvUInt64($ffffffffffffffff);
       end;
       $002a{OpConstantFalse}:begin
        Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
        Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
-       SetLength(Constant^.Values,1);
-       Constant^.Values[0].UI32:=0;
+       Constant^.ValueUInt64:=0;
       end;
       $002b{OpConstant}:begin
        Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
-       SetLength(Constant^.Values,Max(0,(Opcode shr 16)-3));
        Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
-       OtherIndex:=0;
-       while OtherIndex<TpvUInt32(length(Constant^.Values)) do begin
-        Constant^.Values[OtherIndex].UI32:=GetOpcode((Position+3)+OtherIndex);
-        inc(OtherIndex);
+       case (Opcode shr 16)-3 of
+        1:begin
+         Constant^.ValueUInt32:=GetOpcode(Position+3);
+        end;
+        2:begin
+         Constant^.ValueUInt64:=GetOpcode(Position+3) or (TpvUInt64(GetOpcode(Position+4)) shl 32);
+        end;
        end;
       end;
       $002e{OpConstantNull}:begin
        Index:=GetOpcode(Position+2);
        Constant:=@Constants[Index];
        Constant^.Type_:=TypeMap[GetOpcode(Position+1)];
-       SetLength(Constant^.Values,1);
-       Constant^.Values[0].UI32:=0;
+       Constant^.ValueUInt64:=0;
       end;
      end;
      inc(Position,Opcode shr 16);
@@ -14980,19 +14983,9 @@ begin
           OtherIndex:=GetOpcode(Position+3);
           if OtherIndex<CountIDs then begin
            Constant:=@Constants[OtherIndex];
-           if length(Constant^.Values)>0 then begin
-            SetLength(Type_^.ArraySize,length(Constant^.Values));
-            OtherIndex:=0;
-            while OtherIndex<TpvUInt32(length(Constant^.Values)) do begin
-             Type_^.ArraySize[OtherIndex]:=Constant^.Values[OtherIndex].UI32;
-             inc(OtherIndex);
-            end;
-           end else begin
-            Type_^.ArraySize:=nil;
-            Assert(false);
-           end;
+           Type_^.ArraySize:=Constant^.ValueUInt32;
           end else begin
-           Type_^.ArraySize:=nil;
+           Type_^.ArraySize:=0;
            Assert(false);
           end;
          end;
