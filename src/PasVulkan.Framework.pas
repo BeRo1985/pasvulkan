@@ -2051,6 +2051,7 @@ type EpvVulkanException=class(Exception);
        Types:TpvVulkanShaderModuleReflectionTypes;
        SpecializationConstants:TpvVulkanShaderModuleReflectionSpecializationConstants;
        Variables:TpvVulkanShaderModuleReflectionVariables;
+       function GetScalarDataType(const aTypeIndex:TpvSizeInt):TpvVulkanShaderModuleReflectionScalarDataType;
        function GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64;const aBufferLayout:TpvVulkanShaderModuleReflectionBufferLayout):TpvUInt64;
      end;
 
@@ -14225,6 +14226,75 @@ begin
  result:=fFrameBuffers[aIndex];
 end;
 
+function TpvVulkanShaderModuleReflectionData.GetScalarDataType(const aTypeIndex:TpvSizeInt):TpvVulkanShaderModuleReflectionScalarDataType;
+var Index:TpvSizeInt;
+    Type_:PpvVulkanShaderModuleReflectionType;
+    Member:PpvVulkanShaderModuleReflectionMember;
+    Size,Alignment:TpvUInt64;
+    BufferLayout:TpvVulkanShaderModuleReflectionBufferLayout;
+begin
+ if aTypeIndex<length(Types) then begin
+  Type_:=@Types[aTypeIndex];
+  case Type_^.TypeKind of
+   TpvVulkanShaderModuleReflectionTypeKind.TypeInt:begin
+    case Type_^.IntWidth of
+     16:begin
+      if Type_^.IntSignedness<>0 then begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.Int16;
+      end else begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.UInt16;
+      end;
+     end;
+     32:begin
+      if Type_^.IntSignedness<>0 then begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.Int32;
+      end else begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.UInt32;
+      end;
+     end;
+     64:begin
+      if Type_^.IntSignedness<>0 then begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.Int64;
+      end else begin
+       result:=TpvVulkanShaderModuleReflectionScalarDataType.UInt64;
+      end;
+     end;
+     else begin
+      result:=TpvVulkanShaderModuleReflectionScalarDataType.None;
+     end;
+    end;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeFloat:begin
+    case Type_^.FloatWidth of
+     16:begin
+      result:=TpvVulkanShaderModuleReflectionScalarDataType.Float16;
+     end;
+     32:begin
+      result:=TpvVulkanShaderModuleReflectionScalarDataType.Float32;
+     end;
+     64:begin
+      result:=TpvVulkanShaderModuleReflectionScalarDataType.Float64;
+     end;
+     else begin
+      result:=TpvVulkanShaderModuleReflectionScalarDataType.None;
+     end;
+    end;
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
+    result:=GetScalarDataType(Type_^.ArrayTypeIndex);
+   end;
+   TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
+    result:=GetScalarDataType(Type_^.PointerTypeIndex);
+   end;
+   else begin
+    result:=TpvVulkanShaderModuleReflectionScalarDataType.None;
+   end;
+  end;
+ end else begin
+  result:=TpvVulkanShaderModuleReflectionScalarDataType.None;
+ end;
+end;
+
 function TpvVulkanShaderModuleReflectionData.GetTypeSize(const aTypeIndex:TpvSizeInt;out aAlignment:TpvUInt64;const aBufferLayout:TpvVulkanShaderModuleReflectionBufferLayout):TpvUInt64;
 var Index:TpvSizeInt;
     Type_:PpvVulkanShaderModuleReflectionType;
@@ -14733,6 +14803,7 @@ begin
     SetLength(ReversedVariableMap,CountVariables);
 
     for Index:=1 to TpvInt32(CountIDs) do begin
+     Constants[Index-1].ScalarDataType:=TpvVulkanShaderModuleReflectionScalarDataType.None;
      Constants[Index-1].ValueUInt64:=0;
      SpecializationConstantMap[Index-1]:=-1;
      TypeMap[Index-1]:=-1;
@@ -15198,8 +15269,10 @@ begin
     for Index:=1 to TpvInt32(CountSpecializationConstants) do begin
      SpecializationConstant:=@result.SpecializationConstants[Index-1];
      if SpecializationConstant^.Type_>=0 then begin
+      SpecializationConstant^.ScalarDataType:=result.GetScalarDataType(SpecializationConstant^.Type_);
       SpecializationConstant^.Size:=result.GetTypeSize(SpecializationConstant^.Type_,SpecializationConstant^.Alignment,TpvVulkanShaderModuleReflectionBufferLayout.Undefined);
      end else begin
+      SpecializationConstant^.ScalarDataType:=TpvVulkanShaderModuleReflectionScalarDataType.None;
       SpecializationConstant^.Size:=0;
       SpecializationConstant^.Alignment:=0;
      end;
