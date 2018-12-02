@@ -227,6 +227,8 @@ begin
        end;
       end;
       ParentObjectNames.Finish;
+      JSONItemObject.Delete(JSONItemObject.Indices['parent']);
+      JSONItemObject.Delete(JSONItemObject.Indices['parents']);
       for OtherIndex:=0 to ParentObjectNames.Count-1 do begin
        ObjectName:=ParentObjectNames.Items[OtherIndex];
        if ObjectNameHashMap.TryGet(ObjectName,YetOtherIndex) then begin
