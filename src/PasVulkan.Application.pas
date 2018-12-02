@@ -846,19 +846,22 @@ type EpvApplication=class(Exception)
      TpvApplicationScreenClass=class of TpvApplicationScreen;
 
      TpvApplicationAssets=class
+      public
+       type TFileNameList=array of TpvUTF8String;
       private
        fVulkanApplication:TpvApplication;
 {$ifndef Android}
-       fBasePath:string;
+       fBasePath:TpvUTF8String;
 {$endif}
-       function CorrectFileName(const aFileName:string):string;
+       function CorrectFileName(const aFileName:TpvUTF8String):TpvUTF8String;
       public
        constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
-       function ExistAsset(const aFileName:string):boolean;
-       function GetAssetStream(const aFileName:string):TStream;
-       function GetAssetSize(const aFileName:string):int64;
-       property BasePath:string read fBasePath;
+       function ExistAsset(const aFileName:TpvUTF8String):boolean;
+       function GetAssetStream(const aFileName:TpvUTF8String):TStream;
+       function GetAssetSize(const aFileName:TpvUTF8String):TpVInt64;
+       function GetDirectoryFileList(const aPath:TpvUTF8String):TFileNameList;
+       property BasePath:TpvUTF8String read fBasePath;
      end;
 
      TpvApplicationFiles=class
@@ -867,10 +870,10 @@ type EpvApplication=class(Exception)
       public
        constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
-       function GetCacheStoragePath:string;
-       function GetLocalStoragePath:string;
-       function GetRoamingStoragePath:string;
-       function GetExternalStoragePath:string;
+       function GetCacheStoragePath:TpvUTF8String;
+       function GetLocalStoragePath:TpvUTF8String;
+       function GetRoamingStoragePath:TpvUTF8String;
+       function GetExternalStoragePath:TpvUTF8String;
        function IsCacheStorageAvailable:boolean;
        function IsLocalStorageAvailable:boolean;
        function IsRoamingStorageAvailable:boolean;
@@ -938,18 +941,18 @@ type EpvApplication=class(Exception)
               );
       private
 
-       fTitle:string;
+       fTitle:TpvUTF8String;
        fVersion:TpvUInt32;
 
-       fPathName:string;
+       fPathName:TpvUTF8String;
 
-       fCacheStoragePath:string;
+       fCacheStoragePath:TpvUTF8String;
 
-       fLocalStoragePath:string;
+       fLocalStoragePath:TpvUTF8String;
 
-       fRoamingStoragePath:string;
+       fRoamingStoragePath:TpvUTF8String;
 
-       fExternalStoragePath:string;
+       fExternalStoragePath:TpvUTF8String;
 
        fPasMPInstance:TPasMP;
 
@@ -1077,7 +1080,7 @@ type EpvApplication=class(Exception)
 
        fVulkanPipelineCache:TpvVulkanPipelineCache;
 
-       fVulkanPipelineCacheFileName:string;
+       fVulkanPipelineCacheFileName:TpvUTF8String;
 
        fVulkanPhysicalDeviceFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
 
@@ -1248,9 +1251,9 @@ type EpvApplication=class(Exception)
 
       protected
 
-       class procedure VulkanDebugLn(const What:string); static;
+       class procedure VulkanDebugLn(const What:TpvUTF8String); static;
 
-       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
+       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32;
 
        procedure VulkanWaitIdle;
 
@@ -1303,7 +1306,7 @@ type EpvApplication=class(Exception)
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
 
-       class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:string); static;
+       class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String); static;
 
        procedure AddQueues; virtual;
 
@@ -1399,10 +1402,10 @@ type EpvApplication=class(Exception)
 
        property ResourceManager:TpvResourceManager read fResourceManager;
 
-       property Title:string read fTitle write fTitle;
+       property Title:TpvUTF8String read fTitle write fTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
 
-       property PathName:string read fPathName write fPathName;
+       property PathName:TpvUTF8String read fPathName write fPathName;
 
        property SwapChainColorSpace:TpvApplicationSwapChainColorSpace read fSwapChainColorSpace write fSwapChainColorSpace;
 
@@ -1472,7 +1475,7 @@ type EpvApplication=class(Exception)
 
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
 
-       property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName;
+       property VulkanPipelineCacheFileName:TpvUTF8String read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName;
 {
        property VulkanUniversalCommandPools:TpvApplicationCommandPools read fVulkanUniversalCommandPools;
        property VulkanUniversalCommandBuffers:TpvApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
@@ -1550,9 +1553,9 @@ var pvApplication:TpvApplication=nil;
 
      AndroidAssetManager:PAAssetManager=nil;
 
-     AndroidInternalDataPath:string='';
-     AndroidExternalDataPath:string='';
-     AndroidLibraryPath:string='';
+     AndroidInternalDataPath:TpvUTF8String='';
+     AndroidExternalDataPath:TpvUTF8String='';
+     AndroidLibraryPath:TpvUTF8String='';
 
      AndroidDeviceName:TpvUTF8String='';
 
@@ -4771,13 +4774,13 @@ begin
  fVulkanApplication:=aVulkanApplication;
 {$if not defined(Android)}
 {$if defined(PasVulkanAdjustDelphiWorkingDirectory)}
- fBasePath:=IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'..')+'..')+'assets')));
+ fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'..')+'..')+'assets'))));
 {$elseif defined(PasVulkanUseCurrentWorkingDirectory)}
- fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(GetCurrentDir))+'assets');
+ fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(GetCurrentDir))+'assets'));
 {$elseif defined(PasVulkanUseRelativeDirectory)}
- fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets');
+ fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets'));
 {$else}
- fBasePath:=IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'assets')));
+ fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'assets'))));
 {$ifend}
 {$ifend}
 end;
@@ -4787,12 +4790,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvApplicationAssets.CorrectFileName(const aFileName:string):string;
+function TpvApplicationAssets.CorrectFileName(const aFileName:TpvUTF8String):TpvUTF8String;
 begin
- result:=StringReplace(StringReplace({$ifndef Android}fBasePath+{$endif}aFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]);
+ result:=TpvUTF8String(StringReplace(StringReplace(String({$ifndef Android}fBasePath+{$endif}aFileName),'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]));
 end;
 
-function TpvApplicationAssets.ExistAsset(const aFileName:string):boolean;
+function TpvApplicationAssets.ExistAsset(const aFileName:TpvUTF8String):boolean;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
@@ -4809,14 +4812,14 @@ begin
 end;
 {$else}
 begin
- result:=FileExists(CorrectFileName(aFileName));
+ result:=FileExists(String(CorrectFileName(aFileName)));
 end;
 {$endif}
 
-function TpvApplicationAssets.GetAssetStream(const aFileName:string):TStream;
+function TpvApplicationAssets.GetAssetStream(const aFileName:TpvUTF8String):TStream;
 {$ifdef Android}
 var Asset:PAAsset;
-    Size:int64;
+    Size:TpvInt64;
 begin
  result:=nil;
  if assigned(AndroidAssetManager) then begin
@@ -4840,11 +4843,11 @@ begin
 end;
 {$else}
 begin
- result:=TFileStream.Create(CorrectFileName(aFileName),fmOpenRead or fmShareDenyWrite);
+ result:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
 end;
 {$endif}
 
-function TpvApplicationAssets.GetAssetSize(const aFileName:string):int64;
+function TpvApplicationAssets.GetAssetSize(const aFileName:TpvUTF8String):TpvInt64;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
@@ -4867,7 +4870,7 @@ end;
 {$else}
 var Stream:TStream;
 begin
- Stream:=TFileStream.Create(CorrectFileName(aFileName),fmOpenRead or fmShareDenyWrite);
+ Stream:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
  try
   result:=Stream.Size;
  finally
@@ -4875,6 +4878,76 @@ begin
  end;
 end;
 {$endif}
+
+function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String):TFileNameList;
+{$ifdef Android}
+var AssetDir:PAAssetDir;
+    Count:TpvSizeInt;
+    SearchRec:TSearchRec;
+    FileName:PAnsiChar;
+begin
+ result:=nil;
+ if assigned(AndroidAssetManager) then begin
+  AssetDir:=AAssetManager_openDir(AndroidAssetManager,PAnsiChar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  if assigned(AssetDir) then begin
+   try
+    Count:=0;
+    try
+     repeat
+      FileName:=AAssetDir_getNextFileName(AssetDir);
+      if aasigned(FileName) then begin
+       if length(result)<=Count then begin
+        SetLength(result,(Count+1)*2);
+       end;
+       result[Count]:=TpvUTF8String(PAnsiChar(FileName));
+       inc(Count);
+      end else begin
+       break;
+      end;
+     until false;
+    finally
+     SetLength(result,Count);
+    end;
+   finally
+    AAssetDir_close(AssetDir);
+   end;
+  end else begin
+   raise Exception.Create('Asset directory "'+aFileName+'" not found');
+  end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
+ end;
+end;
+{$else}
+var Count:TpvSizeInt;
+    SearchRec:TSearchRec;
+begin
+ result:=nil;
+ if FindFirst(IncludeTrailingPathDelimiter(String(CorrectFileName(aPath)))+{$if defined(Unix) or defined(Posix)}'*'{$else}'*.*'{$ifend},faAnyFile,SearchRec)=0 then begin
+  Count:=0;
+  try
+   try
+    repeat
+     if ((SearchRec.Attr and faDirectory)=0) and
+        (SearchRec.Name<>'.') and
+        (SearchRec.Name<>'..') then begin
+      if length(result)<=Count then begin
+       SetLength(result,(Count+1)*2);
+      end;
+      result[Count]:=TpvUTF8String(SearchRec.Name);
+      inc(Count);
+     end;
+    until FindNext(SearchRec)<>0;
+   finally
+    FindClose(SearchRec);
+   end;
+  finally
+   SetLength(result,Count);
+  end;
+ end;
+end;
+{$endif}
+
 
 constructor TpvApplicationFiles.Create(const aVulkanApplication:TpvApplication);
 begin
@@ -4887,37 +4960,37 @@ begin
  inherited Destroy;
 end;
 
-function TpvApplicationFiles.GetCacheStoragePath:string;
+function TpvApplicationFiles.GetCacheStoragePath:TpvUTF8String;
 begin
  if length(fVulkanApplication.fCacheStoragePath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fCacheStoragePath);
+  result:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fVulkanApplication.fCacheStoragePath)));
  end else begin
   result:='';
  end;
 end;
 
-function TpvApplicationFiles.GetLocalStoragePath:string;
+function TpvApplicationFiles.GetLocalStoragePath:TpvUTF8String;
 begin
  if length(fVulkanApplication.fLocalStoragePath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fLocalStoragePath);
+  result:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fVulkanApplication.fLocalStoragePath)));
  end else begin
   result:='';
  end;
 end;
 
-function TpvApplicationFiles.GetRoamingStoragePath:string;
+function TpvApplicationFiles.GetRoamingStoragePath:TpvUTF8String;
 begin
  if length(fVulkanApplication.fRoamingStoragePath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fRoamingStoragePath);
+  result:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fVulkanApplication.fRoamingStoragePath)));
  end else begin
   result:='';
  end;
 end;
 
-function TpvApplicationFiles.GetExternalStoragePath:string;
+function TpvApplicationFiles.GetExternalStoragePath:TpvUTF8String;
 begin
  if length(fVulkanApplication.fExternalStoragePath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fExternalStoragePath);
+  result:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fVulkanApplication.fExternalStoragePath)));
  end else begin
   result:='';
  end;
@@ -5278,7 +5351,7 @@ begin
  inherited Destroy;
 end;
 
-class procedure TpvApplication.VulkanDebugLn(const What:string);
+class procedure TpvApplication.VulkanDebugLn(const What:TpvUTF8String);
 {$if defined(Windows)}
 {$if defined(Debug) or not defined(Release)}
 var StdOut:Windows.THandle;
@@ -5286,7 +5359,7 @@ var StdOut:Windows.THandle;
 {$ifend}
 begin
 {$if defined(Debug) or not defined(Release)}
- TemporaryString:=What;
+ TemporaryString:=WideString(What);
  OutputDebugStringW(PWideChar(TemporaryString));
  StdOut:=GetStdHandle(Std_Output_Handle);
  Win32Check(StdOut<>Invalid_Handle_Value);
@@ -5304,28 +5377,28 @@ end;
 {$else}
 begin
 {$if defined(Debug) or not defined(Release)}
- WriteLn(What);
+ WriteLn({$ifdef Windows}WideString(What){$else}What{$endif});
 {$ifend}
 end;
 {$ifend}
 
-class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:string);
+class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String);
 begin
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
  case aLevel of
   LOG_NONE:begin
   end;
   LOG_INFO:begin
-   __android_log_write(ANDROID_LOG_INFO,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+   __android_log_write(ANDROID_LOG_INFO,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
   end;
   LOG_VERBOSE:begin
-   __android_log_write(ANDROID_LOG_VERBOSE,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+   __android_log_write(ANDROID_LOG_VERBOSE,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
   end;
   LOG_DEBUG:begin
-   __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+   __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
   end;
   LOG_ERROR:begin
-   __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+   __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
   end;
  end;
 {$elseif defined(Debug) or not defined(Release)}
@@ -5359,8 +5432,8 @@ begin
  end;
 end;
 
-function TpvApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
-var Prefix:string;
+function TpvApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32;
+var Prefix:TpvUTF8String;
 begin
  try
   Prefix:='';
@@ -5379,7 +5452,7 @@ begin
   if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_DEBUG_BIT_EXT))<>0 then begin
    Prefix:=Prefix+'DEBUG: ';
   end;
-  VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+IntToStr(aMessageCode)+' : '+aMessage);
+  VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+TpvUTF8String(IntToStr(aMessageCode))+' : '+aMessage);
  finally
   result:=VK_FALSE;
  end;
@@ -5451,23 +5524,23 @@ begin
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
-  VulkanDebugLn('Device name: '+string(fVulkanDevice.PhysicalDevice.DeviceName));
+  VulkanDebugLn('Device name: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.DeviceName));
 
   VulkanDebugLn('Device Vendor ID: 0x'+
-                IntToHex(fVulkanDevice.PhysicalDevice.Properties.vendorID,8));
+                TpvUTF8String(IntToHex(fVulkanDevice.PhysicalDevice.Properties.vendorID,8)));
 
   VulkanDebugLn('Device ID: 0x'+
-                IntToHex(fVulkanDevice.PhysicalDevice.Properties.deviceID,8));
+                TpvUTF8String(IntToHex(fVulkanDevice.PhysicalDevice.Properties.deviceID,8)));
 
-  VulkanDebugLn('Device Vulkan API version: '+string(fVulkanDevice.PhysicalDevice.GetAPIVersionString));
+  VulkanDebugLn('Device Vulkan API version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetAPIVersionString));
 
-  VulkanDebugLn('Device driver version: '+string(fVulkanDevice.PhysicalDevice.GetDriverVersionString));
+  VulkanDebugLn('Device driver version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetDriverVersionString));
 
   for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableLayerNames.Count-1 do begin
-   VulkanDebugLn('Device layer: '+fVulkanDevice.PhysicalDevice.AvailableLayerNames[Index]);
+   VulkanDebugLn('Device layer: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.AvailableLayerNames[Index]));
   end;
   for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableExtensionNames.Count-1 do begin
-   VulkanDebugLn('Device extension: '+fVulkanDevice.PhysicalDevice.AvailableExtensionNames[Index]);
+   VulkanDebugLn('Device extension: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.AvailableExtensionNames[Index]));
   end;
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)>=0 then begin
@@ -5528,12 +5601,12 @@ begin
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Initialized vulkan device');
 {$ifend}
 
-  if (length(fVulkanPipelineCacheFileName)>0) and FileExists(fVulkanPipelineCacheFileName) then begin
+  if (length(fVulkanPipelineCacheFileName)>0) and FileExists(String(fVulkanPipelineCacheFileName)) then begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Existent pipeline cache found, loading...');
 {$ifend}
    try
-    fVulkanPipelineCache:=TpvVulkanPipelineCache.CreateFromFile(fVulkanDevice,fVulkanPipelineCacheFileName);
+    fVulkanPipelineCache:=TpvVulkanPipelineCache.CreateFromFile(fVulkanDevice,String(fVulkanPipelineCacheFileName));
    except
     on e:EpvVulkanPipelineCacheException do begin
      fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
@@ -5711,10 +5784,10 @@ begin
                                              'PasVulkanApplication',$0100,
                                               VK_API_VERSION_1_0,false,nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
-    VulkanDebugLn('Instance layer: '+fVulkanInstance.AvailableLayerNames[i]);
+    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
    end;
    for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
-    VulkanDebugLn('Instance extension: '+fVulkanInstance.AvailableExtensionNames[i]);
+    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[i]));
    end;
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
@@ -5855,7 +5928,7 @@ begin
 
  if length(fVulkanPipelineCacheFileName)>0 then begin
   try
-   fVulkanPipelineCache.SaveToFile(fVulkanPipelineCacheFileName);
+   fVulkanPipelineCache.SaveToFile(String(fVulkanPipelineCacheFileName));
   except
   end;
  end;
@@ -6682,12 +6755,12 @@ begin
       case VulkanResultException.ResultCode of
        VK_ERROR_SURFACE_LOST_KHR:begin
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
-        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+        VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
        end;
        VK_ERROR_OUT_OF_DATE_KHR,
        VK_SUBOPTIMAL_KHR:begin
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+        VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
        end;
        else begin
         raise;
@@ -7153,8 +7226,8 @@ end;
 procedure TpvApplication.FrameRateLimiter;
 var NowTime:TpvHighResolutionTime;
 begin
+ NowTime:=fHighResolutionTimer.GetTime;
  if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
-  NowTime:=fHighResolutionTimer.GetTime;
   if (NowTime<fNextTime) and
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
    fHighResolutionTimer.Sleep(fNextTime-NowTime);
@@ -7926,11 +7999,11 @@ begin
 
 {$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
 
- fCacheStoragePath:=GetAppDataCacheStoragePath(fPathName);
+ fCacheStoragePath:=TpvUTF8String(GetAppDataCacheStoragePath(String(fPathName)));
 
- fLocalStoragePath:=GetAppDataLocalStoragePath(fPathName);
+ fLocalStoragePath:=TpvUTF8String(GetAppDataLocalStoragePath(String(fPathName)));
 
- fRoamingStoragePath:=GetAppDataRoamingStoragePath(fPathName);
+ fRoamingStoragePath:=TpvUTF8String(GetAppDataRoamingStoragePath(String(fPathName)));
 
 {$if defined(Windows)}
  fExternalStoragePath:='C:\';
@@ -7947,7 +8020,7 @@ begin
 
 {$ifend}
 
- fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fCacheStoragePath)+'vulkan_pipeline_cache.bin';
+ fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 
  ReadConfig;
 
@@ -8984,7 +9057,7 @@ begin
 
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9020,7 +9093,7 @@ begin
 
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9190,7 +9263,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_START);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9210,7 +9283,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_RESUME);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9245,7 +9318,7 @@ begin
    end;
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9265,7 +9338,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_PAUSE);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9285,7 +9358,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_STOP);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9306,7 +9379,7 @@ begin
    LibCFree(aActivity^.instance);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9330,7 +9403,7 @@ begin
    end;
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9350,7 +9423,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetWindow(aWindow);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9370,7 +9443,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_WINDOW_RESIZED);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9390,7 +9463,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_WINDOW_REDRAW_NEEDED);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9410,7 +9483,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetWindow(nil);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9430,7 +9503,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetInput(aQueue);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9450,7 +9523,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SetInput(nil);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9470,7 +9543,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_CONTENT_RECT_CHANGED);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9490,7 +9563,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_CONFIG_CHANGED);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9510,7 +9583,7 @@ begin
    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_LOW_MEMORY);
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally
@@ -9540,9 +9613,9 @@ begin
 
    AndroidAssetManager:=aActivity^.assetManager;
 
-   AndroidInternalDataPath:=aActivity^.internalDataPath;
-   AndroidExternalDataPath:=aActivity^.externalDataPath;
-   AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(aActivity^.internalDataPath))+'lib';
+   AndroidInternalDataPath:=TpvUTF8String(aActivity^.internalDataPath);
+   AndroidExternalDataPath:=TpvUTF8String(aActivity^.externalDataPath);
+   AndroidLibraryPath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExtractFilePath(aActivity^.internalDataPath))+'lib');
 
    aActivity^.callbacks^.onStart:=@Android_ANativeActivity_onStart;
    aActivity^.callbacks^.onResume:=@Android_ANativeActivity_onResume;
@@ -9567,7 +9640,7 @@ begin
 
   except
    on e:Exception do begin
-    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(TpvUTF8String(DumpExceptionCallStack(e))));
    end;
   end;
  finally

@@ -271,7 +271,7 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanPhysicalDeviceList=TpvObjectGenericList<TpvVulkanPhysicalDevice>;
 
-     TpvVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32 of object;
+     TpvVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32 of object;
 
      TpvVulkanInstance=class(TpvVulkanObject)
       private    
@@ -6715,7 +6715,7 @@ end;
 function TpvVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix:TpvVulkanCharString;const aMessage:TpvVulkanCharString):TVkBool32;
 begin
  if assigned(fOnInstanceDebugReportCallback) then begin
-  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,String(aLayerPrefix),String(aMessage));
+  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,TpvUTF8String(aLayerPrefix),TpvUTF8String(aMessage));
  end else begin
   result:=VK_FALSE;
  end;
