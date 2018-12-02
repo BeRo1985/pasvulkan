@@ -88,11 +88,16 @@ type EpvScene3D=class(Exception);
             TBaseObject=class(TpvResource,IBaseObject)
              private
               fSceneInstance:TpvScene3D;
+              fName:TpvUTF8String;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+             public
+              property SceneInstance:TpvScene3D read fSceneInstance;
+             published
+              property Name:TpvUTF8String read fName write fName;
             end;
             TIBaseObjects=TpvGenericList<IBaseObject>;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
@@ -134,6 +139,18 @@ type EpvScene3D=class(Exception);
             end;
             TITexture=TpvGenericList<ITexture>;
             TTextures=TpvObjectGenericList<TTexture>;
+            IAnimation=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+            end;
+            TAnimation=class(TBaseObject,IAnimation)
+             private
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TIAnimation=TpvGenericList<IAnimation>;
+            TAnimations=TpvObjectGenericList<TAnimation>;
             IMaterial=interface(IBaseObject)['{AC0AB88D-7E4A-42BF-B888-D198DD561895}']
             end;
             TMaterial=class(TBaseObject,IMaterial)
@@ -326,6 +343,8 @@ type EpvScene3D=class(Exception);
        fSamplers:TSamplers;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
+       fAnimationListLock:TPasMPSlimReaderWriterLock;
+       fAnimations:TAnimations;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
        fMeshListLock:TPasMPSlimReaderWriterLock;
@@ -377,9 +396,6 @@ end;
 constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
-
 end;
 
 destructor TpvScene3D.TImage.Destroy;
@@ -414,9 +430,6 @@ end;
 constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
-
 end;
 
 destructor TpvScene3D.TSampler.Destroy;
@@ -451,8 +464,6 @@ end;
 constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
 
  fImage:=nil;
 
@@ -490,6 +501,41 @@ begin
   fSceneInstance.fTextures.Remove(self);
  finally
   fSceneInstance.fTextureListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3D.TAnimation }
+
+constructor TpvScene3D.TAnimation.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+end;
+
+destructor TpvScene3D.TAnimation.Destroy;
+begin
+
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TAnimation.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fAnimationListLock.Acquire;
+ try
+  fSceneInstance.fAnimations.Add(self);
+ finally
+  fSceneInstance.fAnimationListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TAnimation.BeforeDestruction;
+begin
+ fSceneInstance.fAnimationListLock.Acquire;
+ try
+  fSceneInstance.fAnimations.Remove(self);
+ finally
+  fSceneInstance.fAnimationListLock.Release;
  end;
  inherited BeforeDestruction;
 end;
@@ -745,9 +791,6 @@ end;
 constructor TpvScene3D.TMesh.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
-
 end;
 
 destructor TpvScene3D.TMesh.Destroy;
@@ -782,9 +825,6 @@ end;
 constructor TpvScene3D.TSkin.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
-
 end;
 
 destructor TpvScene3D.TSkin.Destroy;
@@ -819,9 +859,6 @@ end;
 constructor TpvScene3D.TJoint.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
-
 end;
 
 destructor TpvScene3D.TJoint.Destroy;
@@ -857,8 +894,6 @@ constructor TpvScene3D.TNode.Create(const aResourceManager:TpvResourceManager;co
 begin
 
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
 
  fChildren:=TINodes.Create;
 
@@ -917,8 +952,6 @@ constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;c
 begin
  inherited Create(aResourceManager,aParent);
 
- fSceneInstance:=aParent as TpvScene3D;
-
  fObjects:=TIBaseObjects.Create;
 
 end;
@@ -970,6 +1003,10 @@ begin
  fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
+
+ fAnimationListLock:=TPasMPSlimReaderWriterLock.Create;
+ fAnimations:=TAnimations.Create;
+ fAnimations.OwnsObjects:=false;
 
  fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
  fMaterials:=TMaterials.Create;
@@ -1037,6 +1074,12 @@ begin
  end;
  FreeAndNil(fMaterials);
  FreeAndNil(fMaterialListLock);
+
+ while fAnimations.Count>0 do begin
+  fAnimations[fAnimations.Count-1].Free;
+ end;
+ FreeAndNil(fAnimations);
+ FreeAndNil(fAnimationListLock);
 
  while fTextures.Count>0 do begin
   fTextures[fTextures.Count-1].Free;
