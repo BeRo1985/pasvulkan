@@ -66,10 +66,12 @@ uses SysUtils,
      Math,
      PasJSON,
      PasVulkan.Types,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.Utils;
 
 type TpvJSONUtils=class
       class procedure ResolveTemplates(const aJSONItem:TPasJSONItem); static;
+      class procedure ResolveInheritances(const aJSONItem:TPasJSONItem); static;
      end;
 
 implementation
@@ -156,6 +158,125 @@ begin
     Stack.Finalize;
    end;
    TPasJSONItemObject(aJSONItem).Delete(TPasJSONItemObject(aJSONItem).Indices['templates']);
+  end;
+ end;
+end;
+
+class procedure TpvJSONUtils.ResolveInheritances(const aJSONItem:TPasJSONItem);
+type TInt32DynamicArray=TpvDynamicArray<TpvInt32>;
+     TObjectNameHashMap=TpvStringHashMap<TpvInt32>;
+     TObjectItem=record
+      Index:TpvInt32;
+      Name:TpvUTF8String;
+      JSONItemObject:TPasJSONItemObject;
+      Dependencies:TInt32DynamicArray;
+     end;
+     PObjectItem=^TObjectItem;
+     TObjectItemDynamicArray=TpvDynamicArray<TObjectItem>;
+     TStringDynamicArray=TpvDynamicArray<TpvUTF8String>;
+var Index,OtherIndex:TpvSizeInt;
+    YetOtherIndex:TpvInt32;
+    ObjectItemDynamicArray:TObjectItemDynamicArray;
+    JSONItemObjectProperty:TPasJSONItemObjectProperty;
+    JSONItemObject,
+    TemporaryJSONItemObject:TPasJSONItemObject;
+    ParentJSONItem:TPasJSONItem;
+    ObjectItem,
+    OtherObjectItem:PObjectItem;
+    ParentObjectNames:TStringDynamicArray;
+    ObjectName:TpvUTF8String;
+    ObjectNameHashMap:TObjectNameHashMap;
+    TopologicalSort:TpvTopologicalSort;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  ObjectItemDynamicArray.Initialize;
+  try
+   ObjectNameHashMap:=TObjectNameHashMap.Create(-1);
+   try
+    ParentObjectNames.Initialize;
+    try
+     Index:=0;
+     for JSONItemObjectProperty in TPasJSONItemObject(aJSONItem) do begin
+      if assigned(JSONItemObjectProperty.Value) and (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
+       JSONItemObject:=TPasJSONItemObject(JSONItemObjectProperty.Value);
+       OtherIndex:=ObjectItemDynamicArray.AddNew;
+       ObjectItem:=@ObjectItemDynamicArray.Items[OtherIndex];
+       ObjectItem^.Index:=Index;
+       ObjectItem^.Name:=JSONItemObjectProperty.Key;
+       ObjectItem^.JSONItemObject:=JSONItemObject;
+       ObjectItem^.Dependencies.Initialize;
+       ObjectNameHashMap.Add(ObjectItem^.Name,Index);
+      end;
+     end;
+     ObjectItemDynamicArray.Finish;
+     for Index:=0 to ObjectItemDynamicArray.Count-1 do begin
+      ObjectItem:=@ObjectItemDynamicArray.Items[Index];
+      JSONItemObject:=ObjectItem^.JSONItemObject;
+      ParentObjectNames.Clear;
+      ObjectName:=TPasJSON.GetString(JSONItemObject.Properties['parent'],'');
+      if length(ObjectName)>0 then begin
+       ParentObjectNames.Add(ObjectName);
+      end;
+      ParentJSONItem:=JSONItemObject.Properties['parents'];
+      if assigned(ParentJSONItem) and (ParentJSONItem is TPasJSONItemArray) then begin
+       for OtherIndex:=0 to TPasJSONItemArray(ParentJSONItem).Count-1 do begin
+        ObjectName:=TPasJSON.GetString(TPasJSONItemArray(ParentJSONItem).Items[OtherIndex],'');
+        if length(ObjectName)>0 then begin
+         ParentObjectNames.Add(ObjectName);
+        end;
+       end;
+      end;
+      ParentObjectNames.Finish;
+      for OtherIndex:=0 to ParentObjectNames.Count-1 do begin
+       ObjectName:=ParentObjectNames.Items[OtherIndex];
+       if ObjectNameHashMap.TryGet(ObjectName,YetOtherIndex) then begin
+        if (Index<>YetOtherIndex) and
+           (ObjectItemDynamicArray.Items[YetOtherIndex].Name=ObjectName) then begin
+         ObjectItem^.Dependencies.Add(YetOtherIndex);
+        end;
+       end;
+      end;
+     end;
+    finally
+     ParentObjectNames.Finalize;
+    end;
+   finally
+    FreeAndNil(ObjectNameHashMap);
+   end;
+   for Index:=0 to ObjectItemDynamicArray.Count-1 do begin
+    ObjectItemDynamicArray.Items[Index].Dependencies.Finish;
+   end;
+   TopologicalSort:=TpvTopologicalSort.Create;
+   try
+    for Index:=0 to ObjectItemDynamicArray.Count-1 do begin
+     ObjectItem:=@ObjectItemDynamicArray.Items[Index];
+     TopologicalSort.Add(Index,ObjectItem^.Dependencies.Items);
+    end;
+    TopologicalSort.Solve(true);
+    for Index:=0 to TopologicalSort.Count-1 do begin
+     ObjectItem:=@ObjectItemDynamicArray.Items[TopologicalSort.SortedKeys[Index]];
+     if ObjectItem^.Dependencies.Count>0 then begin
+      TemporaryJSONItemObject:=TPasJSONItemObject.Create;
+      try
+       for OtherIndex:=0 to ObjectItem^.Dependencies.Count-1 do begin
+        OtherObjectItem:=@ObjectItemDynamicArray.Items[ObjectItem^.Dependencies.Items[OtherIndex]];
+        TemporaryJSONItemObject.Merge(OtherObjectItem^.JSONItemObject);
+       end;
+       TemporaryJSONItemObject.Merge(ObjectItem^.JSONItemObject);
+       while ObjectItem^.JSONItemObject.Count>0 do begin
+        ObjectItem^.JSONItemObject.Delete(0);
+       end;
+       ObjectItem^.JSONItemObject.Merge(TemporaryJSONItemObject);
+      finally
+       FreeAndNil(TemporaryJSONItemObject);
+      end;
+     end;
+    end;
+   finally
+    FreeAndNil(TopologicalSort);
+   end;
+  finally
+   ObjectItemDynamicArray.Finalize;
   end;
  end;
 end;

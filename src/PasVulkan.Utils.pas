@@ -120,20 +120,20 @@ type TpvSwap<T>=class
        fDirty:boolean;
        fSolveDirty:boolean;
        fCyclicState:TpvInt32;
-       function GetNode(const pIndex:TpvInt32):TpvTopologicalSortNode;
-       procedure SetNode(const pIndex:TpvInt32;const pNode:TpvTopologicalSortNode);
-       function GetSortedKey(const pIndex:TpvInt32):TpvInt32;
-       procedure SetCount(const pNewCount:TpvInt32);
+       function GetNode(const aIndex:TpvInt32):TpvTopologicalSortNode;
+       procedure SetNode(const aIndex:TpvInt32;const aNode:TpvTopologicalSortNode);
+       function GetSortedKey(const aIndex:TpvInt32):TpvInt32;
+       procedure SetCount(const aNewCount:TpvInt32);
        procedure Setup;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
-       procedure Add(const pKey:TpvInt32;const pDependsOnKeys:array of TpvInt32);
-       procedure Solve(const pBackwards:boolean=false);
+       procedure Add(const aKey:TpvInt32;const aDependsOnKeys:array of TpvInt32);
+       procedure Solve(const aBackwards:boolean=false);
        function Cyclic:boolean;
-       property Nodes[const pIndex:TpvInt32]:TpvTopologicalSortNode read GetNode write SetNode;
-       property SortedKeys[const pIndex:TpvInt32]:TpvInt32 read GetSortedKey;
+       property Nodes[const aIndex:TpvInt32]:TpvTopologicalSortNode read GetNode write SetNode;
+       property SortedKeys[const aIndex:TpvInt32]:TpvInt32 read GetSortedKey;
        property Count:TpvInt32 read fCount write SetCount;
      end;
 
@@ -891,40 +891,40 @@ begin
  fCyclicState:=-1;
 end;
 
-function TpvTopologicalSort.GetNode(const pIndex:TpvInt32):TpvTopologicalSortNode;
+function TpvTopologicalSort.GetNode(const aIndex:TpvInt32):TpvTopologicalSortNode;
 begin
- result:=fNodes[pIndex];
+ result:=fNodes[aIndex];
 end;
 
-procedure TpvTopologicalSort.SetNode(const pIndex:TpvInt32;const pNode:TpvTopologicalSortNode);
+procedure TpvTopologicalSort.SetNode(const aIndex:TpvInt32;const aNode:TpvTopologicalSortNode);
 begin
- fNodes[pIndex]:=pNode;
+ fNodes[aIndex]:=aNode;
 end;
 
-function TpvTopologicalSort.GetSortedKey(const pIndex:TpvInt32):TpvInt32;
+function TpvTopologicalSort.GetSortedKey(const aIndex:TpvInt32):TpvInt32;
 begin
- result:=fSortedKeys[pIndex];
+ result:=fSortedKeys[aIndex];
 end;
 
-procedure TpvTopologicalSort.SetCount(const pNewCount:TpvInt32);
+procedure TpvTopologicalSort.SetCount(const aNewCount:TpvInt32);
 begin
- fCount:=pNewCount;
+ fCount:=aNewCount;
  if length(fNodes)<fCount then begin
   SetLength(fNodes,fCount*2);
  end;
 end;
 
-procedure TpvTopologicalSort.Add(const pKey:TpvInt32;const pDependsOnKeys:array of TpvInt32);
+procedure TpvTopologicalSort.Add(const aKey:TpvInt32;const aDependsOnKeys:array of TpvInt32);
 var Index:TpvInt32;
     Node:PpvTopologicalSortNode;
 begin
  Index:=fCount;
  SetCount(fCount+1);
  Node:=@fNodes[Index];
- Node^.Key:=pKey;
- SetLength(Node^.DependsOnKeys,length(pDependsOnKeys));
- if length(pDependsOnKeys)>0 then begin
-  Move(pDependsOnKeys[0],Node^.DependsOnKeys[0],length(pDependsOnKeys)*SizeOf(TpvInt32));
+ Node^.Key:=aKey;
+ SetLength(Node^.DependsOnKeys,length(aDependsOnKeys));
+ if length(aDependsOnKeys)>0 then begin
+  Move(aDependsOnKeys[0],Node^.DependsOnKeys[0],length(aDependsOnKeys)*SizeOf(TpvInt32));
  end;
  fDirty:=true;
  fSolveDirty:=true;
@@ -966,7 +966,7 @@ begin
  end;
 end;
 
-procedure TpvTopologicalSort.Solve(const pBackwards:boolean=false);
+procedure TpvTopologicalSort.Solve(const aBackwards:boolean=false);
 var Index,SubIndex,StackPointer,Key,DependsOnKey,CountDependOnKeys,SortIndex:TpvInt32;
     Node:PpvTopologicalSortNode;
 begin
@@ -976,7 +976,7 @@ begin
  if fSolveDirty then begin
   if fCountKeys>0 then begin
    FillChar(fVisitedBitmap[0],fVisitedBitmapSize*SizeOf(TpvUInt32),#0);
-   if pBackwards then begin
+   if aBackwards then begin
     SortIndex:=0;
    end else begin
     SortIndex:=fCount;
@@ -996,7 +996,7 @@ begin
       Key:=fStack[StackPointer];
       if Key<0 then begin
        Key:=-(Key+1);
-       if pBackwards then begin
+       if aBackwards then begin
         if SortIndex<fCount then begin
          fSortedKeys[SortIndex]:=Key;
          inc(SortIndex);
