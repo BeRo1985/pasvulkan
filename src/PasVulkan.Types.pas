@@ -126,6 +126,8 @@ type PPpvInt8=^PpvInt8;
      PpvFloat=^TpvFloat;
      TpvFloat=Single;
 
+     TpvFloatDynamicArray=array of TpvFloat;
+
      TpvFloats=array of TpvFloat;
 
      PPpvDouble=^PpvDouble;

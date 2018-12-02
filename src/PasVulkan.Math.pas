@@ -420,11 +420,19 @@ type PpvScalar=^TpvScalar;
 
      TpvVector3Array=array of TpvVector3;
 
+     TpvVector4Array=array of TpvVector4;
+
      PpvVector3s=^TpvVector3s;
      TpvVector3s=array[0..$ff] of TpvVector3;
 
      PPpvVector3s=^TPpvVector3s;
      TPpvVector3s=array[0..$ff] of PpvVector3;
+
+     PpvVector4s=^TpvVector4s;
+     TpvVector4s=array[0..$ff] of TpvVector4;
+
+     PPpvVector4s=^TPpvVector4s;
+     TPpvVector4s=array[0..$ff] of PpvVector4;
 
      PpvPlane=^TpvPlane;
      TpvPlane=record

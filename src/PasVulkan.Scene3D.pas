@@ -83,7 +83,43 @@ type EpvScene3D=class(Exception);
 
      TpvScene3D=class(TpvResource,IpvScene3D)
       public
-       type IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
+       type TVertexAttributeBindingLocations=class
+             public
+              const Position=0;
+                    Normal=1;
+                    Tangent=2;
+                    TexCoord0=3;
+                    TexCoord1=4;
+                    Color0=5;
+                    Joints0=6;
+                    Joints1=7;
+                    Weights0=8;
+                    Weights1=9;
+                    VertexIndex=10;
+            end;
+            TUInt32Vector4=array[0..3] of TpvUInt32;
+            TUInt16Vector4=array[0..3] of TpvUInt16;
+            TInt16Vector4=array[0..3] of TpvInt16;
+            PUInt32Vector4=^TUInt32Vector4;
+            TVertex=packed record                 // Minimum required vertex structure for to be GLTF 2.0 conformant
+             case boolean of
+              false:(
+               Position:TpvVector3;               //  12    0
+               VertexIndex:TpvUInt32;             // + 4 = 12
+               TangentSpace:TInt16Vector4;        // + 8 = 16 (signed 16-bit QTangent)
+               TexCoord0:TpvVector2;              // + 8 = 24 (must be full 32-bit float)
+               TexCoord1:TpvVector2;              // + 8 = 32 (must be full 32-bit float)
+               Color0:TpvHalfFloatVector4;        // + 8 = 40 (must be at least half-float for HDR)
+               Joints:TUInt16Vector4;             // + 8 = 48 (node-wise indirect indices for a 16-bit index to 32-bit index lookup table)
+               Weights:TpvHalfFloatVector4;       // + 8 = 56 (half-float should be enough for it)
+              );                                  //  ==   ==
+              true:(                              //  64   64 per vertex
+               Padding:array[0..63] of TpvUInt8;
+              );
+            end;
+            PVertex=^TVertex;
+            TVertices=array of TVertex;
+            IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
             end;
             TBaseObject=class(TpvResource,IBaseObject)
              private
@@ -142,7 +178,37 @@ type EpvScene3D=class(Exception);
             IAnimation=interface(IBaseObject)['{CCD6AAF2-0B61-4831-AD09-1B78936AACA5}']
             end;
             TAnimation=class(TBaseObject,IAnimation)
+             public
+              type TChannel=record
+                         public
+                          type TTarget=
+                                (
+                                 Translation,
+                                 Rotation,
+                                 Scale,
+                                 Weights
+                                );
+                               TInterpolation=
+                                (
+                                 Linear,
+                                 Step,
+                                 CubicSpline
+                                );
+                         public
+                          Name:TpvUTF8String;
+                          Node:TpvSizeInt;
+                          Target:TTarget;
+                          Interpolation:TInterpolation;
+                          InputTimeArray:TpvFloatDynamicArray;
+                          OutputScalarArray:TpvFloatDynamicArray;
+                          OutputVector3Array:TpvVector3Array;
+                          OutputVector4Array:TpvVector4Array;
+                          Last:TPasGLTFSizeInt;
+                        end;
+                        PChannel=^TChannel;
+                        TChannels=array of TChannel;
              private
+              fChannels:TChannels;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
