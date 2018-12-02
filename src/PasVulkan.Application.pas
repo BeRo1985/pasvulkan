@@ -860,7 +860,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
        function GetAssetSize(const aFileName:TpvUTF8String):TpVInt64;
-       function GetDirectoryFileList(const aPath:TpvUTF8String):TFileNameList;
+       function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
 
@@ -4879,16 +4879,15 @@ begin
 end;
 {$endif}
 
-function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String):TFileNameList;
+function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
 {$ifdef Android}
 var AssetDir:PAAssetDir;
     Count:TpvSizeInt;
-    SearchRec:TSearchRec;
     FileName:PAnsiChar;
 begin
  result:=nil;
  if assigned(AndroidAssetManager) then begin
-  AssetDir:=AAssetManager_openDir(AndroidAssetManager,PAnsiChar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  AssetDir:=AAssetManager_openDir(AndroidAssetManager,PAnsiChar(TpvApplicationRawByteString(CorrectFileName(aPath))),AASSET_MODE_UNKNOWN);
   if assigned(AssetDir) then begin
    try
     Count:=0;
@@ -4912,7 +4911,9 @@ begin
     AAssetDir_close(AssetDir);
    end;
   end else begin
-   raise Exception.Create('Asset directory "'+aFileName+'" not found');
+   if aRaiseExceptionOnNonExistentDierectory then begin
+    raise Exception.Create('Asset directory "'+String(aPath)+'" not found');
+   end;
   end;
  end else begin
   raise Exception.Create('Asset manager is null');
@@ -4923,26 +4924,32 @@ var Count:TpvSizeInt;
     SearchRec:TSearchRec;
 begin
  result:=nil;
- if FindFirst(IncludeTrailingPathDelimiter(String(CorrectFileName(aPath)))+{$if defined(Unix) or defined(Posix)}'*'{$else}'*.*'{$ifend},faAnyFile,SearchRec)=0 then begin
-  Count:=0;
-  try
+ if DirectoryExists(IncludeTrailingPathDelimiter(String(CorrectFileName(aPath)))) then begin
+  if FindFirst(IncludeTrailingPathDelimiter(String(CorrectFileName(aPath)))+{$if defined(Unix) or defined(Posix)}'*'{$else}'*.*'{$ifend},faAnyFile,SearchRec)=0 then begin
+   Count:=0;
    try
-    repeat
-     if ((SearchRec.Attr and faDirectory)=0) and
-        (SearchRec.Name<>'.') and
-        (SearchRec.Name<>'..') then begin
-      if length(result)<=Count then begin
-       SetLength(result,(Count+1)*2);
+    try
+     repeat
+      if ((SearchRec.Attr and faDirectory)=0) and
+         (SearchRec.Name<>'.') and
+         (SearchRec.Name<>'..') then begin
+       if length(result)<=Count then begin
+        SetLength(result,(Count+1)*2);
+       end;
+       result[Count]:=TpvUTF8String(SearchRec.Name);
+       inc(Count);
       end;
-      result[Count]:=TpvUTF8String(SearchRec.Name);
-      inc(Count);
-     end;
-    until FindNext(SearchRec)<>0;
+     until FindNext(SearchRec)<>0;
+    finally
+     FindClose(SearchRec);
+    end;
    finally
-    FindClose(SearchRec);
+    SetLength(result,Count);
    end;
-  finally
-   SetLength(result,Count);
+  end;
+ end else begin
+  if aRaiseExceptionOnNonExistentDierectory then begin
+   raise Exception.Create('Asset directory "'+String(aPath)+'" not found');
   end;
  end;
 end;
