@@ -143,6 +143,7 @@ begin
    finally
     Stack.Finalize;
    end;
+   TPasJSONItemObject(aJSONItem).Delete(TPasJSONItemObject(aJSONItem).Indices['templates']);
   end;
  end;
 end;
