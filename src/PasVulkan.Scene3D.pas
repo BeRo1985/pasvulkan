@@ -83,9 +83,9 @@ type EpvScene3D=class(Exception);
 
      TpvScene3D=class(TpvResource,IpvScene3D)
       public
-       type ITexture=interface(IpvResource)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+       type IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
             end;
-            TTexture=class(TpvResource,ITexture)
+            TBaseObject=class(TpvResource,IBaseObject)
              private
               fSceneInstance:TpvScene3D;
              public
@@ -94,10 +94,22 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
             end;
-            TTextures=TpvObjectGenericList<TTexture>;
-            IMaterial=interface(IpvResource)['{AC0AB88D-7E4A-42BF-B888-D198DD561895}']
+            TIBaseObjects=TpvGenericList<IBaseObject>;
+            TBaseObjects=TpvObjectGenericList<TBaseObject>;
+            ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
             end;
-            TMaterial=class(TpvResource,IMaterial)
+            TTexture=class(TBaseObject,ITexture)
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TITexture=TpvGenericList<ITexture>;
+            TTextures=TpvObjectGenericList<TTexture>;
+            IMaterial=interface(IBaseObject)['{AC0AB88D-7E4A-42BF-B888-D198DD561895}']
+            end;
+            TMaterial=class(TBaseObject,IMaterial)
              public
               type TAlphaMode=
                     (
@@ -198,7 +210,6 @@ type EpvScene3D=class(Exception);
                      );
                     );
              private
-              fSceneInstance:TpvScene3D;
               fData:TData;
               fShaderData:TShaderData;
               fUniformBufferObjectIndex:TpvSizeInt;
@@ -211,12 +222,91 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureReindexMap:array of TpvSizeInt);
               procedure FillShaderData;
             end;
+            TIMaterials=TpvGenericList<IMaterial>;
             TMaterials=TpvObjectGenericList<TMaterial>;
+            IMesh=interface(IBaseObject)['{8AB4D1D1-5BF5-45BB-8E4B-DECA806AFD58}']
+            end;
+            TMesh=class(TBaseObject,IMesh)
+             private
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TIMeshes=TpvGenericList<IMesh>;
+            TMeshes=TpvObjectGenericList<TMesh>;
+            ISkin=interface(IBaseObject)['{942BE66B-6FD1-460B-BAA6-4F34C5FB44E4}']
+            end;
+            TSkin=class(TBaseObject,ISkin)
+             private
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TISkins=TpvGenericList<ISkin>;
+            TSkins=TpvObjectGenericList<TSkin>;
+            IJoint=interface(IBaseObject)['{7D989671-0771-4CD2-BA84-4B9293B28E87}']
+            end;
+            TJoint=class(TBaseObject,IJoint)
+             private
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TIJoints=TpvGenericList<IJoint>;
+            TJoints=TpvObjectGenericList<TJoint>;
+            INode=interface(IBaseObject)['{1C6E11BB-823E-4BE8-9C03-B93DB0B8CCDD}']
+            end;
+            TINodes=TpvGenericList<INode>;
+            TNode=class(TBaseObject,INode)
+             private
+              fChildren:TINodes;
+              fMesh:IMesh;
+              fSkin:ISkin;
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              property Children:TINodes read fChildren;
+              property Mesh:IMesh read fMesh write fMesh;
+              property Skin:ISkin read fSkin write fSkin;
+            end;
+            TNodes=TpvObjectGenericList<TNode>;
+            IGroup=interface(IBaseObject)['{66A53CBE-F7A9-433A-B995-BC1D3882D03B}']
+            end;
+            TGroup=class(TBaseObject,IGroup)
+             private
+              fObjects:TIBaseObjects;
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              property Objects:TIBaseObjects read fObjects;
+            end;
+            TIGroups=TpvGenericList<IGroup>;
+            TGroups=TpvObjectGenericList<TGroup>;
       private
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
+       fMeshListLock:TPasMPSlimReaderWriterLock;
+       fMeshes:TMeshes;
+       fSkinListLock:TPasMPSlimReaderWriterLock;
+       fSkins:TSkins;
+       fJointListLock:TPasMPSlimReaderWriterLock;
+       fJoints:TJoints;
+       fNodeListLock:TPasMPSlimReaderWriterLock;
+       fNodes:TNodes;
+       fGroupListLock:TPasMPSlimReaderWriterLock;
+       fGroups:TGroups;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -225,6 +315,31 @@ type EpvScene3D=class(Exception);
 implementation
 
 uses PasVulkan.Application;
+
+{ TpvScene3D.TBaseObject }
+
+constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TBaseObject.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TBaseObject.AfterConstruction;
+begin
+ inherited AfterConstruction;
+end;
+
+procedure TpvScene3D.TBaseObject.BeforeDestruction;
+begin
+ inherited BeforeDestruction;
+end;
 
 { TpvScene3D.TTexture }
 
@@ -511,6 +626,218 @@ begin
 
 end;
 
+{ TpvScene3D.TMesh }
+
+constructor TpvScene3D.TMesh.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TMesh.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TMesh.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fMeshListLock.Acquire;
+ try
+  fSceneInstance.fMeshes.Add(self);
+ finally
+  fSceneInstance.fMeshListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TMesh.BeforeDestruction;
+begin
+ fSceneInstance.fMeshListLock.Acquire;
+ try
+  fSceneInstance.fMeshes.Remove(self);
+ finally
+  fSceneInstance.fMeshListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3D.TSkin }
+
+constructor TpvScene3D.TSkin.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TSkin.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TSkin.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fSkinListLock.Acquire;
+ try
+  fSceneInstance.fSkins.Add(self);
+ finally
+  fSceneInstance.fSkinListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TSkin.BeforeDestruction;
+begin
+ fSceneInstance.fSkinListLock.Acquire;
+ try
+  fSceneInstance.fSkins.Remove(self);
+ finally
+  fSceneInstance.fSkinListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3D.TJoint }
+
+constructor TpvScene3D.TJoint.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TJoint.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TJoint.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fJointListLock.Acquire;
+ try
+  fSceneInstance.fJoints.Add(self);
+ finally
+  fSceneInstance.fJointListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TJoint.BeforeDestruction;
+begin
+ fSceneInstance.fJointListLock.Acquire;
+ try
+  fSceneInstance.fJoints.Remove(self);
+ finally
+  fSceneInstance.fJointListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3D.TNode }
+
+constructor TpvScene3D.TNode.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+ fChildren:=TINodes.Create;
+
+ fMesh:=nil;
+
+ fSkin:=nil;
+
+end;
+
+destructor TpvScene3D.TNode.Destroy;
+begin
+
+ fMesh:=nil;
+
+ fSkin:=nil;
+
+ FreeAndNil(fChildren);
+
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TNode.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fNodeListLock.Acquire;
+ try
+  fSceneInstance.fNodes.Add(self);
+ finally
+  fSceneInstance.fNodeListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TNode.BeforeDestruction;
+begin
+
+ fChildren.Clear;
+
+ fMesh:=nil;
+
+ fSkin:=nil;
+
+ fSceneInstance.fNodeListLock.Acquire;
+ try
+  fSceneInstance.fNodes.Remove(self);
+ finally
+  fSceneInstance.fNodeListLock.Release;
+ end;
+
+ inherited BeforeDestruction;
+
+end;
+
+{ TpvScene3D.TGroup }
+
+constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+ fObjects:=TIBaseObjects.Create;
+
+end;
+
+destructor TpvScene3D.TGroup.Destroy;
+begin
+ FreeAndNil(fObjects);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fGroupListLock.Acquire;
+ try
+  fSceneInstance.fGroups.Add(self);
+ finally
+  fSceneInstance.fGroupListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.BeforeDestruction;
+begin
+ fObjects.Clear;
+ fSceneInstance.fGroupListLock.Acquire;
+ try
+  fSceneInstance.fGroups.Remove(self);
+ finally
+  fSceneInstance.fGroupListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -519,14 +846,32 @@ begin
  inherited Create(aResourceManager,aParent);
 
  fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
-
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
 
  fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
-
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
+
+ fMeshListLock:=TPasMPSlimReaderWriterLock.Create;
+ fMeshes:=TMeshes.Create;
+ fMeshes.OwnsObjects:=false;
+
+ fSkinListLock:=TPasMPSlimReaderWriterLock.Create;
+ fSkins:=TSkins.Create;
+ fSkins.OwnsObjects:=false;
+
+ fJointListLock:=TPasMPSlimReaderWriterLock.Create;
+ fJoints:=TJoints.Create;
+ fJoints.OwnsObjects:=false;
+
+ fNodeListLock:=TPasMPSlimReaderWriterLock.Create;
+ fNodes:=TNodes.Create;
+ fNodes.OwnsObjects:=false;
+
+ fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
+ fGroups:=TGroups.Create;
+ fGroups.OwnsObjects:=false;
 
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
@@ -535,18 +880,46 @@ end;
 destructor TpvScene3D.Destroy;
 begin
 
+ while fGroups.Count>0 do begin
+  fGroups[fGroups.Count-1].Free;
+ end;
+ FreeAndNil(fGroups);
+ FreeAndNil(fGroupListLock);
+
+ while fNodes.Count>0 do begin
+  fNodes[fNodes.Count-1].Free;
+ end;
+ FreeAndNil(fNodes);
+ FreeAndNil(fNodeListLock);
+
+ while fJoints.Count>0 do begin
+  fJoints[fJoints.Count-1].Free;
+ end;
+ FreeAndNil(fJoints);
+ FreeAndNil(fJointListLock);
+
+ while fSkins.Count>0 do begin
+  fSkins[fSkins.Count-1].Free;
+ end;
+ FreeAndNil(fSkins);
+ FreeAndNil(fSkinListLock);
+
+ while fMeshes.Count>0 do begin
+  fMeshes[fMeshes.Count-1].Free;
+ end;
+ FreeAndNil(fMeshes);
+ FreeAndNil(fMeshListLock);
+
  while fMaterials.Count>0 do begin
   fMaterials[fMaterials.Count-1].Free;
  end;
  FreeAndNil(fMaterials);
-
  FreeAndNil(fMaterialListLock);
 
  while fTextures.Count>0 do begin
   fTextures[fTextures.Count-1].Free;
  end;
  FreeAndNil(fTextures);
-
  FreeAndNil(fTextureListLock);
 
  inherited Destroy;
