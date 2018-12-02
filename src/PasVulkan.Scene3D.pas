@@ -96,14 +96,41 @@ type EpvScene3D=class(Exception);
             end;
             TIBaseObjects=TpvGenericList<IBaseObject>;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
-            ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+            IImage=interface(IBaseObject)['{B9D41155-5F92-49E8-9D1C-BFBEA2607149}']
             end;
-            TTexture=class(TBaseObject,ITexture)
+            TImage=class(TBaseObject,IImage)
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+            end;
+            TIImage=TpvGenericList<IImage>;
+            TImages=TpvObjectGenericList<TImage>;
+            ISampler=interface(IBaseObject)['{BD753AB1-76A3-43F4-ADD9-4EF41DD280B4}']
+            end;
+            TSampler=class(TBaseObject,ISampler)
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            TISampler=TpvGenericList<ISampler>;
+            TSamplers=TpvObjectGenericList<TSampler>;
+            ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+            end;
+            TTexture=class(TBaseObject,ITexture)
+             private
+              fImage:IImage;
+              fSampler:ISampler;
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              property Image:IImage read fImage write fImage;
+              property Sampler:ISampler read fSampler write fSampler;
             end;
             TITexture=TpvGenericList<ITexture>;
             TTextures=TpvObjectGenericList<TTexture>;
@@ -293,6 +320,10 @@ type EpvScene3D=class(Exception);
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
       private
+       fImageListLock:TPasMPSlimReaderWriterLock;
+       fImages:TImages;
+       fSamplerListLock:TPasMPSlimReaderWriterLock;
+       fSamplers:TSamplers;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
@@ -341,6 +372,80 @@ begin
  inherited BeforeDestruction;
 end;
 
+{ TpvScene3D.TImage }
+
+constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TImage.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TImage.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fImageListLock.Acquire;
+ try
+  fSceneInstance.fImages.Add(self);
+ finally
+  fSceneInstance.fImageListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TImage.BeforeDestruction;
+begin
+ fSceneInstance.fImageListLock.Acquire;
+ try
+  fSceneInstance.fImages.Remove(self);
+ finally
+  fSceneInstance.fImageListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3D.TSampler }
+
+constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fSceneInstance:=aParent as TpvScene3D;
+
+end;
+
+destructor TpvScene3D.TSampler.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TSampler.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fSamplerListLock.Acquire;
+ try
+  fSceneInstance.fSamplers.Add(self);
+ finally
+  fSceneInstance.fSamplerListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TSampler.BeforeDestruction;
+begin
+ fSceneInstance.fSamplerListLock.Acquire;
+ try
+  fSceneInstance.fSamplers.Remove(self);
+ finally
+  fSceneInstance.fSamplerListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
 { TpvScene3D.TTexture }
 
 constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -349,12 +454,19 @@ begin
 
  fSceneInstance:=aParent as TpvScene3D;
 
- //fData:=DefaultData;
+ fImage:=nil;
+
+ fSampler:=nil;
 
 end;
 
 destructor TpvScene3D.TTexture.Destroy;
 begin
+
+ fImage:=nil;
+
+ fSampler:=nil;
+
  inherited Destroy;
 end;
 
@@ -371,6 +483,8 @@ end;
 
 procedure TpvScene3D.TTexture.BeforeDestruction;
 begin
+ fImage:=nil;
+ fSampler:=nil;
  fSceneInstance.fTextureListLock.Acquire;
  try
   fSceneInstance.fTextures.Remove(self);
@@ -845,6 +959,14 @@ begin
 
  inherited Create(aResourceManager,aParent);
 
+ fImageListLock:=TPasMPSlimReaderWriterLock.Create;
+ fImages:=TImages.Create;
+ fImages.OwnsObjects:=false;
+
+ fSamplerListLock:=TPasMPSlimReaderWriterLock.Create;
+ fSamplers:=TSamplers.Create;
+ fSamplers.OwnsObjects:=false;
+
  fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
@@ -921,6 +1043,18 @@ begin
  end;
  FreeAndNil(fTextures);
  FreeAndNil(fTextureListLock);
+
+ while fSamplers.Count>0 do begin
+  fSamplers[fSamplers.Count-1].Free;
+ end;
+ FreeAndNil(fSamplers);
+ FreeAndNil(fSamplerListLock);
+
+ while fImages.Count>0 do begin
+  fImages[fImages.Count-1].Free;
+ end;
+ FreeAndNil(fImages);
+ FreeAndNil(fImageListLock);
 
  inherited Destroy;
 end;
