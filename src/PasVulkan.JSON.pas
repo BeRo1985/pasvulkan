@@ -79,14 +79,14 @@ implementation
 class procedure TpvJSONUtils.ResolveTemplates(const aJSONItem:TPasJSONItem);
 type TStackItem=record
       Level:TpvSizeInt;
-      JSONItemObject:TPasJSONItemObject;
+      JSONItem:TPasJSONItem;
      end;
      TStack=TpvDynamicStack<TStackItem>;
      TJSONItemObjectQueue=TpvDynamicQueue<TPasJSONItemObject>;
- function NewStackItem(const aLevel:TpvSizeInt;const aJSONItemObject:TPasJSONItemObject):TStackItem;
+ function NewStackItem(const aLevel:TpvSizeInt;const aJSONItem:TPasJSONItem):TStackItem;
  begin
   result.Level:=aLevel;
-  result.JSONItemObject:=aJSONItemObject;
+  result.JSONItem:=aJSONItem;
  end;
 var JSONItemTemplates,JSONItem,TemplateJSONItem:TPasJSONItem;
     JSONItemObject:TPasJSONItemObject;
@@ -105,35 +105,47 @@ begin
     JSONItemObjectQueue.Initialize;
     try
      while not Stack.Pop(StackItem) do begin
-      for JSONItemObjectProperty in StackItem.JSONItemObject do begin
-       if JSONItemObjectProperty.Key='templates' then begin
-        if (StackItem.Level>0) and
-           assigned(JSONItemObjectProperty.Value) and
-           (JSONItemObjectProperty.Value is TPasJSONItemArray) then begin
-         for JSONItem in TPasJSONItemArray(JSONItemObjectProperty.Value) do begin
-          TemplateName:=TPasJSON.GetString(JSONItem,'');
-          if length(TemplateName)>0 then begin
-           TemplateJSONItem:=TPasJSONItemObject(JSONItemTemplates).Properties[TemplateName];
-           if assigned(TemplateJSONItem) and (TemplateJSONItem is TPasJSONItemObject) then begin
-            JSONItemObjectQueue.Enqueue(TPasJSONItemObject(TemplateJSONItem));
+      if StackItem.JSONItem is TPasJSONItemArray then begin
+       for JSONItem in TPasJSONItemArray(StackItem.JSONItem) do begin
+        if assigned(JSONItem) and
+           ((JSONItem is TPasJSONItemArray) or
+            (JSONItem is TPasJSONItemObject)) then begin
+         Stack.Push(NewStackItem(StackItem.Level+1,JSONItem));
+        end;
+       end;
+      end else if StackItem.JSONItem is TPasJSONItemObject then begin
+       for JSONItemObjectProperty in TPasJSONItemObject(StackItem.JSONItem) do begin
+        if JSONItemObjectProperty.Key='templates' then begin
+         if (StackItem.Level>0) and
+            assigned(JSONItemObjectProperty.Value) and
+            (JSONItemObjectProperty.Value is TPasJSONItemArray) then begin
+          for JSONItem in TPasJSONItemArray(JSONItemObjectProperty.Value) do begin
+           TemplateName:=TPasJSON.GetString(JSONItem,'');
+           if length(TemplateName)>0 then begin
+            TemplateJSONItem:=TPasJSONItemObject(JSONItemTemplates).Properties[TemplateName];
+            if assigned(TemplateJSONItem) and (TemplateJSONItem is TPasJSONItemObject) then begin
+             JSONItemObjectQueue.Enqueue(TPasJSONItemObject(TemplateJSONItem));
+            end;
            end;
           end;
          end;
-        end;
-       end else begin
-        if assigned(JSONItemObjectProperty.Value) and (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
-         Stack.Push(NewStackItem(StackItem.Level+1,TPasJSONItemObject(JSONItemObjectProperty.Value)));
+        end else begin
+         if assigned(JSONItemObjectProperty.Value) and
+            ((JSONItemObjectProperty.Value is TPasJSONItemArray) or
+             (JSONItemObjectProperty.Value is TPasJSONItemObject)) then begin
+          Stack.Push(NewStackItem(StackItem.Level+1,JSONItemObjectProperty.Value));
+         end;
         end;
        end;
-      end;
-      if StackItem.Level>0 then begin
-       StackItem.JSONItemObject.Delete(StackItem.JSONItemObject.Indices['templates']);
-       try
-        while JSONItemObjectQueue.Dequeue(JSONItemObject) do begin
-         StackItem.JSONItemObject.Merge(JSONItemObject);
+       if StackItem.Level>0 then begin
+        TPasJSONItemObject(StackItem.JSONItem).Delete(TPasJSONItemObject(StackItem.JSONItem).Indices['templates']);
+        try
+         while JSONItemObjectQueue.Dequeue(JSONItemObject) do begin
+          TPasJSONItemObject(StackItem.JSONItem).Merge(JSONItemObject);
+         end;
+        finally
+         JSONItemObjectQueue.Clear;
         end;
-       finally
-        JSONItemObjectQueue.Clear;
        end;
       end;
      end;
