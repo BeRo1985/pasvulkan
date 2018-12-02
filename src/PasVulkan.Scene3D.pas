@@ -67,6 +67,7 @@ uses {$ifdef Windows}
      {$endif}
      SysUtils,
      Classes,
+     Vulkan,
      PasMP,
      PasJSON,
      PasGLTF,
@@ -101,6 +102,8 @@ type EpvScene3D=class(Exception);
             TUInt16Vector4=array[0..3] of TpvUInt16;
             TInt16Vector4=array[0..3] of TpvInt16;
             PUInt32Vector4=^TUInt32Vector4;
+            TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
+            TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             TVertex=packed record                 // Minimum required vertex structure for to be GLTF 2.0 conformant
              case boolean of
               false:(
@@ -334,10 +337,48 @@ type EpvScene3D=class(Exception);
             end;
             TIMaterials=TpvGenericList<IMaterial>;
             TMaterials=TpvObjectGenericList<TMaterial>;
+
             IMesh=interface(IBaseObject)['{8AB4D1D1-5BF5-45BB-8E4B-DECA806AFD58}']
             end;
             TMesh=class(TBaseObject,IMesh)
+             public
+              type TPrimitive=record
+                    public
+                     type TTarget=record
+                           public
+                            type TTargetVertex=record
+                                  Position:TPasGLTF.TVector3;
+                                  Normal:TPasGLTF.TVector3;
+                                  Tangent:TPasGLTF.TVector3;
+                                 end;
+                                 PTargetVertex=^TTargetVertex;
+                                 TTargetVertices=array of TTargetVertex;
+                           public
+                            Vertices:TTargetVertices;
+                          end;
+                          PTarget=^TTarget;
+                          TTargets=array of TTarget;
+                    public
+                     PrimitiveMode:TVkPrimitiveTopology;
+                     Material:TpvSizeInt;
+                     Vertices:TVertices;
+                     Indices:TpvUInt32DynamicArray;
+                     Targets:TTargets;
+                     StartBufferVertexOffset:TpvSizeUInt;
+                     StartBufferIndexOffset:TpvSizeUInt;
+                     CountVertices:TpvSizeUInt;
+                     CountIndices:TpvSizeUInt;
+                     MorphTargetVertexShaderStorageBufferObjectIndex:TpvSizeInt;
+                     MorphTargetVertexShaderStorageBufferObjectOffset:TpvSizeUInt;
+                     MorphTargetVertexShaderStorageBufferObjectByteOffset:TpvSizeUInt;
+                     MorphTargetVertexShaderStorageBufferObjectByteSize:TpvSizeUInt;
+                   end;
+                   PPrimitive=^TPrimitive;
+                   TPrimitives=array of TPrimitive;
              private
+              fPrimitives:TPrimitives;
+              fBoundingBox:TpvAABB;
+              fWeights:TpvFloatDynamicArray;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -346,11 +387,22 @@ type EpvScene3D=class(Exception);
             end;
             TIMeshes=TpvGenericList<IMesh>;
             TMeshes=TpvObjectGenericList<TMesh>;
+            INode=interface(IBaseObject)['{1C6E11BB-823E-4BE8-9C03-B93DB0B8CCDD}']
+            end;
+            TINodes=TpvGenericList<INode>;
             ISkin=interface(IBaseObject)['{942BE66B-6FD1-460B-BAA6-4F34C5FB44E4}']
             end;
             TSkin=class(TBaseObject,ISkin)
              private
-             public
+              fSkeleton:TpvSizeInt;
+              fInverseBindMatrices:TMatrix4x4DynamicArray;
+              fMatrices:TMatrix4x4DynamicArray;
+              fJoints:TSizeIntDynamicArray;
+              fSkinShaderStorageBufferObjectIndex:TpvSizeInt;
+              fSkinShaderStorageBufferObjectOffset:TpvSizeUInt;
+              fSkinShaderStorageBufferObjectByteOffset:TpvSizeUInt;
+              fSkinShaderStorageBufferObjectByteSize:TpvSizeUInt;
+            public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
@@ -370,9 +422,6 @@ type EpvScene3D=class(Exception);
             end;
             TIJoints=TpvGenericList<IJoint>;
             TJoints=TpvObjectGenericList<TJoint>;
-            INode=interface(IBaseObject)['{1C6E11BB-823E-4BE8-9C03-B93DB0B8CCDD}']
-            end;
-            TINodes=TpvGenericList<INode>;
             TNode=class(TBaseObject,INode)
              private
               fChildren:TINodes;
