@@ -139,7 +139,7 @@ type EpvScene3D=class(Exception);
             end;
             TITexture=TpvGenericList<ITexture>;
             TTextures=TpvObjectGenericList<TTexture>;
-            IAnimation=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+            IAnimation=interface(IBaseObject)['{CCD6AAF2-0B61-4831-AD09-1B78936AACA5}']
             end;
             TAnimation=class(TBaseObject,IAnimation)
              private
@@ -336,6 +336,20 @@ type EpvScene3D=class(Exception);
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
+            IGroupInstance=interface(IBaseObject)['{B4360C7F-7C60-4676-B301-A68D67FB401F}']
+            end;
+            TGroupInstance=class(TBaseObject,IGroupInstance)
+             private
+              fGroup:IGroup;
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              property Group:IGroup read fGroup write fGroup;
+            end;
+            TIGroupInstances=TpvGenericList<IGroupInstance>;
+            TGroupInstances=TpvObjectGenericList<TGroupInstance>;
       private
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -357,6 +371,8 @@ type EpvScene3D=class(Exception);
        fNodes:TNodes;
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
+       fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
+       fGroupInstances:TGroupInstances;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -985,6 +1001,45 @@ begin
  inherited BeforeDestruction;
 end;
 
+{ TpvScene3D.TGroupInstance }
+
+constructor TpvScene3D.TGroupInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+begin
+ inherited Create(aResourceManager,aParent);
+
+ fGroup:=nil;
+
+end;
+
+destructor TpvScene3D.TGroupInstance.Destroy;
+begin
+ fGroup:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroupInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fGroupInstanceListLock.Acquire;
+ try
+  fSceneInstance.fGroupInstances.Add(self);
+ finally
+  fSceneInstance.fGroupInstanceListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TGroupInstance.BeforeDestruction;
+begin
+ fGroup:=nil;
+ fSceneInstance.fGroupInstanceListLock.Acquire;
+ try
+  fSceneInstance.fGroupInstances.Remove(self);
+ finally
+  fSceneInstance.fGroupInstanceListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -1032,12 +1087,22 @@ begin
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
 
+ fGroupInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
+ fGroupInstances:=TGroupInstances.Create;
+ fGroupInstances.OwnsObjects:=false;
+
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
 end;
 
 destructor TpvScene3D.Destroy;
 begin
+
+ while fGroupInstances.Count>0 do begin
+  fGroupInstances[fGroupInstances.Count-1].Free;
+ end;
+ FreeAndNil(fGroupInstances);
+ FreeAndNil(fGroupInstanceListLock);
 
  while fGroups.Count>0 do begin
   fGroups[fGroups.Count-1].Free;
