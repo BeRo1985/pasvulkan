@@ -4955,7 +4955,6 @@ begin
 end;
 {$endif}
 
-
 constructor TpvApplicationFiles.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
