@@ -139,7 +139,7 @@ type TpvTechniques=class
                     public
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
-                     function GetPipeline(const aRenderPass:TpvVulkanRenderPass):TpvVulkanPipeline;
+                     function GetPipeline(const aRenderPass:TpvVulkanRenderPass;const aPrimitiveTopology:TVkPrimitiveTopology):TpvVulkanPipeline;
                      property VertexShader:TShader read fVertexShader;
                      property TessellationControlShader:TShader read fTessellationControlShader;
                      property TessellationEvalutionShader:TShader read fTessellationEvalutionShader;
@@ -566,8 +566,9 @@ begin
  end;
 end;
 
-function TpvTechniques.TTechnique.TPass.GetPipeline(const aRenderPass:TpvVulkanRenderPass):TpvVulkanPipeline;
+function TpvTechniques.TTechnique.TPass.GetPipeline(const aRenderPass:TpvVulkanRenderPass;const aPrimitiveTopology:TVkPrimitiveTopology):TpvVulkanPipeline;
 begin
+ Load;
  result:=nil;
 end;
 
