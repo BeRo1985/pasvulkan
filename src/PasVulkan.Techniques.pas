@@ -68,11 +68,29 @@ uses SysUtils,
      PasJSON,
      PasVulkan.Types,
      PasVulkan.Collections,
+     PasVulkan.Framework,
      PasVulkan.JSON;
 
 type TpvTechniques=class
       public
-       type TTechnique=class;
+        type TShader=class;
+             TShaderList=TpvObjectGenericList<TShader>;
+             TShader=class
+              private
+               fTechniques:TpvTechniques;
+               fName:TpvUTF8String;
+               fShaderModule:TpvVulkanShaderModule;
+               fReflectionData:TpvVulkanShaderModuleReflectionData;
+              public
+               constructor Create(const aTechniques:TpvTechniques); reintroduce;
+               destructor Destroy; override;
+              public
+               property ReflectionData:TpvVulkanShaderModuleReflectionData read fReflectionData;
+              published
+               property Name:TpvUTF8String read fName;
+               property ShaderModule:TpvVulkanShaderModule read fShaderModule;
+             end;
+            TTechnique=class;
             TTechniqueList=TpvObjectGenericList<TTechnique>;
             TTechniqueNameMap=TpvStringHashMap<TTechnique>;
             TTechnique=class
@@ -104,11 +122,23 @@ type TpvTechniques=class
                      fTechnique:TTechnique;
                      fIndex:TpvSizeInt;
                      fName:TpvUTF8String;
+                     fVertexShader:TShader;
+                     fGeometryShader:TShader;
+                     fTessellationControlShader:TShader;
+                     fTessellationEvalutionShader:TShader;
+                     fFragmentShader:TShader;
+                     fComputeShader:TShader;
                      fSpecializationConstants:TSpecializationConstants;
                      procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
                     public
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
+                     property VertexShader:TShader read fVertexShader;
+                     property GeometryShader:TShader read fGeometryShader;
+                     property TessellationControlShader:TShader read fTessellationControlShader;
+                     property TessellationEvalutionShader:TShader read fTessellationEvalutionShader;
+                     property FragmentShader:TShader read fFragmentShader;
+                     property ComputeShader:TShader read fComputeShader;
                      property SpecializationConstants:TSpecializationConstants read fSpecializationConstants;
                    end;
              private
@@ -126,6 +156,7 @@ type TpvTechniques=class
             end;
       private
        fPath:TpvUTF8String;
+       fShaders:TShaderList;
        fTechniques:TTechniqueList;
        fTechniqueNameMap:TTechniqueNameMap;
       public
@@ -138,6 +169,28 @@ type TpvTechniques=class
 implementation
 
 uses PasVulkan.Application;
+
+{ TpvTechniques.TShader }
+
+constructor TpvTechniques.TShader.Create(const aTechniques:TpvTechniques);
+begin
+
+ inherited Create;
+
+ fTechniques:=aTechniques;
+
+end;
+
+destructor TpvTechniques.TShader.Destroy;
+begin
+
+ FreeAndNil(fShaderModule);
+
+ Finalize(fReflectionData);
+
+ inherited Destroy;
+
+end;
 
 { TpvTechniques.TTechnique.TPass }
 
@@ -297,6 +350,9 @@ begin
 
  inherited Create;
 
+ fShaders:=TShaderList.Create;
+ fShaders.OwnsObjects:=true;
+
  fTechniques:=TTechniqueList.Create;
  fTechniques.OwnsObjects:=true;
 
@@ -383,9 +439,15 @@ end;
 
 destructor TpvTechniques.Destroy;
 begin
+
  FreeAndNil(fTechniqueNameMap);
+
  FreeAndNil(fTechniques);
+
+ FreeAndNil(fShaders);
+
  inherited Destroy;
+
 end;
 
 end.
