@@ -132,6 +132,7 @@ type TpvTechniques=class
                      fGeometryShader:TShader;
                      fFragmentShader:TShader;
                      fSpecializationConstants:TSpecializationConstants;
+                     fVulkanDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout;
                      fVulkanPipelineLayout:TpvVulkanPipelineLayout;
                      procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
                      procedure Load;
@@ -226,14 +227,23 @@ begin
 
  fSpecializationConstants:=nil;
 
+ fVulkanDescriptorSetLayouts:=nil;
+
  fVulkanPipelineLayout:=nil;
 
 end;
 
 destructor TpvTechniques.TTechnique.TPass.Destroy;
+var Index:TpvSizeInt;
 begin
 
  fSpecializationConstants:=nil;
+
+ for Index:=0 to length(fVulkanDescriptorSetLayouts)-1 do begin
+  FreeAndNil(fVulkanDescriptorSetLayouts[Index]);
+ end;
+
+ fVulkanDescriptorSetLayouts:=nil;
 
  inherited Destroy;
 
@@ -310,14 +320,61 @@ begin
 end;
 
 procedure TpvTechniques.TTechnique.TPass.Load;
-var PushConstantRange:TVkPushConstantRange;
+type TShaderVariable=record
+      StorageClass:TpvVulkanShaderModuleReflectionStorageClass;
+      Location:TpvUInt32;
+      Binding:TpvUInt32;
+      DescriptorSet:TpvUInt32;
+      Size:TVkSize;
+      StageFlags:TVkShaderStageFlags;
+      IsStorageBuffer:boolean;
+     end;
+     PShaderVariable=^TShaderVariable;
+     TShaderVariables=TpvDynamicArray<TShaderVariable>;
+var ShaderVariables:TShaderVariables;
+    PushConstantRange:TVkPushConstantRange;
+    CountDescriptorSets:TpvSizeInt;
  procedure ScanShader(const aShader:TShader;const aStageFlags:TVkShaderStageFlags);
- var Index:TpvSizeInt;
+ var Index,OtherIndex:TpvSizeInt;
      Variable:PpvVulkanShaderModuleReflectionVariable;
+     ShaderVariable,
+     TemporaryShaderVariable:PShaderVariable;
  begin
   for Index:=0 to length(aShader.fReflectionData.Variables)-1 do begin
    Variable:=@aShader.fReflectionData.Variables[Index];
    case Variable^.StorageClass of
+    TpvVulkanShaderModuleReflectionStorageClass.Uniform,
+    TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:begin
+     ShaderVariable:=nil;
+     for OtherIndex:=0 to ShaderVariables.Count-1 do begin
+      TemporaryShaderVariable:=@ShaderVariables.Items[OtherIndex];
+      if (TemporaryShaderVariable^.StorageClass=Variable^.StorageClass) and
+         (TemporaryShaderVariable^.Location=Variable^.Location) and
+         (TemporaryShaderVariable^.Binding=Variable^.Binding) and
+         (TemporaryShaderVariable^.DescriptorSet=Variable^.DescriptorSet) then begin
+       ShaderVariable:=TemporaryShaderVariable;
+       break;
+      end;
+     end;
+     if assigned(ShaderVariable) then begin
+      ShaderVariable^.StageFlags:=ShaderVariable^.StageFlags or aStageFlags;
+      if ShaderVariable^.Size<(Variable^.Offset+Variable^.Size) then begin
+       ShaderVariable^.Size:=Variable^.Offset+Variable^.Size;
+      end;
+     end else begin
+      OtherIndex:=ShaderVariables.AddNew;
+      ShaderVariable:=@ShaderVariables.Items[OtherIndex];
+      ShaderVariable^.StorageClass:=Variable^.StorageClass;
+      ShaderVariable^.Location:=Variable^.Location;
+      ShaderVariable^.Binding:=Variable^.Binding;
+      ShaderVariable^.DescriptorSet:=Variable^.DescriptorSet;
+      ShaderVariable^.StageFlags:=aStageFlags;
+      ShaderVariable^.Size:=Variable^.Offset+Variable^.Size;
+     end;
+     if CountDescriptorSets<=Variable^.DescriptorSet then begin
+      CountDescriptorSets:=Variable^.DescriptorSet+1;
+     end;
+   end;
     TpvVulkanShaderModuleReflectionStorageClass.PushConstant:begin
      PushConstantRange.stageFlags:=PushConstantRange.stageFlags or aStageFlags;
      PushConstantRange.offset:=0;
@@ -328,34 +385,78 @@ var PushConstantRange:TVkPushConstantRange;
    end;
   end;
  end;
+var Index:TpvSizeInt;
+    ShaderVariable:PShaderVariable;
+    DescriptorSetLayout:TpvVulkanDescriptorSetLayout;
 begin
  if not assigned(fVulkanPipelineLayout) then begin
   fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
   try
-   PushConstantRange.stageFlags:=0;
-   if assigned(fVertexShader) then begin
-    fVertexShader.Load;
-    ScanShader(fVertexShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT));
-   end;
-   if assigned(fTessellationControlShader) then begin
-    fTessellationControlShader.Load;
-    ScanShader(fTessellationControlShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT));
-   end;
-   if assigned(fTessellationEvalutionShader) then begin
-    fTessellationEvalutionShader.Load;
-    ScanShader(fTessellationEvalutionShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT));
-   end;
-   if assigned(fGeometryShader) then begin
-    fGeometryShader.Load;
-    ScanShader(fGeometryShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_GEOMETRY_BIT));
-   end;
-   if assigned(fFragmentShader) then begin
-    fFragmentShader.Load;
-    ScanShader(fFragmentShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT));
-   end;
-   //fVulkanPipelineLayout.AddDescriptorSetLayout
-   if PushConstantRange.stageFlags<>0 then begin
-    fVulkanPipelineLayout.AddPushConstantRange(PushConstantRange);
+   ShaderVariables.Initialize;
+   try
+    PushConstantRange.stageFlags:=0;
+    CountDescriptorSets:=0;
+    if assigned(fVertexShader) then begin
+     fVertexShader.Load;
+     ScanShader(fVertexShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT));
+    end;
+    if assigned(fTessellationControlShader) then begin
+     fTessellationControlShader.Load;
+     ScanShader(fTessellationControlShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT));
+    end;
+    if assigned(fTessellationEvalutionShader) then begin
+     fTessellationEvalutionShader.Load;
+     ScanShader(fTessellationEvalutionShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT));
+    end;
+    if assigned(fGeometryShader) then begin
+     fGeometryShader.Load;
+     ScanShader(fGeometryShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_GEOMETRY_BIT));
+    end;
+    if assigned(fFragmentShader) then begin
+     fFragmentShader.Load;
+     ScanShader(fFragmentShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT));
+    end;
+    SetLength(fVulkanDescriptorSetLayouts,CountDescriptorSets);
+    for Index:=0 to CountDescriptorSets-1 do begin
+     fVulkanDescriptorSetLayouts[Index]:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+    end;
+    for Index:=0 to ShaderVariables.Count-1 do begin
+     ShaderVariable:=@ShaderVariables.Items[Index];
+     case ShaderVariable^.StorageClass of
+      TpvVulkanShaderModuleReflectionStorageClass.Uniform,
+      TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:begin
+       DescriptorSetLayout:=fVulkanDescriptorSetLayouts[ShaderVariable^.DescriptorSet];
+       case ShaderVariable^.StorageClass of
+        TpvVulkanShaderModuleReflectionStorageClass.Uniform:begin
+         DescriptorSetLayout.AddBinding(ShaderVariable^.Binding,
+                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                        MaxSwapChainImages,
+                                        ShaderVariable^.StageFlags,
+                                        []
+                                       );
+        end;
+        else {TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:}begin
+         DescriptorSetLayout.AddBinding(ShaderVariable^.Binding,
+                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                        MaxSwapChainImages,
+                                        ShaderVariable^.StageFlags,
+                                        []
+                                       );
+        end;
+       end;
+      end;
+      TpvVulkanShaderModuleReflectionStorageClass.Image:begin
+//     ShaderVariable^.
+      end;
+      else begin
+      end;
+     end;
+    end;
+    if PushConstantRange.stageFlags<>0 then begin
+     fVulkanPipelineLayout.AddPushConstantRange(PushConstantRange);
+    end;
+   finally
+    ShaderVariables.Finalize;
    end;
   finally
    fVulkanPipelineLayout.Initialize;
