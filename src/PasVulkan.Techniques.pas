@@ -76,16 +76,31 @@ type TpvTechniques=class
             TTechniqueList=TpvObjectGenericList<TTechnique>;
             TTechniqueNameMap=TpvStringHashMap<TTechnique>;
             TTechnique=class
+             public
+              type TPass=class;
+                   TPassList=TpvObjectGenericList<TPass>;
+                   TPass=class
+                    private
+                     fTechnique:TTechnique;
+                     fIndex:TpvSizeInt;
+                     fName:TpvUTF8String;
+                     procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+                    public
+                     constructor Create(const aTechnique:TTechnique); reintroduce;
+                     destructor Destroy; override;
+                   end;
              private
               fParent:TpvTechniques;
               fName:TpvUTF8String;
               fVariantTechniqueNameMap:TTechniqueNameMap;
+              fPasses:TPassList;
               procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
              public
               constructor Create(const aParent:TpvTechniques); reintroduce;
               destructor Destroy; override;
              published
               property VariantTechniqueByName:TTechniqueNameMap read fVariantTechniqueNameMap;
+              property Passes:TPassList read fPasses;
             end;
       private
        fPath:TpvUTF8String;
@@ -102,6 +117,31 @@ implementation
 
 uses PasVulkan.Application;
 
+{ TpvTechniques.TTechnique.TPass }
+
+constructor TpvTechniques.TTechnique.TPass.Create(const aTechnique:TTechnique);
+begin
+
+ inherited Create;
+
+ fTechnique:=aTechnique;
+
+ fIndex:=-1;
+
+ fName:='';
+
+end;
+
+destructor TpvTechniques.TTechnique.TPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+begin
+
+end;
+
 { TpvTechniques.TTechnique }
 
 constructor TpvTechniques.TTechnique.Create(const aParent:TpvTechniques);
@@ -113,10 +153,14 @@ begin
 
  fVariantTechniqueNameMap:=TTechniqueNameMap.Create(nil);
 
-end;
+ fPasses:=TPassList.Create;
+
+ end;
 
 destructor TpvTechniques.TTechnique.Destroy;
 begin
+
+ FreeAndNil(fPasses);
 
  FreeAndNil(fVariantTechniqueNameMap);
 
@@ -129,6 +173,7 @@ var SectionJSONItem,JSONItem:TPasJSONItem;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     VariantTechniqueName:TpvUTF8String;
     VariantTechnique:TTechnique;
+    Pass:TPass;
 begin
 
  begin
@@ -143,6 +188,27 @@ begin
       if assigned(VariantTechnique) then begin
        fVariantTechniqueNameMap.Add(JSONItemObjectProperty.Key,VariantTechnique);
       end;
+     end;
+    end;
+   end;
+  end;
+ end;
+
+ begin
+  SectionJSONItem:=aRootJSONObject.Properties['passes'];
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
+   SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
+   for JSONItemObjectProperty in SectionJSONItemObject do begin
+    if length(JSONItemObjectProperty.Key)>0 then begin
+     if assigned(JSONItemObjectProperty.Value) and
+        (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
+      Pass:=TPass.Create(self);
+      try
+       Pass.fName:=JSONItemObjectProperty.Key;
+      finally
+       Pass.fIndex:=fPasses.Add(Pass);
+      end;
+      Pass.LoadFromJSONObject(TPasJSONItemObject(JSONItemObjectProperty.Value));
      end;
     end;
    end;
