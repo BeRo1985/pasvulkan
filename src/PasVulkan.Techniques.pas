@@ -328,7 +328,8 @@ type TShaderVariable=record
       Size:TVkSize;
       StageFlags:TVkShaderStageFlags;
       ImageDim:TpvVulkanShaderModuleReflectionDim;
-      ImageCount:TpvUInt32;
+      Count:TpvUInt32;
+      TypeKind:TpvVulkanShaderModuleReflectionTypeKind;
      end;
      PShaderVariable=^TShaderVariable;
      TShaderVariables=TpvDynamicArray<TShaderVariable>;
@@ -366,6 +367,34 @@ var ShaderVariables:TShaderVariables;
       ShaderVariable^.DescriptorSet:=Variable^.DescriptorSet;
       ShaderVariable^.StageFlags:=0;
       ShaderVariable^.Size:=0;
+      ShaderVariable^.Count:=1;
+      ShaderVariable^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeStruct;
+      Type_:=Variable.Type_;
+      while Type_>=0 do begin
+       case aShader.fReflectionData.Types[Type_].TypeKind of
+        TpvVulkanShaderModuleReflectionTypeKind.TypePointer:begin
+         Type_:=aShader.fReflectionData.Types[Type_].PointerTypeIndex;
+         break;
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
+         ShaderVariable^.Count:=ShaderVariable^.Count*aShader.fReflectionData.Types[Type_].ArraySize;
+         Type_:=aShader.fReflectionData.Types[Type_].ArrayTypeIndex;
+         break;
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeSampler,
+        TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
+         ShaderVariable^.TypeKind:=aShader.fReflectionData.Types[Type_].TypeKind;
+         break;
+        end;
+        TpvVulkanShaderModuleReflectionTypeKind.TypeStruct:begin
+         ShaderVariable^.TypeKind:=TpvVulkanShaderModuleReflectionTypeKind.TypeStruct;
+         break;
+        end;
+        else begin
+         break;
+        end;
+       end;
+      end;
      end;
      ShaderVariable^.StageFlags:=ShaderVariable^.StageFlags or aStageFlags;
      if ShaderVariable^.Size<(Variable^.Offset+Variable^.Size) then begin
@@ -404,7 +433,7 @@ var ShaderVariables:TShaderVariables;
       ShaderVariable^.StageFlags:=0;
       ShaderVariable^.Size:=0;
       ShaderVariable^.ImageDim:=TpvVulkanShaderModuleReflectionDim._1D;
-      ShaderVariable^.ImageCount:=1;
+      ShaderVariable^.Count:=1;
       Type_:=Variable.Type_;
       while Type_>=0 do begin
        case aShader.fReflectionData.Types[Type_].TypeKind of
@@ -413,7 +442,7 @@ var ShaderVariables:TShaderVariables;
          break;
         end;
         TpvVulkanShaderModuleReflectionTypeKind.TypeArray:begin
-         ShaderVariable^.ImageCount:=ShaderVariable^.ImageCount*aShader.fReflectionData.Types[Type_].ArraySize;
+         ShaderVariable^.Count:=ShaderVariable^.Count*aShader.fReflectionData.Types[Type_].ArraySize;
          Type_:=aShader.fReflectionData.Types[Type_].ArrayTypeIndex;
          break;
         end;
@@ -472,11 +501,43 @@ begin
      ShaderVariable:=@ShaderVariables.Items[Index];
      case ShaderVariable^.StorageClass of
       TpvVulkanShaderModuleReflectionStorageClass.Uniform,
-      TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:begin
+      TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer,
+      TpvVulkanShaderModuleReflectionStorageClass.Image:begin
        DescriptorSetLayout:=fVulkanDescriptorSetLayouts[ShaderVariable^.DescriptorSet];
        case ShaderVariable^.StorageClass of
         TpvVulkanShaderModuleReflectionStorageClass.Uniform:begin
-         DescriptorType:=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+         case ShaderVariable^.TypeKind of
+          TpvVulkanShaderModuleReflectionTypeKind.TypeSampler:begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_SAMPLER;
+          end;
+          TpvVulkanShaderModuleReflectionTypeKind.TypeSampledImage:begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          end;
+          else begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+          end;
+         end;
+        end;
+        TpvVulkanShaderModuleReflectionStorageClass.Image:begin
+         case ShaderVariable^.ImageDim of
+          TpvVulkanShaderModuleReflectionDim._1D,
+          TpvVulkanShaderModuleReflectionDim._2D,
+          TpvVulkanShaderModuleReflectionDim._3D,
+          TpvVulkanShaderModuleReflectionDim.Cube,
+          TpvVulkanShaderModuleReflectionDim.Rect:begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          end;
+          TpvVulkanShaderModuleReflectionDim.Buffer:begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+          end;
+          TpvVulkanShaderModuleReflectionDim.SubpassData:begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+          end;
+          else begin
+           DescriptorType:=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+           Assert(false);
+          end;
+         end;
         end;
         else {TpvVulkanShaderModuleReflectionStorageClass.StorageBuffer:}begin
          DescriptorType:=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -484,35 +545,7 @@ begin
        end;
        DescriptorSetLayout.AddBinding(ShaderVariable^.Binding,
                                       DescriptorType,
-                                      1,
-                                      ShaderVariable^.StageFlags,
-                                      []
-                                     );
-      end;
-      TpvVulkanShaderModuleReflectionStorageClass.Image:begin
-       DescriptorSetLayout:=fVulkanDescriptorSetLayouts[ShaderVariable^.DescriptorSet];
-       case ShaderVariable^.ImageDim of
-        TpvVulkanShaderModuleReflectionDim._1D,
-        TpvVulkanShaderModuleReflectionDim._2D,
-        TpvVulkanShaderModuleReflectionDim._3D,
-        TpvVulkanShaderModuleReflectionDim.Cube,
-        TpvVulkanShaderModuleReflectionDim.Rect:begin
-         DescriptorType:=VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        end;
-        TpvVulkanShaderModuleReflectionDim.Buffer:begin
-         DescriptorType:=VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        end;
-        TpvVulkanShaderModuleReflectionDim.SubpassData:begin
-         DescriptorType:=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        end;
-        else begin
-         DescriptorType:=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-         Assert(false);
-        end;
-       end;
-       DescriptorSetLayout.AddBinding(ShaderVariable^.Binding,
-                                      DescriptorType,
-                                      ShaderVariable^.ImageCount,
+                                      ShaderVariable^.Count,
                                       ShaderVariable^.StageFlags,
                                       []
                                      );
