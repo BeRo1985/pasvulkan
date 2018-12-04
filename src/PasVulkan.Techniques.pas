@@ -72,17 +72,21 @@ uses SysUtils,
 
 type TpvTechniques=class
       public
-       type TTechnique=class
+       type TTechnique=class;
+            TTechniqueList=TpvObjectGenericList<TTechnique>;
+            TTechniqueNameMap=TpvStringHashMap<TTechnique>;
+            TTechnique=class
              private
               fParent:TpvTechniques;
               fName:TpvUTF8String;
+              fVariantTechniqueNameMap:TTechniqueNameMap;
               procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
              public
               constructor Create(const aParent:TpvTechniques); reintroduce;
               destructor Destroy; override;
+             published
+              property VariantTechniqueByName:TTechniqueNameMap read fVariantTechniqueNameMap;
             end;
-            TTechniqueList=TpvObjectGenericList<TTechnique>;
-            TTechniqueNameMap=TpvStringHashMap<TTechnique>;
       private
        fPath:TpvUTF8String;
        fTechniques:TTechniqueList;
@@ -90,6 +94,8 @@ type TpvTechniques=class
       public
        constructor Create(const aPath:TpvUTF8String='techniques');
        destructor Destroy; override;
+      published
+       property TechniqueByName:TTechniqueNameMap read fTechniqueNameMap;
      end;
 
 implementation
@@ -100,19 +106,46 @@ uses PasVulkan.Application;
 
 constructor TpvTechniques.TTechnique.Create(const aParent:TpvTechniques);
 begin
+
  inherited Create;
+
  fParent:=aParent;
+
+ fVariantTechniqueNameMap:=TTechniqueNameMap.Create(nil);
+
 end;
 
 destructor TpvTechniques.TTechnique.Destroy;
 begin
+
+ FreeAndNil(fVariantTechniqueNameMap);
+
  inherited Destroy;
 end;
 
 procedure TpvTechniques.TTechnique.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+var SectionJSONItem,JSONItem:TPasJSONItem;
+    SectionJSONItemArray:TPasJSONItemArray;
+    VariantName:TpvUTF8String;
+    VariantTechnique:TTechnique;
 begin
 
-//aRootJSONObject.Properties['variants'];
+ begin
+  SectionJSONItem:=aRootJSONObject.Properties['variants'];
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemArray) then begin
+   SectionJSONItemArray:=TPasJSONItemArray(SectionJSONItem);
+   for JSONItem in SectionJSONItemArray do begin
+    VariantName:=TPasJSON.GetString(JSONItem,'');
+    if length(VariantName)>0 then begin
+     VariantTechnique:=fParent.fTechniqueNameMap[VariantName];
+     if assigned(VariantTechnique) then begin
+      fVariantTechniqueNameMap.Add(VariantName,VariantTechnique);
+     end;
+    end;
+   end;
+  end;
+ end;
+
 
 end;
 
@@ -181,7 +214,8 @@ begin
     BaseJSONItemObject:=TPasJSONItemObject(BaseJSONItem);
 
     for JSONItemObjectProperty in BaseJSONItemObject do begin
-     if assigned(JSONItemObjectProperty.Value) and
+     if (length(JSONItemObjectProperty.Key)>0) and
+        assigned(JSONItemObjectProperty.Value) and
         (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
       Technique:=TTechnique.Create(self);
       try
@@ -194,7 +228,8 @@ begin
     end;
 
     for JSONItemObjectProperty in BaseJSONItemObject do begin
-     if assigned(JSONItemObjectProperty.Value) and
+     if (length(JSONItemObjectProperty.Key)>0) and
+        assigned(JSONItemObjectProperty.Value) and
         (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
       Technique:=fTechniqueNameMap[JSONItemObjectProperty.Key];
       if assigned(Technique) then begin
