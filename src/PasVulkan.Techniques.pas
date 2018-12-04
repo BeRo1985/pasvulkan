@@ -75,10 +75,12 @@ type TpvTechniques=class
       public
         type TShader=class;
              TShaderList=TpvObjectGenericList<TShader>;
+             TShaderNameMap=TpvStringHashMap<TShader>;
              TShader=class
               private
                fTechniques:TpvTechniques;
                fName:TpvUTF8String;
+               fLoaded:boolean;
                fShaderModule:TpvVulkanShaderModule;
                fReflectionData:TpvVulkanShaderModuleReflectionData;
               public
@@ -88,6 +90,7 @@ type TpvTechniques=class
                property ReflectionData:TpvVulkanShaderModuleReflectionData read fReflectionData;
               published
                property Name:TpvUTF8String read fName;
+               property Loaded:boolean read fLoaded;
                property ShaderModule:TpvVulkanShaderModule read fShaderModule;
              end;
             TTechnique=class;
@@ -123,9 +126,9 @@ type TpvTechniques=class
                      fIndex:TpvSizeInt;
                      fName:TpvUTF8String;
                      fVertexShader:TShader;
-                     fGeometryShader:TShader;
                      fTessellationControlShader:TShader;
                      fTessellationEvalutionShader:TShader;
+                     fGeometryShader:TShader;
                      fFragmentShader:TShader;
                      fComputeShader:TShader;
                      fSpecializationConstants:TSpecializationConstants;
@@ -134,15 +137,15 @@ type TpvTechniques=class
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
                      property VertexShader:TShader read fVertexShader;
-                     property GeometryShader:TShader read fGeometryShader;
                      property TessellationControlShader:TShader read fTessellationControlShader;
                      property TessellationEvalutionShader:TShader read fTessellationEvalutionShader;
+                     property GeometryShader:TShader read fGeometryShader;
                      property FragmentShader:TShader read fFragmentShader;
                      property ComputeShader:TShader read fComputeShader;
                      property SpecializationConstants:TSpecializationConstants read fSpecializationConstants;
                    end;
              private
-              fParent:TpvTechniques;
+              fTechniques:TpvTechniques;
               fName:TpvUTF8String;
               fVariantTechniqueNameMap:TTechniqueNameMap;
               fPasses:TPassList;
@@ -157,6 +160,7 @@ type TpvTechniques=class
       private
        fPath:TpvUTF8String;
        fShaders:TShaderList;
+       fShaderNameMap:TShaderNameMap;
        fTechniques:TTechniqueList;
        fTechniqueNameMap:TTechniqueNameMap;
       public
@@ -178,6 +182,10 @@ begin
  inherited Create;
 
  fTechniques:=aTechniques;
+
+ fLoaded:=false;
+
+ fShaderModule:=nil;
 
 end;
 
@@ -219,12 +227,42 @@ begin
 end;
 
 procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+ function GetShader(const aName:TpvUTF8String):TShader;
+ begin
+  if length(aName)>0 then begin
+   result:=fTechnique.fTechniques.fShaderNameMap[aName];
+   if not assigned(result) then begin
+    result:=TShader.Create(fTechnique.fTechniques);
+    try
+     result.fName:=aName;
+    finally
+     fTechnique.fTechniques.fShaders.Add(result);
+    end;
+    fTechnique.fTechniques.fShaderNameMap[aName]:=result;
+   end;
+  end else begin
+   result:=nil;
+  end;
+ end;
 var Index,Count:TpvSizeInt;
     SectionJSONItem,JSONItem:TPasJSONItem;
     SectionJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     SpecializationConstant:TSpecializationConstant;
 begin
+
+ begin
+  SectionJSONItem:=aRootJSONObject.Properties['shaders'];
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
+   SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
+   fVertexShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['vertex'],''));
+   fTessellationControlShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['tessellationControl'],''));
+   fTessellationEvalutionShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['tessellationEvalution'],''));
+   fGeometryShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['geometry'],''));
+   fFragmentShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['fragment'],''));
+   fComputeShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['compute'],''));
+  end;
+ end;
 
  begin
   SectionJSONItem:=aRootJSONObject.Properties['specializationConstants'];
@@ -266,7 +304,7 @@ begin
 
  inherited Create;
 
- fParent:=aParent;
+ fTechniques:=aParent;
 
  fVariantTechniqueNameMap:=TTechniqueNameMap.Create(nil);
 
@@ -301,7 +339,7 @@ begin
     if length(JSONItemObjectProperty.Key)>0 then begin
      VariantTechniqueName:=TPasJSON.GetString(JSONItemObjectProperty.Value,'');
      if length(VariantTechniqueName)>0 then begin
-      VariantTechnique:=fParent.fTechniqueNameMap[VariantTechniqueName];
+      VariantTechnique:=fTechniques.fTechniqueNameMap[VariantTechniqueName];
       if assigned(VariantTechnique) then begin
        fVariantTechniqueNameMap.Add(JSONItemObjectProperty.Key,VariantTechnique);
       end;
@@ -352,6 +390,8 @@ begin
 
  fShaders:=TShaderList.Create;
  fShaders.OwnsObjects:=true;
+
+ fShaderNameMap:=TShaderNameMap.Create(nil);
 
  fTechniques:=TTechniqueList.Create;
  fTechniques.OwnsObjects:=true;
@@ -443,6 +483,8 @@ begin
  FreeAndNil(fTechniqueNameMap);
 
  FreeAndNil(fTechniques);
+
+ FreeAndNil(fShaderNameMap);
 
  FreeAndNil(fShaders);
 
