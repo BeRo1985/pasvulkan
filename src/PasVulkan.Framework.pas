@@ -2145,6 +2145,7 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkDescriptorSetLayout read fDescriptorSetLayoutHandle;
+       property DescriptorSetLayoutBindingList:TpvVulkanDescriptorSetLayoutBindingList read fDescriptorSetLayoutBindingList;
      end;
 
      PpvVulkanDescriptorSetWriteDescriptorSetMetaData=^TpvVulkanDescriptorSetWriteDescriptorSetMetaData;
