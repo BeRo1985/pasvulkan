@@ -228,7 +228,10 @@ type TpvTechniques=class
                     public
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
-                     function GetPipeline(const aRenderPass:TpvVulkanRenderPass;const aPrimitiveTopology:TVkPrimitiveTopology):TpvVulkanPipeline;
+                     procedure InitializePipeline(const aPipeline:TpvVulkanPipeline;
+                                                  const aRenderPass:TpvVulkanRenderPass;
+                                                  const aPrimitiveTopology:TVkPrimitiveTopology;
+                                                  const aPrimitiveRestartEnable:boolean);
                      property VertexShader:TShader read fVertexShader;
                      property TessellationControlShader:TShader read fTessellationControlShader;
                      property TessellationEvalutionShader:TShader read fTessellationEvalutionShader;
@@ -657,10 +660,21 @@ begin
  end;
 end;
 
-function TpvTechniques.TTechnique.TPass.GetPipeline(const aRenderPass:TpvVulkanRenderPass;const aPrimitiveTopology:TVkPrimitiveTopology):TpvVulkanPipeline;
+procedure TpvTechniques.TTechnique.TPass.InitializePipeline(const aPipeline:TpvVulkanPipeline;
+                                                            const aRenderPass:TpvVulkanRenderPass;
+                                                            const aPrimitiveTopology:TVkPrimitiveTopology;
+                                                            const aPrimitiveRestartEnable:boolean);
 begin
  Load;
- result:=nil;
+ TpvVulkanGraphicsPipeline(aPipeline).InputAssemblyState.Topology:=aPrimitiveTopology;
+ TpvVulkanGraphicsPipeline(aPipeline).InputAssemblyState.PrimitiveRestartEnable:=aPrimitiveRestartEnable;
+ TpvVulkanGraphicsPipeline(aPipeline).TessellationState.TessellationStateCreateInfo^:=fRenderState.TessellationState;
+ TpvVulkanGraphicsPipeline(aPipeline).RasterizationState.RasterizationStateCreateInfo^:=fRenderState.RasterizationState;
+ TpvVulkanGraphicsPipeline(aPipeline).DepthStencilState.DepthStencilStateCreateInfo^:=fRenderState.DepthStencilState;
+ TpvVulkanGraphicsPipeline(aPipeline).ColorBlendState.ColorBlendStateCreateInfo^:=fRenderState.ColorBlendState;
+ if length(fRenderState.ColorBlendAttachmentStates)>0 then begin
+  TpvVulkanGraphicsPipeline(aPipeline).ColorBlendState.AddColorBlendAttachmentStates(fRenderState.ColorBlendAttachmentStates);
+ end;
 end;
 
 { TpvTechniques.TTechnique }
