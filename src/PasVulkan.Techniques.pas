@@ -80,14 +80,36 @@ type TpvTechniques=class
               type TPass=class;
                    TPassList=TpvObjectGenericList<TPass>;
                    TPass=class
+                    public
+                     type TSpecializationConstant=record
+                           public
+                            type TDataType=
+                                  (
+                                   Boolean,
+                                   Number
+                                  );
+                           public
+                            Name:TpvUTF8String;
+                            case DataType:TDataType of
+                             TDataType.Boolean:(
+                              BooleanValue:boolean;
+                             );
+                             TDataType.Number:(
+                              NumberValue:TpvDouble;
+                             );
+                          end;
+                          PSpecializationConstant=^TSpecializationConstant;
+                          TSpecializationConstants=array of TSpecializationConstant;
                     private
                      fTechnique:TTechnique;
                      fIndex:TpvSizeInt;
                      fName:TpvUTF8String;
+                     fSpecializationConstants:TSpecializationConstants;
                      procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
                     public
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
+                     property SpecializationConstants:TSpecializationConstants read fSpecializationConstants;
                    end;
              private
               fParent:TpvTechniques;
@@ -130,15 +152,57 @@ begin
 
  fName:='';
 
+ fSpecializationConstants:=nil;
+
 end;
 
 destructor TpvTechniques.TTechnique.TPass.Destroy;
 begin
+
+ fSpecializationConstants:=nil;
+
  inherited Destroy;
+
 end;
 
 procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+var Index,Count:TpvSizeInt;
+    SectionJSONItem,JSONItem:TPasJSONItem;
+    SectionJSONItemObject:TPasJSONItemObject;
+    JSONItemObjectProperty:TPasJSONItemObjectProperty;
+    SpecializationConstant:TSpecializationConstant;
 begin
+
+ begin
+  SectionJSONItem:=aRootJSONObject.Properties['specializationConstants'];
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
+   SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
+   Count:=0;
+   try
+    for JSONItemObjectProperty in SectionJSONItemObject do begin
+     if (length(JSONItemObjectProperty.Key)>0) and
+        assigned(JSONItemObjectProperty.Value) then begin
+      SpecializationConstant.Name:=JSONItemObjectProperty.Key;
+      if JSONItemObjectProperty.Value is TPasJSONItemBoolean then begin
+       SpecializationConstant.DataType:=TSpecializationConstant.TDataType.Boolean;
+       SpecializationConstant.BooleanValue:=TPasJSONItemBoolean(JSONItemObjectProperty.Value).Value;
+      end else begin
+       SpecializationConstant.DataType:=TSpecializationConstant.TDataType.Number;
+       SpecializationConstant.NumberValue:=TPasJSON.GetNumber(JSONItemObjectProperty.Value,0.0);
+      end;
+      Index:=Count;
+      inc(Count);
+      if length(fSpecializationConstants)<Count then begin
+       SetLength(fSpecializationConstants,Count*2);
+      end;
+      fSpecializationConstants[Index]:=SpecializationConstant;
+     end;
+    end;
+   finally
+    SetLength(fSpecializationConstants,Count);
+   end;
+  end;
+ end;
 
 end;
 
@@ -155,7 +219,7 @@ begin
 
  fPasses:=TPassList.Create;
 
- end;
+end;
 
 destructor TpvTechniques.TTechnique.Destroy;
 begin
