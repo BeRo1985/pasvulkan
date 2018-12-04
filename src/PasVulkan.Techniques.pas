@@ -122,6 +122,94 @@ type TpvTechniques=class
                           end;
                           PSpecializationConstant=^TSpecializationConstant;
                           TSpecializationConstants=array of TSpecializationConstant;
+                          TRenderState=record
+                           public
+
+                            TessellationState:TVkPipelineTessellationStateCreateInfo;
+
+                            RasterizationState:TVkPipelineRasterizationStateCreateInfo;
+
+                            DepthStencilState:TVkPipelineDepthStencilStateCreateInfo;
+
+                            ColorBlendState:TVkPipelineColorBlendStateCreateInfo;
+
+                            ColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
+
+                          end;
+                          PRenderState=^TRenderState;
+                     const DefaultRenderState:TRenderState=
+                            (
+
+                             TessellationState:(
+                              sType:VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+                              pNext:nil;
+                              flags:0;
+                              patchControlPoints:0;
+                             );
+
+                             RasterizationState:(
+                              sType:VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                              pNext:nil;
+                              depthClampEnable:VK_TRUE;
+                              rasterizerDiscardEnable:VK_FALSE;
+                              polygonMode:VK_POLYGON_MODE_FILL;
+                              cullMode:TVkCullModeFlags(VK_CULL_MODE_NONE);
+                              frontFace:VK_FRONT_FACE_COUNTER_CLOCKWISE;
+                              depthBiasEnable:VK_TRUE;
+                              depthBiasConstantFactor:0.0;
+                              depthBiasClamp:0.0;
+                              depthBiasSlopeFactor:0.0;
+                              lineWidth:1.0;
+                             );
+
+                             DepthStencilState:(
+                              sType:VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                              pNext:nil;
+                              flags:0;
+                              depthTestEnable:VK_TRUE;
+                              depthWriteEnable:VK_TRUE;
+                              depthCompareOp:VK_COMPARE_OP_LESS_OR_EQUAL;
+                              depthBoundsTestEnable:VK_FALSE;
+                              stencilTestEnable:VK_FALSE;
+                              front:(
+                               failOp:VK_STENCIL_OP_KEEP;
+                               depthFailOp:VK_STENCIL_OP_KEEP;
+                               compareOp:VK_COMPARE_OP_ALWAYS;
+                               compareMask:0;
+                               writeMask:0;
+                               reference:0;
+                              );
+                              back:(
+                               failOp:VK_STENCIL_OP_KEEP;
+                               depthFailOp:VK_STENCIL_OP_KEEP;
+                               compareOp:VK_COMPARE_OP_ALWAYS;
+                               compareMask:0;
+                               writeMask:0;
+                               reference:0;
+                              );
+                              minDepthBounds:0.0;
+                              maxDepthBounds:1.0;
+                             );
+
+                             ColorBlendState:(
+                              sType:VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+                              pNext:nil;
+                              flags:0;
+                              logicOpEnable:VK_FALSE;
+                              logicOp:VK_LOGIC_OP_NO_OP;
+                              attachmentCount:0;
+                              pAttachments:nil;
+                              blendConstants:(
+                               0.0,
+                               0.0,
+                               0.0,
+                               0.0
+                              );
+                             );
+
+                             ColorBlendAttachmentStates:nil;
+
+                            );
                     private
                      fTechnique:TTechnique;
                      fIndex:TpvSizeInt;
@@ -132,6 +220,7 @@ type TpvTechniques=class
                      fGeometryShader:TShader;
                      fFragmentShader:TShader;
                      fSpecializationConstants:TSpecializationConstants;
+                     fRenderState:TRenderState;
                      fVulkanDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout;
                      fVulkanPipelineLayout:TpvVulkanPipelineLayout;
                      procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
@@ -226,6 +315,8 @@ begin
  fName:='';
 
  fSpecializationConstants:=nil;
+
+ fRenderState:=DefaultRenderState;
 
  fVulkanDescriptorSetLayouts:=nil;
 
