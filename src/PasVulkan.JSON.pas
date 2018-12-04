@@ -143,7 +143,7 @@ begin
         TPasJSONItemObject(StackItem.JSONItem).Delete(TPasJSONItemObject(StackItem.JSONItem).Indices['templates']);
         try
          while JSONItemObjectQueue.Dequeue(JSONItemObject) do begin
-          TPasJSONItemObject(StackItem.JSONItem).Merge(JSONItemObject);
+          TPasJSONItemObject(StackItem.JSONItem).Merge(JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
          end;
         finally
          JSONItemObjectQueue.Clear;
@@ -262,13 +262,13 @@ begin
       try
        for OtherIndex:=0 to ObjectItem^.Dependencies.Count-1 do begin
         OtherObjectItem:=@ObjectItemDynamicArray.Items[ObjectItem^.Dependencies.Items[OtherIndex]];
-        TemporaryJSONItemObject.Merge(OtherObjectItem^.JSONItemObject);
+        TemporaryJSONItemObject.Merge(OtherObjectItem^.JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
        end;
-       TemporaryJSONItemObject.Merge(ObjectItem^.JSONItemObject);
+       TemporaryJSONItemObject.Merge(ObjectItem^.JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
        while ObjectItem^.JSONItemObject.Count>0 do begin
         ObjectItem^.JSONItemObject.Delete(0);
        end;
-       ObjectItem^.JSONItemObject.Merge(TemporaryJSONItemObject);
+       ObjectItem^.JSONItemObject.Merge(TemporaryJSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
       finally
        FreeAndNil(TemporaryJSONItemObject);
       end;

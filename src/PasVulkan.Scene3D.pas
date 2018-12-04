@@ -75,7 +75,8 @@ uses {$ifdef Windows}
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
-     PasVulkan.Resources;
+     PasVulkan.Resources,
+     PasVulkan.Techniques;
 
 type EpvScene3D=class(Exception);
 
@@ -466,6 +467,7 @@ type EpvScene3D=class(Exception);
             TIGroupInstances=TpvGenericList<IGroupInstance>;
             TGroupInstances=TpvObjectGenericList<TGroupInstance>;
       private
+       fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
        fSamplerListLock:TPasMPSlimReaderWriterLock;
@@ -1162,6 +1164,8 @@ begin
 
  inherited Create(aResourceManager,aParent);
 
+ fTechniques:=TpvTechniques.Create;
+
  fImageListLock:=TPasMPSlimReaderWriterLock.Create;
  fImages:=TImages.Create;
  fImages.OwnsObjects:=false;
@@ -1278,6 +1282,8 @@ begin
  end;
  FreeAndNil(fImages);
  FreeAndNil(fImageListLock);
+
+ FreeAndNil(fTechniques);
 
  inherited Destroy;
 end;
