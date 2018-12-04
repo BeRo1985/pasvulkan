@@ -366,6 +366,7 @@ var Index,Count:TpvSizeInt;
     SectionJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     SpecializationConstant:TSpecializationConstant;
+    TemporaryString:TpvUTF8String;
 begin
 
  begin
@@ -407,6 +408,87 @@ begin
     end;
    finally
     SetLength(fSpecializationConstants,Count);
+   end;
+  end;
+ end;
+
+ begin
+  SectionJSONItem:=aRootJSONObject.Properties['renderState'];
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
+   SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
+   begin
+    JSONItem:=SectionJSONItemObject.Properties['tessellation'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     fRenderState.TessellationState.patchControlPoints:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['patchControlPoints'],fRenderState.TessellationState.patchControlPoints);
+    end;
+   end;
+   begin
+    JSONItem:=SectionJSONItemObject.Properties['rasterization'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthClampEnable'],fRenderState.RasterizationState.depthClampEnable<>VK_FALSE) then begin
+      fRenderState.RasterizationState.depthClampEnable:=VK_TRUE;
+     end else begin
+      fRenderState.RasterizationState.depthClampEnable:=VK_FALSE;
+     end;
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['rasterizerDiscardEnable'],fRenderState.RasterizationState.rasterizerDiscardEnable<>VK_FALSE) then begin
+      fRenderState.RasterizationState.rasterizerDiscardEnable:=VK_TRUE;
+     end else begin
+      fRenderState.RasterizationState.rasterizerDiscardEnable:=VK_FALSE;
+     end;
+     begin
+      TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['polygonMode'],'FILL'))));
+      if TemporaryString='LINE' then begin
+       fRenderState.RasterizationState.polygonMode:=VK_POLYGON_MODE_LINE;
+      end else if TemporaryString='POINT' then begin
+       fRenderState.RasterizationState.polygonMode:=VK_POLYGON_MODE_POINT;
+      end else if TemporaryString='FILL_RECTANGLE_NV' then begin
+       fRenderState.RasterizationState.polygonMode:=VK_POLYGON_MODE_FILL_RECTANGLE_NV;
+      end else begin
+       fRenderState.RasterizationState.polygonMode:=VK_POLYGON_MODE_FILL;
+      end;
+     end;
+     begin
+      TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['cullMode'],'BACK'))));
+      if TemporaryString='FRONT' then begin
+       fRenderState.RasterizationState.cullMode:=TVkCullModeFlags(TVkCullModeFlagBits.VK_CULL_MODE_FRONT_BIT);
+      end else if TemporaryString='BACK' then begin
+       fRenderState.RasterizationState.cullMode:=TVkCullModeFlags(TVkCullModeFlagBits.VK_CULL_MODE_BACK_BIT);
+      end else if (TemporaryString='FRONT_AND_BACK') or (TemporaryString='BOTH') then begin
+       fRenderState.RasterizationState.cullMode:=TVkCullModeFlags(TVkCullModeFlagBits.VK_CULL_MODE_FRONT_AND_BACK);
+      end else begin
+       fRenderState.RasterizationState.cullMode:=TVkCullModeFlags(TVkCullModeFlagBits.VK_CULL_MODE_NONE);
+      end;
+     end;
+     begin
+      TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['frontFace'],'COUNTER_CLOCKWISE'))));
+      if (TemporaryString='COUNTER_CLOCKWISE') or (TemporaryString='CCW') then begin
+       fRenderState.RasterizationState.frontFace:=TVkFrontFace.VK_FRONT_FACE_COUNTER_CLOCKWISE;
+      end else {if (TemporaryString='CLOCKWISE') or (TemporaryString='CW') then} begin
+       fRenderState.RasterizationState.frontFace:=TVkFrontFace.VK_FRONT_FACE_CLOCKWISE;
+      end;
+     end;
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBiasEnable'],fRenderState.RasterizationState.depthBiasEnable<>VK_FALSE) then begin
+      fRenderState.RasterizationState.depthBiasEnable:=VK_TRUE;
+     end else begin
+      fRenderState.RasterizationState.depthBiasEnable:=VK_FALSE;
+     end;
+     fRenderState.RasterizationState.depthBiasConstantFactor:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasConstantFactor'],fRenderState.RasterizationState.depthBiasConstantFactor);
+     fRenderState.RasterizationState.depthBiasClamp:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasClamp'],fRenderState.RasterizationState.depthBiasClamp);
+     fRenderState.RasterizationState.depthBiasSlopeFactor:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasSlopeFactor'],fRenderState.RasterizationState.depthBiasSlopeFactor);
+     fRenderState.RasterizationState.lineWidth:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['lineWidth'],fRenderState.RasterizationState.lineWidth);
+    end;
+   end;
+   begin
+    JSONItem:=SectionJSONItemObject.Properties['depthStencil'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+
+    end;
+   end;
+   begin
+    JSONItem:=SectionJSONItemObject.Properties['colorBlend'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+
+    end;
    end;
   end;
  end;
