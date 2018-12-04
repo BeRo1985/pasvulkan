@@ -72,11 +72,21 @@ uses SysUtils,
 
 type TpvTechniques=class
       public
-       type TStringJSONItemObjectMap=TpvStringHashMap<TPasJSONItemObject>;
+       type TTechnique=class
+             private
+              fParent:TpvTechniques;
+              fName:TpvUTF8String;
+              procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+             public
+              constructor Create(const aParent:TpvTechniques); reintroduce;
+              destructor Destroy; override;
+            end;
+            TTechniqueList=TpvObjectGenericList<TTechnique>;
+            TTechniqueNameMap=TpvStringHashMap<TTechnique>;
       private
        fPath:TpvUTF8String;
-       fJSON:TPasJSONItemObject;
-       fJSONTechniqueNameHashMap:TStringJSONItemObjectMap;
+       fTechniques:TTechniqueList;
+       fTechniqueNameMap:TTechniqueNameMap;
       public
        constructor Create(const aPath:TpvUTF8String='techniques');
        destructor Destroy; override;
@@ -86,81 +96,128 @@ implementation
 
 uses PasVulkan.Application;
 
+{ TpvTechniques.TTechnique }
+
+constructor TpvTechniques.TTechnique.Create(const aParent:TpvTechniques);
+begin
+ inherited Create;
+ fParent:=aParent;
+end;
+
+destructor TpvTechniques.TTechnique.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvTechniques.TTechnique.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+begin
+
+//aRootJSONObject.Properties['variants'];
+
+end;
+
 { TpvTechniques }
 
 constructor TpvTechniques.Create(const aPath:TpvUTF8String='techniques');
 var FileNameList:TpvApplicationAssets.TFileNameList;
     FileName:TpvUTF8String;
     Stream:TStream;
+    JSONTechniques:TPasJSONItemObject;
     CurrentJSON:TPasJSONItem;
     BaseJSONItem,JSONItem:TPasJSONItem;
     BaseJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
+    Technique:TTechnique;
 begin
 
  inherited Create;
+
+ fTechniques:=TTechniqueList.Create;
+ fTechniques.OwnsObjects:=true;
+
+ fTechniqueNameMap:=TTechniqueNameMap.Create(nil);
 
  fPath:=aPath;
  if (length(fPath)>0) and (fPath[length(fPath)] in ['/','\']) then begin
   Delete(fPath,length(fPath),1);
  end;
 
- fJSON:=TPasJSONItemObject.Create;
+ JSONTechniques:=TPasJSONItemObject.Create;
+ try
 
- fJSONTechniqueNameHashMap:=TStringJSONItemObjectMap.Create(nil);
-
- FileNameList:=pvApplication.Assets.GetDirectoryFileList(fPath);
- for FileName in FileNameList do begin
-  if ExtractFileExt(String(FileName))='.techniques' then begin
-   Stream:=pvApplication.Assets.GetAssetStream(fPath+'/'+FileName);
-   if assigned(Stream) then begin
-    try
-     CurrentJSON:=TPasJSON.Parse(Stream,TPasJSON.SimplifiedJSONModeFlags+[TPasJSONModeFlag.HexadecimalNumbers]);
-     if assigned(CurrentJSON) then begin
-      try
-       if CurrentJSON is TPasJSONItemObject then begin
-        fJSON.Merge(CurrentJSON,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
+  FileNameList:=pvApplication.Assets.GetDirectoryFileList(fPath);
+  for FileName in FileNameList do begin
+   if ExtractFileExt(String(FileName))='.techniques' then begin
+    Stream:=pvApplication.Assets.GetAssetStream(fPath+'/'+FileName);
+    if assigned(Stream) then begin
+     try
+      CurrentJSON:=TPasJSON.Parse(Stream,TPasJSON.SimplifiedJSONModeFlags+[TPasJSONModeFlag.HexadecimalNumbers]);
+      if assigned(CurrentJSON) then begin
+       try
+        if CurrentJSON is TPasJSONItemObject then begin
+         JSONTechniques.Merge(CurrentJSON,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
+        end;
+       finally
+        FreeAndNil(CurrentJSON);
        end;
+      end;
+     finally
+      FreeAndNil(Stream);
+     end;
+    end;
+   end;
+  end;
+
+  TpvJSONUtils.ResolveTemplates(JSONTechniques);
+
+  BaseJSONItem:=JSONTechniques.Properties['techniques'];
+
+  if assigned(BaseJSONItem) then begin
+
+   TpvJSONUtils.ResolveInheritances(BaseJSONItem);
+
+   if BaseJSONItem is TPasJSONItemObject then begin
+
+    BaseJSONItemObject:=TPasJSONItemObject(BaseJSONItem);
+
+    for JSONItemObjectProperty in BaseJSONItemObject do begin
+     if assigned(JSONItemObjectProperty.Value) and
+        (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
+      Technique:=TTechnique.Create(self);
+      try
+       Technique.fName:=JSONItemObjectProperty.Key;
       finally
-       FreeAndNil(CurrentJSON);
+       fTechniques.Add(Technique);
+      end;
+      fTechniqueNameMap.Add(Technique.fName,Technique);
+     end;
+    end;
+
+    for JSONItemObjectProperty in BaseJSONItemObject do begin
+     if assigned(JSONItemObjectProperty.Value) and
+        (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
+      Technique:=fTechniqueNameMap[JSONItemObjectProperty.Key];
+      if assigned(Technique) then begin
+       Technique.LoadFromJSONObject(TPasJSONItemObject(JSONItemObjectProperty.Value));
       end;
      end;
-    finally
-     FreeAndNil(Stream);
     end;
-   end;
-  end;
- end;
 
- TpvJSONUtils.ResolveTemplates(fJSON);
-
- BaseJSONItem:=fJSON.Properties['techniques'];
-
- if assigned(BaseJSONItem) then begin
-
-  TpvJSONUtils.ResolveInheritances(BaseJSONItem);
-
-  if BaseJSONItem is TPasJSONItemObject then begin
-
-   BaseJSONItemObject:=TPasJSONItemObject(BaseJSONItem);
-
-   for JSONItemObjectProperty in BaseJSONItemObject do begin
-    JSONItem:=JSONItemObjectProperty.Value;
-    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-     fJSONTechniqueNameHashMap.Add(JSONItemObjectProperty.Key,TPasJSONItemObject(JSONItem));
-    end;
    end;
 
   end;
 
+
+ finally
+  FreeAndNil(JSONTechniques);
  end;
 
 end;
 
 destructor TpvTechniques.Destroy;
 begin
- FreeAndNil(fJSONTechniqueNameHashMap);
- FreeAndNil(fJSON);
+ FreeAndNil(fTechniqueNameMap);
+ FreeAndNil(fTechniques);
  inherited Destroy;
 end;
 
