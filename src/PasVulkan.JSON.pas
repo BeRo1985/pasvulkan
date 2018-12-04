@@ -91,7 +91,8 @@ type TStackItem=record
   result.JSONItem:=aJSONItem;
  end;
 var JSONItemTemplates,JSONItem,TemplateJSONItem:TPasJSONItem;
-    JSONItemObject:TPasJSONItemObject;
+    JSONItemObject,
+    TemporaryJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     Stack:TStack;
     StackItem:TStackItem;
@@ -106,7 +107,7 @@ begin
     Stack.Push(NewStackItem(0,TPasJSONItemObject(aJSONItem)));
     JSONItemObjectQueue.Initialize;
     try
-     while not Stack.Pop(StackItem) do begin
+     while Stack.Pop(StackItem) do begin
       if StackItem.JSONItem is TPasJSONItemArray then begin
        for JSONItem in TPasJSONItemArray(StackItem.JSONItem) do begin
         if assigned(JSONItem) and
@@ -142,8 +143,18 @@ begin
        if StackItem.Level>0 then begin
         TPasJSONItemObject(StackItem.JSONItem).Delete(TPasJSONItemObject(StackItem.JSONItem).Indices['templates']);
         try
-         while JSONItemObjectQueue.Dequeue(JSONItemObject) do begin
-          TPasJSONItemObject(StackItem.JSONItem).Merge(JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
+         if JSONItemObjectQueue.Count>0 then begin
+          TemporaryJSONItemObject:=TPasJSONItemObject.Create;
+          try
+           while JSONItemObjectQueue.Dequeue(JSONItemObject) do begin
+            TemporaryJSONItemObject.Merge(JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
+           end;
+           TemporaryJSONItemObject.Merge(TPasJSONItemObject(StackItem.JSONItem),[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
+           TPasJSONItemObject(StackItem.JSONItem).Clear;
+           TPasJSONItemObject(StackItem.JSONItem).Merge(TemporaryJSONItemObject);
+          finally
+           FreeAndNil(TemporaryJSONItemObject);
+          end;
          end;
         finally
          JSONItemObjectQueue.Clear;
@@ -195,17 +206,16 @@ begin
    try
     ParentObjectNames.Initialize;
     try
-     Index:=0;
      for JSONItemObjectProperty in TPasJSONItemObject(aJSONItem) do begin
       if assigned(JSONItemObjectProperty.Value) and (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
        JSONItemObject:=TPasJSONItemObject(JSONItemObjectProperty.Value);
        OtherIndex:=ObjectItemDynamicArray.AddNew;
        ObjectItem:=@ObjectItemDynamicArray.Items[OtherIndex];
-       ObjectItem^.Index:=Index;
+       ObjectItem^.Index:=OtherIndex;
        ObjectItem^.Name:=JSONItemObjectProperty.Key;
        ObjectItem^.JSONItemObject:=JSONItemObject;
        ObjectItem^.Dependencies.Initialize;
-       ObjectNameHashMap.Add(ObjectItem^.Name,Index);
+       ObjectNameHashMap.Add(ObjectItem^.Name,OtherIndex);
       end;
      end;
      ObjectItemDynamicArray.Finish;
@@ -258,6 +268,10 @@ begin
     for Index:=0 to TopologicalSort.Count-1 do begin
      ObjectItem:=@ObjectItemDynamicArray.Items[TopologicalSort.SortedKeys[Index]];
      if ObjectItem^.Dependencies.Count>0 then begin
+      if ObjectItem^.Name='surface_unlit' then begin
+       if ObjectItem^.Name='surface_unlit' then begin
+       end;
+      end;
       TemporaryJSONItemObject:=TPasJSONItemObject.Create;
       try
        for OtherIndex:=0 to ObjectItem^.Dependencies.Count-1 do begin
@@ -265,9 +279,7 @@ begin
         TemporaryJSONItemObject.Merge(OtherObjectItem^.JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
        end;
        TemporaryJSONItemObject.Merge(ObjectItem^.JSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
-       while ObjectItem^.JSONItemObject.Count>0 do begin
-        ObjectItem^.JSONItemObject.Delete(0);
-       end;
+       ObjectItem^.JSONItemObject.Clear;
        ObjectItem^.JSONItemObject.Merge(TemporaryJSONItemObject,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
       finally
        FreeAndNil(TemporaryJSONItemObject);

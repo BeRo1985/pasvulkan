@@ -96,6 +96,7 @@ var FileNameList:TpvApplicationAssets.TFileNameList;
     BaseJSONItem,JSONItem:TPasJSONItem;
     BaseJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
+//  sl:TStringList;
 begin
 
  inherited Create;
@@ -119,7 +120,7 @@ begin
      if assigned(CurrentJSON) then begin
       try
        if CurrentJSON is TPasJSONItemObject then begin
-        fJSON.Merge(CurrentJSON);
+        fJSON.Merge(CurrentJSON,[TPasJSONMergeFlag.ForceObjectPropertyValueDestinationType]);
        end;
       finally
        FreeAndNil(CurrentJSON);
@@ -154,6 +155,14 @@ begin
   end;
 
  end;
+
+{sl:=TStringList.Create;
+ try
+  sl.Text:=TPasJSON.Stringify(fJSON,true,TPasJSON.SimplifiedJSONModeFlags);
+  sl.SaveToFile('g.txt');
+ finally
+  sl.Free;
+ end;}
 
 end;
 
