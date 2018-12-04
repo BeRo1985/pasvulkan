@@ -86,6 +86,7 @@ type TpvTechniques=class
               public
                constructor Create(const aTechniques:TpvTechniques); reintroduce;
                destructor Destroy; override;
+               procedure Load;
               public
                property ReflectionData:TpvVulkanShaderModuleReflectionData read fReflectionData;
               published
@@ -130,18 +131,19 @@ type TpvTechniques=class
                      fTessellationEvalutionShader:TShader;
                      fGeometryShader:TShader;
                      fFragmentShader:TShader;
-                     fComputeShader:TShader;
                      fSpecializationConstants:TSpecializationConstants;
+                     fVulkanPipelineLayout:TpvVulkanPipelineLayout;
                      procedure LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
+                     procedure Load;
                     public
                      constructor Create(const aTechnique:TTechnique); reintroduce;
                      destructor Destroy; override;
+                     function GetPipeline(const aRenderPass:TpvVulkanRenderPass):TpvVulkanPipeline;
                      property VertexShader:TShader read fVertexShader;
                      property TessellationControlShader:TShader read fTessellationControlShader;
                      property TessellationEvalutionShader:TShader read fTessellationEvalutionShader;
                      property GeometryShader:TShader read fGeometryShader;
                      property FragmentShader:TShader read fFragmentShader;
-                     property ComputeShader:TShader read fComputeShader;
                      property SpecializationConstants:TSpecializationConstants read fSpecializationConstants;
                    end;
              private
@@ -200,6 +202,15 @@ begin
 
 end;
 
+procedure TpvTechniques.TShader.Load;
+begin
+ if not fLoaded then begin
+  fShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,pvApplication.Assets.GetAssetStream('shaders/'+fName));
+  fReflectionData:=fShaderModule.GetReflectionData;
+  fLoaded:=true;
+ end;
+end;
+
 { TpvTechniques.TTechnique.TPass }
 
 constructor TpvTechniques.TTechnique.TPass.Create(const aTechnique:TTechnique);
@@ -214,6 +225,8 @@ begin
  fName:='';
 
  fSpecializationConstants:=nil;
+
+ fVulkanPipelineLayout:=nil;
 
 end;
 
@@ -260,7 +273,6 @@ begin
    fTessellationEvalutionShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['tessellationEvalution'],''));
    fGeometryShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['geometry'],''));
    fFragmentShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['fragment'],''));
-   fComputeShader:=GetShader(TPasJSON.GetString(SectionJSONItemObject.Properties['compute'],''));
   end;
  end;
 
@@ -295,6 +307,65 @@ begin
   end;
  end;
 
+end;
+
+procedure TpvTechniques.TTechnique.TPass.Load;
+var PushConstantRange:TVkPushConstantRange;
+ procedure ScanShader(const aShader:TShader;const aStageFlags:TVkShaderStageFlags);
+ var Index:TpvSizeInt;
+     Variable:PpvVulkanShaderModuleReflectionVariable;
+ begin
+  for Index:=0 to length(aShader.fReflectionData.Variables)-1 do begin
+   Variable:=@aShader.fReflectionData.Variables[Index];
+   case Variable^.StorageClass of
+    TpvVulkanShaderModuleReflectionStorageClass.PushConstant:begin
+     PushConstantRange.stageFlags:=PushConstantRange.stageFlags or aStageFlags;
+     PushConstantRange.offset:=0;
+     if PushConstantRange.size<(Variable^.Offset+Variable^.Size) then begin
+      PushConstantRange.size:=Variable^.Offset+Variable^.Size;
+     end;
+    end;
+   end;
+  end;
+ end;
+begin
+ if not assigned(fVulkanPipelineLayout) then begin
+  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+  try
+   PushConstantRange.stageFlags:=0;
+   if assigned(fVertexShader) then begin
+    fVertexShader.Load;
+    ScanShader(fVertexShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT));
+   end;
+   if assigned(fTessellationControlShader) then begin
+    fTessellationControlShader.Load;
+    ScanShader(fTessellationControlShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT));
+   end;
+   if assigned(fTessellationEvalutionShader) then begin
+    fTessellationEvalutionShader.Load;
+    ScanShader(fTessellationEvalutionShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT));
+   end;
+   if assigned(fGeometryShader) then begin
+    fGeometryShader.Load;
+    ScanShader(fGeometryShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_GEOMETRY_BIT));
+   end;
+   if assigned(fFragmentShader) then begin
+    fFragmentShader.Load;
+    ScanShader(fFragmentShader,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT));
+   end;
+   //fVulkanPipelineLayout.AddDescriptorSetLayout
+   if PushConstantRange.stageFlags<>0 then begin
+    fVulkanPipelineLayout.AddPushConstantRange(PushConstantRange);
+   end;
+  finally
+   fVulkanPipelineLayout.Initialize;
+  end;
+ end;
+end;
+
+function TpvTechniques.TTechnique.TPass.GetPipeline(const aRenderPass:TpvVulkanRenderPass):TpvVulkanPipeline;
+begin
+ result:=nil;
 end;
 
 { TpvTechniques.TTechnique }
