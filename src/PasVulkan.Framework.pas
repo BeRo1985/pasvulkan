@@ -17107,12 +17107,14 @@ begin
  fDepthStencilStateCreateInfo.depthBoundsTestEnable:=VK_FALSE;
  fDepthStencilStateCreateInfo.stencilTestEnable:=VK_FALSE;
  fDepthStencilStateCreateInfo.front.failOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.front.passOp:=VK_STENCIL_OP_KEEP;
  fDepthStencilStateCreateInfo.front.depthFailOp:=VK_STENCIL_OP_KEEP;
  fDepthStencilStateCreateInfo.front.compareOp:=VK_COMPARE_OP_ALWAYS;
  fDepthStencilStateCreateInfo.front.compareMask:=0;
  fDepthStencilStateCreateInfo.front.writeMask:=0;
  fDepthStencilStateCreateInfo.front.reference:=0;
  fDepthStencilStateCreateInfo.back.failOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.back.passOp:=VK_STENCIL_OP_KEEP;
  fDepthStencilStateCreateInfo.back.depthFailOp:=VK_STENCIL_OP_KEEP;
  fDepthStencilStateCreateInfo.back.compareOp:=VK_COMPARE_OP_ALWAYS;
  fDepthStencilStateCreateInfo.back.compareMask:=0;

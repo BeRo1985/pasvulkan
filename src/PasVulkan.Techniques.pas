@@ -173,6 +173,7 @@ type TpvTechniques=class
                               stencilTestEnable:VK_FALSE;
                               front:(
                                failOp:VK_STENCIL_OP_KEEP;
+                               passOp:VK_STENCIL_OP_KEEP;
                                depthFailOp:VK_STENCIL_OP_KEEP;
                                compareOp:VK_COMPARE_OP_ALWAYS;
                                compareMask:0;
@@ -181,6 +182,7 @@ type TpvTechniques=class
                               );
                               back:(
                                failOp:VK_STENCIL_OP_KEEP;
+                               passOp:VK_STENCIL_OP_KEEP;
                                depthFailOp:VK_STENCIL_OP_KEEP;
                                compareOp:VK_COMPARE_OP_ALWAYS;
                                compareMask:0;
@@ -361,12 +363,15 @@ procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObjec
    result:=nil;
   end;
  end;
-var Index,Count:TpvSizeInt;
-    SectionJSONItem,JSONItem:TPasJSONItem;
-    SectionJSONItemObject:TPasJSONItemObject;
+var Index,Count,OtherIndex:TpvSizeInt;
+    SectionJSONItem,JSONItem,
+    SubJSONItem:TPasJSONItem;
+    SectionJSONItemObject,
+    SubJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     SpecializationConstant:TSpecializationConstant;
     TemporaryString:TpvUTF8String;
+    StencilOpState:PVkStencilOpState;
 begin
 
  begin
@@ -481,7 +486,147 @@ begin
    begin
     JSONItem:=SectionJSONItemObject.Properties['depthStencil'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthTestEnable'],fRenderState.DepthStencilState.depthTestEnable<>VK_FALSE) then begin
+      fRenderState.DepthStencilState.depthTestEnable:=VK_TRUE;
+     end else begin
+      fRenderState.DepthStencilState.depthTestEnable:=VK_FALSE;
+     end;
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthWriteEnable'],fRenderState.DepthStencilState.depthWriteEnable<>VK_FALSE) then begin
+      fRenderState.DepthStencilState.depthWriteEnable:=VK_TRUE;
+     end else begin
+      fRenderState.DepthStencilState.depthWriteEnable:=VK_FALSE;
+     end;
+     begin
+      TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['compareOp'],'LESS_OR_EQUAL'))));
+      if TemporaryString='NEVER' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
+      end else if TemporaryString='LESS' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_LESS;
+      end else if TemporaryString='EQUAL' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_EQUAL;
+      end else if TemporaryString='LESS_OR_EQUAL' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_LESS_OR_EQUAL;
+      end else if TemporaryString='GREATER' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_GREATER;
+      end else if TemporaryString='NOT_EQUAL' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_NOT_EQUAL;
+      end else if TemporaryString='GREATER_OR_EQUAL' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_GREATER_OR_EQUAL;
+      end else if TemporaryString='ALWAYS' then begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_ALWAYS;
+      end else begin
+       fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
+      end;
+     end;
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.depthBoundsTestEnable<>VK_FALSE) then begin
+      fRenderState.DepthStencilState.depthBoundsTestEnable:=VK_TRUE;
+     end else begin
+      fRenderState.DepthStencilState.depthBoundsTestEnable:=VK_FALSE;
+     end;
+     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.stencilTestEnable<>VK_FALSE) then begin
+      fRenderState.DepthStencilState.stencilTestEnable:=VK_TRUE;
+     end else begin
+      fRenderState.DepthStencilState.stencilTestEnable:=VK_FALSE;
+     end;
+     for OtherIndex:=0 to 1 do begin
+      if OtherIndex=0 then begin
+       StencilOpState:=@fRenderState.DepthStencilState.front;
+       SubJSONItem:=TPasJSONItemObject(JSONItem).Properties['front'];
+      end else begin
+       StencilOpState:=@fRenderState.DepthStencilState.back;
+       SubJSONItem:=TPasJSONItemObject(JSONItem).Properties['back'];
+      end;
+      if assigned(SubJSONItem) and (SubJSONItem is TPasJSONItemObject) then begin
+       SubJSONItemObject:=TPasJSONItemObject(SubJSONItem);
+       begin
+        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(SubJSONItemObject.Properties['failOp'],'KEEP'))));
+        if TemporaryString='KEEP' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end else if TemporaryString='REPLACE' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_REPLACE;
+        end else if TemporaryString='INCREMENT_AND_CLAMP' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        end else if TemporaryString='DECREMENT_AND_CLAMP' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        end else if TemporaryString='OP_INVERT' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_INVERT;
+        end else if TemporaryString='INCREMENT_AND_WRAP' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        end else if TemporaryString='DECREMENT_AND_WRAP' then begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        end else begin
+         StencilOpState^.failOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end;
+       end;
+       begin
+        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(SubJSONItemObject.Properties['passOp'],'KEEP'))));
+        if TemporaryString='KEEP' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end else if TemporaryString='REPLACE' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_REPLACE;
+        end else if TemporaryString='INCREMENT_AND_CLAMP' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        end else if TemporaryString='DECREMENT_AND_CLAMP' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        end else if TemporaryString='OP_INVERT' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_INVERT;
+        end else if TemporaryString='INCREMENT_AND_WRAP' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        end else if TemporaryString='DECREMENT_AND_WRAP' then begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        end else begin
+         StencilOpState^.passOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end;
+       end;
+       begin
+        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(SubJSONItemObject.Properties['depthFailOp'],'KEEP'))));
+        if TemporaryString='KEEP' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end else if TemporaryString='REPLACE' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_REPLACE;
+        end else if TemporaryString='INCREMENT_AND_CLAMP' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        end else if TemporaryString='DECREMENT_AND_CLAMP' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        end else if TemporaryString='OP_INVERT' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_INVERT;
+        end else if TemporaryString='INCREMENT_AND_WRAP' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        end else if TemporaryString='DECREMENT_AND_WRAP' then begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        end else begin
+         StencilOpState^.depthFailOp:=TVkStencilOp.VK_STENCIL_OP_KEEP;
+        end;
+       end;
+       begin
+        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['compareOp'],'ALWAYS'))));
+        if TemporaryString='NEVER' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
+        end else if TemporaryString='LESS' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_LESS;
+        end else if TemporaryString='EQUAL' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_EQUAL;
+        end else if TemporaryString='LESS_OR_EQUAL' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_LESS_OR_EQUAL;
+        end else if TemporaryString='GREATER' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_GREATER;
+        end else if TemporaryString='NOT_EQUAL' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_NOT_EQUAL;
+        end else if TemporaryString='GREATER_OR_EQUAL' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_GREATER_OR_EQUAL;
+        end else if TemporaryString='ALWAYS' then begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_ALWAYS;
+        end else begin
+         StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
+        end;
+       end;
+       StencilOpState^.compareMask:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['compareMask'],StencilOpState^.compareMask);
+       StencilOpState^.writeMask:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['writeMask'],StencilOpState^.writeMask);
+       StencilOpState^.reference:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['reference'],StencilOpState^.reference);
+      end;
+     end;
+     fRenderState.DepthStencilState.minDepthBounds:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['minDepthBounds'],fRenderState.DepthStencilState.minDepthBounds);
+     fRenderState.DepthStencilState.maxDepthBounds:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['maxDepthBounds'],fRenderState.DepthStencilState.maxDepthBounds);
     end;
    end;
    begin
