@@ -96,7 +96,6 @@ var FileNameList:TpvApplicationAssets.TFileNameList;
     BaseJSONItem,JSONItem:TPasJSONItem;
     BaseJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
-//  sl:TStringList;
 begin
 
  inherited Create;
@@ -155,14 +154,6 @@ begin
   end;
 
  end;
-
-{sl:=TStringList.Create;
- try
-  sl.Text:=TPasJSON.Stringify(fJSON,true,TPasJSON.SimplifiedJSONModeFlags);
-  sl.SaveToFile('g.txt');
- finally
-  sl.Free;
- end;}
 
 end;
 

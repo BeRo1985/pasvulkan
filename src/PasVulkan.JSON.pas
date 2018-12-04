@@ -268,10 +268,6 @@ begin
     for Index:=0 to TopologicalSort.Count-1 do begin
      ObjectItem:=@ObjectItemDynamicArray.Items[TopologicalSort.SortedKeys[Index]];
      if ObjectItem^.Dependencies.Count>0 then begin
-      if ObjectItem^.Name='surface_unlit' then begin
-       if ObjectItem^.Name='surface_unlit' then begin
-       end;
-      end;
       TemporaryJSONItemObject:=TPasJSONItemObject.Create;
       try
        for OtherIndex:=0 to ObjectItem^.Dependencies.Count-1 do begin
