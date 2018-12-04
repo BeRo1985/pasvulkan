@@ -125,27 +125,29 @@ end;
 
 procedure TpvTechniques.TTechnique.LoadFromJSONObject(const aRootJSONObject:TPasJSONItemObject);
 var SectionJSONItem,JSONItem:TPasJSONItem;
-    SectionJSONItemArray:TPasJSONItemArray;
-    VariantName:TpvUTF8String;
+    SectionJSONItemObject:TPasJSONItemObject;
+    JSONItemObjectProperty:TPasJSONItemObjectProperty;
+    VariantTechniqueName:TpvUTF8String;
     VariantTechnique:TTechnique;
 begin
 
  begin
   SectionJSONItem:=aRootJSONObject.Properties['variants'];
-  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemArray) then begin
-   SectionJSONItemArray:=TPasJSONItemArray(SectionJSONItem);
-   for JSONItem in SectionJSONItemArray do begin
-    VariantName:=TPasJSON.GetString(JSONItem,'');
-    if length(VariantName)>0 then begin
-     VariantTechnique:=fParent.fTechniqueNameMap[VariantName];
-     if assigned(VariantTechnique) then begin
-      fVariantTechniqueNameMap.Add(VariantName,VariantTechnique);
+  if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
+   SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
+   for JSONItemObjectProperty in SectionJSONItemObject do begin
+    if length(JSONItemObjectProperty.Key)>0 then begin
+     VariantTechniqueName:=TPasJSON.GetString(JSONItemObjectProperty.Value,'');
+     if length(VariantTechniqueName)>0 then begin
+      VariantTechnique:=fParent.fTechniqueNameMap[VariantTechniqueName];
+      if assigned(VariantTechnique) then begin
+       fVariantTechniqueNameMap.Add(JSONItemObjectProperty.Key,VariantTechnique);
+      end;
      end;
     end;
    end;
   end;
  end;
-
 
 end;
 
