@@ -801,7 +801,10 @@ begin
           ColorBlendAttachmentState^.srcAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['srcAlphaBlendFactor'],'ONE'));
           ColorBlendAttachmentState^.dstAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['dstAlphaBlendFactor'],'ZERO'));
           ColorBlendAttachmentState^.alphaBlendOp:=GetBlendOp(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['alphaBlendOp'],'ADD'));
-          ColorBlendAttachmentState^.colorWriteMask:=TPasJSON.GetInt64(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteMask'],Int64($ffffffff));
+          ColorBlendAttachmentState^.colorWriteMask:=IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteRed'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT),0) or
+                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteGreen'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT),0) or
+                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteBlue'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT),0) or
+                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteAlpha'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT),0);
          end;
         end;
        end;
