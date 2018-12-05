@@ -543,13 +543,13 @@ begin
   if assigned(SectionJSONItem) and (SectionJSONItem is TPasJSONItemObject) then begin
    SectionJSONItemObject:=TPasJSONItemObject(SectionJSONItem);
    begin
-    JSONItem:=SectionJSONItemObject.Properties['tessellation'];
+    JSONItem:=SectionJSONItemObject.Properties['tessellationState'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      fRenderState.TessellationState.patchControlPoints:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['patchControlPoints'],fRenderState.TessellationState.patchControlPoints);
     end;
    end;
    begin
-    JSONItem:=SectionJSONItemObject.Properties['rasterization'];
+    JSONItem:=SectionJSONItemObject.Properties['rasterizationState'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      fRenderState.RasterizationState.depthClampEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthClampEnable'],fRenderState.RasterizationState.depthClampEnable<>VK_FALSE)];
      fRenderState.RasterizationState.rasterizerDiscardEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['rasterizerDiscardEnable'],fRenderState.RasterizationState.rasterizerDiscardEnable<>VK_FALSE)];
@@ -593,7 +593,7 @@ begin
     end;
    end;
    begin
-    JSONItem:=SectionJSONItemObject.Properties['depthStencil'];
+    JSONItem:=SectionJSONItemObject.Properties['depthStencilState'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      fRenderState.DepthStencilState.depthTestEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthTestEnable'],fRenderState.DepthStencilState.depthTestEnable<>VK_FALSE)];
      fRenderState.DepthStencilState.depthWriteEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthWriteEnable'],fRenderState.DepthStencilState.depthWriteEnable<>VK_FALSE)];
@@ -723,7 +723,7 @@ begin
     end;
    end;
    begin
-    JSONItem:=SectionJSONItemObject.Properties['colorBlend'];
+    JSONItem:=SectionJSONItemObject.Properties['colorBlendState'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      fRenderState.ColorBlendState.logicOpEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['logicOpEnable'],fRenderState.ColorBlendState.logicOpEnable<>VK_FALSE)];
      begin
