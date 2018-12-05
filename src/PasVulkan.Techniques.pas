@@ -571,7 +571,7 @@ begin
         end;
        end;
        begin
-        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['compareOp'],'ALWAYS'))));
+        TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(SubJSONItemObject.Properties['compareOp'],'ALWAYS'))));
         if TemporaryString='NEVER' then begin
          StencilOpState^.compareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
         end else if TemporaryString='LESS' then begin
@@ -605,6 +605,61 @@ begin
     JSONItem:=SectionJSONItemObject.Properties['colorBlend'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      fRenderState.ColorBlendState.logicOpEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['logicOpEnable'],fRenderState.ColorBlendState.logicOpEnable<>VK_FALSE)];
+     begin
+      TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['logicOp'],'NO_OP'))));
+      if TemporaryString='CLEAR' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_CLEAR;
+      end else if TemporaryString='AND' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_AND;
+      end else if TemporaryString='AND_REVERSE' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_AND_REVERSE;
+      end else if TemporaryString='COPY' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_COPY;
+      end else if TemporaryString='AND_INVERTED' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_AND_INVERTED;
+      end else if TemporaryString='NO_OP' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_NO_OP;
+      end else if TemporaryString='XOR' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_XOR;
+      end else if TemporaryString='OR' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_OR;
+      end else if TemporaryString='NOR' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_NOR;
+      end else if TemporaryString='EQUIVALENT' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_EQUIVALENT;
+      end else if TemporaryString='INVERT' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_INVERT;
+      end else if TemporaryString='OR_REVERSE' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_OR_REVERSE;
+      end else if TemporaryString='COPY_INVERTED' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_COPY_INVERTED;
+      end else if TemporaryString='OR_INVERTED' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_OR_INVERTED;
+      end else if TemporaryString='NAND' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_NAND;
+      end else if TemporaryString='SET' then begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_SET;
+      end else begin
+       fRenderState.ColorBlendState.logicOp:=TVkLogicOp.VK_LOGIC_OP_NO_OP;
+      end;
+     end;
+     begin
+      SubJSONItem:=TPasJSONItemObject(JSONItem).Properties['blendConstants'];
+      if assigned(SubJSONItem) and (SubJSONItem is TPasJSONItemArray) then begin
+       if TPasJSONItemArray(SubJSONItem).Count>0 then begin
+        fRenderState.ColorBlendState.blendConstants[0]:=TPasJSON.GetNumber(TPasJSONItemArray(SubJSONItem).Items[0],fRenderState.ColorBlendState.blendConstants[0]);
+        if TPasJSONItemArray(SubJSONItem).Count>1 then begin
+         fRenderState.ColorBlendState.blendConstants[1]:=TPasJSON.GetNumber(TPasJSONItemArray(SubJSONItem).Items[1],fRenderState.ColorBlendState.blendConstants[1]);
+         if TPasJSONItemArray(SubJSONItem).Count>2 then begin
+          fRenderState.ColorBlendState.blendConstants[2]:=TPasJSON.GetNumber(TPasJSONItemArray(SubJSONItem).Items[2],fRenderState.ColorBlendState.blendConstants[2]);
+          if TPasJSONItemArray(SubJSONItem).Count>3 then begin
+           fRenderState.ColorBlendState.blendConstants[3]:=TPasJSON.GetNumber(TPasJSONItemArray(SubJSONItem).Items[3],fRenderState.ColorBlendState.blendConstants[3]);
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
     end;
    end;
   end;
