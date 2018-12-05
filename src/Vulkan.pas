@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=94;
+      VK_HEADER_VERSION=95;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -445,8 +445,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME='VK_KHR_push_descriptor';
       VK_EXT_CONDITIONAL_RENDERING_SPEC_VERSION=1;
       VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME='VK_EXT_conditional_rendering';
-      VK_KHR_EXTENSION_83_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_83_EXTENSION_NAME='VK_KHR_extension_83';
+      VK_KHR_SHADER_FLOAT16_INT8_SPEC_VERSION=1;
+      VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME='VK_KHR_shader_float16_int8';
       VK_KHR_16BIT_STORAGE_SPEC_VERSION=1;
       VK_KHR_16BIT_STORAGE_EXTENSION_NAME='VK_KHR_16bit_storage';
       VK_KHR_INCREMENTAL_PRESENT_SPEC_VERSION=1;
@@ -671,8 +671,8 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_196_EXTENSION_NAME='VK_GOOGLE_extension_196';
       VK_KHR_DRIVER_PROPERTIES_SPEC_VERSION=1;
       VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME='VK_KHR_driver_properties';
-      VK_ARM_EXTENSION_198_SPEC_VERSION=0;
-      VK_ARM_EXTENSION_198_EXTENSION_NAME='VK_EXT_extension_198';
+      VK_KHR_SHADER_FLOAT_CONTROLS_SPEC_VERSION=1;
+      VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME='VK_KHR_shader_float_controls';
       VK_NV_SHADER_SUBGROUP_PARTITIONED_SPEC_VERSION=1;
       VK_NV_SHADER_SUBGROUP_PARTITIONED_EXTENSION_NAME='VK_NV_shader_subgroup_partitioned';
       VK_KHR_EXTENSION_200_SPEC_VERSION=0;
@@ -773,6 +773,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_SEPARATE_STENCIL_USAGE_EXTENSION_NAME='VK_EXT_separate_stencil_usage';
       VK_EXT_EXTENSION_248_SPEC_VERSION=0;
       VK_EXT_EXTENSION_248_EXTENSION_NAME='VK_EXT_extension_248';
+      VK_KHR_EXTENSION_249_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_249_EXTENSION_NAME='VK_KHR_extension_249';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2273,6 +2275,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT=1000081000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT=1000081001,
        VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT=1000081002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR=1000082000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES=1000083000,
        VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR=1000084000,
        VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO=1000085000,
@@ -2420,6 +2423,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR=1000196000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR=1000197000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV=1000201000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV=1000202000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV=1000202001,
@@ -10141,6 +10145,68 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        shaderDrawParameters:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aShaderDrawParameters:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFloat16Int8FeaturesKHR=^PVkPhysicalDeviceFloat16Int8FeaturesKHR;
+     PVkPhysicalDeviceFloat16Int8FeaturesKHR=^TVkPhysicalDeviceFloat16Int8FeaturesKHR;
+     TVkPhysicalDeviceFloat16Int8FeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR
+       pNext:PVkVoid; //< Pointer to next structure
+       shaderFloat16:TVkBool32; //< 16-bit floats (halfs) in shaders
+       shaderInt8:TVkBool32; //< 8-bit integers in shaders
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderFloat16:TVkBool32; //< 16-bit floats (halfs) in shaders
+                          const aShaderInt8:TVkBool32); //< 8-bit integers in shaders
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFloatControlsPropertiesKHR=^PVkPhysicalDeviceFloatControlsPropertiesKHR;
+     PVkPhysicalDeviceFloatControlsPropertiesKHR=^TVkPhysicalDeviceFloatControlsPropertiesKHR;
+     TVkPhysicalDeviceFloatControlsPropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR
+       pNext:PVkVoid;
+       separateDenormSettings:TVkBool32;
+       separateRoundingModeSettings:TVkBool32;
+       shaderSignedZeroInfNanPreserveFloat16:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+       shaderSignedZeroInfNanPreserveFloat32:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+       shaderSignedZeroInfNanPreserveFloat64:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+       shaderDenormPreserveFloat16:TVkBool32; //< An implementation can preserve denormals
+       shaderDenormPreserveFloat32:TVkBool32; //< An implementation can preserve denormals
+       shaderDenormPreserveFloat64:TVkBool32; //< An implementation can preserve denormals
+       shaderDenormFlushToZeroFloat16:TVkBool32; //< An implementation can flush to zero denormals
+       shaderDenormFlushToZeroFloat32:TVkBool32; //< An implementation can flush to zero denormals
+       shaderDenormFlushToZeroFloat64:TVkBool32; //< An implementation can flush to zero denormals
+       shaderRoundingModeRTEFloat16:TVkBool32; //< An implementation can support RTE
+       shaderRoundingModeRTEFloat32:TVkBool32; //< An implementation can support RTE
+       shaderRoundingModeRTEFloat64:TVkBool32; //< An implementation can support RTE
+       shaderRoundingModeRTZFloat16:TVkBool32; //< An implementation can support RTZ
+       shaderRoundingModeRTZFloat32:TVkBool32; //< An implementation can support RTZ
+       shaderRoundingModeRTZFloat64:TVkBool32; //< An implementation can support RTZ
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSeparateDenormSettings:TVkBool32;
+                          const aSeparateRoundingModeSettings:TVkBool32;
+                          const aShaderSignedZeroInfNanPreserveFloat16:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+                          const aShaderSignedZeroInfNanPreserveFloat32:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+                          const aShaderSignedZeroInfNanPreserveFloat64:TVkBool32; //< An implementation can preserve signed zero, nan, inf
+                          const aShaderDenormPreserveFloat16:TVkBool32; //< An implementation can preserve denormals
+                          const aShaderDenormPreserveFloat32:TVkBool32; //< An implementation can preserve denormals
+                          const aShaderDenormPreserveFloat64:TVkBool32; //< An implementation can preserve denormals
+                          const aShaderDenormFlushToZeroFloat16:TVkBool32; //< An implementation can flush to zero denormals
+                          const aShaderDenormFlushToZeroFloat32:TVkBool32; //< An implementation can flush to zero denormals
+                          const aShaderDenormFlushToZeroFloat64:TVkBool32; //< An implementation can flush to zero denormals
+                          const aShaderRoundingModeRTEFloat16:TVkBool32; //< An implementation can support RTE
+                          const aShaderRoundingModeRTEFloat32:TVkBool32; //< An implementation can support RTE
+                          const aShaderRoundingModeRTEFloat64:TVkBool32; //< An implementation can support RTE
+                          const aShaderRoundingModeRTZFloat16:TVkBool32; //< An implementation can support RTZ
+                          const aShaderRoundingModeRTZFloat32:TVkBool32; //< An implementation can support RTZ
+                          const aShaderRoundingModeRTZFloat64:TVkBool32); //< An implementation can support RTZ
 {$endif}
      end;
 
@@ -21090,6 +21156,54 @@ begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES;
  pNext:=nil;
  shaderDrawParameters:=aShaderDrawParameters;
+end;
+
+constructor TVkPhysicalDeviceFloat16Int8FeaturesKHR.Create(const aShaderFloat16:TVkBool32;
+                                                           const aShaderInt8:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR;
+ pNext:=nil;
+ shaderFloat16:=aShaderFloat16;
+ shaderInt8:=aShaderInt8;
+end;
+
+constructor TVkPhysicalDeviceFloatControlsPropertiesKHR.Create(const aSeparateDenormSettings:TVkBool32;
+                                                               const aSeparateRoundingModeSettings:TVkBool32;
+                                                               const aShaderSignedZeroInfNanPreserveFloat16:TVkBool32;
+                                                               const aShaderSignedZeroInfNanPreserveFloat32:TVkBool32;
+                                                               const aShaderSignedZeroInfNanPreserveFloat64:TVkBool32;
+                                                               const aShaderDenormPreserveFloat16:TVkBool32;
+                                                               const aShaderDenormPreserveFloat32:TVkBool32;
+                                                               const aShaderDenormPreserveFloat64:TVkBool32;
+                                                               const aShaderDenormFlushToZeroFloat16:TVkBool32;
+                                                               const aShaderDenormFlushToZeroFloat32:TVkBool32;
+                                                               const aShaderDenormFlushToZeroFloat64:TVkBool32;
+                                                               const aShaderRoundingModeRTEFloat16:TVkBool32;
+                                                               const aShaderRoundingModeRTEFloat32:TVkBool32;
+                                                               const aShaderRoundingModeRTEFloat64:TVkBool32;
+                                                               const aShaderRoundingModeRTZFloat16:TVkBool32;
+                                                               const aShaderRoundingModeRTZFloat32:TVkBool32;
+                                                               const aShaderRoundingModeRTZFloat64:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR;
+ pNext:=nil;
+ separateDenormSettings:=aSeparateDenormSettings;
+ separateRoundingModeSettings:=aSeparateRoundingModeSettings;
+ shaderSignedZeroInfNanPreserveFloat16:=aShaderSignedZeroInfNanPreserveFloat16;
+ shaderSignedZeroInfNanPreserveFloat32:=aShaderSignedZeroInfNanPreserveFloat32;
+ shaderSignedZeroInfNanPreserveFloat64:=aShaderSignedZeroInfNanPreserveFloat64;
+ shaderDenormPreserveFloat16:=aShaderDenormPreserveFloat16;
+ shaderDenormPreserveFloat32:=aShaderDenormPreserveFloat32;
+ shaderDenormPreserveFloat64:=aShaderDenormPreserveFloat64;
+ shaderDenormFlushToZeroFloat16:=aShaderDenormFlushToZeroFloat16;
+ shaderDenormFlushToZeroFloat32:=aShaderDenormFlushToZeroFloat32;
+ shaderDenormFlushToZeroFloat64:=aShaderDenormFlushToZeroFloat64;
+ shaderRoundingModeRTEFloat16:=aShaderRoundingModeRTEFloat16;
+ shaderRoundingModeRTEFloat32:=aShaderRoundingModeRTEFloat32;
+ shaderRoundingModeRTEFloat64:=aShaderRoundingModeRTEFloat64;
+ shaderRoundingModeRTZFloat16:=aShaderRoundingModeRTZFloat16;
+ shaderRoundingModeRTZFloat32:=aShaderRoundingModeRTZFloat32;
+ shaderRoundingModeRTZFloat64:=aShaderRoundingModeRTZFloat64;
 end;
 
 {$ifdef Android}
