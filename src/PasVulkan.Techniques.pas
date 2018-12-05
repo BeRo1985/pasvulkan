@@ -485,7 +485,8 @@ var Index,Count,OtherIndex:TpvSizeInt;
     SectionJSONItem,
     JSONItem,
     SubJSONItem,
-    ArrayJSONItem:TPasJSONItem;
+    ArrayJSONItem,
+    SubArrayJSONItem:TPasJSONItem;
     SectionJSONItemObject,
     SubJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
@@ -801,10 +802,52 @@ begin
           ColorBlendAttachmentState^.srcAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['srcAlphaBlendFactor'],'ONE'));
           ColorBlendAttachmentState^.dstAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['dstAlphaBlendFactor'],'ZERO'));
           ColorBlendAttachmentState^.alphaBlendOp:=GetBlendOp(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['alphaBlendOp'],'ADD'));
-          ColorBlendAttachmentState^.colorWriteMask:=IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteRed'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT),0) or
-                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteGreen'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT),0) or
-                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteBlue'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT),0) or
-                                                     IfThen(TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteAlpha'],true),TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT),0);
+          SubArrayJSONItem:=TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteMask'];
+          if assigned(SubArrayJSONItem) and (SubArrayJSONItem is TPasJSONItemArray) then begin
+           if TPasJSONItemArray(SubArrayJSONItem).Count>0 then begin
+            ColorBlendAttachmentState^.colorWriteMask:=0;
+            if TPasJSON.GetBoolean(TPasJSONItemArray(SubArrayJSONItem).Items[0],true) then begin
+             ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT);
+            end;
+            if TPasJSONItemArray(SubArrayJSONItem).Count>1 then begin
+             if TPasJSON.GetBoolean(TPasJSONItemArray(SubArrayJSONItem).Items[1],true) then begin
+              ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT);
+             end;
+             if TPasJSONItemArray(SubArrayJSONItem).Count>2 then begin
+              if TPasJSON.GetBoolean(TPasJSONItemArray(SubArrayJSONItem).Items[2],true) then begin
+               ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT);
+              end;
+              if TPasJSONItemArray(SubArrayJSONItem).Count>3 then begin
+               if TPasJSON.GetBoolean(TPasJSONItemArray(SubArrayJSONItem).Items[3],true) then begin
+                ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+               end;
+              end else begin
+               ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or
+                                                          TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+              end;
+             end else begin
+              ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or
+                                                         TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT) or
+                                                         TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+             end;
+            end else begin
+             ColorBlendAttachmentState^.colorWriteMask:=ColorBlendAttachmentState^.colorWriteMask or
+                                                        TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT) or
+                                                        TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT) or
+                                                        TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+            end;
+           end else begin
+            ColorBlendAttachmentState^.colorWriteMask:=TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT) or
+                                                       TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT) or
+                                                       TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT) or
+                                                       TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+           end;
+          end else begin
+           ColorBlendAttachmentState^.colorWriteMask:=TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_R_BIT) or
+                                                      TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_G_BIT) or
+                                                      TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_B_BIT) or
+                                                      TVkColorComponentFlags(TVkColorComponentFlagBits.VK_COLOR_COMPONENT_A_BIT);
+          end;
          end;
         end;
        end;
