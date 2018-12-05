@@ -364,14 +364,17 @@ procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObjec
   end;
  end;
 var Index,Count,OtherIndex:TpvSizeInt;
-    SectionJSONItem,JSONItem,
-    SubJSONItem:TPasJSONItem;
+    SectionJSONItem,
+    JSONItem,
+    SubJSONItem,
+    ArrayJSONItem:TPasJSONItem;
     SectionJSONItemObject,
     SubJSONItemObject:TPasJSONItemObject;
     JSONItemObjectProperty:TPasJSONItemObjectProperty;
     SpecializationConstant:TSpecializationConstant;
     TemporaryString:TpvUTF8String;
     StencilOpState:PVkStencilOpState;
+    ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
 
  begin
@@ -658,6 +661,27 @@ begin
          end;
         end;
        end;
+      end;
+     end;
+     begin
+      Count:=0;
+      try
+       SubJSONItem:=TPasJSONItemObject(JSONItem).Properties['attachmentStates'];
+       if assigned(SubJSONItem) and (SubJSONItem is TPasJSONItemArray) then begin
+        for ArrayJSONItem in TPasJSONItemArray(SubJSONItem) do begin
+         if assigned(ArrayJSONItem) and (ArrayJSONItem is TPasJSONItemObject) then begin
+          Index:=Count;
+          inc(Count);
+          if length(fRenderState.ColorBlendAttachmentStates)<Count then begin
+           SetLength(fRenderState.ColorBlendAttachmentStates,Count*2);
+          end;
+          ColorBlendAttachmentState:=@fRenderState.ColorBlendAttachmentStates[Index];
+          ColorBlendAttachmentState^.blendEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['blendEnable'],false)];
+         end;
+        end;
+       end;
+      finally
+       SetLength(fRenderState.ColorBlendAttachmentStates,Count);
       end;
      end;
     end;
