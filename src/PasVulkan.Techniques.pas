@@ -363,6 +363,124 @@ procedure TpvTechniques.TTechnique.TPass.LoadFromJSONObject(const aRootJSONObjec
    result:=nil;
   end;
  end;
+ function GetBlendFactor(const aName:TpvUTF8String):TVkBlendFactor;
+ type TValue=record
+       Name:TpvUTF8String;
+       Value:TVkBlendFactor;
+      end;
+      PValue=^TValue;
+      TValues=array[0..18] of TValue;
+  const Values:TValues=
+         (
+          (Name:'ZERO';Value:TVkBlendFactor.VK_BLEND_FACTOR_ZERO),
+          (Name:'ONE';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE),
+          (Name:'SRC_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_SRC_COLOR),
+          (Name:'ONE_MINUS_SRC_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR),
+          (Name:'DST_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_DST_COLOR),
+          (Name:'ONE_MINUS_DST_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR),
+          (Name:'SRC_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_SRC_ALPHA),
+          (Name:'ONE_MINUS_SRC_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA),
+          (Name:'DST_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_DST_ALPHA),
+          (Name:'ONE_MINUS_DST_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA),
+          (Name:'CONSTANT_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_CONSTANT_COLOR),
+          (Name:'ONE_MINUS_CONSTANT_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR),
+          (Name:'CONSTANT_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_CONSTANT_ALPHA),
+          (Name:'ONE_MINUS_CONSTANT_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA),
+          (Name:'SRC_ALPHA_SATURATE';Value:TVkBlendFactor.VK_BLEND_FACTOR_SRC_ALPHA_SATURATE),
+          (Name:'SRC1_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_SRC1_COLOR),
+          (Name:'ONE_MINUS_SRC1_COLOR';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR),
+          (Name:'SRC1_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_SRC1_ALPHA),
+          (Name:'ONE_MINUS_SRC1_ALPHA';Value:TVkBlendFactor.VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+         );
+ var Index:TpvSizeInt;
+     Value:PValue;
+     Name:TpvUTF8String;
+ begin
+  Name:=TpvUTF8String(UpperCase(String(aName)));
+  for Index:=Low(TValues) to High(TValues) do begin
+   Value:=@Values[Index];
+   if Value^.Name=Name then begin
+    result:=Value^.Value;
+    exit;
+   end;
+  end;
+  result:=TVkBlendFactor.VK_BLEND_FACTOR_ONE;
+ end;
+ function GetBlendOp(const aName:TpvUTF8String):TVkBlendOp;
+ type TValue=record
+       Name:TpvUTF8String;
+       Value:TVkBlendOp;
+      end;
+      PValue=^TValue;
+      TValues=array[0..50] of TValue;
+  const Values:TValues=
+         (
+          (Name:'ADD';Value:TVkBlendOp.VK_BLEND_OP_ADD),
+          (Name:'SUBTRACT';Value:TVkBlendOp.VK_BLEND_OP_SUBTRACT),
+          (Name:'REVERSE_SUBTRACT';Value:TVkBlendOp.VK_BLEND_OP_REVERSE_SUBTRACT),
+          (Name:'MIN';Value:TVkBlendOp.VK_BLEND_OP_MIN),
+          (Name:'MAX';Value:TVkBlendOp.VK_BLEND_OP_MAX),
+          (Name:'ZERO_EXT';Value:TVkBlendOp.VK_BLEND_OP_ZERO_EXT),
+          (Name:'SRC_EXT';Value:TVkBlendOp.VK_BLEND_OP_SRC_EXT),
+          (Name:'DST_EXT';Value:TVkBlendOp.VK_BLEND_OP_DST_EXT),
+          (Name:'SRC_OVER_EXT';Value:TVkBlendOp.VK_BLEND_OP_SRC_OVER_EXT),
+          (Name:'DST_OVER_EXT';Value:TVkBlendOp.VK_BLEND_OP_DST_OVER_EXT),
+          (Name:'SRC_IN_EXT';Value:TVkBlendOp.VK_BLEND_OP_SRC_IN_EXT),
+          (Name:'DST_IN_EXT';Value:TVkBlendOp.VK_BLEND_OP_DST_IN_EXT),
+          (Name:'SRC_OUT_EXT';Value:TVkBlendOp.VK_BLEND_OP_SRC_OUT_EXT),
+          (Name:'DST_OUT_EXT';Value:TVkBlendOp.VK_BLEND_OP_DST_OUT_EXT),
+          (Name:'SRC_ATOP_EXT';Value:TVkBlendOp.VK_BLEND_OP_SRC_ATOP_EXT),
+          (Name:'DST_ATOP_EXT';Value:TVkBlendOp.VK_BLEND_OP_DST_ATOP_EXT),
+          (Name:'XOR_EXT';Value:TVkBlendOp.VK_BLEND_OP_XOR_EXT),
+          (Name:'MULTIPLY_EXT';Value:TVkBlendOp.VK_BLEND_OP_MULTIPLY_EXT),
+          (Name:'SCREEN_EXT';Value:TVkBlendOp.VK_BLEND_OP_SCREEN_EXT),
+          (Name:'OVERLAY_EXT';Value:TVkBlendOp.VK_BLEND_OP_OVERLAY_EXT),
+          (Name:'DARKEN_EXT';Value:TVkBlendOp.VK_BLEND_OP_DARKEN_EXT),
+          (Name:'LIGHTEN_EXT';Value:TVkBlendOp.VK_BLEND_OP_LIGHTEN_EXT),
+          (Name:'COLORDODGE_EXT';Value:TVkBlendOp.VK_BLEND_OP_COLORDODGE_EXT),
+          (Name:'COLORBURN_EXT';Value:TVkBlendOp.VK_BLEND_OP_COLORBURN_EXT),
+          (Name:'HARDLIGHT_EXT';Value:TVkBlendOp.VK_BLEND_OP_HARDLIGHT_EXT),
+          (Name:'SOFTLIGHT_EXT';Value:TVkBlendOp.VK_BLEND_OP_SOFTLIGHT_EXT),
+          (Name:'DIFFERENCE_EXT';Value:TVkBlendOp.VK_BLEND_OP_DIFFERENCE_EXT),
+          (Name:'EXCLUSION_EXT';Value:TVkBlendOp.VK_BLEND_OP_EXCLUSION_EXT),
+          (Name:'INVERT_EXT';Value:TVkBlendOp.VK_BLEND_OP_INVERT_EXT),
+          (Name:'INVERT_RGB_EXT';Value:TVkBlendOp.VK_BLEND_OP_INVERT_RGB_EXT),
+          (Name:'LINEARDODGE_EXT';Value:TVkBlendOp.VK_BLEND_OP_LINEARDODGE_EXT),
+          (Name:'LINEARBURN_EXT';Value:TVkBlendOp.VK_BLEND_OP_LINEARBURN_EXT),
+          (Name:'VIVIDLIGHT_EXT';Value:TVkBlendOp.VK_BLEND_OP_VIVIDLIGHT_EXT),
+          (Name:'LINEARLIGHT_EXT';Value:TVkBlendOp.VK_BLEND_OP_LINEARLIGHT_EXT),
+          (Name:'PINLIGHT_EXT';Value:TVkBlendOp.VK_BLEND_OP_PINLIGHT_EXT),
+          (Name:'HARDMIX_EXT';Value:TVkBlendOp.VK_BLEND_OP_HARDMIX_EXT),
+          (Name:'HSL_HUE_EXT';Value:TVkBlendOp.VK_BLEND_OP_HSL_HUE_EXT),
+          (Name:'HSL_SATURATION_EXT';Value:TVkBlendOp.VK_BLEND_OP_HSL_SATURATION_EXT),
+          (Name:'HSL_COLOR_EXT';Value:TVkBlendOp.VK_BLEND_OP_HSL_COLOR_EXT),
+          (Name:'HSL_LUMINOSITY_EXT';Value:TVkBlendOp.VK_BLEND_OP_HSL_LUMINOSITY_EXT),
+          (Name:'PLUS_EXT';Value:TVkBlendOp.VK_BLEND_OP_PLUS_EXT),
+          (Name:'PLUS_CLAMPED_EXT';Value:TVkBlendOp.VK_BLEND_OP_PLUS_CLAMPED_EXT),
+          (Name:'PLUS_CLAMPED_ALPHA_EXT';Value:TVkBlendOp.VK_BLEND_OP_PLUS_CLAMPED_ALPHA_EXT),
+          (Name:'PLUS_DARKER_EXT';Value:TVkBlendOp.VK_BLEND_OP_PLUS_DARKER_EXT),
+          (Name:'MINUS_EXT';Value:TVkBlendOp.VK_BLEND_OP_MINUS_EXT),
+          (Name:'MINUS_CLAMPED_EXT';Value:TVkBlendOp.VK_BLEND_OP_MINUS_CLAMPED_EXT),
+          (Name:'CONTRAST_EXT';Value:TVkBlendOp.VK_BLEND_OP_CONTRAST_EXT),
+          (Name:'INVERT_OVG_EXT';Value:TVkBlendOp.VK_BLEND_OP_INVERT_OVG_EXT),
+          (Name:'RED_EXT';Value:TVkBlendOp.VK_BLEND_OP_RED_EXT),
+          (Name:'GREEN_EXT';Value:TVkBlendOp.VK_BLEND_OP_GREEN_EXT),
+          (Name:'BLUE_EXT';Value:TVkBlendOp.VK_BLEND_OP_BLUE_EXT)
+         );
+ var Index:TpvSizeInt;
+     Value:PValue;
+     Name:TpvUTF8String;
+ begin
+  Name:=TpvUTF8String(UpperCase(String(aName)));
+  for Index:=Low(TValues) to High(TValues) do begin
+   Value:=@Values[Index];
+   if Value^.Name=Name then begin
+    result:=Value^.Value;
+    exit;
+   end;
+  end;
+  result:=TVkBlendOp.VK_BLEND_OP_ADD;
+ end;
 var Index,Count,OtherIndex:TpvSizeInt;
     SectionJSONItem,
     JSONItem,
@@ -677,6 +795,13 @@ begin
           end;
           ColorBlendAttachmentState:=@fRenderState.ColorBlendAttachmentStates[Index];
           ColorBlendAttachmentState^.blendEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(ArrayJSONItem).Properties['blendEnable'],false)];
+          ColorBlendAttachmentState^.srcColorBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['srcColorBlendFactor'],'SRC_ALPHA'));
+          ColorBlendAttachmentState^.dstColorBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['dstColorBlendFactor'],'ONE_MINUS_SRC_ALPHA'));
+          ColorBlendAttachmentState^.colorBlendOp:=GetBlendOp(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['colorBlendOp'],'ADD'));
+          ColorBlendAttachmentState^.srcAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['srcAlphaBlendFactor'],'ONE'));
+          ColorBlendAttachmentState^.dstAlphaBlendFactor:=GetBlendFactor(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['dstAlphaBlendFactor'],'ZERO'));
+          ColorBlendAttachmentState^.alphaBlendOp:=GetBlendOp(TPasJSON.GetString(TPasJSONItemObject(ArrayJSONItem).Properties['alphaBlendOp'],'ADD'));
+          ColorBlendAttachmentState^.colorWriteMask:=TPasJSON.GetInt64(TPasJSONItemObject(ArrayJSONItem).Properties['colorWriteMask'],Int64($ffffffff));
          end;
         end;
        end;
