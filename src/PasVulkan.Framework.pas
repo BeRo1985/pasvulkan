@@ -3105,6 +3105,8 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
 
+      BooleanToVkBool32:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
+
 procedure VulkanCheckResult(const ResultCode:TVkResult);
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;

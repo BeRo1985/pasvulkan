@@ -430,16 +430,8 @@ begin
    begin
     JSONItem:=SectionJSONItemObject.Properties['rasterization'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthClampEnable'],fRenderState.RasterizationState.depthClampEnable<>VK_FALSE) then begin
-      fRenderState.RasterizationState.depthClampEnable:=VK_TRUE;
-     end else begin
-      fRenderState.RasterizationState.depthClampEnable:=VK_FALSE;
-     end;
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['rasterizerDiscardEnable'],fRenderState.RasterizationState.rasterizerDiscardEnable<>VK_FALSE) then begin
-      fRenderState.RasterizationState.rasterizerDiscardEnable:=VK_TRUE;
-     end else begin
-      fRenderState.RasterizationState.rasterizerDiscardEnable:=VK_FALSE;
-     end;
+     fRenderState.RasterizationState.depthClampEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthClampEnable'],fRenderState.RasterizationState.depthClampEnable<>VK_FALSE)];
+     fRenderState.RasterizationState.rasterizerDiscardEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['rasterizerDiscardEnable'],fRenderState.RasterizationState.rasterizerDiscardEnable<>VK_FALSE)];
      begin
       TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['polygonMode'],'FILL'))));
       if TemporaryString='LINE' then begin
@@ -472,11 +464,7 @@ begin
        fRenderState.RasterizationState.frontFace:=TVkFrontFace.VK_FRONT_FACE_CLOCKWISE;
       end;
      end;
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBiasEnable'],fRenderState.RasterizationState.depthBiasEnable<>VK_FALSE) then begin
-      fRenderState.RasterizationState.depthBiasEnable:=VK_TRUE;
-     end else begin
-      fRenderState.RasterizationState.depthBiasEnable:=VK_FALSE;
-     end;
+     fRenderState.RasterizationState.depthBiasEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBiasEnable'],fRenderState.RasterizationState.depthBiasEnable<>VK_FALSE)];
      fRenderState.RasterizationState.depthBiasConstantFactor:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasConstantFactor'],fRenderState.RasterizationState.depthBiasConstantFactor);
      fRenderState.RasterizationState.depthBiasClamp:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasClamp'],fRenderState.RasterizationState.depthBiasClamp);
      fRenderState.RasterizationState.depthBiasSlopeFactor:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['depthBiasSlopeFactor'],fRenderState.RasterizationState.depthBiasSlopeFactor);
@@ -486,16 +474,8 @@ begin
    begin
     JSONItem:=SectionJSONItemObject.Properties['depthStencil'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthTestEnable'],fRenderState.DepthStencilState.depthTestEnable<>VK_FALSE) then begin
-      fRenderState.DepthStencilState.depthTestEnable:=VK_TRUE;
-     end else begin
-      fRenderState.DepthStencilState.depthTestEnable:=VK_FALSE;
-     end;
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthWriteEnable'],fRenderState.DepthStencilState.depthWriteEnable<>VK_FALSE) then begin
-      fRenderState.DepthStencilState.depthWriteEnable:=VK_TRUE;
-     end else begin
-      fRenderState.DepthStencilState.depthWriteEnable:=VK_FALSE;
-     end;
+     fRenderState.DepthStencilState.depthTestEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthTestEnable'],fRenderState.DepthStencilState.depthTestEnable<>VK_FALSE)];
+     fRenderState.DepthStencilState.depthWriteEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthWriteEnable'],fRenderState.DepthStencilState.depthWriteEnable<>VK_FALSE)];
      begin
       TemporaryString:=TpvUTF8String(Uppercase(String(TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['compareOp'],'LESS_OR_EQUAL'))));
       if TemporaryString='NEVER' then begin
@@ -518,16 +498,8 @@ begin
        fRenderState.DepthStencilState.depthCompareOp:=TVkCompareOp.VK_COMPARE_OP_NEVER;
       end;
      end;
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.depthBoundsTestEnable<>VK_FALSE) then begin
-      fRenderState.DepthStencilState.depthBoundsTestEnable:=VK_TRUE;
-     end else begin
-      fRenderState.DepthStencilState.depthBoundsTestEnable:=VK_FALSE;
-     end;
-     if TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.stencilTestEnable<>VK_FALSE) then begin
-      fRenderState.DepthStencilState.stencilTestEnable:=VK_TRUE;
-     end else begin
-      fRenderState.DepthStencilState.stencilTestEnable:=VK_FALSE;
-     end;
+     fRenderState.DepthStencilState.depthBoundsTestEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.depthBoundsTestEnable<>VK_FALSE)];
+     fRenderState.DepthStencilState.stencilTestEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['depthBoundsTestEnable'],fRenderState.DepthStencilState.stencilTestEnable<>VK_FALSE)];
      for OtherIndex:=0 to 1 do begin
       if OtherIndex=0 then begin
        StencilOpState:=@fRenderState.DepthStencilState.front;
@@ -632,7 +604,7 @@ begin
    begin
     JSONItem:=SectionJSONItemObject.Properties['colorBlend'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-
+     fRenderState.ColorBlendState.logicOpEnable:=BooleanToVkBool32[TPasJSON.GetBoolean(TPasJSONItemObject(JSONItem).Properties['logicOpEnable'],fRenderState.ColorBlendState.logicOpEnable<>VK_FALSE)];
     end;
    end;
   end;
