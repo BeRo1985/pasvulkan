@@ -643,7 +643,6 @@ end;
 
 class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
-const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
 asm
 
  mov ecx,dword ptr aValue
@@ -675,7 +674,8 @@ asm
 
  mov edx,$0f800000
  movss xmm0,dword ptr [esp-4]
- mulss xmm0,dword ptr Magic
+ mov dword ptr [esp-8],15 shl 23
+ mulss xmm0,dword ptr [esp-8]
  movss dword ptr [esp-4],xmm0
  mov eax,dword ptr [esp-4]
  add eax,4096
@@ -784,8 +784,6 @@ end;
 
 function TpvHalfFloat.ToFloat:TpvFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
-const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
-      ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
 asm
 
  movzx ecx,word ptr [eax+TpvHalfFloat.Value]
@@ -797,8 +795,10 @@ asm
  mov dword ptr [esp-4],eax
 
  fld dword ptr [esp-4]
- fmul dword ptr ToFloatMagic
- fld dword ptr ToFloatWasInfNAN
+ mov dword ptr [esp-8],(254-15) shl 23
+ mov dword ptr [esp-16],(127+16) shl 23
+ fmul dword ptr [esp-8]
+ fld dword ptr [esp-16]
  xor eax,eax
  mov edx,$7f800000
  fcomip st(0),st(1)
