@@ -645,6 +645,11 @@ class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
+{movss xmm0,dword ptr aValue
+ db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
+ movss dword ptr [esp-4],xmm0
+ mov ax,word ptr [esp-4]}
+
  mov ecx,dword ptr aValue
 
  mov edx,ecx
@@ -695,6 +700,10 @@ end;
 const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
 var TemporaryValue:TpvUInt32;
 asm
+
+{db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
+ movss dword ptr TemporaryValue,xmm0
+ mov ax,word ptr TemporaryValue}
 
  movss dword ptr TemporaryValue,xmm0
 
@@ -786,6 +795,13 @@ function TpvHalfFloat.ToFloat:TpvFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
+{movzx eax,word ptr [eax+TpvHalfFloat.Value]
+ mov dword ptr [esp-4],eax
+ movss xmm0,dword ptr [esp-4]
+ db $c4,$e2,$79,$13,$c0 // vcvtph2ps xmm0,xmm0
+ movss dword ptr [esp-4],xmm0
+ fld dword ptr [esp-4]}
+
  movzx ecx,word ptr [eax+TpvHalfFloat.Value]
 
  mov eax,ecx
@@ -827,6 +843,11 @@ asm
 {$else}
  movzx ecx,word ptr [rdi+TpvHalfFloat.Value]
 {$ifend}
+
+{mov dword ptr TemporaryValue,ecx
+ movss xmm0,dword ptr TemporaryValue
+ db $c4,$e2,$79,$13,$c0 // vcvtph2ps xmm0,xmm0
+}
 
  mov eax,ecx
  and eax,$7fff
