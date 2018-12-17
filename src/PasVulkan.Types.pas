@@ -262,11 +262,14 @@ type PPpvInt8=^PpvInt8;
      PPpvHalfFloat=^PpvHalfFloat;
      PpvHalfFloat=^TpvHalfFloat;
      TpvHalfFloat=record
+      private
+       const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
+             ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
       public
        Value:TpvUInt16;
-       constructor Create(const pValue:TpvFloat);
-       class function FromFloat(const pValue:TpvFloat):TpvHalfFloat; static; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToFloat:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class function FromFloat(const aValue:TpvFloat):TpvHalfFloat; static; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$ifend}
+       constructor Create(const aValue:TpvFloat);
+       function ToFloat:TpvFloat; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$ifend}
        class operator Implicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -638,24 +641,244 @@ begin
  result.Hi:=((u1*v1)+w2)+k;
 end;
 
-constructor TpvHalfFloat.Create(const pValue:TpvFloat);
-var CastedValue:TpvUInt32 absolute pValue;
-begin
- Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TpvUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
-end;
+class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
+{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
+asm
 
-class function TpvHalfFloat.FromFloat(const pValue:TpvFloat):TpvHalfFloat;
-var CastedValue:TpvUInt32 absolute pValue;
+ mov ecx,dword ptr aValue
+
+ mov edx,ecx
+
+ and ecx,$80000000
+
+ xor edx,ecx
+
+ cmp edx,$7f800000
+ jb @NormalCase
+
+//@InfNANCase:
+
+ mov eax,$7f800000
+ cmp eax,edx
+ sbb eax,eax
+
+ and eax,$200
+ add eax,$7c00
+
+ jmp @Done
+
+@NormalCase:
+
+ and edx,$fffff000
+ mov dword ptr [esp-4],edx
+
+ mov edx,$0f800000
+ movss xmm0,dword ptr [esp-4]
+ mulss xmm0,dword ptr Magic
+ movss dword ptr [esp-4],xmm0
+ mov eax,dword ptr [esp-4]
+ add eax,4096
+ cmp eax,edx
+ cmova eax,edx
+
+ shr eax,13
+
+@Done:
+
+ shr ecx,16
+ or ax,cx
+ movzx eax,ax
+
+end;
+{$elseif defined(cpuamd64) or defined(cpux64) or defined(cpux86_64)}
+const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
+var TemporaryValue:TpvUInt32;
+asm
+
+ movss dword ptr TemporaryValue,xmm0
+
+ mov ecx,dword ptr TemporaryValue
+
+ mov edx,ecx
+
+ and ecx,$80000000
+
+ xor edx,ecx
+
+ cmp edx,$7f800000
+ jb @NormalCase
+
+//@InfNANCase:
+
+ mov eax,$7f800000
+ cmp eax,edx
+ sbb eax,eax
+
+ and eax,$200
+ add eax,$7c00
+
+ jmp @Done
+
+@NormalCase:
+
+ and edx,$fffff000
+ mov dword ptr TemporaryValue,edx
+
+ mov edx,$0f800000
+ movss xmm0,dword ptr TemporaryValue
+{$ifdef fpc}
+ mulss xmm0,dword ptr [rip+Magic]
+{$else}
+ mulss xmm0,dword ptr [rel Magic]
+{$endif}
+ movss dword ptr TemporaryValue,xmm0
+ mov eax,dword ptr TemporaryValue
+ add eax,4096
+ cmp eax,edx
+ cmova eax,edx
+
+ shr eax,13
+
+@Done:
+
+ shr ecx,16
+ or ax,cx
+ movzx eax,ax
+
+end;
+{$else}
+{$if true}
+var CastedValue:TpvUInt32 absolute aValue;
 begin
  result.Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TpvUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
 end;
+{$else}
+const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
+var FloatValue:TpvFloat;
+    CastedFloatValue:TpvUInt32 absolute FloatValue;
+    SignValue:TpvUInt32;
+begin
+ FloatValue:=aValue;
+ SignValue:=CastedFloatValue and $80000000;
+ CastedFloatValue:=CastedFloatValue xor SignValue;
+ if CastedFloatValue>=$7f800000 then begin
+  result.Value:=($7c00+((ord(CastedFloatValue>$7f800000) and 1) shl 9)) or (SignValue shr 16);
+ end else begin
+  CastedFloatValue:=CastedFloatValue and $fffff000;
+  FloatValue:=FloatValue*TpvFloat(pointer(@Magic)^);
+  dec(CastedFloatValue,$fffff000);
+  if CastedFloatValue>$0f800000 then begin
+   CastedFloatValue:=$0f800000;
+  end;
+  result.Value:=(CastedFloatValue shr 13) or (SignValue shr 16);
+ end;
+end;
+{$ifend}
+{$ifend}
+
+constructor TpvHalfFloat.Create(const aValue:TpvFloat);
+begin
+ self:=TpvHalfFloat.FromFloat(aValue);
+end;
 
 function TpvHalfFloat.ToFloat:TpvFloat;
+{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
+      ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
+asm
+
+ movzx ecx,word ptr [eax+TpvHalfFloat.Value]
+
+ mov eax,ecx
+ and eax,$7fff
+ shl eax,13
+
+ mov dword ptr [esp-4],eax
+
+ fld dword ptr [esp-4]
+ fmul dword ptr ToFloatMagic
+ fld dword ptr ToFloatWasInfNAN
+ xor eax,eax
+ mov edx,$7f800000
+ fcomip st(0),st(1)
+ cmova edx,eax
+ fstp dword ptr [esp-4]
+ mov eax,dword ptr [esp-4]
+ or eax,edx
+
+ and ecx,$8000
+ shl ecx,16
+ or eax,ecx
+
+ mov dword ptr [esp-4],eax
+
+ fld dword ptr [esp-4]
+
+end;
+{$elseif defined(cpuamd64) or defined(cpux64) or defined(cpux86_64)}
+const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
+      ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
+var TemporaryValue:TpvUInt32;
+asm
+
+{$if defined(Windows)}
+ movzx ecx,word ptr [rcx+TpvHalfFloat.Value]
+{$else}
+ movzx ecx,word ptr [rdi+TpvHalfFloat.Value]
+{$ifend}
+
+ mov eax,ecx
+ and eax,$7fff
+ shl eax,13
+
+ mov dword ptr TemporaryValue,eax
+
+ movss xmm0,dword ptr TemporaryValue
+{$ifdef fpc}
+ mulss xmm0,dword ptr [rip+ToFloatMagic]
+{$else}
+ mulss xmm0,dword ptr [rel ToFloatMagic]
+{$endif}
+ xor eax,eax
+ mov edx,$7f800000
+{$ifdef fpc}
+ comiss xmm0,dword ptr [rip+ToFloatWasInfNAN]
+{$else}
+ comiss xmm0,dword ptr [rel ToFloatWasInfNAN]
+{$endif}
+ cmovb edx,eax
+ movss dword ptr TemporaryValue,xmm0
+ mov eax,dword ptr TemporaryValue
+ or eax,edx
+
+ and ecx,$8000
+ shl ecx,16
+ or eax,ecx
+
+ mov dword ptr TemporaryValue,eax
+
+ movss xmm0,dword ptr TemporaryValue
+
+end;
+{$else}
 var f:TpvUInt32;
 begin
- f:=HalfFloatToFloatMantissaTable[HalfFloatToFloatOffsetTable[Value shr 10]+(Value and $3ff)]+HalfFloatToFloatExponentTable[Value shr 10];
+{$if true}
+ f:=HalfFloatToFloatMantissaTable[HalfFloatToFloatOffsetTable[Value shr 10]+
+                                  (Value and $3ff)]+
+    HalfFloatToFloatExponentTable[Value shr 10];
+{$else}
+ f:=(Value and $7fff) shl 13; // exponent/mantissa bits
+ TpvFloat(pointer(@f)^):=TpvFloat(pointer(@f)^)*TpvFloat(pointer(@TpvHalfFloat.ToFloatMagic)^); // exponent adjust
+ if TpvFloat(pointer(@f)^)>=TpvFloat(pointer(@TpvHalfFloat.ToFloatWasInfNAN)^) then begin // make sure Inf/NaN survive
+  f:=f or TpvUInt32(TpvUInt32(255) shl 23);
+ end;
+ f:=f or ((Value and $8000) shl 16); // sign bit
+{$ifend}
  result:=TpvFloat(pointer(@f)^);
 end;
+{$ifend}
 
 class operator TpvHalfFloat.Implicit(const a:TpvFloat):TpvHalfFloat;
 begin

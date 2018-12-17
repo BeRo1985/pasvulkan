@@ -14411,11 +14411,11 @@ begin
     for Index:=0 to length(Type_^.Members)-1 do begin
      Member:=@Type_^.Members[Index];
      Size:=GetTypeSize(Member^.Type_,Alignment,BufferLayout);
-     result:=Max(result+Size,Member^.Offset+Size);
-     aAlignment:=Max(aAlignment,Alignment);
+     result:=MaxUInt64(result+Size,Member^.Offset+Size);
+     aAlignment:=MaxUInt64(aAlignment,Alignment);
     end;
     if BufferLayout=TpvVulkanShaderModuleReflectionBufferLayout.STD140 then begin
-     aAlignment:=Max(aAlignment,16);
+     aAlignment:=MaxUInt64(aAlignment,16);
     end;
     aAlignment:=RoundUpToPowerOfTwo64(aAlignment);
     result:=(result+(aAlignment-1)) and not TpvUInt64(aAlignment-1);
