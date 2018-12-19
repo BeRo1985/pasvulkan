@@ -406,6 +406,8 @@ var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
 
 implementation
 
+uses PasVulkan.CPU.Info;
+
 procedure GenerateHalfFloatLookUpTables;
 var i,e:TpvInt32;
     Mantissa,Exponent:TpvUInt32;
@@ -641,6 +643,17 @@ begin
  result.Hi:=((u1*v1)+w2)+k;
 end;
 
+{var hf:TpvHalfFloat;
+    f:TpvFloat;
+begin
+ f:=pi;
+ hf:=f;
+ f:=hf;
+ writeln(f);
+ readln;
+ exit;
+end.}
+
 class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
@@ -701,10 +714,20 @@ const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
 var TemporaryValue:TpvUInt32;
 asm
 
-{db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
- movss dword ptr TemporaryValue,xmm0
- mov ax,word ptr TemporaryValue}
+{$ifdef fpc}
+ test dword ptr [rip+CPUFeatures],CPUFeatures_X86_F16C_Mask
+{$else}
+ test dword ptr [rel CPUFeatures],CPUFeatures_X86_F16C_Mask
+{$endif}
+ jz @Bittwiddling
 
+//@x86_F16C:
+ db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
+ movss dword ptr TemporaryValue,xmm0
+ movzx eax,word ptr TemporaryValue
+ jmp @Done
+
+@Bittwiddling:
  movss dword ptr TemporaryValue,xmm0
 
  mov ecx,dword ptr TemporaryValue
@@ -727,7 +750,7 @@ asm
  and eax,$200
  add eax,$7c00
 
- jmp @Done
+ jmp @BittwiddlingDone
 
 @NormalCase:
 
@@ -749,11 +772,13 @@ asm
 
  shr eax,13
 
-@Done:
+@BittwiddlingDone:
 
  shr ecx,16
  or ax,cx
  movzx eax,ax
+
+@Done:
 
 end;
 {$else}
@@ -844,10 +869,20 @@ asm
  movzx ecx,word ptr [rdi+TpvHalfFloat.Value]
 {$ifend}
 
-{mov dword ptr TemporaryValue,ecx
+{$ifdef fpc}
+ test dword ptr [rip+CPUFeatures],CPUFeatures_X86_F16C_Mask
+{$else}
+ test dword ptr [rel CPUFeatures],CPUFeatures_X86_F16C_Mask
+{$endif}
+ jz @Bittwiddling
+
+//@x86_F16C:
+ mov dword ptr TemporaryValue,ecx
  movss xmm0,dword ptr TemporaryValue
  db $c4,$e2,$79,$13,$c0 // vcvtph2ps xmm0,xmm0
-}
+ jmp @Done
+
+@Bittwiddling:
 
  mov eax,ecx
  and eax,$7fff
@@ -880,6 +915,8 @@ asm
  mov dword ptr TemporaryValue,eax
 
  movss xmm0,dword ptr TemporaryValue
+
+@Done:
 
 end;
 {$else}
