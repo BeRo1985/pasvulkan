@@ -187,49 +187,6 @@ type EpvScene3D=class(Exception);
             end;
             TITexture=TpvGenericList<ITexture>;
             TTextures=TpvObjectGenericList<TTexture>;
-            IAnimation=interface(IBaseGroupObject)['{CCD6AAF2-0B61-4831-AD09-1B78936AACA5}']
-            end;
-            TAnimation=class(TBaseGroupObject,IAnimation)
-             public
-              type TChannel=record
-                         public
-                          type TTarget=
-                                (
-                                 Translation,
-                                 Rotation,
-                                 Scale,
-                                 Weights
-                                );
-                               TInterpolation=
-                                (
-                                 Linear,
-                                 Step,
-                                 CubicSpline
-                                );
-                         public
-                          Name:TpvUTF8String;
-                          Node:TpvSizeInt;
-                          Target:TTarget;
-                          Interpolation:TInterpolation;
-                          InputTimeArray:TpvFloatDynamicArray;
-                          OutputScalarArray:TpvFloatDynamicArray;
-                          OutputVector3Array:TpvVector3Array;
-                          OutputVector4Array:TpvVector4Array;
-                          Last:TPasGLTFSizeInt;
-                        end;
-                        PChannel=^TChannel;
-                        TChannels=array of TChannel;
-             private
-              fChannels:TChannels;
-             public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
-            end;
-            TIAnimation=TpvGenericList<IAnimation>;
-            TAnimations=TpvObjectGenericList<TAnimation>;
             IMaterial=interface(IBaseObject)['{AC0AB88D-7E4A-42BF-B888-D198DD561895}']
             end;
             TMaterial=class(TBaseObject,IMaterial)
@@ -347,116 +304,146 @@ type EpvScene3D=class(Exception);
             end;
             TIMaterials=TpvGenericList<IMaterial>;
             TMaterials=TpvObjectGenericList<TMaterial>;
-            IMesh=interface(IBaseGroupObject)['{8AB4D1D1-5BF5-45BB-8E4B-DECA806AFD58}']
-            end;
-            TMesh=class(TBaseGroupObject,IMesh)
+            TGroup=class(TBaseObject,IGroup) // A group is a GLTF scene in a uber-scene
              public
-              type TPrimitive=record
+              type TGroupObject=class
+                    private
+                     fName:TpvUTF8String;
+                     fGroup:TGroup;
                     public
-                     type TTarget=record
-                           public
-                            type TTargetVertex=packed record // 24 byte per target vertex
-                                  Position:TpvVector3;
-                                  Normal:TpvHalfFloatVector3;
-                                  Tangent:TpvHalfFloatVector3;
-                                 end;
-                                 PTargetVertex=^TTargetVertex;
-                                 TTargetVertices=array of TTargetVertex;
-                           public
-                            Vertices:TTargetVertices;
-                          end;
-                          PTarget=^TTarget;
-                          TTargets=array of TTarget;
-                    public
-                     PrimitiveMode:TVkPrimitiveTopology;
-                     Material:TpvSizeInt;
-                     Vertices:TVertices;
-                     Indices:TpvUInt32DynamicArray;
-                     Targets:TTargets;
-                     StartBufferVertexOffset:TpvSizeUInt;
-                     StartBufferIndexOffset:TpvSizeUInt;
-                     CountVertices:TpvSizeUInt;
-                     CountIndices:TpvSizeUInt;
-                     MorphTargetVertexShaderStorageBufferObjectIndex:TpvSizeInt;
-                     MorphTargetVertexShaderStorageBufferObjectOffset:TpvSizeUInt;
-                     MorphTargetVertexShaderStorageBufferObjectByteOffset:TpvSizeUInt;
-                     MorphTargetVertexShaderStorageBufferObjectByteSize:TpvSizeUInt;
+                     constructor Create(const aGroup:TGroup); reintroduce; virtual;
+                     destructor Destroy; override;
+                    published
+                     property Group:TGroup read fGroup write fGroup;
                    end;
-                   PPrimitive=^TPrimitive;
-                   TPrimitives=array of TPrimitive;
-             private
-              fPrimitives:TPrimitives;
-              fBoundingBox:TpvAABB;
-              fWeights:TpvFloatDynamicArray;
-             public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
-            end;
-            TIMeshes=TpvGenericList<IMesh>;
-            TMeshes=TpvObjectGenericList<TMesh>;
-            INode=interface(IBaseGroupObject)['{1C6E11BB-823E-4BE8-9C03-B93DB0B8CCDD}']
-            end;
-            TINodes=TpvGenericList<INode>;
-            ISkin=interface(IBaseGroupObject)['{942BE66B-6FD1-460B-BAA6-4F34C5FB44E4}']
-            end;
-            TSkin=class(TBaseGroupObject,ISkin)
-             private
-              fSkeleton:TpvSizeInt;
-              fInverseBindMatrices:TMatrix4x4DynamicArray;
-              fMatrices:TMatrix4x4DynamicArray;
-              fJoints:TSizeIntDynamicArray;
-              fSkinShaderStorageBufferObjectIndex:TpvSizeInt;
-              fSkinShaderStorageBufferObjectOffset:TpvSizeUInt;
-              fSkinShaderStorageBufferObjectByteOffset:TpvSizeUInt;
-              fSkinShaderStorageBufferObjectByteSize:TpvSizeUInt;
-            public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
-            end;
-            TISkins=TpvGenericList<ISkin>;
-            TSkins=TpvObjectGenericList<TSkin>;
-            IJoint=interface(IBaseGroupObject)['{7D989671-0771-4CD2-BA84-4B9293B28E87}']
-            end;
-            TJoint=class(TBaseGroupObject,IJoint)
-             private
-             public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-            end;
-            TIJoints=TpvGenericList<IJoint>;
-            TJoints=TpvObjectGenericList<TJoint>;
-            TNode=class(TBaseGroupObject,INode)
-             private
-              fChildren:TINodes;
-              fMesh:IMesh;
-              fSkin:ISkin;
-             public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              property Children:TINodes read fChildren;
-              property Mesh:IMesh read fMesh write fMesh;
-              property Skin:ISkin read fSkin write fSkin;
-            end;
-            TNodes=TpvObjectGenericList<TNode>;
-            TGroup=class(TBaseObject,IGroup)
+                   TAnimation=class(TGroupObject)
+                    public
+                     type TChannel=record
+                                public
+                                 type TTarget=
+                                       (
+                                        Translation,
+                                        Rotation,
+                                        Scale,
+                                        Weights
+                                       );
+                                      TInterpolation=
+                                       (
+                                        Linear,
+                                        Step,
+                                        CubicSpline
+                                       );
+                                public
+                                 Name:TpvUTF8String;
+                                 Node:TpvSizeInt;
+                                 Target:TTarget;
+                                 Interpolation:TInterpolation;
+                                 InputTimeArray:TpvFloatDynamicArray;
+                                 OutputScalarArray:TpvFloatDynamicArray;
+                                 OutputVector3Array:TpvVector3Array;
+                                 OutputVector4Array:TpvVector4Array;
+                                 Last:TPasGLTFSizeInt;
+                               end;
+                               PChannel=^TChannel;
+                               TChannels=array of TChannel;
+                    private
+                     fChannels:TChannels;
+                    public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
+                   end;
+                   TAnimations=TpvObjectGenericList<TAnimation>;
+                   TMesh=class(TGroupObject)
+                    public
+                     type TPrimitive=record
+                           public
+                            type TTarget=record
+                                  public
+                                   type TTargetVertex=packed record // 24 byte per target vertex
+                                         Position:TpvVector3;
+                                         Normal:TpvHalfFloatVector3;
+                                         Tangent:TpvHalfFloatVector3;
+                                        end;
+                                        PTargetVertex=^TTargetVertex;
+                                        TTargetVertices=array of TTargetVertex;
+                                  public
+                                   Vertices:TTargetVertices;
+                                 end;
+                                 PTarget=^TTarget;
+                                 TTargets=array of TTarget;
+                           public
+                            PrimitiveMode:TVkPrimitiveTopology;
+                            Material:TpvSizeInt;
+                            Vertices:TVertices;
+                            Indices:TpvUInt32DynamicArray;
+                            Targets:TTargets;
+                            StartBufferVertexOffset:TpvSizeUInt;
+                            StartBufferIndexOffset:TpvSizeUInt;
+                            CountVertices:TpvSizeUInt;
+                            CountIndices:TpvSizeUInt;
+                            MorphTargetVertexShaderStorageBufferObjectIndex:TpvSizeInt;
+                            MorphTargetVertexShaderStorageBufferObjectOffset:TpvSizeUInt;
+                            MorphTargetVertexShaderStorageBufferObjectByteOffset:TpvSizeUInt;
+                            MorphTargetVertexShaderStorageBufferObjectByteSize:TpvSizeUInt;
+                          end;
+                          PPrimitive=^TPrimitive;
+                          TPrimitives=array of TPrimitive;
+                    private
+                     fPrimitives:TPrimitives;
+                     fBoundingBox:TpvAABB;
+                     fWeights:TpvFloatDynamicArray;
+                    public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
+                   end;
+                   TMeshes=TpvObjectGenericList<TMesh>;
+                   TSkin=class(TGroupObject)
+                    private
+                     fSkeleton:TpvSizeInt;
+                     fInverseBindMatrices:TMatrix4x4DynamicArray;
+                     fMatrices:TMatrix4x4DynamicArray;
+                     fJoints:TSizeIntDynamicArray;
+                     fSkinShaderStorageBufferObjectIndex:TpvSizeInt;
+                     fSkinShaderStorageBufferObjectOffset:TpvSizeUInt;
+                     fSkinShaderStorageBufferObjectByteOffset:TpvSizeUInt;
+                     fSkinShaderStorageBufferObjectByteSize:TpvSizeUInt;
+                   public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
+                   end;
+                   TSkins=TpvObjectGenericList<TSkin>;
+                   TNode=class;
+                   TNodes=TpvObjectGenericList<TNode>;
+                   TNode=class(TGroupObject)
+                    private
+                     fChildren:TNodes;
+                     fMesh:TMesh;
+                     fSkin:TSkin;
+                    public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     property Children:TNodes read fChildren;
+                     property Mesh:TMesh read fMesh write fMesh;
+                     property Skin:TSkin read fSkin write fSkin;
+                   end;
              private
               fObjects:TIBaseObjects;
+              fAnimations:TAnimations;
+              fMeshes:TMeshes;
+              fSkins:TSkins;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+             published
               property Objects:TIBaseObjects read fObjects;
+              property Animations:TAnimations read fAnimations;
+              property Meshes:TMeshes read fMeshes;
+              property Skins:TSkins read fSkins;
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
@@ -482,18 +469,8 @@ type EpvScene3D=class(Exception);
        fSamplers:TSamplers;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
-       fAnimationListLock:TPasMPSlimReaderWriterLock;
-       fAnimations:TAnimations;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
-       fMeshListLock:TPasMPSlimReaderWriterLock;
-       fMeshes:TMeshes;
-       fSkinListLock:TPasMPSlimReaderWriterLock;
-       fSkins:TSkins;
-       fJointListLock:TPasMPSlimReaderWriterLock;
-       fJoints:TJoints;
-       fNodeListLock:TPasMPSlimReaderWriterLock;
-       fNodes:TNodes;
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -645,158 +622,6 @@ begin
  end;
  inherited BeforeDestruction;
 end;
-
-{ TpvScene3D.TAnimation }
-
-constructor TpvScene3D.TAnimation.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
-begin
- inherited Create(aResourceManager,aParent);
-end;
-
-destructor TpvScene3D.TAnimation.Destroy;
-begin
-
- inherited Destroy;
-end;
-
-procedure TpvScene3D.TAnimation.AfterConstruction;
-begin
- inherited AfterConstruction;
- fSceneInstance.fAnimationListLock.Acquire;
- try
-  fSceneInstance.fAnimations.Add(self);
- finally
-  fSceneInstance.fAnimationListLock.Release;
- end;
-end;
-
-procedure TpvScene3D.TAnimation.BeforeDestruction;
-begin
- fSceneInstance.fAnimationListLock.Acquire;
- try
-  fSceneInstance.fAnimations.Remove(self);
- finally
-  fSceneInstance.fAnimationListLock.Release;
- end;
- inherited BeforeDestruction;
-end;
-
-procedure TpvScene3D.TAnimation.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
-var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
-    SourceAnimation:TPasGLTF.TAnimation;
-    DestinationAnimation:TAnimation;
-    SourceAnimationChannel:TPasGLTF.TAnimation.TChannel;
-    SourceAnimationSampler:TPasGLTF.TAnimation.TSampler;
-    DestinationAnimationChannel:TAnimation.PChannel;
-    OutputVector3Array:TPasGLTF.TVector3DynamicArray;
-    OutputVector4Array:TPasGLTF.TVector4DynamicArray;
-    OutputScalarArray:TPasGLTFFloatDynamicArray;
-begin
-
- SourceAnimation:=aSourceAnimation;
-
- DestinationAnimation:=self;
-
- DestinationAnimation.Name:=SourceAnimation.Name;
-
- SetLength(DestinationAnimation.fChannels,SourceAnimation.Channels.Count);
-
- for ChannelIndex:=0 to SourceAnimation.Channels.Count-1 do begin
-
-  SourceAnimationChannel:=SourceAnimation.Channels[ChannelIndex];
-
-  DestinationAnimationChannel:=@DestinationAnimation.fChannels[ChannelIndex];
-
-  DestinationAnimationChannel^.Last:=-1;
-
-  DestinationAnimationChannel^.Node:=SourceAnimationChannel.Target.Node;
-
-  if SourceAnimationChannel.Target.Path='translation' then begin
-   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Translation;
-  end else if SourceAnimationChannel.Target.Path='rotation' then begin
-   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Rotation;
-  end else if SourceAnimationChannel.Target.Path='scale' then begin
-   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Scale;
-  end else if SourceAnimationChannel.Target.Path='weights' then begin
-   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Weights;
-  end else begin
-   raise EPasGLTF.Create('Non-supported animation channel target path "'+String(SourceAnimationChannel.Target.Path)+'"');
-  end;
-
-  if (SourceAnimationChannel.Sampler>=0) and (SourceAnimationChannel.Sampler<SourceAnimation.Samplers.Count) then begin
-   SourceAnimationSampler:=SourceAnimation.Samplers[SourceAnimationChannel.Sampler];
-   case SourceAnimationSampler.Interpolation of
-    TPasGLTF.TAnimation.TSampler.TType.Linear:begin
-     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.Linear;
-    end;
-    TPasGLTF.TAnimation.TSampler.TType.Step:begin
-     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.Step;
-    end;
-    TPasGLTF.TAnimation.TSampler.TType.CubicSpline:begin
-     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.CubicSpline;
-    end;
-    else begin
-     raise EPasGLTF.Create('Non-supported animation sampler interpolation method type');
-    end;
-   end;
-   begin
-    OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Input].DecodeAsFloatArray(false);
-    try
-     SetLength(DestinationAnimationChannel^.InputTimeArray,length(OutputScalarArray));
-     if length(OutputScalarArray)>0 then begin
-      Move(OutputScalarArray[0],DestinationAnimationChannel^.InputTimeArray[0],length(OutputScalarArray)*SizeOf(TpvFloat));
-     end;
-    finally
-     OutputScalarArray:=nil;
-    end;
-   end;
-   case DestinationAnimationChannel^.Target of
-    TAnimation.TChannel.TTarget.Translation,
-    TAnimation.TChannel.TTarget.Scale:begin
-     OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
-     try
-      SetLength(DestinationAnimationChannel^.OutputVector3Array,length(OutputVector3Array));
-      if length(OutputVector3Array)>0 then begin
-       Move(OutputVector3Array[0],DestinationAnimationChannel^.OutputVector3Array[0],length(OutputVector3Array)*SizeOf(TpvVector3));
-      end;
-     finally
-      OutputVector3Array:=nil;
-     end;
-    end;
-    TAnimation.TChannel.TTarget.Rotation:begin
-     OutputVector4Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector4Array(false);
-     try
-      for ValueIndex:=0 to length(DestinationAnimationChannel^.OutputVector4Array)-1 do begin
-       TpvVector4(pointer(@OutputVector4Array[ValueIndex])^):=TpvVector4(pointer(@DestinationAnimationChannel^.OutputVector4Array[ValueIndex])^).Normalize;
-      end;
-      SetLength(DestinationAnimationChannel^.OutputVector4Array,length(OutputVector4Array));
-      if length(OutputVector4Array)>0 then begin
-       Move(OutputVector4Array[0],DestinationAnimationChannel^.OutputVector4Array[0],length(OutputVector4Array)*SizeOf(TpvVector4));
-      end;
-     finally
-      OutputVector4Array:=nil;
-     end;
-    end;
-    TAnimation.TChannel.TTarget.Weights:begin
-     OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
-     try
-      SetLength(DestinationAnimationChannel^.OutputScalarArray,length(OutputScalarArray));
-      if length(OutputScalarArray)>0 then begin
-       Move(OutputScalarArray[0],DestinationAnimationChannel^.OutputScalarArray[0],length(OutputScalarArray)*SizeOf(TpvFloat));
-      end;
-     finally
-      OutputScalarArray:=nil;
-     end;
-    end;
-   end;
-  end else begin
-   raise EPasGLTF.Create('Non-existent sampler');
-  end;
-
- end;
-
-end;
-
 
 { TpvScene3D.TMaterial }
 
@@ -1044,41 +869,160 @@ begin
 
 end;
 
-{ TpvScene3D.TMesh }
+{ TpvScene3D.TGroup.TGroupObject }
 
-constructor TpvScene3D.TMesh.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TGroup.TGroupObject.Create(const aGroup:TGroup);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create;
+ fGroup:=aGroup;
 end;
 
-destructor TpvScene3D.TMesh.Destroy;
+destructor TpvScene3D.TGroup.TGroupObject.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TMesh.AfterConstruction;
+{ TpvScene3D.TGroup.TAnimation }
+
+constructor TpvScene3D.TGroup.TAnimation.Create(const aGroup:TGroup);
 begin
- inherited AfterConstruction;
- fSceneInstance.fMeshListLock.Acquire;
- try
-  fSceneInstance.fMeshes.Add(self);
- finally
-  fSceneInstance.fMeshListLock.Release;
- end;
+ inherited Create(aGroup);
 end;
 
-procedure TpvScene3D.TMesh.BeforeDestruction;
+destructor TpvScene3D.TGroup.TAnimation.Destroy;
 begin
- fSceneInstance.fMeshListLock.Acquire;
- try
-  fSceneInstance.fMeshes.Remove(self);
- finally
-  fSceneInstance.fMeshListLock.Release;
- end;
- inherited BeforeDestruction;
+ inherited Destroy;
 end;
 
-procedure TpvScene3D.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
+procedure TpvScene3D.TGroup.TAnimation.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
+var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
+    SourceAnimation:TPasGLTF.TAnimation;
+    DestinationAnimation:TAnimation;
+    SourceAnimationChannel:TPasGLTF.TAnimation.TChannel;
+    SourceAnimationSampler:TPasGLTF.TAnimation.TSampler;
+    DestinationAnimationChannel:TAnimation.PChannel;
+    OutputVector3Array:TPasGLTF.TVector3DynamicArray;
+    OutputVector4Array:TPasGLTF.TVector4DynamicArray;
+    OutputScalarArray:TPasGLTFFloatDynamicArray;
+begin
+
+ SourceAnimation:=aSourceAnimation;
+
+ DestinationAnimation:=self;
+
+ DestinationAnimation.fName:=SourceAnimation.Name;
+
+ SetLength(DestinationAnimation.fChannels,SourceAnimation.Channels.Count);
+
+ for ChannelIndex:=0 to SourceAnimation.Channels.Count-1 do begin
+
+  SourceAnimationChannel:=SourceAnimation.Channels[ChannelIndex];
+
+  DestinationAnimationChannel:=@DestinationAnimation.fChannels[ChannelIndex];
+
+  DestinationAnimationChannel^.Last:=-1;
+
+  DestinationAnimationChannel^.Node:=SourceAnimationChannel.Target.Node;
+
+  if SourceAnimationChannel.Target.Path='translation' then begin
+   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Translation;
+  end else if SourceAnimationChannel.Target.Path='rotation' then begin
+   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Rotation;
+  end else if SourceAnimationChannel.Target.Path='scale' then begin
+   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Scale;
+  end else if SourceAnimationChannel.Target.Path='weights' then begin
+   DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Weights;
+  end else begin
+   raise EPasGLTF.Create('Non-supported animation channel target path "'+String(SourceAnimationChannel.Target.Path)+'"');
+  end;
+
+  if (SourceAnimationChannel.Sampler>=0) and (SourceAnimationChannel.Sampler<SourceAnimation.Samplers.Count) then begin
+   SourceAnimationSampler:=SourceAnimation.Samplers[SourceAnimationChannel.Sampler];
+   case SourceAnimationSampler.Interpolation of
+    TPasGLTF.TAnimation.TSampler.TType.Linear:begin
+     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.Linear;
+    end;
+    TPasGLTF.TAnimation.TSampler.TType.Step:begin
+     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.Step;
+    end;
+    TPasGLTF.TAnimation.TSampler.TType.CubicSpline:begin
+     DestinationAnimationChannel^.Interpolation:=TAnimation.TChannel.TInterpolation.CubicSpline;
+    end;
+    else begin
+     raise EPasGLTF.Create('Non-supported animation sampler interpolation method type');
+    end;
+   end;
+   begin
+    OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Input].DecodeAsFloatArray(false);
+    try
+     SetLength(DestinationAnimationChannel^.InputTimeArray,length(OutputScalarArray));
+     if length(OutputScalarArray)>0 then begin
+      Move(OutputScalarArray[0],DestinationAnimationChannel^.InputTimeArray[0],length(OutputScalarArray)*SizeOf(TpvFloat));
+     end;
+    finally
+     OutputScalarArray:=nil;
+    end;
+   end;
+   case DestinationAnimationChannel^.Target of
+    TAnimation.TChannel.TTarget.Translation,
+    TAnimation.TChannel.TTarget.Scale:begin
+     OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
+     try
+      SetLength(DestinationAnimationChannel^.OutputVector3Array,length(OutputVector3Array));
+      if length(OutputVector3Array)>0 then begin
+       Move(OutputVector3Array[0],DestinationAnimationChannel^.OutputVector3Array[0],length(OutputVector3Array)*SizeOf(TpvVector3));
+      end;
+     finally
+      OutputVector3Array:=nil;
+     end;
+    end;
+    TAnimation.TChannel.TTarget.Rotation:begin
+     OutputVector4Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector4Array(false);
+     try
+      for ValueIndex:=0 to length(DestinationAnimationChannel^.OutputVector4Array)-1 do begin
+       TpvVector4(pointer(@OutputVector4Array[ValueIndex])^):=TpvVector4(pointer(@DestinationAnimationChannel^.OutputVector4Array[ValueIndex])^).Normalize;
+      end;
+      SetLength(DestinationAnimationChannel^.OutputVector4Array,length(OutputVector4Array));
+      if length(OutputVector4Array)>0 then begin
+       Move(OutputVector4Array[0],DestinationAnimationChannel^.OutputVector4Array[0],length(OutputVector4Array)*SizeOf(TpvVector4));
+      end;
+     finally
+      OutputVector4Array:=nil;
+     end;
+    end;
+    TAnimation.TChannel.TTarget.Weights:begin
+     OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
+     try
+      SetLength(DestinationAnimationChannel^.OutputScalarArray,length(OutputScalarArray));
+      if length(OutputScalarArray)>0 then begin
+       Move(OutputScalarArray[0],DestinationAnimationChannel^.OutputScalarArray[0],length(OutputScalarArray)*SizeOf(TpvFloat));
+      end;
+     finally
+      OutputScalarArray:=nil;
+     end;
+    end;
+   end;
+  end else begin
+   raise EPasGLTF.Create('Non-existent sampler');
+  end;
+
+ end;
+
+end;
+
+{ TpvScene3D.TGroup.TMesh }
+
+constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup);
+begin
+ inherited Create(aGroup);
+end;
+
+destructor TpvScene3D.TGroup.TMesh.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
 var Index,
     PrimitiveIndex,
     AccessorIndex,
@@ -1124,7 +1068,7 @@ begin
 
  DestinationMesh:=self;
 
- DestinationMesh.Name:=SourceMesh.Name;
+ DestinationMesh.fName:=SourceMesh.Name;
 
  SetLength(DestinationMesh.fPrimitives,SourceMesh.Primitives.Count);
 
@@ -1684,39 +1628,17 @@ end;
 
 { TpvScene3D.TSkin }
 
-constructor TpvScene3D.TSkin.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TGroup.TSkin.Create(const aGroup:TGroup);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aGroup);
 end;
 
-destructor TpvScene3D.TSkin.Destroy;
+destructor TpvScene3D.TGroup.TSkin.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TSkin.AfterConstruction;
-begin
- inherited AfterConstruction;
- fSceneInstance.fSkinListLock.Acquire;
- try
-  fSceneInstance.fSkins.Add(self);
- finally
-  fSceneInstance.fSkinListLock.Release;
- end;
-end;
-
-procedure TpvScene3D.TSkin.BeforeDestruction;
-begin
- fSceneInstance.fSkinListLock.Acquire;
- try
-  fSceneInstance.fSkins.Remove(self);
- finally
-  fSceneInstance.fSkinListLock.Release;
- end;
- inherited BeforeDestruction;
-end;
-
-procedure TpvScene3D.TSkin.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
+procedure TpvScene3D.TGroup.TSkin.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
 var Index,JointIndex,OldCount:TPasGLTFSizeInt;
     SourceSkin:TPasGLTF.TSkin;
     DestinationSkin:TSkin;
@@ -1773,48 +1695,15 @@ begin
 
 end;
 
-{ TpvScene3D.TJoint }
-
-constructor TpvScene3D.TJoint.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
-begin
- inherited Create(aResourceManager,aParent);
-end;
-
-destructor TpvScene3D.TJoint.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TpvScene3D.TJoint.AfterConstruction;
-begin
- inherited AfterConstruction;
- fSceneInstance.fJointListLock.Acquire;
- try
-  fSceneInstance.fJoints.Add(self);
- finally
-  fSceneInstance.fJointListLock.Release;
- end;
-end;
-
-procedure TpvScene3D.TJoint.BeforeDestruction;
-begin
- fSceneInstance.fJointListLock.Acquire;
- try
-  fSceneInstance.fJoints.Remove(self);
- finally
-  fSceneInstance.fJointListLock.Release;
- end;
- inherited BeforeDestruction;
-end;
-
 { TpvScene3D.TNode }
 
-constructor TpvScene3D.TNode.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TGroup.TNode.Create(const aGroup:TGroup);
 begin
 
- inherited Create(aResourceManager,aParent);
+ inherited Create(aGroup);
 
- fChildren:=TINodes.Create;
+ fChildren:=TNodes.Create;
+ fChildren.OwnsObjects:=false;
 
  fMesh:=nil;
 
@@ -1822,7 +1711,7 @@ begin
 
 end;
 
-destructor TpvScene3D.TNode.Destroy;
+destructor TpvScene3D.TGroup.TNode.Destroy;
 begin
 
  fMesh:=nil;
@@ -1832,37 +1721,6 @@ begin
  FreeAndNil(fChildren);
 
  inherited Destroy;
-end;
-
-procedure TpvScene3D.TNode.AfterConstruction;
-begin
- inherited AfterConstruction;
- fSceneInstance.fNodeListLock.Acquire;
- try
-  fSceneInstance.fNodes.Add(self);
- finally
-  fSceneInstance.fNodeListLock.Release;
- end;
-end;
-
-procedure TpvScene3D.TNode.BeforeDestruction;
-begin
-
- fChildren.Clear;
-
- fMesh:=nil;
-
- fSkin:=nil;
-
- fSceneInstance.fNodeListLock.Acquire;
- try
-  fSceneInstance.fNodes.Remove(self);
- finally
-  fSceneInstance.fNodeListLock.Release;
- end;
-
- inherited BeforeDestruction;
-
 end;
 
 { TpvScene3D.TGroup }
@@ -1964,29 +1822,9 @@ begin
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
 
- fAnimationListLock:=TPasMPSlimReaderWriterLock.Create;
- fAnimations:=TAnimations.Create;
- fAnimations.OwnsObjects:=false;
-
  fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
-
- fMeshListLock:=TPasMPSlimReaderWriterLock.Create;
- fMeshes:=TMeshes.Create;
- fMeshes.OwnsObjects:=false;
-
- fSkinListLock:=TPasMPSlimReaderWriterLock.Create;
- fSkins:=TSkins.Create;
- fSkins.OwnsObjects:=false;
-
- fJointListLock:=TPasMPSlimReaderWriterLock.Create;
- fJoints:=TJoints.Create;
- fJoints.OwnsObjects:=false;
-
- fNodeListLock:=TPasMPSlimReaderWriterLock.Create;
- fNodes:=TNodes.Create;
- fNodes.OwnsObjects:=false;
 
  fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
  fGroups:=TGroups.Create;
@@ -2015,41 +1853,11 @@ begin
  FreeAndNil(fGroups);
  FreeAndNil(fGroupListLock);
 
- while fNodes.Count>0 do begin
-  fNodes[fNodes.Count-1].Free;
- end;
- FreeAndNil(fNodes);
- FreeAndNil(fNodeListLock);
-
- while fJoints.Count>0 do begin
-  fJoints[fJoints.Count-1].Free;
- end;
- FreeAndNil(fJoints);
- FreeAndNil(fJointListLock);
-
- while fSkins.Count>0 do begin
-  fSkins[fSkins.Count-1].Free;
- end;
- FreeAndNil(fSkins);
- FreeAndNil(fSkinListLock);
-
- while fMeshes.Count>0 do begin
-  fMeshes[fMeshes.Count-1].Free;
- end;
- FreeAndNil(fMeshes);
- FreeAndNil(fMeshListLock);
-
  while fMaterials.Count>0 do begin
   fMaterials[fMaterials.Count-1].Free;
  end;
  FreeAndNil(fMaterials);
  FreeAndNil(fMaterialListLock);
-
- while fAnimations.Count>0 do begin
-  fAnimations[fAnimations.Count-1].Free;
- end;
- FreeAndNil(fAnimations);
- FreeAndNil(fAnimationListLock);
 
  while fTextures.Count>0 do begin
   fTextures[fTextures.Count-1].Free;
