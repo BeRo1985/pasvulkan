@@ -354,6 +354,9 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
+                   TCamera=class(TGroupObject)
+                   end;
+                   TCameras=TpvObjectGenericList<TCamera>;
                    TMesh=class(TGroupObject)
                     public
                      type TPrimitive=record
@@ -420,22 +423,41 @@ type EpvScene3D=class(Exception);
                    TNode=class(TGroupObject)
                     public
                      type TChildren=TpvDynamicArray<TpvSizeInt>;
+                          TMeshPrimitiveMetaData=record
+                           ShaderStorageBufferObjectIndex:TPasGLTFSizeInt;
+                           ShaderStorageBufferObjectOffset:TPasGLTFSizeUInt;
+                           ShaderStorageBufferObjectByteOffset:TPasGLTFSizeUInt;
+                           ShaderStorageBufferObjectByteSize:TPasGLTFSizeUInt;
+                          end;
+                          PMeshPrimitiveMetaData=^TMeshPrimitiveMetaData;
+                          TMeshPrimitiveMetaDataArray=array of TMeshPrimitiveMetaData;
                     private
                      fChildren:TChildren;
                      fMesh:TMesh;
+                     fCamera:TCamera;
                      fSkin:TSkin;
+                     fWeights:TpvFloatDynamicArray;
+                     fJoint:TPasGLTFSizeInt;
+                     fMatrix:TpvMatrix4x4;
+                     fTranslation:TpvVector3;
+                     fRotation:TpvVector4;
+                     fScale:TpvVector3;
+                     fMeshPrimitiveMetaDataArray:TMeshPrimitiveMetaDataArray;
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
                     public
                      property Children:TChildren read fChildren;
                     published
+                     property Camera:TCamera read fCamera write fCamera;
                      property Mesh:TMesh read fMesh write fMesh;
                      property Skin:TSkin read fSkin write fSkin;
                    end;
              private
               fObjects:TIBaseObjects;
               fAnimations:TAnimations;
+              fCameras:TCameras;
               fMeshes:TMeshes;
               fSkins:TSkins;
               fNodes:TNodes;
@@ -447,6 +469,7 @@ type EpvScene3D=class(Exception);
              published
               property Objects:TIBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
+              property Cameras:TCameras read fCameras;
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
               property Nodes:TNodes read fNodes;
@@ -1728,6 +1751,72 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
+var Index,WeightIndex,ChildrenIndex,Count:TPasGLTFSizeInt;
+    SourceNode:TPasGLTF.TNode;
+    DestinationNode:TNode;
+    Mesh:TMesh;
+begin
+
+ SourceNode:=aSourceNode;
+
+ DestinationNode:=self;
+
+ DestinationNode.fName:=SourceNode.Name;
+
+ if (SourceNode.Mesh>=0) and (SourceNode.Mesh<fGroup.fMeshes.Count) then begin
+  DestinationNode.fMesh:=fGroup.fMeshes[SourceNode.Mesh];
+ end else begin
+  DestinationNode.fMesh:=nil;
+ end;
+
+ if (SourceNode.Camera>=0) and (SourceNode.Camera<fGroup.fCameras.Count) then begin
+  DestinationNode.fCamera:=fGroup.fCameras[SourceNode.Camera];
+ end else begin
+  DestinationNode.fCamera:=nil;
+ end;
+
+ if (SourceNode.Skin>=0) and (SourceNode.Skin<fGroup.fSkins.Count) then begin
+  DestinationNode.fSkin:=fGroup.fSkins[SourceNode.Skin];
+ end else begin
+  DestinationNode.fSkin:=nil;
+ end;
+
+ DestinationNode.fJoint:=-1;
+
+ DestinationNode.fMatrix:=TpvMatrix4x4(pointer(@SourceNode.Matrix)^);
+
+ DestinationNode.fTranslation:=TpvVector3(pointer(@SourceNode.Translation)^);
+
+ DestinationNode.fRotation:=TpvVector4(pointer(@SourceNode.Rotation)^);
+
+ DestinationNode.fScale:=TpvVector3(pointer(@SourceNode.Scale)^);
+
+ SetLength(DestinationNode.fWeights,SourceNode.Weights.Count);
+ for WeightIndex:=0 to length(DestinationNode.fWeights)-1 do begin
+  DestinationNode.fWeights[WeightIndex]:=SourceNode.Weights[WeightIndex];
+ end;
+
+ if assigned(DestinationNode.fMesh) then begin
+  Mesh:=DestinationNode.fMesh;
+  Count:=length(DestinationNode.fWeights);
+  if Count<length(Mesh.fWeights) then begin
+   SetLength(DestinationNode.fWeights,length(Mesh.fWeights));
+   for WeightIndex:=Count to length(Mesh.fWeights)-1 do begin
+    DestinationNode.fWeights[WeightIndex]:=Mesh.fWeights[WeightIndex];
+   end;
+  end;
+ end;
+
+ DestinationNode.fChildren.Initialize;
+ DestinationNode.fChildren.Resize(SourceNode.Children.Count);
+ for ChildrenIndex:=0 to DestinationNode.fChildren.Count-1 do begin
+  DestinationNode.fChildren.Items[ChildrenIndex]:=SourceNode.Children[ChildrenIndex];
+ end;
+ DestinationNode.fChildren.Finish;
+
+end;
+
 { TpvScene3D.TGroup }
 
 constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -1738,6 +1827,9 @@ begin
 
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
+
+ fCameras:=TCameras.Create;
+ fCameras.OwnsObjects:=true;
 
  fMeshes:=TMeshes.Create;
  fMeshes.OwnsObjects:=true;
@@ -1759,9 +1851,12 @@ begin
 
  FreeAndNil(fMeshes);
 
+ FreeAndNil(fCameras);
+
  FreeAndNil(fAnimations);
 
  FreeAndNil(fObjects);
+
  inherited Destroy;
 end;
 
