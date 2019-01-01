@@ -418,14 +418,18 @@ type EpvScene3D=class(Exception);
                    TNode=class;
                    TNodes=TpvObjectGenericList<TNode>;
                    TNode=class(TGroupObject)
+                    public
+                     type TChildren=TpvDynamicArray<TpvSizeInt>;
                     private
-                     fChildren:TNodes;
+                     fChildren:TChildren;
                      fMesh:TMesh;
                      fSkin:TSkin;
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
-                     property Children:TNodes read fChildren;
+                    public
+                     property Children:TChildren read fChildren;
+                    published
                      property Mesh:TMesh read fMesh write fMesh;
                      property Skin:TSkin read fSkin write fSkin;
                    end;
@@ -434,6 +438,7 @@ type EpvScene3D=class(Exception);
               fAnimations:TAnimations;
               fMeshes:TMeshes;
               fSkins:TSkins;
+              fNodes:TNodes;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -444,6 +449,7 @@ type EpvScene3D=class(Exception);
               property Animations:TAnimations read fAnimations;
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
+              property Nodes:TNodes read fNodes;
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
@@ -1702,8 +1708,7 @@ begin
 
  inherited Create(aGroup);
 
- fChildren:=TNodes.Create;
- fChildren.OwnsObjects:=false;
+ fChildren.Initialize;
 
  fMesh:=nil;
 
@@ -1718,7 +1723,7 @@ begin
 
  fSkin:=nil;
 
- FreeAndNil(fChildren);
+ fChildren.Finalize;
 
  inherited Destroy;
 end;
@@ -1731,10 +1736,31 @@ begin
 
  fObjects:=TIBaseObjects.Create;
 
+ fAnimations:=TAnimations.Create;
+ fAnimations.OwnsObjects:=true;
+
+ fMeshes:=TMeshes.Create;
+ fMeshes.OwnsObjects:=true;
+
+ fSkins:=TSkins.Create;
+ fSkins.OwnsObjects:=true;
+
+ fNodes:=TNodes.Create;
+ fNodes.OwnsObjects:=true;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
 begin
+
+ FreeAndNil(fNodes);
+
+ FreeAndNil(fSkins);
+
+ FreeAndNil(fMeshes);
+
+ FreeAndNil(fAnimations);
+
  FreeAndNil(fObjects);
  inherited Destroy;
 end;
