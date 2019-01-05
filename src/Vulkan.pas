@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=95;
+      VK_HEADER_VERSION=96;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -701,7 +701,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
       VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=2;
       VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
-      VK_EXT_PCI_BUS_INFO_SPEC_VERSION=1;
+      VK_EXT_PCI_BUS_INFO_SPEC_VERSION=2;
       VK_EXT_PCI_BUS_INFO_EXTENSION_NAME='VK_EXT_pci_bus_info';
       VK_KHR_EXTENSION_214_SPEC_VERSION=0;
       VK_KHR_EXTENSION_214_EXTENSION_NAME='VK_KHR_extension_214';
@@ -723,9 +723,9 @@ const VK_NULL_HANDLE=0;
       VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME='VK_EXT_scalar_block_layout';
       VK_EXT_EXTENSION_223_SPEC_VERSION=0;
       VK_EXT_EXTENSION_223_EXTENSION_NAME='VK_EXT_extension_223';
-      VK_GOOGLE_HLSL_FUNCTIONALITY1_SPEC_VERSION=0;
+      VK_GOOGLE_HLSL_FUNCTIONALITY1_SPEC_VERSION=1;
       VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME='VK_GOOGLE_hlsl_functionality1';
-      VK_GOOGLE_DECORATE_STRING_SPEC_VERSION=0;
+      VK_GOOGLE_DECORATE_STRING_SPEC_VERSION=1;
       VK_GOOGLE_DECORATE_STRING_EXTENSION_NAME='VK_GOOGLE_decorate_string';
       VK_AMD_EXTENSION_226_SPEC_VERSION=0;
       VK_AMD_EXTENSION_226_EXTENSION_NAME='VK_AMD_extension_226';
@@ -10906,15 +10906,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT
        pNext:PVkVoid;
-       pciDomain:TVkUInt16;
-       pciBus:TVkUInt8;
-       pciDevice:TVkUInt8;
-       pciFunction:TVkUInt8;
+       pciDomain:TVkUInt32;
+       pciBus:TVkUInt32;
+       pciDevice:TVkUInt32;
+       pciFunction:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aPciDomain:TVkUInt16;
-                          const aPciBus:TVkUInt8;
-                          const aPciDevice:TVkUInt8;
-                          const aPciFunction:TVkUInt8);
+       constructor Create(const aPciDomain:TVkUInt32;
+                          const aPciBus:TVkUInt32;
+                          const aPciDevice:TVkUInt32;
+                          const aPciFunction:TVkUInt32);
 {$endif}
      end;
 
@@ -21691,10 +21691,10 @@ begin
  maxVertexAttribDivisor:=aMaxVertexAttribDivisor;
 end;
 
-constructor TVkPhysicalDevicePCIBusInfoPropertiesEXT.Create(const aPciDomain:TVkUInt16;
-                                                            const aPciBus:TVkUInt8;
-                                                            const aPciDevice:TVkUInt8;
-                                                            const aPciFunction:TVkUInt8);
+constructor TVkPhysicalDevicePCIBusInfoPropertiesEXT.Create(const aPciDomain:TVkUInt32;
+                                                            const aPciBus:TVkUInt32;
+                                                            const aPciDevice:TVkUInt32;
+                                                            const aPciFunction:TVkUInt32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT;
  pNext:=nil;
