@@ -1325,12 +1325,18 @@ begin
       Bitangent:=PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^.Normalize;
       Bitangent:=(Bitangent-(Normal*Bitangent.Dot(Normal))).Normalize;
       PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=Tangent;
+      PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent;
       if (PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Cross(Tangent)).Dot(Bitangent)<0.0 then begin
        TemporaryTangents[VertexIndex,3]:=-1.0;
       end else begin
        TemporaryTangents[VertexIndex,3]:=1.0;
       end;
      end;
+    end;
+   end else begin
+    SetLength(TemporaryBitangents,length(TemporaryPositions));
+    for VertexIndex:=0 to length(TemporaryBitangents)-1 do begin
+     PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=(PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize.Cross(PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize)).Normalize*TemporaryTangents[VertexIndex,3];
     end;
    end;
   end;
