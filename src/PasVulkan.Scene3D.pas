@@ -153,7 +153,6 @@ type EpvScene3D=class(Exception);
             end;
             TImage=class(TBaseObject,IImage)
              private
-              fHasMessageDigest:boolean;
               fMessageDigest:TpvHashSHA3.TMessageDigest;
               fResourceDataStream:TMemoryStream;
              public
@@ -168,6 +167,15 @@ type EpvScene3D=class(Exception);
             ISampler=interface(IBaseObject)['{BD753AB1-76A3-43F4-ADD9-4EF41DD280B4}']
             end;
             TSampler=class(TBaseObject,ISampler)
+             public
+              type THashData=packed record
+                    MinFilter:TVkFilter;
+                    MagFilter:TVkFilter;
+                    MipmapMode:TVkSamplerMipmapMode;
+                    AddressModeS:TVkSamplerAddressMode;
+                    AddressModeT:TVkSamplerAddressMode;
+                   end;
+                   PHashData=^THashData;
              private
               fMinFilter:TVkFilter;
               fMagFilter:TVkFilter;
@@ -179,6 +187,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
             end;
             TISampler=TpvGenericList<ISampler>;
@@ -503,13 +512,16 @@ type EpvScene3D=class(Exception);
             end;
             TIGroupInstances=TpvGenericList<IGroupInstance>;
             TGroupInstances=TpvObjectGenericList<TGroupInstance>;
+            TImageContentHashMap=TpvHashMap<TpvHashSHA3.TMessageDigest,TImage>;
+            TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
       private
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
-       fImageContentHashMap:TpvHashMap<TpvHashSHA3.TMessageDigest,TImage>;
+       fImageContentHashMap:TImageContentHashMap;
        fSamplerListLock:TPasMPSlimReaderWriterLock;
        fSamplers:TSamplers;
+       fSamplerHashMap:TSamplerHashMap;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
@@ -557,7 +569,6 @@ end;
 constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
- fHasMessageDigest:=false;
  fResourceDataStream:=TMemoryStream.Create;
 end;
 
@@ -583,7 +594,7 @@ begin
  fSceneInstance.fImageListLock.Acquire;
  try
   fSceneInstance.fImages.Remove(self);
-  if fHasMessageDigest then begin
+  if fSceneInstance.fImageContentHashMap[fMessageDigest]=self then begin
    fSceneInstance.fImageContentHashMap.Delete(fMessageDigest);
   end;
  finally
@@ -623,14 +634,28 @@ begin
 end;
 
 procedure TpvScene3D.TSampler.BeforeDestruction;
+var HashData:THashData;
 begin
+ HashData:=GetHashData;
  fSceneInstance.fSamplerListLock.Acquire;
  try
   fSceneInstance.fSamplers.Remove(self);
+  if fSceneInstance.fSamplerHashMap[HashData]=self then begin
+   fSceneInstance.fSamplerHashMap.Delete(HashData);
+  end;
  finally
   fSceneInstance.fSamplerListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+function TpvScene3D.TSampler.GetHashData:THashData;
+begin
+ result.MinFilter:=fMinFilter;
+ result.MagFilter:=fMagFilter;
+ result.MipmapMode:=fMipmapMode;
+ result.AddressModeS:=fAddressModeS;
+ result.AddressModeT:=fAddressModeT;
 end;
 
 procedure TpvScene3D.TSampler.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
@@ -1986,6 +2011,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
+var SamplerMap:TpvScene3D.TSamplers;
  procedure ProcessImages;
  var SourceImage:TPasGLTF.TImage;
      Stream:TMemoryStream;
@@ -2009,7 +2035,6 @@ procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocum
     if not assigned(Image) then begin
      Image:=TImage.Create(pvApplication.ResourceManager,self);
      try
-      Image.fHasMessageDigest:=true;
       Image.fMessageDigest:=MessageDigest;
       Image.AssignFromGLTF(aSourceDocument,SourceImage);
      finally
@@ -2021,8 +2046,50 @@ procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocum
    end;
   end;
  end;
+ procedure ProcessSamplers;
+ var Index:TpvSizeInt;
+     SourceSampler:TPasGLTF.TSampler;
+     Sampler,
+     HashedSampler:TSampler;
+     HashData:TSampler.THashData;
+ begin
+  for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
+   SourceSampler:=aSourceDocument.Samplers[Index];
+   fSceneInstance.fSamplerListLock.Acquire;
+   try
+    Sampler:=TSampler.Create(pvApplication.ResourceManager,self);
+    try
+     Sampler.AssignFromGLTF(aSourceDocument,SourceSampler);
+    finally
+     HashData:=Sampler.GetHashData;
+     HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
+     if assigned(HashedSampler) then begin
+      FreeAndNil(Sampler);
+      Sampler:=HashedSampler;
+     end else begin
+      fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+     end;
+     SamplerMap.Add(Sampler);
+    end;
+   finally
+    fSceneInstance.fSamplerListLock.Release;
+   end;
+  end;
+ end;
 begin
- ProcessImages;
+
+ SamplerMap:=TpvScene3D.TSamplers.Create;
+ SamplerMap.OwnsObjects:=false;
+ try
+
+  ProcessImages;
+
+  ProcessSamplers;
+
+ finally
+  FreeAndNil(SamplerMap);
+ end;
+
 end;
 
 { TpvScene3D.TGroupInstance }
@@ -2077,9 +2144,13 @@ begin
  fImages:=TImages.Create;
  fImages.OwnsObjects:=false;
 
+ fImageContentHashMap:=TImageContentHashMap.Create(nil);
+
  fSamplerListLock:=TPasMPSlimReaderWriterLock.Create;
  fSamplers:=TSamplers.Create;
  fSamplers.OwnsObjects:=false;
+
+ fSamplerHashMap:=TSamplerHashMap.Create(nil);
 
  fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
  fTextures:=TTextures.Create;
@@ -2132,12 +2203,14 @@ begin
   fSamplers[fSamplers.Count-1].Free;
  end;
  FreeAndNil(fSamplers);
+ FreeAndNil(fSamplerHashMap);
  FreeAndNil(fSamplerListLock);
 
  while fImages.Count>0 do begin
   fImages[fImages.Count-1].Free;
  end;
  FreeAndNil(fImages);
+ FreeAndNil(fImageContentHashMap);
  FreeAndNil(fImageListLock);
 
  FreeAndNil(fTechniques);
