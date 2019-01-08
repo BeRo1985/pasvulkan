@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2018, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2019, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -74,6 +74,7 @@ uses {$ifdef Windows}
      PasGLTF,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Hash.SHA3,
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
      PasVulkan.Resources,
@@ -411,7 +412,7 @@ type EpvScene3D=class(Exception);
                      fSkinShaderStorageBufferObjectOffset:TpvSizeUInt;
                      fSkinShaderStorageBufferObjectByteOffset:TpvSizeUInt;
                      fSkinShaderStorageBufferObjectByteSize:TpvSizeUInt;
-                   public
+                    public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
@@ -465,6 +466,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              published
               property Objects:TIBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -1875,6 +1877,30 @@ begin
   fSceneInstance.fGroupListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
+ procedure ProcessImages;
+ var SourceImage:TPasGLTF.TImage;
+     DoAddNew:boolean;
+     Stream:TMemoryStream;
+ begin
+  for SourceImage in aSourceDocument.Images do begin
+   DoAddNew:=false;
+   if SourceImage.IsExternalResource then begin
+   end else begin
+    Stream:=TMemoryStream.Create;
+    try
+     SourceImage.GetResourceData(Stream);
+     //Stream.
+    finally
+     FreeAndNil(Stream);
+    end;
+   end;
+  end;
+ end;
+begin
+ ProcessImages;
 end;
 
 { TpvScene3D.TGroupInstance }
