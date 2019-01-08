@@ -71,6 +71,8 @@ type TpvHashSHA3=class
       public
        type TState=array[0..24] of TpvUInt64;
             PState=^TState;
+            TMessageDigest=array[0..63] of TpvUInt8;
+            PMessageDigest=^TMessageDigest;
       private
        const KECCAKF_ROUNDS=24;
              keccakf_rndc:array[0..23] of TpvUInt64=

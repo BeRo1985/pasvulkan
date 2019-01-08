@@ -157,6 +157,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
             TIImage=TpvGenericList<IImage>;
             TImages=TpvObjectGenericList<TImage>;
@@ -495,6 +496,7 @@ type EpvScene3D=class(Exception);
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
+       fImageContentHashMap:TpvHashMap<TpvHashSHA3.TMessageDigest,TImage>;
        fSamplerListLock:TPasMPSlimReaderWriterLock;
        fSamplers:TSamplers;
        fTextureListLock:TPasMPSlimReaderWriterLock;
@@ -571,6 +573,11 @@ begin
   fSceneInstance.fImageListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
+begin
+
 end;
 
 { TpvScene3D.TSampler }
@@ -1882,20 +1889,34 @@ end;
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
  procedure ProcessImages;
  var SourceImage:TPasGLTF.TImage;
-     DoAddNew:boolean;
      Stream:TMemoryStream;
+     Image:TImage;
+     MessageDigest:TpvHashSHA3.TMessageDigest;
  begin
   for SourceImage in aSourceDocument.Images do begin
-   DoAddNew:=false;
-   if SourceImage.IsExternalResource then begin
-   end else begin
-    Stream:=TMemoryStream.Create;
-    try
-     SourceImage.GetResourceData(Stream);
-     //Stream.
-    finally
-     FreeAndNil(Stream);
+   Stream:=TMemoryStream.Create;
+   try
+    SourceImage.GetResourceData(Stream);
+    FillChar(MessageDigest,SizeOf(TpvHashSHA3.TMessageDigest),#0);
+    if Stream.Size>0 then begin
+     TpvHashSHA3.Process(Stream.Memory,Stream.Size,@MessageDigest,SizeOf(TpvHashSHA3.TMessageDigest));
     end;
+   finally
+    FreeAndNil(Stream);
+   end;
+   fSceneInstance.fImageListLock.Acquire;
+   try
+    Image:=fSceneInstance.fImageContentHashMap[MessageDigest];
+    if not assigned(Image) then begin
+     Image:=TImage.Create(pvApplication.ResourceManager,self);
+     try
+      Image.AssignFromGLTF(aSourceDocument,SourceImage);
+     finally
+      fSceneInstance.fImageContentHashMap[MessageDigest]:=Image;
+     end;
+    end;
+   finally
+    fSceneInstance.fImageListLock.Release;
    end;
   end;
  end;
