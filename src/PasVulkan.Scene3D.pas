@@ -152,6 +152,9 @@ type EpvScene3D=class(Exception);
             IImage=interface(IBaseObject)['{B9D41155-5F92-49E8-9D1C-BFBEA2607149}']
             end;
             TImage=class(TBaseObject,IImage)
+             private
+              fHasMessageDigest:boolean;
+              fMessageDigest:TpvHashSHA3.TMessageDigest;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -546,6 +549,7 @@ end;
 constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
+ fHasMessageDigest:=false;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
@@ -569,6 +573,9 @@ begin
  fSceneInstance.fImageListLock.Acquire;
  try
   fSceneInstance.fImages.Remove(self);
+  if fHasMessageDigest then begin
+   fSceneInstance.fImageContentHashMap.Delete(fMessageDigest);
+  end;
  finally
   fSceneInstance.fImageListLock.Release;
  end;
@@ -1910,6 +1917,8 @@ procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocum
     if not assigned(Image) then begin
      Image:=TImage.Create(pvApplication.ResourceManager,self);
      try
+      Image.fHasMessageDigest:=true;
+      Image.fMessageDigest:=MessageDigest;
       Image.AssignFromGLTF(aSourceDocument,SourceImage);
      finally
       fSceneInstance.fImageContentHashMap[MessageDigest]:=Image;
