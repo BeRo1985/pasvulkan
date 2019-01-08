@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=96;
+      VK_HEADER_VERSION=97;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -675,8 +675,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME='VK_KHR_shader_float_controls';
       VK_NV_SHADER_SUBGROUP_PARTITIONED_SPEC_VERSION=1;
       VK_NV_SHADER_SUBGROUP_PARTITIONED_EXTENSION_NAME='VK_NV_shader_subgroup_partitioned';
-      VK_KHR_EXTENSION_200_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_200_EXTENSION_NAME='VK_KHR_extension_200';
+      VK_KHR_DEPTH_STENCIL_RESOLVE_SPEC_VERSION=1;
+      VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME='VK_KHR_depth_stencil_resolve';
       VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_SPEC_VERSION=1;
       VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME='VK_KHR_swapchain_mutable_format';
       VK_NV_COMPUTE_SHADER_DERIVATIVES_SPEC_VERSION=1;
@@ -751,10 +751,10 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_236_EXTENSION_NAME='VK_AMD_extension_236';
       VK_KHR_EXTENSION_237_SPEC_VERSION=0;
       VK_KHR_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
-      VK_KHR_EXTENSION_238_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_238_EXTENSION_NAME='VK_KHR_extension_238';
-      VK_KHR_EXTENSION_239_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_239_EXTENSION_NAME='VK_KHR_extension_239';
+      VK_EXT_MEMORY_BUDGET_SPEC_VERSION=1;
+      VK_EXT_MEMORY_BUDGET_EXTENSION_NAME='VK_EXT_memory_budget';
+      VK_EXT_MEMORY_PRIORITY_SPEC_VERSION=1;
+      VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME='VK_EXT_memory_priority';
       VK_KHR_EXTENSION_240_SPEC_VERSION=0;
       VK_KHR_EXTENSION_240_EXTENSION_NAME='VK_KHR_extension_240';
       VK_NV_EXTENSION_241_SPEC_VERSION=0;
@@ -765,16 +765,18 @@ const VK_NULL_HANDLE=0;
       VK_INTEL_EXTENSION_243_EXTENSION_NAME='VK_INTEL_extension_243';
       VK_MESA_EXTENSION_244_SPEC_VERSION=0;
       VK_MESA_EXTENSION_244_EXTENSION_NAME='VK_MESA_extension_244';
-      VK_NV_EXTENSION_245_SPEC_VERSION=0;
-      VK_NV_EXTENSION_245_EXTENSION_NAME='VK_NV_extension_245';
+      VK_EXT_BUFFER_DEVICE_ADDRESS_SPEC_VERSION=2;
+      VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME='VK_EXT_buffer_device_address';
       VK_EXT_EXTENSION_246_SPEC_VERSION=0;
       VK_EXT_EXTENSION_246_EXTENSION_NAME='VK_EXT_extension_246';
       VK_EXT_SEPARATE_STENCIL_USAGE_SPEC_VERSION=1;
       VK_EXT_SEPARATE_STENCIL_USAGE_EXTENSION_NAME='VK_EXT_separate_stencil_usage';
-      VK_EXT_EXTENSION_248_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_248_EXTENSION_NAME='VK_EXT_extension_248';
+      VK_EXT_VALIDATION_FEATURES_SPEC_VERSION=1;
+      VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME='VK_EXT_validation_features';
       VK_KHR_EXTENSION_249_SPEC_VERSION=0;
       VK_KHR_EXTENSION_249_EXTENSION_NAME='VK_KHR_extension_249';
+      VK_NV_EXTENSION_250_SPEC_VERSION=0;
+      VK_NV_EXTENSION_250_EXTENSION_NAME='VK_NV_extension_250';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -813,6 +815,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkDeviceSize=^PVkDeviceSize;
      PVkDeviceSize=^TVkDeviceSize;
      TVkDeviceSize=TVkUInt64;
+
+     PPVkDeviceAddress=^PVkDeviceAddress;
+     PVkDeviceAddress=^TVkDeviceAddress;
+     TVkDeviceAddress=TVkUInt64;
 
      PPVkFramebufferCreateFlags=^PVkFramebufferCreateFlags;
      PVkFramebufferCreateFlags=^TVkFramebufferCreateFlags;
@@ -1293,6 +1299,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkConditionalRenderingFlagsEXT=^PVkConditionalRenderingFlagsEXT;
      PVkConditionalRenderingFlagsEXT=^TVkConditionalRenderingFlagsEXT;
      TVkConditionalRenderingFlagsEXT=TVkFlags;
+
+     PPVkResolveModeFlagsKHR=^PVkResolveModeFlagsKHR;
+     PVkResolveModeFlagsKHR=^TVkResolveModeFlagsKHR;
+     TVkResolveModeFlagsKHR=TVkFlags;
 
      PPVkPipelineRasterizationStateStreamCreateFlagsEXT=^PVkPipelineRasterizationStateStreamCreateFlagsEXT;
      PVkPipelineRasterizationStateStreamCreateFlagsEXT=^TVkPipelineRasterizationStateStreamCreateFlagsEXT;
@@ -2424,6 +2434,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR=1000196000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR=1000197000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR=1000199000,
+       VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR=1000199001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV=1000201000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV=1000202000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV=1000202001,
@@ -2440,7 +2452,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT=1000218001,
        VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT=1000218002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT=1000221000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT=1000237000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT=1000238000,
+       VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT=1000238001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT=1000244000,
+       VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT=1000244001,
+       VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT=1000244002,
        VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT=1000246000,
+       VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT=1000247000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
@@ -2516,6 +2535,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkResult=^TVkResult;
      TVkResult=
       (
+       VK_ERROR_INVALID_DEVICE_ADDRESS_EXT=-1000244000,
        VK_ERROR_NOT_PERMITTED_EXT=-1000174001,
        VK_ERROR_FRAGMENTATION_EXT=-1000161000,
        VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT=-1000158000,
@@ -2731,7 +2751,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT=$00000800,
        VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT=$00001000,
        VK_BUFFER_USAGE_RESERVED_13_BIT_KHR=$00002000,
-       VK_BUFFER_USAGE_RESERVED_14_BIT_KHR=$00004000
+       VK_BUFFER_USAGE_RESERVED_14_BIT_KHR=$00004000,
+       VK_BUFFER_USAGE_RESERVED_15_BIT_KHR=$00008000,
+       VK_BUFFER_USAGE_RESERVED_16_BIT_KHR=$00010000,
+       VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_EXT=$00020000
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
@@ -2741,7 +2764,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_CREATE_SPARSE_BINDING_BIT=$00000001,                            //< Buffer should support sparse backing
        VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT=$00000002,                          //< Buffer should support sparse backing with partial residency
        VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004,                            //< Buffer should support constent data access to physical memory ranges mapped into multiple locations of sparse buffers
-       VK_BUFFER_CREATE_PROTECTED_BIT=$00000008
+       VK_BUFFER_CREATE_PROTECTED_BIT=$00000008,
+       VK_BUFFER_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT_EXT=$00000010
       );
 
      PPVkShaderStageFlagBits=^PVkShaderStageFlagBits;
@@ -3261,6 +3285,27 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_VALIDATION_CHECK_SHADERS_EXT=1
       );
 
+     PPVkValidationFeatureEnableEXT=^PVkValidationFeatureEnableEXT;
+     PVkValidationFeatureEnableEXT=^TVkValidationFeatureEnableEXT;
+     TVkValidationFeatureEnableEXT=
+      (
+       VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT=0,
+       VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT=1
+      );
+
+     PPVkValidationFeatureDisableEXT=^PVkValidationFeatureDisableEXT;
+     PVkValidationFeatureDisableEXT=^TVkValidationFeatureDisableEXT;
+     TVkValidationFeatureDisableEXT=
+      (
+       VK_VALIDATION_FEATURE_DISABLE_ALL_EXT=0,
+       VK_VALIDATION_FEATURE_DISABLE_SHADERS_EXT=1,
+       VK_VALIDATION_FEATURE_DISABLE_THREAD_SAFETY_EXT=2,
+       VK_VALIDATION_FEATURE_DISABLE_API_PARAMETERS_EXT=3,
+       VK_VALIDATION_FEATURE_DISABLE_OBJECT_LIFETIMES_EXT=4,
+       VK_VALIDATION_FEATURE_DISABLE_CORE_CHECKS_EXT=5,
+       VK_VALIDATION_FEATURE_DISABLE_UNIQUE_HANDLES_EXT=6
+      );
+
      PPVkSubgroupFeatureFlagBits=^PVkSubgroupFeatureFlagBits;
      PVkSubgroupFeatureFlagBits=^TVkSubgroupFeatureFlagBits;
      TVkSubgroupFeatureFlagBits=
@@ -3713,6 +3758,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkConditionalRenderingFlagBitsEXT=
       (
        VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT=$00000001
+      );
+
+     PPVkResolveModeFlagBitsKHR=^PVkResolveModeFlagBitsKHR;
+     PVkResolveModeFlagBitsKHR=^TVkResolveModeFlagBitsKHR;
+     TVkResolveModeFlagBitsKHR=
+      (
+       VK_RESOLVE_MODE_NONE_KHR=0,
+       VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR=$00000001,
+       VK_RESOLVE_MODE_AVERAGE_BIT_KHR=$00000002,
+       VK_RESOLVE_MODE_MIN_BIT_KHR=$00000004,
+       VK_RESOLVE_MODE_MAX_BIT_KHR=$00000008
       );
 
      PPVkShadingRatePaletteEntryNV=^PVkShadingRatePaletteEntryNV;
@@ -6869,6 +6925,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aDisabledValidationCheckCount:TVkUInt32;
                           const aPDisabledValidationChecks:PVkValidationCheckEXT);
+{$endif}
+     end;
+
+     PPVkValidationFeaturesEXT=^PVkValidationFeaturesEXT;
+     PVkValidationFeaturesEXT=^TVkValidationFeaturesEXT;
+     TVkValidationFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT
+       pNext:PVkVoid;
+       enabledValidationFeatureCount:TVkUInt32;
+       pEnabledValidationFeatures:PVkValidationFeatureEnableEXT;
+       disabledValidationFeatureCount:TVkUInt32;
+       pDisabledValidationFeatures:PVkValidationFeatureDisableEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aEnabledValidationFeatureCount:TVkUInt32;
+                          const aPEnabledValidationFeatures:PVkValidationFeatureEnableEXT;
+                          const aDisabledValidationFeatureCount:TVkUInt32;
+                          const aPDisabledValidationFeatures:PVkValidationFeatureDisableEXT);
 {$endif}
      end;
 
@@ -11156,6 +11232,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceDepthStencilResolvePropertiesKHR=^PVkPhysicalDeviceDepthStencilResolvePropertiesKHR;
+     PVkPhysicalDeviceDepthStencilResolvePropertiesKHR=^TVkPhysicalDeviceDepthStencilResolvePropertiesKHR;
+     TVkPhysicalDeviceDepthStencilResolvePropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR
+       pNext:PVkVoid;
+       supportedDepthResolveModes:TVkResolveModeFlagsKHR;
+       supportedStencilResolveModes:TVkResolveModeFlagsKHR;
+       independentResolveNone:TVkBool32;
+       independentResolve:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSupportedDepthResolveModes:TVkResolveModeFlagsKHR;
+                          const aSupportedStencilResolveModes:TVkResolveModeFlagsKHR;
+                          const aIndependentResolveNone:TVkBool32;
+                          const aIndependentResolve:TVkBool32);
+{$endif}
+     end;
+
+     PPVkSubpassDescriptionDepthStencilResolveKHR=^PVkSubpassDescriptionDepthStencilResolveKHR;
+     PVkSubpassDescriptionDepthStencilResolveKHR=^TVkSubpassDescriptionDepthStencilResolveKHR;
+     TVkSubpassDescriptionDepthStencilResolveKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR
+       pNext:PVkVoid;
+       depthResolveMode:TVkResolveModeFlagBitsKHR;
+       stencilResolveMode:TVkResolveModeFlagBitsKHR;
+       pDepthStencilResolveAttachment:PVkAttachmentReference2KHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDepthResolveMode:TVkResolveModeFlagBitsKHR;
+                          const aStencilResolveMode:TVkResolveModeFlagBitsKHR;
+                          const aPDepthStencilResolveAttachment:PVkAttachmentReference2KHR);
+{$endif}
+     end;
+
      PPVkImageViewASTCDecodeModeEXT=^PVkImageViewASTCDecodeModeEXT;
      PVkImageViewASTCDecodeModeEXT=^TVkImageViewASTCDecodeModeEXT;
      TVkImageViewASTCDecodeModeEXT=record
@@ -12000,6 +12114,96 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceMemoryBudgetPropertiesEXT=^PVkPhysicalDeviceMemoryBudgetPropertiesEXT;
+     PVkPhysicalDeviceMemoryBudgetPropertiesEXT=^TVkPhysicalDeviceMemoryBudgetPropertiesEXT;
+     TVkPhysicalDeviceMemoryBudgetPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT
+       pNext:PVkVoid;
+       heapBudget:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkDeviceSize;
+       heapUsage:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aHeapBudget:array of TVkDeviceSize;
+                          const aHeapUsage:array of TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMemoryPriorityFeaturesEXT=^PVkPhysicalDeviceMemoryPriorityFeaturesEXT;
+     PVkPhysicalDeviceMemoryPriorityFeaturesEXT=^TVkPhysicalDeviceMemoryPriorityFeaturesEXT;
+     TVkPhysicalDeviceMemoryPriorityFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT
+       pNext:PVkVoid;
+       memoryPriority:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMemoryPriority:TVkBool32);
+{$endif}
+     end;
+
+     PPVkMemoryPriorityAllocateInfoEXT=^PVkMemoryPriorityAllocateInfoEXT;
+     PVkMemoryPriorityAllocateInfoEXT=^TVkMemoryPriorityAllocateInfoEXT;
+     TVkMemoryPriorityAllocateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT
+       pNext:PVkVoid;
+       priority:TVkFloat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPriority:TVkFloat);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceBufferAddressFeaturesEXT=^PVkPhysicalDeviceBufferAddressFeaturesEXT;
+     PVkPhysicalDeviceBufferAddressFeaturesEXT=^TVkPhysicalDeviceBufferAddressFeaturesEXT;
+     TVkPhysicalDeviceBufferAddressFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT
+       pNext:PVkVoid;
+       bufferDeviceAddress:TVkBool32;
+       bufferDeviceAddressCaptureReplay:TVkBool32;
+       bufferDeviceAddressMultiDevice:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aBufferDeviceAddress:TVkBool32;
+                          const aBufferDeviceAddressCaptureReplay:TVkBool32;
+                          const aBufferDeviceAddressMultiDevice:TVkBool32);
+{$endif}
+     end;
+
+     PPVkBufferDeviceAddressInfoEXT=^PVkBufferDeviceAddressInfoEXT;
+     PVkBufferDeviceAddressInfoEXT=^TVkBufferDeviceAddressInfoEXT;
+     TVkBufferDeviceAddressInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT
+       pNext:PVkVoid;
+       buffer:TVkBuffer;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aBuffer:TVkBuffer);
+{$endif}
+     end;
+
+     PPVkBufferDeviceAddressCreateInfoEXT=^PVkBufferDeviceAddressCreateInfoEXT;
+     PVkBufferDeviceAddressCreateInfoEXT=^TVkBufferDeviceAddressCreateInfoEXT;
+     TVkBufferDeviceAddressCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       deviceAddress:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDeviceAddress:TVkDeviceSize);
+{$endif}
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -12733,6 +12937,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCreateRayTracingPipelinesNV=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetImageDrmFormatModifierPropertiesEXT=function(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetBufferDeviceAddressEXT=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -13471,6 +13677,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CreateRayTracingPipelinesNV:TvkCreateRayTracingPipelinesNV;
 
       GetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT;
+
+      GetBufferDeviceAddressEXT:TvkGetBufferDeviceAddressEXT;
 
      end;
 
@@ -14215,6 +14423,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; virtual;
 
+       function GetBufferDeviceAddressEXT(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -14955,6 +15165,8 @@ var LibVulkan:pointer=nil;
     vkCreateRayTracingPipelinesNV:TvkCreateRayTracingPipelinesNV=nil;
 
     vkGetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT=nil;
+
+    vkGetBufferDeviceAddressEXT:TvkGetBufferDeviceAddressEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -16490,6 +16702,10 @@ begin
    @vkGetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageDrmFormatModifierPropertiesEXT'));
    @vk.fCommands.GetImageDrmFormatModifierPropertiesEXT:=addr(vkGetImageDrmFormatModifierPropertiesEXT);
   end;
+  if not assigned(vkGetBufferDeviceAddressEXT) then begin
+   @vkGetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetBufferDeviceAddressEXT'));
+   @vk.fCommands.GetBufferDeviceAddressEXT:=addr(vkGetBufferDeviceAddressEXT);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -16889,6 +17105,7 @@ begin
   @InstanceCommands.GetAccelerationStructureHandleNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureHandleNV')));
   @InstanceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateRayTracingPipelinesNV')));
   @InstanceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
+  @InstanceCommands.GetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetBufferDeviceAddressEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -17185,6 +17402,7 @@ begin
   @DeviceCommands.GetAccelerationStructureHandleNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureHandleNV')));
   @DeviceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateRayTracingPipelinesNV')));
   @DeviceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
+  @DeviceCommands.GetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetBufferDeviceAddressEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -19315,6 +19533,19 @@ begin
  pNext:=nil;
  disabledValidationCheckCount:=aDisabledValidationCheckCount;
  pDisabledValidationChecks:=aPDisabledValidationChecks;
+end;
+
+constructor TVkValidationFeaturesEXT.Create(const aEnabledValidationFeatureCount:TVkUInt32;
+                                            const aPEnabledValidationFeatures:PVkValidationFeatureEnableEXT;
+                                            const aDisabledValidationFeatureCount:TVkUInt32;
+                                            const aPDisabledValidationFeatures:PVkValidationFeatureDisableEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+ pNext:=nil;
+ enabledValidationFeatureCount:=aEnabledValidationFeatureCount;
+ pEnabledValidationFeatures:=aPEnabledValidationFeatures;
+ disabledValidationFeatureCount:=aDisabledValidationFeatureCount;
+ pDisabledValidationFeatures:=aPDisabledValidationFeatures;
 end;
 
 constructor TVkPipelineRasterizationStateRasterizationOrderAMD.Create(const aRasterizationOrder:TVkRasterizationOrderAMD);
@@ -21844,6 +22075,30 @@ begin
  pCheckpointMarker:=aPCheckpointMarker;
 end;
 
+constructor TVkPhysicalDeviceDepthStencilResolvePropertiesKHR.Create(const aSupportedDepthResolveModes:TVkResolveModeFlagsKHR;
+                                                                     const aSupportedStencilResolveModes:TVkResolveModeFlagsKHR;
+                                                                     const aIndependentResolveNone:TVkBool32;
+                                                                     const aIndependentResolve:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR;
+ pNext:=nil;
+ supportedDepthResolveModes:=aSupportedDepthResolveModes;
+ supportedStencilResolveModes:=aSupportedStencilResolveModes;
+ independentResolveNone:=aIndependentResolveNone;
+ independentResolve:=aIndependentResolve;
+end;
+
+constructor TVkSubpassDescriptionDepthStencilResolveKHR.Create(const aDepthResolveMode:TVkResolveModeFlagBitsKHR;
+                                                               const aStencilResolveMode:TVkResolveModeFlagBitsKHR;
+                                                               const aPDepthStencilResolveAttachment:PVkAttachmentReference2KHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR;
+ pNext:=nil;
+ depthResolveMode:=aDepthResolveMode;
+ stencilResolveMode:=aStencilResolveMode;
+ pDepthStencilResolveAttachment:=aPDepthStencilResolveAttachment;
+end;
+
 constructor TVkImageViewASTCDecodeModeEXT.Create(const aDecodeMode:TVkFormat);
 begin
  sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT;
@@ -22371,6 +22626,68 @@ begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
  pNext:=nil;
  scalarBlockLayout:=aScalarBlockLayout;
+end;
+
+constructor TVkPhysicalDeviceMemoryBudgetPropertiesEXT.Create(const aHeapBudget:array of TVkDeviceSize;
+                                                              const aHeapUsage:array of TVkDeviceSize);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceMemoryBudgetPropertiesEXT),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+ pNext:=nil;
+ ArrayItemCount:=length(aHeapBudget);
+ if ArrayItemCount>length(heapBudget) then begin
+  ArrayItemCount:=length(heapBudget);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aHeapBudget[0],heapBudget[0],ArrayItemCount*SizeOf(TVkDeviceSize));
+ end;
+ ArrayItemCount:=length(aHeapUsage);
+ if ArrayItemCount>length(heapUsage) then begin
+  ArrayItemCount:=length(heapUsage);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aHeapUsage[0],heapUsage[0],ArrayItemCount*SizeOf(TVkDeviceSize));
+ end;
+end;
+
+constructor TVkPhysicalDeviceMemoryPriorityFeaturesEXT.Create(const aMemoryPriority:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+ pNext:=nil;
+ memoryPriority:=aMemoryPriority;
+end;
+
+constructor TVkMemoryPriorityAllocateInfoEXT.Create(const aPriority:TVkFloat);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
+ pNext:=nil;
+ priority:=aPriority;
+end;
+
+constructor TVkPhysicalDeviceBufferAddressFeaturesEXT.Create(const aBufferDeviceAddress:TVkBool32;
+                                                             const aBufferDeviceAddressCaptureReplay:TVkBool32;
+                                                             const aBufferDeviceAddressMultiDevice:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT;
+ pNext:=nil;
+ bufferDeviceAddress:=aBufferDeviceAddress;
+ bufferDeviceAddressCaptureReplay:=aBufferDeviceAddressCaptureReplay;
+ bufferDeviceAddressMultiDevice:=aBufferDeviceAddressMultiDevice;
+end;
+
+constructor TVkBufferDeviceAddressInfoEXT.Create(const aBuffer:TVkBuffer);
+begin
+ sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT;
+ pNext:=nil;
+ buffer:=aBuffer;
+end;
+
+constructor TVkBufferDeviceAddressCreateInfoEXT.Create(const aDeviceAddress:TVkDeviceSize);
+begin
+ sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT;
+ pNext:=nil;
+ deviceAddress:=aDeviceAddress;
 end;
 {$endif}
 
@@ -24155,6 +24472,11 @@ end;
 function TVulkan.GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult;
 begin
  result:=fCommands.GetImageDrmFormatModifierPropertiesEXT(device,image,pProperties);
+end;
+
+function TVulkan.GetBufferDeviceAddressEXT(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress;
+begin
+ result:=fCommands.GetBufferDeviceAddressEXT(device,pInfo);
 end;
 
 initialization
