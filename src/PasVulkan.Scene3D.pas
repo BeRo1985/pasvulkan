@@ -155,6 +155,7 @@ type EpvScene3D=class(Exception);
              private
               fHasMessageDigest:boolean;
               fMessageDigest:TpvHashSHA3.TMessageDigest;
+              fResourceDataStream:TMemoryStream;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -550,10 +551,12 @@ constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;c
 begin
  inherited Create(aResourceManager,aParent);
  fHasMessageDigest:=false;
+ fResourceDataStream:=TMemoryStream.Create;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
 begin
+ FreeAndNil(fResourceDataStream);
  inherited Destroy;
 end;
 
@@ -584,7 +587,9 @@ end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
 begin
-
+ fName:=aSourceImage.Name;
+ fResourceDataStream.Clear;
+ aSourceImage.GetResourceData(fResourceDataStream);
 end;
 
 { TpvScene3D.TSampler }
