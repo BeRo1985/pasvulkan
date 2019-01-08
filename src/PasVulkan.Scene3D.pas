@@ -168,11 +168,18 @@ type EpvScene3D=class(Exception);
             ISampler=interface(IBaseObject)['{BD753AB1-76A3-43F4-ADD9-4EF41DD280B4}']
             end;
             TSampler=class(TBaseObject,ISampler)
+             private
+              fMinFilter:TVkFilter;
+              fMagFilter:TVkFilter;
+              fMipmapMode:TVkSamplerMipmapMode;
+              fAddressModeS:TVkSamplerAddressMode;
+              fAddressModeT:TVkSamplerAddressMode;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
             end;
             TISampler=TpvGenericList<ISampler>;
             TSamplers=TpvObjectGenericList<TSampler>;
@@ -624,6 +631,86 @@ begin
   fSceneInstance.fSamplerListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TSampler.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
+begin
+ fName:=aSourceSampler.Name;
+ case aSourceSampler.MinFilter of
+  TPasGLTF.TSampler.TMinFilter.None:begin
+   fMinFilter:=VK_FILTER_NEAREST;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMinFilter.Nearest:begin
+   fMinFilter:=VK_FILTER_NEAREST;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMinFilter.Linear:begin
+   fMinFilter:=VK_FILTER_LINEAR;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMinFilter.NearestMipMapNearest:begin
+   fMinFilter:=VK_FILTER_NEAREST;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMinFilter.LinearMipMapNearest:begin
+   fMinFilter:=VK_FILTER_LINEAR;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMinFilter.NearestMipMapLinear:begin
+   fMinFilter:=VK_FILTER_NEAREST;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  end;
+  TPasGLTF.TSampler.TMinFilter.LinearMipMapLinear:begin
+   fMinFilter:=VK_FILTER_LINEAR;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  end;
+  else begin
+   Assert(false);
+  end;
+ end;
+ case aSourceSampler.MagFilter of
+  TPasGLTF.TSampler.TMagFilter.None:begin
+   fMagFilter:=VK_FILTER_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMagFilter.Nearest:begin
+   fMagFilter:=VK_FILTER_NEAREST;
+  end;
+  TPasGLTF.TSampler.TMagFilter.Linear:begin
+   fMagFilter:=VK_FILTER_LINEAR;
+  end;
+  else begin
+   Assert(false);
+  end;
+ end;
+ case aSourceSampler.WrapS of
+  TPasGLTF.TSampler.TWrappingMode.Repeat_:begin
+   fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  end;
+  TPasGLTF.TSampler.TWrappingMode.ClampToEdge:begin
+   fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  end;
+  TPasGLTF.TSampler.TWrappingMode.MirroredRepeat:begin
+   fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  end;
+  else begin
+   Assert(false);
+  end;
+ end;
+ case aSourceSampler.WrapT of
+  TPasGLTF.TSampler.TWrappingMode.Repeat_:begin
+   fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  end;
+  TPasGLTF.TSampler.TWrappingMode.ClampToEdge:begin
+   fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  end;
+  TPasGLTF.TSampler.TWrappingMode.MirroredRepeat:begin
+   fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  end;
+  else begin
+   Assert(false);
+  end;
+ end;
 end;
 
 { TpvScene3D.TTexture }
