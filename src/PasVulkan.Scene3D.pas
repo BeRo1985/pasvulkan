@@ -280,7 +280,6 @@ type EpvScene3D=class(Exception);
                    end;
                    PShaderData=^TShaderData;
                    TData=record
-                    Name:TpvUTF8String;
                     ShadingModel:TShadingModel;
                     AlphaCutOff:TpvFloat;
                     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
@@ -296,7 +295,6 @@ type EpvScene3D=class(Exception);
                     Unlit:TUnlit;
                    end;
               const DefaultData:TData=(
-                     Name:'';
                      ShadingModel:TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
                      AlphaCutOff:1.0;
                      AlphaMode:TpvScene3D.TMaterial.TAlphaMode.Opaque;
@@ -887,8 +885,9 @@ var Index:TpvSizeInt;
     JSONObject:TPasJSONItemObject;
 begin
 
+ fName:=aSourceMaterial.Name;
+
  begin
-  fData.Name:=aSourceMaterial.Name;
   fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
   case aSourceMaterial.AlphaMode of
    TPasGLTF.TMaterial.TAlphaMode.Opaque:begin
