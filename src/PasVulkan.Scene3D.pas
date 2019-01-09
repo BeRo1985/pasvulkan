@@ -537,6 +537,7 @@ type EpvScene3D=class(Exception);
               fSkins:TSkins;
               fNodes:TNodes;
               fScenes:TScenes;
+              fScene:TScene;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -551,6 +552,7 @@ type EpvScene3D=class(Exception);
               property Skins:TSkins read fSkins;
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
+              property Scene:TScene read fScene;
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
@@ -2472,6 +2474,14 @@ begin
      ProcessNodes;
 
      ProcessScenes;
+
+     if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
+      fScene:=fScenes[aSourceDocument.Scene];
+     end else if fScenes.Count>0 then begin
+      fScene:=fScenes[0];
+     end else begin
+      fScene:=nil;
+     end;
 
     finally
      FreeAndNil(MaterialMap);
