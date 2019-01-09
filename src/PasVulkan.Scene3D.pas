@@ -334,7 +334,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
-              procedure AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureReindexMap:array of TpvSizeInt);
+              procedure AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
             end;
             TIMaterials=TpvGenericList<IMaterial>;
@@ -881,7 +881,7 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureReindexMap:array of TpvSizeInt);
+procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
 var Index:TpvSizeInt;
     JSONItem:TPasJSONItem;
     JSONObject:TPasJSONItemObject;
@@ -903,21 +903,21 @@ begin
   end;
   fData.DoubleSided:=aSourceMaterial.DoubleSided;
   fData.EmissiveFactor:=TpvVector3.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2]);
-  if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<length(aTextureReindexMap)) then begin
-   fData.EmissiveTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[aSourceMaterial.EmissiveTexture.Index]].InstanceInterface as TpvScene3D.ITexture;
+  if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
+   fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index].InstanceInterface as TpvScene3D.ITexture;
   end else begin
    fData.EmissiveTexture.Texture:=nil;
   end;
   fData.EmissiveTexture.TexCoord:=aSourceMaterial.EmissiveTexture.TexCoord;
-  if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<length(aTextureReindexMap)) then begin
-   fData.NormalTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[aSourceMaterial.NormalTexture.Index]].InstanceInterface as TpvScene3D.ITexture;
+  if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<aTextureMap.Count) then begin
+   fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index].InstanceInterface as TpvScene3D.ITexture;
   end else begin
    fData.NormalTexture.Texture:=nil;
   end;
   fData.NormalTexture.TexCoord:=aSourceMaterial.NormalTexture.TexCoord;
   fData.NormalTextureScale:=aSourceMaterial.NormalTexture.Scale;
-  if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<length(aTextureReindexMap)) then begin
-   fData.OcclusionTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[aSourceMaterial.OcclusionTexture.Index]].InstanceInterface as TpvScene3D.ITexture;
+  if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<aTextureMap.Count) then begin
+   fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index].InstanceInterface as TpvScene3D.ITexture;
   end else begin
    fData.OcclusionTexture.Texture:=nil;
   end;
@@ -927,16 +927,16 @@ begin
 
  begin
   fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[0],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[1],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[2],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[3]);
-  if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<length(aTextureReindexMap)) then begin
-   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index]].InstanceInterface as TpvScene3D.ITexture;
+  if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<aTextureMap.Count) then begin
+   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index].InstanceInterface as TpvScene3D.ITexture;
   end else begin
    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
   end;
   fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.TexCoord;
   fData.PBRMetallicRoughness.RoughnessFactor:=aSourceMaterial.PBRMetallicRoughness.RoughnessFactor;
   fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
-  if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<length(aTextureReindexMap)) then begin
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index]].InstanceInterface as TpvScene3D.ITexture;
+  if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index].InstanceInterface as TpvScene3D.ITexture;
   end else begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
   end;
@@ -969,8 +969,8 @@ begin
     JSONItem:=JSONObject.Properties['diffuseTexture'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-     if (Index>=0) and (Index<length(aTextureReindexMap)) then begin
-      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[Index]].InstanceInterface as TpvScene3D.ITexture;
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
      end else begin
       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
      end;
@@ -986,8 +986,8 @@ begin
     JSONItem:=JSONObject.Properties['specularGlossinessTexture'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-     if (Index>=0) and (Index<length(aTextureReindexMap)) then begin
-      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=fSceneInstance.fTextures[aTextureReindexMap[Index]].InstanceInterface as TpvScene3D.ITexture;
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
      end else begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
      end;
