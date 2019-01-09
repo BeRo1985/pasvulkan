@@ -485,7 +485,7 @@ type EpvScene3D=class(Exception);
                    TNodes=TpvObjectGenericList<TNode>;
                    TNode=class(TGroupObject)
                     public
-                     type TChildren=TpvDynamicArray<TpvSizeInt>;
+                     type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
                           TMeshPrimitiveMetaData=record
                            ShaderStorageBufferObjectIndex:TPasGLTFSizeInt;
                            ShaderStorageBufferObjectOffset:TPasGLTFSizeUInt;
@@ -495,7 +495,8 @@ type EpvScene3D=class(Exception);
                           PMeshPrimitiveMetaData=^TMeshPrimitiveMetaData;
                           TMeshPrimitiveMetaDataArray=array of TMeshPrimitiveMetaData;
                     private
-                     fChildren:TChildren;
+                     fChildNodeIndices:TChildNodeIndices;
+                     fChildren:TNodes;
                      fMesh:TMesh;
                      fCamera:TCamera;
                      fSkin:TSkin;
@@ -506,12 +507,13 @@ type EpvScene3D=class(Exception);
                      fRotation:TpvVector4;
                      fScale:TpvVector3;
                      fMeshPrimitiveMetaDataArray:TMeshPrimitiveMetaDataArray;
+                     procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
                     public
-                     property Children:TChildren read fChildren;
+                     property Children:TChildNodeIndices read fChildNodeIndices;
                     published
                      property Camera:TCamera read fCamera write fCamera;
                      property Mesh:TMesh read fMesh write fMesh;
@@ -1998,7 +2000,10 @@ begin
 
  inherited Create(aGroup);
 
- fChildren.Initialize;
+ fChildNodeIndices.Initialize;
+
+ fChildren:=TNodes.Create;
+ fChildren.OwnsObjects:=false;
 
  fMesh:=nil;
 
@@ -2013,9 +2018,12 @@ begin
 
  fSkin:=nil;
 
- fChildren.Finalize;
+ FreeAndNil(fChildren);
+
+ fChildNodeIndices.Finalize;
 
  inherited Destroy;
+
 end;
 
 procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
@@ -2069,13 +2077,26 @@ begin
   end;
  end;
 
- fChildren.Initialize;
- fChildren.Resize(aSourceNode.Children.Count);
- for ChildrenIndex:=0 to fChildren.Count-1 do begin
-  fChildren.Items[ChildrenIndex]:=aSourceNode.Children[ChildrenIndex];
+ fChildNodeIndices.Initialize;
+ fChildNodeIndices.Resize(aSourceNode.Children.Count);
+ for ChildrenIndex:=0 to fChildNodeIndices.Count-1 do begin
+  fChildNodeIndices.Items[ChildrenIndex]:=aSourceNode.Children[ChildrenIndex];
  end;
- fChildren.Finish;
+ fChildNodeIndices.Finish;
 
+end;
+
+procedure TpvScene3D.TGroup.TNode.Finish;
+var ChildrenIndex,NodeIndex:TpvSizeInt;
+begin
+ for ChildrenIndex:=0 to fChildNodeIndices.Count-1 do begin
+  NodeIndex:=fChildNodeIndices.Items[ChildrenIndex];
+  if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+   fChildren.Add(fGroup.fNodes[NodeIndex]);
+  end else begin
+   raise EPasGLTFInvalidDocument.Create('Node index out of range');
+  end;
+ end;
 end;
 
 { TpvScene3D.TGroup }
@@ -2347,6 +2368,9 @@ var ImageMap:TpvScene3D.TImages;
    finally
     fNodes.Add(Node);
    end;
+  end;
+  for Index:=0 to fNodes.Count-1 do begin
+   fNodes[Index].Finish;
   end;
  end;
 begin
