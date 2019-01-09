@@ -294,6 +294,9 @@ type EpvScene3D=class(Exception);
                     PBRSpecularGlossiness:TPBRSpecularGlossiness;
                     Unlit:TUnlit;
                    end;
+                   PData=^TData;
+                   THashData=TData;
+                   PHashData=^THashData;
               const DefaultData:TData=(
                      ShadingModel:TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
                      AlphaCutOff:1.0;
@@ -332,7 +335,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
-              procedure AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
             end;
             TIMaterials=TpvGenericList<IMaterial>;
@@ -527,6 +530,7 @@ type EpvScene3D=class(Exception);
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
+            TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
       private
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
@@ -540,6 +544,7 @@ type EpvScene3D=class(Exception);
        fTextureHashMap:TTextureHashMap;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
+       fMaterialHashMap:TMaterialHashMap;
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -873,13 +878,16 @@ begin
  fSceneInstance.fMaterialListLock.Acquire;
  try
   fSceneInstance.fMaterials.Remove(self);
+  if fSceneInstance.fMaterialHashMap[fData]=self then begin
+   fSceneInstance.fMaterialHashMap.Delete(fData);
+  end;
  finally
   fSceneInstance.fMaterialListLock.Release;
  end;
  inherited BeforeDestruction;
 end;
 
-procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
+procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
 var Index:TpvSizeInt;
     JSONItem:TPasJSONItem;
     JSONObject:TPasJSONItemObject;
@@ -2071,6 +2079,7 @@ procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocum
 var ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
     TextureMap:TpvScene3D.TTextures;
+    MaterialMap:TpvScene3D.TMaterials;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
@@ -2165,6 +2174,37 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure ProcessMaterials;
+ var Index:TpvSizeInt;
+     SourceMaterial:TPasGLTF.TMaterial;
+     Material,
+     HashedMaterial:TMaterial;
+     HashData:TMaterial.THashData;
+ begin
+  for Index:=0 to aSourceDocument.Materials.Count-1 do begin
+   SourceMaterial:=aSourceDocument.Materials[Index];
+   Material:=TMaterial.Create(pvApplication.ResourceManager,self);
+   try
+    fSceneInstance.fMaterialListLock.Acquire;
+    try
+     Material.AssignFromGLTF(aSourceDocument,SourceMaterial,TextureMap);
+     HashData:=Material.fData;
+     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
+     if assigned(HashedMaterial) then begin
+      MaterialMap.Add(HashedMaterial);
+     end else begin
+      fSceneInstance.fMaterialHashMap[HashData]:=Material;
+      MaterialMap.Add(Material);
+      Material:=nil;
+     end;
+    finally
+     fSceneInstance.fMaterialListLock.Release;
+    end;
+   finally
+    FreeAndNil(Material);
+   end;
+  end;
+ end;
 begin
 
  ImageMap:=TpvScene3D.TImages.Create;
@@ -2184,6 +2224,16 @@ begin
    try
 
     ProcessTextures;
+
+    MaterialMap:=TpvScene3D.TMaterials.Create;
+    MaterialMap.OwnsObjects:=false;
+    try
+
+     ProcessMaterials;
+
+    finally
+     FreeAndNil(MaterialMap);
+    end;
 
    finally
     FreeAndNil(TextureMap);
@@ -2269,6 +2319,8 @@ begin
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
 
+ fMaterialHashMap:=TMaterialHashMap.Create(nil);
+
  fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
@@ -2300,6 +2352,7 @@ begin
   fMaterials[fMaterials.Count-1].Free;
  end;
  FreeAndNil(fMaterials);
+ FreeAndNil(fMaterialHashMap);
  FreeAndNil(fMaterialListLock);
 
  while fTextures.Count>0 do begin
