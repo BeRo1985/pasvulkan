@@ -2319,6 +2319,36 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure ProcessSkins;
+ var Index:TpvSizeInt;
+     SourceSkin:TPasGLTF.TSkin;
+     Skin:TSkin;
+ begin
+  for Index:=0 to aSourceDocument.Skins.Count-1 do begin
+   SourceSkin:=aSourceDocument.Skins[Index];
+   Skin:=TSkin.Create(self);
+   try
+    Skin.AssignFromGLTF(aSourceDocument,SourceSkin);
+   finally
+    fSkins.Add(Skin);
+   end;
+  end;
+ end;
+ procedure ProcessNodes;
+ var Index:TpvSizeInt;
+     SourceNode:TPasGLTF.TNode;
+     Node:TNode;
+ begin
+  for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
+   SourceNode:=aSourceDocument.Nodes[Index];
+   Node:=TNode.Create(self);
+   try
+    Node.AssignFromGLTF(aSourceDocument,SourceNode);
+   finally
+    fNodes.Add(Node);
+   end;
+  end;
+ end;
 begin
 
  ImageMap:=TpvScene3D.TImages.Create;
@@ -2350,6 +2380,10 @@ begin
      ProcessCameras;
 
      ProcessMeshes;
+
+     ProcessSkins;
+
+     ProcessNodes;
 
     finally
      FreeAndNil(MaterialMap);
