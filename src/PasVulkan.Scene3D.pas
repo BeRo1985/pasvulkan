@@ -831,12 +831,12 @@ procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDoc
 begin
  fName:=aSourceTexture.Name;
  if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
-  fImage:=aImageMap[aSourceTexture.Source];
+  fImage:=aImageMap[aSourceTexture.Source].InstanceInterface as TpvScene3D.IImage;
  end else begin
   raise EPasGLTFInvalidDocument.Create('Image index out of range');
  end;
  if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
-  fSampler:=aSamplerMap[aSourceTexture.Sampler];
+  fSampler:=aSamplerMap[aSourceTexture.Sampler].InstanceInterface as TpvScene3D.ISampler;
  end else begin
   raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
  end;
