@@ -201,6 +201,12 @@ type EpvScene3D=class(Exception);
             ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
             end;
             TTexture=class(TBaseObject,ITexture)
+             public
+              type THashData=packed record
+                    Image:TImage;
+                    Sampler:TSampler;
+                   end;
+                   PHashData=^THashData;
              private
               fImage:IImage;
               fSampler:ISampler;
@@ -209,6 +215,8 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              function GetHashData:THashData;
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               property Image:IImage read fImage write fImage;
               property Sampler:ISampler read fSampler write fSampler;
             end;
@@ -520,6 +528,7 @@ type EpvScene3D=class(Exception);
             TGroupInstances=TpvObjectGenericList<TGroupInstance>;
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
+            TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
       private
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
@@ -530,6 +539,7 @@ type EpvScene3D=class(Exception);
        fSamplerHashMap:TSamplerHashMap;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
+       fTextureHashMap:TTextureHashMap;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
        fGroupListLock:TPasMPSlimReaderWriterLock;
@@ -786,16 +796,50 @@ begin
 end;
 
 procedure TpvScene3D.TTexture.BeforeDestruction;
+var HashData:THashData;
 begin
+ HashData:=GetHashData;
  fImage:=nil;
  fSampler:=nil;
  fSceneInstance.fTextureListLock.Acquire;
  try
   fSceneInstance.fTextures.Remove(self);
+  if fSceneInstance.fTextureHashMap[HashData]=self then begin
+   fSceneInstance.fTextureHashMap.Delete(HashData);
+  end;
  finally
   fSceneInstance.fTextureListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+function TpvScene3D.TTexture.GetHashData:THashData;
+begin
+ if assigned(fImage) then begin
+  result.Image:=TImage(fImage.GetResource);
+ end else begin
+  result.Image:=nil;
+ end;
+ if assigned(fSampler) then begin
+  result.Sampler:=TSampler(fSampler.GetResource);
+ end else begin
+  result.Sampler:=nil;
+ end;
+end;
+
+procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
+begin
+ fName:=aSourceTexture.Name;
+ if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
+  fImage:=aImageMap[aSourceTexture.Source];
+ end else begin
+  raise EPasGLTFInvalidDocument.Create('Image index out of range');
+ end;
+ if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
+  fSampler:=aSamplerMap[aSourceTexture.Sampler];
+ end else begin
+  raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
+ end;
 end;
 
 { TpvScene3D.TMaterial }
@@ -2027,6 +2071,7 @@ end;
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
+    TextureMap:TpvScene3D.TTextures;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
@@ -2036,25 +2081,26 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Images.Count-1 do begin
    SourceImage:=aSourceDocument.Images[Index];
-   fSceneInstance.fImageListLock.Acquire;
+   Image:=TImage.Create(pvApplication.ResourceManager,self);
    try
-    Image:=TImage.Create(pvApplication.ResourceManager,self);
+    fSceneInstance.fImageListLock.Acquire;
     try
      Image.AssignFromGLTF(aSourceDocument,SourceImage);
-    finally
      HashData:=Image.GetHashData;
      HashedImage:=fSceneInstance.fImageHashMap[HashData];
      if assigned(HashedImage) then begin
-      FreeAndNil(Image);
-      Image:=HashedImage;
+      ImageMap.Add(HashedImage);
      end else begin
       Image.fHashData:=HashData;
       fSceneInstance.fImageHashMap[HashData]:=Image;
+      ImageMap.Add(Image);
+      Image:=nil;
      end;
-     ImageMap.Add(Image);
+    finally
+     fSceneInstance.fImageListLock.Release;
     end;
    finally
-    fSceneInstance.fImageListLock.Release;
+    FreeAndNil(Image);
    end;
   end;
  end;
@@ -2067,24 +2113,56 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
    SourceSampler:=aSourceDocument.Samplers[Index];
-   fSceneInstance.fSamplerListLock.Acquire;
+   Sampler:=TSampler.Create(pvApplication.ResourceManager,self);
    try
-    Sampler:=TSampler.Create(pvApplication.ResourceManager,self);
+    fSceneInstance.fSamplerListLock.Acquire;
     try
      Sampler.AssignFromGLTF(aSourceDocument,SourceSampler);
-    finally
      HashData:=Sampler.GetHashData;
      HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
      if assigned(HashedSampler) then begin
-      FreeAndNil(Sampler);
-      Sampler:=HashedSampler;
+      SamplerMap.Add(HashedSampler);
      end else begin
       fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+      SamplerMap.Add(Sampler);
+      Sampler:=nil;
      end;
-     SamplerMap.Add(Sampler);
+    finally
+     fSceneInstance.fSamplerListLock.Release;
     end;
    finally
-    fSceneInstance.fSamplerListLock.Release;
+    FreeAndNil(Sampler);
+   end;
+  end;
+ end;
+ procedure ProcessTextures;
+ var Index:TpvSizeInt;
+     SourceTexture:TPasGLTF.TTexture;
+     Texture,
+     HashedTexture:TTexture;
+     HashData:TTexture.THashData;
+ begin
+  for Index:=0 to aSourceDocument.Textures.Count-1 do begin
+   SourceTexture:=aSourceDocument.Textures[Index];
+   Texture:=TTexture.Create(pvApplication.ResourceManager,self);
+   try
+    fSceneInstance.fTextureListLock.Acquire;
+    try
+     Texture.AssignFromGLTF(aSourceDocument,SourceTexture,ImageMap,SamplerMap);
+     HashData:=Texture.GetHashData;
+     HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
+     if assigned(HashedTexture) then begin
+      TextureMap.Add(HashedTexture);
+     end else begin
+      fSceneInstance.fTextureHashMap[HashData]:=Texture;
+      TextureMap.Add(Texture);
+      Texture:=nil;
+     end;
+    finally
+     fSceneInstance.fTextureListLock.Release;
+    end;
+   finally
+    FreeAndNil(Texture);
    end;
   end;
  end;
@@ -2101,6 +2179,16 @@ begin
   try
 
    ProcessSamplers;
+
+   TextureMap:=TpvScene3D.TTextures.Create;
+   TextureMap.OwnsObjects:=false;
+   try
+
+    ProcessTextures;
+
+   finally
+    FreeAndNil(TextureMap);
+   end;
 
   finally
    FreeAndNil(SamplerMap);
@@ -2176,6 +2264,8 @@ begin
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
 
+ fTextureHashMap:=TTextureHashMap.Create(nil);
+
  fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
@@ -2217,6 +2307,7 @@ begin
   fTextures[fTextures.Count-1].Free;
  end;
  FreeAndNil(fTextures);
+ FreeAndNil(fTextureHashMap);
  FreeAndNil(fTextureListLock);
 
  while fSamplers.Count>0 do begin
