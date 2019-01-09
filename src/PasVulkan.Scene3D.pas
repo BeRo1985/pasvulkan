@@ -465,6 +465,17 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
+                   TSkin=class;
+                   TSkins=TpvObjectGenericList<TSkin>;
+                   TSkinDynamicArray=TpvDynamicArray<TSkin>;
+                   TSkinShaderStorageBufferObject=record
+                    Count:TpvSizeInt;
+                    Size:TpvSizeInt;
+                    Skins:TSkinDynamicArray;
+                    //ShaderStorageBufferObjectHandle:TpvUInt;
+                   end;
+                   PSkinShaderStorageBufferObject=^TSkinShaderStorageBufferObject;
+                   TSkinShaderStorageBufferObjectDynamicArray=TpvDynamicArray<TSkinShaderStorageBufferObject>;
                    TSkin=class(TGroupObject)
                     private
                      fSkeleton:TpvSizeInt;
@@ -480,7 +491,6 @@ type EpvScene3D=class(Exception);
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
                    end;
-                   TSkins=TpvObjectGenericList<TSkin>;
                    TNode=class;
                    TNodes=TpvObjectGenericList<TNode>;
                    TNode=class(TGroupObject)
@@ -538,6 +548,7 @@ type EpvScene3D=class(Exception);
               fNodes:TNodes;
               fScenes:TScenes;
               fScene:TScene;
+              fSkinShaderStorageBufferObjects:TSkinShaderStorageBufferObjectDynamicArray;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -2169,10 +2180,14 @@ begin
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
 
+ fSkinShaderStorageBufferObjects.Initialize;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
 begin
+
+ fSkinShaderStorageBufferObjects.Finalize;
 
  FreeAndNil(fScenes);
 
@@ -2437,6 +2452,47 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure InitializeSkinShaderStorageBufferObjects;
+ var Index,CountMatrices,ItemIndex:TpvSizeInt;
+     Skin:TSkin;
+     SkinShaderStorageBufferObject:PSkinShaderStorageBufferObject;
+ begin
+  fSkinShaderStorageBufferObjects.Clear;
+  try
+   for Index:=0 to fSkins.Count-1 do begin
+    Skin:=fSkins[Index];
+    CountMatrices:=Skin.fJoints.Count;
+    if ( fSkinShaderStorageBufferObjects.Count=0) or
+       ((fSkinShaderStorageBufferObjects.Items[fSkinShaderStorageBufferObjects.Count-1].Size+(CountMatrices*SizeOf(TpvMatrix4x4)))>134217728) then begin
+     Skin.fSkinShaderStorageBufferObjectIndex:=fSkinShaderStorageBufferObjects.Count;
+     Skin.fSkinShaderStorageBufferObjectOffset:=0;
+     Skin.fSkinShaderStorageBufferObjectByteOffset:=Skin.fSkinShaderStorageBufferObjectOffset*SizeOf(TpvMatrix4x4);
+     Skin.fSkinShaderStorageBufferObjectByteSize:=CountMatrices*SizeOf(TpvMatrix4x4);
+     ItemIndex:=fSkinShaderStorageBufferObjects.AddNew;
+     SkinShaderStorageBufferObject:=@fSkinShaderStorageBufferObjects.Items[ItemIndex];
+     SkinShaderStorageBufferObject^.Count:=CountMatrices;
+     SkinShaderStorageBufferObject^.Size:=CountMatrices*SizeOf(TpvMatrix4x4);
+     SkinShaderStorageBufferObject^.Skins.Initialize;
+     SkinShaderStorageBufferObject^.Skins.Add(Skin);
+    end else begin
+     SkinShaderStorageBufferObject:=@fSkinShaderStorageBufferObjects.Items[fSkinShaderStorageBufferObjects.Count-1];
+     Skin.fSkinShaderStorageBufferObjectIndex:=fSkinShaderStorageBufferObjects.Count-1;
+     Skin.fSkinShaderStorageBufferObjectOffset:=SkinShaderStorageBufferObject^.Count;
+     Skin.fSkinShaderStorageBufferObjectByteOffset:=Skin.fSkinShaderStorageBufferObjectOffset*SizeOf(TpvMatrix4x4);
+     Skin.fSkinShaderStorageBufferObjectByteSize:=CountMatrices*SizeOf(TpvMatrix4x4);
+     inc(SkinShaderStorageBufferObject^.Count,CountMatrices);
+     inc(SkinShaderStorageBufferObject^.Size,CountMatrices*SizeOf(TpvMatrix4x4));
+     SkinShaderStorageBufferObject^.Skins.Add(Skin);
+    end;
+   end;
+  finally
+   fSkinShaderStorageBufferObjects.Finish;
+  end;
+  for Index:=0 to fSkinShaderStorageBufferObjects.Count-1 do begin
+   SkinShaderStorageBufferObject:=@fSkinShaderStorageBufferObjects.Items[Index];
+   SkinShaderStorageBufferObject^.Skins.Finish;
+  end;
+ end;
 begin
 
  ImageMap:=TpvScene3D.TImages.Create;
@@ -2498,6 +2554,8 @@ begin
  finally
   FreeAndNil(ImageMap);
  end;
+
+ InitializeSkinShaderStorageBufferObjects;
 
 end;
 
