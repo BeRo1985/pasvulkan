@@ -512,13 +512,23 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
-                    public
-                     property Children:TChildNodeIndices read fChildNodeIndices;
                     published
-                     property Camera:TCamera read fCamera write fCamera;
-                     property Mesh:TMesh read fMesh write fMesh;
-                     property Skin:TSkin read fSkin write fSkin;
+                     property Children:TNodes read fChildren;
+                     property Camera:TCamera read fCamera;
+                     property Mesh:TMesh read fMesh;
+                     property Skin:TSkin read fSkin;
                    end;
+                   TScene=class(TGroupObject)
+                    private
+                     fNodes:TNodes;
+                    public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
+                    published
+                     property Nodes:TNodes read fNodes;
+                   end;
+                   TScenes=TpvObjectGenericList<TScene>;
              private
               fObjects:TIBaseObjects;
               fAnimations:TAnimations;
@@ -526,6 +536,7 @@ type EpvScene3D=class(Exception);
               fMeshes:TMeshes;
               fSkins:TSkins;
               fNodes:TNodes;
+              fScenes:TScenes;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -539,6 +550,7 @@ type EpvScene3D=class(Exception);
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
               property Nodes:TNodes read fNodes;
+              property Scenes:TScenes read fScenes;
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
@@ -2099,6 +2111,36 @@ begin
  end;
 end;
 
+{ TpvScene3D.TGroup.TScene }
+
+constructor TpvScene3D.TGroup.TScene.Create(const aGroup:TGroup);
+begin
+ inherited Create(aGroup);
+ fNodes:=TNodes.Create;
+ fNodes.OwnsObjects:=false;
+end;
+
+destructor TpvScene3D.TGroup.TScene.Destroy;
+begin
+ FreeAndNil(fNodes);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TScene.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
+var Index,NodeIndex:TpvSizeInt;
+begin
+ fName:=aSourceScene.Name;
+ fNodes.Clear;
+ for Index:=0 to aSourceScene.Nodes.Count-1 do begin
+  NodeIndex:=aSourceScene.Nodes[Index];
+  if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+   fNodes.Add(fGroup.fNodes[NodeIndex]);
+  end else begin
+   raise EPasGLTFInvalidDocument.Create('Node index out of range');
+  end;
+ end;
+end;
+
 { TpvScene3D.TGroup }
 
 constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -2122,10 +2164,15 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
 
+ fScenes:=TScenes.Create;
+ fScenes.OwnsObjects:=true;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
 begin
+
+ FreeAndNil(fScenes);
 
  FreeAndNil(fNodes);
 
@@ -2373,6 +2420,21 @@ var ImageMap:TpvScene3D.TImages;
    fNodes[Index].Finish;
   end;
  end;
+ procedure ProcessScenes;
+ var Index:TpvSizeInt;
+     SourceScene:TPasGLTF.TScene;
+     Scene:TScene;
+ begin
+  for Index:=0 to aSourceDocument.Scenes.Count-1 do begin
+   SourceScene:=aSourceDocument.Scenes[Index];
+   Scene:=TScene.Create(self);
+   try
+    Scene.AssignFromGLTF(aSourceDocument,SourceScene);
+   finally
+    fScenes.Add(Scene);
+   end;
+  end;
+ end;
 begin
 
  ImageMap:=TpvScene3D.TImages.Create;
@@ -2408,6 +2470,8 @@ begin
      ProcessSkins;
 
      ProcessNodes;
+
+     ProcessScenes;
 
     finally
      FreeAndNil(MaterialMap);
