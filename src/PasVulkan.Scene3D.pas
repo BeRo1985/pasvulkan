@@ -391,6 +391,33 @@ type EpvScene3D=class(Exception);
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    TCamera=class(TGroupObject)
+                    public
+                     type TType=
+                           (
+                            None=0,
+                            Orthographic=1,
+                            Perspective=2
+                           );
+                          TOrthographic=record
+                           XMag:TpvFloat;
+                           YMag:TpvFloat;
+                           ZNear:TpvFloat;
+                           ZFar:TpvFloat;
+                          end;
+                          TPerspective=record
+                           AspectRatio:TpvFloat;
+                           YFoV:TpvFloat;
+                           ZNear:TpvFloat;
+                           ZFar:TpvFloat;
+                          end;
+                    private
+                     fType:TType;
+                     fOrthographic:TOrthographic;
+                     fPerspective:TPerspective;
+                    public
+                     constructor Create(const aGroup:TGroup); override;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
                    end;
                    TCameras=TpvObjectGenericList<TCamera>;
                    TMesh=class(TGroupObject)
@@ -1039,10 +1066,10 @@ begin
   TMaterial.TShadingModel.PBRMetallicRoughness:begin
    fShaderData.Flags:=fShaderData.Flags or ((0 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or (TpvUInt32(fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
    end;
    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or ((fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord and $f) shl (1 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or (TpvUInt32(fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord and $f) shl (1 shl 2));
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=fData.PBRMetallicRoughness.MetallicFactor;
@@ -1053,10 +1080,10 @@ begin
   TMaterial.TShadingModel.PBRSpecularGlossiness:begin
    fShaderData.Flags:=fShaderData.Flags or ((1 and $f) shl 0);
    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or (TpvUInt32(fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord and $f) shl (0 shl 2));
    end;
    if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or ((fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord and $f) shl (1 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (1 shl 2))) or (TpvUInt32(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord and $f) shl (1 shl 2));
    end;
    fShaderData.BaseColorFactor:=fData.PBRSpecularGlossiness.DiffuseFactor;
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=1.0;
@@ -1071,7 +1098,7 @@ begin
   TMaterial.TShadingModel.Unlit:begin
    fShaderData.Flags:=fShaderData.Flags or ((2 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
+    fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (0 shl 2))) or (TpvUInt32(fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl (0 shl 2));
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
   end;
@@ -1080,13 +1107,13 @@ begin
   end;
  end;
  if assigned(fData.NormalTexture.Texture) then begin
-  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (2 shl 2))) or ((fData.NormalTexture.TexCoord and $f) shl (2 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (2 shl 2))) or (TpvUInt32(fData.NormalTexture.TexCoord and $f) shl (2 shl 2));
  end;
  if assigned(fData.OcclusionTexture.Texture) then begin
-  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (3 shl 2))) or ((fData.OcclusionTexture.TexCoord and $f) shl (3 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (3 shl 2))) or (TpvUInt32(fData.OcclusionTexture.TexCoord and $f) shl (3 shl 2));
  end;
  if assigned(fData.EmissiveTexture.Texture) then begin
-  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (4 shl 2))) or ((fData.EmissiveTexture.TexCoord and $f) shl (4 shl 2));
+  fShaderData.TextureCoords:=(fShaderData.TextureCoords and not ($f shl (4 shl 2))) or (TpvUInt32(fData.EmissiveTexture.TexCoord and $f) shl (4 shl 2));
  end;
  fShaderData.EmissiveFactor[0]:=fData.EmissiveFactor[0];
  fShaderData.EmissiveFactor[1]:=fData.EmissiveFactor[1];
@@ -1226,6 +1253,48 @@ begin
    raise EPasGLTF.Create('Non-existent sampler');
   end;
 
+ end;
+
+end;
+
+{ TpvScene3D.TGroup.TCamera }
+
+constructor TpvScene3D.TGroup.TCamera.Create(const aGroup:TGroup);
+begin
+ inherited Create(aGroup);
+end;
+
+destructor TpvScene3D.TGroup.TCamera.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TCamera.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
+begin
+
+ fName:=aSourceCamera.Name;
+
+ case aSourceCamera.Type_ of
+  TPasGLTF.TCamera.TType.None:begin
+   fType:=TType.None;
+  end;
+  TPasGLTF.TCamera.TType.Orthographic:begin
+   fType:=TType.Orthographic;
+   fOrthographic.XMag:=aSourceCamera.Orthographic.XMag;
+   fOrthographic.YMag:=aSourceCamera.Orthographic.YMag;
+   fOrthographic.ZNear:=aSourceCamera.Orthographic.ZNear;
+   fOrthographic.ZFar:=aSourceCamera.Orthographic.ZFar;
+  end;
+  TPasGLTF.TCamera.TType.Perspective:begin
+   fType:=TType.Perspective;
+   fPerspective.AspectRatio:=aSourceCamera.Perspective.AspectRatio;
+   fPerspective.YFoV:=aSourceCamera.Perspective.YFoV;
+   fPerspective.ZNear:=aSourceCamera.Perspective.ZNear;
+   fPerspective.ZFar:=aSourceCamera.Perspective.ZFar;
+  end;
+  else begin
+   Assert(false);
+  end;
  end;
 
 end;
@@ -2205,6 +2274,51 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure ProcessAnimations;
+ var Index:TpvSizeInt;
+     SourceAnimation:TPasGLTF.TAnimation;
+     Animation:TAnimation;
+ begin
+  for Index:=0 to aSourceDocument.Animations.Count-1 do begin
+   SourceAnimation:=aSourceDocument.Animations[Index];
+   Animation:=TAnimation.Create(self);
+   try
+    Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+   finally
+    fAnimations.Add(Animation);
+   end;
+  end;
+ end;
+ procedure ProcessCameras;
+ var Index:TpvSizeInt;
+     SourceCamera:TPasGLTF.TCamera;
+     Camera:TCamera;
+ begin
+  for Index:=0 to aSourceDocument.Cameras.Count-1 do begin
+   SourceCamera:=aSourceDocument.Cameras[Index];
+   Camera:=TCamera.Create(self);
+   try
+    Camera.AssignFromGLTF(aSourceDocument,SourceCamera);
+   finally
+    fCameras.Add(Camera);
+   end;
+  end;
+ end;
+ procedure ProcessMeshes;
+ var Index:TpvSizeInt;
+     SourceMesh:TPasGLTF.TMesh;
+     Mesh:TMesh;
+ begin
+  for Index:=0 to aSourceDocument.Meshes.Count-1 do begin
+   SourceMesh:=aSourceDocument.Meshes[Index];
+   Mesh:=TMesh.Create(self);
+   try
+    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh);
+   finally
+    fMeshes.Add(Mesh);
+   end;
+  end;
+ end;
 begin
 
  ImageMap:=TpvScene3D.TImages.Create;
@@ -2230,6 +2344,12 @@ begin
     try
 
      ProcessMaterials;
+
+     ProcessAnimations;
+
+     ProcessCameras;
+
+     ProcessMeshes;
 
     finally
      FreeAndNil(MaterialMap);
