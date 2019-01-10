@@ -430,6 +430,8 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
+                     function GetAnimationBeginTime:TpvFloat;
+                     function GetAnimationEndTime:TpvFloat;
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    TCamera=class(TGroupObject)
@@ -1313,6 +1315,41 @@ begin
 
  end;
 
+end;
+
+
+function TpvScene3D.TGroup.TAnimation.GetAnimationBeginTime:TpvFloat;
+var Index:TpvSizeInt;
+    Channel:TAnimation.PChannel;
+begin
+ result:=0.0;
+ for Index:=0 to length(fChannels)-1 do begin
+  Channel:=@fChannels[Index];
+  if length(Channel^.InputTimeArray)>0 then begin
+   if Index=0 then begin
+    result:=Channel^.InputTimeArray[0];
+   end else begin
+    result:=Min(result,Channel^.InputTimeArray[0]);
+   end;
+  end;
+ end;
+end;
+
+function TpvScene3D.TGroup.TAnimation.GetAnimationEndTime:TpvFloat;
+var Index:TpvSizeInt;
+    Channel:TAnimation.PChannel;
+begin
+ result:=1.0;
+ for Index:=0 to length(fChannels)-1 do begin
+  Channel:=@fChannels[Index];
+  if length(Channel^.InputTimeArray)>0 then begin
+   if Index=0 then begin
+    result:=Channel^.InputTimeArray[length(Channel^.InputTimeArray)-1];
+   end else begin
+    result:=Max(result,Channel^.InputTimeArray[0]);
+   end;
+  end;
+ end;
 end;
 
 { TpvScene3D.TGroup.TCamera }
