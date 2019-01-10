@@ -122,6 +122,26 @@ type EpvScene3D=class(Exception);
             end;
             PVertex=^TVertex;
             TVertices=array of TVertex;
+            TMorphTargetVertex=packed record
+             case boolean of
+              false:(
+               Position:TpvVector4;               //  16    0
+               Normal:TpvHalfFloatVector3;        // + 6   16
+               Tangent:TpvHalfFloatVector3;       // + 6   22
+               Unused:array[0..9] of TpvUInt8;    // +10   32
+              );                                  //  ==   ==
+              true:(                              //  32   32 per vertex
+               Padding:array[0..32] of TpvUInt8;
+              );
+            end;
+            PMorphTargetVertex=^TMorphTargetVertex;
+            TMorphTargetVertexDynamicArray=array of TMorphTargetVertex;
+            TMorphTargetVertexShaderStorageBufferObject=record
+             Count:TpvSizeInt;
+             Size:TpvSizeInt;
+             Data:TBytes;
+            end;
+            PMorphTargetVertexShaderStorageBufferObject=^TMorphTargetVertexShaderStorageBufferObject;
             IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
             end;
             TBaseObject=class(TpvResource,IBaseObject)
@@ -448,10 +468,8 @@ type EpvScene3D=class(Exception);
                             StartBufferIndexOffset:TpvSizeUInt;
                             CountVertices:TpvSizeUInt;
                             CountIndices:TpvSizeUInt;
-                            MorphTargetVertexShaderStorageBufferObjectIndex:TpvSizeInt;
                             MorphTargetVertexShaderStorageBufferObjectOffset:TpvSizeUInt;
-                            MorphTargetVertexShaderStorageBufferObjectByteOffset:TpvSizeUInt;
-                            MorphTargetVertexShaderStorageBufferObjectByteSize:TpvSizeUInt;
+                            MorphTargetVertexShaderStorageBufferObjectSize:TpvSizeUInt;
                           end;
                           PPrimitive=^TPrimitive;
                           TPrimitives=array of TPrimitive;
@@ -538,11 +556,13 @@ type EpvScene3D=class(Exception);
               fScenes:TScenes;
               fScene:TScene;
               fSkinStorageBufferSize:TpvSizeInt;
+              fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure ConstructBuffers;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              published
               property Objects:TIBaseObjects read fObjects;
@@ -2212,6 +2232,73 @@ begin
   fSceneInstance.fGroupListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.ConstructBuffers;
+ procedure InitializeMorphTargetVertexShaderStorageBufferObjects;
+  procedure FillMorphTargetVertexShaderStorageBufferObject(const aMorphTargetVertexShaderStorageBufferObject:PMorphTargetVertexShaderStorageBufferObject;
+                                                           const aPrimitive:TMesh.PPrimitive;
+                                                           const aDestinationVertex:PMorphTargetVertex);
+  var TargetIndex,
+      VertexIndex:TpvSizeInt;
+      SourceVertex:TMesh.TPrimitive.TTarget.PTargetVertex;
+      DestinationVertex:PMorphTargetVertex;
+      Target:TMesh.TPrimitive.PTarget;
+  begin
+   DestinationVertex:=aDestinationVertex;
+   for TargetIndex:=0 to length(aPrimitive^.Targets)-1 do begin
+    Target:=@aPrimitive^.Targets[TargetIndex];
+    for VertexIndex:=0 to length(Target^.Vertices)-1 do begin
+     SourceVertex:=@Target^.Vertices[VertexIndex];
+     DestinationVertex^.Position[0]:=SourceVertex^.Position[0];
+     DestinationVertex^.Position[1]:=SourceVertex^.Position[1];
+     DestinationVertex^.Position[2]:=SourceVertex^.Position[2];
+     DestinationVertex^.Position[3]:=0.0;
+     DestinationVertex^.Normal:=SourceVertex^.Normal;
+     DestinationVertex^.Tangent:=SourceVertex^.Tangent;
+     inc(DestinationVertex);
+    end;
+   end;
+  end;
+ var MeshIndex,
+     PrimitiveIndex,
+     TargetIndex,
+     CountVertices,
+     Index,
+     ItemDataSize:TpvSizeInt;
+     Mesh:TMesh;
+     Primitive:TMesh.PPrimitive;
+ begin
+  fMorphTargetVertexShaderStorageBufferObject.Count:=0;
+  fMorphTargetVertexShaderStorageBufferObject.Size:=0;
+  fMorphTargetVertexShaderStorageBufferObject.Data:=nil;
+  try
+   for MeshIndex:=0 to fMeshes.Count-1 do begin
+    Mesh:=fMeshes[MeshIndex];
+    for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+     Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+     if length(Primitive^.Targets)>0 then begin
+      CountVertices:=0;
+      for TargetIndex:=0 to length(Primitive^.Targets)-1 do begin
+       inc(CountVertices,length(Primitive^.Targets[TargetIndex].Vertices));
+      end;
+      Primitive^.MorphTargetVertexShaderStorageBufferObjectOffset:=fMorphTargetVertexShaderStorageBufferObject.Size;
+      Primitive^.MorphTargetVertexShaderStorageBufferObjectSize:=CountVertices*SizeOf(TMorphTargetVertex);
+      if length(fMorphTargetVertexShaderStorageBufferObject.Data)<(fMorphTargetVertexShaderStorageBufferObject.Size+Primitive^.MorphTargetVertexShaderStorageBufferObjectSize) then begin
+       SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,(fMorphTargetVertexShaderStorageBufferObject.Size+Primitive^.MorphTargetVertexShaderStorageBufferObjectSize)*2);
+      end;
+      FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,Primitive,pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[Primitive^.MorphTargetVertexShaderStorageBufferObjectOffset]));
+      inc(fMorphTargetVertexShaderStorageBufferObject.Count,CountVertices);
+      inc(fMorphTargetVertexShaderStorageBufferObject.Size,Primitive^.MorphTargetVertexShaderStorageBufferObjectSize);
+     end;
+    end;
+   end;
+  finally
+   SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
+  end;
+ end;
+begin
+ InitializeMorphTargetVertexShaderStorageBufferObjects;
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
