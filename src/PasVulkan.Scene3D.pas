@@ -104,11 +104,11 @@ type EpvScene3D=class(Exception);
             PUInt32Vector4=^TUInt32Vector4;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
-            TVertex=packed record                 // Minimum required vertex structure for to be GLTF 2.0 conformant
+            TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
              case boolean of
               false:(
-               Position:TpvVector3;                  //  12    0 (32-bit float 3D vector)
-               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 16 (unsigned 32-bit vertex index)
+               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 16 (unsigned 32-bit morph target vertex base index)
                TangentSpace:TInt16Vector4;           // + 8 = 24 (signed 16-bit integer QTangent)
                TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
@@ -368,13 +368,6 @@ type EpvScene3D=class(Exception);
                    PMorphTargetVertexShaderStorageBufferObject=^TMorphTargetVertexShaderStorageBufferObject;
                    TNodeMeshPrimitiveShaderStorageBufferObjectDataItem=packed record
                     Matrix:TpvMatrix4x4;
-                    // uvec4 MetaData; begin
-                     Reversed:TpvUInt32;
-                     JointOffset:TpvUInt32;
-                     CountVertices:TpvUInt32;
-                     CountMorphTargets:TpvUInt32;
-                    // uvec4 MetaData; end
-                    MorphTargetWeights:array[0..0] of TpvFloat;
                    end;
                    PNodeMeshPrimitiveShaderStorageBufferObjectDataItem=^TNodeMeshPrimitiveShaderStorageBufferObjectDataItem;
                    TNodeMeshPrimitiveShaderStorageBufferObjectDataItems=array of TNodeMeshPrimitiveShaderStorageBufferObjectDataItem;
@@ -498,6 +491,7 @@ type EpvScene3D=class(Exception);
                             StartBufferIndexOffset:TpvSizeUInt;
                             CountVertices:TpvSizeUInt;
                             CountIndices:TpvSizeUInt;
+                            MorphTargetBaseIndex:TpvSizeUInt;
                           end;
                           PPrimitive=^TPrimitive;
                           TPrimitives=array of TPrimitive;
@@ -581,7 +575,8 @@ type EpvScene3D=class(Exception);
               fScenes:TScenes;
               fScene:TScene;
               fSkinStorageBufferSize:TpvSizeInt;
-              fMorphTargetVertexCount:TpvSizeUInt;
+              fMorphTargetCount:TpvSizeInt;
+              fMorphTargetVertexCount:TpvSizeInt;
               fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
               fNodeMeshPrimitiveShaderStorageBufferObject:TNodeMeshPrimitiveShaderStorageBufferObject;
              public
@@ -1385,7 +1380,7 @@ var Index,
     JointIndex,
     OtherJointIndex,
     OldCount,
-    MaxCountTargets:TPasGLTFSizeInt;
+    MaxCountTargets:TpvSizeInt;
     SourceMeshPrimitive:TPasGLTF.TMesh.TPrimitive;
     SourceMeshPrimitiveTarget:TPasGLTF.TAttributes;
     DestinationMeshPrimitive:TMesh.PPrimitive;
@@ -2230,6 +2225,8 @@ begin
 
  fSkinStorageBufferSize:=0;
 
+ fMorphTargetCount:=0;
+
  fMorphTargetVertexCount:=0;
 
 end;
@@ -2279,10 +2276,11 @@ end;
 
 procedure TpvScene3D.TGroup.ConstructBuffers;
 var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
- procedure InitializeMorphTargetVertexShaderStorageBufferObject;
+ procedure InitializeMorphTargetBuffers;
   procedure FillMorphTargetVertexShaderStorageBufferObject(const aMorphTargetVertexShaderStorageBufferObject:PMorphTargetVertexShaderStorageBufferObject;
                                                            const aPrimitive:TMesh.PPrimitive;
-                                                           const aDestinationVertex:PMorphTargetVertex);
+                                                           const aDestinationVertex:PMorphTargetVertex;
+                                                           const aTargetBaseIndex:TpvSizeInt);
   var TargetIndex,
       VertexIndex,
       MorphTargetVertexIndex:TpvSizeInt;
@@ -2302,7 +2300,7 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
      DestinationVertex^.Position:=TpvVector4.InlineableCreate(SourceVertex^.Position,0.0);
      DestinationVertex^.Normal:=SourceVertex^.Normal;
      DestinationVertex^.Tangent:=SourceVertex^.Tangent;
-     DestinationVertex^.Index:=TargetIndex;
+     DestinationVertex^.Index:=aTargetBaseIndex+TargetIndex;
      if (TargetIndex+1)<length(aPrimitive^.Targets) then begin
       DestinationVertex^.Next:=MorphTargetVertexIndex+1;
      end else begin
@@ -2319,6 +2317,7 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
      Mesh:TMesh;
      Primitive:TMesh.PPrimitive;
  begin
+  fMorphTargetCount:=0;
   fMorphTargetVertexShaderStorageBufferObject.Count:=fMorphTargetVertexCount;
   fMorphTargetVertexShaderStorageBufferObject.Size:=fMorphTargetVertexCount*SizeOf(TMorphTargetVertex);
   fMorphTargetVertexShaderStorageBufferObject.Data:=nil;
@@ -2331,7 +2330,14 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
      for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
       Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
       if length(Primitive^.Targets)>0 then begin
-       FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,Primitive,pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[0]));
+       Primitive^.MorphTargetBaseIndex:=fMorphTargetCount;
+       FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,
+                                                      Primitive,
+                                                      pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[0]),
+                                                      Primitive^.MorphTargetBaseIndex);
+       inc(fMorphTargetCount,length(Primitive^.Targets));
+      end else begin
+       Primitive^.MorphTargetBaseIndex:=0;
       end;
      end;
     end;
@@ -2358,10 +2364,6 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
     Node:=fNodes[NodeIndex];
     if assigned(Node.fMesh) then begin
      ItemDataSize:=SizeOf(TNodeMeshPrimitiveShaderStorageBufferObjectDataItem);
-     inc(ItemDataSize,(length(Node.fWeights)-1)*SizeOf(TpvFloat));
-     if (ItemDataSize mod ShaderStorageBufferOffsetAlignment)<>0 then begin
-      inc(ItemDataSize,ShaderStorageBufferOffsetAlignment-(ItemDataSize mod ShaderStorageBufferOffsetAlignment));
-     end;
      Mesh:=Node.fMesh;
      SetLength(Node.fMeshPrimitiveMetaDataArray,length(Mesh.fPrimitives));
      for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
@@ -2385,7 +2387,7 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
  end;
 begin
  ShaderStorageBufferOffsetAlignment:=16;
- InitializeMorphTargetVertexShaderStorageBufferObject;
+ InitializeMorphTargetBuffers;
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
 
