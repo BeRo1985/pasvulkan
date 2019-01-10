@@ -360,6 +360,12 @@ type EpvScene3D=class(Exception);
                    end;
                    PMorphTargetVertex=^TMorphTargetVertex;
                    TMorphTargetVertexDynamicArray=array of TMorphTargetVertex;
+                   TMorphTargetShaderStorageBufferObject=record
+                    Count:TpvSizeInt;
+                    Size:TpvSizeInt;
+                    Data:TpvFloatDynamicArray;
+                   end;
+                   PMorphTargetShaderStorageBufferObject=^TMorphTargetShaderStorageBufferObject;
                    TMorphTargetVertexShaderStorageBufferObject=record
                     Count:TpvSizeInt;
                     Size:TpvSizeInt;
@@ -566,15 +572,16 @@ type EpvScene3D=class(Exception);
               fScene:TScene;
               fSkinStorageBufferSize:TpvSizeInt;
               fMorphTargetCount:TpvSizeInt;
+              fMorphTargetShaderStorageBufferObject:TMorphTargetShaderStorageBufferObject;
               fMorphTargetVertexCount:TpvSizeInt;
               fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
+              procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
-              procedure ConstructBuffers;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
              published
               property Objects:TIBaseObjects read fObjects;
@@ -2350,32 +2357,41 @@ procedure TpvScene3D.TGroup.ConstructBuffers;
      Primitive:TMesh.PPrimitive;
  begin
   fMorphTargetCount:=0;
-  fMorphTargetVertexShaderStorageBufferObject.Count:=fMorphTargetVertexCount;
-  fMorphTargetVertexShaderStorageBufferObject.Size:=fMorphTargetVertexCount*SizeOf(TMorphTargetVertex);
-  fMorphTargetVertexShaderStorageBufferObject.Data:=nil;
+  fMorphTargetShaderStorageBufferObject.Count:=0;
+  fMorphTargetShaderStorageBufferObject.Size:=0;
+  fMorphTargetShaderStorageBufferObject.Data:=nil;
   try
-   if fMorphTargetVertexShaderStorageBufferObject.Size>0 then begin
-    SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
-    FillChar(fMorphTargetVertexShaderStorageBufferObject.Data[0],fMorphTargetVertexShaderStorageBufferObject.Size,#$ff);
-    for MeshIndex:=0 to fMeshes.Count-1 do begin
-     Mesh:=fMeshes[MeshIndex];
-     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
-      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-      if length(Primitive^.Targets)>0 then begin
-       Primitive^.MorphTargetBaseIndex:=fMorphTargetCount;
-       FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,
-                                                      Primitive,
-                                                      pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[0]),
-                                                      Primitive^.MorphTargetBaseIndex);
-       inc(fMorphTargetCount,length(Primitive^.Targets));
-      end else begin
-       Primitive^.MorphTargetBaseIndex:=0;
+   fMorphTargetVertexShaderStorageBufferObject.Count:=fMorphTargetVertexCount;
+   fMorphTargetVertexShaderStorageBufferObject.Size:=fMorphTargetVertexCount*SizeOf(TMorphTargetVertex);
+   fMorphTargetVertexShaderStorageBufferObject.Data:=nil;
+   try
+    if fMorphTargetVertexShaderStorageBufferObject.Size>0 then begin
+     SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
+     FillChar(fMorphTargetVertexShaderStorageBufferObject.Data[0],fMorphTargetVertexShaderStorageBufferObject.Size,#$ff);
+     for MeshIndex:=0 to fMeshes.Count-1 do begin
+      Mesh:=fMeshes[MeshIndex];
+      for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+       Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+       if length(Primitive^.Targets)>0 then begin
+        Primitive^.MorphTargetBaseIndex:=fMorphTargetCount;
+        FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,
+                                                       Primitive,
+                                                       pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[0]),
+                                                       Primitive^.MorphTargetBaseIndex);
+        inc(fMorphTargetCount,length(Primitive^.Targets));
+       end else begin
+        Primitive^.MorphTargetBaseIndex:=0;
+       end;
       end;
      end;
     end;
+   finally
+    SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
    end;
   finally
-   SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
+   fMorphTargetShaderStorageBufferObject.Count:=fMorphTargetCount*fMaximalCountInstances;
+   fMorphTargetShaderStorageBufferObject.Size:=fMorphTargetShaderStorageBufferObject.Count*SizeOf(TpvFloat);
+   SetLength(fMorphTargetShaderStorageBufferObject.Data,fMorphTargetShaderStorageBufferObject.Count*MaxSwapChainImages);
   end;
  end;
  procedure InitializeNodeMeshPrimitiveShaderStorageBufferObject;
@@ -2697,6 +2713,8 @@ begin
  finally
   FreeAndNil(ImageMap);
  end;
+
+ ConstructBuffers;
 
 end;
 
