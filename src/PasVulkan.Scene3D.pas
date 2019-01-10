@@ -641,6 +641,8 @@ begin
 
  fSceneInstance:=aParent as TpvScene3D;
 
+ ReleaseFrameDelay:=MaxSwapChainImages+1;
+
 end;
 
 destructor TpvScene3D.TBaseObject.Destroy;
