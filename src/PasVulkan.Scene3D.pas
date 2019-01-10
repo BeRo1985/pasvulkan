@@ -555,6 +555,7 @@ type EpvScene3D=class(Exception);
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
              private
+              fMaximalCountInstances:TpvSizeInt;
               fObjects:TIBaseObjects;
               fAnimations:TAnimations;
               fCameras:TCameras;
@@ -574,7 +575,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure ConstructBuffers;
-              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
              published
               property Objects:TIBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -2257,6 +2258,8 @@ begin
 
  fMorphTargetVertexCount:=0;
 
+ fMaximalCountInstances:=1;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
@@ -2397,7 +2400,7 @@ begin
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
 
-procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
+procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
 var ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
     TextureMap:TpvScene3D.TTextures;
@@ -2630,6 +2633,8 @@ var ImageMap:TpvScene3D.TImages;
   end;
  end;
 begin
+
+ fMaximalCountInstances:=aMaximalCountInstances;
 
  ImageMap:=TpvScene3D.TImages.Create;
  ImageMap.OwnsObjects:=false;
