@@ -366,24 +366,16 @@ type EpvScene3D=class(Exception);
                     Data:TBytes;
                    end;
                    PMorphTargetVertexShaderStorageBufferObject=^TMorphTargetVertexShaderStorageBufferObject;
-                   TNodeMeshPrimitiveShaderStorageBufferObjectDataItem=packed record
-                    Matrix:TpvMatrix4x4;
+                   TNodeShaderStorageBufferObjectDataItem=packed record
+                    Matrices:array[0..0] of TpvMatrix4x4;
                    end;
-                   PNodeMeshPrimitiveShaderStorageBufferObjectDataItem=^TNodeMeshPrimitiveShaderStorageBufferObjectDataItem;
-                   TNodeMeshPrimitiveShaderStorageBufferObjectDataItems=array of TNodeMeshPrimitiveShaderStorageBufferObjectDataItem;
-                   TNodeMeshPrimitiveShaderStorageBufferObjectItem=record
-                    Node:TNode;
-                    Mesh:TMesh;
-                    Primitive:TpvSizeInt;
-                   end;
-                   PNodeMeshPrimitiveShaderStorageBufferObjectItem=^TNodeMeshPrimitiveShaderStorageBufferObjectItem;
-                   TNodeMeshPrimitiveShaderStorageBufferObjectItems=array of TNodeMeshPrimitiveShaderStorageBufferObjectItem;
-                   TNodeMeshPrimitiveShaderStorageBufferObject=record
+                   PNodeMeshPrimitiveShaderStorageBufferObjectDataItem=^TNodeShaderStorageBufferObjectDataItem;
+                   TNodeShaderStorageBufferObjectDataItems=array of TNodeShaderStorageBufferObjectDataItem;
+                   TNodeShaderStorageBufferObject=record
                     Size:TpvSizeInt;
-                    Items:TNodeMeshPrimitiveShaderStorageBufferObjectItems;
                     Count:TpvSizeInt;
                    end;
-                   PNodeMeshPrimitiveShaderStorageBufferObject=^TNodeMeshPrimitiveShaderStorageBufferObject;
+                   PNodeMeshPrimitiveShaderStorageBufferObject=^TNodeShaderStorageBufferObject;
                    TGroupObject=class
                     private
                      fName:TpvUTF8String;
@@ -526,12 +518,6 @@ type EpvScene3D=class(Exception);
                    TNode=class(TGroupObject)
                     public
                      type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
-                          TMeshPrimitiveMetaData=record
-                           ShaderStorageBufferObjectOffset:TPasGLTFSizeUInt;
-                           ShaderStorageBufferObjectSize:TPasGLTFSizeUInt;
-                          end;
-                          PMeshPrimitiveMetaData=^TMeshPrimitiveMetaData;
-                          TMeshPrimitiveMetaDataArray=array of TMeshPrimitiveMetaData;
                     private
                      fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
@@ -544,7 +530,8 @@ type EpvScene3D=class(Exception);
                      fTranslation:TpvVector3;
                      fRotation:TpvVector4;
                      fScale:TpvVector3;
-                     fMeshPrimitiveMetaDataArray:TMeshPrimitiveMetaDataArray;
+                     fShaderStorageBufferObjectOffset:TpvSizeInt;
+                     fShaderStorageBufferObjectSize:TpvSizeInt;
                      procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup); override;
@@ -580,7 +567,7 @@ type EpvScene3D=class(Exception);
               fMorphTargetCount:TpvSizeInt;
               fMorphTargetVertexCount:TpvSizeInt;
               fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
-              fNodeMeshPrimitiveShaderStorageBufferObject:TNodeMeshPrimitiveShaderStorageBufferObject;
+              fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -2114,6 +2101,10 @@ begin
 
  fSkin:=nil;
 
+ fShaderStorageBufferObjectOffset:=0;
+
+ fShaderStorageBufferObjectSize:=0;
+
 end;
 
 destructor TpvScene3D.TGroup.TNode.Destroy;
@@ -2312,7 +2303,6 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.ConstructBuffers;
-var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
  procedure InitializeMorphTargetBuffers;
   procedure FillMorphTargetVertexShaderStorageBufferObject(const aMorphTargetVertexShaderStorageBufferObject:PMorphTargetVertexShaderStorageBufferObject;
                                                            const aPrimitive:TMesh.PPrimitive;
@@ -2384,46 +2374,25 @@ var ShaderStorageBufferOffsetAlignment:TpvSizeInt;
   end;
  end;
  procedure InitializeNodeMeshPrimitiveShaderStorageBufferObject;
- var Index,
-     NodeIndex,
-     PrimitiveIndex,
-     ItemDataSize:TPasGLTFSizeInt;
-     ShaderStorageBufferObjectData:PNodeMeshPrimitiveShaderStorageBufferObjectDataItem;
+ var NodeIndex:TpvSizeInt;
      Node:TNode;
-     Mesh:TMesh;
-     NodeMeshPrimitiveShaderStorageBufferObjectItem:PNodeMeshPrimitiveShaderStorageBufferObjectItem;
  begin
-  fNodeMeshPrimitiveShaderStorageBufferObject.Count:=0;
-  fNodeMeshPrimitiveShaderStorageBufferObject.Size:=0;
-  fNodeMeshPrimitiveShaderStorageBufferObject.Items:=nil;
-  try
-   for NodeIndex:=0 to fNodes.Count-1 do begin
-    Node:=fNodes[NodeIndex];
-    if assigned(Node.fMesh) then begin
-     ItemDataSize:=SizeOf(TNodeMeshPrimitiveShaderStorageBufferObjectDataItem);
-     Mesh:=Node.fMesh;
-     SetLength(Node.fMeshPrimitiveMetaDataArray,length(Mesh.fPrimitives));
-     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
-      Node.fMeshPrimitiveMetaDataArray[PrimitiveIndex].ShaderStorageBufferObjectOffset:=fNodeMeshPrimitiveShaderStorageBufferObject.Size;
-      Node.fMeshPrimitiveMetaDataArray[PrimitiveIndex].ShaderStorageBufferObjectSize:=ItemDataSize;
-      inc(fNodeMeshPrimitiveShaderStorageBufferObject.Size,ItemDataSize);
-      if length(fNodeMeshPrimitiveShaderStorageBufferObject.Items)<=fNodeMeshPrimitiveShaderStorageBufferObject.Count then begin
-       SetLength(fNodeMeshPrimitiveShaderStorageBufferObject.Items,(fNodeMeshPrimitiveShaderStorageBufferObject.Count+1)*2);
-      end;
-      NodeMeshPrimitiveShaderStorageBufferObjectItem:=@fNodeMeshPrimitiveShaderStorageBufferObject.Items[fNodeMeshPrimitiveShaderStorageBufferObject.Count];
-      inc(fNodeMeshPrimitiveShaderStorageBufferObject.Count);
-      NodeMeshPrimitiveShaderStorageBufferObjectItem^.Node:=Node;
-      NodeMeshPrimitiveShaderStorageBufferObjectItem^.Mesh:=Mesh;
-      NodeMeshPrimitiveShaderStorageBufferObjectItem^.Primitive:=PrimitiveIndex;
-     end;
+  fNodeShaderStorageBufferObject.Count:=0;
+  fNodeShaderStorageBufferObject.Size:=0;
+  for NodeIndex:=0 to fNodes.Count-1 do begin
+   Node:=fNodes[NodeIndex];
+   if assigned(Node.fMesh) then begin
+    Node.fShaderStorageBufferObjectOffset:=fNodeShaderStorageBufferObject.Size;
+    Node.fShaderStorageBufferObjectSize:=SizeOf(TNodeShaderStorageBufferObjectDataItem);
+    if assigned(Node.fSkin) then begin
+     inc(Node.fShaderStorageBufferObjectSize,SizeOf(TpvMatrix4x4)*Node.fSkin.fJoints.Count);
     end;
+    Node.fShaderStorageBufferObjectSize:=(Node.fShaderStorageBufferObjectSize+TpvSizeInt(127)) and not TpvSizeInt(127);
+    inc(fNodeShaderStorageBufferObject.Size,Node.fShaderStorageBufferObjectSize);
    end;
-  finally
-   SetLength(fNodeMeshPrimitiveShaderStorageBufferObject.Items,fNodeMeshPrimitiveShaderStorageBufferObject.Count);
   end;
  end;
 begin
- ShaderStorageBufferOffsetAlignment:=16;
  InitializeMorphTargetBuffers;
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
