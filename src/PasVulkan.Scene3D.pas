@@ -78,7 +78,8 @@ uses {$ifdef Windows}
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
      PasVulkan.Resources,
-     PasVulkan.Techniques;
+     PasVulkan.Techniques,
+     PasVulkan.Framework;
 
 type EpvScene3D=class(Exception);
 
@@ -128,15 +129,19 @@ type EpvScene3D=class(Exception);
              private
               fSceneInstance:TpvScene3D;
               fName:TpvUTF8String;
+              fUploaded:TPasMPBool32;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; virtual;
+              procedure Unload; virtual;
              public
               property SceneInstance:TpvScene3D read fSceneInstance;
              published
               property Name:TpvUTF8String read fName write fName;
+              property Uploaded:TPasMPBool32 read fUploaded;
             end;
             TIBaseObjects=TpvGenericList<IBaseObject>;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
@@ -160,11 +165,15 @@ type EpvScene3D=class(Exception);
              private
               fResourceDataStream:TMemoryStream;
               fHashData:THashData;
+              fTexture:TpvVulkanTexture;
+              fLock:TPasMPSpinLock;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; override;
+              procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
@@ -650,6 +659,8 @@ begin
 
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
+ fUploaded:=false;
+
 end;
 
 destructor TpvScene3D.TBaseObject.Destroy;
@@ -667,16 +678,27 @@ begin
  inherited BeforeDestruction;
 end;
 
+procedure TpvScene3D.TBaseObject.Upload;
+begin
+end;
+
+procedure TpvScene3D.TBaseObject.Unload;
+begin
+end;
+
 { TpvScene3D.TImage }
 
 constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
  fResourceDataStream:=TMemoryStream.Create;
+ fLock:=TPasMPSpinLock.Create;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
 begin
+ Unload;
+ FreeAndNil(fLock);
  FreeAndNil(fResourceDataStream);
  inherited Destroy;
 end;
@@ -704,6 +726,81 @@ begin
   fSceneInstance.fImageListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+
+procedure TpvScene3D.TImage.Upload;
+var GraphicsQueue:TpvVulkanQueue;
+    GraphicsCommandPool:TpvVulkanCommandPool;
+    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
+    GraphicsFence:TpvVulkanFence;
+begin
+ if not fUploaded then begin
+  fLock.Acquire;
+  try
+   if not fUploaded then begin
+    try
+     GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
+                                          pvApplication.VulkanDevice.GraphicsQueue.Handle,
+                                          pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+     try
+      GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                       pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      try
+       GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
+                                                            VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+       try
+        GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+        try
+         fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                    GraphicsQueue,
+                                                    GraphicsCommandBuffer,
+                                                    GraphicsFence,
+                                                    GraphicsQueue,
+                                                    GraphicsCommandBuffer,
+                                                    GraphicsFence,
+                                                    fResourceDataStream,
+                                                    true,
+                                                    false);
+        finally
+         FreeAndNil(GraphicsFence);
+        end;
+       finally
+        FreeAndNil(GraphicsCommandBuffer);
+       end;
+      finally
+       FreeAndNil(GraphicsCommandPool);
+      end;
+     finally
+      FreeAndNil(GraphicsQueue);
+     end;
+    finally
+     fUploaded:=true;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TImage.Unload;
+begin
+ if fUploaded then begin
+  fLock.Acquire;
+  try
+   if fUploaded then begin
+    try
+     FreeAndNil(fTexture);
+    finally
+     fUploaded:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 end;
 
 function TpvScene3D.TImage.GetHashData:THashData;
