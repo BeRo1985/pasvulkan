@@ -124,6 +124,8 @@ type EpvScene3D=class(Exception);
             PVertex=^TVertex;
             TVertices=array of TVertex;
             IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
+             procedure Upload;
+             procedure Unload;
             end;
             TBaseObject=class(TpvResource,IBaseObject)
              private
@@ -1070,21 +1072,15 @@ end;
 procedure TpvScene3D.TTexture.Upload;
 begin
  if assigned(fImage) then begin
-  TImage(fImage.GetResource).Upload;
+  fImage.Upload;
  end;
  if assigned(fSampler) then begin
-  TSampler(fSampler.GetResource).Upload;
+  fSampler.Upload;
  end;
 end;
 
 procedure TpvScene3D.TTexture.Unload;
 begin
- if assigned(fImage) then begin
-  TImage(fImage.GetResource).Unload;
- end;
- if assigned(fSampler) then begin
-  TSampler(fSampler.GetResource).Unload;
- end;
 end;
 
 function TpvScene3D.TTexture.GetHashData:THashData;
@@ -1168,7 +1164,27 @@ begin
   try
    if not fUploaded then begin
     try
-
+     if assigned(fData.NormalTexture.Texture) then begin
+      fData.NormalTexture.Texture.Upload;
+     end;
+     if assigned(fData.OcclusionTexture.Texture) then begin
+      fData.OcclusionTexture.Texture.Upload;
+     end;
+     if assigned(fData.EmissiveTexture.Texture) then begin
+      fData.EmissiveTexture.Texture.Upload;
+     end;
+     if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+      fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
+     end;
+     if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.Upload;
+     end;
+     if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture.Upload;
+     end;
+     if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
+     end;
     finally
      fUploaded:=true;
     end;
