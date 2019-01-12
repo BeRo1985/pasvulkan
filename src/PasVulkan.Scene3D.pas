@@ -197,13 +197,19 @@ type EpvScene3D=class(Exception);
               fMipmapMode:TVkSamplerMipmapMode;
               fAddressModeS:TVkSamplerAddressMode;
               fAddressModeT:TVkSamplerAddressMode;
+              fLock:TPasMPSpinLock;
+              fSampler:TpvVulkanSampler;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; override;
+              procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
+             published
+              property Sampler:TpvVulkanSampler read fSampler;
             end;
             TISampler=TpvGenericList<ISampler>;
             TSamplers=TpvObjectGenericList<TSampler>;
@@ -224,6 +230,8 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; override;
+              procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               property Image:IImage read fImage write fImage;
@@ -823,10 +831,13 @@ end;
 constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
+ fLock:=TPasMPSpinLock.Create;
 end;
 
 destructor TpvScene3D.TSampler.Destroy;
 begin
+ Unload;
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
@@ -946,6 +957,57 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TSampler.Upload;
+begin
+ if not fUploaded then begin
+  fLock.Acquire;
+  try
+   if not fUploaded then begin
+    try
+     fSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                       fMagFilter,
+                                       fMinFilter,
+                                       fMipmapMode,
+                                       fAddressModeS,
+                                       fAddressModeT,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                       0.0,
+                                       false,
+                                       1.0,
+                                       false,
+                                       VK_COMPARE_OP_ALWAYS,
+                                       0.0,
+                                       65535.0,
+                                       VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                       false);
+    finally
+     fUploaded:=true;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TSampler.Unload;
+begin
+ if fUploaded then begin
+  fLock.Acquire;
+  try
+   if fUploaded then begin
+    try
+     FreeAndNil(fSampler);
+    finally
+     fUploaded:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
 { TpvScene3D.TTexture }
 
 constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -960,6 +1022,8 @@ end;
 
 destructor TpvScene3D.TTexture.Destroy;
 begin
+
+ Unload;
 
  fImage:=nil;
 
@@ -995,6 +1059,26 @@ begin
   fSceneInstance.fTextureListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TTexture.Upload;
+begin
+ if assigned(fImage) then begin
+  TImage(fImage.GetResource).Upload;
+ end;
+ if assigned(fSampler) then begin
+  TSampler(fSampler.GetResource).Upload;
+ end;
+end;
+
+procedure TpvScene3D.TTexture.Unload;
+begin
+ if assigned(fImage) then begin
+  TImage(fImage.GetResource).Unload;
+ end;
+ if assigned(fSampler) then begin
+  TSampler(fSampler.GetResource).Unload;
+ end;
 end;
 
 function TpvScene3D.TTexture.GetHashData:THashData;
