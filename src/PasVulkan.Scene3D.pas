@@ -593,12 +593,15 @@ type EpvScene3D=class(Exception);
               fMorphTargetVertexCount:TpvSizeInt;
               fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
+              fLock:TPasMPSpinLock;
               procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; override;
+              procedure Unload; override;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
              published
               property Objects:TIBaseObjects read fObjects;
@@ -2422,6 +2425,8 @@ constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;c
 begin
  inherited Create(aResourceManager,aParent);
 
+ fLock:=TPasMPSpinLock.Create;
+
  fObjects:=TIBaseObjects.Create;
 
  fAnimations:=TAnimations.Create;
@@ -2469,7 +2474,10 @@ begin
 
  FreeAndNil(fObjects);
 
+ FreeAndNil(fLock);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3D.TGroup.AfterConstruction;
@@ -2493,6 +2501,42 @@ begin
   fSceneInstance.fGroupListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.Upload;
+begin
+ if not fUploaded then begin
+  fLock.Acquire;
+  try
+   if not fUploaded then begin
+    try
+
+    finally
+     fUploaded:=true;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.Unload;
+begin
+ if fUploaded then begin
+  fLock.Acquire;
+  try
+   if fUploaded then begin
+    try
+
+    finally
+     fUploaded:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.ConstructBuffers;
