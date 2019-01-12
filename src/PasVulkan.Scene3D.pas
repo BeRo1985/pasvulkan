@@ -347,11 +347,14 @@ type EpvScene3D=class(Exception);
               fShaderData:TShaderData;
               fUniformBufferObjectIndex:TpvSizeInt;
               fUniformBufferObjectOffset:TpvSizeInt;
+              fLock:TPasMPSpinLock;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Upload; override;
+              procedure Unload; override;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
             end;
@@ -1123,10 +1126,13 @@ begin
 
  fData:=DefaultData;
 
+ fLock:=TPasMPSpinLock.Create;
+
 end;
 
 destructor TpvScene3D.TMaterial.Destroy;
 begin
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
@@ -1153,6 +1159,42 @@ begin
   fSceneInstance.fMaterialListLock.Release;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TMaterial.Upload;
+begin
+ if not fUploaded then begin
+  fLock.Acquire;
+  try
+   if not fUploaded then begin
+    try
+
+    finally
+     fUploaded:=true;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TMaterial.Unload;
+begin
+ if fUploaded then begin
+  fLock.Acquire;
+  try
+   if fUploaded then begin
+    try
+
+    finally
+     fUploaded:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
