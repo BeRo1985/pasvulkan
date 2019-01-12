@@ -285,17 +285,23 @@ type EpvScene3D=class(Exception);
                     Dummy:TpvInt32;
                    end;
                    PUnlit=^TUnlit;
-                   TShaderData=packed record // 128 bytes
-                    BaseColorFactor:TpvVector4;
-                    SpecularFactor:TpvVector4; // actually TVector3, but for easier and more convenient alignment reasons a TVector4
-                    EmissiveFactor:TpvVector4; // actually TVector3, but for easier and more convenient alignment reasons a TVector4
-                    MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
-                    // uvec4 AlphaCutOffFlags begin
-                     AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
-                     Flags:TpvUInt32;
-                     TextureCoords:TpvUInt32;
-                     Reversed:TpvUInt32;
-                    // uvec4 uAlphaCutOffFlags end
+                   TShaderData=packed record // 128 bytes (and 80 bytes when without padding in the moment)
+                    case boolean of
+                     false:(
+                      BaseColorFactor:TpvVector4;
+                      SpecularFactor:TpvVector4; // actually TpvVector3, but for easier and more convenient alignment reasons a TpvVector4
+                      EmissiveFactor:TpvVector4; // actually TpvVector3, but for easier and more convenient alignment reasons a TpvVector4
+                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
+                      // uvec4 AlphaCutOffFlags begin
+                       AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
+                       Flags:TpvUInt32;
+                       TextureCoords:TpvUInt32;
+                       Reversed:TpvUInt32;
+                      // uvec4 uAlphaCutOffFlags end
+                     );
+                     true:(
+                      Padding:array[0..127] of TpvUInt8;
+                     );
                    end;
                    PShaderData=^TShaderData;
                    TData=record
