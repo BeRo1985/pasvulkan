@@ -356,7 +356,7 @@ type EpvScene3D=class(Exception);
               fUniformBufferObjectIndex:TpvSizeInt;
               fUniformBufferObjectOffset:TpvSizeInt;
               fLock:TPasMPSpinLock;
-              fUniformBlockBuffer:TpvVulkanBuffer;
+              fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -1196,18 +1196,18 @@ begin
      if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
      end;
-     fUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                 SizeOf(TShaderData),
-                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                 [],
-                                                 0,
-                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 []);
+     fShaderDataUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                           SizeOf(TShaderData),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                           [],
+                                                           0,
+                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           []);
      UniversalQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
                                            pvApplication.VulkanDevice.UniversalQueue.Handle,
                                            pvApplication.VulkanDevice.UniversalQueueFamilyIndex);
@@ -1222,13 +1222,13 @@ begin
         UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
         try
          FillShaderData;
-         fUniformBlockBuffer.UploadData(UniversalQueue,
-                                        UniversalCommandBuffer,
-                                        UniversalFence,
-                                        fShaderData,
-                                        0,
-                                        SizeOf(TShaderData),
-                                        TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+         fShaderDataUniformBlockBuffer.UploadData(UniversalQueue,
+                                                  UniversalCommandBuffer,
+                                                  UniversalFence,
+                                                  fShaderData,
+                                                  0,
+                                                  SizeOf(TShaderData),
+                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
         finally
          FreeAndNil(UniversalFence);
         end;
@@ -1258,7 +1258,7 @@ begin
   try
    if fUploaded then begin
     try
-     FreeAndNil(fUniformBlockBuffer);
+     FreeAndNil(fShaderDataUniformBlockBuffer);
     finally
      fUploaded:=false;
     end;
