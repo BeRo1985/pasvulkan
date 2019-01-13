@@ -648,6 +648,8 @@ type EpvScene3D=class(Exception);
       private
        fLock:TPasMPSpinLock;
        fUploaded:TPasMPBool32;
+       fWhiteTexture:TpvVulkanTexture;
+       fWhiteTextureLock:TPasMPSlimReaderWriterLock;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -665,6 +667,7 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroupInstances;
+       procedure CreateWhiteTexture;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -3145,6 +3148,10 @@ begin
  fGroupInstances:=TGroupInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
+ fWhiteTexture:=nil;
+
+ fWhiteTextureLock:=TPasMPSlimReaderWriterLock.Create;
+
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
 end;
@@ -3153,6 +3160,8 @@ destructor TpvScene3D.Destroy;
 begin
 
  Unload;
+
+ FreeAndNil(fWhiteTexture);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
@@ -3196,9 +3205,79 @@ begin
 
  FreeAndNil(fTechniques);
 
+ FreeAndNil(fWhiteTextureLock);
+
  FreeAndNil(fLock);
 
  inherited Destroy;
+end;
+
+procedure TpvScene3D.CreateWhiteTexture;
+const Pixel:TpvUInt32=TpvUInt32($ffffffff);
+var GraphicsQueue:TpvVulkanQueue;
+    GraphicsCommandPool:TpvVulkanCommandPool;
+    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
+    GraphicsFence:TpvVulkanFence;
+begin
+ if not assigned(fWhiteTexture) then begin
+  fWhiteTextureLock.Acquire;
+  try
+   if not assigned(fWhiteTexture) then begin
+    GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
+                                         pvApplication.VulkanDevice.GraphicsQueue.Handle,
+                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+    try
+     GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                      pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+     try
+      GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
+                                                           VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+      try
+       GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+       try
+        fWhiteTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                         GraphicsQueue,
+                                                         GraphicsCommandBuffer,
+                                                         GraphicsFence,
+                                                         GraphicsQueue,
+                                                         GraphicsCommandBuffer,
+                                                         GraphicsFence,
+                                                         VK_FORMAT_R8G8B8A8_UNORM,
+                                                         VK_SAMPLE_COUNT_1_BIT,
+                                                         1,
+                                                         1,
+                                                         1,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [TpvVulkanTextureUsageFlag.General,
+                                                          TpvVulkanTextureUsageFlag.TransferDst,
+                                                          TpvVulkanTextureUsageFlag.TransferSrc,
+                                                          TpvVulkanTextureUsageFlag.Sampled],
+                                                         @Pixel,
+                                                         SizeOf(TpvUInt32),
+                                                         false,
+                                                         false,
+                                                         0,
+                                                         true);
+       finally
+        FreeAndNil(GraphicsFence);
+       end;
+      finally
+       FreeAndNil(GraphicsCommandBuffer);
+      end;
+     finally
+      FreeAndNil(GraphicsCommandPool);
+     end;
+    finally
+     FreeAndNil(GraphicsQueue);
+    end;
+   end;
+  finally
+   fWhiteTextureLock.Release;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.Upload;
@@ -3209,6 +3288,7 @@ begin
   try
    if not fUploaded then begin
     try
+     CreateWhiteTexture;
      for Group in fGroups do begin
       Group.Upload;
      end;
@@ -3249,6 +3329,7 @@ begin
      for Image in fImages do begin
       Image.Unload;
      end;
+     FreeAndNil(fWhiteTexture);
     finally
      fUploaded:=false;
     end;
