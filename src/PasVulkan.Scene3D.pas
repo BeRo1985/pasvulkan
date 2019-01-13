@@ -356,6 +356,7 @@ type EpvScene3D=class(Exception);
               fUniformBufferObjectIndex:TpvSizeInt;
               fUniformBufferObjectOffset:TpvSizeInt;
               fLock:TPasMPSpinLock;
+              fUniformBlockBuffer:TpvVulkanBuffer;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -1164,6 +1165,10 @@ begin
 end;
 
 procedure TpvScene3D.TMaterial.Upload;
+var UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
  if not fUploaded then begin
   fLock.Acquire;
@@ -1191,6 +1196,51 @@ begin
      if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
      end;
+     fUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                 SizeOf(TShaderData),
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                 [],
+                                                 0,
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 []);
+     UniversalQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
+                                           pvApplication.VulkanDevice.UniversalQueue.Handle,
+                                           pvApplication.VulkanDevice.UniversalQueueFamilyIndex);
+     try
+      UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                        pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      try
+       UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+       try
+        UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+        try
+         FillShaderData;
+         fUniformBlockBuffer.UploadData(UniversalQueue,
+                                        UniversalCommandBuffer,
+                                        UniversalFence,
+                                        fShaderData,
+                                        0,
+                                        SizeOf(TShaderData),
+                                        TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+        finally
+         FreeAndNil(UniversalFence);
+        end;
+       finally
+        FreeAndNil(UniversalCommandBuffer);
+       end;
+      finally
+       FreeAndNil(UniversalCommandPool);
+      end;
+     finally
+      FreeAndNil(UniversalQueue);
+     end;
     finally
      fUploaded:=true;
     end;
@@ -1208,7 +1258,7 @@ begin
   try
    if fUploaded then begin
     try
-
+     FreeAndNil(fUniformBlockBuffer);
     finally
      fUploaded:=false;
     end;
