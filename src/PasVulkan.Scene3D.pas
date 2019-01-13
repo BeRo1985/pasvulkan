@@ -646,6 +646,8 @@ type EpvScene3D=class(Exception);
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
             TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
       private
+       fLock:TPasMPSpinLock;
+       fUploaded:TPasMPBool32;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -666,6 +668,8 @@ type EpvScene3D=class(Exception);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
+       procedure Upload;
+       procedure Unload;
      end;
 
 implementation
@@ -3103,6 +3107,10 @@ begin
 
  inherited Create(aResourceManager,aParent);
 
+ fLock:=TPasMPSpinLock.Create;
+
+ fUploaded:=false;
+
  fTechniques:=TpvTechniques.Create;
 
  fImageListLock:=TPasMPSlimReaderWriterLock.Create;
@@ -3143,6 +3151,8 @@ end;
 
 destructor TpvScene3D.Destroy;
 begin
+
+ Unload;
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
@@ -3186,7 +3196,67 @@ begin
 
  FreeAndNil(fTechniques);
 
+ FreeAndNil(fLock);
+
  inherited Destroy;
+end;
+
+procedure TpvScene3D.Upload;
+var Group:TGroup;
+begin
+ if not fUploaded then begin
+  fLock.Acquire;
+  try
+   if not fUploaded then begin
+    try
+     for Group in fGroups do begin
+      Group.Upload;
+     end;
+    finally
+     fUploaded:=true;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.Unload;
+var Group:TGroup;
+    Material:TMaterial;
+    Texture:TTexture;
+    Sampler:TSampler;
+    Image:TImage;
+begin
+ if fUploaded then begin
+  fLock.Acquire;
+  try
+   if fUploaded then begin
+    try
+     for Group in fGroups do begin
+      Group.Unload;
+     end;
+     for Material in fMaterials do begin
+      Material.Unload;
+     end;
+     for Texture in fTextures do begin
+      Texture.Unload;
+     end;
+     for Sampler in fSamplers do begin
+      Sampler.Unload;
+     end;
+     for Image in fImages do begin
+      Image.Unload;
+     end;
+    finally
+     fUploaded:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 end;
 
 initialization
