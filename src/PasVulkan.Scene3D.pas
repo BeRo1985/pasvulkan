@@ -1358,9 +1358,9 @@ begin
   try
    if fUploaded then begin
     try
-     FreeAndNil(fShaderDataUniformBlockBuffer);
      FreeAndNil(fVulkanDescriptorSet);
      FreeAndNil(fVulkanDescriptorPool);
+     FreeAndNil(fShaderDataUniformBlockBuffer);
     finally
      fUploaded:=false;
     end;
