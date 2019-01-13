@@ -216,6 +216,7 @@ type EpvScene3D=class(Exception);
             TISampler=TpvGenericList<ISampler>;
             TSamplers=TpvObjectGenericList<TSampler>;
             ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
+             function GetDescriptorImageInfo:TVkDescriptorImageInfo;
             end;
             TTexture=class(TBaseObject,ITexture)
              public
@@ -236,6 +237,7 @@ type EpvScene3D=class(Exception);
               procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
+              function GetDescriptorImageInfo:TVkDescriptorImageInfo;
               property Image:IImage read fImage write fImage;
               property Sampler:ISampler read fSampler write fSampler;
             end;
@@ -357,6 +359,8 @@ type EpvScene3D=class(Exception);
               fUniformBufferObjectOffset:TpvSizeInt;
               fLock:TPasMPSpinLock;
               fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
+              fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+              fVulkanDescriptorSet:TpvVulkanDescriptorSet;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -650,6 +654,7 @@ type EpvScene3D=class(Exception);
        fUploaded:TPasMPBool32;
        fWhiteTexture:TpvVulkanTexture;
        fWhiteTextureLock:TPasMPSlimReaderWriterLock;
+       fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -667,7 +672,7 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroupInstances;
-       procedure CreateWhiteTexture;
+       procedure UploadWhiteTexture;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -1097,6 +1102,21 @@ procedure TpvScene3D.TTexture.Unload;
 begin
 end;
 
+function TpvScene3D.TTexture.GetDescriptorImageInfo:TVkDescriptorImageInfo;
+begin
+ if assigned(fSampler) and assigned(TSampler(fSampler.GetResource).fSampler) then begin
+  result.Sampler:=TSampler(fSampler.GetResource).fSampler.Handle;
+ end else begin
+  result.Sampler:=VK_NULL_HANDLE;
+ end;
+ if assigned(fImage) and assigned(TImage(fImage.GetResource).fTexture.ImageView) then begin
+  result.ImageView:=TImage(fImage.GetResource).fTexture.ImageView.Handle;
+ end else begin
+  result.ImageView:=VK_NULL_HANDLE;
+ end;
+ result.ImageLayout:=TImage(fImage.GetResource).fTexture.ImageLayout;
+end;
+
 function TpvScene3D.TTexture.GetHashData:THashData;
 begin
  if assigned(fImage) then begin
@@ -1176,32 +1196,78 @@ var UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
+    NormalTextureDescriptorImageInfo,
+    OcclusionTextureDescriptorImageInfo,
+    EmissiveTextureDescriptorImageInfo,
+    BaseColorOrDiffuseTextureDescriptorImageInfo,
+    MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
  if not fUploaded then begin
   fLock.Acquire;
   try
    if not fUploaded then begin
     try
+     fSceneInstance.UploadWhiteTexture;
      if assigned(fData.NormalTexture.Texture) then begin
       fData.NormalTexture.Texture.Upload;
+      NormalTextureDescriptorImageInfo:=fData.NormalTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      NormalTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
      end;
      if assigned(fData.OcclusionTexture.Texture) then begin
       fData.OcclusionTexture.Texture.Upload;
+      OcclusionTextureDescriptorImageInfo:=fData.OcclusionTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      OcclusionTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
      end;
      if assigned(fData.EmissiveTexture.Texture) then begin
       fData.EmissiveTexture.Texture.Upload;
+      EmissiveTextureDescriptorImageInfo:=fData.EmissiveTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      EmissiveTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
      end;
-     if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-      fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
-     end;
-     if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.Upload;
-     end;
-     if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-      fData.PBRSpecularGlossiness.DiffuseTexture.Texture.Upload;
-     end;
-     if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
+     case fData.ShadingModel of
+      TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness:begin
+       if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+        fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+       if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+        fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.Upload;
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+      end;
+      TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness:begin
+       if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+        fData.PBRSpecularGlossiness.DiffuseTexture.Texture.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.DiffuseTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+       if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+        fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+      end;
+      TpvScene3D.TMaterial.TShadingModel.Unlit:begin
+       if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+        fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      end;
+      else begin
+       BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      end;
      end;
      fShaderDataUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                            SizeOf(TShaderData),
@@ -1248,6 +1314,33 @@ begin
      finally
       FreeAndNil(UniversalQueue);
      end;
+     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
+     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5);
+     fVulkanDescriptorPool.Initialize;
+     fVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                         fSceneInstance.fMaterialVulkanDescriptorSetLayout);
+     fVulkanDescriptorSet.WriteToDescriptorSet(0,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                               [],
+                                               [fShaderDataUniformBlockBuffer.DescriptorBufferInfo],
+                                               [],
+                                               false);
+     fVulkanDescriptorSet.WriteToDescriptorSet(0,
+                                               0,
+                                               5,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                               [NormalTextureDescriptorImageInfo,
+                                                OcclusionTextureDescriptorImageInfo,
+                                                EmissiveTextureDescriptorImageInfo,
+                                                BaseColorOrDiffuseTextureDescriptorImageInfo,
+                                                MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo],
+                                               [],
+                                               [],
+                                               false);
+     fVulkanDescriptorSet.Flush;
     finally
      fUploaded:=true;
     end;
@@ -1266,6 +1359,8 @@ begin
    if fUploaded then begin
     try
      FreeAndNil(fShaderDataUniformBlockBuffer);
+     FreeAndNil(fVulkanDescriptorSet);
+     FreeAndNil(fVulkanDescriptorPool);
     finally
      fUploaded:=false;
     end;
@@ -3154,12 +3249,27 @@ begin
 
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
+ fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fMaterialVulkanDescriptorSetLayout.AddBinding(0,
+                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                         1,
+                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                         []);
+ fMaterialVulkanDescriptorSetLayout.AddBinding(0,
+                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                         5,
+                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                         []);
+ fMaterialVulkanDescriptorSetLayout.Initialize;
+
 end;
 
 destructor TpvScene3D.Destroy;
 begin
 
  Unload;
+
+ FreeAndNil(fMaterialVulkanDescriptorSetLayout);
 
  FreeAndNil(fWhiteTexture);
 
@@ -3212,7 +3322,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.CreateWhiteTexture;
+procedure TpvScene3D.UploadWhiteTexture;
 const Pixel:TpvUInt32=TpvUInt32($ffffffff);
 var GraphicsQueue:TpvVulkanQueue;
     GraphicsCommandPool:TpvVulkanCommandPool;
@@ -3288,7 +3398,7 @@ begin
   try
    if not fUploaded then begin
     try
-     CreateWhiteTexture;
+     UploadWhiteTexture;
      for Group in fGroups do begin
       Group.Upload;
      end;
