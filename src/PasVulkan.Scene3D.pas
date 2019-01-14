@@ -654,6 +654,8 @@ type EpvScene3D=class(Exception);
        fUploaded:TPasMPBool32;
        fWhiteTexture:TpvVulkanTexture;
        fWhiteTextureLock:TPasMPSlimReaderWriterLock;
+       fDefaultNormalMapTexture:TpvVulkanTexture;
+       fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
@@ -673,6 +675,7 @@ type EpvScene3D=class(Exception);
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroupInstances;
        procedure UploadWhiteTexture;
+       procedure UploadDefaultNormalMapTexture;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -1208,11 +1211,12 @@ begin
    if not fUploaded then begin
     try
      fSceneInstance.UploadWhiteTexture;
+     fSceneInstance.UploadDefaultNormalMapTexture;
      if assigned(fData.NormalTexture.Texture) then begin
       fData.NormalTexture.Texture.Upload;
       NormalTextureDescriptorImageInfo:=fData.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      NormalTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      NormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTexture.DescriptorImageInfo;
      end;
      if assigned(fData.OcclusionTexture.Texture) then begin
       fData.OcclusionTexture.Texture.Upload;
@@ -3247,6 +3251,10 @@ begin
 
  fWhiteTextureLock:=TPasMPSlimReaderWriterLock.Create;
 
+ fDefaultNormalMapTexture:=nil;
+
+ fDefaultNormalMapTextureLock:=TPasMPSlimReaderWriterLock.Create;
+
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
  fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
@@ -3272,6 +3280,8 @@ begin
  FreeAndNil(fMaterialVulkanDescriptorSetLayout);
 
  FreeAndNil(fWhiteTexture);
+
+ FreeAndNil(fDefaultNormalMapTexture);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
@@ -3316,6 +3326,8 @@ begin
  FreeAndNil(fTechniques);
 
  FreeAndNil(fWhiteTextureLock);
+
+ FreeAndNil(fDefaultNormalMapTextureLock);
 
  FreeAndNil(fLock);
 
@@ -3386,6 +3398,74 @@ begin
    end;
   finally
    fWhiteTextureLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.UploadDefaultNormalMapTexture;
+const Pixel:TpvUInt32=TpvUInt32($80808080);
+var GraphicsQueue:TpvVulkanQueue;
+    GraphicsCommandPool:TpvVulkanCommandPool;
+    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
+    GraphicsFence:TpvVulkanFence;
+begin
+ if not assigned(fDefaultNormalMapTexture) then begin
+  fDefaultNormalMapTextureLock.Acquire;
+  try
+   if not assigned(fDefaultNormalMapTexture) then begin
+    GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
+                                         pvApplication.VulkanDevice.GraphicsQueue.Handle,
+                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+    try
+     GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                      pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+     try
+      GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
+                                                           VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+      try
+       GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+       try
+        fDefaultNormalMapTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                                    GraphicsQueue,
+                                                                    GraphicsCommandBuffer,
+                                                                    GraphicsFence,
+                                                                    GraphicsQueue,
+                                                                    GraphicsCommandBuffer,
+                                                                    GraphicsFence,
+                                                                    VK_FORMAT_R8G8B8A8_UNORM,
+                                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                                    1,
+                                                                    1,
+                                                                    1,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    [TpvVulkanTextureUsageFlag.General,
+                                                                     TpvVulkanTextureUsageFlag.TransferDst,
+                                                                     TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                     TpvVulkanTextureUsageFlag.Sampled],
+                                                                    @Pixel,
+                                                                    SizeOf(TpvUInt32),
+                                                                    false,
+                                                                    false,
+                                                                    0,
+                                                                    true);
+       finally
+        FreeAndNil(GraphicsFence);
+       end;
+      finally
+       FreeAndNil(GraphicsCommandBuffer);
+      end;
+     finally
+      FreeAndNil(GraphicsCommandPool);
+     end;
+    finally
+     FreeAndNil(GraphicsQueue);
+    end;
+   end;
+  finally
+   fDefaultNormalMapTextureLock.Release;
   end;
  end;
 end;
