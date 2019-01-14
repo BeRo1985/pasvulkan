@@ -610,6 +610,8 @@ type EpvScene3D=class(Exception);
               fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
+              fVulkanVertexBuffer:TpvVulkanBuffer;
+              fVulkanIndexBuffer:TpvVulkanBuffer;
               procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
@@ -681,6 +683,7 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
+       procedure Draw(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4;const aViewRect:TpvRect);
      end;
 
 implementation
@@ -778,9 +781,7 @@ begin
   try
    if not fUploaded then begin
     try
-     GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
-                                          pvApplication.VulkanDevice.GraphicsQueue.Handle,
-                                          pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+     GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
      try
       GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                        pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -811,7 +812,7 @@ begin
        FreeAndNil(GraphicsCommandPool);
       end;
      finally
-      FreeAndNil(GraphicsQueue);
+      GraphicsQueue:=nil;
      end;
     finally
      fUploaded:=true;
@@ -1285,9 +1286,7 @@ begin
                                                            0,
                                                            0,
                                                            []);
-     UniversalQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
-                                           pvApplication.VulkanDevice.UniversalQueue.Handle,
-                                           pvApplication.VulkanDevice.UniversalQueueFamilyIndex);
+     UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
      try
       UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                         pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
@@ -1316,7 +1315,7 @@ begin
        FreeAndNil(UniversalCommandPool);
       end;
      finally
-      FreeAndNil(UniversalQueue);
+      UniversalQueue:=nil;
      end;
      fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
      fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
@@ -2724,13 +2723,108 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Upload;
+var UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
+ procedure ProcessPrimitives;
+ type TUploadVertices=TpvDynamicArray<TVertex>;
+      TUploadIndices=TpvDynamicArray<TVkUInt32>;
+ var PrimitiveIndex,Index:TpvSizeInt;
+     Mesh:TMesh;
+     Primitive:TMesh.PPrimitive;
+     Vertices:TUploadVertices;
+     Indices:TUploadIndices;
+ begin
+  Vertices.Initialize;
+  try
+   Indices.Initialize;
+   try
+    for Mesh in fMeshes do begin
+     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+      Primitive^.StartBufferVertexOffset:=Vertices.Count;
+      Primitive^.StartBufferIndexOffset:=Indices.Count;
+      Vertices.Add(Primitive^.Vertices);
+      Indices.Add(Primitive^.Indices);
+      for Index:=TpvSizeInt(Primitive^.StartBufferIndexOffset) to Indices.Count-1 do begin
+       inc(Indices.Items[Index],Primitive^.StartBufferVertexOffset);
+      end;
+     end;
+    end;
+    if Vertices.Count=0 then begin
+     Vertices.AddNew;
+    end;
+    if Indices.Count=0 then begin
+     Indices.Add(0);
+    end;
+    Vertices.Finish;
+    Indices.Finish;
+    fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                Vertices.Count*SizeOf(TVertex),
+                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                [],
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                               );
+    fVulkanVertexBuffer.UploadData(UniversalQueue,
+                                   UniversalCommandBuffer,
+                                   UniversalFence,
+                                   Vertices.Items[0],
+                                   0,
+                                   Vertices.Count*SizeOf(TVertex),
+                                   TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+    fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                               Indices.Count*SizeOf(TVkUInt32),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                               [],
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                              );
+    fVulkanIndexBuffer.UploadData(UniversalQueue,
+                                  UniversalCommandBuffer,
+                                  UniversalFence,
+                                  Indices.Items[0],
+                                  0,
+                                  Indices.Count*SizeOf(TVkUInt32),
+                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+   finally
+    Indices.Finalize;
+   end;
+  finally
+   Vertices.Finalize;
+  end;
+ end;
 begin
  if not fUploaded then begin
   fLock.Acquire;
   try
    if not fUploaded then begin
     try
-
+     UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
+     try
+      UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                        pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      try
+       UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+       try
+        UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+        try
+         ProcessPrimitives;
+        finally
+         FreeAndNil(UniversalFence);
+        end;
+       finally
+        FreeAndNil(UniversalCommandBuffer);
+       end;
+      finally
+       FreeAndNil(UniversalCommandPool);
+      end;
+     finally
+      UniversalQueue:=nil;
+     end;
     finally
      fUploaded:=true;
     end;
@@ -2748,7 +2842,8 @@ begin
   try
    if fUploaded then begin
     try
-
+     FreeAndNil(fVulkanVertexBuffer);
+     FreeAndNil(fVulkanIndexBuffer);
     finally
      fUploaded:=false;
     end;
@@ -3345,9 +3440,7 @@ begin
   fWhiteTextureLock.Acquire;
   try
    if not assigned(fWhiteTexture) then begin
-    GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
-                                         pvApplication.VulkanDevice.GraphicsQueue.Handle,
-                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+    GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
     try
      GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                       pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -3393,7 +3486,7 @@ begin
       FreeAndNil(GraphicsCommandPool);
      end;
     finally
-     FreeAndNil(GraphicsQueue);
+     GraphicsQueue:=nil;
     end;
    end;
   finally
@@ -3413,9 +3506,7 @@ begin
   fDefaultNormalMapTextureLock.Acquire;
   try
    if not assigned(fDefaultNormalMapTexture) then begin
-    GraphicsQueue:=TpvVulkanQueue.Create(pvApplication.VulkanDevice,
-                                         pvApplication.VulkanDevice.GraphicsQueue.Handle,
-                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex);
+    GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
     try
      GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                       pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -3461,7 +3552,7 @@ begin
       FreeAndNil(GraphicsCommandPool);
      end;
     finally
-     FreeAndNil(GraphicsQueue);
+     GraphicsQueue:=nil;
     end;
    end;
   finally
@@ -3528,6 +3619,11 @@ begin
    fLock.Release;
   end;
  end;
+end;
+
+procedure TpvScene3D.Draw(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4;const aViewRect:TpvRect);
+begin
+
 end;
 
 initialization
