@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=97;
+      VK_HEADER_VERSION=98;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -699,7 +699,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_210_EXTENSION_NAME='VK_KHR_extension_210';
       VK_KHR_EXTENSION_211_SPEC_VERSION=0;
       VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
-      VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=2;
+      VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=3;
       VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
       VK_EXT_PCI_BUS_INFO_SPEC_VERSION=2;
       VK_EXT_PCI_BUS_INFO_EXTENSION_NAME='VK_EXT_pci_bus_info';
@@ -777,6 +777,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_249_EXTENSION_NAME='VK_KHR_extension_249';
       VK_NV_EXTENSION_250_SPEC_VERSION=0;
       VK_NV_EXTENSION_250_EXTENSION_NAME='VK_NV_extension_250';
+      VK_NV_EXTENSION_251_SPEC_VERSION=0;
+      VK_NV_EXTENSION_251_EXTENSION_NAME='VK_NV_extension_251';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -11164,9 +11166,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pNext:PVkVoid;
        vulkanMemoryModel:TVkBool32;
        vulkanMemoryModelDeviceScope:TVkBool32;
+       vulkanMemoryModelAvailabilityVisibilityChains:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aVulkanMemoryModel:TVkBool32;
-                          const aVulkanMemoryModelDeviceScope:TVkBool32);
+                          const aVulkanMemoryModelDeviceScope:TVkBool32;
+                          const aVulkanMemoryModelAvailabilityVisibilityChains:TVkBool32);
 {$endif}
      end;
 
@@ -22033,12 +22037,14 @@ begin
 end;
 
 constructor TVkPhysicalDeviceVulkanMemoryModelFeaturesKHR.Create(const aVulkanMemoryModel:TVkBool32;
-                                                                 const aVulkanMemoryModelDeviceScope:TVkBool32);
+                                                                 const aVulkanMemoryModelDeviceScope:TVkBool32;
+                                                                 const aVulkanMemoryModelAvailabilityVisibilityChains:TVkBool32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR;
  pNext:=nil;
  vulkanMemoryModel:=aVulkanMemoryModel;
  vulkanMemoryModelDeviceScope:=aVulkanMemoryModelDeviceScope;
+ vulkanMemoryModelAvailabilityVisibilityChains:=aVulkanMemoryModelAvailabilityVisibilityChains;
 end;
 
 constructor TVkPhysicalDeviceShaderAtomicInt64FeaturesKHR.Create(const aShaderBufferInt64Atomics:TVkBool32;
