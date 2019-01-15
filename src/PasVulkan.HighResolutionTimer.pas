@@ -370,17 +370,14 @@ begin
 {$ifdef linux}
   NowTime:=GetTime;
   EndTime:=NowTime+pDelay;
-  while true do begin
-   SleepTime:=abs(EndTime-NowTime);
-   if SleepTime>=fFourMillisecondsInterval then begin
-    SleepTime:=(SleepTime+2) shr 2;
-    if SleepTime>0 then begin
-     req.tv_sec:=SleepTime div 1000000000;
-     req.tv_nsec:=SleepTime mod 10000000000;
-     fpNanoSleep(@req,@rem);
-     NowTime:=GetTime;
-     continue;
-    end;
+  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
+   SleepTime:=((EndTime-NowTime)+2) shr 2;
+   if SleepTime>0 then begin
+    req.tv_sec:=SleepTime div 1000000000;
+    req.tv_nsec:=SleepTime mod 10000000000;
+    fpNanoSleep(@req,@rem);
+    NowTime:=GetTime;
+    continue;
    end;
    break;
   end;
@@ -395,17 +392,14 @@ begin
 {$ifdef unix}
   NowTime:=GetTime;
   EndTime:=NowTime+pDelay;
-  while true do begin
-   SleepTime:=abs(EndTime-NowTime);
-   if SleepTime>=fFourMillisecondsInterval then begin
-    SleepTime:=(SleepTime+2) shr 2;
-    if SleepTime>0 then begin
-     req.tv_sec:=SleepTime div 1000000;
-     req.tv_nsec:=(SleepTime mod 1000000)*1000;
-     fpNanoSleep(@req,@rem);
-     NowTime:=GetTime;
-     continue;
-    end;
+  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
+   SleepTime:=((EndTime-NowTime)+2) shr 2;
+   if SleepTime>0 then begin
+    req.tv_sec:=SleepTime div 1000000;
+    req.tv_nsec:=(SleepTime mod 1000000)*1000;
+    fpNanoSleep(@req,@rem);
+    NowTime:=GetTime;
+    continue;
    end;
    break;
   end;
