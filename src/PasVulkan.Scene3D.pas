@@ -394,7 +394,7 @@ type EpvScene3D=class(Exception);
                      );
                    end;
                    PMorphTargetVertex=^TMorphTargetVertex;
-                   TMorphTargetVertexDynamicArray=array of TMorphTargetVertex;
+                   TMorphTargetVertexDynamicArray=TpvDynamicArray<TMorphTargetVertex>;
                    TMorphTargetShaderStorageBufferObject=record
                     Count:TpvSizeInt;
                     Size:TpvSizeInt;
@@ -605,15 +605,14 @@ type EpvScene3D=class(Exception);
               fScene:TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
+              fMorphTargetVertices:TMorphTargetVertexDynamicArray;
               fSkinStorageBufferSize:TpvSizeInt;
               fMorphTargetCount:TpvSizeInt;
-              fMorphTargetShaderStorageBufferObject:TMorphTargetShaderStorageBufferObject;
-              fMorphTargetVertexCount:TpvSizeInt;
-              fMorphTargetVertexShaderStorageBufferObject:TMorphTargetVertexShaderStorageBufferObject;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanIndexBuffer:TpvVulkanBuffer;
+              fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
               procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
@@ -1818,6 +1817,7 @@ var Index,
     WeightIndex,
     JointIndex,
     OtherJointIndex,
+    MorphTargetVertexIndex,
     OldCount,
     MaxCountTargets:TpvSizeInt;
     SourceMeshPrimitive:TPasGLTF.TMesh.TPrimitive;
@@ -1825,6 +1825,7 @@ var Index,
     DestinationMeshPrimitive:TMesh.PPrimitive;
     DestinationMeshPrimitiveTarget:TMesh.TPrimitive.PTarget;
     DestinationMeshPrimitiveTargetVertex:TMesh.TPrimitive.TTarget.PTargetVertex;
+    MorphTargetVertex:PMorphTargetVertex;
     TemporaryPositions,
     TemporaryNormals,
     TemporaryBitangents,
@@ -2413,19 +2414,6 @@ begin
 
      end;
 
-     if length(DestinationMeshPrimitive^.Targets)>0 then begin
-      for VertexIndex:=0 to length(DestinationMeshPrimitiveVertices)-1 do begin
-       Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-       Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertexCount;
-       inc(fGroup.fMorphTargetVertexCount,length(DestinationMeshPrimitive^.Targets));
-      end;
-     end else begin
-      for VertexIndex:=0 to length(DestinationMeshPrimitiveVertices)-1 do begin
-       Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-       Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
-      end;
-     end;
-
     end;
 
     DestinationMeshPrimitive^.StartBufferVertexOffset:=fGroup.fVertices.Count;
@@ -2438,6 +2426,33 @@ begin
      inc(fGroup.fIndices.Items[IndexIndex],DestinationMeshPrimitive^.StartBufferVertexOffset);
     end;
     DestinationMeshPrimitive^.CountIndices:=TpvSizeUInt(fGroup.fIndices.Count)-DestinationMeshPrimitive^.StartBufferIndexOffset;
+
+    DestinationMeshPrimitive^.MorphTargetBaseIndex:=fGroup.fMorphTargetCount;
+
+    if length(DestinationMeshPrimitive^.Targets)>0 then begin
+
+     inc(fGroup.fMorphTargetCount,length(DestinationMeshPrimitive^.Targets));
+
+     for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive^.StartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive^.StartBufferVertexOffset+DestinationMeshPrimitive^.CountVertices)-1 do begin
+      Vertex:=@fGroup.fVertices.Items[VertexIndex];
+      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+      for TargetIndex:=0 to length(DestinationMeshPrimitive^.Targets)-1 do begin
+       DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive^.Targets[TargetIndex];
+       DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
+       MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
+       MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+       MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
+       MorphTargetVertex^.Normal:=DestinationMeshPrimitiveTargetVertex^.Normal;
+       MorphTargetVertex^.Tangent:=DestinationMeshPrimitiveTargetVertex^.Tangent;
+       MorphTargetVertex^.Index:=DestinationMeshPrimitive^.MorphTargetBaseIndex+TargetIndex;
+       if (TargetIndex+1)<length(DestinationMeshPrimitive^.Targets) then begin
+        MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
+       end else begin
+        MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+       end;
+      end;
+     end;
+    end;
 
    finally
     DestinationMeshPrimitiveIndices:=nil;
@@ -2699,11 +2714,11 @@ begin
 
  fIndices.Initialize;
 
+ fMorphTargetVertices.Initialize;
+
  fSkinStorageBufferSize:=0;
 
  fMorphTargetCount:=0;
-
- fMorphTargetVertexCount:=0;
 
  fMaximalCountInstances:=1;
 
@@ -2729,6 +2744,8 @@ begin
  fIndices.Finalize;
 
  fVertices.Finalize;
+
+ fMorphTargetVertices.Finalize;
 
  FreeAndNil(fLock);
 
@@ -2766,14 +2783,21 @@ var UniversalQueue:TpvVulkanQueue;
     UniversalFence:TpvVulkanFence;
  procedure ProcessPrimitives;
  begin
+
   if fVertices.Count=0 then begin
    fVertices.AddNew;
   end;
   if fIndices.Count=0 then begin
    fIndices.Add(0);
   end;
+  if fMorphTargetVertices.Count=0 then begin
+   fMorphTargetVertices.AddNew;
+  end;
+
   fVertices.Finish;
   fIndices.Finish;
+  fMorphTargetVertices.Finish;
+
   fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                               fVertices.Count*SizeOf(TVertex),
                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -2788,6 +2812,7 @@ var UniversalQueue:TpvVulkanQueue;
                                  0,
                                  fVertices.Count*SizeOf(TVertex),
                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
   fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -2802,6 +2827,22 @@ var UniversalQueue:TpvVulkanQueue;
                                 0,
                                 fIndices.Count*SizeOf(TVkUInt32),
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+  fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                         fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                        );
+  fVulkanMorphTargetVertexBuffer.UploadData(UniversalQueue,
+                                            UniversalCommandBuffer,
+                                            UniversalFence,
+                                            fMorphTargetVertices.Items[0],
+                                            0,
+                                            fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
+                                            TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
  end;
 begin
  if not fUploaded then begin
@@ -2852,6 +2893,7 @@ begin
     try
      FreeAndNil(fVulkanVertexBuffer);
      FreeAndNil(fVulkanIndexBuffer);
+     FreeAndNil(fVulkanMorphTargetVertexBuffer);
     finally
      fUploaded:=false;
     end;
@@ -2863,85 +2905,6 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.ConstructBuffers;
- procedure InitializeMorphTargetBuffers;
-  procedure FillMorphTargetVertexShaderStorageBufferObject(const aMorphTargetVertexShaderStorageBufferObject:PMorphTargetVertexShaderStorageBufferObject;
-                                                           const aPrimitive:TMesh.PPrimitive;
-                                                           const aDestinationVertex:PMorphTargetVertex;
-                                                           const aTargetBaseIndex:TpvSizeInt);
-  var TargetIndex,
-      VertexIndex,
-      MorphTargetVertexIndex:TpvSizeInt;
-      Vertex:PVertex;
-      SourceVertex:TMesh.TPrimitive.TTarget.PTargetVertex;
-      DestinationVertex:PMorphTargetVertex;
-      Target:TMesh.TPrimitive.PTarget;
-  begin
-   for VertexIndex:=TpvSizeInt(aPrimitive^.StartBufferVertexOffset) to TpvSizeInt(aPrimitive^.StartBufferVertexOffset+aPrimitive^.CountVertices)-1 do begin
-    Vertex:=@fVertices.Items[VertexIndex];
-    for TargetIndex:=0 to length(aPrimitive^.Targets)-1 do begin
-     MorphTargetVertexIndex:=TpvSizeInt(Vertex^.MorphTargetVertexBaseIndex)+TargetIndex;
-     Target:=@aPrimitive^.Targets[TargetIndex];
-     SourceVertex:=@Target^.Vertices[VertexIndex];
-     DestinationVertex:=aDestinationVertex;
-     inc(DestinationVertex,MorphTargetVertexIndex);
-     DestinationVertex^.Position:=TpvVector4.InlineableCreate(SourceVertex^.Position,0.0);
-     DestinationVertex^.Normal:=SourceVertex^.Normal;
-     DestinationVertex^.Tangent:=SourceVertex^.Tangent;
-     DestinationVertex^.Index:=aTargetBaseIndex+TargetIndex;
-     if (TargetIndex+1)<length(aPrimitive^.Targets) then begin
-      DestinationVertex^.Next:=MorphTargetVertexIndex+1;
-     end else begin
-      DestinationVertex^.Next:=TpvUInt32($ffffffff);
-     end;
-    end;
-   end;
-  end;
- var MeshIndex,
-     PrimitiveIndex,
-     TargetIndex,
-     Index,
-     ItemDataSize:TpvSizeInt;
-     Mesh:TMesh;
-     Primitive:TMesh.PPrimitive;
- begin
-  fMorphTargetCount:=0;
-  fMorphTargetShaderStorageBufferObject.Count:=0;
-  fMorphTargetShaderStorageBufferObject.Size:=0;
-  fMorphTargetShaderStorageBufferObject.Data:=nil;
-  try
-   fMorphTargetVertexShaderStorageBufferObject.Count:=fMorphTargetVertexCount;
-   fMorphTargetVertexShaderStorageBufferObject.Size:=fMorphTargetVertexCount*SizeOf(TMorphTargetVertex);
-   fMorphTargetVertexShaderStorageBufferObject.Data:=nil;
-   try
-    if fMorphTargetVertexShaderStorageBufferObject.Size>0 then begin
-     SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
-     FillChar(fMorphTargetVertexShaderStorageBufferObject.Data[0],fMorphTargetVertexShaderStorageBufferObject.Size,#$ff);
-     for MeshIndex:=0 to fMeshes.Count-1 do begin
-      Mesh:=fMeshes[MeshIndex];
-      for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
-       Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-       if length(Primitive^.Targets)>0 then begin
-        Primitive^.MorphTargetBaseIndex:=fMorphTargetCount;
-        FillMorphTargetVertexShaderStorageBufferObject(@fMorphTargetVertexShaderStorageBufferObject,
-                                                       Primitive,
-                                                       pointer(@fMorphTargetVertexShaderStorageBufferObject.Data[0]),
-                                                       Primitive^.MorphTargetBaseIndex);
-        inc(fMorphTargetCount,length(Primitive^.Targets));
-       end else begin
-        Primitive^.MorphTargetBaseIndex:=0;
-       end;
-      end;
-     end;
-    end;
-   finally
-    SetLength(fMorphTargetVertexShaderStorageBufferObject.Data,fMorphTargetVertexShaderStorageBufferObject.Size);
-   end;
-  finally
-   fMorphTargetShaderStorageBufferObject.Count:=fMorphTargetCount*fMaximalCountInstances;
-   fMorphTargetShaderStorageBufferObject.Size:=fMorphTargetShaderStorageBufferObject.Count*SizeOf(TpvFloat);
-   SetLength(fMorphTargetShaderStorageBufferObject.Data,fMorphTargetShaderStorageBufferObject.Count*MaxSwapChainImages);
-  end;
- end;
  procedure InitializeNodeMeshPrimitiveShaderStorageBufferObject;
  var NodeIndex:TpvSizeInt;
      Node:TNode;
@@ -2962,7 +2925,6 @@ procedure TpvScene3D.TGroup.ConstructBuffers;
   end;
  end;
 begin
- InitializeMorphTargetBuffers;
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
 
@@ -3131,7 +3093,8 @@ var ImageMap:TpvScene3D.TImages;
      SourceMesh:TPasGLTF.TMesh;
      Mesh:TMesh;
  begin
-  fMorphTargetVertexCount:=0;
+  fMorphTargetVertices.Clear;
+  fMorphTargetCount:=0;
   for Index:=0 to aSourceDocument.Meshes.Count-1 do begin
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self);
