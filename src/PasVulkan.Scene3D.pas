@@ -1832,24 +1832,33 @@ var PrimitiveIndex,
     MorphTargetVertex:PMorphTargetVertex;
     MorphTargetVertexIndex:TpvUInt32;
 begin
+
  result:=fNodeMeshPrimitiveInstances;
  inc(fNodeMeshPrimitiveInstances);
+
  if result=0 then begin
+
   for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
    Primitive:=@fPrimitives[PrimitiveIndex];
-   Primitive^.NodeMeshPrimitiveInstances.AddNew;
+   NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive^.MorphTargetBaseIndex;
    NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=Primitive^.StartBufferVertexOffset;
    NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=Primitive^.StartBufferIndexOffset;
   end;
+
  end else begin
+
   for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
+
    Primitive:=@fPrimitives[PrimitiveIndex];
-   Primitive^.NodeMeshPrimitiveInstances.AddNew;
+
+   NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
+
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=fGroup.fMorphTargetCount;
    inc(fGroup.fMorphTargetCount,length(Primitive^.Targets));
+
    NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=fGroup.fVertices.Count;
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
     NewVertexIndex:=fGroup.fVertices.Add(fGroup.fVertices.Items[VertexIndex]);
@@ -1872,11 +1881,14 @@ begin
      end;
     end;
    end;
+
    NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=fGroup.fIndices.Count;
    for IndexIndex:=TpvSizeInt(Primitive^.StartBufferIndexOffset) to TpvSizeInt(Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
     fGroup.fIndices.Add((fGroup.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset)+NodeMeshPrimitiveInstance^.StartBufferVertexOffset);
    end;
+
   end;
+
  end;
 end;
 
