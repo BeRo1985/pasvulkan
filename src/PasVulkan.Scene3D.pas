@@ -540,8 +540,8 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
-                     fNodeMeshPrimitiveInstances:TpvSizeInt;
-                     function CreateNodeMeshPrimitiveInstance:TpvSizeInt;
+                     fNodeMeshInstances:TpvSizeInt;
+                     function CreateNodeMeshInstance:TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
@@ -1810,7 +1810,7 @@ end;
 constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup);
 begin
  inherited Create(aGroup);
- fNodeMeshPrimitiveInstances:=0;
+ fNodeMeshInstances:=0;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.Destroy;
@@ -1818,7 +1818,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3D.TGroup.TMesh.CreateNodeMeshPrimitiveInstance:TpvSizeInt;
+function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance:TpvSizeInt;
 var PrimitiveIndex,
     NodeMeshPrimitiveInstanceIndex,
     VertexIndex,
@@ -1833,8 +1833,8 @@ var PrimitiveIndex,
     MorphTargetVertexIndex:TpvUInt32;
 begin
 
- result:=fNodeMeshPrimitiveInstances;
- inc(fNodeMeshPrimitiveInstances);
+ result:=fNodeMeshInstances;
+ inc(fNodeMeshInstances);
 
  if result=0 then begin
 
