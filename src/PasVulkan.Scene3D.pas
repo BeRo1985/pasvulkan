@@ -516,15 +516,23 @@ type EpvScene3D=class(Exception);
                                  end;
                                  PTarget=^TTarget;
                                  TTargets=array of TTarget;
+                                 TNodeMeshPrimitiveInstance=record
+                                  MorphTargetBaseIndex:TpvSizeUInt;
+                                  StartBufferVertexOffset:TpvSizeUInt;
+                                  StartBufferIndexOffset:TpvSizeUInt;
+                                 end;
+                                 PNodeMeshPrimitiveInstance=^TNodeMeshPrimitiveInstance;
+                                 TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
                            public
                             PrimitiveMode:TVkPrimitiveTopology;
                             Material:TpvSizeInt;
                             Targets:TTargets;
+                            MorphTargetBaseIndex:TpvSizeUInt;
                             StartBufferVertexOffset:TpvSizeUInt;
                             StartBufferIndexOffset:TpvSizeUInt;
                             CountVertices:TpvSizeUInt;
                             CountIndices:TpvSizeUInt;
-                            MorphTargetBaseIndex:TpvSizeUInt;
+                            NodeMeshPrimitiveInstances:TNodeMeshPrimitiveInstances;
                           end;
                           PPrimitive=^TPrimitive;
                           TPrimitives=array of TPrimitive;
@@ -532,6 +540,8 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
+                     fNodeMeshPrimitiveInstances:TpvSizeInt;
+                     function CreateNodeMeshPrimitiveInstance:TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
@@ -1800,11 +1810,74 @@ end;
 constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup);
 begin
  inherited Create(aGroup);
+ fNodeMeshPrimitiveInstances:=0;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvScene3D.TGroup.TMesh.CreateNodeMeshPrimitiveInstance:TpvSizeInt;
+var PrimitiveIndex,
+    NodeMeshPrimitiveInstanceIndex,
+    VertexIndex,
+    NewVertexIndex,
+    IndexIndex,
+    NewMorphTargetVertexIndex,
+    TargetIndex:TpvSizeInt;
+    Primitive:TMesh.PPrimitive;
+    NodeMeshPrimitiveInstance:TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
+    Vertex:PVertex;
+    MorphTargetVertex:PMorphTargetVertex;
+    MorphTargetVertexIndex:TpvUInt32;
+begin
+ result:=fNodeMeshPrimitiveInstances;
+ inc(fNodeMeshPrimitiveInstances);
+ if result=0 then begin
+  for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
+   Primitive:=@fPrimitives[PrimitiveIndex];
+   Primitive^.NodeMeshPrimitiveInstances.AddNew;
+   NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
+   NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive^.MorphTargetBaseIndex;
+   NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=Primitive^.StartBufferVertexOffset;
+   NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=Primitive^.StartBufferIndexOffset;
+  end;
+ end else begin
+  for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
+   Primitive:=@fPrimitives[PrimitiveIndex];
+   Primitive^.NodeMeshPrimitiveInstances.AddNew;
+   NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
+   NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=fGroup.fMorphTargetCount;
+   inc(fGroup.fMorphTargetCount,length(Primitive^.Targets));
+   NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=fGroup.fVertices.Count;
+   for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+    NewVertexIndex:=fGroup.fVertices.Add(fGroup.fVertices.Items[VertexIndex]);
+    Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
+    if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
+     Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+     TargetIndex:=0;
+     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+      NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.Add(fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex]);
+      MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex];
+      MorphTargetVertex^.Index:=NodeMeshPrimitiveInstance^.MorphTargetBaseIndex+TargetIndex;
+      inc(TargetIndex);
+      if MorphTargetVertex^.Next=TpvUInt32($ffffffff) then begin
+       break;
+      end else begin
+       MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+       MorphTargetVertex^.Next:=fGroup.fMorphTargetVertices.Count+1;
+      end;
+     end;
+    end;
+   end;
+   NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=fGroup.fIndices.Count;
+   for IndexIndex:=TpvSizeInt(Primitive^.StartBufferIndexOffset) to TpvSizeInt(Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
+    fGroup.fIndices.Add((fGroup.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset)+NodeMeshPrimitiveInstance^.StartBufferVertexOffset);
+   end;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
@@ -2453,6 +2526,10 @@ begin
       end;
      end;
     end;
+
+    DestinationMeshPrimitive^.NodeMeshPrimitiveInstances.Initialize;
+
+    DestinationMeshPrimitive^.NodeMeshPrimitiveInstances.Clear;
 
    finally
     DestinationMeshPrimitiveIndices:=nil;
