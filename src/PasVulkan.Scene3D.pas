@@ -1824,8 +1824,7 @@ var PrimitiveIndex,
     VertexIndex,
     NewVertexIndex,
     IndexIndex,
-    NewMorphTargetVertexIndex,
-    TargetIndex:TpvSizeInt;
+    NewMorphTargetVertexIndex:TpvSizeInt;
     Primitive:TMesh.PPrimitive;
     NodeMeshPrimitiveInstance:TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
     Vertex:PVertex;
@@ -1866,12 +1865,10 @@ begin
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-     TargetIndex:=0;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
       NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.Add(fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex]);
       MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex];
-      MorphTargetVertex^.Index:=NodeMeshPrimitiveInstance^.MorphTargetBaseIndex+TargetIndex;
-      inc(TargetIndex);
+      MorphTargetVertex^.Index:=(MorphTargetVertex^.Index-Primitive^.MorphTargetBaseIndex)+NodeMeshPrimitiveInstance^.MorphTargetBaseIndex;
       if MorphTargetVertex^.Next=TpvUInt32($ffffffff) then begin
        break;
       end else begin
