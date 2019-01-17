@@ -2526,7 +2526,7 @@ begin
        MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
        MorphTargetVertex^.Normal:=DestinationMeshPrimitiveTargetVertex^.Normal;
        MorphTargetVertex^.Tangent:=DestinationMeshPrimitiveTargetVertex^.Tangent;
-       MorphTargetVertex^.Index:={DestinationMeshPrimitive^.MorphTargetBaseIndex+}TargetIndex;
+       MorphTargetVertex^.Index:=DestinationMeshPrimitive^.MorphTargetBaseIndex+TargetIndex;
        if (TargetIndex+1)<length(DestinationMeshPrimitive^.Targets) then begin
         MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
        end else begin
