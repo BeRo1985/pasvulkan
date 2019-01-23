@@ -91,13 +91,15 @@ type EpvScene3D=class(Exception);
        type TVertexAttributeBindingLocations=class
              public
               const Position=0;
-                    MorphTargetVertexBaseIndex=1;
+                    NodeIndex=1;
                     TangentSpace=2;
                     TexCoord0=3;
                     TexCoord1=4;
                     Color0=5;
-                    Joints=6;
-                    Weights=7;
+                    MorphTargetVertexBaseIndex=6;
+                    CountMorphTargetVertices=7;
+                    JointBlockBaseIndex=8;
+                    CountJointBlocks=9;
             end;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
@@ -115,11 +117,12 @@ type EpvScene3D=class(Exception);
                TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
-               JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
-               CountJointBlocks:TpvUInt32;           // + 4 = 60 (unsigned 32-bit count of joint blocks)
+               CountMorphTargetVertices:TpvUInt32;   // + 4 = 56 (unsigned 32-bit count of morph target vertices)
+               JointBlockBaseIndex:TpvUInt32;        // + 4 = 60 (unsigned 32-bit joint block base index)
+               CountJointBlocks:TpvUInt32;           // + 4 = 64 (unsigned 32-bit count of joint blocks)
               );                                     //  ==   ==
-              true:(                                 //  60   60 per vertex
-               Padding:array[0..47] of TpvUInt8;
+              true:(                                 //  64   64 per vertex
+               Padding:array[0..63] of TpvUInt8;
               );
             end;
             PVertex=^TVertex;
@@ -398,15 +401,14 @@ type EpvScene3D=class(Exception);
                    TMorphTargetVertex=packed record
                     case boolean of
                      false:(
-                      Position:TpvVector4;               //  16    0
-                      Normal:TpvHalfFloatVector3;        // + 6   16
-                      Tangent:TpvHalfFloatVector3;       // + 6   22
-                      Reversed:TpvUInt16;                // + 2   24
-                      Index:TpvUInt32;                   // + 4   28
+                      Position:TpvVector3;               //  12   12
+                      Index:TpvUInt32;                   // + 4   16
+                      Normal:TpvHalfFloatVector3;        // + 6   22
+                      Tangent:TpvHalfFloatVector3;       // + 6   24
                       Next:TpvUInt32;                    // + 4   32
                      );                                  //  ==   ==
                      true:(                              //  32   32 per vertex
-                      Padding:array[0..32] of TpvUInt8;
+                      Padding:array[0..31] of TpvUInt8;
                      );
                    end;
                    PMorphTargetVertex=^TMorphTargetVertex;
@@ -1886,7 +1888,7 @@ begin
     NewVertexIndex:=fGroup.fVertices.Add(fGroup.fVertices.Items[VertexIndex]);
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex;
-    if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
+    if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
@@ -1901,6 +1903,9 @@ begin
        MorphTargetVertex^.Next:=fGroup.fMorphTargetVertices.Count+1;
       end;
      end;
+    end else begin
+     Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+     Vertex^.CountMorphTargetVertices:=0;
     end;
     if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
      Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
@@ -2336,8 +2341,10 @@ begin
         end;
         if HasMorphVertexTargets then begin
          Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count+(VertexIndex*SourceMeshPrimitive.Targets.Count);
+         Vertex^.CountMorphTargetVertices:=SourceMeshPrimitive.Targets.Count;
         end else begin
          Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+         Vertex^.CountMorphTargetVertices:=0;
         end;
         if CountJointBlocks>0 then begin
          FillChar(MaxJointBlocks^,SizeOf(TMaxJointBlocks),#0);
@@ -2578,12 +2585,13 @@ begin
        for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive^.StartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive^.StartBufferVertexOffset+DestinationMeshPrimitive^.CountVertices)-1 do begin
         Vertex:=@fGroup.fVertices.Items[VertexIndex];
         Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+        Vertex^.CountMorphTargetVertices:=length(DestinationMeshPrimitive^.Targets);
         for TargetIndex:=0 to length(DestinationMeshPrimitive^.Targets)-1 do begin
          DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive^.Targets[TargetIndex];
          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
          MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
          MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
-         MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
+         MorphTargetVertex^.Position:=DestinationMeshPrimitiveTargetVertex^.Position;
          MorphTargetVertex^.Normal:=DestinationMeshPrimitiveTargetVertex^.Normal;
          MorphTargetVertex^.Tangent:=DestinationMeshPrimitiveTargetVertex^.Tangent;
          MorphTargetVertex^.Index:=DestinationMeshPrimitive^.MorphTargetBaseIndex+TargetIndex;
