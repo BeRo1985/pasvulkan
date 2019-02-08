@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=98;
+      VK_HEADER_VERSION=99;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -617,8 +617,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_MAINTENANCE3_EXTENSION_NAME='VK_KHR_maintenance3';
       VK_KHR_DRAW_INDIRECT_COUNT_SPEC_VERSION=1;
       VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME='VK_KHR_draw_indirect_count';
-      VK_QCOM_extension_171_SPEC_VERSION=0;
-      VK_QCOM_extension_171_EXTENSION_NAME='VK_QCOM_extension_171';
+      VK_EXT_FILTER_CUBIC_SPEC_VERSION=1;
+      VK_EXT_FILTER_CUBIC_EXTENSION_NAME='VK_EXT_filter_cubic';
       VK_QCOM_extension_172_SPEC_VERSION=0;
       VK_QCOM_extension_172_EXTENSION_NAME='VK_QCOM_extension_172';
       VK_QCOM_extension_173_SPEC_VERSION=0;
@@ -757,8 +757,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME='VK_EXT_memory_priority';
       VK_KHR_EXTENSION_240_SPEC_VERSION=0;
       VK_KHR_EXTENSION_240_EXTENSION_NAME='VK_KHR_extension_240';
-      VK_NV_EXTENSION_241_SPEC_VERSION=0;
-      VK_NV_EXTENSION_241_EXTENSION_NAME='VK_NV_extension_241';
+      VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_SPEC_VERSION=1;
+      VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_EXTENSION_NAME='VK_NV_dedicated_allocation_image_aliasing';
       VK_NV_EXTENSION_242_SPEC_VERSION=0;
       VK_NV_EXTENSION_242_EXTENSION_NAME='VK_NV_extension_242';
       VK_INTEL_EXTENSION_243_SPEC_VERSION=0;
@@ -779,6 +779,16 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_250_EXTENSION_NAME='VK_NV_extension_250';
       VK_NV_EXTENSION_251_SPEC_VERSION=0;
       VK_NV_EXTENSION_251_EXTENSION_NAME='VK_NV_extension_251';
+      VK_NV_EXTENSION_252_SPEC_VERSION=0;
+      VK_NV_EXTENSION_252_EXTENSION_NAME='VK_NV_extension_252';
+      VK_NV_EXTENSION_253_SPEC_VERSION=0;
+      VK_NV_EXTENSION_253_EXTENSION_NAME='VK_NV_extension_253';
+      VK_EXT_EXTENSION_254_SPEC_VERSION=1;
+      VK_EXT_EXTENSION_254_EXTENSION_NAME='VK_EXT_extension_254';
+      VK_EXT_EXTENSION_255_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_255_EXTENSION_NAME='VK_EXT_extension_255';
+      VK_EXT_EXTENSION_256_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_256_EXTENSION_NAME='VK_EXT_extension_256';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1658,7 +1668,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_FILTER_NEAREST=0,
        VK_FILTER_LINEAR=1,
-       VK_FILTER_CUBIC_IMG=1000015000
+       VK_FILTER_CUBIC_EXT=1000015000,
+       VK_FILTER_CUBIC_IMG=VK_FILTER_CUBIC_EXT
       );
 
      PPVkSamplerMipmapMode=^PVkSamplerMipmapMode;
@@ -2422,6 +2433,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV=1000166001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES=1000168000,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT=1000168001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT=1000170000,
+       VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT=1000170001,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR=1000177000,
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT=1000178000,
@@ -2457,6 +2470,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT=1000237000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT=1000238000,
        VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT=1000238001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV=1000240000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT=1000244000,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT=1000244001,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT=1000244002,
@@ -2904,7 +2918,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_BLIT_SRC_BIT=$00000400,                                 //< Format can be used as the source image of blits with vkCmdBlitImage
        VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800,                                 //< Format can be used as the destination image of blits with vkCmdBlitImage
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000,              //< Format can be filtered with VK_FILTER_LINEAR when being sampled
-       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG=$00002000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT=$00002000,
        VK_FORMAT_FEATURE_TRANSFER_SRC_BIT=$00004000,
        VK_FORMAT_FEATURE_TRANSFER_DST_BIT=$00008000,
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT=$00010000,
@@ -2923,6 +2937,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT,
        VK_FORMAT_FEATURE_DISJOINT_BIT_KHR=VK_FORMAT_FEATURE_DISJOINT_BIT,
        VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG=VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT,
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR=VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT,
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR=VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT,
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR=VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT,
@@ -11482,6 +11497,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV=^PVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV;
+     PVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV=^TVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV;
+     TVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV
+       pNext:PVkVoid;
+       dedicatedAllocationImageAliasing:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDedicatedAllocationImageAliasing:TVkBool32);
+{$endif}
+     end;
+
      PPVkShadingRatePaletteNV=^PVkShadingRatePaletteNV;
      PVkShadingRatePaletteNV=^TVkShadingRatePaletteNV;
      TVkShadingRatePaletteNV=record
@@ -12205,6 +12234,36 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        deviceAddress:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aDeviceAddress:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceImageViewImageFormatInfoEXT=^PVkPhysicalDeviceImageViewImageFormatInfoEXT;
+     PVkPhysicalDeviceImageViewImageFormatInfoEXT=^TVkPhysicalDeviceImageViewImageFormatInfoEXT;
+     TVkPhysicalDeviceImageViewImageFormatInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT
+       pNext:PVkVoid;
+       imageViewType:TVkImageViewType;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aImageViewType:TVkImageViewType);
+{$endif}
+     end;
+
+     PPVkFilterCubicImageViewImageFormatPropertiesEXT=^PVkFilterCubicImageViewImageFormatPropertiesEXT;
+     PVkFilterCubicImageViewImageFormatPropertiesEXT=^TVkFilterCubicImageViewImageFormatPropertiesEXT;
+     TVkFilterCubicImageViewImageFormatPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT
+       pNext:PVkVoid;
+       filterCubic:TVkBool32; //< The combinations of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT
+       filterCubicMinmax:TVkBool32; //< The combination of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT and ReductionMode of Min or Max
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFilterCubic:TVkBool32; //< The combinations of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT
+                          const aFilterCubicMinmax:TVkBool32); //< The combination of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT and ReductionMode of Min or Max
 {$endif}
      end;
 
@@ -22222,6 +22281,13 @@ begin
  imageFootprint:=aImageFootprint;
 end;
 
+constructor TVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV.Create(const aDedicatedAllocationImageAliasing:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV;
+ pNext:=nil;
+ dedicatedAllocationImageAliasing:=aDedicatedAllocationImageAliasing;
+end;
+
 constructor TVkShadingRatePaletteNV.Create(const aShadingRatePaletteEntryCount:TVkUInt32;
                                            const aPShadingRatePaletteEntries:PVkShadingRatePaletteEntryNV);
 begin
@@ -22694,6 +22760,22 @@ begin
  sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT;
  pNext:=nil;
  deviceAddress:=aDeviceAddress;
+end;
+
+constructor TVkPhysicalDeviceImageViewImageFormatInfoEXT.Create(const aImageViewType:TVkImageViewType);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT;
+ pNext:=nil;
+ imageViewType:=aImageViewType;
+end;
+
+constructor TVkFilterCubicImageViewImageFormatPropertiesEXT.Create(const aFilterCubic:TVkBool32;
+                                                                   const aFilterCubicMinmax:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT;
+ pNext:=nil;
+ filterCubic:=aFilterCubic;
+ filterCubicMinmax:=aFilterCubicMinmax;
 end;
 {$endif}
 
