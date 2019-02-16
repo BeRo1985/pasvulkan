@@ -88,6 +88,7 @@ begin
  TerminationOnQuitEvent:=false;
  MaximumFramesPerSecond:=120.0; // 120 FPS as frame rate limit should be enough for to be smooth enough and for to be CPU&GPU-time-saving at the same time
 //DesiredCountSwapChainImages:=2;
+ VulkanAPIVersion:=VK_API_VERSION_1_0;
 //PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
  PresentMode:=TpvApplicationPresentMode.Mailbox;
 end;

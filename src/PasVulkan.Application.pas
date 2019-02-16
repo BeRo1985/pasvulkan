@@ -1185,6 +1185,8 @@ type EpvApplication=class(Exception)
 
        fRealUsedDrawSwapChainImageIndex:TpvInt32;
 
+       fVulkanAPIVersion:TvkUInt32;
+
        fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
 
        fAcquireVulkanBackBufferState:TAcquireVulkanBackBufferState;
@@ -1448,6 +1450,8 @@ type EpvApplication=class(Exception)
 
        property OnEvent:TpvApplicationOnEvent read fOnEvent write fOnEvent;
        property OnStep:TpvApplicationOnStep read fOnStep write fOnStep;
+
+       property VulkanAPIVersion:TvkUInt32 read fVulkanAPIVersion write fVulkanAPIVersion;
 
        property VulkanPhysicalDeviceHandle:TVkPhysicalDevice read fVulkanPhysicalDeviceHandle write fVulkanPhysicalDeviceHandle;
 
@@ -5273,6 +5277,8 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;}
 
+ fVulkanAPIVersion:=VK_API_VERSION_1_0;
+
  fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
 
  fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
@@ -5786,9 +5792,13 @@ begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
      (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then begin
-   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),Version,
-                                             'PasVulkanApplication',$0100,
-                                              VK_API_VERSION_1_0,false,nil);
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),
+                                             Version,
+                                             'PasVulkanApplication',
+                                             $0100,
+                                             fVulkanAPIVersion,
+                                             false,
+                                             nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
    end;

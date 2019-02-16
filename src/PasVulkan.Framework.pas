@@ -318,7 +318,7 @@ type EpvVulkanException=class(Exception);
                           const aApplicationVersion:TpvUInt32=1;
                           const aEngineName:TpvVulkanCharString='Vulkan engine';
                           const aEngineVersion:TpvUInt32=1;
-                          const pAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
+                          const aAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
                           const aValidation:boolean=false;
                           const aAllocationManager:TpvVulkanAllocationManager=nil);
        destructor Destroy; override;
@@ -6394,7 +6394,7 @@ constructor TpvVulkanInstance.Create(const aApplicationName:TpvVulkanCharString=
                                      const aApplicationVersion:TpvUInt32=1;
                                      const aEngineName:TpvVulkanCharString='Vulkan engine';
                                      const aEngineVersion:TpvUInt32=1;
-                                     const pAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
+                                     const aAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
                                      const aValidation:boolean=false;
                                      const aAllocationManager:TpvVulkanAllocationManager=nil);
 var Index,SubIndex:TpvInt32;
@@ -6444,7 +6444,20 @@ begin
  fApplicationInfo.applicationVersion:=aApplicationVersion;
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
  fApplicationInfo.engineVersion:=aEngineVersion;
- fApplicationInfo.apiVersion:=pAPIVersion;
+ fApplicationInfo.apiVersion:=aAPIVersion;
+
+ if ApplicationInfo.apiVersion=0 then begin
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
+  if assigned(fVulkan.Commands.EnumerateInstanceVersion) and
+     (fVulkan.EnumerateInstanceVersion(@fApplicationInfo.apiVersion)<>VK_SUCCESS) then begin
+   fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
+  end;
+ end;
+ if fApplicationInfo.apiVersion<VK_API_VERSION_1_0 then begin
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
+ end else if fApplicationInfo.apiVersion>VK_API_VERSION_1_1 then begin
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_1;
+ end;
 
  fValidation:=aValidation;
 

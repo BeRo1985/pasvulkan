@@ -84,6 +84,7 @@ begin
  UseAudio:=true;
 //DesiredCountSwapChainImages:=2;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
+ VulkanAPIVersion:=VK_API_VERSION_1_0;
 end;
 
 procedure TApplication.Start;

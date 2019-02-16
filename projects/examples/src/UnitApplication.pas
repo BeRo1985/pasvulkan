@@ -134,6 +134,7 @@ begin
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
  WaitOnPreviousFrames:=false;
+ VulkanAPIVersion:=VK_API_VERSION_1_0;
 //DesiredCountSwapChainImages:=2;
  if fForceNoVSync then begin
   PresentMode:=TpvApplicationPresentMode.Mailbox;
