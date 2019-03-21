@@ -2909,6 +2909,8 @@ begin
     result:='PVkHINSTANCE';
    end else if Type_='HWND' then begin
     result:='PVkHWND';
+   end else if Type_='HMONITOR' then begin
+    result:='PVkHMONITOR';
    end else if Type_='Display' then begin
     result:='PVkXLIBDisplay';
    end else if Type_='VisualID' then begin
@@ -2933,6 +2935,12 @@ begin
     result:='PSecurityAttributes';
    end else if Type_='zx_handle_t' then begin
     result:='PVkFuchsiaZXHandle';
+   end else if Type_='GgpStreamDescriptor' then begin
+    result:='PVkGgpStreamDescriptor';
+   end else if Type_='GgpFrameToken' then begin
+    result:='PVkGgpFrameToken';
+   end else if Type_='CAMetalLayer' then begin
+    result:='PVkCAMetalLayer';
    end else begin
     result:='P'+Type_;
    end;
@@ -2972,6 +2980,8 @@ begin
     result:='PPVkHINSTANCE';
    end else if Type_='HWND' then begin
     result:='PPVkHWND';
+   end else if Type_='HMONITOR' then begin
+    result:='PPVkHMONITOR';
    end else if Type_='Display' then begin
     result:='PPVkXLIBDisplay';
    end else if Type_='VisualID' then begin
@@ -2994,6 +3004,12 @@ begin
     result:='PPVkAndroidAHardwareBuffer';
    end else if Type_='zx_handle_t' then begin
     result:='PPVkFuchsiaZXHandle';
+   end else if Type_='GgpStreamDescriptor' then begin
+    result:='PPVkGgpStreamDescriptor';
+   end else if Type_='GgpFrameToken' then begin
+    result:='PPVkGgpFrameToken';
+   end else if Type_='CAMetalLayer' then begin
+    result:='PPVkCAMetalLayer';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3034,6 +3050,8 @@ begin
     result:='TVkHINSTANCE';
    end else if Type_='HWND' then begin
     result:='TVkHWND';
+   end else if Type_='HMONITOR' then begin
+    result:='TVkHMONITOR';
    end else if Type_='Display' then begin
     result:='TVkXLIBDisplay';
    end else if Type_='VisualID' then begin
@@ -3058,6 +3076,12 @@ begin
     result:='PWideChar';
    end else if Type_='zx_handle_t' then begin
     result:='TVkFuchsiaZXHandle';
+   end else if Type_='GgpStreamDescriptor' then begin
+    result:='TVkGgpStreamDescriptor';
+   end else if Type_='GgpFrameToken' then begin
+    result:='TVkGgpFrameToken';
+   end else if Type_='CAMetalLayer' then begin
+    result:='TVkCAMetalLayer';
    end else begin
     result:='T'+Type_;
    end;
@@ -3773,6 +3797,8 @@ begin
             Name:='hinstance_';
            end else if Name='hwnd' then begin
             Name:='hwnd_';
+           end else if Name='hmonitor' then begin
+            Name:='hmonitor_';
            end else if Name='object' then begin
             Name:='object_';
            end else if Name='set' then begin
@@ -3802,7 +3828,7 @@ begin
              inc(TypeDefinitionMember^.Ptr);
             end;
            end;
-           if (Type_='HWND') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
+           if (Type_='HWND') or (Type_='HMONITOR') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
             TypeDefinition^.Define:='Windows';
            end else if Type_='RROutput' then begin
             TypeDefinition^.Define:='RandR';
@@ -4450,7 +4476,7 @@ begin
           Parameters:=Parameters+',';
          end;
          Parameters:=Parameters+ParamName;
-         if (ParamType='HWND') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
+         if (ParamType='HWND') or (ParamType='HMONITOR') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
           Define:='Windows';
          end else if ParamType='RROutput' then begin
           Define:='RandR';
@@ -4953,6 +4979,18 @@ begin
    OutputPAS.Add('     TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
+   OutputPAS.Add('     PPVkGgpStreamDescriptor=^PVkGgpStreamDescriptor;');
+   OutputPAS.Add('     PVkGgpStreamDescriptor=^TVkGgpStreamDescriptor;');
+   OutputPAS.Add('     TVkGgpStreamDescriptor=pointer;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkGgpFrameToken=^PVkGgpFrameToken;');
+   OutputPAS.Add('     PVkGgpFrameToken=^TVkGgpFrameToken;');
+   OutputPAS.Add('     TVkGgpFrameToken=pointer;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkCAMetalLayer=^PVkCAMetalLayer;');
+   OutputPAS.Add('     PVkCAMetalLayer=^TVkCAMetalLayer;');
+   OutputPAS.Add('     TVkCAMetalLayer=pointer;');
+   OutputPAS.Add('');
    OutputPAS.Add('const VK_NULL_HANDLE=0;');
    OutputPAS.Add('');
    OutputPAS.Add('      VK_NULL_INSTANCE=0;');
@@ -4980,6 +5018,10 @@ begin
    OutputPAS.Add('     PPVkHWND=^PVkHWND;');
    OutputPAS.Add('     PVkHWND=^TVkHWND;');
    OutputPAS.Add('     TVkHWND=HWND;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkHMONITOR=^PVkHMONITOR;');
+   OutputPAS.Add('     PVkHMONITOR=^TVkHMONITOR;');
+   OutputPAS.Add('     TVkHMONITOR=HMONITOR;');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.AddStrings(BaseTypes);

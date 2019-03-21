@@ -243,6 +243,18 @@ type PPVkInt8=^PVkInt8;
      TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};
 {$endif}
 
+     PPVkGgpStreamDescriptor=^PVkGgpStreamDescriptor;
+     PVkGgpStreamDescriptor=^TVkGgpStreamDescriptor;
+     TVkGgpStreamDescriptor=pointer;
+
+     PPVkGgpFrameToken=^PVkGgpFrameToken;
+     PVkGgpFrameToken=^TVkGgpFrameToken;
+     TVkGgpFrameToken=pointer;
+
+     PPVkCAMetalLayer=^PVkCAMetalLayer;
+     PVkCAMetalLayer=^TVkCAMetalLayer;
+     TVkCAMetalLayer=pointer;
+
 const VK_NULL_HANDLE=0;
 
       VK_NULL_INSTANCE=0;
@@ -253,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=100;
+      VK_HEADER_VERSION=105;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -341,8 +353,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME='VK_EXT_transform_feedback';
       VK_NVX_EXTENSION_30_SPEC_VERSION=0;
       VK_NVX_EXTENSION_30_EXTENSION_NAME='VK_NVX_extension_30';
-      VK_NVX_EXTENSION_31_SPEC_VERSION=0;
-      VK_NVX_EXTENSION_31_EXTENSION_NAME='VK_NVX_extension_31';
+      VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION=1;
+      VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME='VK_NVX_image_view_handle';
       VK_AMD_EXTENSION_32_SPEC_VERSION=0;
       VK_AMD_EXTENSION_32_EXTENSION_NAME='VK_AMD_extension_32';
       VK_AMD_EXTENSION_33_SPEC_VERSION=0;
@@ -379,8 +391,8 @@ const VK_NULL_HANDLE=0;
       VK_NVX_EXTENSION_48_EXTENSION_NAME='VK_NVX_extension_48';
       VK_GOOGLE_EXTENSION_49_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_49_EXTENSION_NAME='VK_GOOGLE_extension_49';
-      VK_GOOGLE_EXTENSION_50_SPEC_VERSION=0;
-      VK_GOOGLE_EXTENSION_50_EXTENSION_NAME='VK_GOOGLE_extension_50';
+      VK_GGP_STREAM_DESCRIPTOR_SURFACE_SPEC_VERSION=1;
+      VK_GGP_STREAM_DESCRIPTOR_SURFACE_EXTENSION_NAME='VK_GGP_stream_descriptor_surface';
       VK_NV_CORNER_SAMPLED_IMAGE_SPEC_VERSION=2;
       VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME='VK_NV_corner_sampled_image';
       VK_NVX_EXTENSION_52_SPEC_VERSION=0;
@@ -483,8 +495,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_101_EXTENSION_NAME='VK_NV_extension_101';
       VK_EXT_CONSERVATIVE_RASTERIZATION_SPEC_VERSION=1;
       VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME='VK_EXT_conservative_rasterization';
-      VK_NV_EXTENSION_103_SPEC_VERSION=0;
-      VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
+      VK_EXT_DEPTH_CLIP_ENABLE_SPEC_VERSION=1;
+      VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME='VK_EXT_depth_clip_enable';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
       VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=3;
@@ -659,10 +671,10 @@ const VK_NULL_HANDLE=0;
       VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME='VK_AMD_memory_overallocation_behavior';
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=3;
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME='VK_EXT_vertex_attribute_divisor';
-      VK_GOOGLE_EXTENSION_192_SPEC_VERSION=0;
-      VK_GOOGLE_EXTENSION_192_EXTENSION_NAME='VK_GOOGLE_extension_192';
-      VK_GOOGLE_EXTENSION_193_SPEC_VERSION=0;
-      VK_GOOGLE_EXTENSION_193_EXTENSION_NAME='VK_GOOGLE_extension_193';
+      VK_GGP_FRAME_TOKEN_SPEC_VERSION=1;
+      VK_GGP_FRAME_TOKEN_EXTENSION_NAME='VK_GGP_frame_token';
+      VK_EXT_PIPELINE_CREATION_FEEDBACK_SPEC_VERSION=1;
+      VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME='VK_EXT_pipeline_creation_feedback';
       VK_GOOGLE_EXTENSION_194_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_194_EXTENSION_NAME='VK_GOOGLE_extension_194';
       VK_GOOGLE_EXTENSION_195_SPEC_VERSION=0;
@@ -703,16 +715,16 @@ const VK_NULL_HANDLE=0;
       VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
       VK_EXT_PCI_BUS_INFO_SPEC_VERSION=2;
       VK_EXT_PCI_BUS_INFO_EXTENSION_NAME='VK_EXT_pci_bus_info';
-      VK_KHR_EXTENSION_214_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_214_EXTENSION_NAME='VK_KHR_extension_214';
+      VK_AMD_DISPLAY_NATIVE_HDR_SPEC_VERSION=1;
+      VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME='VK_AMD_display_native_hdr';
       VK_FUCHSIA_IMAGEPIPE_SURFACE_SPEC_VERSION=1;
       VK_FUCHSIA_IMAGEPIPE_SURFACE_EXTENSION_NAME='VK_FUCHSIA_imagepipe_surface';
       VK_KHR_EXTENSION_216_SPEC_VERSION=0;
       VK_KHR_EXTENSION_216_EXTENSION_NAME='VK_KHR_extension_216';
       VK_KHR_EXTENSION_217_SPEC_VERSION=0;
       VK_KHR_EXTENSION_217_EXTENSION_NAME='VK_KHR_extension_217';
-      VK_EXT_MACOS_IOS_WINDOW_SPEC_VERSION=0;
-      VK_EXT_MACOS_IOS_WINDOW_EXTENSION_NAME='VK_EXT_macos_ios_window';
+      VK_EXT_METAL_SURFACE_SPEC_VERSION=1;
+      VK_EXT_METAL_SURFACE_EXTENSION_NAME='VK_EXT_metal_surface';
       VK_EXT_FRAGMENT_DENSITY_MAP_SPEC_VERSION=1;
       VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME='VK_EXT_fragment_density_map';
       VK_EXT_EXTENSION_220_SPEC_VERSION=0;
@@ -755,8 +767,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME='VK_EXT_memory_budget';
       VK_EXT_MEMORY_PRIORITY_SPEC_VERSION=1;
       VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME='VK_EXT_memory_priority';
-      VK_KHR_EXTENSION_240_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_240_EXTENSION_NAME='VK_KHR_extension_240';
+      VK_KHR_SURFACE_PROTECTED_CAPABILITIES_SPEC_VERSION=1;
+      VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME='VK_KHR_surface_protected_capabilities';
       VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_SPEC_VERSION=1;
       VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_EXTENSION_NAME='VK_NV_dedicated_allocation_image_aliasing';
       VK_NV_EXTENSION_242_SPEC_VERSION=0;
@@ -775,20 +787,32 @@ const VK_NULL_HANDLE=0;
       VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME='VK_EXT_validation_features';
       VK_KHR_EXTENSION_249_SPEC_VERSION=0;
       VK_KHR_EXTENSION_249_EXTENSION_NAME='VK_KHR_extension_249';
-      VK_NV_EXTENSION_250_SPEC_VERSION=0;
-      VK_NV_EXTENSION_250_EXTENSION_NAME='VK_NV_extension_250';
+      VK_NV_COOPERATIVE_MATRIX_SPEC_VERSION=1;
+      VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME='VK_NV_cooperative_matrix';
       VK_NV_EXTENSION_251_SPEC_VERSION=0;
       VK_NV_EXTENSION_251_EXTENSION_NAME='VK_NV_extension_251';
       VK_NV_EXTENSION_252_SPEC_VERSION=0;
       VK_NV_EXTENSION_252_EXTENSION_NAME='VK_NV_extension_252';
-      VK_NV_EXTENSION_253_SPEC_VERSION=0;
-      VK_NV_EXTENSION_253_EXTENSION_NAME='VK_NV_extension_253';
+      VK_EXT_YCBCR_IMAGE_ARRAYS_SPEC_VERSION=1;
+      VK_EXT_YCBCR_IMAGE_ARRAYS_EXTENSION_NAME='VK_EXT_ycbcr_image_arrays';
       VK_EXT_EXTENSION_254_SPEC_VERSION=1;
       VK_EXT_EXTENSION_254_EXTENSION_NAME='VK_EXT_extension_254';
       VK_EXT_EXTENSION_255_SPEC_VERSION=0;
       VK_EXT_EXTENSION_255_EXTENSION_NAME='VK_EXT_extension_255';
-      VK_EXT_EXTENSION_256_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_256_EXTENSION_NAME='VK_EXT_extension_256';
+      VK_EXT_FULL_SCREEN_EXCLUSIVE_SPEC_VERSION=3;
+      VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME='VK_EXT_full_screen_exclusive';
+      VK_EXT_EXTENSION_257_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_257_EXTENSION_NAME='VK_EXT_extension_257';
+      VK_EXT_EXTENSION_258_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_258_EXTENSION_NAME='VK_EXT_extension_258';
+      VK_EXT_EXTENSION_259_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_259_EXTENSION_NAME='VK_EXT_extension_259';
+      VK_EXT_EXTENSION_260_SPEC_VERSION=0;
+      VK_EXT_extension_260='VK_EXT_extension_260';
+      VK_NV_EXTENSION_261_SPEC_VERSION=0;
+      VK_NV_EXTENSION_261_EXTENSION_NAME='VK_NV_extension_261';
+      VK_EXT_HOST_QUERY_RESET_SPEC_VERSION=1;
+      VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME='VK_EXT_host_query_reset';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -810,6 +834,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkHWND=^PVkHWND;
      PVkHWND=^TVkHWND;
      TVkHWND=HWND;
+
+     PPVkHMONITOR=^PVkHMONITOR;
+     PVkHMONITOR=^TVkHMONITOR;
+     TVkHMONITOR=HMONITOR;
 {$endif}
 
      PPVkSampleMask=^PVkSampleMask;
@@ -1096,6 +1124,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorUpdateTemplateCreateFlagsKHR=PVkDescriptorUpdateTemplateCreateFlags;
      TVkDescriptorUpdateTemplateCreateFlagsKHR=TVkDescriptorUpdateTemplateCreateFlags;
 
+     PPVkPipelineCreationFeedbackFlagsEXT=^PVkPipelineCreationFeedbackFlagsEXT;
+     PVkPipelineCreationFeedbackFlagsEXT=^TVkPipelineCreationFeedbackFlagsEXT;
+     TVkPipelineCreationFeedbackFlagsEXT=TVkFlags;
+
      PPVkCompositeAlphaFlagsKHR=^PVkCompositeAlphaFlagsKHR;
      PVkCompositeAlphaFlagsKHR=^TVkCompositeAlphaFlagsKHR;
      TVkCompositeAlphaFlagsKHR=TVkFlags;
@@ -1152,9 +1184,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMacOSSurfaceCreateFlagsMVK=^TVkMacOSSurfaceCreateFlagsMVK;
      TVkMacOSSurfaceCreateFlagsMVK=TVkFlags;
 
+     PPVkMetalSurfaceCreateFlagsEXT=^PVkMetalSurfaceCreateFlagsEXT;
+     PVkMetalSurfaceCreateFlagsEXT=^TVkMetalSurfaceCreateFlagsEXT;
+     TVkMetalSurfaceCreateFlagsEXT=TVkFlags;
+
      PPVkImagePipeSurfaceCreateFlagsFUCHSIA=^PVkImagePipeSurfaceCreateFlagsFUCHSIA;
      PVkImagePipeSurfaceCreateFlagsFUCHSIA=^TVkImagePipeSurfaceCreateFlagsFUCHSIA;
      TVkImagePipeSurfaceCreateFlagsFUCHSIA=TVkFlags;
+
+     PPVkStreamDescriptorSurfaceCreateFlagsGGP=^PVkStreamDescriptorSurfaceCreateFlagsGGP;
+     PVkStreamDescriptorSurfaceCreateFlagsGGP=^TVkStreamDescriptorSurfaceCreateFlagsGGP;
+     TVkStreamDescriptorSurfaceCreateFlagsGGP=TVkFlags;
 
      PPVkPeerMemoryFeatureFlags=^PVkPeerMemoryFeatureFlags;
      PVkPeerMemoryFeatureFlags=^TVkPeerMemoryFeatureFlags;
@@ -1319,6 +1359,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkPipelineRasterizationStateStreamCreateFlagsEXT=^PVkPipelineRasterizationStateStreamCreateFlagsEXT;
      PVkPipelineRasterizationStateStreamCreateFlagsEXT=^TVkPipelineRasterizationStateStreamCreateFlagsEXT;
      TVkPipelineRasterizationStateStreamCreateFlagsEXT=TVkFlags;
+
+     PPVkPipelineRasterizationDepthClipStateCreateFlagsEXT=^PVkPipelineRasterizationDepthClipStateCreateFlagsEXT;
+     PVkPipelineRasterizationDepthClipStateCreateFlagsEXT=^TVkPipelineRasterizationDepthClipStateCreateFlagsEXT;
+     TVkPipelineRasterizationDepthClipStateCreateFlagsEXT=TVkFlags;
 
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
@@ -2230,7 +2274,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT=1000028000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT=1000028001,
        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT=1000028002,
+       VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX=1000030000,
        VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD=1000041000,
+       VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP=1000049000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV=1000050000,
        VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO=1000053000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES=1000053001,
@@ -2322,6 +2368,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT=1000099001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT=1000101000,
        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT=1000101001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT=1000102000,
+       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT=1000102001,
        VK_STRUCTURE_TYPE_HDR_METADATA_EXT=1000105000,
        VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR=1000109000,
        VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR=1000109001,
@@ -2447,6 +2495,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
+       VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP=1000191000,
+       VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT=1000192000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR=1000196000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR=1000197000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR=1000199000,
@@ -2462,7 +2512,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT=1000212000,
+       VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD=1000213000,
+       VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD=1000213001,
        VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA=1000214000,
+       VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT=1000217000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT=1000218000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT=1000218001,
        VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT=1000218002,
@@ -2470,12 +2523,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT=1000237000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT=1000238000,
        VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT=1000238001,
+       VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR=1000239000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV=1000240000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT=1000244000,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT=1000244001,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT=1000244002,
        VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT=1000246000,
        VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT=1000247000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV=1000249000,
+       VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV=1000249001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV=1000249002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT=1000252000,
+       VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT=1000255000,
+       VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT=1000255001,
+       VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT=1000255002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT=1000261000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
@@ -2551,6 +2613,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkResult=^TVkResult;
      TVkResult=
       (
+       VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT=-1000255000,
        VK_ERROR_INVALID_DEVICE_ADDRESS_EXT=-1000244000,
        VK_ERROR_NOT_PERMITTED_EXT=-1000174001,
        VK_ERROR_FRAGMENTATION_EXT=-1000161000,
@@ -3161,6 +3224,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT=1000104012,
        VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013,
        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT=1000104014,
+       VK_COLOR_SPACE_DISPLAY_NATIVE_AMD=1000213000,
        VK_COLORSPACE_SRGB_NONLINEAR_KHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR        //< Backwards-compatible alias containing a typo
       );
 
@@ -3767,7 +3831,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DRIVER_ID_IMAGINATION_PROPRIETARY_KHR=7,                               //< Imagination Technologies
        VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR=8,                                  //< Qualcomm Technologies, Inc.
        VK_DRIVER_ID_ARM_PROPRIETARY_KHR=9,                                       //< Arm Limited
-       VK_DRIVER_ID_GOOGLE_PASTEL_KHR=10                                         //< Google LLC
+       VK_DRIVER_ID_GOOGLE_PASTEL_KHR=10,                                        //< Google LLC
+       VK_DRIVER_ID_GGP_PROPRIETARY_KHR=11                                       //< Google LLC
       );
 
      PPVkConditionalRenderingFlagBitsEXT=^PVkConditionalRenderingFlagBitsEXT;
@@ -3894,6 +3959,52 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_MEMORY_OVERALLOCATION_BEHAVIOR_DEFAULT_AMD=0,
        VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD=1,
        VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD=2
+      );
+
+     PPVkScopeNV=^PVkScopeNV;
+     PVkScopeNV=^TVkScopeNV;
+     TVkScopeNV=
+      (
+       VK_SCOPE_DEVICE_NV=1,
+       VK_SCOPE_WORKGROUP_NV=2,
+       VK_SCOPE_SUBGROUP_NV=3,
+       VK_SCOPE_QUEUE_FAMILY_NV=5
+      );
+
+     PPVkComponentTypeNV=^PVkComponentTypeNV;
+     PVkComponentTypeNV=^TVkComponentTypeNV;
+     TVkComponentTypeNV=
+      (
+       VK_COMPONENT_TYPE_FLOAT16_NV=0,
+       VK_COMPONENT_TYPE_FLOAT32_NV=1,
+       VK_COMPONENT_TYPE_FLOAT64_NV=2,
+       VK_COMPONENT_TYPE_SINT8_NV=3,
+       VK_COMPONENT_TYPE_SINT16_NV=4,
+       VK_COMPONENT_TYPE_SINT32_NV=5,
+       VK_COMPONENT_TYPE_SINT64_NV=6,
+       VK_COMPONENT_TYPE_UINT8_NV=7,
+       VK_COMPONENT_TYPE_UINT16_NV=8,
+       VK_COMPONENT_TYPE_UINT32_NV=9,
+       VK_COMPONENT_TYPE_UINT64_NV=10
+      );
+
+     PPVkPipelineCreationFeedbackFlagBitsEXT=^PVkPipelineCreationFeedbackFlagBitsEXT;
+     PVkPipelineCreationFeedbackFlagBitsEXT=^TVkPipelineCreationFeedbackFlagBitsEXT;
+     TVkPipelineCreationFeedbackFlagBitsEXT=
+      (
+       VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT=$00000001,
+       VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT=$00000002,
+       VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT_EXT=$00000004
+      );
+
+     PPVkFullScreenExclusiveEXT=^PVkFullScreenExclusiveEXT;
+     PVkFullScreenExclusiveEXT=^TVkFullScreenExclusiveEXT;
+     TVkFullScreenExclusiveEXT=
+      (
+       VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT=0,
+       VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT=1,
+       VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT=2,
+       VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT=3
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
@@ -6829,6 +6940,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+     PPVkStreamDescriptorSurfaceCreateInfoGGP=^PVkStreamDescriptorSurfaceCreateInfoGGP;
+     PVkStreamDescriptorSurfaceCreateInfoGGP=^TVkStreamDescriptorSurfaceCreateInfoGGP;
+     TVkStreamDescriptorSurfaceCreateInfoGGP=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP
+       pNext:PVkVoid;
+       flags:TVkStreamDescriptorSurfaceCreateFlagsGGP;
+       streamDescriptor:TVkGgpStreamDescriptor;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkStreamDescriptorSurfaceCreateFlagsGGP;
+                          const aStreamDescriptor:TVkGgpStreamDescriptor);
+{$endif}
+     end;
+
      PPVkSurfaceFormatKHR=^PVkSurfaceFormatKHR;
      PVkSurfaceFormatKHR=^TVkSurfaceFormatKHR;
      TVkSurfaceFormatKHR=record
@@ -8989,6 +9116,34 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkDisplayNativeHdrSurfaceCapabilitiesAMD=^PVkDisplayNativeHdrSurfaceCapabilitiesAMD;
+     PVkDisplayNativeHdrSurfaceCapabilitiesAMD=^TVkDisplayNativeHdrSurfaceCapabilitiesAMD;
+     TVkDisplayNativeHdrSurfaceCapabilitiesAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD
+       pNext:PVkVoid;
+       localDimmingSupport:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aLocalDimmingSupport:TVkBool32);
+{$endif}
+     end;
+
+     PPVkSwapchainDisplayNativeHdrCreateInfoAMD=^PVkSwapchainDisplayNativeHdrCreateInfoAMD;
+     PVkSwapchainDisplayNativeHdrCreateInfoAMD=^TVkSwapchainDisplayNativeHdrCreateInfoAMD;
+     TVkSwapchainDisplayNativeHdrCreateInfoAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD
+       pNext:PVkVoid;
+       localDimmingEnable:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aLocalDimmingEnable:TVkBool32);
+{$endif}
+     end;
+
      PPVkRefreshCycleDurationGOOGLE=^PVkRefreshCycleDurationGOOGLE;
      PVkRefreshCycleDurationGOOGLE=^TVkRefreshCycleDurationGOOGLE;
      TVkRefreshCycleDurationGOOGLE=record
@@ -9086,6 +9241,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 {$endif}
+
+     PPVkMetalSurfaceCreateInfoEXT=^PVkMetalSurfaceCreateInfoEXT;
+     PVkMetalSurfaceCreateInfoEXT=^TVkMetalSurfaceCreateInfoEXT;
+     TVkMetalSurfaceCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       flags:TVkMetalSurfaceCreateFlagsEXT;
+       pLayer:PVkCAMetalLayer;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkMetalSurfaceCreateFlagsEXT;
+                          const aPLayer:PVkCAMetalLayer);
+{$endif}
+     end;
 
      PPVkViewportWScalingNV=^PVkViewportWScalingNV;
      PVkViewportWScalingNV=^TVkViewportWScalingNV;
@@ -10300,6 +10471,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aShaderRoundingModeRTZFloat16:TVkBool32; //< An implementation can support RTZ
                           const aShaderRoundingModeRTZFloat32:TVkBool32; //< An implementation can support RTZ
                           const aShaderRoundingModeRTZFloat64:TVkBool32); //< An implementation can support RTZ
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceHostQueryResetFeaturesEXT=^PVkPhysicalDeviceHostQueryResetFeaturesEXT;
+     PVkPhysicalDeviceHostQueryResetFeaturesEXT=^TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+     TVkPhysicalDeviceHostQueryResetFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT
+       pNext:PVkVoid;
+       hostQueryReset:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aHostQueryReset:TVkBool32);
 {$endif}
      end;
 
@@ -12147,6 +12332,50 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkSurfaceProtectedCapabilitiesKHR=^PVkSurfaceProtectedCapabilitiesKHR;
+     PVkSurfaceProtectedCapabilitiesKHR=^TVkSurfaceProtectedCapabilitiesKHR;
+     TVkSurfaceProtectedCapabilitiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR
+       pNext:PVkVoid;
+       supportsProtected:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSupportsProtected:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceDepthClipEnableFeaturesEXT=^PVkPhysicalDeviceDepthClipEnableFeaturesEXT;
+     PVkPhysicalDeviceDepthClipEnableFeaturesEXT=^TVkPhysicalDeviceDepthClipEnableFeaturesEXT;
+     TVkPhysicalDeviceDepthClipEnableFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT
+       pNext:PVkVoid;
+       depthClipEnable:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDepthClipEnable:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineRasterizationDepthClipStateCreateInfoEXT=^PVkPipelineRasterizationDepthClipStateCreateInfoEXT;
+     PVkPipelineRasterizationDepthClipStateCreateInfoEXT=^TVkPipelineRasterizationDepthClipStateCreateInfoEXT;
+     TVkPipelineRasterizationDepthClipStateCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineRasterizationDepthClipStateCreateFlagsEXT; //< Reserved
+       depthClipEnable:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkPipelineRasterizationDepthClipStateCreateFlagsEXT; //< Reserved
+                          const aDepthClipEnable:TVkBool32);
+{$endif}
+     end;
+
      PPVkPhysicalDeviceMemoryBudgetPropertiesEXT=^PVkPhysicalDeviceMemoryBudgetPropertiesEXT;
      PVkPhysicalDeviceMemoryBudgetPropertiesEXT=^TVkPhysicalDeviceMemoryBudgetPropertiesEXT;
      TVkPhysicalDeviceMemoryBudgetPropertiesEXT=record
@@ -12231,9 +12460,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT
        pNext:PVkVoid;
-       deviceAddress:TVkDeviceSize;
+       deviceAddress:TVkDeviceAddress;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aDeviceAddress:TVkDeviceSize);
+       constructor Create(const aDeviceAddress:TVkDeviceAddress);
 {$endif}
      end;
 
@@ -12264,6 +12493,186 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aFilterCubic:TVkBool32; //< The combinations of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT
                           const aFilterCubicMinmax:TVkBool32); //< The combination of format, image type (and image view type if provided) can be filtered with VK_FILTER_CUBIC_EXT and ReductionMode of Min or Max
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceCooperativeMatrixFeaturesNV=^PVkPhysicalDeviceCooperativeMatrixFeaturesNV;
+     PVkPhysicalDeviceCooperativeMatrixFeaturesNV=^TVkPhysicalDeviceCooperativeMatrixFeaturesNV;
+     TVkPhysicalDeviceCooperativeMatrixFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV
+       pNext:PVkVoid;
+       cooperativeMatrix:TVkBool32;
+       cooperativeMatrixRobustBufferAccess:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCooperativeMatrix:TVkBool32;
+                          const aCooperativeMatrixRobustBufferAccess:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceCooperativeMatrixPropertiesNV=^PVkPhysicalDeviceCooperativeMatrixPropertiesNV;
+     PVkPhysicalDeviceCooperativeMatrixPropertiesNV=^TVkPhysicalDeviceCooperativeMatrixPropertiesNV;
+     TVkPhysicalDeviceCooperativeMatrixPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV
+       pNext:PVkVoid;
+       cooperativeMatrixSupportedStages:TVkShaderStageFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCooperativeMatrixSupportedStages:TVkShaderStageFlags);
+{$endif}
+     end;
+
+     PPVkCooperativeMatrixPropertiesNV=^PVkCooperativeMatrixPropertiesNV;
+     PVkCooperativeMatrixPropertiesNV=^TVkCooperativeMatrixPropertiesNV;
+     TVkCooperativeMatrixPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV
+       pNext:PVkVoid;
+       MSize:TVkUInt32;
+       NSize:TVkUInt32;
+       KSize:TVkUInt32;
+       AType:TVkComponentTypeNV;
+       BType:TVkComponentTypeNV;
+       CType:TVkComponentTypeNV;
+       DType:TVkComponentTypeNV;
+       scope:TVkScopeNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMSize:TVkUInt32;
+                          const aNSize:TVkUInt32;
+                          const aKSize:TVkUInt32;
+                          const aAType:TVkComponentTypeNV;
+                          const aBType:TVkComponentTypeNV;
+                          const aCType:TVkComponentTypeNV;
+                          const aDType:TVkComponentTypeNV;
+                          const aScope:TVkScopeNV);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceYcbcrImageArraysFeaturesEXT=^PVkPhysicalDeviceYcbcrImageArraysFeaturesEXT;
+     PVkPhysicalDeviceYcbcrImageArraysFeaturesEXT=^TVkPhysicalDeviceYcbcrImageArraysFeaturesEXT;
+     TVkPhysicalDeviceYcbcrImageArraysFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT
+       pNext:PVkVoid;
+       ycbcrImageArrays:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aYcbcrImageArrays:TVkBool32);
+{$endif}
+     end;
+
+     PPVkImageViewHandleInfoNVX=^PVkImageViewHandleInfoNVX;
+     PVkImageViewHandleInfoNVX=^TVkImageViewHandleInfoNVX;
+     TVkImageViewHandleInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX
+       pNext:PVkVoid;
+       imageView:TVkImageView;
+       descriptorType:TVkDescriptorType;
+       sampler:TVkSampler;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aImageView:TVkImageView;
+                          const aDescriptorType:TVkDescriptorType;
+                          const aSampler:TVkSampler);
+{$endif}
+     end;
+
+     PPVkPresentFrameTokenGGP=^PVkPresentFrameTokenGGP;
+     PVkPresentFrameTokenGGP=^TVkPresentFrameTokenGGP;
+     TVkPresentFrameTokenGGP=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP
+       pNext:PVkVoid;
+       frameToken:TVkGgpFrameToken;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFrameToken:TVkGgpFrameToken);
+{$endif}
+     end;
+
+     PPVkPipelineCreationFeedbackEXT=^PVkPipelineCreationFeedbackEXT;
+     PVkPipelineCreationFeedbackEXT=^TVkPipelineCreationFeedbackEXT;
+     TVkPipelineCreationFeedbackEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TVkPipelineCreationFeedbackFlagsEXT;
+       duration:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkPipelineCreationFeedbackFlagsEXT;
+                          const aDuration:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkPipelineCreationFeedbackCreateInfoEXT=^PVkPipelineCreationFeedbackCreateInfoEXT;
+     PVkPipelineCreationFeedbackCreateInfoEXT=^TVkPipelineCreationFeedbackCreateInfoEXT;
+     TVkPipelineCreationFeedbackCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       pPipelineCreationFeedback:PVkPipelineCreationFeedbackEXT;
+       pipelineStageCreationFeedbackCount:TVkUInt32;
+       pPipelineStageCreationFeedbacks:PPVkPipelineCreationFeedbackEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPPipelineCreationFeedback:PVkPipelineCreationFeedbackEXT;
+                          const aPipelineStageCreationFeedbackCount:TVkUInt32;
+                          const aPPipelineStageCreationFeedbacks:PPVkPipelineCreationFeedbackEXT);
+{$endif}
+     end;
+
+     PPVkSurfaceFullScreenExclusiveInfoEXT=^PVkSurfaceFullScreenExclusiveInfoEXT;
+     PVkSurfaceFullScreenExclusiveInfoEXT=^TVkSurfaceFullScreenExclusiveInfoEXT;
+     TVkSurfaceFullScreenExclusiveInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT
+       pNext:PVkVoid;
+       fullScreenExclusive:TVkFullScreenExclusiveEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFullScreenExclusive:TVkFullScreenExclusiveEXT);
+{$endif}
+     end;
+
+{$ifdef Windows}
+     PPVkSurfaceFullScreenExclusiveWin32InfoEXT=^PVkSurfaceFullScreenExclusiveWin32InfoEXT;
+     PVkSurfaceFullScreenExclusiveWin32InfoEXT=^TVkSurfaceFullScreenExclusiveWin32InfoEXT;
+     TVkSurfaceFullScreenExclusiveWin32InfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT
+       pNext:PVkVoid;
+       hmonitor_:TVkHMONITOR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aHmonitor_:TVkHMONITOR);
+{$endif}
+     end;
+{$endif}
+
+     PPVkSurfaceCapabilitiesFullScreenExclusiveEXT=^PVkSurfaceCapabilitiesFullScreenExclusiveEXT;
+     PVkSurfaceCapabilitiesFullScreenExclusiveEXT=^TVkSurfaceCapabilitiesFullScreenExclusiveEXT;
+     TVkSurfaceCapabilitiesFullScreenExclusiveEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT
+       pNext:PVkVoid;
+       fullScreenExclusiveSupported:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFullScreenExclusiveSupported:TVkBool32);
 {$endif}
      end;
 
@@ -12368,6 +12777,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkDestroyQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkResetQueryPoolEXT=procedure(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -12625,6 +13036,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCreateImagePipeSurfaceFUCHSIA=function(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
+     TvkCreateStreamDescriptorSurfaceGGP=function(instance:TVkInstance;const pCreateInfo:PVkStreamDescriptorSurfaceCreateInfoGGP;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -12833,6 +13246,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCreateMacOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
+     TvkCreateMetalSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkMetalSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -12894,6 +13309,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkSetLocalDimmingAMD=procedure(swapChain:TVkSwapchainKHR;localDimmingEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -13003,6 +13420,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetBufferDeviceAddressEXT=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetPhysicalDeviceCooperativeMatrixPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetImageViewHandleNVX=function(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceSurfacePresentModes2EXT=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDeviceGroupSurfacePresentModes2EXT=function(device:TVkDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkAcquireFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkReleaseFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 
      PPVulkanCommands=^PVulkanCommands;
      PVulkanCommands=^TVulkanCommands;
@@ -13108,6 +13537,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       DestroyQueryPool:TvkDestroyQueryPool;
 
       GetQueryPoolResults:TvkGetQueryPoolResults;
+
+      ResetQueryPoolEXT:TvkResetQueryPoolEXT;
 
       CreateBuffer:TvkCreateBuffer;
 
@@ -13365,6 +13796,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CreateImagePipeSurfaceFUCHSIA:TvkCreateImagePipeSurfaceFUCHSIA;
 {$endif}
 
+      CreateStreamDescriptorSurfaceGGP:TvkCreateStreamDescriptorSurfaceGGP;
+
       CreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT;
 
       DestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT;
@@ -13573,6 +14006,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK;
 {$endif}
 
+      CreateMetalSurfaceEXT:TvkCreateMetalSurfaceEXT;
+
       CmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV;
 
       CmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT;
@@ -13634,6 +14069,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       QueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID;
 
       GetShaderInfoAMD:TvkGetShaderInfoAMD;
+
+      SetLocalDimmingAMD:TvkSetLocalDimmingAMD;
 
       GetPhysicalDeviceCalibrateableTimeDomainsEXT:TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT;
 
@@ -13742,6 +14179,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT;
 
       GetBufferDeviceAddressEXT:TvkGetBufferDeviceAddressEXT;
+
+      GetPhysicalDeviceCooperativeMatrixPropertiesNV:TvkGetPhysicalDeviceCooperativeMatrixPropertiesNV;
+
+      GetImageViewHandleNVX:TvkGetImageViewHandleNVX;
+
+      GetPhysicalDeviceSurfacePresentModes2EXT:TvkGetPhysicalDeviceSurfacePresentModes2EXT;
+
+      GetDeviceGroupSurfacePresentModes2EXT:TvkGetDeviceGroupSurfacePresentModes2EXT;
+
+      AcquireFullScreenExclusiveModeEXT:TvkAcquireFullScreenExclusiveModeEXT;
+
+      ReleaseFullScreenExclusiveModeEXT:TvkReleaseFullScreenExclusiveModeEXT;
 
      end;
 
@@ -13853,6 +14302,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure DestroyQueryPool(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); virtual;
 
        function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
+
+       procedure ResetQueryPoolEXT(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); virtual;
 
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
 
@@ -14110,6 +14561,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function CreateImagePipeSurfaceFUCHSIA(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
 
+       function CreateStreamDescriptorSurfaceGGP(instance:TVkInstance;const pCreateInfo:PVkStreamDescriptorSurfaceCreateInfoGGP;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
        function CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; virtual;
 
        procedure DestroyDebugReportCallbackEXT(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); virtual;
@@ -14318,6 +14771,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function CreateMacOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
 
+       function CreateMetalSurfaceEXT(instance:TVkInstance;const pCreateInfo:PVkMetalSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
        procedure CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); virtual;
 
        procedure CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); virtual;
@@ -14379,6 +14834,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function QueueSignalReleaseImageANDROID(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; virtual;
 
        function GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; virtual;
+
+       procedure SetLocalDimmingAMD(swapChain:TVkSwapchainKHR;localDimmingEnable:TVkBool32); virtual;
 
        function GetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult; virtual;
 
@@ -14488,6 +14945,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetBufferDeviceAddressEXT(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress; virtual;
 
+       function GetPhysicalDeviceCooperativeMatrixPropertiesNV(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesNV):TVkResult; virtual;
+
+       function GetImageViewHandleNVX(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt32; virtual;
+
+       function GetPhysicalDeviceSurfacePresentModes2EXT(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; virtual;
+
+       function GetDeviceGroupSurfacePresentModes2EXT(device:TVkDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; virtual;
+
+       function AcquireFullScreenExclusiveModeEXT(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; virtual;
+
+       function ReleaseFullScreenExclusiveModeEXT(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -14596,6 +15065,8 @@ var LibVulkan:pointer=nil;
     vkDestroyQueryPool:TvkDestroyQueryPool=nil;
 
     vkGetQueryPoolResults:TvkGetQueryPoolResults=nil;
+
+    vkResetQueryPoolEXT:TvkResetQueryPoolEXT=nil;
 
     vkCreateBuffer:TvkCreateBuffer=nil;
 
@@ -14853,6 +15324,8 @@ var LibVulkan:pointer=nil;
     vkCreateImagePipeSurfaceFUCHSIA:TvkCreateImagePipeSurfaceFUCHSIA=nil;
 {$endif}
 
+    vkCreateStreamDescriptorSurfaceGGP:TvkCreateStreamDescriptorSurfaceGGP=nil;
+
     vkCreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT=nil;
 
     vkDestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT=nil;
@@ -15061,6 +15534,8 @@ var LibVulkan:pointer=nil;
     vkCreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK=nil;
 {$endif}
 
+    vkCreateMetalSurfaceEXT:TvkCreateMetalSurfaceEXT=nil;
+
     vkCmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV=nil;
 
     vkCmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT=nil;
@@ -15122,6 +15597,8 @@ var LibVulkan:pointer=nil;
     vkQueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID=nil;
 
     vkGetShaderInfoAMD:TvkGetShaderInfoAMD=nil;
+
+    vkSetLocalDimmingAMD:TvkSetLocalDimmingAMD=nil;
 
     vkGetPhysicalDeviceCalibrateableTimeDomainsEXT:TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=nil;
 
@@ -15230,6 +15707,18 @@ var LibVulkan:pointer=nil;
     vkGetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT=nil;
 
     vkGetBufferDeviceAddressEXT:TvkGetBufferDeviceAddressEXT=nil;
+
+    vkGetPhysicalDeviceCooperativeMatrixPropertiesNV:TvkGetPhysicalDeviceCooperativeMatrixPropertiesNV=nil;
+
+    vkGetImageViewHandleNVX:TvkGetImageViewHandleNVX=nil;
+
+    vkGetPhysicalDeviceSurfacePresentModes2EXT:TvkGetPhysicalDeviceSurfacePresentModes2EXT=nil;
+
+    vkGetDeviceGroupSurfacePresentModes2EXT:TvkGetDeviceGroupSurfacePresentModes2EXT=nil;
+
+    vkAcquireFullScreenExclusiveModeEXT:TvkAcquireFullScreenExclusiveModeEXT=nil;
+
+    vkReleaseFullScreenExclusiveModeEXT:TvkReleaseFullScreenExclusiveModeEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -15546,6 +16035,10 @@ begin
   if not assigned(vkGetQueryPoolResults) then begin
    @vkGetQueryPoolResults:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueryPoolResults'));
    @vk.fCommands.GetQueryPoolResults:=addr(vkGetQueryPoolResults);
+  end;
+  if not assigned(vkResetQueryPoolEXT) then begin
+   @vkResetQueryPoolEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetQueryPoolEXT'));
+   @vk.fCommands.ResetQueryPoolEXT:=addr(vkResetQueryPoolEXT);
   end;
   if not assigned(vkCreateBuffer) then begin
    @vkCreateBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateBuffer'));
@@ -16039,6 +16532,10 @@ begin
    @vk.fCommands.CreateImagePipeSurfaceFUCHSIA:=addr(vkCreateImagePipeSurfaceFUCHSIA);
   end;
 {$endif}
+  if not assigned(vkCreateStreamDescriptorSurfaceGGP) then begin
+   @vkCreateStreamDescriptorSurfaceGGP:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateStreamDescriptorSurfaceGGP'));
+   @vk.fCommands.CreateStreamDescriptorSurfaceGGP:=addr(vkCreateStreamDescriptorSurfaceGGP);
+  end;
   if not assigned(vkCreateDebugReportCallbackEXT) then begin
    @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDebugReportCallbackEXT'));
    @vk.fCommands.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
@@ -16433,6 +16930,10 @@ begin
    @vk.fCommands.CreateMacOSSurfaceMVK:=addr(vkCreateMacOSSurfaceMVK);
   end;
 {$endif}
+  if not assigned(vkCreateMetalSurfaceEXT) then begin
+   @vkCreateMetalSurfaceEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMetalSurfaceEXT'));
+   @vk.fCommands.CreateMetalSurfaceEXT:=addr(vkCreateMetalSurfaceEXT);
+  end;
   if not assigned(vkCmdSetViewportWScalingNV) then begin
    @vkCmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewportWScalingNV'));
    @vk.fCommands.CmdSetViewportWScalingNV:=addr(vkCmdSetViewportWScalingNV);
@@ -16556,6 +17057,10 @@ begin
   if not assigned(vkGetShaderInfoAMD) then begin
    @vkGetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetShaderInfoAMD'));
    @vk.fCommands.GetShaderInfoAMD:=addr(vkGetShaderInfoAMD);
+  end;
+  if not assigned(vkSetLocalDimmingAMD) then begin
+   @vkSetLocalDimmingAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetLocalDimmingAMD'));
+   @vk.fCommands.SetLocalDimmingAMD:=addr(vkSetLocalDimmingAMD);
   end;
   if not assigned(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT) then begin
    @vkGetPhysicalDeviceCalibrateableTimeDomainsEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceCalibrateableTimeDomainsEXT'));
@@ -16769,6 +17274,30 @@ begin
    @vkGetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetBufferDeviceAddressEXT'));
    @vk.fCommands.GetBufferDeviceAddressEXT:=addr(vkGetBufferDeviceAddressEXT);
   end;
+  if not assigned(vkGetPhysicalDeviceCooperativeMatrixPropertiesNV) then begin
+   @vkGetPhysicalDeviceCooperativeMatrixPropertiesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceCooperativeMatrixPropertiesNV'));
+   @vk.fCommands.GetPhysicalDeviceCooperativeMatrixPropertiesNV:=addr(vkGetPhysicalDeviceCooperativeMatrixPropertiesNV);
+  end;
+  if not assigned(vkGetImageViewHandleNVX) then begin
+   @vkGetImageViewHandleNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageViewHandleNVX'));
+   @vk.fCommands.GetImageViewHandleNVX:=addr(vkGetImageViewHandleNVX);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfacePresentModes2EXT) then begin
+   @vkGetPhysicalDeviceSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfacePresentModes2EXT'));
+   @vk.fCommands.GetPhysicalDeviceSurfacePresentModes2EXT:=addr(vkGetPhysicalDeviceSurfacePresentModes2EXT);
+  end;
+  if not assigned(vkGetDeviceGroupSurfacePresentModes2EXT) then begin
+   @vkGetDeviceGroupSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceGroupSurfacePresentModes2EXT'));
+   @vk.fCommands.GetDeviceGroupSurfacePresentModes2EXT:=addr(vkGetDeviceGroupSurfacePresentModes2EXT);
+  end;
+  if not assigned(vkAcquireFullScreenExclusiveModeEXT) then begin
+   @vkAcquireFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireFullScreenExclusiveModeEXT'));
+   @vk.fCommands.AcquireFullScreenExclusiveModeEXT:=addr(vkAcquireFullScreenExclusiveModeEXT);
+  end;
+  if not assigned(vkReleaseFullScreenExclusiveModeEXT) then begin
+   @vkReleaseFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkReleaseFullScreenExclusiveModeEXT'));
+   @vk.fCommands.ReleaseFullScreenExclusiveModeEXT:=addr(vkReleaseFullScreenExclusiveModeEXT);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -16829,6 +17358,7 @@ begin
   @InstanceCommands.CreateQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateQueryPool')));
   @InstanceCommands.DestroyQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyQueryPool')));
   @InstanceCommands.GetQueryPoolResults:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetQueryPoolResults')));
+  @InstanceCommands.ResetQueryPoolEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkResetQueryPoolEXT')));
   @InstanceCommands.CreateBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateBuffer')));
   @InstanceCommands.DestroyBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyBuffer')));
   @InstanceCommands.CreateBufferView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateBufferView')));
@@ -16967,6 +17497,7 @@ begin
 {$ifdef Fuchsia}
   @InstanceCommands.CreateImagePipeSurfaceFUCHSIA:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateImagePipeSurfaceFUCHSIA')));
 {$endif}
+  @InstanceCommands.CreateStreamDescriptorSurfaceGGP:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateStreamDescriptorSurfaceGGP')));
   @InstanceCommands.CreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDebugReportCallbackEXT')));
   @InstanceCommands.DestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDebugReportCallbackEXT')));
   @InstanceCommands.DebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDebugReportMessageEXT')));
@@ -17082,6 +17613,7 @@ begin
 {$ifdef MoltenVK_MacOS}
   @InstanceCommands.CreateMacOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateMacOSSurfaceMVK')));
 {$endif}
+  @InstanceCommands.CreateMetalSurfaceEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateMetalSurfaceEXT')));
   @InstanceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportWScalingNV')));
   @InstanceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDiscardRectangleEXT')));
   @InstanceCommands.CmdSetSampleLocationsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetSampleLocationsEXT')));
@@ -17113,6 +17645,7 @@ begin
   @InstanceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireImageANDROID')));
   @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @InstanceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetShaderInfoAMD')));
+  @InstanceCommands.SetLocalDimmingAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetLocalDimmingAMD')));
   @InstanceCommands.GetPhysicalDeviceCalibrateableTimeDomainsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceCalibrateableTimeDomainsEXT')));
   @InstanceCommands.GetCalibratedTimestampsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetCalibratedTimestampsEXT')));
   @InstanceCommands.SetDebugUtilsObjectNameEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetDebugUtilsObjectNameEXT')));
@@ -17169,6 +17702,12 @@ begin
   @InstanceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateRayTracingPipelinesNV')));
   @InstanceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   @InstanceCommands.GetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetBufferDeviceAddressEXT')));
+  @InstanceCommands.GetPhysicalDeviceCooperativeMatrixPropertiesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceCooperativeMatrixPropertiesNV')));
+  @InstanceCommands.GetImageViewHandleNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageViewHandleNVX')));
+  @InstanceCommands.GetPhysicalDeviceSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfacePresentModes2EXT')));
+  @InstanceCommands.GetDeviceGroupSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupSurfacePresentModes2EXT')));
+  @InstanceCommands.AcquireFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireFullScreenExclusiveModeEXT')));
+  @InstanceCommands.ReleaseFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkReleaseFullScreenExclusiveModeEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -17222,6 +17761,7 @@ begin
   @DeviceCommands.CreateQueryPool:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateQueryPool')));
   @DeviceCommands.DestroyQueryPool:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyQueryPool')));
   @DeviceCommands.GetQueryPoolResults:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetQueryPoolResults')));
+  @DeviceCommands.ResetQueryPoolEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkResetQueryPoolEXT')));
   @DeviceCommands.CreateBuffer:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateBuffer')));
   @DeviceCommands.DestroyBuffer:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyBuffer')));
   @DeviceCommands.CreateBufferView:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateBufferView')));
@@ -17466,6 +18006,10 @@ begin
   @DeviceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateRayTracingPipelinesNV')));
   @DeviceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   @DeviceCommands.GetBufferDeviceAddressEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetBufferDeviceAddressEXT')));
+  @DeviceCommands.GetImageViewHandleNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageViewHandleNVX')));
+  @DeviceCommands.GetDeviceGroupSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupSurfacePresentModes2EXT')));
+  @DeviceCommands.AcquireFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireFullScreenExclusiveModeEXT')));
+  @DeviceCommands.ReleaseFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkReleaseFullScreenExclusiveModeEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -19517,6 +20061,15 @@ begin
 end;
 {$endif}
 
+constructor TVkStreamDescriptorSurfaceCreateInfoGGP.Create(const aFlags:TVkStreamDescriptorSurfaceCreateFlagsGGP;
+                                                           const aStreamDescriptor:TVkGgpStreamDescriptor);
+begin
+ sType:=VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP;
+ pNext:=nil;
+ flags:=aFlags;
+ streamDescriptor:=aStreamDescriptor;
+end;
+
 constructor TVkSurfaceFormatKHR.Create(const aFormat:TVkFormat;
                                        const aColorSpace:TVkColorSpaceKHR);
 begin
@@ -20787,6 +21340,20 @@ begin
  maxFrameAverageLightLevel:=aMaxFrameAverageLightLevel;
 end;
 
+constructor TVkDisplayNativeHdrSurfaceCapabilitiesAMD.Create(const aLocalDimmingSupport:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD;
+ pNext:=nil;
+ localDimmingSupport:=aLocalDimmingSupport;
+end;
+
+constructor TVkSwapchainDisplayNativeHdrCreateInfoAMD.Create(const aLocalDimmingEnable:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD;
+ pNext:=nil;
+ localDimmingEnable:=aLocalDimmingEnable;
+end;
+
 constructor TVkRefreshCycleDurationGOOGLE.Create(const aRefreshDuration:TVkUInt64);
 begin
  refreshDuration:=aRefreshDuration;
@@ -20842,6 +21409,15 @@ begin
  pView:=aPView;
 end;
 {$endif}
+
+constructor TVkMetalSurfaceCreateInfoEXT.Create(const aFlags:TVkMetalSurfaceCreateFlagsEXT;
+                                                const aPLayer:PVkCAMetalLayer);
+begin
+ sType:=VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=aFlags;
+ pLayer:=aPLayer;
+end;
 
 constructor TVkViewportWScalingNV.Create(const aXcoeff:TVkFloat;
                                          const aYcoeff:TVkFloat);
@@ -21498,6 +22074,13 @@ begin
  shaderRoundingModeRTZFloat16:=aShaderRoundingModeRTZFloat16;
  shaderRoundingModeRTZFloat32:=aShaderRoundingModeRTZFloat32;
  shaderRoundingModeRTZFloat64:=aShaderRoundingModeRTZFloat64;
+end;
+
+constructor TVkPhysicalDeviceHostQueryResetFeaturesEXT.Create(const aHostQueryReset:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+ pNext:=nil;
+ hostQueryReset:=aHostQueryReset;
 end;
 
 {$ifdef Android}
@@ -22700,6 +23283,29 @@ begin
  scalarBlockLayout:=aScalarBlockLayout;
 end;
 
+constructor TVkSurfaceProtectedCapabilitiesKHR.Create(const aSupportsProtected:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR;
+ pNext:=nil;
+ supportsProtected:=aSupportsProtected;
+end;
+
+constructor TVkPhysicalDeviceDepthClipEnableFeaturesEXT.Create(const aDepthClipEnable:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+ pNext:=nil;
+ depthClipEnable:=aDepthClipEnable;
+end;
+
+constructor TVkPipelineRasterizationDepthClipStateCreateInfoEXT.Create(const aFlags:TVkPipelineRasterizationDepthClipStateCreateFlagsEXT;
+                                                                       const aDepthClipEnable:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=aFlags;
+ depthClipEnable:=aDepthClipEnable;
+end;
+
 constructor TVkPhysicalDeviceMemoryBudgetPropertiesEXT.Create(const aHeapBudget:array of TVkDeviceSize;
                                                               const aHeapUsage:array of TVkDeviceSize);
 var ArrayItemCount:TVkInt32;
@@ -22755,7 +23361,7 @@ begin
  buffer:=aBuffer;
 end;
 
-constructor TVkBufferDeviceAddressCreateInfoEXT.Create(const aDeviceAddress:TVkDeviceSize);
+constructor TVkBufferDeviceAddressCreateInfoEXT.Create(const aDeviceAddress:TVkDeviceAddress);
 begin
  sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT;
  pNext:=nil;
@@ -22776,6 +23382,109 @@ begin
  pNext:=nil;
  filterCubic:=aFilterCubic;
  filterCubicMinmax:=aFilterCubicMinmax;
+end;
+
+constructor TVkPhysicalDeviceCooperativeMatrixFeaturesNV.Create(const aCooperativeMatrix:TVkBool32;
+                                                                const aCooperativeMatrixRobustBufferAccess:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV;
+ pNext:=nil;
+ cooperativeMatrix:=aCooperativeMatrix;
+ cooperativeMatrixRobustBufferAccess:=aCooperativeMatrixRobustBufferAccess;
+end;
+
+constructor TVkPhysicalDeviceCooperativeMatrixPropertiesNV.Create(const aCooperativeMatrixSupportedStages:TVkShaderStageFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV;
+ pNext:=nil;
+ cooperativeMatrixSupportedStages:=aCooperativeMatrixSupportedStages;
+end;
+
+constructor TVkCooperativeMatrixPropertiesNV.Create(const aMSize:TVkUInt32;
+                                                    const aNSize:TVkUInt32;
+                                                    const aKSize:TVkUInt32;
+                                                    const aAType:TVkComponentTypeNV;
+                                                    const aBType:TVkComponentTypeNV;
+                                                    const aCType:TVkComponentTypeNV;
+                                                    const aDType:TVkComponentTypeNV;
+                                                    const aScope:TVkScopeNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV;
+ pNext:=nil;
+ MSize:=aMSize;
+ NSize:=aNSize;
+ KSize:=aKSize;
+ AType:=aAType;
+ BType:=aBType;
+ CType:=aCType;
+ DType:=aDType;
+ scope:=aScope;
+end;
+
+constructor TVkPhysicalDeviceYcbcrImageArraysFeaturesEXT.Create(const aYcbcrImageArrays:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT;
+ pNext:=nil;
+ ycbcrImageArrays:=aYcbcrImageArrays;
+end;
+
+constructor TVkImageViewHandleInfoNVX.Create(const aImageView:TVkImageView;
+                                             const aDescriptorType:TVkDescriptorType;
+                                             const aSampler:TVkSampler);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX;
+ pNext:=nil;
+ imageView:=aImageView;
+ descriptorType:=aDescriptorType;
+ sampler:=aSampler;
+end;
+
+constructor TVkPresentFrameTokenGGP.Create(const aFrameToken:TVkGgpFrameToken);
+begin
+ sType:=VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP;
+ pNext:=nil;
+ frameToken:=aFrameToken;
+end;
+
+constructor TVkPipelineCreationFeedbackEXT.Create(const aFlags:TVkPipelineCreationFeedbackFlagsEXT;
+                                                  const aDuration:TVkUInt64);
+begin
+ flags:=aFlags;
+ duration:=aDuration;
+end;
+
+constructor TVkPipelineCreationFeedbackCreateInfoEXT.Create(const aPPipelineCreationFeedback:PVkPipelineCreationFeedbackEXT;
+                                                            const aPipelineStageCreationFeedbackCount:TVkUInt32;
+                                                            const aPPipelineStageCreationFeedbacks:PPVkPipelineCreationFeedbackEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT;
+ pNext:=nil;
+ pPipelineCreationFeedback:=aPPipelineCreationFeedback;
+ pipelineStageCreationFeedbackCount:=aPipelineStageCreationFeedbackCount;
+ pPipelineStageCreationFeedbacks:=aPPipelineStageCreationFeedbacks;
+end;
+
+constructor TVkSurfaceFullScreenExclusiveInfoEXT.Create(const aFullScreenExclusive:TVkFullScreenExclusiveEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+ pNext:=nil;
+ fullScreenExclusive:=aFullScreenExclusive;
+end;
+
+{$ifdef Windows}
+constructor TVkSurfaceFullScreenExclusiveWin32InfoEXT.Create(const aHmonitor_:TVkHMONITOR);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
+ pNext:=nil;
+ hmonitor_:=aHmonitor_;
+end;
+{$endif}
+
+constructor TVkSurfaceCapabilitiesFullScreenExclusiveEXT.Create(const aFullScreenExclusiveSupported:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT;
+ pNext:=nil;
+ fullScreenExclusiveSupported:=aFullScreenExclusiveSupported;
 end;
 {$endif}
 
@@ -23049,6 +23758,11 @@ end;
 function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
 begin
  result:=fCommands.GetQueryPoolResults(device,queryPool,firstQuery,queryCount,dataSize,pData,stride,flags);
+end;
+
+procedure TVulkan.ResetQueryPoolEXT(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32);
+begin
+ fCommands.ResetQueryPoolEXT(device,queryPool,firstQuery,queryCount);
 end;
 
 function TVulkan.CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult;
@@ -23661,6 +24375,11 @@ begin
 end;
 {$endif}
 
+function TVulkan.CreateStreamDescriptorSurfaceGGP(instance:TVkInstance;const pCreateInfo:PVkStreamDescriptorSurfaceCreateInfoGGP;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
+begin
+ result:=fCommands.CreateStreamDescriptorSurfaceGGP(instance,pCreateInfo,pAllocator,pSurface);
+end;
+
 function TVulkan.CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult;
 begin
  result:=fCommands.CreateDebugReportCallbackEXT(instance,pCreateInfo,pAllocator,pCallback);
@@ -24148,6 +24867,11 @@ begin
 end;
 {$endif}
 
+function TVulkan.CreateMetalSurfaceEXT(instance:TVkInstance;const pCreateInfo:PVkMetalSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
+begin
+ result:=fCommands.CreateMetalSurfaceEXT(instance,pCreateInfo,pAllocator,pSurface);
+end;
+
 procedure TVulkan.CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV);
 begin
  fCommands.CmdSetViewportWScalingNV(commandBuffer,firstViewport,viewportCount,pViewportWScalings);
@@ -24301,6 +25025,11 @@ end;
 function TVulkan.GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetShaderInfoAMD(device,pipeline,shaderStage,infoType,pInfoSize,pInfo);
+end;
+
+procedure TVulkan.SetLocalDimmingAMD(swapChain:TVkSwapchainKHR;localDimmingEnable:TVkBool32);
+begin
+ fCommands.SetLocalDimmingAMD(swapChain,localDimmingEnable);
 end;
 
 function TVulkan.GetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult;
@@ -24565,6 +25294,36 @@ end;
 function TVulkan.GetBufferDeviceAddressEXT(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfoEXT):TVkDeviceAddress;
 begin
  result:=fCommands.GetBufferDeviceAddressEXT(device,pInfo);
+end;
+
+function TVulkan.GetPhysicalDeviceCooperativeMatrixPropertiesNV(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesNV):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceCooperativeMatrixPropertiesNV(physicalDevice,pPropertyCount,pProperties);
+end;
+
+function TVulkan.GetImageViewHandleNVX(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt32;
+begin
+ result:=fCommands.GetImageViewHandleNVX(device,pInfo);
+end;
+
+function TVulkan.GetPhysicalDeviceSurfacePresentModes2EXT(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceSurfacePresentModes2EXT(physicalDevice,pSurfaceInfo,pPresentModeCount,pPresentModes);
+end;
+
+function TVulkan.GetDeviceGroupSurfacePresentModes2EXT(device:TVkDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult;
+begin
+ result:=fCommands.GetDeviceGroupSurfacePresentModes2EXT(device,pSurfaceInfo,pModes);
+end;
+
+function TVulkan.AcquireFullScreenExclusiveModeEXT(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult;
+begin
+ result:=fCommands.AcquireFullScreenExclusiveModeEXT(device,swapchain);
+end;
+
+function TVulkan.ReleaseFullScreenExclusiveModeEXT(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult;
+begin
+ result:=fCommands.ReleaseFullScreenExclusiveModeEXT(device,swapchain);
 end;
 
 initialization
