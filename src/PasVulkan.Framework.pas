@@ -574,6 +574,7 @@ type EpvVulkanException=class(Exception);
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
       published
+       property Instance:TpvVulkanInstance read fInstance;
        property PhysicalDevice:TpvVulkanPhysicalDevice read fPhysicalDevice;
        property Surface:TpvVulkanSurface read fSurface;
        property EnabledLayerNames:TStringList read fEnabledLayerNames;
