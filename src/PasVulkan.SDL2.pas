@@ -326,6 +326,11 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOWEVENT_FOCUS_LOST=13;   //*< Window has lost keyboard focus
       SDL_WINDOWEVENT_CLOSE=14;   //*< The window manager requests that the window be closed */
 
+      SDL_BLENDMODE_NONE=$00000000; // **< No blending
+      SDL_BLENDMODE_BLEND=$00000001; // **< dst = (src * A) + (dst * (1-A))
+      SDL_BLENDMODE_ADD=$00000002;  // **< dst = (src * A) + dst
+      SDL_BLENDMODE_MOD=$00000004;  // **< dst = src * dst
+
 {$ifdef fpc_big_endian}
       RMask=$FF000000;
       GMask=$00FF0000;
@@ -932,14 +937,30 @@ const SDL2LibName={$if defined(Win32)}
       SDL_DISABLE=0;
       SDL_ENABLE=1;
 
+      SDL_AUDIO_MASK_BITSIZE=$ff;
+      SDL_AUDIO_MASK_DATATYPE=1 shl 8;
+      SDL_AUDIO_MASK_ENDIAN=1 shl 12;
+      SDL_AUDIO_MASK_SIGNED=1 shl 15;
+
       AUDIO_U8=$0008; // Unsigned 8-bit samples
       AUDIO_S8=$8008; // Signed 8-bit samples
       AUDIO_U16LSB=$0010; // Unsigned 16-bit samples
       AUDIO_S16LSB=$8010; // Signed 16-bit samples
+      AUDIO_S32LSB=$8020;
+      AUDIO_F32LSB=$8120;
       AUDIO_U16MSB=$1010; // As above, but big-endian uint8 order
       AUDIO_S16MSB=$9010; // As above, but big-endian uint8 order
+      AUDIO_S32MSB=$9020;
+      AUDIO_F32MSB=$9120;
       AUDIO_U16=AUDIO_U16LSB;
       AUDIO_S16=AUDIO_S16LSB;
+      AUDIO_S32=AUDIO_S32LSB;
+      AUDIO_F32=AUDIO_F32LSB;
+
+      SDL_AUDIO_ALLOW_FREQUENCY_CHANGE=$00000001;
+      SDL_AUDIO_ALLOW_FORMAT_CHANGE=$00000002;
+      SDL_AUDIO_ALLOW_CHANNELS_CHANGE=$00000004;
+      SDL_AUDIO_ALLOW_ANY_CHANGE=SDL_AUDIO_ALLOW_FREQUENCY_CHANGE or SDL_AUDIO_ALLOW_FORMAT_CHANGE or SDL_AUDIO_ALLOW_CHANNELS_CHANGE;
 
       SDL_SYSWM_UNKNOWN=0;
       SDL_SYSWM_WINDOWS=1;
@@ -953,41 +974,112 @@ const SDL2LibName={$if defined(Win32)}
       SDL_SYSWM_ANDROID=9;
       SDL_SYSWM_VIVANTE=10;
 
+      SDL_ALPHA_OPAQUE = 255;
+      SDL_ALPHA_TRANSPARENT = 0;
+
+      {** Pixel type. *}
+      SDL_PIXELTYPE_UNKNOWN = 0;
+      SDL_PIXELTYPE_INDEX1 = 1;
+      SDL_PIXELTYPE_INDEX4 = 2;
+      SDL_PIXELTYPE_INDEX8 = 3;
+      SDL_PIXELTYPE_PACKED8 = 4;
+      SDL_PIXELTYPE_PACKED16 = 5;
+      SDL_PIXELTYPE_PACKED32 = 6;
+      SDL_PIXELTYPE_ARRAYU8 = 7;
+      SDL_PIXELTYPE_ARRAYU16 = 8;
+      SDL_PIXELTYPE_ARRAYU32 = 9;
+      SDL_PIXELTYPE_ARRAYF16 = 10;
+      SDL_PIXELTYPE_ARRAYF32 = 11;
+
+      {** Bitmap pixel order, high bit -> low bit. *}
+      SDL_BITMAPORDER_NONE = 0;
+      SDL_BITMAPORDER_4321 = 1;
+      SDL_BITMAPORDER_1234 = 2;
+
+      {** Packed component order, high bit -> low bit. *}
+
+      SDL_PACKEDORDER_NONE = 0;
+      SDL_PACKEDORDER_XRGB = 1;
+      SDL_PACKEDORDER_RGBX = 2;
+      SDL_PACKEDORDER_ARGB = 3;
+      SDL_PACKEDORDER_RGBA = 4;
+      SDL_PACKEDORDER_XBGR = 5;
+      SDL_PACKEDORDER_BGRX = 6;
+      SDL_PACKEDORDER_ABGR = 7;
+      SDL_PACKEDORDER_BGRA = 8;
+
+      {** Array component order, low byte -> high byte. *}
+      SDL_ARRAYORDER_NONE = 0;
+      SDL_ARRAYORDER_RGB  = 1;
+      SDL_ARRAYORDER_RGBA = 2;
+      SDL_ARRAYORDER_ARGB = 3;
+      SDL_ARRAYORDER_BGR  = 4;
+      SDL_ARRAYORDER_BGRA = 5;
+      SDL_ARRAYORDER_ABGR = 6;
+
+      {** Packed component layout. *}
+      SDL_PACKEDLAYOUT_NONE = 0;
+      SDL_PACKEDLAYOUT_332  = 1;
+      SDL_PACKEDLAYOUT_4444 = 2;
+      SDL_PACKEDLAYOUT_1555 = 3;
+      SDL_PACKEDLAYOUT_5551 = 4;
+      SDL_PACKEDLAYOUT_565  = 5;
+      SDL_PACKEDLAYOUT_8888 = 6;
+      SDL_PACKEDLAYOUT_2101010 = 7;
+      SDL_PACKEDLAYOUT_1010102 = 8;
+
       SDL_PIXELFORMAT_UNKNOWN=0;
-      SDL_PIXELFORMAT_INDEX1LSB=1;
-      SDL_PIXELFORMAT_INDEX1MSB=2;
-      SDL_PIXELFORMAT_INDEX4LSB=3;
-      SDL_PIXELFORMAT_INDEX4MSB=4;
-      SDL_PIXELFORMAT_INDEX8=5;
-      SDL_PIXELFORMAT_RGB332=6;
-      SDL_PIXELFORMAT_RGB444=7;
-      SDL_PIXELFORMAT_RGB555=8;
-      SDL_PIXELFORMAT_BGR555=9;
-      SDL_PIXELFORMAT_ARGB4444=10;
-      SDL_PIXELFORMAT_RGBA4444=11;
-      SDL_PIXELFORMAT_ABGR4444=12;
-      SDL_PIXELFORMAT_BGRA4444=13;
-      SDL_PIXELFORMAT_ARGB1555=14;
-      SDL_PIXELFORMAT_RGBA5551=15;
-      SDL_PIXELFORMAT_ABGR1555=16;
-      SDL_PIXELFORMAT_BGRA5551=17;
-      SDL_PIXELFORMAT_RGB565=18;
-      SDL_PIXELFORMAT_BGR565=19;
-      SDL_PIXELFORMAT_RGB24=20;
-      SDL_PIXELFORMAT_BGR24=21;
-      SDL_PIXELFORMAT_RGB888=22;
-      SDL_PIXELFORMAT_RGBX8888=23;
-      SDL_PIXELFORMAT_BGR888=24;
-      SDL_PIXELFORMAT_BGRX8888=25;
-      SDL_PIXELFORMAT_ARGB8888=26;
-      SDL_PIXELFORMAT_RGBA8888=27;
-      SDL_PIXELFORMAT_ABGR8888=28;
-      SDL_PIXELFORMAT_BGRA8888=29;
-      SDL_PIXELFORMAT_ARGB2101010=30;
-      SDL_PIXELFORMAT_YV12=31;
-      SDL_PIXELFORMAT_IYUV=32;
-      SDL_PIXELFORMAT_YUY2=33;
-      SDL_PIXELFORMAT_UYVY=34;
+      SDL_PIXELFORMAT_INDEX1LSB=(1 shl 28) or (SDL_PIXELTYPE_INDEX1 shl 24) or (SDL_BITMAPORDER_4321 shl 20) or (0 shl 16) or (1 shl 8) or (0 shl 0);
+      SDL_PIXELFORMAT_INDEX1MSB=(1 shl 28) or (SDL_PIXELTYPE_INDEX1 shl 24) or (SDL_BITMAPORDER_1234 shl 20) or (0 shl 16) or (1 shl 8) or (0 shl 0);
+      SDL_PIXELFORMAT_INDEX4LSB=(1 shl 28) or (SDL_PIXELTYPE_INDEX4 shl 24) or (SDL_BITMAPORDER_4321 shl 20) or (0 shl 16) or (4 shl 8) or (0 shl 0);
+      SDL_PIXELFORMAT_INDEX4MSB=(1 shl 28) or (SDL_PIXELTYPE_INDEX4 shl 24) or (SDL_BITMAPORDER_1234 shl 20) or (0 shl 16) or (4 shl 8) or (0 shl 0);
+      SDL_PIXELFORMAT_INDEX8=(1 shl 28) or (SDL_PIXELTYPE_PACKED8 shl 24) or (0 shl 20) or (0 shl 16) or (8 shl 8) or (1 shl 0);
+      SDL_PIXELFORMAT_RGB332=(1 shl 28) or (SDL_PIXELTYPE_PACKED8 shl 24) or (SDL_PACKEDORDER_XRGB shl 20) or (SDL_PACKEDLAYOUT_332 shl 16) or (8 shl 8) or (1 shl 0);
+      SDL_PIXELFORMAT_RGB444=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_XRGB shl 20) or (SDL_PACKEDLAYOUT_4444 shl 16) or (12 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_RGB555=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_XRGB shl 20) or (SDL_PACKEDLAYOUT_1555 shl 16) or (15 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_BGR555=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_XBGR shl 20) or (SDL_PACKEDLAYOUT_1555 shl 16) or (15 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_ARGB4444=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_ARGB shl 20) or (SDL_PACKEDLAYOUT_4444 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_RGBA4444=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_RGBA shl 20) or (SDL_PACKEDLAYOUT_4444 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_ABGR4444=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_ABGR shl 20) or (SDL_PACKEDLAYOUT_4444 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_BGRA4444=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_BGRA shl 20) or (SDL_PACKEDLAYOUT_4444 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_ARGB1555=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_ARGB shl 20) or (SDL_PACKEDLAYOUT_1555 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_RGBA5551=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_RGBA shl 20) or (SDL_PACKEDLAYOUT_5551 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_ABGR1555=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_ABGR shl 20) or (SDL_PACKEDLAYOUT_1555 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_BGRA5551=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_BGRA shl 20) or (SDL_PACKEDLAYOUT_5551 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_RGB565=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_XRGB shl 20) or (SDL_PACKEDLAYOUT_565 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_BGR565=(1 shl 28) or (SDL_PIXELTYPE_PACKED16 shl 24) or (SDL_PACKEDORDER_XBGR shl 20) or (SDL_PACKEDLAYOUT_1555 shl 16) or (16 shl 8) or (2 shl 0);
+      SDL_PIXELFORMAT_RGB24=(1 shl 28) or (SDL_PIXELTYPE_ARRAYU8 shl 24) or (SDL_ARRAYORDER_RGB shl 20) or (0 shl 16) or (24 shl 8) or (3 shl 0);
+      SDL_PIXELFORMAT_BGR24=(1 shl 28) or (SDL_PIXELTYPE_ARRAYU8 shl 24) or (SDL_ARRAYORDER_BGR shl 20) or (0 shl 16) or (24 shl 8) or (3 shl 0);
+      SDL_PIXELFORMAT_RGB888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_XRGB shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (24 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_RGBX8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_RGBX shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (24 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_BGR888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_XBGR shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (24 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_BGRX8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_BGRX shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (24 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_ARGB8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_ARGB shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (32 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_RGBA8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_RGBA shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (32 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_ABGR8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_ABGR shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (32 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_BGRA8888=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_RGBX shl 20) or (SDL_PACKEDLAYOUT_8888 shl 16) or (32 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_ARGB2101010=(1 shl 28) or (SDL_PIXELTYPE_PACKED32 shl 24) or (SDL_PACKEDORDER_ARGB shl 20) or (SDL_PACKEDLAYOUT_2101010 shl 16) or (32 shl 8) or (4 shl 0);
+      SDL_PIXELFORMAT_YV12=(ord('Y') shl 0) or (ord('V') shl 8) or (ord('1') shl 16) or (ord('2') shl 24);
+      SDL_PIXELFORMAT_IYUV=(ord('I') shl 0) or (ord('Y') shl 8) or (ord('U') shl 16) or (ord('V') shl 24);
+      SDL_PIXELFORMAT_YUY2=(ord('Y') shl 0) or (ord('U') shl 8) or (ord('Y') shl 16) or (ord('2') shl 24);
+      SDL_PIXELFORMAT_UYVY=(ord('U') shl 0) or (ord('Y') shl 8) or (ord('U') shl 16) or (ord('V') shl 24);
+      SDL_PIXELFORMAT_NV12=(ord('N') shl 0) or (ord('V') shl 8) or (ord('1') shl 16) or (ord('2') shl 24);
+      SDL_PIXELFORMAT_NV21=(ord('N') shl 0) or (ord('V') shl 8) or (ord('2') shl 16) or (ord('1') shl 24);
+{$ifdef fpc_big_endian}
+      SDL_PIXELFORMAT_RGBA32=SDL_PIXELFORMAT_RGBA8888;
+      SDL_PIXELFORMAT_ARGB32=SDL_PIXELFORMAT_ARGB8888;
+      SDL_PIXELFORMAT_BGRA32=SDL_PIXELFORMAT_BGRA8888;
+      SDL_PIXELFORMAT_ABGR32=SDL_PIXELFORMAT_ABGR8888;
+{$else}
+      SDL_PIXELFORMAT_RGBA32=SDL_PIXELFORMAT_ABGR8888;
+      SDL_PIXELFORMAT_ARGB32=SDL_PIXELFORMAT_BGRA8888;
+      SDL_PIXELFORMAT_BGRA32=SDL_PIXELFORMAT_ARGB8888;
+      SDL_PIXELFORMAT_ABGR32=SDL_PIXELFORMAT_RGBA8888;
+{$endif}
+
+      SDL_TEXTUREACCESS_STATIC=0;
+      SDL_TEXTUREACCESS_STREAMING=1;
+      SDL_TEXTUREACCESS_TARGET=2;
 
       // SDL_GLprofile (enum)
       SDL_GL_CONTEXT_PROFILE_CORE=1;
@@ -1143,6 +1235,12 @@ type PSDLInt8=^TSDLInt8;
      PSDLUInt64=^TSDLUInt64;
      TSDLUInt64=UInt64;
 
+     PSDLFloat=^TSDLFloat;
+     TSDLFloat=Single;
+
+     PSDLDouble=^TSDLDouble;
+     TSDLDouble=Double;
+
      PSDL_Window=pointer;
      PSDL_Renderer=pointer;
      PSDL_Texture=pointer;
@@ -1180,12 +1278,46 @@ type PSDLInt8=^TSDLInt8;
      PSDL_GameControllerButton=^TSDL_GameControllerButton;
      TSDL_GameControllerButton=TSDLInt32;
 
+     PSDL_AudioDeviceID=^TSDL_AudioDeviceID;
+     TSDL_AudioDeviceID=TSDLUInt32;
+
+     PSDL_BlendMode=^TSDL_BlendMode;
+     TSDL_BlendMode=TSDLUInt32;
+
+     PSDL_RendererFlip=^TSDL_RendererFlip;
+     TSDL_RendererFlip=
+      (
+       SDL_FLIP_NONE=0,
+       SDL_FLIP_HORIZONTAL=1,
+       SDL_FLIP_VERTICAL=2
+      );
+
+     PSDL_RendererInfo=^TSDL_RendererInfo;
+     TSDL_RendererInfo=record
+      name:PAnsiChar;
+      flags:TSDLUInt32;
+      num_texture_formats:TSDLUInt32;
+      texture_formats:array[0..15] of TSDLUInt32;
+      max_texture_width:TSDLInt32;
+      max_texture_height:TSDLInt32;
+     end;
+
+     PSDL_AudioStatus=^TSDL_AudioStatus;
+     TSDL_AudioStatus=(
+      SDL_AUDIO_STOPPED=0,
+      SDL_AUDIO_PLAYING=1,
+      SDL_AUDIO_PAUSED=2
+     );
+
+     PSDL_AudioFormat=^TSDL_AudioFormat;
+     TSDL_AudioFormat=TSDLUInt16;
+
      TSDL_AudioSpecCallback=procedure(userdata:pointer;stream:PSDLUInt8;len:TSDLInt32); cdecl;
 
      PSDL_AudioSpec=^TSDL_AudioSpec;
      TSDL_AudioSpec=record
       freq:TSDLInt32; // DSP frequency -- samples per second
-      format:TSDLUInt16; // Audio data format
+      format:TSDL_AudioFormat; // Audio data format
       channels:TSDLUInt8; // Number of channels:1 mono, 2 stereo
       silence:TSDLUInt8; // Audio buffer silence value (calculated)
       samples:TSDLUInt16; // Audio buffer size in samples
@@ -1195,19 +1327,69 @@ type PSDLInt8=^TSDLInt8;
       userdata:Pointer;
      end;
 
+     PSDL_AudioCVT=^TSDL_AudioCVT;
+
+     TSDL_AudioFilter=procedure(cvt:PSDL_AudioCVT;format:TSDL_AudioFormat); cdecl;
+
+     TSDL_AudioCVT=record
+      needed:TSDLInt32;
+      src_format:TSDL_AudioFormat;
+      dst_format:TSDL_AudioFormat;
+      rate_incr:TSDLDouble;
+      Buf:PSDLUInt8;
+      len:TSDLInt32;
+      len_cvt:TSDLInt32;
+      len_mult:TSDLInt32;
+      len_ratio:TSDLDouble;
+      filters:array[0..9] of TSDL_AudioFilter;
+      filter_index:TSDLInt32;
+     end;
+
      PSDL_Rect=^TSDL_Rect;
      TSDL_Rect=record
       x,y,w,h:TSDLInt32;
      end;
 
-     TPoint=record
+     PSDL_Point=^TSDL_Point;
+     TSDL_Point=record
       X,Y:TSDLInt32;
+     end;
+
+     PSDL_Color=^TSDL_Color;
+     TSDL_Color=record
+      case TSDLUInt8 of
+       0:(
+        r:TSDLUInt8;
+        g:TSDLUInt8;
+        b:TSDLUInt8;
+        a:TSDLUInt8;
+       );
+       1:(
+        r_:TSDLUInt8;
+        g_:TSDLUInt8;
+        b_:TSDLUInt8;
+        unused:TSDLUInt8;
+       );
+       2:(
+        value:TSDLUInt32;
+       );
+     end;
+
+     PSDL_Colour=^TSDL_Colour;
+     TSDL_Colour=TSDL_Color;
+
+     PSDL_Palette=^TSDL_Palette;
+     TSDL_Palette=record
+      ncolors:TSDLInt32;
+      colors:PSDL_Color;
+      version:TSDLUInt32;
+      refcount:TSDLInt32;
      end;
 
      PSDL_PixelFormat=^TSDL_PixelFormat;
      TSDL_PixelFormat=record
       format:TSDLUInt32;
-      palette:Pointer;
+      palette:PSDL_Palette;
       BitsPerPixel:TSDLUInt8;
       BytesPerPixel:TSDLUInt8;
       padding:array[0..1] of TSDLUInt8;
@@ -1243,20 +1425,6 @@ type PSDLInt8=^TSDLInt8;
       clip_rect:TSDL_Rect;
       map:Pointer;
       refcount:TSDLInt32;
-     end;
-
-     PSDL_Color=^TSDL_Color;
-     TSDL_Color=record
-      case TSDLUInt8 of
-       0:(
-        r:TSDLUInt8;
-        g:TSDLUInt8;
-        b:TSDLUInt8;
-        unused:TSDLUInt8;
-       );
-       1:(
-        value:TSDLUInt32;
-       );
      end;
 
      PSDL_RWops=^TSDL_RWops;
@@ -1716,7 +1884,7 @@ type PSDLInt8=^TSDLInt8;
        SDL_GL_FRAMEBUFFER_SRGB_CAPABLE
       );
 
-     TSDL_ArrayByteOrder=  // array component order, low TSDLUInt8 -> high TSDLUInt8
+{    TSDL_ArrayByteOrder=  // array component order, low TSDLUInt8 -> high TSDLUInt8
       (
        SDL_ARRAYORDER_NONE,
        SDL_ARRAYORDER_RGB,
@@ -1725,7 +1893,7 @@ type PSDLInt8=^TSDLInt8;
        SDL_ARRAYORDER_BGR,
        SDL_ARRAYORDER_BGRA,
        SDL_ARRAYORDER_ABGR
-      );
+      );}
 
      TSDL_PixelFormatEnum=TSDLInt32;
 
@@ -1784,11 +1952,26 @@ function SDL_GetPerformanceFrequency:uint64; cdecl; external {$ifndef staticlink
 function SDL_LockSurface(Surface:PSDL_Surface):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_UnlockSurface(Surface:PSDL_Surface); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+function SDL_LockTexture(Texture:PSDL_Texture;rect:PSDL_Rect;const Pixels,Pitch:pointer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_UnlockTexture(Texture:PSDL_Texture); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_QueryTexture(Texture:PSDL_Texture;format:PSDLUInt32;access,w,h:PSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GL_BindTexture(Texture:PSDL_Texture;texW,texH:PSDLFloat):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GL_UnbindTexture(Texture:PSDL_Texture):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetTextureAlphaMod(Texture:PSDL_Texture;alpha:PSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_UpdateTexture(Texture:PSDL_Texture;rect:PSDL_Rect;format:TSDLUInt32;pixels:Pointer;pitch:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_UpdateYUVTexture(Texture:PSDL_Texture;rect:PSDL_Rect;Yplane:Pointer;Ypitch:TSDLInt32;Uplane:Pointer;Upitch:TSDLInt32;Vplane:Pointer;Vpitch:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_SetTextureAlphaMod(Texture:PSDL_Texture;alpha:TSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetTextureColorMod(Texture:PSDL_Texture;r,g,b:PSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_SetTextureColorMod(Texture:PSDL_Texture;r,g,b:TSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetTextureBlendMode(Texture:PSDL_Texture;blend_mode:PSDL_BlendMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_SetTextureBlendMode(Texture:PSDL_Texture;blend_mode:TSDL_BlendMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 function SDL_GetError:pansichar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_SetVideoMode(width,height,bpp:TSDLInt32;flags:TSDLUInt32):PSDL_Surface; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_CreateRGBSurface(flags:TSDLUInt32;Width,Height,Depth:TSDLInt32;RMask,GMask,BMask,AMask:TSDLUInt32):PSDL_Surface; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_CreateRGBSurfaceFrom(pixels:Pointer;width,height,depth,pitch:TSDLInt32;RMask,GMask,BMask,AMask:TSDLUInt32):PSDL_Surface; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_CreateRGBSurfaceWithFormat(flags:TSDLUInt32;width,height,depth:TSDLInt32;format:TSDLUInt32):PSDL_Surface; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_FreeSurface(Surface:PSDL_Surface); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetColorKey(surface:PSDL_Surface;flag,key:TSDLUInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetAlpha(surface:PSDL_Surface;flag,key:TSDLUInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -1828,14 +2011,17 @@ procedure SDL_GetWindowPosition(window:PSDL_Window;var x,y:TSDLInt32); cdecl; ex
 
 function SDL_CreateWindow(title:pansichar;x,y,w,h:TSDLInt32;flags:TSDLUInt32):PSDL_Window; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_CreateRenderer(window:PSDL_Window;index:TSDLInt32;flags:TSDLUInt32):PSDL_Renderer; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_CreateTexture(renderer:PSDL_Texture;format:TSDLUInt32;access,w,h:TSDLInt32):PSDL_Texture; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_DestroyWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_DestroyRenderer(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_DestroyTexture(texture:PSDL_Texture):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GL_MakeCurrent(window:PSDL_Window;context:PSDL_GLContext):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GL_CreateContext(window:PSDL_Window):PSDL_GLContext; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_GL_DeleteContext(context:PSDL_GLContext); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GL_SwapWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GL_GetDrawableSize(window:PSDL_Window;w,h:PSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GL_SetSwapInterval(interval:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_VideoQuit; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -1850,19 +2036,49 @@ function SDL_VideoInit(drivername:pansichar):TSDLInt32; cdecl; external {$ifndef
 
 procedure SDL_ShowWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+function SDL_GetNumRenderDrivers:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_SetRenderDrawBlendMode(renderer:PSDL_Renderer;blendMode:TSDL_BlendMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRenderDrawBlendMode(renderer:PSDL_Renderer;blendMode:PSDL_BlendMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetRenderDrawColor(renderer:PSDL_Renderer;r,g,b,a:TSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRenderDrawColor(renderer:PSDL_Renderer;r,g,b,a:PSDLUInt8):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GetRenderer(window:PSDL_Window):PSDL_Renderer; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRendererTarget(renderer:PSDL_Renderer):PSDL_Texture; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRendererDriverInfo(index:TSDLInt32;info:PSDL_RendererInfo):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRendererInfo(renderer:PSDL_Renderer;info:PSDL_RendererInfo):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRendererOutputSize(renderer:PSDL_Renderer;w,h:PSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_RenderFillRect(renderer:PSDL_Renderer;rect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderFillRects(renderer:PSDL_Renderer;rects:PSDL_Rect;Count:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawLine(renderer:PSDL_Renderer;x1,y1,x2,y2:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawLines(renderer:PSDL_Renderer;points:PSDL_Point;count:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawPoint(renderer:PSDL_Renderer;x,y:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawPoints(renderer:PSDL_Renderer;points:PSDL_Point;count:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawRect(renderer:PSDL_Renderer;rect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderDrawRects(renderer:PSDL_Renderer;rects:PSDL_Rect;count:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_RenderClear(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderCopy(renderer:PSDL_Renderer;texture:PSDL_Texture;srcrect,dstrect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderCopyEx(renderer:PSDL_Renderer;texture:PSDL_Texture;srcrect,dstrect:PSDL_Rect;angle:TSDLDouble;center:PSDL_Point;flip:TSDL_RendererFlip):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_RenderPresent(renderer:PSDL_Renderer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-function SDL_RenderReadPixels(renderer:PSDL_Renderer; rect:PSDL_Rect; format:TSDLInt32;pixels:Pointer;pitch:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderReadPixels(renderer:PSDL_Renderer;rect:PSDL_Rect;format:TSDLUInt32;pixels:Pointer;pitch:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_RenderSetViewport(window:PSDL_Window;rect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_RenderGetClipRect(renderer:PSDL_Renderer;rect:PSDL_Rect); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderGetIntegerScale(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderGetLogicalSize(renderer:PSDL_Renderer;w,h:PSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderGetScale(renderer:PSDL_Renderer;scaleX,scaleY:PSDLFloat):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderGetViewport(renderer:PSDL_Renderer;rect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderIsClipEnabled(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderSetClipRect(renderer:PSDL_Renderer;rect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderSetIntegerScale(renderer:PSDL_Renderer;enable:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderSetLogicalSize(renderer:PSDL_Renderer;w,h:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderSetScale(renderer:PSDL_Renderer;scaleX,scaleY:TSDLFloat):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RenderTargetSupported(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_SetRenderTarget(renderer:PSDL_Renderer;texture:PSDL_Texture):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 
 function SDL_GetRelativeMouseMode:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetRelativeMouseMode(enabled:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GetRelativeMouseState(x,y:PLongInt):TSDLUInt8; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
-function SDL_PixelFormatEnumToMasks(format:TSDL_ArrayByteOrder;bpp:PLongInt;Rmask,Gmask,Bmask,Amask:PLongInt):Boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_PixelFormatEnumToMasks(format:{TSDL_ArrayByteOrder}TSDLInt32;bpp:PLongInt;Rmask,Gmask,Bmask,Amask:PLongInt):Boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_WarpMouseInWindow(window:PSDL_Window;x,y:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_StartTextInput; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -1875,6 +2091,7 @@ function SDL_GetMouseState(x,y:PLongInt):TSDLUInt8; cdecl; external {$ifndef sta
 function SDL_GetKeyName(key:TSDLUInt32):pansichar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_PumpEvents; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_PushEvent(event:PSDL_Event):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_PollEvent(event:PSDL_Event):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_WaitEvent(event:PSDL_Event):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_SetEventFilter(filter:TSDL_EventFilter); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -1949,14 +2166,47 @@ function SDL_GL_GetProcAddress(procname:pansichar):Pointer; cdecl; external {$if
 
 function SDL_GetModState:TSDLUInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+function SDL_AudioInit(const aDriverName:PAnsiChar):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_AudioQuit; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_BuildAudioCVT(cvt:PSDL_AudioCVT;src_format:TSDL_AudioFormat;src_channels:TSDLUInt8;src_rate:TSDLInt32;dst_format:TSDL_AudioFormat;dst_channels:TSDLUInt8;dst_rate:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 procedure SDL_LockAudio; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_UnlockAudio; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_LockAudioDevice(dev:TSDL_AudioDeviceID); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_UnlockAudioDevice(dev:TSDL_AudioDeviceID); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_CloseAudio; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_CloseAudioDevice(dev:TSDL_AudioDeviceID); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_GetCurrentAudioDriver:PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetAudioDriver(index:TSDLInt32):PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetNumAudioDrivers:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_GetNumAudioDevices(iscapture:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetAudioDeviceName(index,iscapture:TSDLInt32):PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_OpenAudio(desired,obtained:PSDL_AudioSpec):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+function SDL_OpenAudioDevice(device:PAnsiChar;iscapture:TSDLInt32;desired,obtained:PSDL_AudioSpec;allowed_changes:TSDLInt32):TSDL_AudioDeviceID; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_GetAudioStatus:TSDL_AudioStatus; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_GetAudioDeviceStatus(dev:TSDL_AudioDeviceID):TSDL_AudioStatus; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 procedure SDL_PauseAudio(pause_on:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_PauseAudioDevice(dev:TSDL_AudioDeviceID;pause_on:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_FreeWAV(audio_buf:PSDLUInt8); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_LoadWAV_RW(src:PSDL_RWops;freesrc:TSDLInt32;spec:PSDL_AudioSpec;audio_buf:PSDLUInt8;audio_len:PSDLUInt32):PSDL_AudioSpec; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_ConvertAudio(cvt:PSDL_AudioCVT); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_MixAudio(dst,src:PSDLUInt8;len:TSDLUInt32;volume:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_MixAudioFormat(dst,src:PSDLUInt8;format:TSDL_AudioFormat;len:TSDLUInt32;volume:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 //function SDL_BlitSurface(src:PSDL_Surface;srcrect:PSDL_Rect;dst:PSDL_Surface;dstrect:PSDL_Rect):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
@@ -1989,10 +2239,6 @@ procedure SDL_EnableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName
 function SDL_IsScreenSaverEnabled:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GetScancodeFromKey(KeyCode:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-
-function SDL_GetCurrentAudioDriver:PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-function SDL_GetAudioDriver(index:TSDLInt32):PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-function SDL_GetNumAudioDrivers:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_LogSetAllPriority(priority:TSDL_LogPriority); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogSetPriority(category:TSDL_LogCategory;priority:TSDL_LogPriority); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
