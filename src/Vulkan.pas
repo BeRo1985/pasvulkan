@@ -265,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=107;
+      VK_HEADER_VERSION=110;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -499,7 +499,7 @@ const VK_NULL_HANDLE=0;
       VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME='VK_EXT_depth_clip_enable';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
-      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=3;
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=4;
       VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
       VK_EXT_HDR_METADATA_SPEC_VERSION=1;
       VK_EXT_HDR_METADATA_EXTENSION_NAME='VK_EXT_hdr_metadata';
@@ -597,8 +597,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_FRAMEBUFFER_MIXED_SAMPLES_EXTENSION_NAME='VK_NV_framebuffer_mixed_samples';
       VK_NV_FILL_RECTANGLE_SPEC_VERSION=1;
       VK_NV_FILL_RECTANGLE_EXTENSION_NAME='VK_NV_fill_rectangle';
-      VK_NV_EXTENSION_155_SPEC_VERSION=0;
-      VK_NV_EXTENSION_155_EXTENSION_NAME='VK_NV_extension_155';
+      VK_NV_SHADER_SM_BUILTINS_SPEC_VERSION=1;
+      VK_NV_SHADER_SM_BUILTINS_EXTENSION_NAME='VK_NV_shader_sm_builtins';
       VK_EXT_POST_DEPTH_COVERAGE_SPEC_VERSION=1;
       VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME='VK_EXT_post_depth_coverage';
       VK_KHR_SAMPLER_YCBCR_CONVERSION_SPEC_VERSION=1;
@@ -707,10 +707,10 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_208_EXTENSION_NAME='VK_KHR_extension_208';
       VK_KHR_EXTENSION_209_SPEC_VERSION=0;
       VK_KHR_EXTENSION_209_EXTENSION_NAME='VK_KHR_extension_209';
-      VK_KHR_EXTENSION_210_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_210_EXTENSION_NAME='VK_KHR_extension_210';
-      VK_KHR_EXTENSION_211_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
+      VK_INTEL_SHADER_INTEGER_FUNCTIONS2_SPEC_VERSION=1;
+      VK_INTEL_SHADER_INTEGER_FUNCTIONS2_EXTENSION_NAME='VK_INTEL_shader_integer_functions2';
+      VK_INTEL_PERFORMANCE_QUERY_SPEC_VERSION=1;
+      VK_INTEL_PERFORMANCE_QUERY_EXTENSION_NAME='VK_INTEL_performance_query';
       VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=3;
       VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
       VK_EXT_PCI_BUS_INFO_SPEC_VERSION=2;
@@ -789,14 +789,14 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_249_EXTENSION_NAME='VK_KHR_extension_249';
       VK_NV_COOPERATIVE_MATRIX_SPEC_VERSION=1;
       VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME='VK_NV_cooperative_matrix';
-      VK_NV_EXTENSION_251_SPEC_VERSION=0;
-      VK_NV_EXTENSION_251_EXTENSION_NAME='VK_NV_extension_251';
-      VK_NV_EXTENSION_252_SPEC_VERSION=0;
-      VK_NV_EXTENSION_252_EXTENSION_NAME='VK_NV_extension_252';
+      VK_NV_COVERAGE_REDUCTION_MODE_SPEC_VERSION=1;
+      VK_NV_COVERAGE_REDUCTION_MODE_EXTENSION_NAME='VK_NV_coverage_reduction_mode';
+      VK_EXT_FRAGMENT_SHADER_INTERLOCK_SPEC_VERSION=1;
+      VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME='VK_EXT_fragment_shader_interlock';
       VK_EXT_YCBCR_IMAGE_ARRAYS_SPEC_VERSION=1;
       VK_EXT_YCBCR_IMAGE_ARRAYS_EXTENSION_NAME='VK_EXT_ycbcr_image_arrays';
-      VK_EXT_EXTENSION_254_SPEC_VERSION=1;
-      VK_EXT_EXTENSION_254_EXTENSION_NAME='VK_EXT_extension_254';
+      VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_SPEC_VERSION=1;
+      VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME='VK_KHR_uniform_buffer_standard_layout';
       VK_EXT_EXTENSION_255_SPEC_VERSION=0;
       VK_EXT_EXTENSION_255_EXTENSION_NAME='VK_EXT_extension_255';
       VK_EXT_FULL_SCREEN_EXCLUSIVE_SPEC_VERSION=3;
@@ -813,6 +813,36 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_261_EXTENSION_NAME='VK_NV_extension_261';
       VK_EXT_HOST_QUERY_RESET_SPEC_VERSION=1;
       VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME='VK_EXT_host_query_reset';
+      VK_GOOGLE_EXTENSION_263_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_263_EXTENSION_NAME='VK_GGP_extension_263';
+      VK_BRCM_EXTENSION_264_SPEC_VERSION=0;
+      VK_BRCM_EXTENSION_264_EXTENSION_NAME='VK_BRCM_extension_264';
+      VK_BRCM_EXTENSION_265_SPEC_VERSION=0;
+      VK_BRCM_EXTENSION_265_EXTENSION_NAME='VK_BRCM_extension_265';
+      VK_EXT_EXTENSION_266_SPEC_VERSION=0;
+      VK_EXT_extension_266='VK_EXT_extension_266';
+      VK_EXT_EXTENSION_267_SPEC_VERSION=0;
+      VK_EXT_extension_267='VK_EXT_extension_267';
+      VK_EXT_EXTENSION_268_SPEC_VERSION=0;
+      VK_EXT_extension_268='VK_KHR_extension_268';
+      VK_KHR_EXTENSION_269_SPEC_VERSION=0;
+      VK_KHR_extension_269='VK_KHR_extension_269';
+      VK_INTEL_EXTENSION_270_SPEC_VERSION=0;
+      VK_INTEL_extension_270='VK_KHR_extension_270';
+      VK_INTEL_EXTENSION_271_SPEC_VERSION=0;
+      VK_INTEL_extension_271='VK_KHR_extension_271';
+      VK_INTEL_EXTENSION_272_SPEC_VERSION=0;
+      VK_INTEL_extension_272='VK_KHR_extension_272';
+      VK_INTEL_EXTENSION_273_SPEC_VERSION=0;
+      VK_INTEL_extension_273='VK_KHR_extension_273';
+      VK_INTEL_EXTENSION_274_SPEC_VERSION=0;
+      VK_INTEL_extension_274='VK_KHR_extension_274';
+      VK_KHR_EXTENSION_275_SPEC_VERSION=0;
+      VK_KHR_extension_275='VK_KHR_extension_275';
+      VK_KHR_EXTENSION_276_SPEC_VERSION=0;
+      VK_KHR_extension_276='VK_KHR_extension_276';
+      VK_EXT_EXTENSION_277_SPEC_VERSION=0;
+      VK_EXT_extension_277='VK_EXT_extension_277';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1324,6 +1354,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineCoverageModulationStateCreateFlagsNV=^TVkPipelineCoverageModulationStateCreateFlagsNV;
      TVkPipelineCoverageModulationStateCreateFlagsNV=TVkFlags;
 
+     PPVkPipelineCoverageReductionStateCreateFlagsNV=^PVkPipelineCoverageReductionStateCreateFlagsNV;
+     PVkPipelineCoverageReductionStateCreateFlagsNV=^TVkPipelineCoverageReductionStateCreateFlagsNV;
+     TVkPipelineCoverageReductionStateCreateFlagsNV=TVkFlags;
+
      PPVkValidationCacheCreateFlagsEXT=^PVkValidationCacheCreateFlagsEXT;
      PVkValidationCacheCreateFlagsEXT=^TVkValidationCacheCreateFlagsEXT;
      TVkValidationCacheCreateFlagsEXT=TVkFlags;
@@ -1500,6 +1534,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkAccelerationStructureNV=^TVkAccelerationStructureNV;
      TVkAccelerationStructureNV=TVkNonDispatchableHandle;
 
+     PPVkPerformanceConfigurationINTEL=^PVkPerformanceConfigurationINTEL;
+     PVkPerformanceConfigurationINTEL=^TVkPerformanceConfigurationINTEL;
+     TVkPerformanceConfigurationINTEL=TVkNonDispatchableHandle;
+
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
      TVkDisplayKHR=TVkNonDispatchableHandle;
@@ -1645,7 +1683,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUERY_TYPE_RESERVED_8=1000023008,
        VK_QUERY_TYPE_RESERVED_4=1000024004,
        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT=1000028004,
-       VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_NV=1000165000
+       VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_NV=1000165000,
+       VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL=1000210000
       );
 
      PPVkBorderColor=^PVkBorderColor;
@@ -2445,6 +2484,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT=1000148002,
        VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV=1000149000,
        VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV=1000152000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV=1000154000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV=1000154001,
        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO=1000156000,
        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO=1000156001,
        VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO=1000156002,
@@ -2514,6 +2555,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV=1000205002,
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS2_FEATURES_INTEL=1000209000,
+       VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL=1000210000,
+       VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL=1000210001,
+       VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL=1000210002,
+       VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL=1000210003,
+       VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL=1000210004,
+       VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL=1000210005,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT=1000212000,
        VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD=1000213000,
@@ -2537,7 +2585,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV=1000249000,
        VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV=1000249001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV=1000249002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV=1000250000,
+       VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV=1000250001,
+       VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV=1000250002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT=1000251000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT=1000252000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR=1000253000,
        VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT=1000255000,
        VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT=1000255001,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT=1000255002,
@@ -2731,6 +2784,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION=1000156000,
        VK_OBJECT_TYPE_VALIDATION_CACHE_EXT=1000160000,
        VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV=1000165000,
+       VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL=1000210000,
        VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR=VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE,
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR=VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION
       );
@@ -3221,7 +3275,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR=0,
        VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT=1000104001,
        VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT=1000104002,
-       VK_COLOR_SPACE_DCI_P3_LINEAR_EXT=1000104003,
+       VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT=1000104003,
        VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT=1000104004,
        VK_COLOR_SPACE_BT709_LINEAR_EXT=1000104005,
        VK_COLOR_SPACE_BT709_NONLINEAR_EXT=1000104006,
@@ -3234,6 +3288,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013,
        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT=1000104014,
        VK_COLOR_SPACE_DISPLAY_NATIVE_AMD=1000213000,
+       VK_COLOR_SPACE_DCI_P3_LINEAR_EXT=VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,
        VK_COLORSPACE_SRGB_NONLINEAR_KHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR        //< Backwards-compatible alias containing a typo
       );
 
@@ -3751,6 +3806,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COVERAGE_MODULATION_MODE_RGBA_NV=3
       );
 
+     PPVkCoverageReductionModeNV=^PVkCoverageReductionModeNV;
+     PVkCoverageReductionModeNV=^TVkCoverageReductionModeNV;
+     TVkCoverageReductionModeNV=
+      (
+       VK_COVERAGE_REDUCTION_MODE_MERGE_NV=0,
+       VK_COVERAGE_REDUCTION_MODE_TRUNCATE_NV=1
+      );
+
      PPVkValidationCacheHeaderVersionEXT=^PVkValidationCacheHeaderVersionEXT;
      PVkValidationCacheHeaderVersionEXT=^TVkValidationCacheHeaderVersionEXT;
      TVkValidationCacheHeaderVersionEXT=
@@ -3842,7 +3905,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DRIVER_ID_IMAGINATION_PROPRIETARY_KHR=7,                               //< Imagination Technologies
        VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR=8,                                  //< Qualcomm Technologies, Inc.
        VK_DRIVER_ID_ARM_PROPRIETARY_KHR=9,                                       //< Arm Limited
-       VK_DRIVER_ID_GOOGLE_PASTEL_KHR=10,                                        //< Google LLC
+       VK_DRIVER_ID_GOOGLE_SWIFTSHADER_KHR=10,                                   //< Google LLC
        VK_DRIVER_ID_GGP_PROPRIETARY_KHR=11                                       //< Google LLC
       );
 
@@ -4016,6 +4079,47 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT=1,
        VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT=2,
        VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT=3
+      );
+
+     PPVkPerformanceConfigurationTypeINTEL=^PVkPerformanceConfigurationTypeINTEL;
+     PVkPerformanceConfigurationTypeINTEL=^TVkPerformanceConfigurationTypeINTEL;
+     TVkPerformanceConfigurationTypeINTEL=
+      (
+       VK_PERFORMANCE_CONFIGURATION_TYPE_COMMAND_QUEUE_METRICS_DISCOVERY_ACTIVATED_INTEL=0
+      );
+
+     PPVkQueryPoolSamplingModeINTEL=^PVkQueryPoolSamplingModeINTEL;
+     PVkQueryPoolSamplingModeINTEL=^TVkQueryPoolSamplingModeINTEL;
+     TVkQueryPoolSamplingModeINTEL=
+      (
+       VK_QUERY_POOL_SAMPLING_MODE_MANUAL_INTEL=0
+      );
+
+     PPVkPerformanceOverrideTypeINTEL=^PVkPerformanceOverrideTypeINTEL;
+     PVkPerformanceOverrideTypeINTEL=^TVkPerformanceOverrideTypeINTEL;
+     TVkPerformanceOverrideTypeINTEL=
+      (
+       VK_PERFORMANCE_OVERRIDE_TYPE_NULL_HARDWARE_INTEL=0,
+       VK_PERFORMANCE_OVERRIDE_TYPE_FLUSH_GPU_CACHES_INTEL=1
+      );
+
+     PPVkPerformanceParameterTypeINTEL=^PVkPerformanceParameterTypeINTEL;
+     PVkPerformanceParameterTypeINTEL=^TVkPerformanceParameterTypeINTEL;
+     TVkPerformanceParameterTypeINTEL=
+      (
+       VK_PERFORMANCE_PARAMETER_TYPE_HW_COUNTERS_SUPPORTED_INTEL=0,
+       VK_PERFORMANCE_PARAMETER_TYPE_STREAM_MARKER_VALID_BITS_INTEL=1
+      );
+
+     PPVkPerformanceValueTypeINTEL=^PVkPerformanceValueTypeINTEL;
+     PVkPerformanceValueTypeINTEL=^TVkPerformanceValueTypeINTEL;
+     TVkPerformanceValueTypeINTEL=
+      (
+       VK_PERFORMANCE_VALUE_TYPE_UINT32_INTEL=0,
+       VK_PERFORMANCE_VALUE_TYPE_UINT64_INTEL=1,
+       VK_PERFORMANCE_VALUE_TYPE_FLOAT_INTEL=2,
+       VK_PERFORMANCE_VALUE_TYPE_BOOL_INTEL=3,
+       VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL=4
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
@@ -12369,6 +12473,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR=^PVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR;
+     PVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR=^TVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR;
+     TVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR
+       pNext:PVkVoid;
+       uniformBufferStandardLayout:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aUniformBufferStandardLayout:TVkBool32);
+{$endif}
+     end;
+
      PPVkPhysicalDeviceDepthClipEnableFeaturesEXT=^PVkPhysicalDeviceDepthClipEnableFeaturesEXT;
      PVkPhysicalDeviceDepthClipEnableFeaturesEXT=^TVkPhysicalDeviceDepthClipEnableFeaturesEXT;
      TVkPhysicalDeviceDepthClipEnableFeaturesEXT=record
@@ -12714,6 +12832,241 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        flags:TVkHeadlessSurfaceCreateFlagsEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aFlags:TVkHeadlessSurfaceCreateFlagsEXT);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceCoverageReductionModeFeaturesNV=^PVkPhysicalDeviceCoverageReductionModeFeaturesNV;
+     PVkPhysicalDeviceCoverageReductionModeFeaturesNV=^TVkPhysicalDeviceCoverageReductionModeFeaturesNV;
+     TVkPhysicalDeviceCoverageReductionModeFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV
+       pNext:PVkVoid;
+       coverageReductionMode:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCoverageReductionMode:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineCoverageReductionStateCreateInfoNV=^PVkPipelineCoverageReductionStateCreateInfoNV;
+     PVkPipelineCoverageReductionStateCreateInfoNV=^TVkPipelineCoverageReductionStateCreateInfoNV;
+     TVkPipelineCoverageReductionStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       flags:TVkPipelineCoverageReductionStateCreateFlagsNV;
+       coverageReductionMode:TVkCoverageReductionModeNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkPipelineCoverageReductionStateCreateFlagsNV;
+                          const aCoverageReductionMode:TVkCoverageReductionModeNV);
+{$endif}
+     end;
+
+     PPVkFramebufferMixedSamplesCombinationNV=^PVkFramebufferMixedSamplesCombinationNV;
+     PVkFramebufferMixedSamplesCombinationNV=^TVkFramebufferMixedSamplesCombinationNV;
+     TVkFramebufferMixedSamplesCombinationNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV
+       pNext:PVkVoid;
+       coverageReductionMode:TVkCoverageReductionModeNV;
+       rasterizationSamples:TVkSampleCountFlagBits;
+       depthStencilSamples:TVkSampleCountFlags;
+       colorSamples:TVkSampleCountFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCoverageReductionMode:TVkCoverageReductionModeNV;
+                          const aRasterizationSamples:TVkSampleCountFlagBits;
+                          const aDepthStencilSamples:TVkSampleCountFlags;
+                          const aColorSamples:TVkSampleCountFlags);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShaderIntegerFunctions2INTEL=^PVkPhysicalDeviceShaderIntegerFunctions2INTEL;
+     PVkPhysicalDeviceShaderIntegerFunctions2INTEL=^TVkPhysicalDeviceShaderIntegerFunctions2INTEL;
+     TVkPhysicalDeviceShaderIntegerFunctions2INTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS2_FEATURES_INTEL
+       pNext:PVkVoid;
+       shaderIntegerFunctions2:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderIntegerFunctions2:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPerformanceValueDataINTEL=^PVkPerformanceValueDataINTEL;
+     PVkPerformanceValueDataINTEL=^TVkPerformanceValueDataINTEL;
+     TVkPerformanceValueDataINTEL=record
+      case longint of
+       0:(
+        value32:TVkUInt32;
+       );
+       1:(
+        value64:TVkUInt64;
+       );
+       2:(
+        valueFloat:TVkFloat;
+       );
+       3:(
+        valueBool:TVkBool32;
+       );
+       4:(
+        valueString:PVkChar;
+       );
+     end;
+
+     PPVkPerformanceValueINTEL=^PVkPerformanceValueINTEL;
+     PVkPerformanceValueINTEL=^TVkPerformanceValueINTEL;
+     TVkPerformanceValueINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkPerformanceValueTypeINTEL;
+       data:TVkPerformanceValueDataINTEL;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aType_:TVkPerformanceValueTypeINTEL;
+                          const aData:TVkPerformanceValueDataINTEL);
+{$endif}
+     end;
+
+     PPVkInitializePerformanceApiInfoINTEL=^PVkInitializePerformanceApiInfoINTEL;
+     PVkInitializePerformanceApiInfoINTEL=^TVkInitializePerformanceApiInfoINTEL;
+     TVkInitializePerformanceApiInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL
+       pNext:PVkVoid;
+       pUserData:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPUserData:PVkVoid);
+{$endif}
+     end;
+
+     PPVkQueryPoolCreateInfoINTEL=^PVkQueryPoolCreateInfoINTEL;
+     PVkQueryPoolCreateInfoINTEL=^TVkQueryPoolCreateInfoINTEL;
+     TVkQueryPoolCreateInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL
+       pNext:PVkVoid;
+       performanceCountersSampling:TVkQueryPoolSamplingModeINTEL;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPerformanceCountersSampling:TVkQueryPoolSamplingModeINTEL);
+{$endif}
+     end;
+
+     PPVkPerformanceMarkerInfoINTEL=^PVkPerformanceMarkerInfoINTEL;
+     PVkPerformanceMarkerInfoINTEL=^TVkPerformanceMarkerInfoINTEL;
+     TVkPerformanceMarkerInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL
+       pNext:PVkVoid;
+       marker:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMarker:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkPerformanceStreamMarkerInfoINTEL=^PVkPerformanceStreamMarkerInfoINTEL;
+     PVkPerformanceStreamMarkerInfoINTEL=^TVkPerformanceStreamMarkerInfoINTEL;
+     TVkPerformanceStreamMarkerInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL
+       pNext:PVkVoid;
+       marker:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMarker:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkPerformanceOverrideInfoINTEL=^PVkPerformanceOverrideInfoINTEL;
+     PVkPerformanceOverrideInfoINTEL=^TVkPerformanceOverrideInfoINTEL;
+     TVkPerformanceOverrideInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL
+       pNext:PVkVoid;
+       type_:TVkPerformanceOverrideTypeINTEL;
+       enable:TVkBool32;
+       parameter:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aType_:TVkPerformanceOverrideTypeINTEL;
+                          const aEnable:TVkBool32;
+                          const aParameter:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkPerformanceConfigurationAcquireInfoINTEL=^PVkPerformanceConfigurationAcquireInfoINTEL;
+     PVkPerformanceConfigurationAcquireInfoINTEL=^TVkPerformanceConfigurationAcquireInfoINTEL;
+     TVkPerformanceConfigurationAcquireInfoINTEL=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL
+       pNext:PVkVoid;
+       type_:TVkPerformanceConfigurationTypeINTEL;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aType_:TVkPerformanceConfigurationTypeINTEL);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShaderSMBuiltinsPropertiesNV=^PVkPhysicalDeviceShaderSMBuiltinsPropertiesNV;
+     PVkPhysicalDeviceShaderSMBuiltinsPropertiesNV=^TVkPhysicalDeviceShaderSMBuiltinsPropertiesNV;
+     TVkPhysicalDeviceShaderSMBuiltinsPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV
+       pNext:PVkVoid;
+       shaderSMCount:TVkUInt32;
+       shaderWarpsPerSM:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderSMCount:TVkUInt32;
+                          const aShaderWarpsPerSM:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShaderSMBuiltinsFeaturesNV=^PVkPhysicalDeviceShaderSMBuiltinsFeaturesNV;
+     PVkPhysicalDeviceShaderSMBuiltinsFeaturesNV=^TVkPhysicalDeviceShaderSMBuiltinsFeaturesNV;
+     TVkPhysicalDeviceShaderSMBuiltinsFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV
+       pNext:PVkVoid;
+       shaderSMBuiltins:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderSMBuiltins:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT=^PVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+     PVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT=^TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+     TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT
+       pNext:PVkVoid;
+       fragmentShaderSampleInterlock:TVkBool32;
+       fragmentShaderPixelInterlock:TVkBool32;
+       fragmentShaderShadingRateInterlock:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFragmentShaderSampleInterlock:TVkBool32;
+                          const aFragmentShaderPixelInterlock:TVkBool32;
+                          const aFragmentShaderShadingRateInterlock:TVkBool32);
 {$endif}
      end;
 
@@ -13474,6 +13827,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkReleaseFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCreateHeadlessSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkHeadlessSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV=function(physicalDevice:TVkPhysicalDevice;pCombinationCount:PVkUInt32;pCombinations:PVkFramebufferMixedSamplesCombinationNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkInitializePerformanceApiINTEL=function(device:TVkDevice;const pInitializeInfo:PVkInitializePerformanceApiInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkUninitializePerformanceApiINTEL=procedure(device:TVkDevice); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetPerformanceMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetPerformanceStreamMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceStreamMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetPerformanceOverrideINTEL=function(commandBuffer:TVkCommandBuffer;const pOverrideInfo:PVkPerformanceOverrideInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkAcquirePerformanceConfigurationINTEL=function(device:TVkDevice;const pAcquireInfo:PVkPerformanceConfigurationAcquireInfoINTEL;pConfiguration:PVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkReleasePerformanceConfigurationINTEL=function(device:TVkDevice;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkQueueSetPerformanceConfigurationINTEL=function(queue:TVkQueue;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPerformanceParameterINTEL=function(device:TVkDevice;parameter:TVkPerformanceParameterTypeINTEL;pValue:PVkPerformanceValueINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -14236,6 +14609,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       ReleaseFullScreenExclusiveModeEXT:TvkReleaseFullScreenExclusiveModeEXT;
 
       CreateHeadlessSurfaceEXT:TvkCreateHeadlessSurfaceEXT;
+
+      GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV:TvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV;
+
+      InitializePerformanceApiINTEL:TvkInitializePerformanceApiINTEL;
+
+      UninitializePerformanceApiINTEL:TvkUninitializePerformanceApiINTEL;
+
+      CmdSetPerformanceMarkerINTEL:TvkCmdSetPerformanceMarkerINTEL;
+
+      CmdSetPerformanceStreamMarkerINTEL:TvkCmdSetPerformanceStreamMarkerINTEL;
+
+      CmdSetPerformanceOverrideINTEL:TvkCmdSetPerformanceOverrideINTEL;
+
+      AcquirePerformanceConfigurationINTEL:TvkAcquirePerformanceConfigurationINTEL;
+
+      ReleasePerformanceConfigurationINTEL:TvkReleasePerformanceConfigurationINTEL;
+
+      QueueSetPerformanceConfigurationINTEL:TvkQueueSetPerformanceConfigurationINTEL;
+
+      GetPerformanceParameterINTEL:TvkGetPerformanceParameterINTEL;
 
      end;
 
@@ -15004,6 +15397,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function CreateHeadlessSurfaceEXT(instance:TVkInstance;const pCreateInfo:PVkHeadlessSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 
+       function GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(physicalDevice:TVkPhysicalDevice;pCombinationCount:PVkUInt32;pCombinations:PVkFramebufferMixedSamplesCombinationNV):TVkResult; virtual;
+
+       function InitializePerformanceApiINTEL(device:TVkDevice;const pInitializeInfo:PVkInitializePerformanceApiInfoINTEL):TVkResult; virtual;
+
+       procedure UninitializePerformanceApiINTEL(device:TVkDevice); virtual;
+
+       function CmdSetPerformanceMarkerINTEL(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceMarkerInfoINTEL):TVkResult; virtual;
+
+       function CmdSetPerformanceStreamMarkerINTEL(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceStreamMarkerInfoINTEL):TVkResult; virtual;
+
+       function CmdSetPerformanceOverrideINTEL(commandBuffer:TVkCommandBuffer;const pOverrideInfo:PVkPerformanceOverrideInfoINTEL):TVkResult; virtual;
+
+       function AcquirePerformanceConfigurationINTEL(device:TVkDevice;const pAcquireInfo:PVkPerformanceConfigurationAcquireInfoINTEL;pConfiguration:PVkPerformanceConfigurationINTEL):TVkResult; virtual;
+
+       function ReleasePerformanceConfigurationINTEL(device:TVkDevice;configuration:TVkPerformanceConfigurationINTEL):TVkResult; virtual;
+
+       function QueueSetPerformanceConfigurationINTEL(queue:TVkQueue;configuration:TVkPerformanceConfigurationINTEL):TVkResult; virtual;
+
+       function GetPerformanceParameterINTEL(device:TVkDevice;parameter:TVkPerformanceParameterTypeINTEL;pValue:PVkPerformanceValueINTEL):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -15768,6 +16181,26 @@ var LibVulkan:pointer=nil;
     vkReleaseFullScreenExclusiveModeEXT:TvkReleaseFullScreenExclusiveModeEXT=nil;
 
     vkCreateHeadlessSurfaceEXT:TvkCreateHeadlessSurfaceEXT=nil;
+
+    vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV:TvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV=nil;
+
+    vkInitializePerformanceApiINTEL:TvkInitializePerformanceApiINTEL=nil;
+
+    vkUninitializePerformanceApiINTEL:TvkUninitializePerformanceApiINTEL=nil;
+
+    vkCmdSetPerformanceMarkerINTEL:TvkCmdSetPerformanceMarkerINTEL=nil;
+
+    vkCmdSetPerformanceStreamMarkerINTEL:TvkCmdSetPerformanceStreamMarkerINTEL=nil;
+
+    vkCmdSetPerformanceOverrideINTEL:TvkCmdSetPerformanceOverrideINTEL=nil;
+
+    vkAcquirePerformanceConfigurationINTEL:TvkAcquirePerformanceConfigurationINTEL=nil;
+
+    vkReleasePerformanceConfigurationINTEL:TvkReleasePerformanceConfigurationINTEL=nil;
+
+    vkQueueSetPerformanceConfigurationINTEL:TvkQueueSetPerformanceConfigurationINTEL=nil;
+
+    vkGetPerformanceParameterINTEL:TvkGetPerformanceParameterINTEL=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -17351,6 +17784,46 @@ begin
    @vkCreateHeadlessSurfaceEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateHeadlessSurfaceEXT'));
    @vk.fCommands.CreateHeadlessSurfaceEXT:=addr(vkCreateHeadlessSurfaceEXT);
   end;
+  if not assigned(vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV) then begin
+   @vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV'));
+   @vk.fCommands.GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV:=addr(vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV);
+  end;
+  if not assigned(vkInitializePerformanceApiINTEL) then begin
+   @vkInitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkInitializePerformanceApiINTEL'));
+   @vk.fCommands.InitializePerformanceApiINTEL:=addr(vkInitializePerformanceApiINTEL);
+  end;
+  if not assigned(vkUninitializePerformanceApiINTEL) then begin
+   @vkUninitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUninitializePerformanceApiINTEL'));
+   @vk.fCommands.UninitializePerformanceApiINTEL:=addr(vkUninitializePerformanceApiINTEL);
+  end;
+  if not assigned(vkCmdSetPerformanceMarkerINTEL) then begin
+   @vkCmdSetPerformanceMarkerINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetPerformanceMarkerINTEL'));
+   @vk.fCommands.CmdSetPerformanceMarkerINTEL:=addr(vkCmdSetPerformanceMarkerINTEL);
+  end;
+  if not assigned(vkCmdSetPerformanceStreamMarkerINTEL) then begin
+   @vkCmdSetPerformanceStreamMarkerINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetPerformanceStreamMarkerINTEL'));
+   @vk.fCommands.CmdSetPerformanceStreamMarkerINTEL:=addr(vkCmdSetPerformanceStreamMarkerINTEL);
+  end;
+  if not assigned(vkCmdSetPerformanceOverrideINTEL) then begin
+   @vkCmdSetPerformanceOverrideINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetPerformanceOverrideINTEL'));
+   @vk.fCommands.CmdSetPerformanceOverrideINTEL:=addr(vkCmdSetPerformanceOverrideINTEL);
+  end;
+  if not assigned(vkAcquirePerformanceConfigurationINTEL) then begin
+   @vkAcquirePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquirePerformanceConfigurationINTEL'));
+   @vk.fCommands.AcquirePerformanceConfigurationINTEL:=addr(vkAcquirePerformanceConfigurationINTEL);
+  end;
+  if not assigned(vkReleasePerformanceConfigurationINTEL) then begin
+   @vkReleasePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkReleasePerformanceConfigurationINTEL'));
+   @vk.fCommands.ReleasePerformanceConfigurationINTEL:=addr(vkReleasePerformanceConfigurationINTEL);
+  end;
+  if not assigned(vkQueueSetPerformanceConfigurationINTEL) then begin
+   @vkQueueSetPerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueSetPerformanceConfigurationINTEL'));
+   @vk.fCommands.QueueSetPerformanceConfigurationINTEL:=addr(vkQueueSetPerformanceConfigurationINTEL);
+  end;
+  if not assigned(vkGetPerformanceParameterINTEL) then begin
+   @vkGetPerformanceParameterINTEL:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPerformanceParameterINTEL'));
+   @vk.fCommands.GetPerformanceParameterINTEL:=addr(vkGetPerformanceParameterINTEL);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -17762,6 +18235,16 @@ begin
   @InstanceCommands.AcquireFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireFullScreenExclusiveModeEXT')));
   @InstanceCommands.ReleaseFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkReleaseFullScreenExclusiveModeEXT')));
   @InstanceCommands.CreateHeadlessSurfaceEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateHeadlessSurfaceEXT')));
+  @InstanceCommands.GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV')));
+  @InstanceCommands.InitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkInitializePerformanceApiINTEL')));
+  @InstanceCommands.UninitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkUninitializePerformanceApiINTEL')));
+  @InstanceCommands.CmdSetPerformanceMarkerINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetPerformanceMarkerINTEL')));
+  @InstanceCommands.CmdSetPerformanceStreamMarkerINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetPerformanceStreamMarkerINTEL')));
+  @InstanceCommands.CmdSetPerformanceOverrideINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetPerformanceOverrideINTEL')));
+  @InstanceCommands.AcquirePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquirePerformanceConfigurationINTEL')));
+  @InstanceCommands.ReleasePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkReleasePerformanceConfigurationINTEL')));
+  @InstanceCommands.QueueSetPerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSetPerformanceConfigurationINTEL')));
+  @InstanceCommands.GetPerformanceParameterINTEL:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPerformanceParameterINTEL')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -18065,6 +18548,15 @@ begin
   @DeviceCommands.GetDeviceGroupSurfacePresentModes2EXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupSurfacePresentModes2EXT')));
   @DeviceCommands.AcquireFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireFullScreenExclusiveModeEXT')));
   @DeviceCommands.ReleaseFullScreenExclusiveModeEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkReleaseFullScreenExclusiveModeEXT')));
+  @DeviceCommands.InitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkInitializePerformanceApiINTEL')));
+  @DeviceCommands.UninitializePerformanceApiINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUninitializePerformanceApiINTEL')));
+  @DeviceCommands.CmdSetPerformanceMarkerINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetPerformanceMarkerINTEL')));
+  @DeviceCommands.CmdSetPerformanceStreamMarkerINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetPerformanceStreamMarkerINTEL')));
+  @DeviceCommands.CmdSetPerformanceOverrideINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetPerformanceOverrideINTEL')));
+  @DeviceCommands.AcquirePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquirePerformanceConfigurationINTEL')));
+  @DeviceCommands.ReleasePerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkReleasePerformanceConfigurationINTEL')));
+  @DeviceCommands.QueueSetPerformanceConfigurationINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSetPerformanceConfigurationINTEL')));
+  @DeviceCommands.GetPerformanceParameterINTEL:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetPerformanceParameterINTEL')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -23345,6 +23837,13 @@ begin
  supportsProtected:=aSupportsProtected;
 end;
 
+constructor TVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR.Create(const aUniformBufferStandardLayout:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR;
+ pNext:=nil;
+ uniformBufferStandardLayout:=aUniformBufferStandardLayout;
+end;
+
 constructor TVkPhysicalDeviceDepthClipEnableFeaturesEXT.Create(const aDepthClipEnable:TVkBool32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
@@ -23547,6 +24046,122 @@ begin
  sType:=VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT;
  pNext:=nil;
  flags:=aFlags;
+end;
+
+constructor TVkPhysicalDeviceCoverageReductionModeFeaturesNV.Create(const aCoverageReductionMode:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV;
+ pNext:=nil;
+ coverageReductionMode:=aCoverageReductionMode;
+end;
+
+constructor TVkPipelineCoverageReductionStateCreateInfoNV.Create(const aFlags:TVkPipelineCoverageReductionStateCreateFlagsNV;
+                                                                 const aCoverageReductionMode:TVkCoverageReductionModeNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ flags:=aFlags;
+ coverageReductionMode:=aCoverageReductionMode;
+end;
+
+constructor TVkFramebufferMixedSamplesCombinationNV.Create(const aCoverageReductionMode:TVkCoverageReductionModeNV;
+                                                           const aRasterizationSamples:TVkSampleCountFlagBits;
+                                                           const aDepthStencilSamples:TVkSampleCountFlags;
+                                                           const aColorSamples:TVkSampleCountFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV;
+ pNext:=nil;
+ coverageReductionMode:=aCoverageReductionMode;
+ rasterizationSamples:=aRasterizationSamples;
+ depthStencilSamples:=aDepthStencilSamples;
+ colorSamples:=aColorSamples;
+end;
+
+constructor TVkPhysicalDeviceShaderIntegerFunctions2INTEL.Create(const aShaderIntegerFunctions2:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS2_FEATURES_INTEL;
+ pNext:=nil;
+ shaderIntegerFunctions2:=aShaderIntegerFunctions2;
+end;
+
+constructor TVkPerformanceValueINTEL.Create(const aType_:TVkPerformanceValueTypeINTEL;
+                                            const aData:TVkPerformanceValueDataINTEL);
+begin
+ type_:=aType_;
+ data:=aData;
+end;
+
+constructor TVkInitializePerformanceApiInfoINTEL.Create(const aPUserData:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL;
+ pNext:=nil;
+ pUserData:=aPUserData;
+end;
+
+constructor TVkQueryPoolCreateInfoINTEL.Create(const aPerformanceCountersSampling:TVkQueryPoolSamplingModeINTEL);
+begin
+ sType:=VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL;
+ pNext:=nil;
+ performanceCountersSampling:=aPerformanceCountersSampling;
+end;
+
+constructor TVkPerformanceMarkerInfoINTEL.Create(const aMarker:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL;
+ pNext:=nil;
+ marker:=aMarker;
+end;
+
+constructor TVkPerformanceStreamMarkerInfoINTEL.Create(const aMarker:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL;
+ pNext:=nil;
+ marker:=aMarker;
+end;
+
+constructor TVkPerformanceOverrideInfoINTEL.Create(const aType_:TVkPerformanceOverrideTypeINTEL;
+                                                   const aEnable:TVkBool32;
+                                                   const aParameter:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL;
+ pNext:=nil;
+ type_:=aType_;
+ enable:=aEnable;
+ parameter:=aParameter;
+end;
+
+constructor TVkPerformanceConfigurationAcquireInfoINTEL.Create(const aType_:TVkPerformanceConfigurationTypeINTEL);
+begin
+ sType:=VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL;
+ pNext:=nil;
+ type_:=aType_;
+end;
+
+constructor TVkPhysicalDeviceShaderSMBuiltinsPropertiesNV.Create(const aShaderSMCount:TVkUInt32;
+                                                                 const aShaderWarpsPerSM:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV;
+ pNext:=nil;
+ shaderSMCount:=aShaderSMCount;
+ shaderWarpsPerSM:=aShaderWarpsPerSM;
+end;
+
+constructor TVkPhysicalDeviceShaderSMBuiltinsFeaturesNV.Create(const aShaderSMBuiltins:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV;
+ pNext:=nil;
+ shaderSMBuiltins:=aShaderSMBuiltins;
+end;
+
+constructor TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT.Create(const aFragmentShaderSampleInterlock:TVkBool32;
+                                                                       const aFragmentShaderPixelInterlock:TVkBool32;
+                                                                       const aFragmentShaderShadingRateInterlock:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+ pNext:=nil;
+ fragmentShaderSampleInterlock:=aFragmentShaderSampleInterlock;
+ fragmentShaderPixelInterlock:=aFragmentShaderPixelInterlock;
+ fragmentShaderShadingRateInterlock:=aFragmentShaderShadingRateInterlock;
 end;
 {$endif}
 
@@ -25391,6 +26006,56 @@ end;
 function TVulkan.CreateHeadlessSurfaceEXT(instance:TVkInstance;const pCreateInfo:PVkHeadlessSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
  result:=fCommands.CreateHeadlessSurfaceEXT(instance,pCreateInfo,pAllocator,pSurface);
+end;
+
+function TVulkan.GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(physicalDevice:TVkPhysicalDevice;pCombinationCount:PVkUInt32;pCombinations:PVkFramebufferMixedSamplesCombinationNV):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(physicalDevice,pCombinationCount,pCombinations);
+end;
+
+function TVulkan.InitializePerformanceApiINTEL(device:TVkDevice;const pInitializeInfo:PVkInitializePerformanceApiInfoINTEL):TVkResult;
+begin
+ result:=fCommands.InitializePerformanceApiINTEL(device,pInitializeInfo);
+end;
+
+procedure TVulkan.UninitializePerformanceApiINTEL(device:TVkDevice);
+begin
+ fCommands.UninitializePerformanceApiINTEL(device);
+end;
+
+function TVulkan.CmdSetPerformanceMarkerINTEL(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceMarkerInfoINTEL):TVkResult;
+begin
+ result:=fCommands.CmdSetPerformanceMarkerINTEL(commandBuffer,pMarkerInfo);
+end;
+
+function TVulkan.CmdSetPerformanceStreamMarkerINTEL(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceStreamMarkerInfoINTEL):TVkResult;
+begin
+ result:=fCommands.CmdSetPerformanceStreamMarkerINTEL(commandBuffer,pMarkerInfo);
+end;
+
+function TVulkan.CmdSetPerformanceOverrideINTEL(commandBuffer:TVkCommandBuffer;const pOverrideInfo:PVkPerformanceOverrideInfoINTEL):TVkResult;
+begin
+ result:=fCommands.CmdSetPerformanceOverrideINTEL(commandBuffer,pOverrideInfo);
+end;
+
+function TVulkan.AcquirePerformanceConfigurationINTEL(device:TVkDevice;const pAcquireInfo:PVkPerformanceConfigurationAcquireInfoINTEL;pConfiguration:PVkPerformanceConfigurationINTEL):TVkResult;
+begin
+ result:=fCommands.AcquirePerformanceConfigurationINTEL(device,pAcquireInfo,pConfiguration);
+end;
+
+function TVulkan.ReleasePerformanceConfigurationINTEL(device:TVkDevice;configuration:TVkPerformanceConfigurationINTEL):TVkResult;
+begin
+ result:=fCommands.ReleasePerformanceConfigurationINTEL(device,configuration);
+end;
+
+function TVulkan.QueueSetPerformanceConfigurationINTEL(queue:TVkQueue;configuration:TVkPerformanceConfigurationINTEL):TVkResult;
+begin
+ result:=fCommands.QueueSetPerformanceConfigurationINTEL(queue,configuration);
+end;
+
+function TVulkan.GetPerformanceParameterINTEL(device:TVkDevice;parameter:TVkPerformanceParameterTypeINTEL;pValue:PVkPerformanceValueINTEL):TVkResult;
+begin
+ result:=fCommands.GetPerformanceParameterINTEL(device,parameter,pValue);
 end;
 
 initialization
