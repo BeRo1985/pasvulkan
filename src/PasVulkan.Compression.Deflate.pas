@@ -64,6 +64,9 @@ interface
 uses SysUtils,
      Classes,
      Math,
+{$if not defined(fpc)}
+     System.ZLIB,
+{$ifend}
      PasVulkan.Math,
      PasVulkan.Types;
 
@@ -174,7 +177,81 @@ end;
 {$ifend}
 
 function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
-{$if defined(fpc) and (defined(Linux) or defined(Android))}
+{$if not defined(fpc)}
+const OutChunkSize=65536;
+var d_stream:z_stream;
+    r,Level:TpvInt32;
+    Allocated,Have:TpvSizeUInt;
+begin
+ result:=false;
+ aDestLen:=0;
+ Allocated:=0;
+ aDestData:=nil;
+ FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
+ case aMode of
+  TpvDeflateMode.VeryFast:begin
+   Level:=1;
+  end;
+  TpvDeflateMode.Fast:begin
+   Level:=5;
+  end;
+  TpvDeflateMode.Medium:begin
+   Level:=-1;
+  end;
+  TpvDeflateMode.Slow:begin
+   Level:=9;
+  end;
+  else begin
+   Level:=9;
+  end;
+ end;
+ if aWithHeader then begin
+  r:=deflateInit(d_stream,Level);
+ end else begin
+  r:=deflateInit2(d_stream,Level,Z_DEFLATED,-15{MAX_WBITS},9{Z_MEM_LEVEL},Z_DEFAULT_STRATEGY);
+ end;
+ try
+  if r=Z_OK then begin
+   try
+    d_stream.next_in:=aInData;
+    d_stream.avail_in:=aInLen;
+    Allocated:=deflateBound(d_stream,aInLen);
+    if Allocated<RoundUpToPowerOfTwo(aInLen) then begin
+     Allocated:=RoundUpToPowerOfTwo(aInLen);
+    end;
+    if Allocated<OutChunkSize then begin
+     Allocated:=OutChunkSize;
+    end;
+    GetMem(aDestData,Allocated);
+    d_stream.next_out:=aDestData;
+    d_stream.avail_out:=Allocated;
+    r:=deflate(d_stream,Z_FINISH);
+    aDestLen:=d_stream.total_out;
+   finally
+    if r=Z_STREAM_END then begin
+     r:=deflateEnd(d_stream);
+    end else begin
+     deflateEnd(d_stream);
+    end;
+   end;
+  end;
+ finally
+  if (r=Z_OK) or (r=Z_STREAM_END) then begin
+   if assigned(aDestData) then begin
+    ReallocMem(aDestData,aDestLen);
+   end else begin
+    aDestLen:=0;
+   end;
+   result:=true;
+  end else begin
+   if assigned(aDestData) then begin
+    FreeMem(aDestData);
+   end;
+   aDestData:=nil;
+  end;
+ end;
+end;
+{$elseif defined(fpc) and (defined(Linux) or defined(Android))}
 const OutChunkSize=65536;
 var d_stream:z_stream;
     r,Level:TpvInt32;
@@ -590,7 +667,78 @@ end;
 {$ifend}
 
 function DoInflate(const aInData:TpvPointer;aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aParseHeader:boolean):boolean;
-{$if defined(fpc) and (defined(Linux) or defined(Android))}
+{$if not defined(fpc)}
+const OutChunkSize=65536;
+var d_stream:z_stream;
+    r:TpvInt32;
+    Allocated,Have:TpvSizeUInt;
+begin
+ result:=false;
+ aDestLen:=0;
+ Allocated:=0;
+ aDestData:=nil;
+ FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
+ d_stream.next_in:=aInData;
+ d_stream.avail_in:=aInLen;
+ if aParseHeader then begin
+  r:=inflateInit(d_stream);
+ end else begin
+  r:=inflateInit2(d_stream,-15{MAX_WBITS});
+ end;
+ try
+  if r=Z_OK then begin
+   try
+    Allocated:=RoundUpToPowerOfTwo(aInLen);
+    if Allocated<OutChunkSize then begin
+     Allocated:=OutChunkSize;
+    end;
+    GetMem(aDestData,Allocated);
+    repeat
+     repeat
+      if Allocated<(aDestLen+OutChunkSize) then begin
+       Allocated:=RoundUpToPowerOfTwo(aDestLen+OutChunkSize);
+       if assigned(aDestData) then begin
+        ReallocMem(aDestData,Allocated);
+       end else begin
+        GetMem(aDestData,Allocated);
+       end;
+      end;
+      d_stream.next_out:=@PpvUInt8Array(aDestData)^[aDestLen];
+      d_stream.avail_out:=OutChunkSize;
+      r:=Inflate(d_stream,Z_NO_FLUSH);
+      if r<Z_OK then begin
+       break;
+      end;
+      if d_stream.avail_out<OutChunkSize then begin
+       inc(aDestLen,OutChunkSize-d_stream.avail_out);
+      end;
+     until d_stream.avail_out<>0;
+    until (r<Z_OK) or (r=Z_STREAM_END);
+   finally
+    if r=Z_STREAM_END then begin
+     r:=InflateEnd(d_stream);
+    end else begin
+     InflateEnd(d_stream);
+    end;
+   end;
+  end;
+ finally
+  if (r=Z_OK) or (r=Z_STREAM_END) then begin
+   if assigned(aDestData) then begin
+    ReallocMem(aDestData,aDestLen);
+   end else begin
+    aDestLen:=0;
+   end;
+   result:=true;
+  end else begin
+   if assigned(aDestData) then begin
+    FreeMem(aDestData);
+   end;
+   aDestData:=nil;
+  end;
+ end;
+end;
+{$elseif defined(fpc) and (defined(Linux) or defined(Android))}
 const OutChunkSize=65536;
 var d_stream:z_stream;
     r:TpvInt32;
