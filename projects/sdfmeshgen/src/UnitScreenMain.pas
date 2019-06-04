@@ -2320,12 +2320,6 @@ begin
                                   TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
  fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
-                                 pvApplication.VulkanDevice.GraphicsQueue,
-                                 fVulkanGraphicsCommandBuffer,
-                                 fVulkanGraphicsCommandBufferFence,
-                                 pvApplication.VulkanDevice.TransferQueue,
-                                 fVulkanTransferCommandBuffer,
-                                 fVulkanTransferCommandBufferFence,
                                  pvApplication.VulkanPipelineCache,
                                  MaxSwapChainImages);
 
@@ -2984,7 +2978,9 @@ begin
 
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-   fVulkanCanvas.ExecuteUpload(VulkanCommandBuffer,
+   fVulkanCanvas.ExecuteUpload(pvApplication.VulkanDevice.TransferQueue,
+                               fVulkanTransferCommandBuffer,
+                               fVulkanTransferCommandBufferFence,
                                pvApplication.DrawSwapChainImageIndex);
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,

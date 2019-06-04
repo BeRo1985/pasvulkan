@@ -575,12 +575,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        fDevice:TpvVulkanDevice;
        fCanvasCommon:TpvCanvasCommon;
-       fGraphicsQueue:TpvVulkanQueue;
-       fGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-       fGraphicsFence:TpvVulkanFence;
-       fTransferQueue:TpvVulkanQueue;
-       fTransferCommandBuffer:TpvVulkanCommandBuffer;
-       fTransferFence:TpvVulkanFence;
        fPipelineCache:TpvVulkanPipelineCache;
        fVulkanDescriptors:TpvCanvasVulkanDescriptorLinkedListNode;
        fVulkanDescriptorSetGUINoTextureLayout:TpvVulkanDescriptorSetLayout;
@@ -667,12 +661,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure GarbageCollectDescriptors;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
-                          const aGraphicsQueue:TpvVulkanQueue;
-                          const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                          const aGraphicsFence:TpvVulkanFence;
-                          const aTransferQueue:TpvVulkanQueue;
-                          const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                          const aTransferFence:TpvVulkanFence;
                           const aPipelineCache:TpvVulkanPipelineCache;
                           const aCountProcessingBuffers:TpvInt32=4); reintroduce;
        destructor Destroy; override;
@@ -691,7 +679,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
        function AddIndex(const aVertexIndex:TpvInt32):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+       procedure ExecuteUpload(const aVulkanTransferQueue:TpvVulkanQueue;const aVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;const aVulkanTransferCommandBufferFence:TpvVulkanFence;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
        function Push:TpvCanvas;
@@ -3164,12 +3152,6 @@ begin
 end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
-                             const aGraphicsQueue:TpvVulkanQueue;
-                             const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                             const aGraphicsFence:TpvVulkanFence;
-                             const aTransferQueue:TpvVulkanQueue;
-                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                             const aTransferFence:TpvVulkanFence;
                              const aPipelineCache:TpvVulkanPipelineCache;
                              const aCountProcessingBuffers:TpvInt32);
 var Index,TextureModeIndex:TpvInt32;
@@ -3182,14 +3164,6 @@ begin
  fDevice:=aDevice;
 
  fCanvasCommon:=TpvCanvasCommon.Acquire(fDevice);
-
- fGraphicsQueue:=aGraphicsQueue;
- fGraphicsCommandBuffer:=aGraphicsCommandBuffer;
- fGraphicsFence:=aGraphicsFence;
-
- fTransferQueue:=aTransferQueue;
- fTransferCommandBuffer:=aTransferCommandBuffer;
- fTransferFence:=aTransferFence;
 
  fPipelineCache:=aPipelineCache;
 
@@ -4215,7 +4189,7 @@ begin
          (aY0<=(fState.fClipRect.RightBottom.y+Threshold));
 end;
 
-procedure TpvCanvas.ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+procedure TpvCanvas.ExecuteUpload(const aVulkanTransferQueue:TpvVulkanQueue;const aVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;const aVulkanTransferCommandBufferFence:TpvVulkanFence;const aBufferIndex:TpvInt32);
 var Index:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
@@ -4245,9 +4219,9 @@ begin
       CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
      end;
      if assigned(VulkanBuffer) then begin
-      VulkanBuffer.UploadData(fTransferQueue,
-                              fTransferCommandBuffer,
-                              fTransferFence,
+      VulkanBuffer.UploadData(aVulkanTransferQueue,
+                              aVulkanTransferCommandBuffer,
+                              aVulkanTransferCommandBufferFence,
                               CurrentBuffer^.fVertexBuffers[Index,0],
                               0,
                               CurrentBuffer^.fVertexBufferSizes[Index],
@@ -4273,9 +4247,9 @@ begin
       CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
      end;
      if assigned(VulkanBuffer) then begin
-      VulkanBuffer.UploadData(fTransferQueue,
-                              fTransferCommandBuffer,
-                              fTransferFence,
+      VulkanBuffer.UploadData(aVulkanTransferQueue,
+                              aVulkanTransferCommandBuffer,
+                              aVulkanTransferCommandBufferFence,
                               CurrentBuffer^.fIndexBuffers[Index,0],
                               0,
                               CurrentBuffer^.fIndexBufferSizes[Index],
