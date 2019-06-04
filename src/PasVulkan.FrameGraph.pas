@@ -4346,6 +4346,7 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
      Resource:TResource;
+     WorkPasses:array[0..1] of TPass;
  begin
   // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
   Stack.Initialize;
@@ -4405,22 +4406,22 @@ type TEventBeforeAfter=(Event,Before,After);
         Index:=0;
         Count:=Pass.fPreviousPasses.Count;
         while (Index+1)<Count do begin
-         Passes[0]:=Pass.fPreviousPasses[Index];
-         Passes[1]:=Pass.fPreviousPasses[Index+1];
-         if Passes[0].fQueue<>Passes[1].fQueue then begin
-          Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
+         WorkPasses[0]:=Pass.fPreviousPasses[Index];
+         WorkPasses[1]:=Pass.fPreviousPasses[Index+1];
+         if WorkPasses[0].fQueue<>WorkPasses[1].fQueue then begin
+          Weight:=(ord(WorkPasses[0].fQueue=Pass.fQueue) and 1)-(ord(WorkPasses[1].fQueue=Pass.fQueue) and 1);
           if Weight=0 then begin
-           if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
+           if TpvPtrUInt(WorkPasses[0].fQueue)<TpvPtrUInt(WorkPasses[1].fQueue) then begin
             Weight:=-1;
            end else begin
             Weight:=1;
            end;
           end;
          end else begin
-          Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
+          Weight:=(ord(WorkPasses[0] is TRenderPass) and 1)-(ord(WorkPasses[1] is TRenderPass) and 1);
           if Weight=0 then begin
-           Weight:=(ord(TRenderPass(Passes[0]).fSize=TRenderPass(Pass).fSize) and 1)-
-                   (ord(TRenderPass(Passes[1]).fSize=TRenderPass(Pass).fSize) and 1);
+           Weight:=(ord(TRenderPass(WorkPasses[0]).fSize=TRenderPass(Pass).fSize) and 1)-
+                   (ord(TRenderPass(WorkPasses[1]).fSize=TRenderPass(Pass).fSize) and 1);
           end;
          end;
          if Weight<0 then begin
