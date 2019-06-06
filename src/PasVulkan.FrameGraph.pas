@@ -834,6 +834,7 @@ type EpvFrameGraph=class(Exception);
               fFinalLayouts:TResourcelLayoutHashMap;
               fVulkanRenderPass:TpvVulkanRenderPass;
               fVulkanFrameBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanFrameBuffer;
+              fSize:TImageSize;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
@@ -843,6 +844,8 @@ type EpvFrameGraph=class(Exception);
               procedure BeforeDestroySwapChain; override;
               procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
+             public
+              property Size:TImageSize read fSize write fSize;
              published
               property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass;
             end;
@@ -3585,6 +3588,9 @@ begin
   end;
   break;
  end;
+
+ fSize.Kind:=TpvFrameGraph.TImageSize.TKind.Absolute;
+ fSize.Size:=TpvVector4.InlineableCreate(Width,Height,RenderPass.fSize.Size.z,Layers);
 
  fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
 
