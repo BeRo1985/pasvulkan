@@ -176,6 +176,21 @@ type EpvFont=class(Exception);
 
      TpvFontDrawSprite=procedure(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect) of object;
 
+     PpvFontTextGlyphInfo=^TpvFontTextGlyphInfo;
+     TpvFontTextGlyphInfo=record
+      TextIndex:TpvInt32;
+      CodePoint:TpvInt32;
+      LastGlyph:TpvInt32;
+      Glyph:TpvInt32;
+      Kerning:TpvVector2;
+      Advance:TpvVector2;
+      Offset:TpvVector2;
+      Position:TpvVector2;
+      Size:TpvVector2;
+     end;
+
+     TpvFontTextGlyphInfoArray=array of TpvFontTextGlyphInfo;
+
      TpvFont=class
       private
        const FileFormatGUID:TGUID='{2405B44F-8747-4A17-AD91-83DAD9E48941}';
@@ -236,6 +251,7 @@ type EpvFont=class(Exception);
        function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        function LineSpace(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
+       procedure GetTextGlyphInfos(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aTextGlyphInfos:TpvFontTextGlyphInfoArray;out aCountTextGlyphInfos:TpvInt32);
        procedure Draw(const aDrawSprite:TpvFontDrawSprite;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
@@ -1674,6 +1690,62 @@ begin
     aRects[aCountRects]:=TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
                                                 Glyph^.Size*RescaleFactor);
     inc(aCountRects);
+    Position:=Position+Glyph^.Advance;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+end;
+
+procedure TpvFont.GetTextGlyphInfos(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aTextGlyphInfos:TpvFontTextGlyphInfoArray;out aCountTextGlyphInfos:TpvInt32);
+var OldTextIndex,TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    ScaleFactor,RescaleFactor:TpvFloat;
+    Int64Value:TpvInt64;
+    Glyph:PpvFontGlyph;
+    Position:TpvVector2;
+    TextGlyphInfo:PpvFontTextGlyphInfo;
+begin
+ aCountTextGlyphInfos:=0;
+ Position:=TpvVector2.Null;
+ ScaleFactor:=GetScaleFactor(aSize);
+ RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  OldTextIndex:=TextIndex;
+  CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+    if length(aTextGlyphInfos)<=aCountTextGlyphInfos then begin
+     SetLength(aTextGlyphInfos,(aCountTextGlyphInfos+1)*2);
+    end;
+    TextGlyphInfo:=@aTextGlyphInfos[aCountTextGlyphInfos];
+    TextGlyphInfo^.TextIndex:=OldTextIndex;
+    TextGlyphInfo^.CodePoint:=CurrentCodePoint;
+    TextGlyphInfo^.LastGlyph:=LastGlyph;
+    TextGlyphInfo^.Glyph:=CurrentGlyph;
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     Position:=Position+fKerningPairVectors[Int64Value];
+     TextGlyphInfo^.Kerning:=fKerningPairVectors[Int64Value]*ScaleFactor;
+    end else begin
+     TextGlyphInfo^.Kerning:=TpvVector2.Null;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    TextGlyphInfo^.Advance:=Glyph^.Advance*ScaleFactor;
+    TextGlyphInfo^.Offset:=Glyph^.Offset*RescaleFactor;
+    TextGlyphInfo^.Position:=aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor);
+    TextGlyphInfo^.Size:=Glyph^.Size*RescaleFactor;
+    inc(aCountTextGlyphInfos);
     Position:=Position+Glyph^.Advance;
    end;
   end else begin
