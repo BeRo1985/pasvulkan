@@ -1700,13 +1700,14 @@ begin
 end;
 
 procedure TpvFont.GetTextGlyphInfos(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aTextGlyphInfos:TpvFontTextGlyphInfoArray;out aCountTextGlyphInfos:TpvInt32);
-var OldTextIndex,TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
+var LastTextIndex,TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     Position:TpvVector2;
     TextGlyphInfo:PpvFontTextGlyphInfo;
+    ValidGlyph:boolean;
 begin
  aCountTextGlyphInfos:=0;
  Position:=TpvVector2.Null;
@@ -1715,10 +1716,11 @@ begin
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
-  OldTextIndex:=TextIndex;
+  LastTextIndex:=TextIndex;
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  ValidGlyph:=false;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
@@ -1728,7 +1730,8 @@ begin
      SetLength(aTextGlyphInfos,(aCountTextGlyphInfos+1)*2);
     end;
     TextGlyphInfo:=@aTextGlyphInfos[aCountTextGlyphInfos];
-    TextGlyphInfo^.TextIndex:=OldTextIndex;
+    inc(aCountTextGlyphInfos);
+    TextGlyphInfo^.TextIndex:=LastTextIndex;
     TextGlyphInfo^.CodePoint:=CurrentCodePoint;
     TextGlyphInfo^.LastGlyph:=LastGlyph;
     TextGlyphInfo^.Glyph:=CurrentGlyph;
@@ -1745,11 +1748,27 @@ begin
     TextGlyphInfo^.Offset:=Glyph^.Offset*RescaleFactor;
     TextGlyphInfo^.Position:=aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor);
     TextGlyphInfo^.Size:=Glyph^.Size*RescaleFactor;
-    inc(aCountTextGlyphInfos);
     Position:=Position+Glyph^.Advance;
+    ValidGlyph:=true;
    end;
   end else begin
    CurrentGlyph:=0;
+  end;
+  if not ValidGlyph then begin
+   if length(aTextGlyphInfos)<=aCountTextGlyphInfos then begin
+    SetLength(aTextGlyphInfos,(aCountTextGlyphInfos+1)*2);
+   end;
+   TextGlyphInfo:=@aTextGlyphInfos[aCountTextGlyphInfos];
+   inc(aCountTextGlyphInfos);
+   TextGlyphInfo^.TextIndex:=LastTextIndex;
+   TextGlyphInfo^.CodePoint:=CurrentCodePoint;
+   TextGlyphInfo^.LastGlyph:=LastGlyph;
+   TextGlyphInfo^.Glyph:=CurrentGlyph;
+   TextGlyphInfo^.Kerning:=TpvVector2.Null;
+   TextGlyphInfo^.Advance:=TpvVector2.Null;
+   TextGlyphInfo^.Offset:=TpvVector2.Null;
+   TextGlyphInfo^.Position:=aPosition+(Position*ScaleFactor);
+   TextGlyphInfo^.Size:=TpvVector2.Null;
   end;
   LastGlyph:=CurrentGlyph;
  end;
