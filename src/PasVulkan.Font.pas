@@ -195,7 +195,6 @@ type EpvFont=class(Exception);
       private
        const FileFormatGUID:TGUID='{2405B44F-8747-4A17-AD91-83DAD9E48941}';
       private
-       fDevice:TpvVulkanDevice;
        fSpriteAtlas:TpvSpriteAtlas;
        fTargetPPI:TpvInt32;
        fUnitsPerEm:TpvInt32;
@@ -231,10 +230,10 @@ type EpvFont=class(Exception);
        procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
-       constructor CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
-       constructor CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
+       constructor Create(const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
+       constructor CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
+       constructor CreateFromStream(const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
+       constructor CreateFromFile(const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
@@ -324,12 +323,10 @@ begin
  end;
 end;
 
-constructor TpvFont.Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0);
+constructor TpvFont.Create(const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0);
 begin
 
  inherited Create;
-
- fDevice:=aDevice;
 
  fSpriteAtlas:=aSpriteAtlas;
 
@@ -389,7 +386,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
+constructor TpvFont.CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
       GlyphRasterizationToMetaScaleFactor=1.0/4.0;
@@ -429,7 +426,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     CodePointRanges:array of TpvFontCodePointRange;
 begin
 
- Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI,aTrueTypeFont.Size);
+ Create(aSpriteAtlas,aTrueTypeFont.TargetPPI,aTrueTypeFont.Size);
 
  PasMPInstance:=TPasMP.GetGlobalInstance;
 
@@ -844,15 +841,15 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
+constructor TpvFont.CreateFromStream(const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
 begin
- Create(aDevice,aSpriteAtlas);
+ Create(aSpriteAtlas);
  LoadFromStream(aStream);
 end;
 
-constructor TpvFont.CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
+constructor TpvFont.CreateFromFile(const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
 begin
- Create(aDevice,aSpriteAtlas);
+ Create(aSpriteAtlas);
  LoadFromFile(aFileName);
 end;
 

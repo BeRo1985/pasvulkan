@@ -222,8 +222,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                fVulkanFontSpriteAtlas,
+    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
                                                 TrueTypeFont,
                                                 [TpvFontCodePointRange.Create(0,255)],
                                                 true,
@@ -302,7 +301,7 @@ begin
 
   fVulkanFontSpriteAtlas.LoadFromFile(CacheStoragePath+'example_canvas_font_spriteatlas.zip');
 
-  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,CacheStoragePath+'example_canvas_font.dat');
+  fVulkanFont:=TpvFont.CreateFromFile(fVulkanFontSpriteAtlas,CacheStoragePath+'example_canvas_font.dat');
 
   fVulkanSpriteAtlas.LoadFromFile(CacheStoragePath+'example_canvas_spriteatlas.zip');
 

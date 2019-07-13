@@ -6846,8 +6846,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                              fSignedDistanceFieldSpriteAtlas,
+    fSansFont:=TpvFont.CreateFromTrueTypeFont(fSignedDistanceFieldSpriteAtlas,
                                               TrueTypeFont,
                                               fInstance.fFontCodePointRanges,
                                               true,
@@ -6866,8 +6865,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                  fSignedDistanceFieldSpriteAtlas,
+    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(fSignedDistanceFieldSpriteAtlas,
                                                   TrueTypeFont,
                                                   fInstance.fFontCodePointRanges,
                                                   true,
@@ -6886,8 +6884,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                        fSignedDistanceFieldSpriteAtlas,
+    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(fSignedDistanceFieldSpriteAtlas,
                                                         TrueTypeFont,
                                                         fInstance.fFontCodePointRanges,
                                                         true,
@@ -6906,8 +6903,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                    fSignedDistanceFieldSpriteAtlas,
+    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(fSignedDistanceFieldSpriteAtlas,
                                                     TrueTypeFont,
                                                     fInstance.fFontCodePointRanges,
                                                     true,
@@ -6926,8 +6922,7 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                              fSignedDistanceFieldSpriteAtlas,
+    fMonoFont:=TpvFont.CreateFromTrueTypeFont(fSignedDistanceFieldSpriteAtlas,
                                               TrueTypeFont,
                                               fInstance.fMonoFontCodePointRanges,
                                               true,
@@ -7403,15 +7398,15 @@ begin
 
   fSignedDistanceFieldSpriteAtlas.LoadFromFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip');
 
-  fSansFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_font.dat');
+  fSansFont:=TpvFont.CreateFromFile(fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_font.dat');
 
-  fSansBoldFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_font.dat');
+  fSansBoldFont:=TpvFont.CreateFromFile(fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_font.dat');
 
-  fSansBoldItalicFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_italic_font.dat');
+  fSansBoldItalicFont:=TpvFont.CreateFromFile(fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_italic_font.dat');
 
-  fSansItalicFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_italic_font.dat');
+  fSansItalicFont:=TpvFont.CreateFromFile(fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_italic_font.dat');
 
-  fMonoFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_mono_font.dat');
+  fMonoFont:=TpvFont.CreateFromFile(fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_mono_font.dat');
 
   fIconWindowClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowClose'];
   fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowRestore'];
