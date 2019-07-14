@@ -262,7 +262,9 @@ type EpvSpriteAtlas=class(Exception);
      TpvSpriteNinePatchRegionMode=
       (
        Stretch,
-       Tile
+       Tile,
+       StretchXTileY,
+       TileXStretchY
       );
 
      PpvSpriteNinePatchRegion=^TpvSpriteNinePatchRegion;

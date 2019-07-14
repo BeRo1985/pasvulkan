@@ -4713,6 +4713,26 @@ begin
     TpvSpriteNinePatchRegionMode.Stretch:begin
      DrawSprite(aSprite,SrcRect,DestRect);
     end;
+    TpvSpriteNinePatchRegionMode.StretchXTileY:begin
+     y:=DestRect.Top;
+     while y<DestRect.Bottom do begin
+      StepY:=Max(1e-4,Min(DestRect.Bottom-y,NinePatchRegion^.Height));
+      DrawSprite(aSprite,
+                 TpvRect.CreateAbsolute(SrcRect.Left,SrcRect.Top,SrcRect.Right,SrcRect.Top+StepY),
+                 TpvRect.CreateAbsolute(DestRect.Left,y,DestRect.Right,y+StepY));
+      y:=y+StepY;
+     end;
+    end;
+    TpvSpriteNinePatchRegionMode.TileXStretchY:begin
+     x:=DestRect.Left;
+     while x<DestRect.Right do begin
+      StepX:=Max(1e-4,Min(DestRect.Right-x,NinePatchRegion^.Width));
+      DrawSprite(aSprite,
+                 TpvRect.CreateAbsolute(SrcRect.Left,SrcRect.Top,SrcRect.Left+StepX,SrcRect.Bottom),
+                 TpvRect.CreateAbsolute(x,DestRect.Top,x+StepX,DestRect.Bottom));
+      x:=x+StepX;
+     end;
+    end;
     else {TpvSpriteNinePatchRegionMode.Tile:}begin
      y:=DestRect.Top;
      while y<DestRect.Bottom do begin
