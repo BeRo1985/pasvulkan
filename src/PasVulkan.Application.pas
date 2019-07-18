@@ -850,9 +850,7 @@ type EpvApplication=class(Exception)
        type TFileNameList=array of TpvUTF8String;
       private
        fVulkanApplication:TpvApplication;
-{$ifndef Android}
        fBasePath:TpvUTF8String;
-{$endif}
        function CorrectFileName(const aFileName:TpvUTF8String):TpvUTF8String;
       public
        constructor Create(const aVulkanApplication:TpvApplication);
@@ -4776,8 +4774,9 @@ constructor TpvApplicationAssets.Create(const aVulkanApplication:TpvApplication)
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
-{$if not defined(Android)}
-{$if defined(PasVulkanAdjustDelphiWorkingDirectory)}
+{$if defined(Android)}
+ fBasePath:='';
+{$elseif defined(PasVulkanAdjustDelphiWorkingDirectory)}
  fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'..')+'..')+'assets'))));
 {$elseif defined(PasVulkanUseCurrentWorkingDirectory)}
  fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(GetCurrentDir))+'assets'));
@@ -4785,7 +4784,6 @@ begin
  fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets'));
 {$else}
  fBasePath:=TpvUTF8String(IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'assets'))));
-{$ifend}
 {$ifend}
 end;
 
@@ -4891,14 +4889,14 @@ var AssetDir:PAAssetDir;
 begin
  result:=nil;
  if assigned(AndroidAssetManager) then begin
-  AssetDir:=AAssetManager_openDir(AndroidAssetManager,PAnsiChar(TpvApplicationRawByteString(CorrectFileName(aPath))),AASSET_MODE_UNKNOWN);
+  AssetDir:=AAssetManager_openDir(AndroidAssetManager,PAnsiChar(TpvApplicationRawByteString(CorrectFileName(aPath))){,AASSET_MODE_UNKNOWN});
   if assigned(AssetDir) then begin
    try
     Count:=0;
     try
      repeat
       FileName:=AAssetDir_getNextFileName(AssetDir);
-      if aasigned(FileName) then begin
+      if assigned(FileName) then begin
        if length(result)<=Count then begin
         SetLength(result,(Count+1)*2);
        end;
