@@ -369,7 +369,7 @@ begin
 {$else}
 {$ifdef linux}
   NowTime:=GetTime;
-  EndTime:=NowTime+pDelay;
+  EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
    SleepTime:=((EndTime-NowTime)+2) shr 2;
    if SleepTime>0 then begin
@@ -391,7 +391,7 @@ begin
 {$else}
 {$ifdef unix}
   NowTime:=GetTime;
-  EndTime:=NowTime+pDelay;
+  EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
    SleepTime:=((EndTime-NowTime)+2) shr 2;
    if SleepTime>0 then begin
@@ -412,7 +412,7 @@ begin
   end;
 {$else}
   NowTime:=GetTime;
-  EndTime:=NowTime+pDelay;
+  EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime then begin
    SDL_Delay(1);
    NowTime:=GetTime;
