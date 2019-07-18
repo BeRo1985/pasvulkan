@@ -87,7 +87,9 @@ function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImage
 
 implementation
 
+{$if defined(fpc) and defined(Android) and defined(cpuarm)}
 uses PasVulkan.Image.PNG.ExternalLibrary;
+{$ifend}
 
 function CRC32(const aData:TpvPointer;const aLength:TpvUInt32):TpvUInt32;
 const CRC32Table:array[0..15] of TpvUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
@@ -113,7 +115,7 @@ begin
  end;
 end;
 
-{$if defined(fpc) and defined(Android)}
+{$if defined(fpc) and defined(Android) and defined(cpuarm)}
 type POwnStream=^TOwnStream;
      TOwnStream=record
       Data:pointer;
@@ -129,7 +131,7 @@ end;
 {$ifend}
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
-{$if defined(fpc) and defined(Android)}
+{$if defined(fpc) and defined(Android) and defined(cpuarm)}
 const kPngSignatureLength=8;
 var png_ptr:png_structp;
     info_ptr:png_infop;
