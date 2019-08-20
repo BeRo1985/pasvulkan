@@ -274,7 +274,7 @@ constructor TpvHighResolutionTimer.Create;
 begin
  inherited Create;
  fFrequencyShift:=0;
-{$ifdef windows}
+{$if defined(windows)}
  if QueryPerformanceFrequency(fFrequency) then begin
   while (fFrequency and $ffffffffe0000000)<>0 do begin
    fFrequency:=fFrequency shr 1;
@@ -283,17 +283,13 @@ begin
  end else begin
   fFrequency:=1000;
  end;
-{$else}
-{$ifdef linux}
+{$elseif defined(linux) or defined(android)}
   fFrequency:=1000000000;
-{$else}
-{$ifdef unix}
+{$elseif defined(unix)}
   fFrequency:=1000000;
 {$else}
   fFrequency:=1000;
-{$endif}
-{$endif}
-{$endif}
+{$ifend}
  fMillisecondInterval:=(fFrequency+500) div 1000;
  fTwoMillisecondsInterval:=(fFrequency+250) div 500;
  fFourMillisecondsInterval:=(fFrequency+125) div 250;
@@ -308,29 +304,25 @@ begin
 end;
 
 function TpvHighResolutionTimer.GetTime:TpvInt64;
-{$ifdef linux}
+{$if defined(linux) or defined(android)}
 var NowTimeSpec:TimeSpec;
     ia,ib:TpvInt64;
-{$else}
-{$ifdef unix}
+{$elseif defined(unix)}
 var tv:timeval;
     tz:timezone;
     ia,ib:TpvInt64;
-{$endif}
-{$endif}
+{$ifend}
 begin
-{$ifdef windows}
+{$if defined(windows)}
  if not QueryPerformanceCounter(result) then begin
   result:=timeGetTime;
  end;
-{$else}
-{$ifdef linux}
+{$elseif defined(linux) or defined(android)}
  clock_gettime(CLOCK_MONOTONIC,@NowTimeSpec);
  ia:=TpvInt64(NowTimeSpec.tv_sec)*TpvInt64(1000000000);
  ib:=NowTimeSpec.tv_nsec;
  result:=ia+ib;
-{$else}
-{$ifdef unix}
+{$elseif defined(unix)}
   tz.tz_minuteswest:=0;
   tz.tz_dsttime:=0;
   fpgettimeofday(@tv,@tz);
@@ -339,9 +331,7 @@ begin
   result:=ia+ib;
 {$else}
  result:=SDL_GetTicks;
-{$endif}
-{$endif}
-{$endif}
+{$ifend}
  result:=result shr fFrequencyShift;
 end;
 
@@ -352,7 +342,7 @@ var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
 {$endif}
 begin
  if aDelay>0 then begin
-{$ifdef windows}
+{$if defined(windows)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
@@ -366,8 +356,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
-{$else}
-{$ifdef linux}
+{$elseif defined(linux) or defined(android)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
@@ -388,8 +377,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
-{$else}
-{$ifdef unix}
+{$elseif defined(unix)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
@@ -424,9 +412,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
-{$endif}
-{$endif}
-{$endif}
+{$ifend}
  end;
 end;
 
