@@ -70,9 +70,9 @@ uses {$ifdef windows}
        BaseUnix,
        Unix,
        UnixType,
-       {$ifdef linux}
+       {$if defined(linux) or defined(android)}
         linux,
-       {$endif}
+       {$ifend}
       {$else}
        SDL,
       {$endif}
