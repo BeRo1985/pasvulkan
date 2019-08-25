@@ -21,6 +21,8 @@ You must first compile the (yet incomplete) PasVulkan project manager using comp
 
 And you do need either the most current Delphi version or the most current SVN trunk version of the FreePascal compiler (and not just the stable version of the FreePascal compiler), including correct paths in your PATH environment variable to these compiler binaries. And if you also want to use the Android target, the same applies to Android Studio, the Java SDK, the Android SDK and the Android NDK, that these must be installed at their default locations (as Google prescribes or specifies these default locations, without exceptions) and must be correctly exist in the system environment variables.
 
+And for the Android target you do need all FreePascal cross compiler installations for all from Android official supported CPU targets without any exception, and these are: x86_32/i386, x86_64/AMD64, ARM32 and AArch64/ARM64 
+
 ## How to build and to run the example project
 
 After you've compiled the projectmanager binary, you need to do the following: 
