@@ -487,6 +487,18 @@ type EpvApplication=class(Exception)
 
      TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
 
+     PpvApplicationDisplayOrientation=^TpvApplicationDisplayOrientation;
+     TpvApplicationDisplayOrientation=
+      (
+       LandscapeLeft,
+       LandscapeRight,
+       Portrait,
+       PortraitUpsideDown
+      );
+
+     PpvApplicationDisplayOrientations=^TpvApplicationDisplayOrientations;
+     TpvApplicationDisplayOrientations=set of TpvApplicationDisplayOrientation;
+
      PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
      TpvApplicationInputKeyEventType=
       (
@@ -977,6 +989,8 @@ type EpvApplication=class(Exception)
        fLifecycleListenerList:TList;
        fLifecycleListenerListCriticalSection:TPasMPCriticalSection;
 
+       fDisplayOrientations:TpvApplicationDisplayOrientations;
+
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
@@ -1429,6 +1443,8 @@ type EpvApplication=class(Exception)
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
+
+       property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
        property AndroidSeparateMouseAndTouch:boolean read GetAndroidSeparateMouseAndTouch write SetAndroidSeparateMouseAndTouch;
 
@@ -5223,6 +5239,7 @@ begin
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
  fHideSystemBars:=false;
+ fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=true;
  fAndroidTouchMouseEvents:=true;
  fAndroidBlockOnPause:=true;
@@ -7916,6 +7933,7 @@ procedure TpvApplication.Run;
 var Index:TpvInt32;
 {$if defined(PasVulkanUseSDL2)}
     SDL2Flags:TpvUInt32;
+    SDL2HintParameter:TpvUTF8String;
 {$ifend}
 {$if defined(Android)}
     AndroidEnv:PJNIEnv;
@@ -8115,7 +8133,25 @@ begin
  end else begin
   SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON,'0');
  end;
- SDL_SetHint(SDL_HINT_ORIENTATIONS,'LandscapeLeft LandscapeRight');
+
+ SDL2HintParameter:='';
+ if TpvApplicationDisplayOrientation.LandscapeLeft in fDisplayOrientations then begin
+  SDL2HintParameter:=SDL2HintParameter+'LandscapeLeft ';
+ end;
+ if TpvApplicationDisplayOrientation.LandscapeRight in fDisplayOrientations then begin
+  SDL2HintParameter:=SDL2HintParameter+'LandscapeRight ';
+ end;
+ if TpvApplicationDisplayOrientation.Portrait in fDisplayOrientations then begin
+  SDL2HintParameter:=SDL2HintParameter+'Portrait ';
+ end;
+ if TpvApplicationDisplayOrientation.PortraitUpsideDown in fDisplayOrientations then begin
+  SDL2HintParameter:=SDL2HintParameter+'PortraitUpsideDown ';
+ end;
+ if length(SDL2HintParameter)>0 then begin
+  SDL2HintParameter:=trim(SDL2HintParameter);
+  SDL_SetHint(SDL_HINT_ORIENTATIONS,PAnsiChar(SDL2HintParameter));
+ end;
+
 {$else}
 {$ifend}
 
