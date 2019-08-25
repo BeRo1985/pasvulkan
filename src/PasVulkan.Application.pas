@@ -6672,6 +6672,7 @@ procedure TpvApplication.SetScreen(const aScreen:TpvApplicationScreen);
 begin
  if fScreen<>aScreen then begin
   if assigned(fScreen) then begin
+   fScreen.Pause;
    if assigned(fVulkanSurface) then begin
     VulkanWaitIdle;
     if fGraphicsPipelinesReady then begin
@@ -6680,7 +6681,6 @@ begin
      BeforeDestroySwapChainWithCheck;
     end;
    end;
-   fScreen.Pause;
    fScreen.Hide;
    fScreen.Free;
   end;
@@ -6690,7 +6690,6 @@ begin
    if assigned(fScreen) then begin
     fScreen.Resize(fWidth,fHeight);
    end;
-   fScreen.Resume;
    if assigned(fVulkanSurface) then begin
     VulkanWaitIdle;
     if fGraphicsPipelinesReady then begin
@@ -6699,6 +6698,7 @@ begin
      AfterCreateSwapChainWithCheck;
     end;
    end;
+   fScreen.Resume;
    if CanBeParallelProcessed then begin
     // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
     fSkipNextDrawFrame:=true;
