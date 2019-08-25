@@ -206,6 +206,7 @@ const SDL2LibName={$if defined(Win32)}
       SDL_APP_DIDENTERBACKGROUND=$104;
       SDL_APP_WILLENTERFOREGROUND=$105;
       SDL_APP_DIDENTERFOREGROUND=$106;
+      SDL_DISPLAYEVENT=$150;
       SDL_WINDOWEVENT=$200;
       SDL_SYSWMEVENT=$201;
       SDL_KEYDOWN=$300;
@@ -247,11 +248,12 @@ const SDL2LibName={$if defined(Win32)}
       SDL_DROPBEGIN=$1002;
       SDL_DROPCOMPLETE=$1003;
       SDL_AUDIODEVICEADDED=$1100;
-      SDL_AUDIODEVICEREMOVED=$1101; 
+      SDL_AUDIODEVICEREMOVED=$1101;
+      SDL_SENSORUPDATE=$1200;
       SDL_RENDER_TARGETS_RESET=$2000;
       SDL_RENDER_DEVICE_RESET=$2001;
       SDL_USEREVENT=$8000;
-      SDL_LASTEVENT=$FFFF;
+      SDL_LASTEVENT=$ffff;
       // no compatibility events $7000
 
       // SDL_Surface flags
@@ -330,6 +332,15 @@ const SDL2LibName={$if defined(Win32)}
       SDL_BLENDMODE_BLEND=$00000001; // **< dst = (src * A) + (dst * (1-A))
       SDL_BLENDMODE_ADD=$00000002;  // **< dst = (src * A) + dst
       SDL_BLENDMODE_MOD=$00000004;  // **< dst = src * dst
+
+      SDL_DISPLAYEVENT_NONE=0; // Never used
+      SDL_DISPLAYEVENT_ORIENTATION=1; // Display orientation has changed to data1
+
+      SDL_ORIENTATION_UNKNOWN=0; // The display orientation can't be determined
+      SDL_ORIENTATION_LANDSCAPE=1; //  The display is in landscape mode, with the right side up, relative to portrait mode
+      SDL_ORIENTATION_LANDSCAPE_FLIPPED=2; // The display is in landscape mode, with the left side up, relative to portrait mode
+      SDL_ORIENTATION_PORTRAIT=3; //  The display is in portrait mode
+      SDL_ORIENTATION_PORTRAIT_FLIPPED=4; // The display is in portrait mode, upside dowm
 
 {$ifdef fpc_big_endian}
       RMask=$FF000000;
@@ -1288,6 +1299,12 @@ type PSDLInt8=^TSDLInt8;
      PSDL_BlendMode=^TSDL_BlendMode;
      TSDL_BlendMode=TSDLUInt32;
 
+     PSDL_DisplayEventID=^TSDL_DisplayEventID;
+     TSDL_DisplayEventID=TSDLUInt32;
+
+     PSDL_DisplayOrientation=^TSDL_DisplayOrientation;
+     TSDL_DisplayOrientation=TSDLUInt32;
+
      PSDL_RendererFlip=^TSDL_RendererFlip;
      TSDL_RendererFlip=
       (
@@ -1581,6 +1598,15 @@ type PSDLInt8=^TSDLInt8;
       unicode:TSDLUInt32;
      end;
 
+     TSDL_DisplayEvent=record
+      type_:TSDLUInt32;
+      timeStamp:TSDLUInt32;
+      windowID:TSDLUInt32;
+      event:TSDLUInt8;
+      padding1,padding2,padding3:TSDLUInt8;
+      data1:TSDLInt32;
+     end;
+
      TSDL_WindowEvent=record
       type_:TSDLUInt32;
       timeStamp:TSDLUInt32;
@@ -1770,6 +1796,23 @@ type PSDLInt8=^TSDLInt8;
       which:TSDLInt32;
      end;
 
+     TSDL_AudioDeviceEvent=record
+      type_:TSDLUInt32;
+      timeStamp:TSDLUInt32;
+      which:TSDLInt32;
+      iscapture:TSDLUInt8;
+      padding1:TSDLUInt8;
+      padding2:TSDLUInt8;
+      padding3:TSDLUInt8;
+     end;
+
+     TSDL_SensorEvent=record
+      type_:TSDLUInt32;
+      timeStamp:TSDLUInt32;
+      which:TSDLInt32;
+      Data:array[0..5] of TSDLFloat;
+     end;
+
      TSDL_QuitEvent=record
       type_:TSDLUInt32;
       timeStamp:TSDLUInt32;
@@ -1787,6 +1830,7 @@ type PSDLInt8=^TSDLInt8;
      TSDL_Event=record
       case TSDLInt32 of
        SDL_FIRSTEVENT:(type_:TSDLInt32);
+       SDL_DISPLAYEVENT:(display:TSDL_DisplayEvent);
        SDL_WINDOWEVENT:(window:TSDL_WindowEvent);
        SDL_KEYDOWN,
        SDL_KEYUP:(key:TSDL_KeyboardEvent);
@@ -1809,6 +1853,9 @@ type PSDLInt8=^TSDLInt8;
        SDL_CONTROLLERDEVICEADDED,
        SDL_CONTROLLERDEVICEREMOVED,
        SDL_CONTROLLERDEVICEREMAPPED:(cdevice:TSDL_ControllerDeviceEvent);
+       SDL_AUDIODEVICEADDED,
+       SDL_AUDIODEVICEREMOVED:(adevice:TSDL_AudioDeviceEvent);
+       SDL_SENSORUPDATE:(sensor:TSDL_SensorEvent);
        SDL_QUITEV:(quit:TSDL_QuitEvent);
        SDL_USEREVENT:(user:TSDL_UserEvent);
        SDL_SYSWMEVENT:(syswm:TSDL_SysWMEvent);
