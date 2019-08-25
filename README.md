@@ -55,7 +55,7 @@ After you've compiled the projectmanager binary, just execute `projectmanager -h
     - It's always up-to-date, since it's auto-generated through the vkxml2pas.dpr
     - Supported platforms:
         - Windows (x86-32, x86-64)
-        - Android (x86-32, x86-64, ARM)
+        - Android (x86-32, x86-64, ARM32, ARM64/AArch64)
         - Linux (x86-32, x86-64, ARM)
             - X11
             - Wayland
@@ -110,7 +110,7 @@ After you've compiled the projectmanager binary, just execute `projectmanager -h
     - Re-abstraction of the SDL2 abstraction, for the possible future case, when this Vulkan-optimized Application framework will be not SDL 2.0 based for possible further following target platforms, the Nintendo Switch as example, or when this Vulkan-optimized Application framework will be no more SDL 2.0 based for some already supported target platforms.  
     - Supported platforms:
         - Windows (x86-32, x86-64)
-        - Android (x86-32, x86-64, ARM32, ARM64/AArch64 ) 
+        - Android (x86-32, x86-64, ARM32, ARM64/AArch64) 
         - Linux (x86-32, x86-64, ARM)
             - X11
             - Mir
