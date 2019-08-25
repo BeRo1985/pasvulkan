@@ -58,6 +58,11 @@ unit PasVulkan.TextEditor;
   {$ifend}
  {$endif}
 {$endif}
+{$ifdef Windows}
+ {$define PasVulkanTextEditorCRLF}
+{$else}
+ {$undef PasVulkanTextEditorCRLF}
+{$endif}
 
 interface
 
@@ -71,8 +76,14 @@ uses SysUtils,
 
 type TpvTextEditor=class
       public
-       const NewLineCodePointSequence={$ifdef Windows}#13#10{$else}#10{$endif};
-       type TUTF8DFA=class
+       const NewLineCodePointSequence={$ifdef PasVulkanTextEditorCRLF}#13#10{$else}#10{$endif};
+       type TEndOfLineMode=
+             (
+              LF,
+              CR,
+              CRLF
+             );
+            TUTF8DFA=class
              public                                            //0 1 2 3 4 5 6 7 8 9 a b c d e f
                const CodePointSizes:array[AnsiChar] of TpvUInt8=(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 0
                                                                  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 1
@@ -1740,6 +1751,7 @@ type TpvTextEditor=class
        fUndoRedoManager:TUndoRedoManager;
        fSyntaxHighlighting:TSyntaxHighlighting;
        fTabWidth:TpvSizeInt;
+       fEndOfLineMode:TEndOfLineMode;
        fCountLines:TpvSizeInt;
        function GetCountLines:TpvSizeInt;
        function GetText:TpvUTF8String;
@@ -1751,6 +1763,7 @@ type TpvTextEditor=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure DetectEndOfLineMode;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
        procedure LoadFromString(const aString:TpvRawByteString);
@@ -1779,6 +1792,7 @@ type TpvTextEditor=class
        property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
        property SyntaxHighlighting:TSyntaxHighlighting read fSyntaxHighlighting write SetSyntaxHighlighting;
        property TabWidth:TpvSizeInt read fTabWidth write SetTabWidth;
+       property EndOfLineMode:TEndOfLineMode read fEndOfLineMode write fEndOfLineMode;
      end;
 
 implementation
@@ -4228,6 +4242,11 @@ begin
  fUndoRedoManager:=TUndoRedoManager.Create(self);
  fSyntaxHighlighting:=nil;
  fTabWidth:=8;
+{$ifdef PasVulkanTextEditorCRLF}
+ fEndOfLineMode:=TEndOfLineMode.CRLF;
+{$else}
+ fEndOfLineMode:=TEndOfLineMode.LF;
+{$endif}
  fCountLines:=-1;
 end;
 
@@ -4250,6 +4269,43 @@ begin
   fCountLines:=fLineCacheMap.fCountLines;
  end;
  result:=fCountLines;
+end;
+
+procedure TpvTextEditor.DetectEndOfLineMode;
+var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
+    CodePoint:TpvUInt32;
+    CRCount,LFCount:TpvSizeInt;
+begin
+ if fRope.fCountCodePoints>0 then begin
+  CRCount:=0;
+  LFCount:=0;
+  CodePointEnumeratorSource:=fRope.GetCodePointEnumeratorSource(0,fRope.fCountCodePoints-1);
+  for CodePoint in CodePointEnumeratorSource do begin
+   case CodePoint of
+    10:begin
+     inc(LFCount);
+    end;
+    13:begin
+     inc(CRCount);
+    end;
+   end;
+  end;
+  if (abs(CRCount-LFCount)>((Min(CRCount,LFCount)+2) shr 2)) then begin
+   if CRCount<LFCount then begin
+    fEndOfLineMode:=TEndOfLineMode.LF;
+   end else begin
+    fEndOfLineMode:=TEndOfLineMode.CR;
+   end;
+  end else begin
+   fEndOfLineMode:=TEndOfLineMode.CRLF;
+  end;
+ end else begin
+{$ifdef PasVulkanTextEditorCRLF}
+  fEndOfLineMode:=TEndOfLineMode.CRLF;
+{$else}
+  fEndOfLineMode:=TEndOfLineMode.LF;
+{$endif}
+ end;
 end;
 
 procedure TpvTextEditor.LoadFromStream(const aStream:TStream);
@@ -9514,13 +9570,29 @@ begin
   end;
   OldCountLines:=fParent.fCountLines;
   if length(PrependedWhiteSpace)>0 then begin
-   InsertString({$ifdef Windows}TpvUTF8String(#13#10){$else}TpvUTF8String(#10){$endif}+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
+   case fParent.fEndOfLineMode of
+    TEndOfLineMode.CR:begin
+     InsertString(TpvUTF8String(#13)+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
+    end;
+    TEndOfLineMode.CRLF:begin
+     InsertString(TpvUTF8String(#13#10)+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
+    end;
+    else {TEndOfLineMode.LF:}begin
+     InsertString(TpvUTF8String(#10)+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
+    end;
+   end;
   end else begin
-{$ifdef Windows}
-   InsertString(TpvUTF8String(#13#10),aOverwrite,false);
-{$else}
-   InsertCodePoint(10,aOverwrite,false);
-{$endif}
+   case fParent.fEndOfLineMode of
+    TEndOfLineMode.CR:begin
+     InsertCodePoint(13,aOverwrite,false);
+    end;
+    TEndOfLineMode.CRLF:begin
+     InsertString(TpvUTF8String(#13#10),aOverwrite,false);
+    end;
+    else {TEndOfLineMode.LF:}begin
+     InsertCodePoint(10,aOverwrite,false);
+    end;
+   end;
   end;
   if OldCountLines>=0 then begin
    fParent.fCountLines:=OldCountLines+1;
@@ -9683,15 +9755,23 @@ begin
   if OldCountLines>=0 then begin
    fParent.fCountLines:=OldCountLines+1;
   end;
-{$ifdef Windows}
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,2,#13#10));
-  fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
-  fParent.UpdateViewCodePointIndices(LineCodePointIndex,2);
-{$else}
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,1,#10));
-  fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
-  fParent.UpdateViewCodePointIndices(LineCodePointIndex,1);
-{$endif}
+  case fParent.fEndOfLineMode of
+   TEndOfLineMode.CR:begin
+    fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,1,#13));
+    fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13));
+    fParent.UpdateViewCodePointIndices(LineCodePointIndex,1);
+   end;
+   TEndOfLineMode.CRLF:begin
+    fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,2,#13#10));
+    fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
+    fParent.UpdateViewCodePointIndices(LineCodePointIndex,2);
+   end;
+   else {TEndOfLineMode.LF:}begin
+    fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,1,#10));
+    fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
+    fParent.UpdateViewCodePointIndices(LineCodePointIndex,1);
+   end;
+  end;
   fParent.EnsureViewCodePointIndicesAreInRange;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;

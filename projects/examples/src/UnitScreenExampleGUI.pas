@@ -673,6 +673,7 @@ begin
 end;
 
 constructor TScreenExampleGUIMultiLineTextEditWindow.Create(const aParent:TpvGUIObject);
+const NewLine=#13#10;
 begin
 
  inherited Create(aParent);
@@ -698,23 +699,25 @@ begin
 
  fMultiLineTextEdit0.LineWrap:=false;
 
- fMultiLineTextEdit0.Text:='program Test;'#13#10+
-                           '{$ifdef fpc}'#13#10+
-                           #9'{$mode delphi}'#13#10+
-                           '{$endif}'#13#10+
-                           'var'#13#10+
-                           #9'a: integer; // A comment'#13#10+
-                           #9'b: integer; { An another comment }'#13#10+
-                           #9'c: single;  (* An yet another comment *)'#13#10+
-                           'begin'#13#10+
-                           #9'a := 1;'#13#10+
-                           #9'b := 3;'#13#10+
-                           #9'c := 4.0e+0;'#13#10+
-                           #9'if ((a + b) = c) and true then'#13#10+
-                           #9'begin'#13#10+
-                           #9#9'WriteLn(''Yay!''#$20''1 + 3 is 4 (hopefully)'');'#13#10+
-                           #9'end;'#13#10+
+ fMultiLineTextEdit0.Text:='program Test;'+NewLine+
+                           '{$ifdef fpc}'+NewLine+
+                           #9'{$mode delphi}'+NewLine+
+                           '{$endif}'+NewLine+
+                           'var'+NewLine+
+                           #9'a: integer; // A comment'+NewLine+
+                           #9'b: integer; { An another comment }'+NewLine+
+                           #9'c: single;  (* An yet another comment *)'+NewLine+
+                           'begin'+NewLine+
+                           #9'a := 1;'+NewLine+
+                           #9'b := 3;'+NewLine+
+                           #9'c := 4.0e+0;'+NewLine+
+                           #9'if ((a + b) = c) and true then'+NewLine+
+                           #9'begin'+NewLine+
+                           #9#9'WriteLn(''Yay!''#$20''1 + 3 is 4 (hopefully)'');'+NewLine+
+                           #9'end;'+NewLine+
                            'end.';
+
+ fMultiLineTextEdit0.TextEditor.DetectEndOfLineMode;
 
 end;
 
