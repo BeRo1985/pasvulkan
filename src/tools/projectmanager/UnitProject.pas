@@ -134,7 +134,7 @@ begin
         exit;
        end;
       end else begin
-       if DeleteFile(IncludeTrailingPathDelimiter(aName)+SearchRec.Name) then begin
+       if not DeleteFile(IncludeTrailingPathDelimiter(aName)+SearchRec.Name) then begin
         result:=false;
         exit;
        end;
@@ -531,6 +531,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      Parameters.Add('-dCompileForWithPIC');
      Parameters.Add('-dPasVulkanPasMP');
      Parameters.Add('-dPasVulkanUseSDL2');
+     Parameters.Add('-dPasVulkanUseSDL2WithVulkanSupport');
      case aTargetCPU of
       TTargetCPU.ARM_32:begin
        if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossarm'+ExecutableFileExtension,FPCbinaryPath) then begin
@@ -556,6 +557,30 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm32');
        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm32');
       end;
+      TTargetCPU.ARM_64:begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossa64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcrossa64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppca64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppca64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='fpc';
+       end;
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Paarch64');
+       end;
+//     Parameters.Add('-Cpaarch64');
+//     Parameters.Add('-CfVFPv3');
+//     Parameters.Add('-OpARMv7a');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-olibmain.so');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'aarch64-android');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'aarch64-android');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'arm64-v8a');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'arm64-v8a');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm64');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm64');
+      end;
       TTargetCPU.x86_32:begin
        if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcross386'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='ppcross386';
@@ -579,6 +604,30 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'x86');
        Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidi386');
        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidi386');
+      end;
+      TTargetCPU.x86_64:begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossx64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcrossx64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcx64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcx64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='fpc';
+       end;
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Px86_64');
+       end;
+//     Parameters.Add('-CpPENTIUMM');
+//     Parameters.Add('-CfX87');
+//     Parameters.Add('-OpPENTIUMM');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-olibmain.so');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_64-android');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_64-android');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'x86_64');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'x86_64');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidx64');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidx64');
       end;
      end;
     end;
@@ -741,9 +790,17 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'arm-android'+DirectorySeparator+'libmain.so',
                   ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'armeabi-v7a'+DirectorySeparator+'libmain.so');
         end;
+        TTargetCPU.ARM_64:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'aarch64-android'+DirectorySeparator+'libmain.so',
+                  ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'arm64-v8a'+DirectorySeparator+'libmain.so');
+        end;
         TTargetCPU.x86_32:begin
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'i386-android'+DirectorySeparator+'libmain.so',
                   ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'x86'+DirectorySeparator+'libmain.so');
+        end;
+        TTargetCPU.x86_64:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-android'+DirectorySeparator+'libmain.so',
+                  ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'x86_64'+DirectorySeparator+'libmain.so');
         end;
        end;
       end;
@@ -942,7 +999,15 @@ begin
    exit;
   end;
 
+  if not BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Android) then begin
+   exit;
+  end;
+
   if not BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android) then begin
+   exit;
+  end;
+
+  if not BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Android) then begin
    exit;
   end;
 

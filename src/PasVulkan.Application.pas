@@ -997,7 +997,10 @@ type EpvApplication=class(Exception)
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
        fHideSystemBars:boolean;
-       fAndroidSeparateMouseAndTouch:boolean;
+       fAndroidMouseTouchEvents:boolean;
+       fAndroidTouchMouseEvents:boolean;
+       fAndroidBlockOnPause:boolean;
+       fAndroidTrapBackButton:boolean;
        fUseAudio:boolean;
        fBlocking:boolean;
        fWaitOnPreviousFrames:boolean;
@@ -1243,6 +1246,9 @@ type EpvApplication=class(Exception)
 
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
 
+       function GetAndroidSeparateMouseAndTouch:boolean;
+       procedure SetAndroidSeparateMouseAndTouch(const aValue:boolean);
+
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
 
@@ -1424,7 +1430,15 @@ type EpvApplication=class(Exception)
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
 
-       property AndroidSeparateMouseAndTouch:boolean read fAndroidSeparateMouseAndTouch write fAndroidSeparateMouseAndTouch;
+       property AndroidSeparateMouseAndTouch:boolean read GetAndroidSeparateMouseAndTouch write SetAndroidSeparateMouseAndTouch;
+
+       property AndroidMouseTouchEvents:boolean read fAndroidMouseTouchEvents write fAndroidMouseTouchEvents;
+
+       property AndroidTouchMouseEvents:boolean read fAndroidTouchMouseEvents write fAndroidTouchMouseEvents;
+
+       property AndroidBlockOnPause:boolean read fAndroidBlockOnPause write fAndroidBlockOnPause;
+
+       property AndroidTrapBackButton:boolean read fAndroidTrapBackButton write fAndroidTrapBackButton;
 
        property UseAudio:boolean read fUseAudio write fUseAudio;
 
@@ -1553,6 +1567,10 @@ var pvApplication:TpvApplication=nil;
      AndroidSavedState:TpvPointer=nil;
      AndroidSavedStateSize:TpvSizeUInt=0;
 
+{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
+     AndroidAssetManagerObject:JObject=nil;
+{$ifend}
+
      AndroidAssetManager:PAAssetManager=nil;
 
      AndroidInternalDataPath:TpvUTF8String='';
@@ -1564,7 +1582,11 @@ var pvApplication:TpvApplication=nil;
 function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 function AndroidGetModelName:TpvApplicationUnicodeString;
 function AndroidGetDeviceName:TpvApplicationUnicodeString;
-function Android_JNI_GetEnv:PJNIEnv; cdecl;
+{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
+procedure AndroidGetAssetManager;
+procedure AndroidReleaseAssetManager;
+{$ifend}
+//function Android_JNI_GetEnv:PJNIEnv; cdecl;
 
 {$if not defined(PasVulkanUseSDL2)}
 procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32;const aApplicationClass:TpvApplicationClass);
@@ -5201,7 +5223,10 @@ begin
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
  fHideSystemBars:=false;
- fAndroidSeparateMouseAndTouch:=true;
+ fAndroidMouseTouchEvents:=true;
+ fAndroidTouchMouseEvents:=true;
+ fAndroidBlockOnPause:=true;
+ fAndroidTrapBackButton:=true;
  fUseAudio:=false;
  fBlocking:=true;
  fWaitOnPreviousFrames:=false;
@@ -5439,6 +5464,19 @@ begin
   fDesiredCountSwapChainImages:=MaxSwapChainImages;
  end else begin
   fDesiredCountSwapChainImages:=aDesiredCountSwapChainImages;
+ end;
+end;
+
+function TpvApplication.GetAndroidSeparateMouseAndTouch:boolean;
+begin
+ result:=fAndroidMouseTouchEvents and fAndroidTouchMouseEvents;
+end;
+
+procedure TpvApplication.SetAndroidSeparateMouseAndTouch(const aValue:boolean);
+begin
+ if GetAndroidSeparateMouseAndTouch<>aValue then begin
+  fAndroidMouseTouchEvents:=aValue;
+  fAndroidTouchMouseEvents:=aValue;
  end;
 end;
 
@@ -8052,11 +8090,32 @@ begin
 {$ifend}
 
 {$if defined(PasVulkanUseSDL2)}
- if fAndroidSeparateMouseAndTouch then begin
+ if GetAndroidSeparateMouseAndTouch then begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
  end else begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'0');
  end;
+ if fAndroidMouseTouchEvents then begin
+  SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS,'0');
+ end;
+ if fAndroidTouchMouseEvents then begin
+  SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS,'0');
+ end;
+ if fAndroidBlockOnPause then begin
+  SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE,'0');
+ end;
+ if fAndroidTrapBackButton then begin
+  SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON,'0');
+ end;
+ SDL_SetHint(SDL_HINT_ORIENTATIONS,'LandscapeLeft LandscapeRight');
 {$else}
 {$ifend}
 
@@ -8642,7 +8701,41 @@ begin
  result:=AndroidGetManufacturerName+' '+AndroidGetModelName;
 end;
 
-function Android_JNI_GetEnv:PJNIEnv; cdecl;
+{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
+procedure AndroidGetAssetManager;
+var Env:PJNIEnv;
+    Context:JObject;
+    MethodID:JMethodID;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering AndroidGetAssetManager . . .');
+{$ifend}
+ Env:=SDL_AndroidGetJNIEnv;
+ Context:=SDL_AndroidGetActivity;
+ MethodID:=Env^.GetMethodID(Env,Env^.GetObjectClass(Env,Context),'getAssets','()Landroid/content/res/AssetManager;');
+ AndroidAssetManagerObject:=Env^.CallObjectMethod(Env,Context,MethodID);
+ AndroidAssetManagerObject:=Env^.NewGlobalRef(Env,AndroidAssetManagerObject);
+ AndroidAssetManager:=AAssetManager_fromJava(Env,AndroidAssetManagerObject);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving AndroidGetAssetManager . . .');
+{$ifend}
+end;
+
+procedure AndroidReleaseAssetManager;
+var Env:PJNIEnv;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering AndroidReleaseAssetManager . . .');
+{$ifend}
+ Env:=SDL_AndroidGetJNIEnv;
+ Env^.DeleteGlobalRef(Env,AndroidAssetManagerObject);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving AndroidReleaseAssetManager . . .');
+{$ifend}
+end;
+{$ifend}
+
+(*function Android_JNI_GetEnv:PJNIEnv; cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_JNI_GetEnv . . .');
@@ -8655,7 +8748,7 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_JNI_GetEnv . . .');
 {$ifend}
-end;
+end;*)
 
 {$if not defined(PasVulkanUseSDL2)}
 function LibCMalloc(Size:ptruint):pointer; cdecl; external 'c' name 'malloc';

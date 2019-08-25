@@ -299,13 +299,13 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOW_UTILITY=$00020000;      //**< window should be treated as a utility window */
       SDL_WINDOW_TOOLTIP=$00040000;      //**< window should be treated as a tooltip */
       SDL_WINDOW_POPUP_MENU=$00080000;      //**< window should be treated as a popup menu */
-{$ifdef Android}
-      // PasVulkan uses on Android still a self-patched SDL 2.0.5 version
+{$if defined(Android) and not defined(PasVulkanUseSDL2WithVulkanSupport)}
+      // In the case if PasVulkan uses on Android still a self-patched SDL 2.0.5 version
     	SDL_WINDOW_VULKAN=$00100000;   //**< window usable with Vulkan */
 {$else}
       // SDL 2.0.6
     	SDL_WINDOW_VULKAN=$10000000;         //**< window usable with Vulkan */
-{$endif}
+{$ifend}
 
       SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
 
@@ -1188,6 +1188,10 @@ const SDL2LibName={$if defined(Win32)}
       SDL_HINT_ANDROID_APK_EXPANSION_PATCH_FILE_VERSION='SDL_ANDROID_APK_EXPANSION_PATCH_FILE_VERSION';
       SDL_HINT_IME_INTERNAL_EDITING='SDL_IME_INTERNAL_EDITING';
       SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH='SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH';
+      SDL_HINT_MOUSE_TOUCH_EVENTS='SDL_HINT_MOUSE_TOUCH_EVENTS';
+      SDL_HINT_TOUCH_MOUSE_EVENTS='SDL_HINT_TOUCH_MOUSE_EVENTS';
+      SDL_HINT_ANDROID_BLOCK_ON_PAUSE='SDL_HINT_ANDROID_BLOCK_ON_PAUSE';
+      SDL_HINT_ANDROID_TRAP_BACK_BUTTON='SDL_HINT_ANDROID_TRAP_BACK_BUTTON';
       SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT='SDL_EMSCRIPTEN_KEYBOARD_ELEMENT';
       SDL_HINT_NO_SIGNAL_HANDLERS='SDL_NO_SIGNAL_HANDLERS';
       SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4='SDL_WINDOWS_NO_CLOSE_ON_ALT_F4';
