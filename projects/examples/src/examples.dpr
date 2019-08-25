@@ -71,42 +71,34 @@ begin
 end;
 {$ifend}
 
-{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
-procedure Java_org_libsdl_app_SDLActivity_nativeSetAssetManager(pJavaEnv:PJNIEnv;pJavaClass:jclass;pAssetManager:JObject); cdecl;
-begin
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Entering Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
-{$ifend}
- AndroidAssetManager:=AAssetManager_fromJava(pJavaEnv,pAssetManager);
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Leaving Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
-{$ifend}
-end;
-{$ifend}
-
 {$if defined(PasVulkanUseSDL2)}
 {$if defined(fpc) and defined(android)}
-procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
+procedure SDL_main(argc:TpvInt32;arcv:pointer); cdecl;
 var s:string;
 {$else}
 procedure SDLMain;
 {$ifend}
 begin
 {$if defined(fpc) and defined(android)}
- AndroidJavaEnv:=pJavaEnv;
- AndroidJavaClass:=pJavaClass;
- AndroidJavaObject:=pJavaObject;
+ AndroidJavaEnv:=SDL_AndroidGetJNIEnv;
+ AndroidJavaClass:=nil;
+ AndroidJavaObject:=nil;
  AndroidDeviceName:=TpvUTF8String(AndroidGetDeviceName);
- SDL_Android_Init(pJavaEnv,pJavaClass);
+ //SDL_Android_Init(pJavaEnv,pJavaClass);
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Entering SDL_main . . .');
 {$ifend}
 {$if defined(fpc) and defined(android)}
  try
-{$ifend}
+  AndroidGetAssetManager;
+  try
+{$ifend}  
   TApplication.Main;
 {$if defined(fpc) and defined(android)}
+  finally
+   AndroidReleaseAssetManager;
+  end; 
  except
   on e:Exception do begin
    s:=DumpExceptionCallStack(e);
@@ -117,7 +109,7 @@ begin
  end;
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Leaving SDL_main . . .');
 {$ifend}
 {$if defined(fpc) and defined(android)}
  SDL_Quit;
@@ -129,9 +121,7 @@ end;
 {$if defined(PasVulkanUseSDL2)}
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
-        Android_JNI_GetEnv name 'Android_JNI_GetEnv',
-        Java_org_libsdl_app_SDLActivity_nativeSetAssetManager name 'Java_org_libsdl_app_SDLActivity_nativeSetAssetManager',
-        Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit';
+        SDL_main name 'SDL_main';
 {$else}
 procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:TpvUint32); cdecl;
 begin
