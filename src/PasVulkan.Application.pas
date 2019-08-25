@@ -8148,7 +8148,6 @@ begin
   SDL2HintParameter:=SDL2HintParameter+'PortraitUpsideDown ';
  end;
  if length(SDL2HintParameter)>0 then begin
-  SDL2HintParameter:=trim(SDL2HintParameter);
   SDL_SetHint(SDL_HINT_ORIENTATIONS,PAnsiChar(SDL2HintParameter));
  end;
 
