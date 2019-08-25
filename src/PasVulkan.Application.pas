@@ -5240,8 +5240,8 @@ begin
  fCatchMouse:=false;
  fHideSystemBars:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
- fAndroidMouseTouchEvents:=true;
- fAndroidTouchMouseEvents:=true;
+ fAndroidMouseTouchEvents:=false;
+ fAndroidTouchMouseEvents:=false;
  fAndroidBlockOnPause:=true;
  fAndroidTrapBackButton:=true;
  fUseAudio:=false;
@@ -5486,14 +5486,14 @@ end;
 
 function TpvApplication.GetAndroidSeparateMouseAndTouch:boolean;
 begin
- result:=fAndroidMouseTouchEvents and fAndroidTouchMouseEvents;
+ result:=not (fAndroidMouseTouchEvents or fAndroidTouchMouseEvents);
 end;
 
 procedure TpvApplication.SetAndroidSeparateMouseAndTouch(const aValue:boolean);
 begin
  if GetAndroidSeparateMouseAndTouch<>aValue then begin
-  fAndroidMouseTouchEvents:=aValue;
-  fAndroidTouchMouseEvents:=aValue;
+  fAndroidMouseTouchEvents:=not aValue;
+  fAndroidTouchMouseEvents:=not aValue;
  end;
 end;
 
@@ -8150,6 +8150,10 @@ begin
  if length(SDL2HintParameter)>0 then begin
   SDL_SetHint(SDL_HINT_ORIENTATIONS,PAnsiChar(SDL2HintParameter));
  end;
+
+  SDL_SetHint(SDL_HINT_MOUSE_NORMAL_SPEED_SCALE,'1.0');
+
+  SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_SPEED_SCALE,'1.0');
 
 {$else}
 {$ifend}
