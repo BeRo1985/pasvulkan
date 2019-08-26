@@ -1721,6 +1721,20 @@ begin
 end;
 {$ifend}
 
+{$if defined(fpc) and (defined(cpu386) or defined(cpux64) or defined(cpuamd64))}
+// For to avoid "Fatal: Internal error 200604201" at the FreePascal compiler, when >= -O2 is used
+function Sign(const aValue:TpvScalar):TpvInt32;
+begin
+ if aValue<0.0 then begin
+  result:=-1;
+ end else if aValue>0.0 then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+{$ifend}
+
 function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=x-(floor(x/y)*y);
@@ -1748,7 +1762,7 @@ end;
 
 function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
- result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*sign(x);
+ result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*Sign(x);
 end;
 
 function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}

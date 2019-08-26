@@ -815,6 +815,20 @@ const pcvvaomSolid=0;
 
       CurveRecursionLimit=16;
 
+{$if defined(fpc) and (defined(cpu386) or defined(cpux64) or defined(cpuamd64))}
+// For to avoid "Fatal: Internal error 200604201" at the FreePascal compiler, when >= -O2 is used
+function Sign(const aValue:TpvDouble):TpvInt32;
+begin
+ if aValue<0.0 then begin
+  result:=-1;
+ end else if aValue>0.0 then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+{$ifend}
+
 constructor TpvCanvasStrokePattern.Create(const aPattern:string;const aDashSize,aStart:TpvDouble);
 var CountSteps,Position,Len,StartPosition,Count,Index:TpvInt32;
     Value:TpvDouble;
