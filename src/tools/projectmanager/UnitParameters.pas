@@ -33,6 +33,8 @@ begin
     end else if (Current='-i') or (Current='--info') then begin
      DoShowUsage:=false;
      DoShowInfos:=true;
+    end else if (length(Current)=3) and (Current[1]='-') and (Current[2]='O') and ((Current[3]>='1') and (Current[3]<='4')) then begin
+     FPCOptimizationLevel:=ord(Current[3])-ord('0');
     end else if (Current='--debug') then begin
      BuildMode:=TBuildMode.Debug;
     end else if (Current='--release') then begin

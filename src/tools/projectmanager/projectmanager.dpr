@@ -55,14 +55,19 @@ begin
  WriteLn;
  WriteLn('Options: -h / --help / -?                      Show this help');
  WriteLn('         -i / --info                           Show informations');
- WriteLn('          --debug                              Compile as debug build');
- WriteLn('          --release                            Compile as release build (default)');
- WriteLn('          --sdl2-static-link                   Static linking of SDL2 (Windows-only)');
- WriteLn('          --fpc-binary-path [path]             Path to the SVN trunk version of the FreePascal Compiler');
+ WriteLn('         -O1                                   FPC compiler optimization level 1 (default)');
+ WriteLn('         -O2                                   FPC compiler optimization level 2');
+ WriteLn('         -O3                                   FPC compiler optimization level 3');
+ WriteLn('         -O4                                   FPC compiler optimization level 4');
+ WriteLn('         --debug                               Compile as debug build');
+ WriteLn('         --release                             Compile as release build (default)');
+ WriteLn('         --sdl2-static-link                    Static linking of SDL2 (Windows-only)');
+ WriteLn('         --fpc-binary-path [path]              Path to the SVN trunk version of the FreePascal Compiler');
  WriteLn;
  WriteLn('Commands: compileassets [projectname]          Compile assets');
  WriteLn('          create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  WriteLn('          build [projectname] ([target(s)])    Build an existent project');
+ WriteLn('          help                                 Show this help');
  WriteLn('          run [projectname]                    Run an existent project');
  WriteLn('          update [projectname]                 Update the project base files of an existent project');
  WriteLn;
@@ -112,6 +117,8 @@ begin
    if not BuildProject then begin
     ExitCode:=1;
    end;
+  end else if CurrentCommand='help' then begin
+   ShowHelp;
   end else if CurrentCommand='run' then begin
    if not RunProject then begin
     ExitCode:=1;

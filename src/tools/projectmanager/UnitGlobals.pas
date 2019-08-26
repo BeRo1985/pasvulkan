@@ -31,6 +31,8 @@ var OwnExecutableFileName:UnicodeString='';
 
     BuildMode:TBuildMode=TBuildMode.Release;
 
+    FPCOptimizationLevel:Int32=1;
+
     SDL2StaticLinking:boolean=false;
 
 implementation
