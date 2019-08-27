@@ -7400,7 +7400,9 @@ end;
 {$elseif defined(fpc) and defined(Android)}
 begin
  while not ((fAndroidReady and assigned(PANativeWindow)) or fAndroidQuit) do begin
-  fAndroidAppProcessMessages(fAndroidApp,true);
+  if assigned(fAndroidAppProcessMessages) then begin
+   fAndroidAppProcessMessages(fAndroidApp,true);
+  end;
  end;
  result:=fAndroidReady and not fAndroidQuit;
 end;
@@ -8193,7 +8195,7 @@ begin
 {$ifend}
 
 {$if defined(Unix) and not defined(Android)}
- InstallSignalHandlers;
+  InstallSignalHandlers;
 {$ifend}
 
 {$if defined(PasVulkanUseSDL2)}
