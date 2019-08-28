@@ -5074,16 +5074,66 @@ begin
 end;
 
 function TpvApplicationClipboard.HasText:boolean;
+{$if defined(Windows)}
+var ClipboardHandle:THandle;
+    Data:pointer;
 begin
-{$if defined(PasVulkanUseSDL2)}
- result:=SDL_HasClipboardText<>SDL_FALSE;
-{$else}
  result:=false;
-{$ifend}
+ if OpenClipboard(0) then begin
+  try
+   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   if ClipboardHandle<>0 then begin
+    Data:=GlobalLock(ClipboardHandle);
+    try
+     if assigned(Data) then begin
+      result:=PWideChar(Data)^<>#0;
+     end;
+    finally
+     GlobalUnlock(ClipboardHandle);
+    end;
+   end;
+  finally
+   CloseClipboard;
+  end;
+ end;
 end;
+{$elseif defined(PasVulkanUseSDL2)}
+begin
+ result:=SDL_HasClipboardText<>SDL_FALSE;
+end;
+{$else}
+begin
+ result:=false;
+end;
+{$ifend}
 
 function TpvApplicationClipboard.GetText:TpvApplicationUTF8String;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(Windows)}
+var ClipboardHandle:THandle;
+    Data:pointer;
+    UTF16Data:WideString;
+begin
+ result:='';
+ if OpenClipboard(0) then begin
+  try
+   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   if ClipboardHandle<>0 then begin
+    Data:=GlobalLock(ClipboardHandle);
+    try
+     if assigned(Data) then begin
+      UTF16Data:=PWideChar(Data);
+      result:=PUCUUTF16ToUTF8(UTF16Data);
+     end;
+    finally
+     GlobalUnlock(ClipboardHandle);
+    end;
+   end;
+  finally
+   CloseClipboard;
+  end;
+ end;
+end;
+{$elseif defined(PasVulkanUseSDL2)}
 var p:PAnsiChar;
     l:TpvInt32;
 begin
@@ -5108,12 +5158,41 @@ end;
 {$ifend}
 
 procedure TpvApplicationClipboard.SetText(const aTextString:TpvApplicationUTF8String);
+{$if defined(Windows)}
+var ClipboardHandle:THandle;
+    Data:pointer;
+    UTF16Data:WideString;
 begin
-{$if defined(PasVulkanUseSDL2)}
- SDL_SetClipboardText(PAnsiChar(aTextString));
-{$else}
-{$ifend}
+ UTF16Data:=PUCUUTF8ToUTF16(aTextString);
+ if OpenClipboard(0) then begin
+  try
+   EmptyClipboard;
+   ClipboardHandle:=GlobalAlloc(GMEM_MOVEABLE,(length(UTF16Data)+1)*sizeof(WideChar));
+   if ClipboardHandle<>0 then begin
+    Data:=GlobalLock(ClipboardHandle);
+    try
+     if assigned(Data) then begin
+      Move(UTF16Data[1],Data^,length(UTF16Data)*sizeof(WideChar));
+      PWideChar(Data)[length(UTF16Data)+1]:=#0;
+     end;
+    finally
+     GlobalUnlock(ClipboardHandle);
+    end;
+    SetClipboardData(CF_UNICODETEXT,ClipboardHandle);
+   end;
+  finally
+   CloseClipboard;
+  end;
+ end;
 end;
+{$elseif defined(PasVulkanUseSDL2)}
+begin
+ SDL_SetClipboardText(PAnsiChar(aTextString));
+end;
+{$else}
+begin
+end;
+{$ifend}
 
 procedure AudioFillBuffer(AudioEngine:TpvAudio;Buffer:TpvPointer;Len:TpvInt32);
 begin
