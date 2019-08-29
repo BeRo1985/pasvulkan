@@ -7882,6 +7882,14 @@ begin
    end else begin
     SDL_SetWindowFullscreen(fSurfaceWindow,0);
    end;
+{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+   if fSDLVersionWithVulkanSupport then begin
+    SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
+   end else{$ifend}begin
+    SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
+   end;
+{$ifend}
 {$else}
 {$ifend}
    continue;
