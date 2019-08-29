@@ -655,7 +655,7 @@ begin
 end.}
 
 class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
-{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(cpu386) and not defined(fpc)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
 {movss xmm0,dword ptr aValue
@@ -817,7 +817,7 @@ begin
 end;
 
 function TpvHalfFloat.ToFloat:TpvFloat;
-{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(cpu386) and not defined(fpc)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
 {movzx eax,word ptr [eax+TpvHalfFloat.Value]
