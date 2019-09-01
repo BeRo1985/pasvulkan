@@ -59,6 +59,10 @@ unit PasVulkan.Types;
  {$endif}
 {$endif}
 
+{$if not defined(Windows)}
+ {$define PasVulkanPICCode}
+{$ifend}
+
 interface
 
 uses SysUtils,Classes,Math,PasMP,PUCU;
@@ -656,12 +660,8 @@ end.}
 
 class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(PasVulkanPICCode)}
 asm
-
-{movss xmm0,dword ptr aValue
- db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
- movss dword ptr [esp-4],xmm0
- mov ax,word ptr [esp-4]}
 
  mov ecx,dword ptr aValue
 
@@ -709,6 +709,69 @@ asm
  movzx eax,ax
 
 end;
+{$else}
+const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
+asm
+
+ test dword ptr [CPUFeatures],CPUFeatures_X86_F16C_Mask
+ jz @Bittwiddling
+
+//@x86_F16C:
+ movss xmm0,dword ptr aValue
+ db $c4,$e3,$79,$1d,$c0,$00 // vcvtps2ph xmm0,xmm0,0
+ movss dword ptr [esp-4],xmm0
+ movzx eax,word ptr [esp-4]
+ jmp @Done
+
+@Bittwiddling:
+ mov ecx,dword ptr aValue
+
+ mov edx,ecx
+
+ and ecx,$80000000
+
+ xor edx,ecx
+
+ cmp edx,$7f800000
+ jb @NormalCase
+
+//@InfNANCase:
+
+ mov eax,$7f800000
+ cmp eax,edx
+ sbb eax,eax
+
+ and eax,$200
+ add eax,$7c00
+
+ jmp @BittwiddlingDone
+
+@NormalCase:
+
+ and edx,$fffff000
+ mov dword ptr [esp-4],edx
+
+ mov edx,$0f800000
+ movss xmm0,dword ptr [esp-4]
+ mulss xmm0,dword ptr Magic
+ movss dword ptr [esp-4],xmm0
+ mov eax,dword ptr [esp-4]
+ add eax,4096
+ cmp eax,edx
+ cmova eax,edx
+
+ shr eax,13
+
+@BittwiddlingDone:
+
+ shr ecx,16
+ or ax,cx
+ movzx eax,ax
+
+@Done:
+
+end;
+{$ifend}
 {$elseif defined(cpuamd64) or defined(cpux64) or defined(cpux86_64)}
 const Magic:TpvUInt32=TpvUInt32(TpvUInt32(15) shl 23);
 var TemporaryValue:TpvUInt32;
@@ -818,14 +881,8 @@ end;
 
 function TpvHalfFloat.ToFloat:TpvFloat;
 {$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(PasVulkanPICCode)}
 asm
-
-{movzx eax,word ptr [eax+TpvHalfFloat.Value]
- mov dword ptr [esp-4],eax
- movss xmm0,dword ptr [esp-4]
- db $c4,$e2,$79,$13,$c0 // vcvtph2ps xmm0,xmm0
- movss dword ptr [esp-4],xmm0
- fld dword ptr [esp-4]}
 
  movzx ecx,word ptr [eax+TpvHalfFloat.Value]
 
@@ -857,6 +914,53 @@ asm
  fld dword ptr [esp-4]
 
 end;
+{$else}
+const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
+      ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
+asm
+
+ movzx ecx,word ptr [eax+TpvHalfFloat.Value]
+
+ test dword ptr [CPUFeatures],CPUFeatures_X86_F16C_Mask
+ jz @Bittwiddling
+
+ mov dword ptr [esp-4],ecx
+ movss xmm0,dword ptr [esp-4]
+ db $c4,$e2,$79,$13,$c0 // vcvtph2ps xmm0,xmm0
+ movss dword ptr [esp-4],xmm0
+ jmp @Done
+
+@Bittwiddling:
+
+ mov eax,ecx
+ and eax,$7fff
+ shl eax,13
+
+ mov dword ptr [esp-4],eax
+
+ fld dword ptr [esp-4]
+ fmul dword ptr ToFloatMagic
+ fld dword ptr ToFloatWasInfNAN
+ xor eax,eax
+ mov edx,$7f800000
+ fcomip st(0),st(1)
+ cmova edx,eax
+ fstp dword ptr [esp-4]
+ mov eax,dword ptr [esp-4]
+ or eax,edx
+
+ and ecx,$8000
+ shl ecx,16
+ or eax,ecx
+
+ mov dword ptr [esp-4],eax
+
+@Done:
+
+ fld dword ptr [esp-4]
+
+end;
+{$ifend}
 {$elseif defined(cpuamd64) or defined(cpux64) or defined(cpux86_64)}
 const ToFloatMagic:TpvUInt32=TpvUInt32(TpvUInt32(254-15) shl 23);
       ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
