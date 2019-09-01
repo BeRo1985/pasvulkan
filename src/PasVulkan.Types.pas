@@ -267,9 +267,9 @@ type PPpvInt8=^PpvInt8;
              ToFloatWasInfNAN:TpvUInt32=TpvUInt32(TpvUInt32(127+16) shl 23);
       public
        Value:TpvUInt16;
-       class function FromFloat(const aValue:TpvFloat):TpvHalfFloat; static; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$ifend}
+       class function FromFloat(const aValue:TpvFloat):TpvHalfFloat; static; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$elseif defined(cpu386)}stdcall;{$ifend}
        constructor Create(const aValue:TpvFloat);
-       function ToFloat:TpvFloat; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$ifend}
+       function ToFloat:TpvFloat; {$if defined(CAN_INLINE) and not (defined(cpu386) or defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}inline;{$elseif defined(cpu386)}stdcall;{$ifend}
        class operator Implicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -655,7 +655,7 @@ begin
 end.}
 
 class function TpvHalfFloat.FromFloat(const aValue:TpvFloat):TpvHalfFloat;
-{$if defined(cpu386) and not defined(fpc)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
 {movss xmm0,dword ptr aValue
@@ -692,7 +692,7 @@ asm
 
  mov edx,$0f800000
  movss xmm0,dword ptr [esp-4]
- mov dword ptr [esp-8],15 shl 23
+ mov dword ptr [esp-8],15 shl 23 // $07800000
  mulss xmm0,dword ptr [esp-8]
  movss dword ptr [esp-4],xmm0
  mov eax,dword ptr [esp-4]
@@ -817,7 +817,7 @@ begin
 end;
 
 function TpvHalfFloat.ToFloat:TpvFloat;
-{$if defined(cpu386) and not defined(fpc)}{$ifdef fpc}assembler; nostackframe;{$endif}
+{$if defined(cpu386)}{$ifdef fpc}assembler; nostackframe;{$endif}
 asm
 
 {movzx eax,word ptr [eax+TpvHalfFloat.Value]
