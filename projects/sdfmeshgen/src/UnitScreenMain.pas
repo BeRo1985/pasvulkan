@@ -263,9 +263,9 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialog(const aSender:TpvGUIObject);
-       procedure OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
-       procedure SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
-       procedure ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+       procedure OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
+       procedure SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
+       procedure ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
        procedure MenuOnOpenProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveProject(const aSender:TpvGUIObject);
        procedure MenuOnSaveAsProject(const aSender:TpvGUIObject);
@@ -1972,7 +1972,7 @@ begin
  end;
 end;
 
-procedure TScreenMain.OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+procedure TScreenMain.OpenFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
 begin
  if aOK then begin
   if fModified then begin
@@ -1984,14 +1984,14 @@ begin
  end;
 end;
 
-procedure TScreenMain.SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+procedure TScreenMain.SaveFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
 begin
  if aOK then begin
   SaveProject(aFileName);
  end;
 end;
 
-procedure TScreenMain.ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String);
+procedure TScreenMain.ExportFileDialogOnResult(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String);
 var Index:TpvSizeInt;
     GLTFDocument:TPasGLTF.TDocument;
     FileStream:TFileStream;

@@ -3138,11 +3138,11 @@ type TpvGUIObject=class;
        procedure OverwritePromptDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OverwritePromptDialogOnDestroy(const aSender:TpvGUIObject);
       public
-       constructor Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;const aPath:TpvUTF8String); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;aPath:TpvUTF8String); reintroduce;
        destructor Destroy; override;
      end;
 
-     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String) of object;
+     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String) of object;
 
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
@@ -23577,7 +23577,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIFileDialogOverwritePromptMessageDialog.Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;const aPath:TpvUTF8String);
+constructor TpvGUIFileDialogOverwritePromptMessageDialog.Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;aPath:TpvUTF8String);
 begin
  inherited Create(aParent,
                   'Overwrite prompt',
