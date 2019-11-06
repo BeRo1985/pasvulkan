@@ -265,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=120;
+      VK_HEADER_VERSION=127;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -296,9 +296,9 @@ const VK_NULL_HANDLE=0;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=70;
       VK_KHR_SWAPCHAIN_EXTENSION_NAME='VK_KHR_swapchain';
-      VK_KHR_DISPLAY_SPEC_VERSION=21;
+      VK_KHR_DISPLAY_SPEC_VERSION=23;
       VK_KHR_DISPLAY_EXTENSION_NAME='VK_KHR_display';
-      VK_KHR_DISPLAY_SWAPCHAIN_SPEC_VERSION=9;
+      VK_KHR_DISPLAY_SWAPCHAIN_SPEC_VERSION=10;
       VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME='VK_KHR_display_swapchain';
       VK_KHR_XLIB_SURFACE_SPEC_VERSION=6;
       VK_KHR_XLIB_SURFACE_EXTENSION_NAME='VK_KHR_xlib_surface';
@@ -321,7 +321,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
       VK_EXT_DEPTH_RANGE_UNRESTRICTED_SPEC_VERSION=1;
       VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME='VK_EXT_depth_range_unrestricted';
-      VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_SPEC_VERSION=1;
+      VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_SPEC_VERSION=3;
       VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME='VK_KHR_sampler_mirror_clamp_to_edge';
       VK_IMG_FILTER_CUBIC_SPEC_VERSION=1;
       VK_IMG_FILTER_CUBIC_EXTENSION_NAME='VK_IMG_filter_cubic';
@@ -359,7 +359,7 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_32_EXTENSION_NAME='VK_AMD_extension_32';
       VK_AMD_EXTENSION_33_SPEC_VERSION=0;
       VK_AMD_EXTENSION_33_EXTENSION_NAME='VK_AMD_extension_33';
-      VK_AMD_DRAW_INDIRECT_COUNT_SPEC_VERSION=1;
+      VK_AMD_DRAW_INDIRECT_COUNT_SPEC_VERSION=2;
       VK_AMD_DRAW_INDIRECT_COUNT_EXTENSION_NAME='VK_AMD_draw_indirect_count';
       VK_AMD_EXTENSION_35_SPEC_VERSION=0;
       VK_AMD_EXTENSION_35_EXTENSION_NAME='VK_AMD_extension_35';
@@ -409,13 +409,13 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTERNAL_MEMORY_EXTENSION_NAME='VK_NV_external_memory';
       VK_NV_EXTERNAL_MEMORY_WIN32_SPEC_VERSION=1;
       VK_NV_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME='VK_NV_external_memory_win32';
-      VK_NV_WIN32_KEYED_MUTEX_SPEC_VERSION=1;
+      VK_NV_WIN32_KEYED_MUTEX_SPEC_VERSION=2;
       VK_NV_WIN32_KEYED_MUTEX_EXTENSION_NAME='VK_NV_win32_keyed_mutex';
-      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION=1;
+      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION=2;
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME='VK_KHR_get_physical_device_properties2';
-      VK_KHR_DEVICE_GROUP_SPEC_VERSION=3;
+      VK_KHR_DEVICE_GROUP_SPEC_VERSION=4;
       VK_KHR_DEVICE_GROUP_EXTENSION_NAME='VK_KHR_device_group';
-      VK_EXT_VALIDATION_FLAGS_SPEC_VERSION=1;
+      VK_EXT_VALIDATION_FLAGS_SPEC_VERSION=2;
       VK_EXT_VALIDATION_FLAGS_EXTENSION_NAME='VK_EXT_validation_flags';
       VK_NN_VI_SURFACE_SPEC_VERSION=1;
       VK_NN_VI_SURFACE_EXTENSION_NAME='VK_NN_vi_surface';
@@ -455,7 +455,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME='VK_KHR_external_semaphore_fd';
       VK_KHR_PUSH_DESCRIPTOR_SPEC_VERSION=2;
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME='VK_KHR_push_descriptor';
-      VK_EXT_CONDITIONAL_RENDERING_SPEC_VERSION=1;
+      VK_EXT_CONDITIONAL_RENDERING_SPEC_VERSION=2;
       VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME='VK_EXT_conditional_rendering';
       VK_KHR_SHADER_FLOAT16_INT8_SPEC_VERSION=1;
       VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME='VK_KHR_shader_float16_int8';
@@ -501,7 +501,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
       VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=4;
       VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
-      VK_EXT_HDR_METADATA_SPEC_VERSION=1;
+      VK_EXT_HDR_METADATA_SPEC_VERSION=2;
       VK_EXT_HDR_METADATA_EXTENSION_NAME='VK_EXT_hdr_metadata';
       VK_IMG_EXTENSION_107_SPEC_VERSION=0;
       VK_IMG_EXTENSION_107_EXTENSION_NAME='VK_IMG_extension_107';
@@ -551,7 +551,7 @@ const VK_NULL_HANDLE=0;
       VK_EXT_DEBUG_UTILS_EXTENSION_NAME='VK_EXT_debug_utils';
       VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_SPEC_VERSION=3;
       VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME='VK_ANDROID_external_memory_android_hardware_buffer';
-      VK_EXT_SAMPLER_FILTER_MINMAX_SPEC_VERSION=1;
+      VK_EXT_SAMPLER_FILTER_MINMAX_SPEC_VERSION=2;
       VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME='VK_EXT_sampler_filter_minmax';
       VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_SPEC_VERSION=1;
       VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME='VK_KHR_storage_buffer_storage_class';
@@ -601,7 +601,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_SHADER_SM_BUILTINS_EXTENSION_NAME='VK_NV_shader_sm_builtins';
       VK_EXT_POST_DEPTH_COVERAGE_SPEC_VERSION=1;
       VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME='VK_EXT_post_depth_coverage';
-      VK_KHR_SAMPLER_YCBCR_CONVERSION_SPEC_VERSION=1;
+      VK_KHR_SAMPLER_YCBCR_CONVERSION_SPEC_VERSION=14;
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME='VK_KHR_sampler_ycbcr_conversion';
       VK_KHR_BIND_MEMORY_2_SPEC_VERSION=1;
       VK_KHR_BIND_MEMORY_2_EXTENSION_NAME='VK_KHR_bind_memory2';
@@ -621,7 +621,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME='VK_NV_shading_rate_image';
       VK_NV_RAY_TRACING_SPEC_VERSION=3;
       VK_NV_RAY_TRACING_EXTENSION_NAME='VK_NV_ray_tracing';
-      VK_NV_REPRESENTATIVE_FRAGMENT_TEST_SPEC_VERSION=1;
+      VK_NV_REPRESENTATIVE_FRAGMENT_TEST_SPEC_VERSION=2;
       VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME='VK_NV_representative_fragment_test';
       VK_EXT_EXTENSION_168_SPEC_VERSION=0;
       VK_EXT_EXTENSION_168_EXTENSION_NAME='VK_NV_extension_168';
@@ -639,8 +639,8 @@ const VK_NULL_HANDLE=0;
       VK_QCOM_extension_174_EXTENSION_NAME='VK_QCOM_extension_174';
       VK_EXT_GLOBAL_PRIORITY_SPEC_VERSION=2;
       VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME='VK_EXT_global_priority';
-      VK_KHR_EXTENSION_176_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_176_EXTENSION_NAME='VK_KHR_extension_176';
+      VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_SPEC_VERSION=1;
+      VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME='VK_KHR_shader_subgroup_extended_types';
       VK_KHR_EXTENSION_177_SPEC_VERSION=0;
       VK_KHR_EXTENSION_177_EXTENSION_NAME='VK_KHR_extension_177';
       VK_KHR_8BIT_STORAGE_SPEC_VERSION=1;
@@ -651,15 +651,15 @@ const VK_NULL_HANDLE=0;
       VK_AMD_BUFFER_MARKER_EXTENSION_NAME='VK_AMD_buffer_marker';
       VK_KHR_SHADER_ATOMIC_INT64_SPEC_VERSION=1;
       VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME='VK_KHR_shader_atomic_int64';
-      VK_KHR_EXTENSION_182_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_182_EXTENSION_NAME='VK_AMD_extension_182';
+      VK_KHR_SHADER_CLOCK_SPEC_VERSION=1;
+      VK_KHR_SHADER_CLOCK_EXTENSION_NAME='VK_KHR_shader_clock';
       VK_KHR_EXTENSION_183_SPEC_VERSION=0;
       VK_KHR_EXTENSION_183_EXTENSION_NAME='VK_AMD_extension_183';
       VK_AMD_PIPELINE_COMPILER_CONTROL_SPEC_VERSION=1;
       VK_AMD_PIPELINE_COMPILER_CONTROL_EXTENSION_NAME='VK_AMD_pipeline_compiler_control';
       VK_EXT_CALIBRATED_TIMESTAMPS_SPEC_VERSION=1;
       VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME='VK_EXT_calibrated_timestamps';
-      VK_AMD_SHADER_CORE_PROPERTIES_SPEC_VERSION=1;
+      VK_AMD_SHADER_CORE_PROPERTIES_SPEC_VERSION=2;
       VK_AMD_SHADER_CORE_PROPERTIES_EXTENSION_NAME='VK_AMD_shader_core_properties';
       VK_KHR_EXTENSION_187_SPEC_VERSION=0;
       VK_KHR_EXTENSION_187_EXTENSION_NAME='VK_AMD_extension_187';
@@ -697,14 +697,14 @@ const VK_NULL_HANDLE=0;
       VK_NV_MESH_SHADER_EXTENSION_NAME='VK_NV_mesh_shader';
       VK_NV_FRAGMENT_SHADER_BARYCENTRIC_SPEC_VERSION=1;
       VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME='VK_NV_fragment_shader_barycentric';
-      VK_NV_SHADER_IMAGE_FOOTPRINT_SPEC_VERSION=1;
+      VK_NV_SHADER_IMAGE_FOOTPRINT_SPEC_VERSION=2;
       VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME='VK_NV_shader_image_footprint';
       VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION=1;
       VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME='VK_NV_scissor_exclusive';
       VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_SPEC_VERSION=2;
       VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME='VK_NV_device_diagnostic_checkpoints';
-      VK_KHR_EXTENSION_208_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_208_EXTENSION_NAME='VK_KHR_extension_208';
+      VK_KHR_TIMELINE_SEMAPHORE_SPEC_VERSION=2;
+      VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME='VK_KHR_timeline_semaphore';
       VK_KHR_EXTENSION_209_SPEC_VERSION=0;
       VK_KHR_EXTENSION_209_EXTENSION_NAME='VK_KHR_extension_209';
       VK_INTEL_SHADER_INTEGER_FUNCTIONS_2_SPEC_VERSION=1;
@@ -747,8 +747,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_SHADER_CORE_PROPERTIES_2_EXTENSION_NAME='VK_AMD_shader_core_properties2';
       VK_AMD_EXTENSION_229_SPEC_VERSION=0;
       VK_AMD_EXTENSION_229_EXTENSION_NAME='VK_AMD_extension_229';
-      VK_AMD_EXTENSION_230_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_230_EXTENSION_NAME='VK_AMD_extension_230';
+      VK_AMD_DEVICE_COHERENT_MEMORY_SPEC_VERSION=1;
+      VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME='VK_AMD_device_coherent_memory';
       VK_AMD_EXTENSION_231_SPEC_VERSION=0;
       VK_AMD_EXTENSION_231_EXTENSION_NAME='VK_AMD_extension_231';
       VK_AMD_EXTENSION_232_SPEC_VERSION=0;
@@ -761,8 +761,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_235_EXTENSION_NAME='VK_AMD_extension_235';
       VK_AMD_EXTENSION_236_SPEC_VERSION=0;
       VK_AMD_EXTENSION_236_EXTENSION_NAME='VK_AMD_extension_236';
-      VK_KHR_EXTENSION_237_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
+      VK_KHR_SPIRV_1_4_SPEC_VERSION=1;
+      VK_KHR_SPIRV_1_4_EXTENSION_NAME='VK_KHR_spirv_1_4';
       VK_EXT_MEMORY_BUDGET_SPEC_VERSION=1;
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME='VK_EXT_memory_budget';
       VK_EXT_MEMORY_PRIORITY_SPEC_VERSION=1;
@@ -771,8 +771,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME='VK_KHR_surface_protected_capabilities';
       VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_SPEC_VERSION=1;
       VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_EXTENSION_NAME='VK_NV_dedicated_allocation_image_aliasing';
-      VK_NV_EXTENSION_242_SPEC_VERSION=0;
-      VK_NV_EXTENSION_242_EXTENSION_NAME='VK_NV_extension_242';
+      VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_SPEC_VERSION=1;
+      VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME='VK_KHR_separate_depth_stencil_layouts';
       VK_INTEL_EXTENSION_243_SPEC_VERSION=0;
       VK_INTEL_EXTENSION_243_EXTENSION_NAME='VK_INTEL_extension_243';
       VK_MESA_EXTENSION_244_SPEC_VERSION=0;
@@ -799,9 +799,9 @@ const VK_NULL_HANDLE=0;
       VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME='VK_KHR_uniform_buffer_standard_layout';
       VK_EXT_EXTENSION_255_SPEC_VERSION=0;
       VK_EXT_EXTENSION_255_EXTENSION_NAME='VK_EXT_extension_255';
-      VK_EXT_FULL_SCREEN_EXCLUSIVE_SPEC_VERSION=3;
+      VK_EXT_FULL_SCREEN_EXCLUSIVE_SPEC_VERSION=4;
       VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME='VK_EXT_full_screen_exclusive';
-      VK_EXT_HEADLESS_SURFACE_SPEC_VERSION=0;
+      VK_EXT_HEADLESS_SURFACE_SPEC_VERSION=1;
       VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME='VK_EXT_headless_surface';
       VK_EXT_EXTENSION_258_SPEC_VERSION=0;
       VK_EXT_EXTENSION_258_EXTENSION_NAME='VK_EXT_extension_258';
@@ -867,6 +867,22 @@ const VK_NULL_HANDLE=0;
       VK_NVX_EXTENSION_288_EXTENSION_NAME='VK_NVX_extension_288';
       VK_EXT_EXTENSION_289_SPEC_VERSION=0;
       VK_EXT_EXTENSION_289_EXTENSION_NAME='VK_EXT_extension_289';
+      VK_GOOGLE_USER_TYPE_SPEC_VERSION=1;
+      VK_GOOGLE_USER_TYPE_EXTENSION_NAME='VK_GOOGLE_user_type';
+      VK_NV_EXTENSION_291_SPEC_VERSION=0;
+      VK_NV_EXTENSION_291_EXTENSION_NAME='VK_NV_extension_291';
+      VK_NV_EXTENSION_292_SPEC_VERSION=0;
+      VK_NV_EXTENSION_292_EXTENSION_NAME='VK_NV_extension_292';
+      VK_NV_EXTENSION_293_SPEC_VERSION=0;
+      VK_NV_EXTENSION_293_EXTENSION_NAME='VK_NV_extension_293';
+      VK_KHR_EXTENSION_294_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_294_EXTENSION_NAME='VK_KHR_extension_294';
+      VK_KHR_EXTENSION_295_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_295_EXTENSION_NAME='VK_KHR_extension_295';
+      VK_NV_EXTENSION_296_SPEC_VERSION=0;
+      VK_NV_EXTENSION_296_EXTENSION_NAME='VK_NV_extension_296';
+      VK_KHR_EXTENSION_297_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_297_EXTENSION_NAME='VK_KHR_extension_297';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1189,6 +1205,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkShaderCorePropertiesFlagsAMD=^PVkShaderCorePropertiesFlagsAMD;
      PVkShaderCorePropertiesFlagsAMD=^TVkShaderCorePropertiesFlagsAMD;
      TVkShaderCorePropertiesFlagsAMD=TVkFlags;
+
+     PPVkSemaphoreWaitFlagsKHR=^PVkSemaphoreWaitFlagsKHR;
+     PVkSemaphoreWaitFlagsKHR=^TVkSemaphoreWaitFlagsKHR;
+     TVkSemaphoreWaitFlagsKHR=TVkFlags;
 
      PPVkCompositeAlphaFlagsKHR=^PVkCompositeAlphaFlagsKHR;
      PVkCompositeAlphaFlagsKHR=^TVkCompositeAlphaFlagsKHR;
@@ -1617,6 +1637,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL=1000117001,
        VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV=1000164003,
        VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT=1000218000,
+       VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR=1000241000,
+       VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR=1000241001,
+       VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR=1000241002,
+       VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR=1000241003,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
       );
@@ -1812,7 +1836,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT=1,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE=2,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER=3,
-       VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE=4
+       VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE=4,
+       VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE_KHR=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
       );
 
      PPVkCompareOp=^PVkCompareOp;
@@ -2587,11 +2612,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT=1000170000,
        VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT=1000170001,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR=1000175000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR=1000177000,
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT=1000178000,
        VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT=1000178001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT=1000178002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR=1000180000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR=1000181000,
        VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD=1000183000,
        VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT=1000184000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
@@ -2614,6 +2641,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV=1000205002,
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR=1000207000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR=1000207001,
+       VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR=1000207002,
+       VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR=1000207003,
+       VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR=1000207004,
+       VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR=1000207005,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL=1000209000,
        VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL=1000210000,
        VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL=1000210001,
@@ -2635,11 +2668,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT=1000225001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT=1000225002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD=1000227000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD=1000229000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT=1000237000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT=1000238000,
        VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT=1000238001,
        VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR=1000239000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV=1000240000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR=1000241000,
+       VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR=1000241001,
+       VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR=1000241002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT=1000244000,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT=1000244001,
        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT=1000244002,
@@ -2904,7 +2941,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT=$00000004,                           //< Memory will have i/o coherency. If not set, application may need to use vkFlushMappedMemoryRanges and vkInvalidateMappedMemoryRanges to flush/invalidate host cache
        VK_MEMORY_PROPERTY_HOST_CACHED_BIT=$00000008,                             //< Memory will be cached by the host
        VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT=$00000010,                        //< Memory may be allocated by the driver when it is required
-       VK_MEMORY_PROPERTY_PROTECTED_BIT=$00000020
+       VK_MEMORY_PROPERTY_PROTECTED_BIT=$00000020,
+       VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD=$00000040,
+       VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD=$00000080
       );
 
      PPVkMemoryHeapFlagBits=^PVkMemoryHeapFlagBits;
@@ -2920,7 +2959,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkAccessFlagBits=^TVkAccessFlagBits;
      TVkAccessFlagBits=
       (
-       VK_ACCESS_RESERVED_31_BIT_KHR=$80000000,
+       VK_ACCESS_RESERVED_31_BIT_KHR=TVkInt32($80000000),
        VK_ACCESS_INDIRECT_COMMAND_READ_BIT=$00000001,                            //< Controls coherency of indirect command reads
        VK_ACCESS_INDEX_READ_BIT=$00000002,                                       //< Controls coherency of index reads
        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT=$00000004,                            //< Controls coherency of vertex attribute reads
@@ -3097,7 +3136,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT=$00000001,
        VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT=$00000002,
-       VK_PIPELINE_SHADER_STAGE_CREATE_RESERVED_2_BIT_NV=$00000004
+       VK_PIPELINE_SHADER_STAGE_CREATE_RESERVED_2_BIT_NV=$00000004,
+       VK_PIPELINE_SHADER_STAGE_CREATE_RESERVED_3_BIT_KHR=$00000008
       );
 
      PPVkColorComponentFlagBits=^PVkColorComponentFlagBits;
@@ -3115,6 +3155,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFenceCreateFlagBits=
       (
        VK_FENCE_CREATE_SIGNALED_BIT=$00000001
+      );
+
+     PPVkSemaphoreCreateFlagBits=^PVkSemaphoreCreateFlagBits;
+     PVkSemaphoreCreateFlagBits=^TVkSemaphoreCreateFlagBits;
+     TVkSemaphoreCreateFlagBits=
+      (
+       TVkSemaphoreCreateFlagBitsDummyValue=0
       );
 
      PPVkFormatFeatureFlagBits=^PVkFormatFeatureFlagBits;
@@ -3345,6 +3392,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEPENDENCY_DEVICE_GROUP_BIT=$00000004,
        VK_DEPENDENCY_DEVICE_GROUP_BIT_KHR=VK_DEPENDENCY_DEVICE_GROUP_BIT,
        VK_DEPENDENCY_VIEW_LOCAL_BIT_KHR=VK_DEPENDENCY_VIEW_LOCAL_BIT
+      );
+
+     PPVkSemaphoreTypeKHR=^PVkSemaphoreTypeKHR;
+     PVkSemaphoreTypeKHR=^TVkSemaphoreTypeKHR;
+     TVkSemaphoreTypeKHR=
+      (
+       VK_SEMAPHORE_TYPE_BINARY_KHR=0,
+       VK_SEMAPHORE_TYPE_TIMELINE_KHR=1
+      );
+
+     PPVkSemaphoreWaitFlagBitsKHR=^PVkSemaphoreWaitFlagBitsKHR;
+     PVkSemaphoreWaitFlagBitsKHR=^TVkSemaphoreWaitFlagBitsKHR;
+     TVkSemaphoreWaitFlagBitsKHR=
+      (
+       VK_SEMAPHORE_WAIT_ANY_BIT_KHR=$00000001
       );
 
      PPVkPresentModeKHR=^PVkPresentModeKHR;
@@ -9866,6 +9928,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR=^PVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR;
+     PVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR=^TVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR;
+     TVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR
+       pNext:PVkVoid;
+       shaderSubgroupExtendedTypes:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderSubgroupExtendedTypes:TVkBool32);
+{$endif}
+     end;
+
      PPVkBufferMemoryRequirementsInfo2=^PVkBufferMemoryRequirementsInfo2;
      PVkBufferMemoryRequirementsInfo2=^TVkBufferMemoryRequirementsInfo2;
      TVkBufferMemoryRequirementsInfo2=record
@@ -11483,6 +11559,106 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SUBPASS_END_INFO_KHR
        pNext:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceTimelineSemaphoreFeaturesKHR=^PVkPhysicalDeviceTimelineSemaphoreFeaturesKHR;
+     PVkPhysicalDeviceTimelineSemaphoreFeaturesKHR=^TVkPhysicalDeviceTimelineSemaphoreFeaturesKHR;
+     TVkPhysicalDeviceTimelineSemaphoreFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR
+       pNext:PVkVoid;
+       timelineSemaphore:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTimelineSemaphore:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceTimelineSemaphorePropertiesKHR=^PVkPhysicalDeviceTimelineSemaphorePropertiesKHR;
+     PVkPhysicalDeviceTimelineSemaphorePropertiesKHR=^TVkPhysicalDeviceTimelineSemaphorePropertiesKHR;
+     TVkPhysicalDeviceTimelineSemaphorePropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR
+       pNext:PVkVoid;
+       maxTimelineSemaphoreValueDifference:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxTimelineSemaphoreValueDifference:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkSemaphoreTypeCreateInfoKHR=^PVkSemaphoreTypeCreateInfoKHR;
+     PVkSemaphoreTypeCreateInfoKHR=^TVkSemaphoreTypeCreateInfoKHR;
+     TVkSemaphoreTypeCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       semaphoreType:TVkSemaphoreTypeKHR;
+       initialValue:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSemaphoreType:TVkSemaphoreTypeKHR;
+                          const aInitialValue:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkTimelineSemaphoreSubmitInfoKHR=^PVkTimelineSemaphoreSubmitInfoKHR;
+     PVkTimelineSemaphoreSubmitInfoKHR=^TVkTimelineSemaphoreSubmitInfoKHR;
+     TVkTimelineSemaphoreSubmitInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR
+       pNext:PVkVoid;
+       waitSemaphoreValueCount:TVkUInt32;
+       pWaitSemaphoreValues:PVkUInt64;
+       signalSemaphoreValueCount:TVkUInt32;
+       pSignalSemaphoreValues:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aWaitSemaphoreValueCount:TVkUInt32;
+                          const aPWaitSemaphoreValues:PVkUInt64;
+                          const aSignalSemaphoreValueCount:TVkUInt32;
+                          const aPSignalSemaphoreValues:PVkUInt64);
+{$endif}
+     end;
+
+     PPVkSemaphoreWaitInfoKHR=^PVkSemaphoreWaitInfoKHR;
+     PVkSemaphoreWaitInfoKHR=^TVkSemaphoreWaitInfoKHR;
+     TVkSemaphoreWaitInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR
+       pNext:PVkVoid;
+       flags:TVkSemaphoreWaitFlagsKHR;
+       semaphoreCount:TVkUInt32;
+       pSemaphores:PVkSemaphore;
+       pValues:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkSemaphoreWaitFlagsKHR;
+                          const aSemaphoreCount:TVkUInt32;
+                          const aPSemaphores:PVkSemaphore;
+                          const aPValues:PVkUInt64);
+{$endif}
+     end;
+
+     PPVkSemaphoreSignalInfoKHR=^PVkSemaphoreSignalInfoKHR;
+     PVkSemaphoreSignalInfoKHR=^TVkSemaphoreSignalInfoKHR;
+     TVkSemaphoreSignalInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR
+       pNext:PVkVoid;
+       semaphore:TVkSemaphore;
+       value:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSemaphore:TVkSemaphore;
+                          const aValue:TVkUInt64);
 {$endif}
      end;
 
@@ -13335,6 +13511,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceShaderClockFeaturesKHR=^PVkPhysicalDeviceShaderClockFeaturesKHR;
+     PVkPhysicalDeviceShaderClockFeaturesKHR=^TVkPhysicalDeviceShaderClockFeaturesKHR;
+     TVkPhysicalDeviceShaderClockFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR
+       pNext:PVkVoid;
+       shaderSubgroupClock:TVkBool32;
+       shaderDeviceClock:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderSubgroupClock:TVkBool32;
+                          const aShaderDeviceClock:TVkBool32);
+{$endif}
+     end;
+
      PPVkPhysicalDeviceIndexTypeUint8FeaturesEXT=^PVkPhysicalDeviceIndexTypeUint8FeaturesEXT;
      PVkPhysicalDeviceIndexTypeUint8FeaturesEXT=^TVkPhysicalDeviceIndexTypeUint8FeaturesEXT;
      TVkPhysicalDeviceIndexTypeUint8FeaturesEXT=record
@@ -13394,6 +13586,50 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aFragmentShaderSampleInterlock:TVkBool32;
                           const aFragmentShaderPixelInterlock:TVkBool32;
                           const aFragmentShaderShadingRateInterlock:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR=^PVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR;
+     PVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR=^TVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR;
+     TVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR
+       pNext:PVkVoid;
+       separateDepthStencilLayouts:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSeparateDepthStencilLayouts:TVkBool32);
+{$endif}
+     end;
+
+     PPVkAttachmentReferenceStencilLayoutKHR=^PVkAttachmentReferenceStencilLayoutKHR;
+     PVkAttachmentReferenceStencilLayoutKHR=^TVkAttachmentReferenceStencilLayoutKHR;
+     TVkAttachmentReferenceStencilLayoutKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR
+       pNext:PVkVoid;
+       stencilLayout:TVkImageLayout;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aStencilLayout:TVkImageLayout);
+{$endif}
+     end;
+
+     PPVkAttachmentDescriptionStencilLayoutKHR=^PVkAttachmentDescriptionStencilLayoutKHR;
+     PVkAttachmentDescriptionStencilLayoutKHR=^TVkAttachmentDescriptionStencilLayoutKHR;
+     TVkAttachmentDescriptionStencilLayoutKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR
+       pNext:PVkVoid;
+       stencilInitialLayout:TVkImageLayout;
+       stencilFinalLayout:TVkImageLayout;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aStencilInitialLayout:TVkImageLayout;
+                          const aStencilFinalLayout:TVkImageLayout);
 {$endif}
      end;
 
@@ -13688,6 +13924,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        compilerControlFlags:TVkPipelineCompilerControlFlagsAMD;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aCompilerControlFlags:TVkPipelineCompilerControlFlagsAMD);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceCoherentMemoryFeaturesAMD=^PVkPhysicalDeviceCoherentMemoryFeaturesAMD;
+     PVkPhysicalDeviceCoherentMemoryFeaturesAMD=^TVkPhysicalDeviceCoherentMemoryFeaturesAMD;
+     TVkPhysicalDeviceCoherentMemoryFeaturesAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD
+       pNext:PVkVoid;
+       deviceCoherentMemory:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDeviceCoherentMemory:TVkBool32);
 {$endif}
      end;
 
@@ -14364,6 +14614,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdNextSubpass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassBeginInfo:PVkSubpassBeginInfoKHR;const pSubpassEndInfo:PVkSubpassEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdEndRenderPass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetSemaphoreCounterValueKHR=function(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkWaitSemaphoresKHR=function(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfoKHR;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkSignalSemaphoreKHR=function(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Android}
      TvkGetAndroidHardwareBufferPropertiesANDROID=function(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -15158,6 +15414,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdNextSubpass2KHR:TvkCmdNextSubpass2KHR;
 
       CmdEndRenderPass2KHR:TvkCmdEndRenderPass2KHR;
+
+      GetSemaphoreCounterValueKHR:TvkGetSemaphoreCounterValueKHR;
+
+      WaitSemaphoresKHR:TvkWaitSemaphoresKHR;
+
+      SignalSemaphoreKHR:TvkSignalSemaphoreKHR;
 
 {$ifdef Android}
       GetAndroidHardwareBufferPropertiesANDROID:TvkGetAndroidHardwareBufferPropertiesANDROID;
@@ -15958,6 +16220,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdEndRenderPass2KHR(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfoKHR); virtual;
 
+       function GetSemaphoreCounterValueKHR(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; virtual;
+
+       function WaitSemaphoresKHR(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfoKHR;timeout:TVkUInt64):TVkResult; virtual;
+
+       function SignalSemaphoreKHR(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfoKHR):TVkResult; virtual;
+
 {$ifdef Android}
        function GetAndroidHardwareBufferPropertiesANDROID(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; virtual;
 {$endif}
@@ -16754,6 +17022,12 @@ var LibVulkan:pointer=nil;
     vkCmdNextSubpass2KHR:TvkCmdNextSubpass2KHR=nil;
 
     vkCmdEndRenderPass2KHR:TvkCmdEndRenderPass2KHR=nil;
+
+    vkGetSemaphoreCounterValueKHR:TvkGetSemaphoreCounterValueKHR=nil;
+
+    vkWaitSemaphoresKHR:TvkWaitSemaphoresKHR=nil;
+
+    vkSignalSemaphoreKHR:TvkSignalSemaphoreKHR=nil;
 
 {$ifdef Android}
     vkGetAndroidHardwareBufferPropertiesANDROID:TvkGetAndroidHardwareBufferPropertiesANDROID=nil;
@@ -18287,6 +18561,18 @@ begin
    @vkCmdEndRenderPass2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndRenderPass2KHR'));
    @vk.fCommands.CmdEndRenderPass2KHR:=addr(vkCmdEndRenderPass2KHR);
   end;
+  if not assigned(vkGetSemaphoreCounterValueKHR) then begin
+   @vkGetSemaphoreCounterValueKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSemaphoreCounterValueKHR'));
+   @vk.fCommands.GetSemaphoreCounterValueKHR:=addr(vkGetSemaphoreCounterValueKHR);
+  end;
+  if not assigned(vkWaitSemaphoresKHR) then begin
+   @vkWaitSemaphoresKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkWaitSemaphoresKHR'));
+   @vk.fCommands.WaitSemaphoresKHR:=addr(vkWaitSemaphoresKHR);
+  end;
+  if not assigned(vkSignalSemaphoreKHR) then begin
+   @vkSignalSemaphoreKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSignalSemaphoreKHR'));
+   @vk.fCommands.SignalSemaphoreKHR:=addr(vkSignalSemaphoreKHR);
+  end;
 {$ifdef Android}
   if not assigned(vkGetAndroidHardwareBufferPropertiesANDROID) then begin
    @vkGetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAndroidHardwareBufferPropertiesANDROID'));
@@ -18883,6 +19169,9 @@ begin
   @InstanceCommands.CmdBeginRenderPass2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBeginRenderPass2KHR')));
   @InstanceCommands.CmdNextSubpass2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdNextSubpass2KHR')));
   @InstanceCommands.CmdEndRenderPass2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdEndRenderPass2KHR')));
+  @InstanceCommands.GetSemaphoreCounterValueKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSemaphoreCounterValueKHR')));
+  @InstanceCommands.WaitSemaphoresKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkWaitSemaphoresKHR')));
+  @InstanceCommands.SignalSemaphoreKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSignalSemaphoreKHR')));
 {$ifdef Android}
   @InstanceCommands.GetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAndroidHardwareBufferPropertiesANDROID')));
 {$endif}
@@ -19206,6 +19495,9 @@ begin
   @DeviceCommands.CmdBeginRenderPass2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBeginRenderPass2KHR')));
   @DeviceCommands.CmdNextSubpass2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdNextSubpass2KHR')));
   @DeviceCommands.CmdEndRenderPass2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdEndRenderPass2KHR')));
+  @DeviceCommands.GetSemaphoreCounterValueKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSemaphoreCounterValueKHR')));
+  @DeviceCommands.WaitSemaphoresKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkWaitSemaphoresKHR')));
+  @DeviceCommands.SignalSemaphoreKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSignalSemaphoreKHR')));
 {$ifdef Android}
   @DeviceCommands.GetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAndroidHardwareBufferPropertiesANDROID')));
 {$endif}
@@ -22847,6 +23139,13 @@ begin
  quadOperationsInAllStages:=aQuadOperationsInAllStages;
 end;
 
+constructor TVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR.Create(const aShaderSubgroupExtendedTypes:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR;
+ pNext:=nil;
+ shaderSubgroupExtendedTypes:=aShaderSubgroupExtendedTypes;
+end;
+
 constructor TVkBufferMemoryRequirementsInfo2.Create(const aBuffer:TVkBuffer);
 begin
  sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2;
@@ -23833,6 +24132,64 @@ begin
  sType:=VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO_KHR;
  pNext:=nil;
  contents:=aContents;
+end;
+
+constructor TVkPhysicalDeviceTimelineSemaphoreFeaturesKHR.Create(const aTimelineSemaphore:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR;
+ pNext:=nil;
+ timelineSemaphore:=aTimelineSemaphore;
+end;
+
+constructor TVkPhysicalDeviceTimelineSemaphorePropertiesKHR.Create(const aMaxTimelineSemaphoreValueDifference:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR;
+ pNext:=nil;
+ maxTimelineSemaphoreValueDifference:=aMaxTimelineSemaphoreValueDifference;
+end;
+
+constructor TVkSemaphoreTypeCreateInfoKHR.Create(const aSemaphoreType:TVkSemaphoreTypeKHR;
+                                                 const aInitialValue:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
+ pNext:=nil;
+ semaphoreType:=aSemaphoreType;
+ initialValue:=aInitialValue;
+end;
+
+constructor TVkTimelineSemaphoreSubmitInfoKHR.Create(const aWaitSemaphoreValueCount:TVkUInt32;
+                                                     const aPWaitSemaphoreValues:PVkUInt64;
+                                                     const aSignalSemaphoreValueCount:TVkUInt32;
+                                                     const aPSignalSemaphoreValues:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR;
+ pNext:=nil;
+ waitSemaphoreValueCount:=aWaitSemaphoreValueCount;
+ pWaitSemaphoreValues:=aPWaitSemaphoreValues;
+ signalSemaphoreValueCount:=aSignalSemaphoreValueCount;
+ pSignalSemaphoreValues:=aPSignalSemaphoreValues;
+end;
+
+constructor TVkSemaphoreWaitInfoKHR.Create(const aFlags:TVkSemaphoreWaitFlagsKHR;
+                                           const aSemaphoreCount:TVkUInt32;
+                                           const aPSemaphores:PVkSemaphore;
+                                           const aPValues:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR;
+ pNext:=nil;
+ flags:=aFlags;
+ semaphoreCount:=aSemaphoreCount;
+ pSemaphores:=aPSemaphores;
+ pValues:=aPValues;
+end;
+
+constructor TVkSemaphoreSignalInfoKHR.Create(const aSemaphore:TVkSemaphore;
+                                             const aValue:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR;
+ pNext:=nil;
+ semaphore:=aSemaphore;
+ value:=aValue;
 end;
 
 constructor TVkVertexInputBindingDivisorDescriptionEXT.Create(const aBinding:TVkUInt32;
@@ -24931,6 +25288,15 @@ begin
  type_:=aType_;
 end;
 
+constructor TVkPhysicalDeviceShaderClockFeaturesKHR.Create(const aShaderSubgroupClock:TVkBool32;
+                                                           const aShaderDeviceClock:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR;
+ pNext:=nil;
+ shaderSubgroupClock:=aShaderSubgroupClock;
+ shaderDeviceClock:=aShaderDeviceClock;
+end;
+
 constructor TVkPhysicalDeviceIndexTypeUint8FeaturesEXT.Create(const aIndexTypeUint8:TVkBool32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
@@ -24963,6 +25329,29 @@ begin
  fragmentShaderSampleInterlock:=aFragmentShaderSampleInterlock;
  fragmentShaderPixelInterlock:=aFragmentShaderPixelInterlock;
  fragmentShaderShadingRateInterlock:=aFragmentShaderShadingRateInterlock;
+end;
+
+constructor TVkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR.Create(const aSeparateDepthStencilLayouts:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR;
+ pNext:=nil;
+ separateDepthStencilLayouts:=aSeparateDepthStencilLayouts;
+end;
+
+constructor TVkAttachmentReferenceStencilLayoutKHR.Create(const aStencilLayout:TVkImageLayout);
+begin
+ sType:=VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR;
+ pNext:=nil;
+ stencilLayout:=aStencilLayout;
+end;
+
+constructor TVkAttachmentDescriptionStencilLayoutKHR.Create(const aStencilInitialLayout:TVkImageLayout;
+                                                            const aStencilFinalLayout:TVkImageLayout);
+begin
+ sType:=VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR;
+ pNext:=nil;
+ stencilInitialLayout:=aStencilInitialLayout;
+ stencilFinalLayout:=aStencilFinalLayout;
 end;
 
 constructor TVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR.Create(const aPipelineExecutableInfo:TVkBool32);
@@ -25169,6 +25558,13 @@ begin
  sType:=VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD;
  pNext:=nil;
  compilerControlFlags:=aCompilerControlFlags;
+end;
+
+constructor TVkPhysicalDeviceCoherentMemoryFeaturesAMD.Create(const aDeviceCoherentMemory:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD;
+ pNext:=nil;
+ deviceCoherentMemory:=aDeviceCoherentMemory;
 end;
 {$endif}
 
@@ -26806,6 +27202,21 @@ end;
 procedure TVulkan.CmdEndRenderPass2KHR(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfoKHR);
 begin
  fCommands.CmdEndRenderPass2KHR(commandBuffer,pSubpassEndInfo);
+end;
+
+function TVulkan.GetSemaphoreCounterValueKHR(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult;
+begin
+ result:=fCommands.GetSemaphoreCounterValueKHR(device,semaphore,pValue);
+end;
+
+function TVulkan.WaitSemaphoresKHR(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfoKHR;timeout:TVkUInt64):TVkResult;
+begin
+ result:=fCommands.WaitSemaphoresKHR(device,pWaitInfo,timeout);
+end;
+
+function TVulkan.SignalSemaphoreKHR(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfoKHR):TVkResult;
+begin
+ result:=fCommands.SignalSemaphoreKHR(device,pSignalInfo);
 end;
 
 {$ifdef Android}

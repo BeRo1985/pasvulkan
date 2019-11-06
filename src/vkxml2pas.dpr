@@ -3294,7 +3294,11 @@ begin
       ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeature.Number-1)*1000)+ExtensionOrFeatureEnum.Offset)+';');
      end; 
     end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
-     ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+';');
+     if ExtensionOrFeatureEnum.BitPos=31 then begin
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'=TVkInt32('+ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+');');
+     end else begin
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+';');
+     end;
     end;
    end;
   end;
@@ -4260,7 +4264,11 @@ begin
        ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionOrFeatureEnum.Offset);
       end;
      end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
-      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8);
+      if ExtensionOrFeatureEnum.BitPos=31 then begin
+       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+'TVkInt32($'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+')';
+      end else begin
+       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8);
+      end;
      end;
      ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);
      ValueItem^.Comment:='';
