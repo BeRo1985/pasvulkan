@@ -2216,7 +2216,7 @@ begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
     result:=true;
     exit;
    end;
@@ -2243,7 +2243,7 @@ begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
     result:=true;
     exit;
    end;
@@ -2270,7 +2270,7 @@ begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
     result:=true;
     exit;
    end;
