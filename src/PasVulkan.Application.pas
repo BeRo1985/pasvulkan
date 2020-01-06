@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2019, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2020, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -1071,6 +1071,8 @@ type EpvApplication=class(Exception)
 
        fGraphicsReady:boolean;
 
+       fVulkanRecreateSwapChainOnSuboptimalSurface:boolean;
+
        fVulkanDebugging:boolean;
 
        fVulkanValidation:boolean;
@@ -1482,6 +1484,8 @@ type EpvApplication=class(Exception)
        property VulkanAPIVersion:TvkUInt32 read fVulkanAPIVersion write fVulkanAPIVersion;
 
        property VulkanPhysicalDeviceHandle:TVkPhysicalDevice read fVulkanPhysicalDeviceHandle write fVulkanPhysicalDeviceHandle;
+
+       property VulkanRecreateSwapChainOnSuboptimalSurface:boolean read fVulkanRecreateSwapChainOnSuboptimalSurface write fVulkanRecreateSwapChainOnSuboptimalSurface;
 
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
@@ -5341,6 +5345,8 @@ begin
 
  fSkipNextDrawFrame:=false;
 
+ fVulkanRecreateSwapChainOnSuboptimalSurface:=false;
+
  fVulkanDebugging:=false;
 
  fVulkanDebuggingEnabled:=false;
@@ -6890,9 +6896,16 @@ begin
        continue;
       end;
       VK_SUBOPTIMAL_KHR:begin
-       VulkanDebugLn('Suboptimal surface detected!');
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-       continue;
+       if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
+        VulkanDebugLn('Suboptimal surface detected!');
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+        continue;
+       end else begin
+        fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=true;
+        fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
+        continue;
+       end;
       end;
       else {VK_TIMEOUT:}begin
        break;
@@ -7110,10 +7123,24 @@ begin
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
-    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                              TAcquireVulkanBackBufferState.RecreateSurface,
-                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
+     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                               TAcquireVulkanBackBufferState.RecreateSurface,
+                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+      VulkanDebugLn('Suboptimal surface detected!');
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+     end;
+    end else begin
+     //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+     inc(fDrawSwapChainImageIndex);
+     if fDrawSwapChainImageIndex>=fCountSwapChainImages then begin
+      dec(fDrawSwapChainImageIndex,fCountSwapChainImages);
+     end;
+     fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex+1;
+     if fUpdateSwapChainImageIndex>=fCountSwapChainImages then begin
+      dec(fUpdateSwapChainImageIndex,fCountSwapChainImages);
+     end;
+     result:=true;
     end;
    end;
   end;
@@ -7125,6 +7152,7 @@ begin
                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
      end;
+     VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
     end;
     VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
@@ -7133,6 +7161,7 @@ begin
                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
      end;
+     VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
     end;
     else begin
      raise;
@@ -7874,6 +7903,7 @@ begin
       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                              TAcquireVulkanBackBufferState.RecreateSurface,
                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+    VulkanDebugLn('New fullscreen setting detected!');
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
    end;
 {$if defined(PasVulkanUseSDL2)}
