@@ -1658,8 +1658,8 @@ type EpvVulkanException=class(Exception);
                           const aImageUsage:TVkImageUsageFlags;
                           const aImageSharingMode:TVkSharingMode;
                           const aQueueFamilyIndices:array of TVKUInt32;
+                          const aCompositeAlpha:array of TVkCompositeAlphaFlagBitsKHR;
                           const aForceCompositeAlpha:boolean=false;
-                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
                           const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                           const aClipped:boolean=true;
                           const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
@@ -13058,8 +13058,8 @@ constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
                                       const aImageUsage:TVkImageUsageFlags;
                                       const aImageSharingMode:TVkSharingMode;
                                       const aQueueFamilyIndices:array of TVkUInt32;
+                                      const aCompositeAlpha:array of TVkCompositeAlphaFlagBitsKHR;
                                       const aForceCompositeAlpha:boolean=false;
-                                      const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
                                       const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                                       const aClipped:boolean=true;
                                       const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
@@ -13195,11 +13195,16 @@ begin
    SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(SurfaceCapabilities.currentTransform);
   end;
 
-  if aForceCompositeAlpha and
-     ((SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(aCompositeAlpha))<>0) then begin
-   SwapChainCreateInfo.compositeAlpha:=aCompositeAlpha;
-  end else begin
-   Found:=false;
+  Found:=false;
+  for Index:=0 to length(aCompositeAlpha)-1 do begin
+   CompositeAlpha:=aCompositeAlpha[Index];
+   if (SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(CompositeAlpha))<>0 then begin
+    SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
+    Found:=true;
+    break;
+   end;
+  end;
+  if (not Found) and not aForceCompositeAlpha then begin
    for Index:=Low(CompositeAlphaTryOrder) to High(CompositeAlphaTryOrder) do begin
     CompositeAlpha:=CompositeAlphaTryOrder[Index];
     if (SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(CompositeAlpha))<>0 then begin
@@ -13208,12 +13213,12 @@ begin
      break;
     end;
    end;
-   if not Found then begin
-    raise EpvVulkanException.Create('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
-   end;
+  end;
+  if not Found then begin
+   raise EpvVulkanException.Create('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
   end;
 
-  SwapChainCreateInfo.compositeAlpha:=aCompositeAlpha;
+  SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
 
   SurfacePresentModes:=nil;
   try
@@ -13359,6 +13364,7 @@ begin
         aImageColorSpace,
         aImageUsage,
         aImageSharingMode,
+        [],
         []);
 end;
 
