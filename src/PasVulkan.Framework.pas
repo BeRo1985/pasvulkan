@@ -13198,7 +13198,7 @@ begin
   Found:=false;
   for Index:=0 to length(aCompositeAlpha)-1 do begin
    CompositeAlpha:=aCompositeAlpha[Index];
-   if (SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(CompositeAlpha))<>0 then begin
+   if (TpvUInt32(SurfaceCapabilities.supportedCompositeAlpha) and TpvUInt32(CompositeAlpha))<>0 then begin
     SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
     Found:=true;
     break;
@@ -13207,7 +13207,7 @@ begin
   if (not Found) and not aForceCompositeAlpha then begin
    for Index:=Low(CompositeAlphaTryOrder) to High(CompositeAlphaTryOrder) do begin
     CompositeAlpha:=CompositeAlphaTryOrder[Index];
-    if (SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(CompositeAlpha))<>0 then begin
+    if (TpvUInt32(SurfaceCapabilities.supportedCompositeAlpha) and TpvUInt32(CompositeAlpha))<>0 then begin
      SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
      Found:=true;
      break;
@@ -13217,8 +13217,6 @@ begin
   if not Found then begin
    raise EpvVulkanException.Create('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
   end;
-
-  SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
 
   SurfacePresentModes:=nil;
   try
