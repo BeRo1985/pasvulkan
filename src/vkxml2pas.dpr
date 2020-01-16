@@ -3711,6 +3711,8 @@ begin
               Text:='object_';
              end else if Text='set' then begin
               Text:='set_';
+             end else if Text='unit' then begin
+              Text:='unit_';
              end;
              TypeDefinitionMember^.Name:=Text;
              TypeDefinitionMember^.ArraySizeInt:=0;
@@ -3807,6 +3809,8 @@ begin
             Name:='object_';
            end else if Name='set' then begin
             Name:='set_';
+           end else if Name='unit' then begin
+            Name:='unit_';
            end;
            TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
            inc(TypeDefinition^.CountMembers);
@@ -3997,7 +4001,8 @@ begin
       end;  
       if (TypeDefinition^.Name<>'VkBaseInStructure') and
          (TypeDefinition^.Name<>'VkBaseOutStructure') and
-         (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') then begin
+         (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') and
+         (TypeDefinition^.Name<>'VkSubpassEndInfo') then begin
        if HasArray then begin
         RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
        end;
@@ -4332,6 +4337,23 @@ begin
       inc(i);
      end;
     end;
+    begin
+     // Bruteforce quick&dirty the-programmer-is-tired topological sort, don't try this at home, kids! :-)
+     repeat
+      OK:=true;
+      for i:=0 to CountValueItems-2 do begin
+       for j:=i+1 to CountValueItems-1 do begin
+        if ValueItems[i].ValueStr=ValueItems[j].Name then begin
+         TempValueItem:=ValueItems[i];
+         ValueItems[i]:=ValueItems[i+1];
+         ValueItems[i+1]:=TempValueItem;
+         OK:=false;
+         break;
+        end;
+       end;
+      end;
+     until OK;
+    end;
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
      ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
@@ -4475,6 +4497,8 @@ begin
           ParamName:='object_';
          end else if ParamName='set' then begin
           ParamName:='set_';
+         end else if ParamName='unit' then begin
+          ParamName:='unit_';
          end;
          if pos('const ',trim(Text))=1 then begin
           Line:=Line+'const ';
