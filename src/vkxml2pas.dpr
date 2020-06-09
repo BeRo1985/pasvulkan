@@ -3082,8 +3082,10 @@ begin
     result:='TVkGgpFrameToken';
    end else if Type_='CAMetalLayer' then begin
     result:='TVkCAMetalLayer';
-   end else begin
+   end else if length(Type_)>0 then begin
     result:='T'+Type_;
+   end else begin
+    result:='TVkNonDefinedType';
    end;
   end;
  end;
@@ -3579,7 +3581,7 @@ begin
        if Category='include' then begin
        end else if Category='define' then begin
         Name:=ParseText(ChildTag.FindTag('name'),['']);
-        if pos('VK_API_VERSION',Name)=1 then begin
+        if (pos('VK_API_VERSION',Name)=1) or (pos('VK_HEADER_VERSION_COMPLETE',Name)=1) then begin
          VersionMajor:=1;
          VersionMinor:=0;
          VersionPatch:=0;
@@ -3607,7 +3609,11 @@ begin
            end;
           end;
          end;
-         VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+         if Name='VK_HEADER_VERSION_COMPLETE' then begin
+          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or (VK_HEADER_VERSION shl 0);');
+         end else begin
+          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+         end;
          VersionConstants.Add('');
         end else if pos('VK_HEADER_VERSION',Name)=1 then begin
          Text:=ParseText(ChildTag,['']);
@@ -5011,17 +5017,19 @@ begin
    OutputPAS.Add('     TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
+   OutputPAS.Add('     TVkNonDefinedType=pointer;');
+   OutputPAS.Add('');
    OutputPAS.Add('     PPVkGgpStreamDescriptor=^PVkGgpStreamDescriptor;');
    OutputPAS.Add('     PVkGgpStreamDescriptor=^TVkGgpStreamDescriptor;');
-   OutputPAS.Add('     TVkGgpStreamDescriptor=pointer;');
+   OutputPAS.Add('     TVkGgpStreamDescriptor=TVkNonDefinedType;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkGgpFrameToken=^PVkGgpFrameToken;');
    OutputPAS.Add('     PVkGgpFrameToken=^TVkGgpFrameToken;');
-   OutputPAS.Add('     TVkGgpFrameToken=pointer;');
+   OutputPAS.Add('     TVkGgpFrameToken=TVkNonDefinedType;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkCAMetalLayer=^PVkCAMetalLayer;');
    OutputPAS.Add('     PVkCAMetalLayer=^TVkCAMetalLayer;');
-   OutputPAS.Add('     TVkCAMetalLayer=pointer;');
+   OutputPAS.Add('     TVkCAMetalLayer=TVkNonDefinedType;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_NULL_HANDLE=0;');
    OutputPAS.Add('');
