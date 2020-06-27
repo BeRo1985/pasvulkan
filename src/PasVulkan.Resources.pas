@@ -1178,7 +1178,7 @@ begin
      if Resource.LoadFromFileName(FileName) then begin
       result:=Resource.InstanceInterface;
      end else begin
-      FreeAndNil(result);
+      FreeAndNil(Resource);
      end;
     finally
      fLock.AcquireRead;
