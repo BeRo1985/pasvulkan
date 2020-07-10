@@ -7908,7 +7908,14 @@ begin
    end;
 {$if defined(PasVulkanUseSDL2)}
    if fFullScreen then begin
-    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+    case fVulkanDevice.PhysicalDevice.Properties.vendorID of
+     $00001002:begin // AMD
+      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
+     end;
+     else begin
+      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+     end;
+    end;
    end else begin
     SDL_SetWindowFullscreen(fSurfaceWindow,0);
    end;
