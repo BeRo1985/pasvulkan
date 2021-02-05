@@ -2,7 +2,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2018, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2021, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -2941,6 +2941,10 @@ begin
     result:='PVkGgpFrameToken';
    end else if Type_='CAMetalLayer' then begin
     result:='PVkCAMetalLayer';
+   end else if Type_='IDirectFB' then begin
+    result:='PVkDirectFBIDirectFB';
+   end else if Type_='IDirectFBSurface' then begin
+    result:='PVkDirectFBIDirectFBSurface';
    end else begin
     result:='P'+Type_;
    end;
@@ -3010,6 +3014,10 @@ begin
     result:='PPVkGgpFrameToken';
    end else if Type_='CAMetalLayer' then begin
     result:='PPVkCAMetalLayer';
+   end else if Type_='IDirectFB' then begin
+    result:='PPVkDirectFBIDirectFB';
+   end else if Type_='IDirectFBSurface' then begin
+    result:='PPVkDirectFBIDirectFBSurface';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3082,6 +3090,10 @@ begin
     result:='TVkGgpFrameToken';
    end else if Type_='CAMetalLayer' then begin
     result:='TVkCAMetalLayer';
+   end else if Type_='IDirectFB' then begin
+    result:='TVkDirectFBIDirectFB';
+   end else if Type_='IDirectFBSurface' then begin
+    result:='TVkDirectFBIDirectFBSurface';
    end else if length(Type_)>0 then begin
     result:='T'+Type_;
    end else begin
@@ -3157,6 +3169,16 @@ begin
           ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
           ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
           ExtensionOrFeatureEnum.Alias:=ChildChildChildTag.GetParameter('alias','');
+          if (pos('VK_EXT_EXTENSION_',ExtensionOrFeatureEnum.Name)>0) and
+             (pos('_NAME',ExtensionOrFeatureEnum.Name)=0) and
+             (pos('_SPEC_VERSION',ExtensionOrFeatureEnum.Name)=0) then begin
+           // Workarounds for vk.xml typo issues
+           if pos('"',ExtensionOrFeatureEnum.Value)>0 then begin
+            ExtensionOrFeatureEnum.Name:=ExtensionOrFeatureEnum.Name+'_NAME';
+           end else begin
+            ExtensionOrFeatureEnum.Name:=ExtensionOrFeatureEnum.Name+'_SPEC_VERSION';
+           end;
+          end;
 {         if length(ExtensionOrFeatureEnum.Alias)>0 then begin
            // Workarounds for vk.xml typo issues
            if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL' then begin
@@ -3856,6 +3878,8 @@ begin
             TypeDefinition^.Define:='Android';
            end else if (Type_='zx_handle_t') or (pos('FUCHSIA',UpperCase(Type_))>0) then begin
             TypeDefinition^.Define:='Fuchsia';
+           end else if (Type_='IDirectFB') or (Type_='IDirectFBSurface') or (pos('DIRECTFB',UpperCase(Type_))>0) then begin
+            TypeDefinition^.Define:='DirectFB';
            end;
           end;
          end;
@@ -4534,6 +4558,8 @@ begin
           Define:='Android';
          end else if (ParamType='zx_handle_t') or (pos('FUCHSIA',UpperCase(ParamType))>0) then begin
           Define:='Fuchsia';
+         end else if (ParamType='IDirectFB') or (ParamType='IDirectFBSurface') or (pos('DIRECTFB',UpperCase(ParamType))>0) then begin
+          Define:='DirectFB';
          end;
         end;
        end;
@@ -4774,7 +4800,7 @@ begin
   try
    OutputPAS.Add('(*');
    OutputPAS.Add('** Copyright (c) 2015-2016 The Khronos Group Inc.');
-   OutputPAS.Add('** Copyright (c) 2016, Benjamin Rosseaux (benjamin@rosseaux.de, the pascal headers)');
+   OutputPAS.Add('** Copyright (c) 2016-2021, Benjamin Rosseaux (benjamin@rosseaux.de, the pascal headers)');
    OutputPAS.Add('**');
    OutputPAS.Add('** Permission is hereby granted, free of charge, to any person obtaining a');
    OutputPAS.Add('** copy of this software and/or associated documentation files (the');
@@ -4858,6 +4884,7 @@ begin
    OutputPAS.Add('     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}');
    OutputPAS.Add('     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}');
    OutputPAS.Add('     {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}');
+   OutputPAS.Add('     {$if defined(DirectFB) and defined(VulkanUseDirectFBUnits)}DirectFB,{$ifend}');
    OutputPAS.Add('     SysUtils;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan-1.dll''{$else}{$ifdef Android}''libvulkan.so''{$else}{$ifdef Unix}''libvulkan.so.1''{$else}''libvulkan''{$endif}{$endif}{$endif};');
@@ -4980,6 +5007,16 @@ begin
    OutputPAS.Add('     PPVkFuchsiaZXHandle=^PVkFuchsiaZXHandle;');
    OutputPAS.Add('     PVkFuchsiaZXHandle=^TVkFuchsiaZXHandle;');
    OutputPAS.Add('     TVkFuchsiaZXHandle={$ifdef VulkanUseFuchsiaUnits}Tzx_handle_t{$else}TVkSizeUInt{$endif};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef DirectFB}');
+   OutputPAS.Add('     PPVkDirectFBIDirectFB=^PVkDirectFBIDirectFB;');
+   OutputPAS.Add('     PVkDirectFBIDirectFB=^TVkDirectFBIDirectFB;');
+   OutputPAS.Add('     TVkDirectFBIDirectFB={$ifdef VulkanUseDirectFBUnits}IDirectFB{$else}TVkSizeUInt{$endif};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkDirectFBIDirectFBSurface=^PVkDirectFBIDirectFBSurface;');
+   OutputPAS.Add('     PVkDirectFBIDirectFBSurface=^TVkDirectFBIDirectFBSurface;');
+   OutputPAS.Add('     TVkDirectFBIDirectFBSurface={$ifdef VulkanUseDirectFBUnits}IDirectFBSurface{$else}TVkSizeUInt{$endif};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('{$ifdef Wayland}');
