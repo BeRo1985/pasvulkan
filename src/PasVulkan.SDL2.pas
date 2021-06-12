@@ -2056,6 +2056,8 @@ function SDL_SetWindowFullscreen(window:PSDL_Window;fullscreen:TSDLInt32):TSDLIn
 
 procedure SDL_SetWindowSize(window:PSDL_Window;x,y:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_SetWindowPosition(window:PSDL_Window;x,y:TSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_SetWindowResizable(window:PSDL_Window;b:boolean); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_SetWindowBordered(window:PSDL_Window;b:boolean); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GetWindowFlags(window:PSDL_Window):TSDLUInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 

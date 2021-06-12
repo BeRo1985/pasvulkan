@@ -1069,6 +1069,8 @@ type EpvApplication=class(Exception)
        fVideoFlags:TSDLUInt32;
 {$ifend}
 
+       fFullscreenFocusNeeded:boolean;
+
        fGraphicsReady:boolean;
 
        fVulkanRecreateSwapChainOnSuboptimalSurface:boolean;
@@ -1435,6 +1437,8 @@ type EpvApplication=class(Exception)
        property Height:TpvInt32 read fHeight write fHeight;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
+
+       property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
 
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
 
@@ -7486,12 +7490,14 @@ end;
 
 function TpvApplication.IsVisibleToUser:boolean;
 {$if defined(PasVulkanUseSDL2)}
-const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {sor SDL_WINDOW_MOUSE_FOCUS};
+const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {or SDL_WINDOW_MOUSE_FOCUS};
+      FullScreenActiveFlags=SDL_WINDOW_SHOWN {or SDL_WINDOW_MOUSE_FOCUS};
 var WindowFlags:TSDLUInt32;
 begin
  WindowFlags:=SDL_GetWindowFlags(fSurfaceWindow);
  result:=((fCurrentFullScreen=0) or
-          ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and
+          ((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) or
+           ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
          ((WindowFlags and SDL_WINDOW_MINIMIZED)=0);
 end;
 {$else}
@@ -7908,14 +7914,15 @@ begin
    end;
 {$if defined(PasVulkanUseSDL2)}
    if fFullScreen then begin
-    case fVulkanDevice.PhysicalDevice.Properties.vendorID of
+{   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
      $00001002:begin // AMD
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
      end;
      else begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
      end;
-    end;
+    end;}
+    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
    end else begin
     SDL_SetWindowFullscreen(fSurfaceWindow,0);
    end;
@@ -8280,6 +8287,8 @@ begin
   SDL_SetHint(SDL_HINT_MOUSE_NORMAL_SPEED_SCALE,'1.0');
 
   SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_SPEED_SCALE,'1.0');
+
+  SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS,'0');
 
 {$else}
 {$ifend}
