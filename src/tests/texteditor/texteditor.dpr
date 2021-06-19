@@ -18,8 +18,10 @@ uses {$ifdef Unix}
      Classes,
      PasMP in '..\..\..\externals\pasmp\src\PasMP.pas',
      PUCU in '..\..\..\externals\pucu\src\PUCU.pas',
+     Vulkan in '..\..\Vulkan.pas',
      PasVulkan.Types in '..\..\PasVulkan.Types.pas',
      PasVulkan.TextEditor in '..\..\PasVulkan.TextEditor.pas',
+     PasVulkan.CPU.Info in '..\..\PasVulkan.CPU.Info.pas',
      UnitConsole in 'UnitConsole.pas',
      UnitMain in 'UnitMain.pas';
 
