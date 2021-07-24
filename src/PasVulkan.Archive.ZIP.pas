@@ -258,6 +258,7 @@ type EpvArchiveZIP=class(Exception);
        fFileName:TpvRawByteString;
        fAttributes:TpvUInt32;
        fDateTime:TDateTime;
+       fCentralHeaderPosition:TpvInt64;
        fHeaderPosition:TpvInt64;
        fRequiresZIP64:boolean;
        fOS:TpvArchiveZIPOS;
@@ -270,6 +271,7 @@ type EpvArchiveZIP=class(Exception);
        function GetDirectory:boolean;
        function GetLink:boolean;
       protected
+       property CentralHeaderPosition:TpvInt64 read fCentralHeaderPosition write fCentralHeaderPosition;
        property HeaderPosition:TpvInt64 read fHeaderPosition write fHeaderPosition;
        property RequiresZIP64:boolean read fRequiresZIP64 write fRequiresZIP64;
       public
@@ -470,6 +472,7 @@ begin
   SetFileName(Source.fFileName);
   fAttributes:=Source.fAttributes;
   fDateTime:=Source.fDateTime;
+  fCentralHeaderPosition:=Source.fCentralHeaderPosition;
   fHeaderPosition:=Source.fHeaderPosition;
   fRequiresZIP64:=Source.fRequiresZIP64;
   fOS:=Source.fOS;
@@ -2622,7 +2625,7 @@ procedure TpvArchiveZIP.LoadFromStream(const aStream:TStream);
 var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     EndCentralFileHeader:TpvArchiveZIPEndCentralFileHeader;
     CentralFileHeader:TpvArchiveZIPCentralFileHeader;
-    Size:TpvInt64;
+    Size,CentralFileHeaderOffset:TpvInt64;
     Index,Count,FileCount:TpvSizeInt;
     FileName:TpvRawByteString;
     OK:boolean;
@@ -2667,6 +2670,8 @@ begin
 
  repeat
 
+  CentralFileHeaderOffset:=fStream.Position;
+
   if fStream.Read(CentralFileHeader,SizeOf(TpvArchiveZIPCentralFileHeader))<>SizeOf(TpvArchiveZIPCentralFileHeader) then begin
    break;
   end;
@@ -2690,7 +2695,9 @@ begin
 
    if length(FileName)>0 then begin
     FileEntry:=fEntries.Add(FileName);
+    FileEntry.fCentralHeaderPosition:=CentralFileHeaderOffset;
     FileEntry.fHeaderPosition:=CentralFileHeader.LocalFileHeaderOffset;
+    FileEntry.Size:=CentralFileHeader.UncompressedSize;
     FileEntry.fSourceArchive:=self;
    end;
 
@@ -3106,6 +3113,7 @@ begin
    CentralFileHeader.ExternalAttrributes:=$20;
    CentralFileHeader.LocalFileHeaderOffset:=LocalFile.fHeaderPosition;
    CentralFileHeader.SwapEndiannessIfNeeded;
+   LocalFile.fCentralHeaderPosition:=aStream.Position;
    aStream.WriteBuffer(CentralFileHeader,SizeOf(TpvArchiveZIPCentralFileHeader));
    if CentralFileHeader.FileNameLength>0 then begin
     aStream.WriteBuffer(LocalFile.FileName[1],CentralFileHeader.FileNameLength);
