@@ -128,7 +128,7 @@ type EpvResource=class(Exception);
        fMetaData:TPasJSONItem;
        fInstanceInterface:IpvResource;
        fOnFinish:TpvResourceOnFinish;
-       fReleaseFrameDelay:TPasMPInt32; // for resources with frane-wise in-flight data stuff
+       fReleaseFrameDelay:TPasMPInt32; // for resources with frame-wise in-flight data stuff
        procedure SetFileName(const aFileName:TpvUTF8String);
       protected
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};

@@ -79,7 +79,8 @@ uses {$ifdef Windows}
      PasVulkan.HighResolutionTimer,
      PasVulkan.Resources,
      PasVulkan.Techniques,
-     PasVulkan.Framework;
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 type EpvScene3D=class(Exception);
 
@@ -391,6 +392,7 @@ type EpvScene3D=class(Exception);
             end;
             TIMaterials=TpvGenericList<IMaterial>;
             TMaterials=TpvObjectGenericList<TMaterial>;
+            { TGroup }
             TGroup=class(TBaseObject,IGroup) // A group is a GLTF scene in a uber-scene
              public
               type TNode=class;
@@ -621,6 +623,52 @@ type EpvScene3D=class(Exception);
                      property Nodes:TNodes read fNodes;
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
+                   IInstance=interface(IBaseObject)['{B4360C7F-7C60-4676-B301-A68D67FB401F}']
+                   end;
+                   { TInstance }
+                   TInstance=class(TBaseObject,IInstance)
+                    public
+                     type TNodeMatrices=array of TpvMatrix4x4;
+                          TMorphTargetVertexWeights=array of TpvFloat;
+                          { TVulkanData }
+                          TVulkanData=class
+                           private
+                            fUploaded:boolean;
+                            fInstance:TInstance;
+                            fNodeMatricesBuffer:TpvVulkanBuffer;
+                            fMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
+                           public
+                            constructor Create(const aInstance:TInstance); reintroduce;
+                            destructor Destroy; override;
+                            procedure Upload;
+                            procedure Unload;
+                            procedure Update;
+                           published
+                            property NodeMatricesBuffer:TpvVulkanBuffer read fNodeMatricesBuffer;
+                            property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
+                          end;
+                          TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
+                    private
+                     fGroup:TGroup;
+                     fUploaded:boolean;
+                     fNodeMatrices:TNodeMatrices;
+                     fMorphTargetVertexWeights:TMorphTargetVertexWeights;
+                     fVulkanDatas:TVulkanDatas;
+                     fVulkanData:TVulkanData;
+                    public
+                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+                     destructor Destroy; override;
+                     procedure AfterConstruction; override;
+                     procedure BeforeDestruction; override;
+                     procedure Upload; override;
+                     procedure Unload; override;
+                     procedure Update;
+                    published
+                     property Group:TGroup read fGroup write fGroup;
+                     property VulkanData:TVulkanData read fVulkanData;
+                   end;
+                   TIInstances=TpvGenericList<IInstance>;
+                   TInstances=TpvObjectGenericList<TInstance>;
              private
               fMaximalCountInstances:TpvSizeInt;
               fObjects:TIBaseObjects;
@@ -642,6 +690,8 @@ type EpvScene3D=class(Exception);
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
+              fInstanceListLock:TPasMPSlimReaderWriterLock;
+              fInstances:TInstances;
               procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
@@ -651,6 +701,7 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
+              function CreateInstance:TpvScene3D.TGroup.TInstance;
              published
               property Objects:TIBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -663,20 +714,6 @@ type EpvScene3D=class(Exception);
             end;
             TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
-            IGroupInstance=interface(IBaseObject)['{B4360C7F-7C60-4676-B301-A68D67FB401F}']
-            end;
-            TGroupInstance=class(TBaseObject,IGroupInstance)
-             private
-              fGroup:IGroup;
-             public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              property Group:IGroup read fGroup write fGroup;
-            end;
-            TIGroupInstances=TpvGenericList<IGroupInstance>;
-            TGroupInstances=TpvObjectGenericList<TGroupInstance>;
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
@@ -705,7 +742,7 @@ type EpvScene3D=class(Exception);
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
-       fGroupInstances:TGroupInstances;
+       fGroupInstances:TGroup.TInstances;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
       public
@@ -717,8 +754,6 @@ type EpvScene3D=class(Exception);
      end;
 
 implementation
-
-uses PasVulkan.Application;
 
 { TpvScene3D.TBaseObject }
 
@@ -811,7 +846,6 @@ begin
  end;
  inherited BeforeDestruction;
 end;
-
 
 procedure TpvScene3D.TImage.Upload;
 var GraphicsQueue:TpvVulkanQueue;
@@ -2898,10 +2932,21 @@ begin
 
  fMaximalCountInstances:=1;
 
+ fInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fInstances:=TInstances.Create;
+ fInstances.OwnsObjects:=false;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
 begin
+
+ while fInstances.Count>0 do begin
+  fInstances[fInstances.Count-1].Free;
+ end;
+ FreeAndNil(fInstances);
+ FreeAndNil(fInstanceListLock);
 
  FreeAndNil(fScenes);
 
@@ -3411,23 +3456,106 @@ begin
 
 end;
 
-{ TpvScene3D.TGroupInstance }
-
-constructor TpvScene3D.TGroupInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+function TpvScene3D.TGroup.CreateInstance:TpvScene3D.TGroup.TInstance;
 begin
- inherited Create(aResourceManager,aParent);
-
- fGroup:=nil;
-
+ result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
 end;
 
-destructor TpvScene3D.TGroupInstance.Destroy;
+{ TpvScene3D.TGroup.TInstance.TVulkanData }
+
+constructor TpvScene3D.TGroup.TInstance.TVulkanData.Create(const aInstance:TGroup.TInstance);
 begin
+ inherited Create;
+ fUploaded:=false;
+ fInstance:=aInstance;
+ fNodeMatricesBuffer:=nil;
+ fMorphTargetVertexWeightsBuffer:=nil;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TVulkanData.Destroy;
+begin
+ Unload;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.Upload;
+begin
+ if not fUploaded then begin
+  try
+   fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                               length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                               [],
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                              );
+   fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                           length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                           [],
+                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                                          );
+  finally
+   fUploaded:=true;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.Unload;
+begin
+ if fUploaded then begin
+  try
+   FreeAndNil(fNodeMatricesBuffer);
+   FreeAndNil(fMorphTargetVertexWeightsBuffer);
+  finally
+   fUploaded:=false;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update;
+begin
+ Upload;
+ if fUploaded then begin
+  fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
+  fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+ end;
+end;
+
+{ TpvScene3D.TGroup.TInstance }
+
+constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+var Index:TpvSizeInt;
+begin
+ inherited Create(aResourceManager,aParent);
+ if aParent is TGroup then begin
+  fGroup:=TpvScene3D.TGroup(aParent);
+ end else begin
+  fGroup:=nil;
+ end;
+ fUploaded:=false;
+ fNodeMatrices:=nil;
+ fMorphTargetVertexWeights:=nil;
+ for Index:=0 to length(fVulkanDatas)-1 do begin
+  fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
+ end;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.Destroy;
+var Index:TpvSizeInt;
+begin
+ Unload;
+ for Index:=0 to length(fVulkanDatas)-1 do begin
+  FreeAndNil(fVulkanDatas[Index]);
+ end;
+ fNodeMatrices:=nil;
+ fMorphTargetVertexWeights:=nil;
  fGroup:=nil;
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TGroupInstance.AfterConstruction;
+procedure TpvScene3D.TGroup.TInstance.AfterConstruction;
 begin
  inherited AfterConstruction;
  fSceneInstance.fGroupInstanceListLock.Acquire;
@@ -3436,18 +3564,74 @@ begin
  finally
   fSceneInstance.fGroupInstanceListLock.Release;
  end;
+ fGroup.fInstanceListLock.Acquire;
+ try
+  fGroup.fInstances.Add(self);
+ finally
+  fGroup.fInstanceListLock.Release;
+ end;
 end;
 
-procedure TpvScene3D.TGroupInstance.BeforeDestruction;
+procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
 begin
- fGroup:=nil;
- fSceneInstance.fGroupInstanceListLock.Acquire;
  try
-  fSceneInstance.fGroupInstances.Remove(self);
+  fSceneInstance.fGroupInstanceListLock.Acquire;
+  try
+   fSceneInstance.fGroupInstances.Remove(self);
+  finally
+   fSceneInstance.fGroupInstanceListLock.Release;
+  end;
+  fGroup.fInstanceListLock.Acquire;
+  try
+   fGroup.fInstances.Remove(self);
+  finally
+   fGroup.fInstanceListLock.Release;
+  end;
  finally
-  fSceneInstance.fGroupInstanceListLock.Release;
+  fGroup:=nil;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Upload;
+var Index:TpvSizeInt;
+begin
+ inherited Upload;
+ if not fUploaded then begin
+  try
+   SetLength(fNodeMatrices,Max(fGroup.fNodes.Count,1));
+   SetLength(fMorphTargetVertexWeights,Max(fGroup.fMorphTargetCount,1));
+   for Index:=0 to length(fVulkanDatas)-1 do begin
+    fVulkanDatas[Index].Upload;
+   end;
+  finally
+   fUploaded:=true;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Unload;
+var Index:TpvSizeInt;
+begin
+ if fUploaded then begin
+  try
+   for Index:=0 to length(fVulkanDatas)-1 do begin
+    fVulkanDatas[Index].Unload;
+   end;
+   fNodeMatrices:=nil;
+   fMorphTargetVertexWeights:=nil;
+  finally
+   fUploaded:=false;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Update;
+begin
+ fVulkanData:=fVulkanDatas[pvApplication.DrawFrameCounter mod MaxSwapChainImages];
+ if assigned(fVulkanData) then begin
+  fVulkanData.Update;
+ end;
 end;
 
 { TpvScene3D }
@@ -3492,7 +3676,7 @@ begin
  fGroups.OwnsObjects:=false;
 
  fGroupInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
- fGroupInstances:=TGroupInstances.Create;
+ fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
  fWhiteTexture:=nil;
