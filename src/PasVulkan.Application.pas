@@ -8455,81 +8455,87 @@ begin
       InitializeAudio;
       try
 
-       Load;
        try
 
-        fLoadWasCalled:=true;
-
-        AfterCreateSwapChainWithCheck;
-
-        fLifecycleListenerListCriticalSection.Acquire;
+        Load;
         try
-         for Index:=0 to fLifecycleListenerList.Count-1 do begin
-          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
-           break;
+
+         fLoadWasCalled:=true;
+
+         AfterCreateSwapChainWithCheck;
+
+         fLifecycleListenerListCriticalSection.Acquire;
+         try
+          for Index:=0 to fLifecycleListenerList.Count-1 do begin
+           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+            break;
+           end;
           end;
+         finally
+          fLifecycleListenerListCriticalSection.Release;
          end;
-        finally
-         fLifecycleListenerListCriticalSection.Release;
-        end;
 
-        if assigned(fStartScreen) then begin
-         SetScreen(fStartScreen.Create);
-        end;
-        try
-
-         if assigned(fAudio) then begin
-{$if defined(PasVulkanUseSDL2)}
-          SDL_PauseAudio(0);
-{$else}
-{$ifend}
+         if assigned(fStartScreen) then begin
+          SetScreen(fStartScreen.Create);
          end;
          try
 
-          while not fTerminated do begin
-           ProcessMessages;
+          if assigned(fAudio) then begin
+ {$if defined(PasVulkanUseSDL2)}
+           SDL_PauseAudio(0);
+ {$else}
+ {$ifend}
+          end;
+          try
+
+           while not fTerminated do begin
+            ProcessMessages;
+           end;
+
+          finally
+           if assigned(fAudio) then begin
+ {$if defined(PasVulkanUseSDL2)}
+            SDL_PauseAudio(1);
+ {$else}
+ {$ifend}
+           end;
           end;
 
          finally
-          if assigned(fAudio) then begin
-{$if defined(PasVulkanUseSDL2)}
-           SDL_PauseAudio(1);
-{$else}
-{$ifend}
+
+          SetScreen(nil);
+
+          FreeAndNil(fNextScreen);
+          FreeAndNil(fScreen);
+
+         end;
+
+         fLifecycleListenerListCriticalSection.Acquire;
+         try
+          for Index:=0 to fLifecycleListenerList.Count-1 do begin
+           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+            break;
+           end;
           end;
+          for Index:=0 to fLifecycleListenerList.Count-1 do begin
+           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+            break;
+           end;
+          end;
+         finally
+          fLifecycleListenerListCriticalSection.Release;
          end;
 
         finally
 
-         SetScreen(nil);
+         VulkanWaitIdle;
 
-         FreeAndNil(fNextScreen);
-         FreeAndNil(fScreen);
+         Unload;
 
-        end;
-
-        fLifecycleListenerListCriticalSection.Acquire;
-        try
-         for Index:=0 to fLifecycleListenerList.Count-1 do begin
-          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
-           break;
-          end;
-         end;
-         for Index:=0 to fLifecycleListenerList.Count-1 do begin
-          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
-           break;
-          end;
-         end;
-        finally
-         fLifecycleListenerListCriticalSection.Release;
         end;
 
        finally
-
-        VulkanWaitIdle;
-
-        Unload;
-
+        fResourceManager.Shutdown;
        end;
 
       finally

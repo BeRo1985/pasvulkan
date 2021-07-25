@@ -723,10 +723,23 @@ uses PasVulkan.Application;
 { TpvScene3D.TBaseObject }
 
 constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+var Current:TpvResource;
 begin
  inherited Create(aResourceManager,aParent);
 
- fSceneInstance:=aParent as TpvScene3D;
+ if assigned(Parent) then begin
+  Current:=Parent;
+  while assigned(Current) and not (Current is TpvScene3D) do begin
+   Current:=Current.Parent;
+  end;
+  if assigned(Current) and (Current is TpvScene3D) then begin
+   fSceneInstance:=TpvScene3D(Current);
+  end else begin
+   fSceneInstance:=nil;
+  end;
+ end else begin
+  fSceneInstance:=nil;
+ end;
 
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
@@ -1185,8 +1198,6 @@ end;
 constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
 begin
  inherited Create(aResourceManager,aParent);
-
- fSceneInstance:=aParent as TpvScene3D;
 
  fData:=DefaultData;
 
@@ -3496,15 +3507,15 @@ begin
 
  fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fMaterialVulkanDescriptorSetLayout.AddBinding(0,
-                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                         1,
-                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                         []);
- fMaterialVulkanDescriptorSetLayout.AddBinding(0,
-                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                         5,
-                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                         []);
+                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               []);
+ fMaterialVulkanDescriptorSetLayout.AddBinding(1,
+                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                               5,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
 
 end;
