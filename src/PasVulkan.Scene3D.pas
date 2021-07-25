@@ -3617,7 +3617,7 @@ begin
                                                          1,
                                                          1,
                                                          0,
-                                                         0,
+                                                         1,
                                                          0,
                                                          [TpvVulkanTextureUsageFlag.General,
                                                           TpvVulkanTextureUsageFlag.TransferDst,
