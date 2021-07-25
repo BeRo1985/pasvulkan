@@ -2945,6 +2945,10 @@ begin
     result:='PVkDirectFBIDirectFB';
    end else if Type_='IDirectFBSurface' then begin
     result:='PVkDirectFBIDirectFBSurface';
+   end else if Type_='_screen_context' then begin
+    result:='PVkQNXScreenContext';
+   end else if Type_='_screen_window' then begin
+    result:='PVkQNXScreenWindow';
    end else begin
     result:='P'+Type_;
    end;
@@ -3018,6 +3022,10 @@ begin
     result:='PPVkDirectFBIDirectFB';
    end else if Type_='IDirectFBSurface' then begin
     result:='PPVkDirectFBIDirectFBSurface';
+   end else if Type_='_screen_context' then begin
+    result:='PPVkQNXScreenContext';
+   end else if Type_='_screen_window' then begin
+    result:='PPVkQNXScreenWindow';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3094,6 +3102,10 @@ begin
     result:='TVkDirectFBIDirectFB';
    end else if Type_='IDirectFBSurface' then begin
     result:='TVkDirectFBIDirectFBSurface';
+   end else if Type_='_screen_context' then begin
+    result:='TVkQNXScreenContext';
+   end else if Type_='_screen_window' then begin
+    result:='TVkQNXScreenWindow';
    end else if length(Type_)>0 then begin
     result:='T'+Type_;
    end else begin
@@ -3737,6 +3749,8 @@ begin
              Constant:=false;
              if Text='object' then begin
               Text:='object_';
+             end else if Text='function' then begin
+              Text:='function_';
              end else if Text='set' then begin
               Text:='set_';
              end else if Text='unit' then begin
@@ -3775,6 +3789,12 @@ begin
          TypeDefinition^.Define:='MoltenVK';
         end else if (pos('ANDROID',Name)>0) or (pos('Android',Name)>0) then begin
          TypeDefinition^.Define:='Android';
+        end else if (pos('_screen_context',Name)>0) or (pos('_screen_window',Name)>0) or (pos('qnx',LowerCase(Name))>0) then begin
+         TypeDefinition^.Define:='QNX';
+        end else if pos('StdVideo',Name)>0 then begin
+         TypeDefinition^.Define:='VkStdVideo';
+        end else if pos('VkVideo',Name)>0 then begin
+         TypeDefinition^.Define:='VkVideo';
         end;
         SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
         TypeDefinition^.CountMembers:=0;
@@ -3835,6 +3855,8 @@ begin
             Name:='hmonitor_';
            end else if Name='object' then begin
             Name:='object_';
+           end else if Name='function' then begin
+            Name:='function_';
            end else if Name='set' then begin
             Name:='set_';
            end else if Name='unit' then begin
@@ -3880,6 +3902,12 @@ begin
             TypeDefinition^.Define:='Fuchsia';
            end else if (Type_='IDirectFB') or (Type_='IDirectFBSurface') or (pos('DIRECTFB',UpperCase(Type_))>0) then begin
             TypeDefinition^.Define:='DirectFB';
+           end else if (pos('_screen_context',Type_)>0) or (pos('_screen_window',Type_)>0) or (pos('qnx',LowerCase(Type_))>0) then begin
+            TypeDefinition^.Define:='QNX';
+           end else if pos('StdVideo',Type_)>0 then begin
+            TypeDefinition^.Define:='VkStdVideo';
+           end else if pos('VkVideo',Type_)>0 then begin
+            TypeDefinition^.Define:='VkVideo';
            end;
           end;
          end;
@@ -4186,18 +4214,18 @@ begin
         Value:=ChildTag.GetParameter('value','');
         if Value='(~0U)' then begin
          ValueItem^.ValueStr:='TVkUInt32($ffffffff)';
-        end else if Value='(~0U-1)' then begin
+        end else if (Value='(~0U-1)') or (Value='(~1U)') then begin
          ValueItem^.ValueStr:='TVkUInt32($fffffffe)';
-        end else if Value='(~0U-2)' then begin
+        end else if (Value='(~0U-2)') or (Value='(~2U)') then begin
          ValueItem^.ValueStr:='TVkUInt32($fffffffd)';
         end else if Value='(~0ULL)' then begin
          ValueItem^.ValueStr:='TVkUInt64($ffffffffffffffff)';
-        end else if Value='(~0ULL-1)' then begin
+        end else if (Value='(~0ULL-1)') or (Value='(~1ULL)') then begin
          ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffe)';
-        end else if Value='(~0ULL-2)' then begin
+        end else if (Value='(~0ULL-2)') or (Value='(~2ULL)') then begin
          ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffd)';
-        end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0))) then begin
-         ValueItem^.ValueStr:=StringReplace(Value,'f','',[]);
+        end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',LowerCase(Value))=length(Value)) and (pos('x',LowerCase(Value))=0))) then begin
+         ValueItem^.ValueStr:=StringReplace(LowerCase(Value),'f','',[]);
         end else if length(Value)>0 then begin
          ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
         end else begin
@@ -4525,6 +4553,8 @@ begin
           ParamName:='type_';
          end else if ParamName='object' then begin
           ParamName:='object_';
+         end else if ParamName='function' then begin
+          ParamName:='function_';
          end else if ParamName='set' then begin
           ParamName:='set_';
          end else if ParamName='unit' then begin
@@ -4560,6 +4590,12 @@ begin
           Define:='Fuchsia';
          end else if (ParamType='IDirectFB') or (ParamType='IDirectFBSurface') or (pos('DIRECTFB',UpperCase(ParamType))>0) then begin
           Define:='DirectFB';
+         end else if (pos('_screen_context',ParamType)>0) or (pos('_screen_window',ParamType)>0) or (pos('qnx',LowerCase(ParamType))>0) then begin
+          Define:='QNX';
+         end else if pos('StdVideo',ParamType)>0 then begin
+          Define:='VkStdVideo';
+         end else if pos('VkVideo',ParamType)>0 then begin
+          Define:='VkVideo';
          end;
         end;
        end;
@@ -4860,6 +4896,8 @@ begin
    OutputPAS.Add(' {$define VK_USE_PLATFORM_ANDROID_KHR}');
    OutputPAS.Add('{$elseif defined(Windows)}');
    OutputPAS.Add(' {$define VK_USE_PLATFORM_WIN32_KHR}');
+   OutputPAS.Add('{$elseif defined(QNX)}');
+   OutputPAS.Add(' {$define VK_USE_PLATFORM_QNX_KHR}');
    OutputPAS.Add('{$elseif defined(Unix) or defined(Linux)}');
    OutputPAS.Add(' {$ifdef WAYLAND}');
    OutputPAS.Add('  {$define VK_USE_PLATFORM_WAYLAND_KHR}');
@@ -4885,6 +4923,7 @@ begin
    OutputPAS.Add('     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}');
    OutputPAS.Add('     {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}');
    OutputPAS.Add('     {$if defined(DirectFB) and defined(VulkanUseDirectFBUnits)}DirectFB,{$ifend}');
+   OutputPAS.Add('     {$if defined(QNX) and defined(VulkanUseQNXUnits)}QNX,{$ifend}');
    OutputPAS.Add('     SysUtils;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan-1.dll''{$else}{$ifdef Android}''libvulkan.so''{$else}{$ifdef Unix}''libvulkan.so.1''{$else}''libvulkan''{$endif}{$endif}{$endif};');
@@ -4931,6 +4970,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkVoid=^PVkVoid;');
    OutputPAS.Add('     PVkVoid=Pointer;');
+   OutputPAS.Add('     TVkVoid=record');
+   OutputPAS.Add('     end;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkHalfFloat=^PVkHalfFloat;');
    OutputPAS.Add('     PVkHalfFloat=^TVkHalfFloat;');
@@ -5052,6 +5093,16 @@ begin
    OutputPAS.Add('     PPVkXLIBWindow=^PVkXLIBWindow;');
    OutputPAS.Add('     PVkXLIBWindow={$ifdef VulkanUseXLIBUnits}PWindow{$else}^TVkXLIBWindow{$endif};');
    OutputPAS.Add('     TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef QNX}');
+   OutputPAS.Add('     PPVkQNXScreenContext=^PVkQNXScreenContext;');
+   OutputPAS.Add('     PVkQNXScreenContext=^TVkQNXScreenContext;');
+   OutputPAS.Add('     TVkQNXScreenContext={$if defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkQNXScreenWindow=^PVkQNXScreenWindow;');
+   OutputPAS.Add('     PVkQNXScreenWindow=^TVkQNXScreenWindow;');
+   OutputPAS.Add('     TVkQNXScreenWindow={$if defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('     TVkNonDefinedType=pointer;');
