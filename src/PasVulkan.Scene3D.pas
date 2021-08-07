@@ -84,10 +84,7 @@ uses {$ifdef Windows}
 
 type EpvScene3D=class(Exception);
 
-     IpvScene3D=interface(IpvResource)['{82D8BA65-626A-4A20-829E-51480B151116}']
-     end;
-
-     TpvScene3D=class(TpvResource,IpvScene3D)
+     TpvScene3D=class(TpvResource)
       public
        type TVertexAttributeBindingLocations=class
              public
@@ -142,11 +139,7 @@ type EpvScene3D=class(Exception);
             TJointBlocks=array of TJointBlock;
             TMaxJointBlocks=array[0..9] of TJointBlock;
             PMaxJointBlocks=^TMaxJointBlocks;
-            IBaseObject=interface(IpvResource)['{9B6429EC-861D-4266-A7CB-408724C6AD27}']
-             procedure Upload;
-             procedure Unload;
-            end;
-            TBaseObject=class(TpvResource,IBaseObject)
+            TBaseObject=class(TpvResource)
              private
               fSceneInstance:TpvScene3D;
               fName:TpvUTF8String;
@@ -164,20 +157,13 @@ type EpvScene3D=class(Exception);
               property Name:TpvUTF8String read fName write fName;
               property Uploaded:TPasMPBool32 read fUploaded;
             end;
-            TIBaseObjects=TpvGenericList<IBaseObject>;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
-            IGroup=interface(IBaseObject)['{66A53CBE-F7A9-433A-B995-BC1D3882D03B}']
-            end;
             TGroup=class;
-            IBaseGroupObject=interface(IBaseObject)['{90FE8CF3-849E-476B-A504-A015B6840DEB}']
-            end;
-            TBaseGroupObject=class(TBaseObject,IBaseGroupObject)
+            TBaseGroupObject=class(TBaseObject)
              private
               fGroup:TGroup;
             end;
-            IImage=interface(IBaseObject)['{B9D41155-5F92-49E8-9D1C-BFBEA2607149}']
-            end;
-            TImage=class(TBaseObject,IImage)
+            TImage=class(TBaseObject)
              public
               type THashData=packed record
                     MessageDigest:TpvHashSHA3.TMessageDigest;
@@ -198,11 +184,8 @@ type EpvScene3D=class(Exception);
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
-            TIImage=TpvGenericList<IImage>;
             TImages=TpvObjectGenericList<TImage>;
-            ISampler=interface(IBaseObject)['{BD753AB1-76A3-43F4-ADD9-4EF41DD280B4}']
-            end;
-            TSampler=class(TBaseObject,ISampler)
+            TSampler=class(TBaseObject)
              public
               type THashData=packed record
                     MinFilter:TVkFilter;
@@ -232,12 +215,8 @@ type EpvScene3D=class(Exception);
              published
               property Sampler:TpvVulkanSampler read fSampler;
             end;
-            TISampler=TpvGenericList<ISampler>;
             TSamplers=TpvObjectGenericList<TSampler>;
-            ITexture=interface(IBaseObject)['{910CB49F-5700-49AD-8C48-49DF517E7850}']
-             function GetDescriptorImageInfo:TVkDescriptorImageInfo;
-            end;
-            TTexture=class(TBaseObject,ITexture)
+            TTexture=class(TBaseObject)
              public
               type THashData=packed record
                     Image:TImage;
@@ -245,8 +224,8 @@ type EpvScene3D=class(Exception);
                    end;
                    PHashData=^THashData;
              private
-              fImage:IImage;
-              fSampler:ISampler;
+              fImage:TImage;
+              fSampler:TSampler;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -257,14 +236,12 @@ type EpvScene3D=class(Exception);
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               function GetDescriptorImageInfo:TVkDescriptorImageInfo;
-              property Image:IImage read fImage write fImage;
-              property Sampler:ISampler read fSampler write fSampler;
+             published
+              property Image:TImage read fImage write fImage;
+              property Sampler:TSampler read fSampler write fSampler;
             end;
-            TITexture=TpvGenericList<ITexture>;
             TTextures=TpvObjectGenericList<TTexture>;
-            IMaterial=interface(IBaseObject)['{AC0AB88D-7E4A-42BF-B888-D198DD561895}']
-            end;
-            TMaterial=class(TBaseObject,IMaterial)
+            TMaterial=class(TBaseObject)
              public
               type TAlphaMode=
                     (
@@ -297,7 +274,7 @@ type EpvScene3D=class(Exception);
                           end;
                           PTransform=^TTransform;
                     public
-                     Texture:TpvScene3D.ITexture;
+                     Texture:TpvScene3D.TTexture;
                      TexCoord:TpvSizeInt;
                      Transform:TTransform;
                    end;
@@ -473,10 +450,9 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
             end;
-            TIMaterials=TpvGenericList<IMaterial>;
             TMaterials=TpvObjectGenericList<TMaterial>;
             { TGroup }
-            TGroup=class(TBaseObject,IGroup) // A group is a GLTF scene in a uber-scene
+            TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
               type TNode=class;
                    TMesh=class;
@@ -706,10 +682,8 @@ type EpvScene3D=class(Exception);
                      property Nodes:TNodes read fNodes;
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
-                   IInstance=interface(IBaseObject)['{B4360C7F-7C60-4676-B301-A68D67FB401F}']
-                   end;
                    { TInstance }
-                   TInstance=class(TBaseObject,IInstance)
+                   TInstance=class(TBaseObject)
                     public
                      type { TAnimation }
                           TAnimation=class
@@ -763,11 +737,10 @@ type EpvScene3D=class(Exception);
                      property Group:TGroup read fGroup write fGroup;
                      property VulkanData:TVulkanData read fVulkanData;
                    end;
-                   TIInstances=TpvGenericList<IInstance>;
                    TInstances=TpvObjectGenericList<TInstance>;
              private
               fMaximalCountInstances:TpvSizeInt;
-              fObjects:TIBaseObjects;
+              fObjects:TBaseObjects;
               fAnimations:TAnimations;
               fCameras:TCameras;
               fMeshes:TMeshes;
@@ -786,6 +759,8 @@ type EpvScene3D=class(Exception);
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
+              fVulkanInstancesNodeMatricesBuffer:TpvVulkanBuffer;
+              fVulkanInstancesMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
               procedure ConstructBuffers;
@@ -799,7 +774,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
               function CreateInstance:TpvScene3D.TGroup.TInstance;
              published
-              property Objects:TIBaseObjects read fObjects;
+              property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
               property Cameras:TCameras read fCameras;
               property Meshes:TMeshes read fMeshes;
@@ -808,7 +783,6 @@ type EpvScene3D=class(Exception);
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
             end;
-            TIGroups=TpvGenericList<IGroup>;
             TGroups=TpvObjectGenericList<TGroup>;
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
@@ -1312,12 +1286,12 @@ procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDoc
 begin
  fName:=aSourceTexture.Name;
  if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
-  fImage:=aImageMap[aSourceTexture.Source].InstanceInterface as TpvScene3D.IImage;
+  fImage:=aImageMap[aSourceTexture.Source];
  end else begin
   raise EPasGLTFInvalidDocument.Create('Image index out of range');
  end;
  if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
-  fSampler:=aSamplerMap[aSourceTexture.Sampler].InstanceInterface as TpvScene3D.ISampler;
+  fSampler:=aSamplerMap[aSourceTexture.Sampler];
  end else begin
   raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
  end;
@@ -1613,14 +1587,14 @@ begin
   fData.DoubleSided:=aSourceMaterial.DoubleSided;
   fData.EmissiveFactor:=TpvVector3.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2]);
   if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
-   fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index].InstanceInterface as TpvScene3D.ITexture;
+   fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index];
   end else begin
    fData.EmissiveTexture.Texture:=nil;
   end;
   fData.EmissiveTexture.TexCoord:=aSourceMaterial.EmissiveTexture.TexCoord;
   fData.EmissiveTexture.Transform.AssignFromGLTF(fData.EmissiveTexture,aSourceMaterial.EmissiveTexture.Extensions);
   if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<aTextureMap.Count) then begin
-   fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index].InstanceInterface as TpvScene3D.ITexture;
+   fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index];
   end else begin
    fData.NormalTexture.Texture:=nil;
   end;
@@ -1628,7 +1602,7 @@ begin
   fData.NormalTexture.Transform.AssignFromGLTF(fData.NormalTexture,aSourceMaterial.NormalTexture.Extensions);
   fData.NormalTextureScale:=aSourceMaterial.NormalTexture.Scale;
   if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<aTextureMap.Count) then begin
-   fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index].InstanceInterface as TpvScene3D.ITexture;
+   fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index];
   end else begin
    fData.OcclusionTexture.Texture:=nil;
   end;
@@ -1640,7 +1614,7 @@ begin
  begin
   fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[0],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[1],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[2],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[3]);
   if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<aTextureMap.Count) then begin
-   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index].InstanceInterface as TpvScene3D.ITexture;
+   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index];
   end else begin
    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
   end;
@@ -1649,7 +1623,7 @@ begin
   fData.PBRMetallicRoughness.RoughnessFactor:=aSourceMaterial.PBRMetallicRoughness.RoughnessFactor;
   fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
   if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index].InstanceInterface as TpvScene3D.ITexture;
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index];
   end else begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
   end;
@@ -1683,7 +1657,7 @@ begin
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
-      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index];
      end else begin
       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
      end;
@@ -1701,7 +1675,7 @@ begin
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
-      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index];
      end else begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
      end;
@@ -1733,7 +1707,7 @@ begin
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRSheen.ColorIntensityTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+     fData.PBRSheen.ColorIntensityTexture.Texture:=aTextureMap[Index];
     end else begin
      fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
     end;
@@ -1753,7 +1727,7 @@ begin
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.Texture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+     fData.PBRClearCoat.Texture.Texture:=aTextureMap[Index];
     end else begin
      fData.PBRClearCoat.Texture.Texture:=nil;
     end;
@@ -1765,7 +1739,7 @@ begin
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.RoughnessTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+     fData.PBRClearCoat.RoughnessTexture.Texture:=aTextureMap[Index];
     end else begin
      fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
     end;
@@ -1776,7 +1750,7 @@ begin
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.NormalTexture.Texture:=aTextureMap[Index].InstanceInterface as TpvScene3D.ITexture;
+     fData.PBRClearCoat.NormalTexture.Texture:=aTextureMap[Index];
     end else begin
      fData.PBRClearCoat.NormalTexture.Texture:=nil;
     end;
@@ -3156,7 +3130,8 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
- fObjects:=TIBaseObjects.Create;
+ fObjects:=TBaseObjects.Create;
+ fObjects.OwnsObjects:=false;
 
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
