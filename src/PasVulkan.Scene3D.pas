@@ -604,7 +604,7 @@ type EpvScene3D=class(Exception);
                                  TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
                            public
                             PrimitiveMode:TVkPrimitiveTopology;
-                            Material:TpvSizeInt;
+                            Material:TMaterial;
                             Targets:TTargets;
                             MorphTargetBaseIndex:TpvSizeUInt;
                             StartBufferVertexOffset:TpvSizeUInt;
@@ -624,7 +624,7 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup); override;
                      destructor Destroy; override;
-                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
                    TSkin=class(TGroupObject)
@@ -1506,7 +1506,8 @@ begin
      finally
       UniversalQueue:=nil;
      end;
-     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
+
+     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),2);
      fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
      fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5);
      fVulkanDescriptorPool.Initialize;
@@ -1520,7 +1521,7 @@ begin
                                                [fShaderDataUniformBlockBuffer.DescriptorBufferInfo],
                                                [],
                                                false);
-     fVulkanDescriptorSet.WriteToDescriptorSet(0,
+     fVulkanDescriptorSet.WriteToDescriptorSet(1,
                                                0,
                                                5,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2207,7 +2208,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh);
+procedure TpvScene3D.TGroup.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
 type TMaxJointBlocksHashMap=TpvHashMap<TMaxJointBlocks,TpvUInt32>;
 var Index,
     PrimitiveIndex,
@@ -2289,7 +2290,11 @@ begin
 
       DestinationMeshPrimitive:=@fPrimitives[PrimitiveIndex];
 
-      DestinationMeshPrimitive^.Material:=SourceMeshPrimitive.Material;
+      if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
+       DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
+      end else begin
+       DestinationMeshPrimitive^.Material:=nil;
+      end;
 
       HasJoints:=false;
 
@@ -3233,10 +3238,15 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Upload;
-var UniversalQueue:TpvVulkanQueue;
+var Index:TpvSizeInt;
+    UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
+    Node:TpvScene3D.TGroup.TNode;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    Material:TpvScene3D.TMaterial;
  procedure ProcessPrimitives;
  begin
 
@@ -3333,6 +3343,18 @@ begin
       end;
      finally
       UniversalQueue:=nil;
+     end;
+     for Node in fNodes do begin
+      Mesh:=Node.Mesh;
+      if assigned(Mesh) then begin
+       for Index:=0 to length(Mesh.fPrimitives)-1 do begin
+        Primitive:=@Mesh.fPrimitives[Index];
+        Material:=Primitive.Material;
+        if assigned(Primitive.Material) then begin
+         Material.Upload;
+        end;
+       end;
+      end;
      end;
     finally
      fUploaded:=true;
@@ -3559,7 +3581,7 @@ var ImageMap:TpvScene3D.TImages;
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self);
    try
-    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh);
+    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,MaterialMap);
    finally
     fMeshes.Add(Mesh);
    end;
@@ -4058,6 +4080,7 @@ begin
                                                          false,
                                                          0,
                                                          true);
+        fWhiteTexture.UpdateSampler;
        finally
         FreeAndNil(GraphicsFence);
        end;
@@ -4112,7 +4135,7 @@ begin
                                                                     1,
                                                                     1,
                                                                     0,
-                                                                    0,
+                                                                    1,
                                                                     0,
                                                                     [TpvVulkanTextureUsageFlag.General,
                                                                      TpvVulkanTextureUsageFlag.TransferDst,

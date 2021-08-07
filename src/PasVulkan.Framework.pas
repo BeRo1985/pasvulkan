@@ -10971,7 +10971,7 @@ begin
   fFence:=TpvVulkanFence.Create(fDevice);
  end else begin
   fFence:=nil;
- end;{}
+ end;//}
 
 end;
 
@@ -10993,7 +10993,7 @@ begin
   fFence:=TpvVulkanFence.Create(fDevice);
  end else begin
   fFence:=nil;
- end;{}
+ end;//}
 
  FillChar(CommandBufferAllocateInfo,SizeOf(TVkCommandBufferAllocateInfo),#0);
  CommandBufferAllocateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
