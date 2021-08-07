@@ -1393,33 +1393,46 @@ var UniversalQueue:TpvVulkanQueue;
     OcclusionTextureDescriptorImageInfo,
     EmissiveTextureDescriptorImageInfo,
     BaseColorOrDiffuseTextureDescriptorImageInfo,
-    MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:TVkDescriptorImageInfo;
+    MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo,
+    SheenColorIntensityTextureDescriptorImageInfo,
+    ClearCoatNormalTextureDescriptorImageInfo,
+    ClearCoatRoughnessTextureDescriptorImageInfo,
+    ClearCoatTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
+
  if not fUploaded then begin
+
   fLock.Acquire;
   try
+
    if not fUploaded then begin
+
     try
+
      fSceneInstance.UploadWhiteTexture;
      fSceneInstance.UploadDefaultNormalMapTexture;
+
      if assigned(fData.NormalTexture.Texture) then begin
       fData.NormalTexture.Texture.Upload;
       NormalTextureDescriptorImageInfo:=fData.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
       NormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTexture.DescriptorImageInfo;
      end;
+
      if assigned(fData.OcclusionTexture.Texture) then begin
       fData.OcclusionTexture.Texture.Upload;
       OcclusionTextureDescriptorImageInfo:=fData.OcclusionTexture.Texture.GetDescriptorImageInfo;
      end else begin
       OcclusionTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
      end;
+
      if assigned(fData.EmissiveTexture.Texture) then begin
       fData.EmissiveTexture.Texture.Upload;
       EmissiveTextureDescriptorImageInfo:=fData.EmissiveTexture.Texture.GetDescriptorImageInfo;
      end else begin
       EmissiveTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
      end;
+
      case fData.ShadingModel of
       TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness:begin
        if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
@@ -1463,6 +1476,35 @@ begin
        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
       end;
      end;
+
+     if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+      fData.PBRSheen.ColorIntensityTexture.Texture.Upload;
+      SheenColorIntensityTextureDescriptorImageInfo:=fData.PBRSheen.ColorIntensityTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      SheenColorIntensityTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+     end;
+
+     if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+      fData.PBRClearCoat.NormalTexture.Texture.Upload;
+      ClearCoatNormalTextureDescriptorImageInfo:=fData.PBRClearCoat.NormalTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      ClearCoatNormalTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+     end;
+
+     if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+      fData.PBRClearCoat.RoughnessTexture.Texture.Upload;
+      ClearCoatRoughnessTextureDescriptorImageInfo:=fData.PBRClearCoat.RoughnessTexture.Texture.GetDescriptorImageInfo;
+     end else begin
+      ClearCoatRoughnessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+     end;
+
+     if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+      fData.PBRClearCoat.Texture.Texture.Upload;
+      ClearCoatTextureDescriptorImageInfo:=fData.PBRClearCoat.Texture.Texture.GetDescriptorImageInfo;
+     end else begin
+      ClearCoatTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+     end;
+
      fShaderDataUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                            SizeOf(TShaderData),
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -1509,7 +1551,7 @@ begin
 
      fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),2);
      fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
-     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5);
+     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9);
      fVulkanDescriptorPool.Initialize;
      fVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                          fSceneInstance.fMaterialVulkanDescriptorSetLayout);
@@ -1523,24 +1565,32 @@ begin
                                                false);
      fVulkanDescriptorSet.WriteToDescriptorSet(1,
                                                0,
-                                               5,
+                                               9,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                [NormalTextureDescriptorImageInfo,
                                                 OcclusionTextureDescriptorImageInfo,
                                                 EmissiveTextureDescriptorImageInfo,
                                                 BaseColorOrDiffuseTextureDescriptorImageInfo,
-                                                MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo],
+                                                MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo,
+                                                SheenColorIntensityTextureDescriptorImageInfo,
+                                                ClearCoatNormalTextureDescriptorImageInfo,
+                                                ClearCoatRoughnessTextureDescriptorImageInfo,
+                                                ClearCoatTextureDescriptorImageInfo],
                                                [],
                                                [],
                                                false);
      fVulkanDescriptorSet.Flush;
+
     finally
      fUploaded:=true;
     end;
+
    end;
+
   finally
    fLock.Release;
   end;
+
  end;
 end;
 
@@ -3964,7 +4014,7 @@ begin
                                                []);
  fMaterialVulkanDescriptorSetLayout.AddBinding(1,
                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                               5,
+                                               9,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
