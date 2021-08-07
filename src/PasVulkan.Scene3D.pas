@@ -1645,7 +1645,7 @@ begin
    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
   end;
   fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.TexCoord;
-  fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.BaseColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+  fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.BaseColorTexture,aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Extensions);
   fData.PBRMetallicRoughness.RoughnessFactor:=aSourceMaterial.PBRMetallicRoughness.RoughnessFactor;
   fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
   if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
@@ -1654,9 +1654,8 @@ begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
   end;
   fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord;
-  fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.MetallicRoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+  fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.MetallicRoughnessTexture,aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Extensions);
  end;
-
  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_unlit'];
  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
   fData.ShadingModel:=TMaterial.TShadingModel.Unlit;
