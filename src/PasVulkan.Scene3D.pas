@@ -849,6 +849,7 @@ type EpvScene3D=class(Exception);
               fVulkanInstancesMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
+              fBoundingBox:TpvAABB;
               procedure ConstructBuffers;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
@@ -859,6 +860,8 @@ type EpvScene3D=class(Exception);
               procedure Unload; override;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
               function CreateInstance:TpvScene3D.TGroup.TInstance;
+             public
+              property BoundingBox:TpvAABB read fBoundingBox;
              published
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -3786,6 +3789,34 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure CalculateBoundingBox;
+  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4);
+  var Index:TpvSizeInt;
+      Matrix:TpvMatrix4x4;
+      Node:TpvScene3D.TGroup.TNode;
+  begin
+   Node:=fNodes[aNodeIndex];
+   Matrix:=((TpvMatrix4x4.CreateScale(Node.fScale)*
+             (TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion.Create(Node.fRotation))*
+              TpvMatrix4x4.CreateTranslation(Node.fTranslation)))*Node.fMatrix)*aMatrix;
+   if assigned(Node.fMesh) then begin
+    fBoundingBox:=fBoundingBox.Combine(Node.fMesh.fBoundingBox.Transform(Matrix));
+   end;
+   for Index:=0 to Node.Children.Count-1 do begin
+    ProcessNode(Node.Children[Index].Index,Matrix);
+   end;
+  end;
+ var Scene:TpvScene3D.TGroup.TScene;
+     Node:TpvScene3D.TGroup.TNode;
+ begin
+  fBoundingBox.Min:=TpvVector3.Origin;
+  fBoundingBox.Max:=TpvVector3.Origin;
+  for Scene in fScenes do begin
+   for Node in Scene.fNodes do begin
+    ProcessNode(Node.Index,TpvMatrix4x4.Identity);
+   end;
+  end;
+ end;
 begin
 
  fMaximalCountInstances:=aMaximalCountInstances;
@@ -3833,6 +3864,8 @@ begin
      end else begin
       fScene:=nil;
      end;
+
+     CalculateBoundingBox;
 
     finally
      FreeAndNil(MaterialMap);
