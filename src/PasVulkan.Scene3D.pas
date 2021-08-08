@@ -506,6 +506,9 @@ type EpvScene3D=class(Exception);
                     published
                      property Group:TGroup read fGroup write fGroup;
                    end;
+
+                   { TAnimation }
+
                    TAnimation=class(TGroupObject)
                     public
                      type TChannel=record
@@ -537,13 +540,16 @@ type EpvScene3D=class(Exception);
                                PChannel=^TChannel;
                                TChannels=array of TChannel;
                     private
+                     fIndex:TpvSizeInt;
                      fChannels:TChannels;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvFloat;
                      function GetAnimationEndTime:TpvFloat;
+                    published
+                     property Index:TpvSizeInt read fIndex;
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    TCamera=class(TGroupObject)
@@ -567,13 +573,16 @@ type EpvScene3D=class(Exception);
                            ZFar:TpvFloat;
                           end;
                     private
+                     fIndex:TpvSizeInt;
                      fType:TType;
                      fOrthographic:TOrthographic;
                      fPerspective:TPerspective;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
+                    published
+                     property Index:TpvSizeInt read fIndex;
                    end;
                    TCameras=TpvObjectGenericList<TCamera>;
                    TMesh=class(TGroupObject)
@@ -616,19 +625,23 @@ type EpvScene3D=class(Exception);
                           PPrimitive=^TPrimitive;
                           TPrimitives=array of TPrimitive;
                     private
+                     fIndex:TpvSizeInt;
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
                      fNodeMeshInstances:TpvSizeInt;
                      function CreateNodeMeshInstance(const aNodeIndex:TpvUInt32):TpvSizeInt;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
+                    published
+                     property Index:TpvSizeInt read fIndex;
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
                    TSkin=class(TGroupObject)
                     private
+                     fIndex:TpvSizeInt;
                      fSkeleton:TpvSizeInt;
                      fInverseBindMatrices:TMatrix4x4DynamicArray;
                      fMatrices:TMatrix4x4DynamicArray;
@@ -636,9 +649,11 @@ type EpvScene3D=class(Exception);
                      fStorageBufferObjectOffset:TpvSizeUInt;
                      fStorageBufferObjectSize:TpvSizeUInt;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
+                    published
+                     property Index:TpvSizeInt read fIndex;
                    end;
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
@@ -647,6 +662,7 @@ type EpvScene3D=class(Exception);
                     public
                      type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
                     private
+                     fIndex:TpvSizeInt;
                      fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
                      fMesh:TMesh;
@@ -662,10 +678,11 @@ type EpvScene3D=class(Exception);
                      fShaderStorageBufferObjectSize:TpvSizeInt;
                      procedure Finish;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
                     published
+                     property Index:TpvSizeInt read fIndex;
                      property Children:TNodes read fChildren;
                      property Camera:TCamera read fCamera;
                      property Mesh:TMesh read fMesh;
@@ -673,12 +690,14 @@ type EpvScene3D=class(Exception);
                    end;
                    TScene=class(TGroupObject)
                     private
+                     fIndex:TpvSizeInt;
                      fNodes:TNodes;
                     public
-                     constructor Create(const aGroup:TGroup); override;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
                     published
+                     property Index:TpvSizeInt read fIndex;
                      property Nodes:TNodes read fNodes;
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
@@ -698,6 +717,49 @@ type EpvScene3D=class(Exception);
                             property Time:TPasGLTFFloat read fTime write fTime;
                           end;
                           TAnimations=array of TAnimation;
+                          TNode=record
+                           public
+                            type TOverwriteFlag=
+                                  (
+                                   Defaults,
+                                   Translation,
+                                   Rotation,
+                                   Scale,
+                                   Weights
+                                  );
+                                 TOverwriteFlags=set of TOverwriteFlag;
+                                 TOverwrite=record
+                                  public
+                                   Flags:TOverwriteFlags;
+                                   Translation:TpvVector3;
+                                   Rotation:TpvVector4;
+                                   Scale:TpvVector3;
+                                   Weights:TpvFloatDynamicArray;
+                                   Factor:TpvFloat;
+                                 end;
+                                 POverwrite=^TOverwrite;
+                                 TOverwrites=array of TOverwrite;
+                           public
+                            Overwrites:TOverwrites;
+                            CountOverwrites:TpvSizeInt;
+                            OverwriteFlags:TOverwriteFlags;
+                            OverwriteTranslation:TpvVector3;
+                            OverwriteRotation:TpvVector4;
+                            OverwriteScale:TpvVector3;
+                            OverwriteWeights:TpvFloatDynamicArray;
+                            OverwriteWeightsSum:TpvDoubleDynamicArray;
+                            WorkWeights:TpvFloatDynamicArray;
+                            WorkMatrix:TpvMatrix4x4;
+                          end;
+                          PNode=^TNode;
+                          TNodes=array of TNode;
+                          TSkin=record
+                           Used:boolean;
+                          end;
+                          PSkin=^TSkin;
+                          TSkins=array of TSkin;
+                          TNodeIndices=array of TpvSizeInt;
+                          TOnNodeMatrix=procedure(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4) of object;
                           TNodeMatrices=array of TpvMatrix4x4;
                           TMorphTargetVertexWeights=array of TpvFloat;
                           { TVulkanData }
@@ -720,11 +782,26 @@ type EpvScene3D=class(Exception);
                           TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
                     private
                      fGroup:TGroup;
+                     fScene:TPasGLTFSizeInt;
+                     fAnimations:TAnimations;
+                     fNodes:TNodes;
+                     fSkins:TSkins;
+                     fLightNodes:TNodeIndices;
+                     fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
+                     fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
+                     fDynamicBoundingBox:TpvAABB;
+                     fWorstCaseStaticBoundingBox:TpvAABB;
+                     fUserData:pointer;
+                     fOnNodeMatrixPre:TOnNodeMatrix;
+                     fOnNodeMatrixPost:TOnNodeMatrix;
                      fUploaded:boolean;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
+                     function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
+                     procedure SetScene(const aScene:TpvSizeInt);
+                     function GetScene:TpvScene3D.TGroup.TScene;
                     public
                      constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
                      destructor Destroy; override;
@@ -735,7 +812,16 @@ type EpvScene3D=class(Exception);
                      procedure Update;
                     published
                      property Group:TGroup read fGroup write fGroup;
+                     property Scene:TpvSizeInt read fScene write SetScene;
+                    public
+                     property Nodes:TNodes read fNodes;
+                     property Skins:TSkins read fSkins;
+                     property UserData:pointer read fUserData write fUserData;
+                    published
                      property VulkanData:TVulkanData read fVulkanData;
+                     property Automations[const aIndex:TPasGLTFSizeInt]:TAnimation read GetAutomation;
+                     property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
+                     property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
              private
@@ -1955,9 +2041,10 @@ end;
 
 { TpvScene3D.TGroup.TAnimation }
 
-constructor TpvScene3D.TGroup.TAnimation.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TAnimation.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fIndex:=aIndex;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
@@ -2112,9 +2199,10 @@ end;
 
 { TpvScene3D.TGroup.TCamera }
 
-constructor TpvScene3D.TGroup.TCamera.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TCamera.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fIndex:=aIndex;
 end;
 
 destructor TpvScene3D.TGroup.TCamera.Destroy;
@@ -2154,9 +2242,10 @@ end;
 
 { TpvScene3D.TGroup.TMesh }
 
-constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fIndex:=aIndex;
  fNodeMeshInstances:=0;
 end;
 
@@ -2978,9 +3067,10 @@ end;
 
 { TpvScene3D.TSkin }
 
-constructor TpvScene3D.TGroup.TSkin.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TSkin.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fIndex:=aIndex;
 end;
 
 destructor TpvScene3D.TGroup.TSkin.Destroy;
@@ -3039,10 +3129,12 @@ end;
 
 { TpvScene3D.TNode }
 
-constructor TpvScene3D.TGroup.TNode.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TNode.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
 
  inherited Create(aGroup);
+
+ fIndex:=aIndex;
 
  fChildNodeIndices.Initialize;
 
@@ -3149,9 +3241,10 @@ end;
 
 { TpvScene3D.TGroup.TScene }
 
-constructor TpvScene3D.TGroup.TScene.Create(const aGroup:TGroup);
+constructor TpvScene3D.TGroup.TScene.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fIndex:=aIndex;
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
 end;
@@ -3597,7 +3690,7 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Animations.Count-1 do begin
    SourceAnimation:=aSourceDocument.Animations[Index];
-   Animation:=TAnimation.Create(self);
+   Animation:=TAnimation.Create(self,Index);
    try
     Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
    finally
@@ -3612,7 +3705,7 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Cameras.Count-1 do begin
    SourceCamera:=aSourceDocument.Cameras[Index];
-   Camera:=TCamera.Create(self);
+   Camera:=TCamera.Create(self,Index);
    try
     Camera.AssignFromGLTF(aSourceDocument,SourceCamera);
    finally
@@ -3629,7 +3722,7 @@ var ImageMap:TpvScene3D.TImages;
   fMorphTargetCount:=0;
   for Index:=0 to aSourceDocument.Meshes.Count-1 do begin
    SourceMesh:=aSourceDocument.Meshes[Index];
-   Mesh:=TMesh.Create(self);
+   Mesh:=TMesh.Create(self,Index);
    try
     Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,MaterialMap);
    finally
@@ -3645,7 +3738,7 @@ var ImageMap:TpvScene3D.TImages;
   fSkinStorageBufferSize:=0;
   for Index:=0 to aSourceDocument.Skins.Count-1 do begin
    SourceSkin:=aSourceDocument.Skins[Index];
-   Skin:=TSkin.Create(self);
+   Skin:=TSkin.Create(self,Index);
    try
     Skin.AssignFromGLTF(aSourceDocument,SourceSkin);
    finally
@@ -3667,7 +3760,7 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
    SourceNode:=aSourceDocument.Nodes[Index];
-   Node:=TNode.Create(self);
+   Node:=TNode.Create(self,Index);
    try
     Node.AssignFromGLTF(aSourceDocument,SourceNode);
    finally
@@ -3685,7 +3778,7 @@ var ImageMap:TpvScene3D.TImages;
  begin
   for Index:=0 to aSourceDocument.Scenes.Count-1 do begin
    SourceScene:=aSourceDocument.Scenes[Index];
-   Scene:=TScene.Create(self);
+   Scene:=TScene.Create(self,Index);
    try
     Scene.AssignFromGLTF(aSourceDocument,SourceScene);
    finally
@@ -3843,7 +3936,9 @@ end;
 { TpvScene3D.TGroup.TInstance }
 
 constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
-var Index:TpvSizeInt;
+var Index,OtherIndex:TpvSizeInt;
+    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+    Node:TpvScene3D.TGroup.TNode;
 begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
@@ -3852,6 +3947,33 @@ begin
   fGroup:=nil;
  end;
  fUploaded:=false;
+ fScene:=-1;
+ fNodes:=nil;
+ fSkins:=nil;
+ fAnimations:=nil;
+ SetLength(fNodes,fGroup.fNodes.Count);
+ SetLength(fSkins,fGroup.fSkins.Count);
+{SetLength(fLightNodes,fGroup.fLights.Count);
+ SetLength(fLightShadowMapMatrices,fParent.fLights.Count);
+ SetLength(fLightShadowMapZFarValues,fParent.fLights.Count);
+ for Index:=0 to length(fLightNodes)-1 do begin
+  fLightNodes[Index]:=-1;
+ end;}
+ for Index:=0 to fGroup.fNodes.Count-1 do begin
+  InstanceNode:=@fNodes[Index];
+  Node:=fGroup.fNodes[Index];
+  SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
+  SetLength(InstanceNode^.OverwriteWeights,length(Node.fWeights));
+  SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
+  SetLength(InstanceNode^.Overwrites,fGroup.fAnimations.Count+1);
+  for OtherIndex:=0 to fGroup.fAnimations.Count do begin
+   SetLength(InstanceNode^.Overwrites[OtherIndex].Weights,length(Node.fWeights));
+  end;
+ end;
+ SetLength(fAnimations,fGroup.fAnimations.Count+1);
+ for Index:=0 to length(fAnimations)-1 do begin
+  fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
+ end;
  fNodeMatrices:=nil;
  fMorphTargetVertexWeights:=nil;
  for Index:=0 to length(fVulkanDatas)-1 do begin
@@ -3860,12 +3982,18 @@ begin
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
-var Index:TpvSizeInt;
+var Index:TPasGLTFSizeInt;
 begin
  Unload;
  for Index:=0 to length(fVulkanDatas)-1 do begin
   FreeAndNil(fVulkanDatas[Index]);
  end;
+ for Index:=0 to length(fAnimations)-1 do begin
+  FreeAndNil(fAnimations[Index]);
+ end;
+ fNodes:=nil;
+ fSkins:=nil;
+ fAnimations:=nil;
  fNodeMatrices:=nil;
  fMorphTargetVertexWeights:=nil;
  fGroup:=nil;
@@ -3910,6 +4038,31 @@ begin
  inherited BeforeDestruction;
 end;
 
+function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
+begin
+ result:=fAnimations[aIndex+1];
+end;
+
+procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene:TPasGLTFSizeInt);
+begin
+ fScene:=Min(Max(aScene,-1),fGroup.fScenes.Count-1);
+end;
+
+function TpvScene3D.TGroup.TInstance.GetScene:TpvScene3D.TGroup.TScene;
+begin
+ if fGroup.fUploaded then begin
+  if fScene<0 then begin
+   result:=fGroup.fScene;
+  end else if fScene<fGroup.fScenes.Count then begin
+   result:=fGroup.fScenes[fScene];
+  end else begin
+   result:=nil;
+  end;
+ end else begin
+  result:=nil;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TInstance.Upload;
 var Index:TpvSizeInt;
 begin
@@ -3944,7 +4097,508 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Update;
+var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
+    CurrentShader:TShader;
+    CurrentSkinShaderStorageBufferObjectHandle:glUInt;}
+    CullFace,Blend:TPasGLTFInt32;
+ procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
+ var Index:TPasGLTFSizeInt;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Node:TpvScene3D.TGroup.TNode;
+ begin
+  InstanceNode:=@fNodes[aNodeIndex];
+  Node:=fGroup.fNodes[aNodeIndex];
+  InstanceNode^.CountOverwrites:=0;
+  InstanceNode^.OverwriteFlags:=[];
+  for Index:=0 to Node.Children.Count-1 do begin
+   ResetNode(Node.Children[Index].Index);
+  end;
+ end;
+ procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
+ var Index:TPasGLTFSizeInt;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+ begin
+  if aFactor>=-0.5 then begin
+   for Index:=0 to fGroup.fNodes.Count-1 do begin
+    InstanceNode:=@fNodes[Index];
+    if InstanceNode^.CountOverwrites<length(InstanceNode^.Overwrites) then begin
+     Overwrite:=@InstanceNode^.Overwrites[InstanceNode^.CountOverwrites];
+     Overwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults];
+     Overwrite^.Factor:=Max(aFactor,0.0);
+     inc(InstanceNode^.CountOverwrites);
+    end;
+   end;
+  end;
+ end;
+ procedure ProcessAnimation(const aAnimationIndex:TPasGLTFSizeInt;const aAnimationTime:TPasGLTFFloat;const aFactor:TPasGLTFFloat);
+ var ChannelIndex,
+     InputTimeArrayIndex,
+     WeightIndex,
+     CountWeights,
+     ElementIndex,
+     l,r,m:TpvSizeInt;
+     Animation:TpvScene3D.TGroup.TAnimation;
+     AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+     //Node:TpvScene3D.TGroup.TNode;
+     Node:TpvScene3D.TGroup.TInstance.PNode;
+     Time,Factor,Scalar,Value,SqrFactor,CubeFactor,KeyDelta,v0,v1,a,b:TpvFloat;
+     Vector3:TpvVector3;
+     Vector4:TpvVector4;
+     Vector3s:array[0..1] of PpvVector3;
+     Vector4s:array[0..1] of PpvVector4;
+     TimeIndices:array[0..1] of TpvSizeInt;
+     Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+ begin
+
+  Animation:=fGroup.fAnimations[aAnimationIndex];
+
+  for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+
+   AnimationChannel:=@Animation.fChannels[ChannelIndex];
+
+   if (AnimationChannel.Node>=0) and (length(AnimationChannel.InputTimeArray)>0) then begin
+
+    TimeIndices[1]:=length(AnimationChannel^.InputTimeArray)-1;
+
+    Time:=Min(Max(aAnimationTime,AnimationChannel^.InputTimeArray[0]),AnimationChannel^.InputTimeArray[TimeIndices[1]]);
+
+    if (AnimationChannel^.Last<=0) or (Time<AnimationChannel^.InputTimeArray[AnimationChannel.Last-1]) then begin
+     l:=0;
+    end else begin
+     l:=AnimationChannel^.Last-1;
+    end;
+
+    for InputTimeArrayIndex:=Min(Max(l,0),length(AnimationChannel^.InputTimeArray)-1) to Min(Max(l+3,0),length(AnimationChannel^.InputTimeArray)-1) do begin
+     if AnimationChannel^.InputTimeArray[InputTimeArrayIndex]>Time then begin
+      l:=InputTimeArrayIndex-1;
+      break;
+     end;
+    end;
+
+    r:=length(AnimationChannel^.InputTimeArray);
+    if ((l+1)<r) and (Time<AnimationChannel^.InputTimeArray[l+1]) then begin
+     inc(l);
+    end else begin
+     while l<r do begin
+      m:=l+((r-l) shr 1);
+      Value:=AnimationChannel^.InputTimeArray[m];
+      if Value<=Time then begin
+       l:=m+1;
+       if Time<AnimationChannel^.InputTimeArray[l] then begin
+        break;
+       end;
+      end else begin
+       r:=m;
+      end;
+     end;
+    end;
+
+    for InputTimeArrayIndex:=Min(Max(l,0),length(AnimationChannel^.InputTimeArray)-1) to length(AnimationChannel^.InputTimeArray)-1 do begin
+     if AnimationChannel^.InputTimeArray[InputTimeArrayIndex]>Time then begin
+      TimeIndices[1]:=InputTimeArrayIndex;
+      break;
+     end;
+    end;
+
+    AnimationChannel^.Last:=TimeIndices[1];
+
+    if TimeIndices[1]>=0 then begin
+
+     TimeIndices[0]:=Max(0,TimeIndices[1]-1);
+
+     KeyDelta:=AnimationChannel^.InputTimeArray[TimeIndices[1]]-AnimationChannel^.InputTimeArray[TimeIndices[0]];
+
+     if SameValue(TimeIndices[0],TimeIndices[1]) then begin
+      Factor:=0.0;
+     end else begin
+      Factor:=(Time-AnimationChannel^.InputTimeArray[TimeIndices[0]])/KeyDelta;
+      if Factor<0.0 then begin
+       Factor:=0.0;
+      end else if Factor>1.0 then begin
+       Factor:=1.0;
+      end;
+     end;
+
+     Node:=@fNodes[AnimationChannel^.Node];
+
+     if (aFactor>=-0.5) and (Node.CountOverwrites<length(Node.Overwrites)) then begin
+      Overwrite:=@Node.Overwrites[Node.CountOverwrites];
+      Overwrite^.Flags:=[];
+      Overwrite^.Factor:=Max(aFactor,0.0);
+      inc(Node^.CountOverwrites);
+     end else begin
+      Overwrite:=nil;
+     end;
+
+     case AnimationChannel^.Target of
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
+       case AnimationChannel^.Interpolation of
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+         Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+         Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
+         Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
+         Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
+         Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
+        end;
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+         Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+        end;
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+         SqrFactor:=sqr(Factor);
+         CubeFactor:=SqrFactor*Factor;
+         Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                   (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                    (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                     (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
+        end;
+        else begin
+         Assert(false);
+        end;
+       end;
+       case AnimationChannel^.Target of
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
+         if assigned(Overwrite) then begin
+          Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
+          Overwrite^.Translation:=Vector3;
+         end else begin
+          Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
+          Node^.OverwriteTranslation:=Vector3;
+         end;
+        end;
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
+         if assigned(Overwrite) then begin
+          Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
+          Overwrite^.Scale:=Vector3;
+         end else begin
+          Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
+          Node^.OverwriteScale:=Vector3;
+         end;
+        end;
+       end;
+      end;
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
+       case AnimationChannel^.Interpolation of
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+         Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
+        end;
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+         Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
+        end;
+        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+         SqrFactor:=sqr(Factor);
+         CubeFactor:=SqrFactor*Factor;
+         Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                    (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                     (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                      (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
+        end;
+        else begin
+         Assert(false);
+        end;
+       end;
+       if assigned(Overwrite) then begin
+        Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
+        Overwrite^.Rotation:=Vector4;
+       end else begin
+        Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
+        Node^.OverwriteRotation:=Vector4;
+       end;
+      end;
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
+       CountWeights:=length(Node^.WorkWeights);
+       if assigned(Overwrite) then begin
+        Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
+        case AnimationChannel^.Interpolation of
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Overwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
+                                            (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
+          end;
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Overwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
+          end;
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+          SqrFactor:=sqr(Factor);
+          CubeFactor:=SqrFactor*Factor;
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Overwrite^. Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
+                                             (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
+                                             (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
+                                             ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
+          end;
+         end;
+         else begin
+          Assert(false);
+         end;
+        end;
+       end else begin
+        Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
+        case AnimationChannel^.Interpolation of
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Node^.OverwriteWeights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
+                                                (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
+          end;
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Node^.OverwriteWeights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
+          end;
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+          SqrFactor:=sqr(Factor);
+          CubeFactor:=SqrFactor*Factor;
+          for WeightIndex:=0 to CountWeights-1 do begin
+           Node^.OverwriteWeights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
+                                                (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
+                                                (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
+                                                ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
+          end;
+         end;
+         else begin
+          Assert(false);
+         end;
+        end;
+       end;
+      end;
+     end;
+
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+ procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4);
+ type TVector3Sum=record
+       x,y,z,FactorSum:Double;
+      end;
+      TVector4Sum=record
+       x,y,z,w,FactorSum:Double;
+      end;
+ var Index,OtherIndex:TpvSizeInt;
+     Matrix:TpvMatrix4x4;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Node:TpvScene3D.TGroup.TNode;
+     Translation,Scale:TpvVector3;
+     Rotation:TpvVector4;
+     TranslationSum,ScaleSum:TVector3Sum;
+     RotationSum:TVector4Sum;
+     Factor,
+     WeightsFactorSum:TpvDouble;
+     Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+     FirstWeights,SkinUsed:boolean;
+ begin
+  SkinUsed:=false;
+  InstanceNode:=@fNodes[aNodeIndex];
+  Node:=fGroup.fNodes[aNodeIndex];
+  if InstanceNode^.CountOverwrites>0 then begin
+   SkinUsed:=true;
+   TranslationSum.x:=0.0;
+   TranslationSum.y:=0.0;
+   TranslationSum.z:=0.0;
+   TranslationSum.FactorSum:=0.0;
+   ScaleSum.x:=0.0;
+   ScaleSum.y:=0.0;
+   ScaleSum.z:=0.0;
+   ScaleSum.FactorSum:=0.0;
+   RotationSum.x:=0.0;
+   RotationSum.y:=0.0;
+   RotationSum.z:=0.0;
+   RotationSum.w:=0.0;
+   RotationSum.FactorSum:=0.0;
+   WeightsFactorSum:=0.0;
+   FirstWeights:=true;
+   for Index:=0 to InstanceNode^.CountOverwrites-1 do begin
+    Overwrite:=@InstanceNode^.Overwrites[Index];
+    Factor:=Overwrite^.Factor;
+    if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
+     TranslationSum.x:=TranslationSum.x+(Node.fTranslation.x*Factor);
+     TranslationSum.y:=TranslationSum.y+(Node.fTranslation.y*Factor);
+     TranslationSum.z:=TranslationSum.z+(Node.fTranslation.z*Factor);
+     TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
+     ScaleSum.x:=ScaleSum.x+(Node.fScale.x*Factor);
+     ScaleSum.y:=ScaleSum.y+(Node.fScale.y*Factor);
+     ScaleSum.z:=ScaleSum.z+(Node.fScale.z*Factor);
+     ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
+     RotationSum.x:=RotationSum.x+(Node.fRotation.x*Factor);
+     RotationSum.y:=RotationSum.y+(Node.fRotation.y*Factor);
+     RotationSum.z:=RotationSum.z+(Node.fRotation.z*Factor);
+     RotationSum.w:=RotationSum.w+(Node.fRotation.w*Factor);
+     RotationSum.FactorSum:=RotationSum.FactorSum+Factor;
+     if length(Node.fWeights)>0 then begin
+      if FirstWeights then begin
+       FirstWeights:=false;
+       for OtherIndex:=0 to length(InstanceNode^.OverwriteWeightsSum)-1 do begin
+        InstanceNode^.OverwriteWeightsSum[OtherIndex]:=0.0;
+       end;
+      end;
+      for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Node.fWeights))-1 do begin
+       InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights[OtherIndex]*Factor);
+      end;
+      WeightsFactorSum:=WeightsFactorSum+Factor;
+     end;
+    end else begin
+     if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in Overwrite^.Flags then begin
+      TranslationSum.x:=TranslationSum.x+(Overwrite^.Translation.x*Factor);
+      TranslationSum.y:=TranslationSum.y+(Overwrite^.Translation.y*Factor);
+      TranslationSum.z:=TranslationSum.z+(Overwrite^.Translation.z*Factor);
+      TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in Overwrite^.Flags then begin
+      ScaleSum.x:=ScaleSum.x+(Overwrite^.Scale.x*Factor);
+      ScaleSum.y:=ScaleSum.y+(Overwrite^.Scale.y*Factor);
+      ScaleSum.z:=ScaleSum.z+(Overwrite^.Scale.z*Factor);
+      ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in Overwrite^.Flags then begin
+      RotationSum.x:=RotationSum.x+(Overwrite^.Rotation.x*Factor);
+      RotationSum.y:=RotationSum.y+(Overwrite^.Rotation.y*Factor);
+      RotationSum.z:=RotationSum.z+(Overwrite^.Rotation.z*Factor);
+      RotationSum.w:=RotationSum.w+(Overwrite^.Rotation.w*Factor);
+      RotationSum.FactorSum:=RotationSum.FactorSum+Factor;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights in Overwrite^.Flags then begin
+      if FirstWeights then begin
+       FirstWeights:=false;
+       for OtherIndex:=0 to length(InstanceNode^.OverwriteWeightsSum)-1 do begin
+        InstanceNode^.OverwriteWeightsSum[OtherIndex]:=0.0;
+       end;
+      end;
+      for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
+       InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+      end;
+      WeightsFactorSum:=WeightsFactorSum+Factor;
+     end;
+    end;
+   end;
+   if TranslationSum.FactorSum>0.0 then begin
+    Factor:=1.0/TranslationSum.FactorSum;
+    Translation.x:=TranslationSum.x*Factor;
+    Translation.y:=TranslationSum.y*Factor;
+    Translation.z:=TranslationSum.z*Factor;
+   end else begin
+    Translation:=Node.fTranslation;
+   end;
+   if ScaleSum.FactorSum>0.0 then begin
+    Factor:=1.0/ScaleSum.FactorSum;
+    Scale.x:=ScaleSum.x*Factor;
+    Scale.y:=ScaleSum.y*Factor;
+    Scale.z:=ScaleSum.z*Factor;
+   end else begin
+    Scale:=Node.fScale;
+   end;
+   if RotationSum.FactorSum>0.0 then begin
+    Factor:=1.0/RotationSum.FactorSum;
+    Rotation.x:=RotationSum.x*Factor;
+    Rotation.y:=RotationSum.y*Factor;
+    Rotation.z:=RotationSum.z*Factor;
+    Rotation.w:=RotationSum.w*Factor;
+    Rotation:=Rotation.Normalize;
+   end else begin
+    Rotation:=Node.fRotation;
+   end;
+   if WeightsFactorSum>0.0 then begin
+    Factor:=1.0/WeightsFactorSum;
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
+     InstanceNode^.WorkWeights[Index]:=InstanceNode^.OverwriteWeightsSum[Index]*Factor;
+    end;
+   end else begin
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
+     InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
+    end;
+   end;
+  end else begin
+   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in InstanceNode^.OverwriteFlags then begin
+    Translation:=InstanceNode^.OverwriteTranslation;
+    SkinUsed:=true;
+   end else begin
+    Translation:=Node.fTranslation;
+   end;
+   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in InstanceNode^.OverwriteFlags then begin
+    Scale:=InstanceNode^.OverwriteScale;
+    SkinUsed:=true;
+   end else begin
+    Scale:=Node.fScale;
+   end;
+   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in InstanceNode^.OverwriteFlags then begin
+    Rotation:=InstanceNode^.OverwriteRotation;
+    SkinUsed:=true;
+   end else begin
+    Rotation:=Node.fRotation;
+   end;
+   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights in InstanceNode^.OverwriteFlags then begin
+    SkinUsed:=true;
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(InstanceNode^.OverwriteWeights))-1 do begin
+     InstanceNode^.WorkWeights[Index]:=InstanceNode^.OverwriteWeights[Index];
+    end;
+   end else begin
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
+     InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
+    end;
+   end;
+  end;
+  Matrix:=TpvMatrix4x4.CreateScale(Scale)*
+          (TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion.Create(Rotation))*
+           TpvMatrix4x4.CreateTranslation(Translation));
+  if assigned(fOnNodeMatrixPre) then begin
+   fOnNodeMatrixPre(self,Node,InstanceNode,Matrix);
+  end;
+  Matrix:=Matrix*Node.fMatrix;
+  if assigned(fOnNodeMatrixPost) then begin
+   fOnNodeMatrixPost(self,Node,InstanceNode,Matrix);
+  end;
+  Matrix:=Matrix*aMatrix;
+  InstanceNode^.WorkMatrix:=Matrix;
+  if assigned(Node.fMesh) then begin
+   if SkinUsed then begin
+    fSkins[Node.fSkin.Index].Used:=true;
+   end;
+  end;
+{ if (Node^.Light>=0) and (Node^.Light<=length(fLightNodes)) then begin
+   fLightNodes[Node^.Light]:=aNodeIndex;
+  end;}
+  for Index:=0 to Node.Children.Count-1 do begin
+   ProcessNode(Node.Children[Index].Index,Matrix);
+  end;
+ end;
+var Index:TPasGLTFSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    Animation:TpvScene3D.TGroup.TInstance.TAnimation;
 begin
+ Scene:=GetScene;
+ if assigned(Scene) then begin
+  //CurrentSkinShaderStorageBufferObjectHandle:=0;
+  for Index:=0 to length(fLightNodes)-1 do begin
+   fLightNodes[Index]:=-1;
+  end;
+  for Index:=0 to Scene.Nodes.Count-1 do begin
+   ResetNode(Scene.Nodes[Index].Index);
+  end;
+  for Index:=0 to length(fSkins)-1 do begin
+   fSkins[Index].Used:=false;
+  end;
+  for Index:=-1 to length(fAnimations)-2 do begin
+   Animation:=fAnimations[Index+1];
+   if Animation.fFactor>=-0.5 then begin
+    if Index<0 then begin
+     ProcessBaseOverwrite(Animation.fFactor);
+    end else begin
+     ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+    end;
+   end;
+  end;
+  for Index:=0 to Scene.fNodes.Count-1 do begin
+   ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+  end;
+ end;
  fVulkanData:=fVulkanDatas[pvApplication.DrawFrameCounter mod MaxSwapChainImages];
  if assigned(fVulkanData) then begin
   fVulkanData.Update;
