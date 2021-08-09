@@ -242,6 +242,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
@@ -456,6 +457,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
@@ -1409,51 +1411,68 @@ end;
 procedure TpvScene3D.TTexture.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fTextureListLock.Acquire;
  try
-  fSceneInstance.fTextures.Add(self);
+  fSceneInstance.fTextureListLock.Acquire;
+  try
+   fSceneInstance.fTextures.Add(self);
+  finally
+   fSceneInstance.fTextureListLock.Release;
+  end;
  finally
-  fSceneInstance.fTextureListLock.Release;
+  fAdded:=true;
  end;
 end;
 
 procedure TpvScene3D.TTexture.BeforeDestruction;
+begin
+ Remove;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TTexture.Remove;
 var HashData:THashData;
 begin
- HashData:=GetHashData;
- if assigned(fImage) then begin
+ if fAdded then begin
   try
-   fImage.DecRef;
+   HashData:=GetHashData;
+   if assigned(fImage) then begin
+    try
+     fImage.DecRef;
+    finally
+     fImage:=nil;
+    end;
+   end;
+   if assigned(fSampler) then begin
+    try
+     fSampler.DecRef;
+    finally
+     fSampler:=nil;
+    end;
+   end;
+   fSceneInstance.fTextureListLock.Acquire;
+   try
+    fSceneInstance.fTextures.Remove(self);
+    if fSceneInstance.fTextureHashMap[HashData]=self then begin
+     fSceneInstance.fTextureHashMap.Delete(HashData);
+    end;
+   finally
+    fSceneInstance.fTextureListLock.Release;
+   end;
   finally
-   fImage:=nil;
+   fAdded:=false;
   end;
  end;
- if assigned(fSampler) then begin
-  try
-   fSampler.DecRef;
-  finally
-   fSampler:=nil;
-  end;
- end;
- fSceneInstance.fTextureListLock.Acquire;
- try
-  fSceneInstance.fTextures.Remove(self);
-  if fSceneInstance.fTextureHashMap[HashData]=self then begin
-   fSceneInstance.fTextureHashMap.Delete(HashData);
-  end;
- finally
-  fSceneInstance.fTextureListLock.Release;
- end;
- inherited BeforeDestruction;
 end;
 
 procedure TpvScene3D.TTexture.Upload;
 begin
- if assigned(fImage) then begin
-  fImage.Upload;
- end;
- if assigned(fSampler) then begin
-  fSampler.Upload;
+ if fReferenceCounter>0 then begin
+  if assigned(fImage) then begin
+   fImage.Upload;
+  end;
+  if assigned(fSampler) then begin
+   fSampler.Upload;
+  end;
  end;
 end;
 
@@ -1569,6 +1588,83 @@ end;
 
 destructor TpvScene3D.TMaterial.Destroy;
 begin
+ if assigned(fData.EmissiveTexture.Texture) then begin
+  try
+   fData.EmissiveTexture.Texture.DecRef;
+  finally
+   fData.EmissiveTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.NormalTexture.Texture) then begin
+  try
+   fData.NormalTexture.Texture.DecRef;
+  finally
+   fData.NormalTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.OcclusionTexture.Texture) then begin
+  try
+   fData.OcclusionTexture.Texture.DecRef;
+  finally
+   fData.OcclusionTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+  try
+   fData.PBRMetallicRoughness.BaseColorTexture.Texture.DecRef;
+  finally
+   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+  try
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.DecRef;
+  finally
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+  try
+   fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
+  finally
+   fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+  try
+   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.DecRef;
+  finally
+   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+  try
+   fData.PBRSheen.ColorIntensityTexture.Texture.DecRef;
+  finally
+   fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+  try
+   fData.PBRClearCoat.Texture.Texture.DecRef;
+  finally
+   fData.PBRClearCoat.Texture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+  try
+   fData.PBRClearCoat.RoughnessTexture.Texture.DecRef;
+  finally
+   fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+  try
+   fData.PBRClearCoat.NormalTexture.Texture.DecRef;
+  finally
+   fData.PBRClearCoat.NormalTexture.Texture:=nil;
+  end;
+ end;
  FreeAndNil(fLock);
  inherited Destroy;
 end;
@@ -1576,26 +1672,118 @@ end;
 procedure TpvScene3D.TMaterial.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fMaterialListLock.Acquire;
  try
-  fSceneInstance.fMaterials.Add(self);
+  fSceneInstance.fMaterialListLock.Acquire;
+  try
+   fSceneInstance.fMaterials.Add(self);
+  finally
+   fSceneInstance.fMaterialListLock.Release;
+  end;
  finally
-  fSceneInstance.fMaterialListLock.Release;
+  fAdded:=true;
  end;
 end;
 
 procedure TpvScene3D.TMaterial.BeforeDestruction;
 begin
- fSceneInstance.fMaterialListLock.Acquire;
- try
-  fSceneInstance.fMaterials.Remove(self);
-  if fSceneInstance.fMaterialHashMap[fData]=self then begin
-   fSceneInstance.fMaterialHashMap.Delete(fData);
-  end;
- finally
-  fSceneInstance.fMaterialListLock.Release;
- end;
+ Remove;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TMaterial.Remove;
+begin
+ if fAdded then begin
+  try
+   if assigned(fData.EmissiveTexture.Texture) then begin
+    try
+     fData.EmissiveTexture.Texture.DecRef;
+    finally
+     fData.EmissiveTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.NormalTexture.Texture) then begin
+    try
+     fData.NormalTexture.Texture.DecRef;
+    finally
+     fData.NormalTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.OcclusionTexture.Texture) then begin
+    try
+     fData.OcclusionTexture.Texture.DecRef;
+    finally
+     fData.OcclusionTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+    try
+     fData.PBRMetallicRoughness.BaseColorTexture.Texture.DecRef;
+    finally
+     fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+    try
+     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.DecRef;
+    finally
+     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+    try
+     fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
+    finally
+     fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+    try
+     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.DecRef;
+    finally
+     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+    try
+     fData.PBRSheen.ColorIntensityTexture.Texture.DecRef;
+    finally
+     fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+    try
+     fData.PBRClearCoat.Texture.Texture.DecRef;
+    finally
+     fData.PBRClearCoat.Texture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+    try
+     fData.PBRClearCoat.RoughnessTexture.Texture.DecRef;
+    finally
+     fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+    try
+     fData.PBRClearCoat.NormalTexture.Texture.DecRef;
+    finally
+     fData.PBRClearCoat.NormalTexture.Texture:=nil;
+    end;
+   end;
+   fSceneInstance.fMaterialListLock.Acquire;
+   try
+    fSceneInstance.fMaterials.Remove(self);
+    if fSceneInstance.fMaterialHashMap[fData]=self then begin
+     fSceneInstance.fMaterialHashMap.Delete(fData);
+    end;
+   finally
+    fSceneInstance.fMaterialListLock.Release;
+   end;
+  finally
+   fAdded:=false;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TMaterial.Upload;
@@ -1614,12 +1802,12 @@ var UniversalQueue:TpvVulkanQueue;
     ClearCoatTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
 
- if not fUploaded then begin
+ if (fReferenceCounter>0) and not fUploaded then begin
 
   fLock.Acquire;
   try
 
-   if not fUploaded then begin
+   if (fReferenceCounter>0) and not fUploaded then begin
 
     try
 
@@ -1853,6 +2041,9 @@ begin
   fData.EmissiveFactor:=TpvVector3.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2]);
   if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
    fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index];
+   if assigned(fData.EmissiveTexture.Texture) then begin
+    fData.EmissiveTexture.Texture.IncRef;
+   end;
   end else begin
    fData.EmissiveTexture.Texture:=nil;
   end;
@@ -1860,6 +2051,9 @@ begin
   fData.EmissiveTexture.Transform.AssignFromGLTF(fData.EmissiveTexture,aSourceMaterial.EmissiveTexture.Extensions);
   if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<aTextureMap.Count) then begin
    fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index];
+   if assigned(fData.NormalTexture.Texture) then begin
+    fData.NormalTexture.Texture.IncRef;
+   end;
   end else begin
    fData.NormalTexture.Texture:=nil;
   end;
@@ -1868,6 +2062,9 @@ begin
   fData.NormalTextureScale:=aSourceMaterial.NormalTexture.Scale;
   if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<aTextureMap.Count) then begin
    fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index];
+   if assigned(fData.OcclusionTexture.Texture) then begin
+    fData.OcclusionTexture.Texture.IncRef;
+   end;
   end else begin
    fData.OcclusionTexture.Texture:=nil;
   end;
@@ -1880,6 +2077,9 @@ begin
   fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[0],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[1],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[2],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[3]);
   if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<aTextureMap.Count) then begin
    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index];
+   if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+    fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
+   end;
   end else begin
    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
   end;
@@ -1889,6 +2089,9 @@ begin
   fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
   if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index];
+   if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
+   end;
   end else begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
   end;
@@ -1923,6 +2126,9 @@ begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+       fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
+      end;
      end else begin
       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
      end;
@@ -1941,6 +2147,9 @@ begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
+      end;
      end else begin
       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
      end;
@@ -1973,6 +2182,9 @@ begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
      fData.PBRSheen.ColorIntensityTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+      fData.PBRSheen.ColorIntensityTexture.Texture.IncRef;
+     end;
     end else begin
      fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
     end;
@@ -1993,6 +2205,9 @@ begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
      fData.PBRClearCoat.Texture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+      fData.PBRClearCoat.Texture.Texture.IncRef;
+     end;
     end else begin
      fData.PBRClearCoat.Texture.Texture:=nil;
     end;
@@ -2005,6 +2220,9 @@ begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
      fData.PBRClearCoat.RoughnessTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+      fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
+     end;
     end else begin
      fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
     end;
@@ -2016,6 +2234,9 @@ begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
      fData.PBRClearCoat.NormalTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+      fData.PBRClearCoat.NormalTexture.Texture.IncRef;
+     end;
     end else begin
      fData.PBRClearCoat.NormalTexture.Texture:=nil;
     end;
@@ -2290,7 +2511,6 @@ begin
 
 end;
 
-
 function TpvScene3D.TGroup.TAnimation.GetAnimationBeginTime:TpvFloat;
 var Index:TpvSizeInt;
     Channel:TAnimation.PChannel;
@@ -2374,11 +2594,25 @@ constructor TpvScene3D.TGroup.TMesh.Create(const aGroup:TGroup;const aIndex:TpvS
 begin
  inherited Create(aGroup);
  fIndex:=aIndex;
+ fPrimitives:=nil;
  fNodeMeshInstances:=0;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.Destroy;
+var Index:TpvSizeInt;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
 begin
+ for Index:=0 to length(fPrimitives)-1 do begin
+  Primitive:=@fPrimitives[Index];
+  if assigned(Primitive^.Material) then begin
+   try
+    Primitive^.Material.DecRef;
+   finally
+    Primitive^.Material:=nil;
+   end;
+  end;
+ end;
+ fPrimitives:=nil;
  inherited Destroy;
 end;
 
@@ -2559,6 +2793,9 @@ begin
 
       if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
        DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
+       if assigned(DestinationMeshPrimitive^.Material) then begin
+        DestinationMeshPrimitive^.Material.IncRef;
+       end;
       end else begin
        DestinationMeshPrimitive^.Material:=nil;
       end;
