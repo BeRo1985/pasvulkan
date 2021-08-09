@@ -139,18 +139,24 @@ type EpvScene3D=class(Exception);
             TJointBlocks=array of TJointBlock;
             TMaxJointBlocks=array[0..9] of TJointBlock;
             PMaxJointBlocks=^TMaxJointBlocks;
+            { TBaseObject }
             TBaseObject=class(TpvResource)
              private
               fSceneInstance:TpvScene3D;
               fName:TpvUTF8String;
+              fReferenceCounter:Int32;
               fUploaded:TPasMPBool32;
+              fAdded:TPasMPBool32;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; virtual;
               procedure Upload; virtual;
               procedure Unload; virtual;
+              procedure IncRef; virtual;
+              procedure DecRef; virtual;
              public
               property SceneInstance:TpvScene3D read fSceneInstance;
              published
@@ -163,6 +169,7 @@ type EpvScene3D=class(Exception);
              private
               fGroup:TGroup;
             end;
+            { TImage }
             TImage=class(TBaseObject)
              public
               type THashData=packed record
@@ -179,12 +186,14 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
             TImages=TpvObjectGenericList<TImage>;
+            { TSampler }
             TSampler=class(TBaseObject)
              public
               type THashData=packed record
@@ -208,6 +217,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
@@ -216,6 +226,7 @@ type EpvScene3D=class(Exception);
               property Sampler:TpvVulkanSampler read fSampler;
             end;
             TSamplers=TpvObjectGenericList<TSampler>;
+            { TTexture }
             TTexture=class(TBaseObject)
              public
               type THashData=packed record
@@ -969,6 +980,10 @@ begin
 
  fUploaded:=false;
 
+ fAdded:=false;
+
+ fReferenceCounter:=0;
+
 end;
 
 destructor TpvScene3D.TBaseObject.Destroy;
@@ -986,12 +1001,32 @@ begin
  inherited BeforeDestruction;
 end;
 
+procedure TpvScene3D.TBaseObject.Remove;
+begin
+end;
+
 procedure TpvScene3D.TBaseObject.Upload;
 begin
 end;
 
 procedure TpvScene3D.TBaseObject.Unload;
 begin
+end;
+
+procedure TpvScene3D.TBaseObject.IncRef;
+begin
+ TPasMPInterlocked.Increment(fReferenceCounter);
+end;
+
+procedure TpvScene3D.TBaseObject.DecRef;
+begin
+ if assigned(self) and (TPasMPInterlocked.Decrement(fReferenceCounter)=0) then begin
+  try
+   Remove;
+  finally
+   DeferredFree;
+  end;
+ end;
 end;
 
 { TpvScene3D.TImage }
@@ -1014,26 +1049,41 @@ end;
 procedure TpvScene3D.TImage.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fImageListLock.Acquire;
  try
-  fSceneInstance.fImages.Add(self);
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   fSceneInstance.fImages.Add(self);
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
  finally
-  fSceneInstance.fImageListLock.Release;
+  fAdded:=true;
  end;
 end;
 
 procedure TpvScene3D.TImage.BeforeDestruction;
 begin
- fSceneInstance.fImageListLock.Acquire;
- try
-  fSceneInstance.fImages.Remove(self);
-  if fSceneInstance.fImageHashMap[fHashData]=self then begin
-   fSceneInstance.fImageHashMap.Delete(fHashData);
-  end;
- finally
-  fSceneInstance.fImageListLock.Release;
- end;
+ Remove;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TImage.Remove;
+begin
+ if fAdded then begin
+  try
+   fSceneInstance.fImageListLock.Acquire;
+   try
+    fSceneInstance.fImages.Remove(self);
+    if fSceneInstance.fImageHashMap[fHashData]=self then begin
+     fSceneInstance.fImageHashMap.Delete(fHashData);
+    end;
+   finally
+    fSceneInstance.fImageListLock.Release;
+   end;
+  finally
+   fAdded:=false;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TImage.Upload;
@@ -1042,10 +1092,10 @@ var GraphicsQueue:TpvVulkanQueue;
     GraphicsCommandBuffer:TpvVulkanCommandBuffer;
     GraphicsFence:TpvVulkanFence;
 begin
- if not fUploaded then begin
+ if (fReferenceCounter>0) and not fUploaded then begin
   fLock.Acquire;
   try
-   if not fUploaded then begin
+   if (fReferenceCounter>0) and not fUploaded then begin
     try
      GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
      try
@@ -1141,28 +1191,43 @@ end;
 procedure TpvScene3D.TSampler.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fSamplerListLock.Acquire;
  try
-  fSceneInstance.fSamplers.Add(self);
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   fSceneInstance.fSamplers.Add(self);
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
  finally
-  fSceneInstance.fSamplerListLock.Release;
+  fAdded:=true;
  end;
 end;
 
 procedure TpvScene3D.TSampler.BeforeDestruction;
+begin
+ Remove;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TSampler.Remove;
 var HashData:THashData;
 begin
- HashData:=GetHashData;
- fSceneInstance.fSamplerListLock.Acquire;
- try
-  fSceneInstance.fSamplers.Remove(self);
-  if fSceneInstance.fSamplerHashMap[HashData]=self then begin
-   fSceneInstance.fSamplerHashMap.Delete(HashData);
+ if fAdded then begin
+  try
+   HashData:=GetHashData;
+   fSceneInstance.fSamplerListLock.Acquire;
+   try
+    fSceneInstance.fSamplers.Remove(self);
+    if fSceneInstance.fSamplerHashMap[HashData]=self then begin
+     fSceneInstance.fSamplerHashMap.Delete(HashData);
+    end;
+   finally
+    fSceneInstance.fSamplerListLock.Release;
+   end;
+  finally
+   fAdded:=false;
   end;
- finally
-  fSceneInstance.fSamplerListLock.Release;
  end;
- inherited BeforeDestruction;
 end;
 
 function TpvScene3D.TSampler.GetHashData:THashData;
@@ -1256,10 +1321,10 @@ end;
 
 procedure TpvScene3D.TSampler.Upload;
 begin
- if not fUploaded then begin
+ if (fReferenceCounter>0) and not fUploaded then begin
   fLock.Acquire;
   try
-   if not fUploaded then begin
+   if (fReferenceCounter>0) and not fUploaded then begin
     try
      fSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
                                        fMagFilter,
@@ -1322,9 +1387,21 @@ begin
 
  Unload;
 
- fImage:=nil;
+ if assigned(fImage) then begin
+  try
+   fImage.DecRef;
+  finally
+   fImage:=nil;
+  end;
+ end;
 
- fSampler:=nil;
+ if assigned(fSampler) then begin
+  try
+   fSampler.DecRef;
+  finally
+   fSampler:=nil;
+  end;
+ end;
 
  inherited Destroy;
 end;
@@ -1344,8 +1421,20 @@ procedure TpvScene3D.TTexture.BeforeDestruction;
 var HashData:THashData;
 begin
  HashData:=GetHashData;
- fImage:=nil;
- fSampler:=nil;
+ if assigned(fImage) then begin
+  try
+   fImage.DecRef;
+  finally
+   fImage:=nil;
+  end;
+ end;
+ if assigned(fSampler) then begin
+  try
+   fSampler.DecRef;
+  finally
+   fSampler:=nil;
+  end;
+ end;
  fSceneInstance.fTextureListLock.Acquire;
  try
   fSceneInstance.fTextures.Remove(self);
@@ -1406,11 +1495,17 @@ begin
  fName:=aSourceTexture.Name;
  if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
   fImage:=aImageMap[aSourceTexture.Source];
+  if assigned(fImage) then begin
+   fImage.IncRef;
+  end;
  end else begin
   raise EPasGLTFInvalidDocument.Create('Image index out of range');
  end;
  if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
   fSampler:=aSamplerMap[aSourceTexture.Sampler];
+  if assigned(fSampler) then begin
+   fSampler.IncRef;
+  end;
  end else begin
   raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
  end;
