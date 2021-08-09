@@ -506,9 +506,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Group:TGroup read fGroup write fGroup;
                    end;
-
                    { TAnimation }
-
                    TAnimation=class(TGroupObject)
                     public
                      type TChannel=record
@@ -658,6 +656,35 @@ type EpvScene3D=class(Exception);
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
                    TNodes=TpvObjectGenericList<TNode>;
+                   TLight=class(TGroupObject)
+                    public
+                     type TType=
+                           (
+                            None=0,
+                            Directional=1,
+                            Point=2,
+                            Spot=3
+                           );
+                    private
+                     fIndex:TpvSizeInt;
+                     fType_:TType;
+                     fNodes:TNodes;
+                     fShadowMapIndex:TpvInt32;
+                     fIntensity:TpvFloat;
+                     fRange:TpvFloat;
+                     fInnerConeAngle:TpvFloat;
+                     fOuterConeAngle:TpvFloat;
+                     fDirection:TpvVector3;
+                     fColor:TpvVector3;
+                     fCastShadows:boolean;
+                    public
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     destructor Destroy; override;
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
+                    published
+                     property Index:TpvSizeInt read fIndex;
+                   end;
+                   TLights=TpvObjectGenericList<TLight>;
                    TNode=class(TGroupObject)
                     public
                      type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
@@ -668,6 +695,7 @@ type EpvScene3D=class(Exception);
                      fMesh:TMesh;
                      fCamera:TCamera;
                      fSkin:TSkin;
+                     fLight:TLight;
                      fWeights:TpvFloatDynamicArray;
                      fJoint:TPasGLTFSizeInt;
                      fMatrix:TpvMatrix4x4;
@@ -680,7 +708,7 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
-                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Children:TNodes read fChildren;
@@ -831,6 +859,7 @@ type EpvScene3D=class(Exception);
               fCameras:TCameras;
               fMeshes:TMeshes;
               fSkins:TSkins;
+              fLights:TLights;
               fNodes:TNodes;
               fScenes:TScenes;
               fScene:TScene;
@@ -868,6 +897,7 @@ type EpvScene3D=class(Exception);
               property Cameras:TCameras read fCameras;
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
+              property Lights:TLights read fLights;
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
@@ -3130,7 +3160,98 @@ begin
 
 end;
 
-{ TpvScene3D.TNode }
+{ TpvScene3D.TGroup.TLight }
+
+constructor TpvScene3D.TGroup.TLight.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
+begin
+ inherited Create(aGroup);
+ fIndex:=aIndex;
+ fNodes:=TNodes.Create;
+ fNodes.OwnsObjects:=false;
+end;
+
+destructor TpvScene3D.TGroup.TLight.Destroy;
+begin
+ FreeAndNil(fNodes);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TLight.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
+var TypeString:TPasJSONUTF8String;
+    ColorItem,SpotItem:TPasJSONItem;
+    ColorArray:TPasJSONItemArray;
+    SpotObject:TPasJSONItemObject;
+begin
+ fName:='';
+ fNodes.Clear;
+ fType_:=TType.None;
+ fShadowMapIndex:=-1;
+ fIntensity:=1.0;
+ fRange:=0.0;
+ fInnerConeAngle:=0.0;
+ fOuterConeAngle:=pi*0.25;
+ fColor.x:=1.0;
+ fColor.y:=1.0;
+ fColor.z:=1.0;
+ fCastShadows:=false;
+ if assigned(aSourceLight) then begin
+  fName:=TPasJSON.GetString(aSourceLight.Properties['name'],'');
+  TypeString:=TPasJSON.GetString(aSourceLight.Properties['type'],'');
+  if pos('_noshadows',String(fName))>0 then begin
+   fCastShadows:=false;
+  end else begin
+   fCastShadows:=TPasJSON.GetBoolean(aSourceLight.Properties['castShadows'],true);
+  end;
+  if TypeString='directional' then begin
+   fType_:=TType.Directional;
+{  if fCastShadows then begin
+    fShadowMapIndex:=fCountNormalShadowMaps;
+    inc(fCountNormalShadowMaps);
+   end;}
+  end else if TypeString='point' then begin
+   fType_:=TType.Point;
+{  if fCastShadows then begin
+    fShadowMapIndex:=fCountCubeMapShadowMaps;
+    inc(fCountCubeMapShadowMaps);
+   end;}
+  end else if TypeString='spot' then begin
+   fType_:=TType.Spot;
+{  if fCastShadows then begin
+    fShadowMapIndex:=fCountNormalShadowMaps;
+    inc(fCountNormalShadowMaps);
+   end;}
+  end else begin
+   fType_:=TType.None;
+{  if fCastShadows then begin
+    fShadowMapIndex:=fCountNormalShadowMaps;
+    inc(fCountNormalShadowMaps);
+   end;}
+  end;
+  fIntensity:=TPasJSON.GetNumber(aSourceLight.Properties['intensity'],fIntensity);
+  fRange:=TPasJSON.GetNumber(aSourceLight.Properties['range'],fRange);
+  SpotItem:=aSourceLight.Properties['spot'];
+  if assigned(SpotItem) and (SpotItem is TPasJSONItemObject) then begin
+   SpotObject:=TPasJSONItemObject(SpotItem);
+   fInnerConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['innerConeAngle'],fInnerConeAngle);
+   fOuterConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['outerConeAngle'],fOuterConeAngle);
+  end;
+  ColorItem:=aSourceLight.Properties['color'];
+  if assigned(ColorItem) and (ColorItem is TPasJSONItemArray) then begin
+   ColorArray:=TPasJSONItemArray(ColorItem);
+   if ColorArray.Count>0 then begin
+    fColor.x:=TPasJSON.GetNumber(ColorArray.Items[0],fColor.x);
+   end;
+   if ColorArray.Count>1 then begin
+    fColor.y:=TPasJSON.GetNumber(ColorArray.Items[1],fColor.y);
+   end;
+   if ColorArray.Count>2 then begin
+    fColor.z:=TPasJSON.GetNumber(ColorArray.Items[2],fColor.z);
+   end;
+  end;
+ end;
+end;
+
+{ TpvScene3D.TGroup.TNode }
 
 constructor TpvScene3D.TGroup.TNode.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
@@ -3148,6 +3269,8 @@ begin
 
  fSkin:=nil;
 
+ fLight:=nil;
+
  fShaderStorageBufferObjectOffset:=0;
 
  fShaderStorageBufferObjectSize:=0;
@@ -3161,6 +3284,8 @@ begin
 
  fSkin:=nil;
 
+ fLight:=nil;
+
  FreeAndNil(fChildren);
 
  fChildNodeIndices.Finalize;
@@ -3169,9 +3294,12 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode);
-var WeightIndex,ChildrenIndex,Count:TPasGLTFSizeInt;
+procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TLights);
+var WeightIndex,ChildrenIndex,Count,LightIndex:TPasGLTFSizeInt;
     Mesh:TMesh;
+    ExtensionObject:TPasJSONItemObject;
+    KHRLightsPunctualItem:TPasJSONItem;
+    KHRLightsPunctualObject:TPasJSONItemObject;
 begin
 
  fName:=aSourceNode.Name;
@@ -3226,6 +3354,21 @@ begin
   fChildNodeIndices.Items[ChildrenIndex]:=aSourceNode.Children[ChildrenIndex];
  end;
  fChildNodeIndices.Finish;
+
+ if aLightMap.Count>0 then begin
+  ExtensionObject:=aSourceNode.Extensions;
+  if assigned(ExtensionObject) then begin
+   KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
+   if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
+    KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
+    LightIndex:=TPasJSON.GetInt64(KHRLightsPunctualObject.Properties['light'],-1);
+    if (LightIndex>=0) and (LightIndex<aLightMap.Count) then begin
+     fLight:=aLightMap[LightIndex];
+     fLight.fNodes.Add(self);
+    end;
+   end;
+  end;
+ end;
 
 end;
 
@@ -3299,6 +3442,9 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
 
+ fLights:=TLights.Create;
+ fLights.OwnsObjects:=true;
+
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
 
@@ -3333,6 +3479,8 @@ begin
  FreeAndNil(fInstanceListLock);
 
  FreeAndNil(fScenes);
+
+ FreeAndNil(fLights);
 
  FreeAndNil(fNodes);
 
@@ -3557,10 +3705,12 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
-var ImageMap:TpvScene3D.TImages;
+var LightMap:TpvScene3D.TGroup.TLights;
+    ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
     TextureMap:TpvScene3D.TTextures;
     MaterialMap:TpvScene3D.TMaterials;
+    HasLights:boolean;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
@@ -3756,6 +3906,42 @@ var ImageMap:TpvScene3D.TImages;
    end;
   end;
  end;
+ procedure ProcessLights;
+ var Index:TpvSizeInt;
+     Light:TLight;
+     ExtensionObject:TPasJSONItemObject;
+     KHRLightsPunctualItem,LightsItem,LightItem:TPasJSONItem;
+     KHRLightsPunctualObject:TPasJSONItemObject;
+     LightsArray:TPasJSONItemArray;
+ begin
+  if HasLights then begin
+   ExtensionObject:=aSourceDocument.Extensions;
+   if assigned(ExtensionObject) then begin
+    KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
+    if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
+     KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
+     LightsItem:=KHRLightsPunctualObject.Properties['lights'];
+     if assigned(LightsItem) and (LightsItem is TPasJSONItemArray) then begin
+      LightsArray:=TPasJSONItemArray(LightsItem);
+      for Index:=0 to LightsArray.Count-1 do begin
+       LightItem:=LightsArray.Items[Index];
+       if assigned(LightItem) and (LightItem is TPasJSONItemObject) then begin
+        Light:=TLight.Create(self,Index);
+        try
+         Light.AssignFromGLTF(aSourceDocument,TPasJSONItemObject(LightItem));
+        finally
+         fLights.Add(Light);
+        end;
+       end else begin
+        Light:=nil;
+       end;
+       LightMap.Add(Light);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
  procedure ProcessNodes;
  var Index:TpvSizeInt;
      SourceNode:TPasGLTF.TNode;
@@ -3765,7 +3951,7 @@ var ImageMap:TpvScene3D.TImages;
    SourceNode:=aSourceDocument.Nodes[Index];
    Node:=TNode.Create(self,Index);
    try
-    Node.AssignFromGLTF(aSourceDocument,SourceNode);
+    Node.AssignFromGLTF(aSourceDocument,SourceNode,LightMap);
    finally
     fNodes.Add(Node);
    end;
@@ -3821,66 +4007,78 @@ begin
 
  fMaximalCountInstances:=aMaximalCountInstances;
 
- ImageMap:=TpvScene3D.TImages.Create;
- ImageMap.OwnsObjects:=false;
+ HasLights:=aSourceDocument.ExtensionsUsed.IndexOf('KHR_lights_punctual')>=0;
+
+ LightMap:=TpvScene3D.TGroup.TLights.Create;
+ LightMap.OwnsObjects:=false;
  try
 
-  ProcessImages;
+  ProcessLights;
 
-  SamplerMap:=TpvScene3D.TSamplers.Create;
-  SamplerMap.OwnsObjects:=false;
+  ImageMap:=TpvScene3D.TImages.Create;
+  ImageMap.OwnsObjects:=false;
   try
 
-   ProcessSamplers;
+   ProcessImages;
 
-   TextureMap:=TpvScene3D.TTextures.Create;
-   TextureMap.OwnsObjects:=false;
+   SamplerMap:=TpvScene3D.TSamplers.Create;
+   SamplerMap.OwnsObjects:=false;
    try
 
-    ProcessTextures;
+    ProcessSamplers;
 
-    MaterialMap:=TpvScene3D.TMaterials.Create;
-    MaterialMap.OwnsObjects:=false;
+    TextureMap:=TpvScene3D.TTextures.Create;
+    TextureMap.OwnsObjects:=false;
     try
 
-     ProcessMaterials;
+     ProcessTextures;
 
-     ProcessAnimations;
+     MaterialMap:=TpvScene3D.TMaterials.Create;
+     MaterialMap.OwnsObjects:=false;
+     try
 
-     ProcessCameras;
+      ProcessMaterials;
 
-     ProcessMeshes;
+      ProcessAnimations;
 
-     ProcessSkins;
+      ProcessCameras;
 
-     ProcessNodes;
+      ProcessMeshes;
 
-     ProcessScenes;
+      ProcessSkins;
 
-     if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
-      fScene:=fScenes[aSourceDocument.Scene];
-     end else if fScenes.Count>0 then begin
-      fScene:=fScenes[0];
-     end else begin
-      fScene:=nil;
+      ProcessNodes;
+
+      ProcessScenes;
+
+      if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
+       fScene:=fScenes[aSourceDocument.Scene];
+      end else if fScenes.Count>0 then begin
+       fScene:=fScenes[0];
+      end else begin
+       fScene:=nil;
+      end;
+
+      CalculateBoundingBox;
+
+     finally
+      FreeAndNil(MaterialMap);
      end;
 
-     CalculateBoundingBox;
-
     finally
-     FreeAndNil(MaterialMap);
+     FreeAndNil(TextureMap);
     end;
 
    finally
-    FreeAndNil(TextureMap);
+    FreeAndNil(SamplerMap);
    end;
 
   finally
-   FreeAndNil(SamplerMap);
+   FreeAndNil(ImageMap);
   end;
 
  finally
-  FreeAndNil(ImageMap);
+  FreeAndNil(LightMap);
  end;
 
  ConstructBuffers;
