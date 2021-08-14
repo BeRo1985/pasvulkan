@@ -3940,6 +3940,7 @@ var Index:TpvSizeInt;
                                             TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
  end;
+var Instance:TpvScene3D.TGroup.TInstance;
 begin
  if not fUploaded then begin
   fLock.Acquire;
@@ -3990,10 +3991,17 @@ begin
    fLock.Release;
   end;
  end;
+ for Instance in fInstances do begin
+  Instance.Upload;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.Unload;
+var Instance:TpvScene3D.TGroup.TInstance;
 begin
+ for Instance in fInstances do begin
+  Instance.Unload;
+ end;
  if fUploaded then begin
   fLock.Acquire;
   try
