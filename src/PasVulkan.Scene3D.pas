@@ -706,6 +706,7 @@ type EpvScene3D=class(Exception);
                      fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
                      fMesh:TMesh;
+                     fNodeMeshInstanceIndex:TPasGLTFSizeInt;
                      fCamera:TCamera;
                      fSkin:TSkin;
                      fLight:TLight;
@@ -727,6 +728,7 @@ type EpvScene3D=class(Exception);
                      property Children:TNodes read fChildren;
                      property Camera:TCamera read fCamera;
                      property Mesh:TMesh read fMesh;
+                     property NodeMeshInstanceIndex:TPasGLTFSizeInt read fNodeMeshInstanceIndex;
                      property Skin:TSkin read fSkin;
                    end;
                    TScene=class(TGroupObject)
@@ -1812,6 +1814,7 @@ begin
     try
 
      fSceneInstance.UploadWhiteTexture;
+
      fSceneInstance.UploadDefaultNormalMapTexture;
 
      if assigned(fData.NormalTexture.Texture) then begin
@@ -3599,6 +3602,8 @@ begin
 
  fMesh:=nil;
 
+ fNodeMeshInstanceIndex:=-1;
+
  fSkin:=nil;
 
  fLight:=nil;
@@ -3671,6 +3676,7 @@ begin
 
  if assigned(fMesh) then begin
   Mesh:=fMesh;
+  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex);
   Count:=length(fWeights);
   if Count<length(Mesh.fWeights) then begin
    SetLength(fWeights,length(Mesh.fWeights));
@@ -3678,6 +3684,8 @@ begin
     fWeights[WeightIndex]:=Mesh.fWeights[WeightIndex];
    end;
   end;
+ end else begin
+  fNodeMeshInstanceIndex:=-1;
  end;
 
  fChildNodeIndices.Initialize;
@@ -5129,7 +5137,7 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
   if assigned(Node.fMesh) then begin
-   if SkinUsed then begin
+   if SkinUsed and assigned(Node.fSkin) then begin
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
@@ -5143,6 +5151,8 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
 var Index:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
  Scene:=GetScene;
  if assigned(Scene) then begin
@@ -5168,6 +5178,13 @@ begin
   end;
   for Index:=0 to Scene.fNodes.Count-1 do begin
    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+  end;
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
+   Node:=fGroup.fNodes[Index];
+   InstanceNode:=@fNodes[Index];
+   fNodeMatrices[Node.Index]:=InstanceNode^.WorkMatrix;
+   {Node.
+   InstanceNode^.WorkWeights;}
   end;
  end;
  fVulkanData:=fVulkanDatas[pvApplication.DrawFrameCounter mod MaxSwapChainImages];
@@ -5422,6 +5439,7 @@ begin
                                                                     false,
                                                                     0,
                                                                     true);
+        fDefaultNormalMapTexture.UpdateSampler;
        finally
         FreeAndNil(GraphicsFence);
        end;
