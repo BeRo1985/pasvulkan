@@ -641,7 +641,7 @@ type EpvScene3D=class(Exception);
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
                      fNodeMeshInstances:TpvSizeInt;
-                     function CreateNodeMeshInstance(const aNodeIndex:TpvUInt32):TpvSizeInt;
+                     function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset:TpvUInt32):TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -711,6 +711,7 @@ type EpvScene3D=class(Exception);
                      fSkin:TSkin;
                      fLight:TLight;
                      fWeights:TpvFloatDynamicArray;
+                     fWeightsOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
                      fMatrix:TpvMatrix4x4;
                      fTranslation:TpvVector3;
@@ -884,6 +885,7 @@ type EpvScene3D=class(Exception);
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
               fSkinStorageBufferSize:TpvSizeInt;
               fMorphTargetCount:TpvSizeInt;
+              fCountNodeWeights:TpvSizeInt;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
@@ -2619,13 +2621,14 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex:TpvUInt32):TpvSizeInt;
+function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset:TpvUInt32):TpvSizeInt;
 var PrimitiveIndex,
     NodeMeshPrimitiveInstanceIndex,
     VertexIndex,
     NewVertexIndex,
     IndexIndex,
     NewMorphTargetVertexIndex,
+    WeightIndex,
     JointBlockIndex,
     NewJointBlockIndex:TpvSizeInt;
     Primitive:TMesh.PPrimitive;
@@ -2650,6 +2653,20 @@ begin
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
     Vertex^.NodeIndex:=aNodeIndex;
+    if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
+     WeightIndex:=0;
+     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+      MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+      MorphTargetVertex^.Index:=aWeightsOffset+WeightIndex;
+      inc(WeightIndex);
+      if MorphTargetVertex^.Next=TpvUInt32($ffffffff) then begin
+       break;
+      end else begin
+       MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+      end;
+     end;
+    end;
    end;
   end;
 
@@ -2671,13 +2688,16 @@ begin
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex;
     if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
+     WeightIndex:=0;
      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
       NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
       fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex]:=fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
       MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex];
-      MorphTargetVertex^.Index:=(MorphTargetVertex^.Index-Primitive^.MorphTargetBaseIndex)+NodeMeshPrimitiveInstance^.MorphTargetBaseIndex;
+//    MorphTargetVertex^.Index:=(MorphTargetVertex^.Index-Primitive^.MorphTargetBaseIndex)+NodeMeshPrimitiveInstance^.MorphTargetBaseIndex;
+      MorphTargetVertex^.Index:=aWeightsOffset+WeightIndex;
+      inc(WeightIndex);
       if MorphTargetVertex^.Next=TpvUInt32($ffffffff) then begin
        break;
       end else begin
@@ -3674,9 +3694,11 @@ begin
   fWeights[WeightIndex]:=aSourceNode.Weights[WeightIndex];
  end;
 
+ fWeightsOffset:=Group.fCountNodeWeights;
+
  if assigned(fMesh) then begin
   Mesh:=fMesh;
-  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex);
+  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset);
   Count:=length(fWeights);
   if Count<length(Mesh.fWeights) then begin
    SetLength(fWeights,length(Mesh.fWeights));
@@ -3687,6 +3709,8 @@ begin
  end else begin
   fNodeMeshInstanceIndex:=-1;
  end;
+
+ inc(fGroup.fCountNodeWeights,length(fWeights));
 
  fChildNodeIndices.Initialize;
  fChildNodeIndices.Resize(aSourceNode.Children.Count);
@@ -4295,6 +4319,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      SourceNode:TPasGLTF.TNode;
      Node:TNode;
  begin
+  fCountNodeWeights:=0;
   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
    SourceNode:=aSourceDocument.Nodes[Index];
    Node:=TNode.Create(self,Index);
@@ -4307,6 +4332,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
   for Index:=0 to fNodes.Count-1 do begin
    fNodes[Index].Finish;
   end;
+{ if fCountNodeWeights=fMorphTargetCount then begin
+  end;}
  end;
  procedure ProcessScenes;
  var Index:TpvSizeInt;
@@ -4649,7 +4676,7 @@ begin
  if not fUploaded then begin
   try
    SetLength(fNodeMatrices,Max(fGroup.fNodes.Count,1));
-   SetLength(fMorphTargetVertexWeights,Max(fGroup.fMorphTargetCount,1));
+   SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
    for Index:=0 to length(fVulkanDatas)-1 do begin
     fVulkanDatas[Index].Upload;
    end;
@@ -5183,8 +5210,9 @@ begin
    Node:=fGroup.fNodes[Index];
    InstanceNode:=@fNodes[Index];
    fNodeMatrices[Node.Index]:=InstanceNode^.WorkMatrix;
-   {Node.
-   InstanceNode^.WorkWeights;}
+   if length(InstanceNode^.WorkWeights)>0 then begin
+    Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
+   end;
   end;
  end;
  fVulkanData:=fVulkanDatas[pvApplication.DrawFrameCounter mod MaxSwapChainImages];
