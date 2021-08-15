@@ -80,7 +80,9 @@ uses {$ifdef Windows}
      PasVulkan.Resources,
      PasVulkan.Techniques,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.BVH.DynamicAABBTree,
+     PasVulkan.BVH.StaticAABBTree;
 
 type EpvScene3D=class(Exception);
 
