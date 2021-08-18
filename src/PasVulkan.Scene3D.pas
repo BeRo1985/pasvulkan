@@ -826,6 +826,17 @@ type EpvScene3D=class(Exception);
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
                           end;
                           TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
+                          TMaterialMode=
+                           (
+                            Opaque,
+                            AlphaTest,
+                            Transparent
+                           );
+                          TRenderingMode=
+                           (
+                            ShadowDepth,
+                            Forward_
+                           );
                     private
                      fGroup:TGroup;
                      fScene:TPasGLTFSizeInt;
@@ -856,6 +867,7 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure Update;
+                     procedure Draw(const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Scene:TpvSizeInt read fScene write SetScene;
@@ -4651,7 +4663,7 @@ begin
  result:=fAnimations[aIndex+1];
 end;
 
-procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene:TPasGLTFSizeInt);
+procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene: TpvSizeInt);
 begin
  fScene:=Min(Max(aScene,-1),fGroup.fScenes.Count-1);
 end;
@@ -5220,6 +5232,25 @@ begin
  fVulkanData:=fVulkanDatas[pvApplication.DrawFrameCounter mod MaxSwapChainImages];
  if assigned(fVulkanData) then begin
   fVulkanData.Update;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Draw(const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
+var NodeIndex,MeshPrimitiveIndex:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    Material:TpvScene3D.TMaterial;
+begin
+ for NodeIndex:=0 to fGroup.fNodes.Count-1 do begin
+  Node:=fGroup.fNodes[NodeIndex];
+  if assigned(Node.Mesh) then begin
+   for MeshPrimitiveIndex:=0 to length(Node.Mesh.fPrimitives)-1 do begin
+    Primitive:=@Node.Mesh.fPrimitives[MeshPrimitiveIndex];
+    if assigned(Primitive^.Material) then begin
+     Material:=Primitive^.Material;
+    end;
+   end;
+  end;
  end;
 end;
 
