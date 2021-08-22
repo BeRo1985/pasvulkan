@@ -742,9 +742,22 @@ type EpvScene3D=class(Exception);
                      property Skin:TSkin read fSkin;
                    end;
                    TScene=class(TGroupObject)
+                    public
+                     type { TMaterial }
+                          TMaterial=class
+                           private
+                            fPrimitives:TpvDynamicArray<TpvScene3D.TGroup.TMesh.PPrimitive>;
+                           public
+                            constructor Create; reintroduce;
+                            destructor Destroy; override;
+                          end;
+                          TMaterials=class(TpvObjectList<TpvScene3D.TGroup.TScene.TMaterial>);
+                          TMaterialHashMap=class(TpvHashMap<TpvScene3D.TMaterial,TpvScene3D.TGroup.TScene.TMaterial>);
                     private
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
+                     fMaterials:TpvScene3D.TGroup.TScene.TMaterials;
+                     fMaterialHashMap:TpvScene3D.TGroup.TScene.TMaterialHashMap;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -921,6 +934,7 @@ type EpvScene3D=class(Exception);
               fInstances:TInstances;
               fBoundingBox:TpvAABB;
               procedure ConstructBuffers;
+              procedure CollectMaterialPrimitives;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -3478,7 +3492,7 @@ begin
 
 end;
 
-{ TpvScene3D.TSkin }
+{ TpvScene3D.TGroup.TSkin }
 
 constructor TpvScene3D.TGroup.TSkin.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
@@ -3774,6 +3788,20 @@ begin
  end;
 end;
 
+{ TpvScene3D.TGroup.TMaterial }
+
+constructor TpvScene3D.TGroup.TScene.TMaterial.Create;
+begin
+ inherited Create;
+ fPrimitives.Initialize;
+end;
+
+destructor TpvScene3D.TGroup.TScene.TMaterial.Destroy;
+begin
+ fPrimitives.Finalize;
+ inherited Destroy;
+end;
+
 { TpvScene3D.TGroup.TScene }
 
 constructor TpvScene3D.TGroup.TScene.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
@@ -3782,10 +3810,15 @@ begin
  fIndex:=aIndex;
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
+ fMaterials:=TpvScene3D.TGroup.TScene.TMaterials.Create;
+ fMaterials.OwnsObjects:=true;
+ fMaterialHashMap:=TpvScene3D.TGroup.TScene.TMaterialHashMap.Create(nil);
 end;
 
 destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
+ FreeAndNil(fMaterialHashMap);
+ FreeAndNil(fMaterials);
  FreeAndNil(fNodes);
  inherited Destroy;
 end;
@@ -4117,6 +4150,50 @@ begin
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
 
+procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
+ procedure ProcessNode(const aScene:TpvScene3D.TGroup.TScene;const aNode:TpvScene3D.TGroup.TNode);
+ var PrimitiveIndex:TpvSizeInt;
+     Mesh:TpvScene3D.TGroup.TMesh;
+     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+     Node:TpvScene3D.TGroup.TNode;
+     Material:TpvScene3D.TMaterial;
+     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
+ begin
+  Mesh:=aNode.fMesh;
+  if assigned(Mesh) then begin
+   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+    if assigned(Primitive) then begin
+     Material:=Primitive.Material;
+     if assigned(Material) then begin
+      SceneMaterial:=aScene.fMaterialHashMap[Material];
+      if not assigned(SceneMaterial) then begin
+       SceneMaterial:=TpvScene3D.TGroup.TScene.TMaterial.Create;
+       try
+        aScene.fMaterialHashMap[Material]:=SceneMaterial;
+       finally
+        aScene.fMaterials.Add(SceneMaterial);
+       end;
+      end;
+      SceneMaterial.fPrimitives.Add(Primitive);
+     end;
+    end;
+   end;
+  end;
+  for Node in aNode.Children do begin
+   ProcessNode(aScene,Node);
+  end;
+ end;
+var Scene:TpvScene3D.TGroup.TScene;
+    Node:TpvScene3D.TGroup.TNode;
+begin
+ for Scene in fScenes do begin
+  for Node in Scene.fNodes do begin
+   ProcessNode(Scene,Node);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
 var LightMap:TpvScene3D.TGroup.TLights;
     ImageMap:TpvScene3D.TImages;
@@ -4222,12 +4299,12 @@ var LightMap:TpvScene3D.TGroup.TLights;
  var Index:TpvSizeInt;
      SourceMaterial:TPasGLTF.TMaterial;
      Material,
-     HashedMaterial:TMaterial;
-     HashData:TMaterial.THashData;
+     HashedMaterial:TpvScene3D.TMaterial;
+     HashData:TpvScene3D.TMaterial.THashData;
  begin
   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
    SourceMaterial:=aSourceDocument.Materials[Index];
-   Material:=TMaterial.Create(pvApplication.ResourceManager,self);
+   Material:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,self);
    try
     fSceneInstance.fMaterialListLock.Acquire;
     try
@@ -4499,6 +4576,8 @@ begin
 
  ConstructBuffers;
 
+ CollectMaterialPrimitives;
+
 end;
 
 function TpvScene3D.TGroup.CreateInstance:TpvScene3D.TGroup.TInstance;
@@ -4731,7 +4810,7 @@ begin
    fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                          length(fVulkanDescriptorSets));
-   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4*length(fVulkanDescriptorSets));
+   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanDescriptorSets)*4);
    fVulkanDescriptorPool.Initialize;
 
    for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
