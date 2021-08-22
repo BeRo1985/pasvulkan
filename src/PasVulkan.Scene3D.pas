@@ -113,7 +113,8 @@ type EpvScene3D=class(Exception);
             end;
             PViewPortGlobalsUniformBuffer=^TViewPortGlobalsUniformBuffer;
             TVertexStagePushConstants=record
-             ModelMatrix:TpvMatrix4x4;
+             ViewMatrix:TpvMatrix4x4;
+             ProjectionMatrix:TpvMatrix4x4;
             end;
             PVertexStagePushConstants=^TVertexStagePushConstants;
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
@@ -899,6 +900,7 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure Update;
                      procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aMaterialMode:TMaterialMode;
                                     const aRenderingMode:TRenderingMode);
                     published
@@ -5463,9 +5465,12 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
+procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aPipelineLayout:TpvVulkanPipelineLayout;
+                                           const aMaterialMode:TMaterialMode;
+                                           const aRenderingMode:TRenderingMode);
 const Offsets:TVkDeviceSize=0;
-var SceneIndex,SceneMaterialIndex,NodeIndex,MeshPrimitiveIndex:TpvSizeInt;
+var SceneIndex,SceneMaterialIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
@@ -5476,16 +5481,19 @@ begin
 
  aCommandBuffer.CmdBindIndexBuffer(fGroup.fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
 
- // Push constants = Model matrix
- //VertexStagePushConstants.ModelMatrix:=;
- aCommandBuffer.CmdPushConstants(0,
+ aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                  0,
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
                                  @VertexStagePushConstants);
 
- // Set 0 = Mesh
- //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,0,1,@fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      aPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
+                                      0,
+                                      nil);
 
  if fScene<0 then begin
   SceneIndex:=0;
@@ -5502,8 +5510,13 @@ begin
     SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
     if SceneMaterial.fCountIndices>0 then begin
      Material:=SceneMaterial.fMaterial;
-     // Set 1 = Material
-//   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,1,1,@Material.fVulkanDescriptorSet.Handle);
+     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                          aPipelineLayout.Handle,
+                                          1,
+                                          1,
+                                          @Material.fVulkanDescriptorSet.Handle,
+                                          0,
+                                          nil);
      aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
     end;
    end;
