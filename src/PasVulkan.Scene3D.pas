@@ -871,6 +871,7 @@ type EpvScene3D=class(Exception);
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
                      fUploaded:boolean;
+                     fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fVulkanDatas:TVulkanDatas;
@@ -898,6 +899,7 @@ type EpvScene3D=class(Exception);
                      property Nodes:TNodes read fNodes;
                      property Skins:TSkins read fSkins;
                      property UserData:pointer read fUserData write fUserData;
+                     property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                     published
                      property VulkanData:TVulkanData read fVulkanData;
                      property Automations[const aIndex:TPasGLTFSizeInt]:TAnimation read GetAutomation;
@@ -946,6 +948,7 @@ type EpvScene3D=class(Exception);
               procedure BeforeDestruction; override;
               procedure Upload; override;
               procedure Unload; override;
+              procedure Update;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
               function CreateInstance:TpvScene3D.TGroup.TInstance;
              public
@@ -999,6 +1002,7 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
+       procedure Update;
        procedure Draw(const aViewMatrix:TpvMatrix4x4;
                       const aProjectionMatrix:TpvMatrix4x4;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -4636,6 +4640,14 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.Update;
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.Update;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
                                  const aPipelineLayout:TpvVulkanPipelineLayout;
                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
@@ -4742,6 +4754,7 @@ begin
   fGroup:=nil;
  end;
  fUploaded:=false;
+ fModelMatrix:=TpvMatrix4x4.Identity;
  fScene:=-1;
  fNodes:=nil;
  fSkins:=nil;
@@ -5456,7 +5469,7 @@ begin
   for Index:=0 to Scene.fNodes.Count-1 do begin
    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
   end;
-  fNodeMatrices[0]:=TpvMatrix4x4.Identity;
+  fNodeMatrices[0]:=fModelMatrix;
   for Index:=0 to fGroup.fNodes.Count-1 do begin
    Node:=fGroup.fNodes[Index];
    InstanceNode:=@fNodes[Index];
@@ -5475,47 +5488,38 @@ end;
 procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneIndex,SceneMaterialIndex:TpvSizeInt;
+var SceneMaterialIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
     First:boolean;
 begin
- if fScene<0 then begin
-  SceneIndex:=0;
- end else if fScene>=fGroup.fScenes.Count then begin
-  SceneIndex:=fGroup.fScenes.Count-1;
- end else begin
-  SceneIndex:=fScene;
- end;
- if (SceneIndex>=0) and (SceneIndex<fGroup.fScenes.Count) then begin
-  Scene:=fGroup.fScenes[SceneIndex];
-  if assigned(Scene) then begin
-   First:=true;
-   for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
-    SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
-    if SceneMaterial.fCountIndices>0 then begin
-     Material:=SceneMaterial.fMaterial;
-     if Material.fData.AlphaMode in aMaterialAlphaModes then begin
-      if First then begin
-       First:=false;
-       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            aPipelineLayout.Handle,
-                                            0,
-                                            1,
-                                            @fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
-                                            0,
-                                            nil);
-      end;
+ Scene:=GetScene;
+ if assigned(Scene) then begin
+  First:=true;
+  for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
+   SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
+   if SceneMaterial.fCountIndices>0 then begin
+    Material:=SceneMaterial.fMaterial;
+    if Material.fData.AlphaMode in aMaterialAlphaModes then begin
+     if First then begin
+      First:=false;
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            aPipelineLayout.Handle,
+                                           0,
                                            1,
-                                           1,
-                                           @Material.fVulkanDescriptorSet.Handle,
+                                           @fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
                                            0,
                                            nil);
-      aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
      end;
+     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                          aPipelineLayout.Handle,
+                                          1,
+                                          1,
+                                          @Material.fVulkanDescriptorSet.Handle,
+                                          0,
+                                          nil);
+     aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
     end;
    end;
   end;
@@ -5879,6 +5883,14 @@ begin
   finally
    fLock.Release;
   end;
+ end;
+end;
+
+procedure TpvScene3D.Update;
+var Group:TpvScene3D.TGroup;
+begin
+ for Group in fGroups do begin
+  Group.Update;
  end;
 end;
 
