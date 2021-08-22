@@ -860,6 +860,7 @@ type EpvScene3D=class(Exception);
                           TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
                     private
                      fGroup:TGroup;
+                     fActive:boolean;
                      fScene:TPasGLTFSizeInt;
                      fAnimations:TAnimations;
                      fNodes:TNodes;
@@ -880,6 +881,8 @@ type EpvScene3D=class(Exception);
                      fVulkanData:TVulkanData;
                      fVulkanDescriptorPool:TpvVulkanDescriptorPool;
                      fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
+                     fScenes:array[0..MaxSwapChainImages+1] of TpvScene3D.TGroup.TScene;
+                     fActives:array[0..MaxSwapChainImages+1] of boolean;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -897,6 +900,7 @@ type EpvScene3D=class(Exception);
                      procedure Update(const aSwapChainImageIndex:TpvSizeInt);
                     published
                      property Group:TGroup read fGroup write fGroup;
+                     property Active:boolean read fActive write fActive;
                      property Scene:TpvSizeInt read fScene write SetScene;
                     public
                      property Nodes:TNodes read fNodes;
@@ -4759,6 +4763,7 @@ begin
  end else begin
   fGroup:=nil;
  end;
+ fActive:=true;
  fUploaded:=false;
  fModelMatrix:=TpvMatrix4x4.Identity;
  fScene:=-1;
@@ -5450,44 +5455,48 @@ var Index:TPasGLTFSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
- Scene:=GetScene;
- if assigned(Scene) then begin
-  //CurrentSkinShaderStorageBufferObjectHandle:=0;
-  for Index:=0 to length(fLightNodes)-1 do begin
-   fLightNodes[Index]:=-1;
-  end;
-  for Index:=0 to Scene.Nodes.Count-1 do begin
-   ResetNode(Scene.Nodes[Index].Index);
-  end;
-  for Index:=0 to length(fSkins)-1 do begin
-   fSkins[Index].Used:=false;
-  end;
-  for Index:=-1 to length(fAnimations)-2 do begin
-   Animation:=fAnimations[Index+1];
-   if Animation.fFactor>=-0.5 then begin
-    if Index<0 then begin
-     ProcessBaseOverwrite(Animation.fFactor);
-    end else begin
-     ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+ fActives[aSwapChainImageIndex]:=fActive;
+ if fActive then begin
+  Scene:=GetScene;
+  if assigned(Scene) then begin
+   fScenes[aSwapChainImageIndex]:=Scene;
+   //CurrentSkinShaderStorageBufferObjectHandle:=0;
+   for Index:=0 to length(fLightNodes)-1 do begin
+    fLightNodes[Index]:=-1;
+   end;
+   for Index:=0 to Scene.Nodes.Count-1 do begin
+    ResetNode(Scene.Nodes[Index].Index);
+   end;
+   for Index:=0 to length(fSkins)-1 do begin
+    fSkins[Index].Used:=false;
+   end;
+   for Index:=-1 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    if Animation.fFactor>=-0.5 then begin
+     if Index<0 then begin
+      ProcessBaseOverwrite(Animation.fFactor);
+     end else begin
+      ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+     end;
+    end;
+   end;
+   for Index:=0 to Scene.fNodes.Count-1 do begin
+    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+   end;
+   fNodeMatrices[0]:=fModelMatrix;
+   for Index:=0 to fGroup.fNodes.Count-1 do begin
+    Node:=fGroup.fNodes[Index];
+    InstanceNode:=@fNodes[Index];
+    fNodeMatrices[Node.Index+1]:=InstanceNode^.WorkMatrix;
+    if length(InstanceNode^.WorkWeights)>0 then begin
+     Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
     end;
    end;
   end;
-  for Index:=0 to Scene.fNodes.Count-1 do begin
-   ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+  fVulkanData:=fVulkanDatas[aSwapChainImageIndex];
+  if assigned(fVulkanData) then begin
+   fVulkanData.Update;
   end;
-  fNodeMatrices[0]:=fModelMatrix;
-  for Index:=0 to fGroup.fNodes.Count-1 do begin
-   Node:=fGroup.fNodes[Index];
-   InstanceNode:=@fNodes[Index];
-   fNodeMatrices[Node.Index+1]:=InstanceNode^.WorkMatrix;
-   if length(InstanceNode^.WorkWeights)>0 then begin
-    Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
-   end;
-  end;
- end;
- fVulkanData:=fVulkanDatas[aSwapChainImageIndex];
- if assigned(fVulkanData) then begin
-  fVulkanData.Update;
  end;
 end;
 
@@ -5501,32 +5510,34 @@ var SceneMaterialIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     First:boolean;
 begin
- Scene:=GetScene;
- if assigned(Scene) then begin
-  First:=true;
-  for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
-   SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
-   if SceneMaterial.fCountIndices>0 then begin
-    Material:=SceneMaterial.fMaterial;
-    if Material.fData.AlphaMode in aMaterialAlphaModes then begin
-     if First then begin
-      First:=false;
+ if fActives[aSwapChainImageIndex] then begin
+  Scene:=fScenes[aSwapChainImageIndex];
+  if assigned(Scene) then begin
+   First:=true;
+   for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
+    SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
+    if SceneMaterial.fCountIndices>0 then begin
+     Material:=SceneMaterial.fMaterial;
+     if Material.fData.AlphaMode in aMaterialAlphaModes then begin
+      if First then begin
+       First:=false;
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            aPipelineLayout.Handle,
+                                            0,
+                                            1,
+                                            @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                            0,
+                                            nil);
+      end;
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            aPipelineLayout.Handle,
-                                           0,
                                            1,
-                                           @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                           1,
+                                           @Material.fVulkanDescriptorSet.Handle,
                                            0,
                                            nil);
+      aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
      end;
-     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                          aPipelineLayout.Handle,
-                                          1,
-                                          1,
-                                          @Material.fVulkanDescriptorSet.Handle,
-                                          0,
-                                          nil);
-     aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
     end;
    end;
   end;
