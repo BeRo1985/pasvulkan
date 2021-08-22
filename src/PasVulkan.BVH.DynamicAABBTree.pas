@@ -117,6 +117,11 @@ type TpvBVHDynamicAABBTree=class
             end;
             PTreeNode=^TTreeNode;
             TTreeNodes=array of TTreeNode;
+            TState=record
+             TreeNodes:TTreeNodes;
+             Root:TpvSizeInt;
+            end;
+            PState=^TState;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
       public
