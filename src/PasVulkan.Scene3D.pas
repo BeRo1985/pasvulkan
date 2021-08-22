@@ -107,6 +107,15 @@ type EpvScene3D=class(Exception);
             PUInt32Vector4=^TUInt32Vector4;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
+            TViewPortGlobalsUniformBuffer=record
+             ViewMatrix:TpvMatrix4x4;
+             ProjectionMatrix:TpvMatrix4x4;
+            end;
+            PViewPortGlobalsUniformBuffer=^TViewPortGlobalsUniformBuffer;
+            TVertexStagePushConstants=record
+             ModelMatrix:TpvMatrix4x4;
+            end;
+            PVertexStagePushConstants=^TVertexStagePushConstants;
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
              case boolean of
               false:(
@@ -448,8 +457,6 @@ type EpvScene3D=class(Exception);
              private
               fData:TData;
               fShaderData:TShaderData;
-              fUniformBufferObjectIndex:TpvSizeInt;
-              fUniformBufferObjectOffset:TpvSizeInt;
               fLock:TPasMPSpinLock;
               fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
               fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -478,12 +485,12 @@ type EpvScene3D=class(Exception);
                     case boolean of
                      false:(
                       Position:TpvVector3;               //  12   12
-                      Index:TpvUInt32;                   // + 4   16
-                      Normal:TpvHalfFloatVector3;        // + 6   22
-                      Tangent:TpvHalfFloatVector3;       // + 6   24
-                      Next:TpvUInt32;                    // + 4   32
+                      Normal:TpvVector3;                 // +12   24
+                      Tangent:TpvVector3;                // +12   36
+                      Index:TpvUInt32;                   // + 4   40
+                      Next:TpvUInt32;                    // + 4   44
                      );                                  //  ==   ==
-                     true:(                              //  32   32 per vertex
+                     true:(                              //  44   44 per vertex
                       Padding:array[0..31] of TpvUInt8;
                      );
                    end;
@@ -606,8 +613,8 @@ type EpvScene3D=class(Exception);
                                   public
                                    type TTargetVertex=packed record
                                          Position:TpvVector3;
-                                         Normal:TpvHalfFloatVector3;
-                                         Tangent:TpvHalfFloatVector3;
+                                         Normal:TpvVector3;
+                                         Tangent:TpvVector3;
                                          Count:TpvUInt32;
                                         end;
                                         PTargetVertex=^TTargetVertex;
@@ -856,6 +863,8 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
+                     fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+                     fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -867,7 +876,9 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure Update;
-                     procedure Draw(const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
+                     procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aMaterialMode:TMaterialMode;
+                                    const aRenderingMode:TRenderingMode);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Scene:TpvSizeInt read fScene write SetScene;
@@ -905,8 +916,7 @@ type EpvScene3D=class(Exception);
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
-              fVulkanInstancesNodeMatricesBuffer:TpvVulkanBuffer;
-              fVulkanInstancesMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
+              fVulkanJointBlockBuffer:TpvVulkanBuffer;
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
               fBoundingBox:TpvAABB;
@@ -945,6 +955,7 @@ type EpvScene3D=class(Exception);
        fWhiteTextureLock:TPasMPSlimReaderWriterLock;
        fDefaultNormalMapTexture:TpvVulkanTexture;
        fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
+       fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
@@ -3141,10 +3152,10 @@ begin
          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
         end;
         TangentSpaceQuaternion:=TangentSpaceMatrix.ToQTangent;
-        Vertex^.TangentSpace[0]:=Min(Max(round(TangentSpaceQuaternion.x*32767.0),-32768),32767);
-        Vertex^.TangentSpace[1]:=Min(Max(round(TangentSpaceQuaternion.y*32767.0),-32768),32767);
-        Vertex^.TangentSpace[2]:=Min(Max(round(TangentSpaceQuaternion.z*32767.0),-32768),32767);
-        Vertex^.TangentSpace[3]:=Min(Max(round(TangentSpaceQuaternion.w*32767.0),-32768),32767);
+        Vertex^.TangentSpace[0]:=Min(Max(round(TangentSpaceQuaternion.x*32767.5),-32768),32767);
+        Vertex^.TangentSpace[1]:=Min(Max(round(TangentSpaceQuaternion.y*32767.5),-32768),32767);
+        Vertex^.TangentSpace[2]:=Min(Max(round(TangentSpaceQuaternion.z*32767.5),-32768),32767);
+        Vertex^.TangentSpace[3]:=Min(Max(round(TangentSpaceQuaternion.w*32767.5),-32768),32767);
         if VertexIndex<length(TemporaryTexCoord0) then begin
          Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
         end;
@@ -3972,7 +3983,7 @@ var Index:TpvSizeInt;
 
   fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                          fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
-                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                          [],
                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -3984,6 +3995,21 @@ var Index:TpvSizeInt;
                                             0,
                                             fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
                                             TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+  fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                  fJointBlocks.Count*SizeOf(TJointBlock),
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                 );
+  fVulkanJointBlockBuffer.UploadData(UniversalQueue,
+                                     UniversalCommandBuffer,
+                                     UniversalFence,
+                                     fJointBlocks.Items[0],
+                                     0,
+                                     fJointBlocks.Count*SizeOf(TJointBlock),
+                                     TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
  end;
 var Instance:TpvScene3D.TGroup.TInstance;
@@ -4056,6 +4082,7 @@ begin
      FreeAndNil(fVulkanVertexBuffer);
      FreeAndNil(fVulkanIndexBuffer);
      FreeAndNil(fVulkanMorphTargetVertexBuffer);
+     FreeAndNil(fVulkanJointBlockBuffer);
     finally
      fUploaded:=false;
     end;
@@ -4502,14 +4529,14 @@ begin
   try
    fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
-                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                [],
                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                                               );
    fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                            length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
-                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                            [],
                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
@@ -4685,15 +4712,72 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Upload;
 var Index:TpvSizeInt;
+    DescriptorSet:TpvVulkanDescriptorSet;
 begin
+
  inherited Upload;
+
  if not fUploaded then begin
   try
-   SetLength(fNodeMatrices,Max(fGroup.fNodes.Count,1));
+
+   SetLength(fNodeMatrices,fGroup.fNodes.Count+1);
+
    SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+
    for Index:=0 to length(fVulkanDatas)-1 do begin
     fVulkanDatas[Index].Upload;
    end;
+
+   fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+                                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                         length(fVulkanDescriptorSets));
+   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4*length(fVulkanDescriptorSets));
+   fVulkanDescriptorPool.Initialize;
+
+   for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+
+    DescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                 fSceneInstance.fMeshVulkanDescriptorSetLayout);
+    try
+     DescriptorSet.WriteToDescriptorSet(0,
+                                        0,
+                                        1,
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                        [],
+                                        [fGroup.fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
+                                        [],
+                                        false);
+     DescriptorSet.WriteToDescriptorSet(1,
+                                        0,
+                                        1,
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                        [],
+                                        [fGroup.fVulkanJointBlockBuffer.DescriptorBufferInfo],
+                                        [],
+                                        false);
+     DescriptorSet.WriteToDescriptorSet(2,
+                                        0,
+                                        1,
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                        [],
+                                        [fVulkanDatas[Index].fNodeMatricesBuffer.DescriptorBufferInfo],
+                                        [],
+                                        false);
+     DescriptorSet.WriteToDescriptorSet(3,
+                                        0,
+                                        1,
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                        [],
+                                        [fVulkanDatas[Index].fMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
+                                        [],
+                                        false);
+     DescriptorSet.Flush;
+    finally
+     fVulkanDescriptorSets[Index]:=DescriptorSet;
+    end;
+
+   end;
+
   finally
    fUploaded:=true;
   end;
@@ -4705,6 +4789,10 @@ var Index:TpvSizeInt;
 begin
  if fUploaded then begin
   try
+   for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+    FreeAndNil(fVulkanDescriptorSets[Index]);
+   end;
+   FreeAndNil(fVulkanDescriptorPool);
    for Index:=0 to length(fVulkanDatas)-1 do begin
     fVulkanDatas[Index].Unload;
    end;
@@ -5220,10 +5308,11 @@ begin
   for Index:=0 to Scene.fNodes.Count-1 do begin
    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
   end;
+  fNodeMatrices[0]:=TpvMatrix4x4.Identity;
   for Index:=0 to fGroup.fNodes.Count-1 do begin
    Node:=fGroup.fNodes[Index];
    InstanceNode:=@fNodes[Index];
-   fNodeMatrices[Node.Index]:=InstanceNode^.WorkMatrix;
+   fNodeMatrices[Node.Index+1]:=InstanceNode^.WorkMatrix;
    if length(InstanceNode^.WorkWeights)>0 then begin
     Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
    end;
@@ -5235,23 +5324,56 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Draw(const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
+procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
 var NodeIndex,MeshPrimitiveIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
     Material:TpvScene3D.TMaterial;
+    VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
+
+ // Push constants = Model matrix
+ //VertexStagePushConstants.ModelMatrix:=;
+ aCommandBuffer.CmdPushConstants(0,
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
+                                 0,
+                                 SizeOf(TpvScene3D.TVertexStagePushConstants),
+                                 @VertexStagePushConstants);
+
+ // Set 0 = Globals (View port globals)
+ //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,0,1,@);
+
+ // Set 1 = Group (Morph target vertices, joint blocks)
+ //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,1,1,@);
+
+ // Set 2 = Instance (Node matrices, Morph target weights)
+ //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,2,1,@);
+
  for NodeIndex:=0 to fGroup.fNodes.Count-1 do begin
+
   Node:=fGroup.fNodes[NodeIndex];
+
   if assigned(Node.Mesh) then begin
+
    for MeshPrimitiveIndex:=0 to length(Node.Mesh.fPrimitives)-1 do begin
+
     Primitive:=@Node.Mesh.fPrimitives[MeshPrimitiveIndex];
+
     if assigned(Primitive^.Material) then begin
+
      Material:=Primitive^.Material;
+
+     // Set 3 = Material
+//     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,3,1,@Material.fVulkanDescriptorSet.Handle);
+
     end;
+
    end;
+
   end;
+
  end;
+
 end;
 
 { TpvScene3D }
@@ -5309,6 +5431,38 @@ begin
 
  ReleaseFrameDelay:=MaxSwapChainImages+1;
 
+ fMeshVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+
+ // Group - Morph target vertices
+ fMeshVulkanDescriptorSetLayout.AddBinding(0,
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                           []);
+
+ // Group - Joint blocks
+ fMeshVulkanDescriptorSetLayout.AddBinding(1,
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                           []);
+
+ // Instance - Node matrices
+ fMeshVulkanDescriptorSetLayout.AddBinding(2,
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                           []);
+
+ // Instance - Morph target weights
+ fMeshVulkanDescriptorSetLayout.AddBinding(3,
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                           []);
+
+ fMeshVulkanDescriptorSetLayout.Initialize;
+
  fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fMaterialVulkanDescriptorSetLayout.AddBinding(0,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -5328,6 +5482,8 @@ destructor TpvScene3D.Destroy;
 begin
 
  Unload;
+
+ FreeAndNil(fMeshVulkanDescriptorSetLayout);
 
  FreeAndNil(fMaterialVulkanDescriptorSetLayout);
 
