@@ -856,17 +856,6 @@ type EpvScene3D=class(Exception);
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
                           end;
                           TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
-                          TMaterialMode=
-                           (
-                            Opaque,
-                            AlphaTest,
-                            Transparent
-                           );
-                          TRenderingMode=
-                           (
-                            ShadowDepth,
-                            Forward_
-                           );
                     private
                      fGroup:TGroup;
                      fScene:TPasGLTFSizeInt;
@@ -891,6 +880,9 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
+                     procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aPipelineLayout:TpvVulkanPipelineLayout;
+                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
                      constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
                      destructor Destroy; override;
@@ -899,10 +891,6 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure Update;
-                     procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                    const aPipelineLayout:TpvVulkanPipelineLayout;
-                                    const aMaterialMode:TMaterialMode;
-                                    const aRenderingMode:TRenderingMode);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Scene:TpvSizeInt read fScene write SetScene;
@@ -5467,8 +5455,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
-                                           const aMaterialMode:TMaterialMode;
-                                           const aRenderingMode:TRenderingMode);
+                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 const Offsets:TVkDeviceSize=0;
 var SceneIndex,SceneMaterialIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
@@ -5510,14 +5497,16 @@ begin
     SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
     if SceneMaterial.fCountIndices>0 then begin
      Material:=SceneMaterial.fMaterial;
-     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                          aPipelineLayout.Handle,
-                                          1,
-                                          1,
-                                          @Material.fVulkanDescriptorSet.Handle,
-                                          0,
-                                          nil);
-     aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
+     if Material.fData.AlphaMode in aMaterialAlphaModes then begin
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           aPipelineLayout.Handle,
+                                           1,
+                                           1,
+                                           @Material.fVulkanDescriptorSet.Handle,
+                                           0,
+                                           nil);
+      aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
+     end;
     end;
    end;
   end;
