@@ -120,13 +120,6 @@ type TpvBVHDynamicAABBTree=class
             PTreeNodes=^TTreeNodes;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
-            TFrozenTreeNode=record
-             Left:TpvSizeInt;
-             Right:TpvSizeInt;
-             AABB:TpvAABB;
-             UserData:pointer;
-            end;
-            PFrozenTreeNode=^TFrozenTreeNode;
       public
        Root:TpvSizeInt;
        Nodes:PTreeNodes;

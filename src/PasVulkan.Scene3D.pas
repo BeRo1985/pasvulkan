@@ -884,6 +884,7 @@ type EpvScene3D=class(Exception);
                      fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
                      fScenes:array[0..MaxSwapChainImages+1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxSwapChainImages+1] of boolean;
+                     fAABBTreeProxy:TpvSizeInt;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -1004,6 +1005,7 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroup.TInstances;
+       fAABBTree:TpvBVHDynamicAABBTree;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
       public
@@ -4799,12 +4801,24 @@ begin
  for Index:=0 to length(fVulkanDatas)-1 do begin
   fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
  end;
+ fAABBTreeProxy:=-1;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
 var Index:TPasGLTFSizeInt;
 begin
  Unload;
+ if fAABBTreeProxy>=0 then begin
+  try
+   if assigned(fGroup) and
+      assigned(fGroup.fSceneInstance) and
+      assigned(fGroup.fSceneInstance.fAABBTree) then begin
+    fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+   end;
+  finally
+   fAABBTreeProxy:=-1;
+  end;
+ end;
  for Index:=0 to length(fVulkanDatas)-1 do begin
   FreeAndNil(fVulkanDatas[Index]);
  end;
@@ -4835,6 +4849,9 @@ begin
  finally
   fGroup.fInstanceListLock.Release;
  end;
+ if fAABBTreeProxy<0 then begin
+  fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fGroup.fBoundingBox.Transform(fModelMatrix),TpvPtrInt(Pointer(self)));
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
@@ -4851,6 +4868,17 @@ begin
    fGroup.fInstances.Remove(self);
   finally
    fGroup.fInstanceListLock.Release;
+  end;
+  if fAABBTreeProxy>=0 then begin
+   try
+    if assigned(fGroup) and
+       assigned(fGroup.fSceneInstance) and
+       assigned(fGroup.fSceneInstance.fAABBTree) then begin
+     fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+   finally
+    fAABBTreeProxy:=-1;
+   end;
   end;
  finally
   fGroup:=nil;
@@ -5498,6 +5526,9 @@ begin
   if assigned(fVulkanData) then begin
    fVulkanData.Update;
   end;
+  if fAABBTreeProxy>=0 then begin
+   fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fGroup.fBoundingBox.Transform(fModelMatrix),TpvVector3.Create(1.0,1.0,1.0));
+  end;
  end;
 end;
 
@@ -5645,12 +5676,16 @@ begin
                                                []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
 
+ fAABBTree:=TpvBVHDynamicAABBTree.Create;
+
 end;
 
 destructor TpvScene3D.Destroy;
 begin
 
  Unload;
+
+ FreeAndNil(fAABBTree);
 
  FreeAndNil(fMeshVulkanDescriptorSetLayout);
 
