@@ -885,10 +885,12 @@ type EpvScene3D=class(Exception);
                      fScenes:array[0..MaxSwapChainImages+1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxSwapChainImages+1] of boolean;
                      fAABBTreeProxy:TpvSizeInt;
+                     fVisibleBitmap:TPasMPUInt32;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+                                    const aRenderPassIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -948,6 +950,7 @@ type EpvScene3D=class(Exception);
               procedure ConstructBuffers;
               procedure CollectMaterialPrimitives;
               procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+                             const aRenderPassIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -1006,8 +1009,13 @@ type EpvScene3D=class(Exception);
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroup.TInstances;
        fAABBTree:TpvBVHDynamicAABBTree;
+       fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
+       procedure CullAABBTreeWithFrustum(const aFrustum:TpvFrustum;
+                                         const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                         const aRoot:TpvSizeInt;
+                                         const aVisibleBit:TPasMPUInt32);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -1015,6 +1023,7 @@ type EpvScene3D=class(Exception);
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
        procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+                      const aRenderPassIndex:TpvSizeInt;
                       const aViewMatrix:TpvMatrix4x4;
                       const aProjectionMatrix:TpvMatrix4x4;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -4661,6 +4670,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Draw(const aSwapChainImageIndex:TpvSizeInt;
+                                 const aRenderPassIndex:TpvSizeInt;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
                                  const aPipelineLayout:TpvVulkanPipelineLayout;
                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
@@ -4670,7 +4680,7 @@ begin
  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
  aCommandBuffer.CmdBindIndexBuffer(fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  for Instance in fInstances do begin
-  Instance.Draw(aSwapChainImageIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
+  Instance.Draw(aSwapChainImageIndex,aRenderPassIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
  end;
 end;
 
@@ -5533,6 +5543,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aSwapChainImageIndex:TpvSizeInt;
+                                           const aRenderPassIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
@@ -5542,7 +5553,7 @@ var SceneMaterialIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     First:boolean;
 begin
- if fActives[aSwapChainImageIndex] then begin
+ if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   Scene:=fScenes[aSwapChainImageIndex];
   if assigned(Scene) then begin
    First:=true;
@@ -5579,6 +5590,7 @@ end;
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+var Index:TpvSizeInt;
 begin
 
  inherited Create(aResourceManager,aParent);
@@ -5678,12 +5690,21 @@ begin
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
+ for Index:=0 to length(fAABBTreeStates)-1 do begin
+  fAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
 end;
 
 destructor TpvScene3D.Destroy;
+var Index:TpvSizeInt;
 begin
 
  Unload;
+
+ for Index:=0 to length(fAABBTreeStates)-1 do begin
+  fAABBTreeStates[Index].TreeNodes:=nil;
+ end;
 
  FreeAndNil(fAABBTree);
 
@@ -5942,14 +5963,112 @@ end;
 
 procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
+    AABBTreeState:TpvBVHDynamicAABBTree.PState;
 begin
+
  for Group in fGroups do begin
   Group.Update(aSwapChainImageIndex);
  end;
 
+ AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
+ if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+  end else begin
+   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+  end;
+  AABBTreeState^.Root:=fAABBTree.Root;
+ end else begin
+  AABBTreeState^.Root:=-1;
+ end;
+
+end;
+
+procedure TpvScene3D.CullAABBTreeWithFrustum(const aFrustum:TpvFrustum;
+                                             const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                             const aRoot:TpvSizeInt;
+                                             const aVisibleBit:TPasMPUInt32);
+ procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
+ var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Mask:TpvUInt32;
+ begin
+  if aNode>=0 then begin
+   TreeNode:=@aTreeNodes[aNode];
+   Mask:=aMask;
+   if not (((Mask and $80000000)<>0) and (aFrustum.AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)) then begin
+    if TreeNode^.UserData<>0 then begin
+     TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap,aVisibleBit);
+    end;
+    if TreeNode^.Children[0]>=0 then begin
+     ProcessNode(TreeNode^.Children[0],Mask);
+    end;
+    if TreeNode^.Children[1]>=0 then begin
+     ProcessNode(TreeNode^.Children[1],Mask);
+    end;
+   end;
+  end;
+ end;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Node:TpvSizeInt;
+      Mask:TpvUInt32;
+     end;
+var StackPointer:TpvSizeInt;
+    StackItem:PStackItem;
+    Node:TpvSizeInt;
+    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Mask:TpvUInt32;
+    Stack:array[0..31] of TStackItem;
+begin
+ if aRoot>=0 then begin
+  Stack[0].Node:=aRoot;
+  Stack[0].Mask:=$ffffffff;
+  StackPointer:=1;
+  while StackPointer>0 do begin
+   dec(StackPointer);
+   StackItem:=@Stack[StackPointer];
+   Node:=StackItem^.Node;
+   Mask:=StackItem^.Mask;
+   while Node>=0 do begin
+    TreeNode:=@aTreeNodes[Node];
+    if ((Mask and $80000000)<>0) and (aFrustum.AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT) then begin
+     break;
+    end;
+    if TreeNode^.UserData<>0 then begin
+     TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap,aVisibleBit);
+    end;
+    if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
+     if TreeNode^.Children[0]>=0 then begin
+      ProcessNode(TreeNode^.Children[0],Mask);
+     end;
+     if TreeNode^.Children[1]>=0 then begin
+      ProcessNode(TreeNode^.Children[1],Mask);
+     end;
+    end else begin
+     if TreeNode^.Children[0]>=0 then begin
+      if TreeNode^.Children[1]>=0 then begin
+       StackItem:=@Stack[StackPointer];
+       StackItem^.Node:=TreeNode^.Children[1];
+       StackItem^.Mask:=Mask;
+       inc(StackPointer);
+      end;
+      Node:=TreeNode^.Children[0];
+      continue;
+     end else begin
+      if TreeNode^.Children[1]>=0 then begin
+       Node:=TreeNode^.Children[1];
+       continue;
+      end;
+     end;
+    end;
+    break;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.Draw(const aSwapChainImageIndex:TpvSizeInt;
+                          const aRenderPassIndex:TpvSizeInt;
                           const aViewMatrix:TpvMatrix4x4;
                           const aProjectionMatrix:TpvMatrix4x4;
                           const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -5957,7 +6076,26 @@ procedure TpvScene3D.Draw(const aSwapChainImageIndex:TpvSizeInt;
                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
 var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
     Group:TpvScene3D.TGroup;
+    Instance:TpvScene3D.TGroup.TInstance;
+    AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    VisibleBit:TPasMPUInt32;
+    Frustum:TpvFrustum;
+
 begin
+
+ VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
+
+ for Instance in fGroupInstances do begin
+  TPasMPInterlocked.BitwiseAnd(Instance.fVisibleBitmap,not VisibleBit);
+ end;
+
+ AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
+
+ Frustum.Init;
+ Frustum.ExtractFrustum(@aViewMatrix,@aProjectionMatrix);
+
+ CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
+
  VertexStagePushConstants.ViewMatrix:=aViewMatrix;
  VertexStagePushConstants.ProjectionMatrix:=aProjectionMatrix;
  aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
@@ -5966,8 +6104,9 @@ begin
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
                                  @VertexStagePushConstants);
  for Group in fGroups do begin
-  Group.Draw(aSwapChainImageIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
+  Group.Draw(aSwapChainImageIndex,aRenderPassIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
  end;
+
 end;
 
 initialization

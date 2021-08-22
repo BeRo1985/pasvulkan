@@ -69,7 +69,7 @@ uses SysUtils,
      PasVulkan.Math;
 
 type { TpvFrustum }
-     TpvFrustum=class
+     TpvFrustum=record
       public
        const COMPLETE_OUT=0;
              PARTIALLY_IN=1;
@@ -90,8 +90,7 @@ type { TpvFrustum }
        fWorldSpaceCorners:TCorners;
        fViewSpaceCorners:TCorners;
       public
-       constructor Create;
-       destructor Destroy; override;
+       procedure Init;
        procedure ExtractFrustum(aModelViewMatrix,aProjectionMatrix:pointer);
        procedure ExtractFrustumSphere(const aZNear,aZFar,aFOV,aAspectRatio:TpvScalar;const aPosition,aDirection:TpvVector3);
        function AABBInFrustum(const AAABB:TpvAABB):TpvInt32; overload;
@@ -124,14 +123,9 @@ begin
  result.z:=(v[0].z+v[1].z+v[2].z)/f;
 end;
 
-constructor TpvFrustum.Create;
+procedure TpvFrustum.Init;
 begin
- inherited Create;
-end;
-
-destructor TpvFrustum.Destroy;
-begin
- inherited Destroy;
+ FillChar(self,SizeOf(TpvFrustum),#0);
 end;
 
 procedure TpvFrustum.ExtractFrustum(aModelViewMatrix,aProjectionMatrix:pointer);
