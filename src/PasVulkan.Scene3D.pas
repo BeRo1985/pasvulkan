@@ -6080,7 +6080,6 @@ var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     VisibleBit:TPasMPUInt32;
     Frustum:TpvFrustum;
-
 begin
 
  VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
@@ -6098,11 +6097,13 @@ begin
 
  VertexStagePushConstants.ViewMatrix:=aViewMatrix;
  VertexStagePushConstants.ProjectionMatrix:=aProjectionMatrix;
+
  aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                  0,
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
                                  @VertexStagePushConstants);
+
  for Group in fGroups do begin
   Group.Draw(aSwapChainImageIndex,aRenderPassIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
  end;
