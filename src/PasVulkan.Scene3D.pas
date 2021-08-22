@@ -745,8 +745,16 @@ type EpvScene3D=class(Exception);
                     public
                      type { TMaterial }
                           TMaterial=class
+                           public
+                            type TPrimitiveIndexRange=record
+                                  Index:TpvSizeInt;
+                                  Count:TpvSizeInt;
+                                 end;
+                                 PPrimitiveIndexRange=^TPrimitiveIndexRange;
                            private
-                            fPrimitives:TpvDynamicArray<TpvScene3D.TGroup.TMesh.PPrimitive>;
+                            fPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
+                            fStartIndex:TpvSizeInt;
+                            fCountIndices:TpvSizeInt;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -919,6 +927,7 @@ type EpvScene3D=class(Exception);
               fScene:TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
+              fMaterialIndices:TGroupIndices;
               fJointBlocks:TGroupJointBlocks;
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
               fSkinStorageBufferSize:TpvSizeInt;
@@ -928,6 +937,7 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanIndexBuffer:TpvVulkanBuffer;
+              fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
               fVulkanJointBlockBuffer:TpvVulkanBuffer;
               fInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -3793,12 +3803,12 @@ end;
 constructor TpvScene3D.TGroup.TScene.TMaterial.Create;
 begin
  inherited Create;
- fPrimitives.Initialize;
+ fPrimitiveIndexRanges.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TScene.TMaterial.Destroy;
 begin
- fPrimitives.Finalize;
+ fPrimitiveIndexRanges.Finalize;
  inherited Destroy;
 end;
 
@@ -3874,6 +3884,8 @@ begin
 
  fIndices.Initialize;
 
+ fMaterialIndices.Initialize;
+
  fMorphTargetVertices.Initialize;
 
  fJointBlocks.Initialize;
@@ -3915,6 +3927,8 @@ begin
  FreeAndNil(fAnimations);
 
  FreeAndNil(fObjects);
+
+ fMaterialIndices.Finalize;
 
  fIndices.Finalize;
 
@@ -3972,6 +3986,9 @@ var Index:TpvSizeInt;
   if fIndices.Count=0 then begin
    fIndices.Add(0);
   end;
+  if fMaterialIndices.Count=0 then begin
+   fMaterialIndices.Add(0);
+  end;
   if fMorphTargetVertices.Count=0 then begin
    fMorphTargetVertices.AddNew;
   end;
@@ -3981,6 +3998,7 @@ var Index:TpvSizeInt;
 
   fVertices.Finish;
   fIndices.Finish;
+  fMaterialIndices.Finish;
   fMorphTargetVertices.Finish;
   fJointBlocks.Finish;
 
@@ -4013,6 +4031,21 @@ var Index:TpvSizeInt;
                                 0,
                                 fIndices.Count*SizeOf(TVkUInt32),
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+  fVulkanMaterialIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                     fMaterialIndices.Count*SizeOf(TVkUInt32),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                    );
+  fVulkanMaterialIndexBuffer.UploadData(UniversalQueue,
+                                        UniversalCommandBuffer,
+                                        UniversalFence,
+                                        fMaterialIndices.Items[0],
+                                        0,
+                                        fMaterialIndices.Count*SizeOf(TVkUInt32),
+                                        TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
   fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                          fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
@@ -4114,6 +4147,7 @@ begin
     try
      FreeAndNil(fVulkanVertexBuffer);
      FreeAndNil(fVulkanIndexBuffer);
+     FreeAndNil(fVulkanMaterialIndexBuffer);
      FreeAndNil(fVulkanMorphTargetVertexBuffer);
      FreeAndNil(fVulkanJointBlockBuffer);
     finally
@@ -4158,24 +4192,33 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
      Node:TpvScene3D.TGroup.TNode;
      Material:TpvScene3D.TMaterial;
      SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
+     NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
+     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange;
  begin
   Mesh:=aNode.fMesh;
   if assigned(Mesh) then begin
-   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
-    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-    if assigned(Primitive) then begin
-     Material:=Primitive.Material;
-     if assigned(Material) then begin
-      SceneMaterial:=aScene.fMaterialHashMap[Material];
-      if not assigned(SceneMaterial) then begin
-       SceneMaterial:=TpvScene3D.TGroup.TScene.TMaterial.Create;
-       try
-        aScene.fMaterialHashMap[Material]:=SceneMaterial;
-       finally
-        aScene.fMaterials.Add(SceneMaterial);
+   if aNode.fNodeMeshInstanceIndex>=0 then begin
+    for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+     Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+     if assigned(Primitive) then begin
+      Material:=Primitive^.Material;
+      if assigned(Material) then begin
+       if aNode.fNodeMeshInstanceIndex<Primitive^.NodeMeshPrimitiveInstances.Count then begin
+        NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[aNode.fNodeMeshInstanceIndex];
+        SceneMaterial:=aScene.fMaterialHashMap[Material];
+        if not assigned(SceneMaterial) then begin
+         SceneMaterial:=TpvScene3D.TGroup.TScene.TMaterial.Create;
+         try
+          aScene.fMaterialHashMap[Material]:=SceneMaterial;
+         finally
+          aScene.fMaterials.Add(SceneMaterial);
+         end;
+        end;
+        PrimitiveIndexRange.Index:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
+        PrimitiveIndexRange.Count:=Primitive^.CountIndices;
+        SceneMaterial.fPrimitiveIndexRanges.Add(PrimitiveIndexRange);
        end;
       end;
-      SceneMaterial.fPrimitives.Add(Primitive);
      end;
     end;
    end;
@@ -4184,14 +4227,29 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
    ProcessNode(aScene,Node);
   end;
  end;
-var Scene:TpvScene3D.TGroup.TScene;
+var Index:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
+    SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange;
 begin
  for Scene in fScenes do begin
   for Node in Scene.fNodes do begin
    ProcessNode(Scene,Node);
   end;
+  for SceneMaterial in Scene.fMaterials do begin
+   SceneMaterial.fStartIndex:=fMaterialIndices.Count;
+   SceneMaterial.fCountIndices:=0;
+   SceneMaterial.fPrimitiveIndexRanges.Finish;
+   for PrimitiveIndexRange in SceneMaterial.fPrimitiveIndexRanges.Items do begin
+    if PrimitiveIndexRange.Count>0 then begin
+     fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange.Index,PrimitiveIndexRange.Count));
+    end;
+   end;
+   SceneMaterial.fCountIndices:=fMaterialIndices.Count-SceneMaterial.fStartIndex;
+  end;
  end;
+ fMaterialIndices.Finish;
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
