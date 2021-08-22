@@ -116,20 +116,17 @@ type TpvBVHDynamicAABBTree=class
               );
             end;
             PTreeNode=^TTreeNode;
-            TTreeNodes=array[0..0] of TTreeNode;
-            PTreeNodes=^TTreeNodes;
+            TTreeNodes=array of TTreeNode;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
       public
        Root:TpvSizeInt;
-       Nodes:PTreeNodes;
+       Nodes:TTreeNodes;
        NodeCount:TpvSizeInt;
        NodeCapacity:TpvSizeInt;
        FreeList:TpvSizeInt;
        Path:TpvSizeUInt;
        InsertionCount:TpvSizeInt;
-       Stack:PSizeIntArray;
-       StackCapacity:TpvSizeInt;
        constructor Create;
        destructor Destroy; override;
        function AllocateNode:TpvSizeInt;
@@ -152,27 +149,25 @@ var i:TpvSizeInt;
 begin
  inherited Create;
  Root:=NULLNODE;
+ Nodes:=nil;
  NodeCount:=0;
  NodeCapacity:=16;
- GetMem(Nodes,NodeCapacity*SizeOf(TTreeNode));
- FillChar(Nodes^,NodeCapacity*SizeOf(TTreeNode),#0);
+ SetLength(Nodes,NodeCapacity);
+ FillChar(Nodes[0],NodeCapacity*SizeOf(TTreeNode),#0);
  for i:=0 to NodeCapacity-2 do begin
-  Nodes^[i].Next:=i+1;
-  Nodes^[i].Height:=-1;
+  Nodes[i].Next:=i+1;
+  Nodes[i].Height:=-1;
  end;
- Nodes^[NodeCapacity-1].Next:=NULLNODE;
- Nodes^[NodeCapacity-1].Height:=-1;
+ Nodes[NodeCapacity-1].Next:=NULLNODE;
+ Nodes[NodeCapacity-1].Height:=-1;
  FreeList:=0;
  Path:=0;
  InsertionCount:=0;
- StackCapacity:=16;
- GetMem(Stack,StackCapacity*SizeOf(TpvSizeInt));
 end;
 
 destructor TpvBVHDynamicAABBTree.Destroy;
 begin
- FreeMem(Nodes);
- FreeMem(Stack);
+ Nodes:=nil;
  inherited Destroy;
 end;
 
@@ -181,20 +176,20 @@ var Node:PTreeNode;
     i:TpvSizeInt;
 begin
  if FreeList=NULLNODE then begin
-  inc(NodeCapacity,NodeCapacity);
-  ReallocMem(Nodes,NodeCapacity*SizeOf(TTreeNode));
-  FillChar(Nodes^[NodeCount],(NodeCapacity-NodeCount)*SizeOf(TTreeNode),#0);
+  inc(NodeCapacity,(NodeCapacity+1) shr 1); // *1.5
+  SetLength(Nodes,NodeCapacity);
+  FillChar(Nodes[NodeCount],(NodeCapacity-NodeCount)*SizeOf(TTreeNode),#0);
   for i:=NodeCount to NodeCapacity-2 do begin
-   Nodes^[i].Next:=i+1;
-   Nodes^[i].Height:=-1;
+   Nodes[i].Next:=i+1;
+   Nodes[i].Height:=-1;
   end;
-  Nodes^[NodeCapacity-1].Next:=NULLNODE;
-  Nodes^[NodeCapacity-1].Height:=-1;
+  Nodes[NodeCapacity-1].Next:=NULLNODE;
+  Nodes[NodeCapacity-1].Height:=-1;
   FreeList:=NodeCount;
  end;
  result:=FreeList;
- FreeList:=Nodes^[result].Next;
- Node:=@Nodes^[result];
+ FreeList:=Nodes[result].Next;
+ Node:=@Nodes[result];
  Node^.Parent:=NULLNODE;
  Node^.Children[0]:=NULLNODE;
  Node^.Children[1]:=NULLNODE;
@@ -206,7 +201,7 @@ end;
 procedure TpvBVHDynamicAABBTree.FreeNode(const aNodeID:TpvSizeInt);
 var Node:PTreeNode;
 begin
- Node:=@Nodes^[aNodeID];
+ Node:=@Nodes[aNodeID];
  Node^.Next:=FreeList;
  Node^.Height:=-1;
  FreeList:=aNodeID;
@@ -217,28 +212,28 @@ function TpvBVHDynamicAABBTree.Balance(const aNodeID:TpvSizeInt):TpvSizeInt;
 var NodeA,NodeB,NodeC,NodeD,NodeE,NodeF,NodeG:PTreeNode;
     NodeBID,NodeCID,NodeDID,NodeEID,NodeFID,NodeGID,NodeBalance:TpvSizeInt;
 begin
- NodeA:=@Nodes^[aNodeID];
+ NodeA:=@Nodes[aNodeID];
  if (NodeA.Children[0]<0) or (NodeA^.Height<2) then begin
   result:=aNodeID;
  end else begin
-  NodeBID:=NodeA^.Children[0];
-  NodeCID:=NodeA^.Children[1];
-  NodeB:=@Nodes^[NodeBID];
-  NodeC:=@Nodes^[NodeCID];
+  NodeBID:=NodeA.Children[0];
+  NodeCID:=NodeA.Children[1];
+  NodeB:=@Nodes[NodeBID];
+  NodeC:=@Nodes[NodeCID];
   NodeBalance:=NodeC^.Height-NodeB^.Height;
   if NodeBalance>1 then begin
-   NodeFID:=NodeC^.Children[0];
-   NodeGID:=NodeC^.Children[1];
-   NodeF:=@Nodes^[NodeFID];
-   NodeG:=@Nodes^[NodeGID];
+   NodeFID:=NodeC.Children[0];
+   NodeGID:=NodeC.Children[1];
+   NodeF:=@Nodes[NodeFID];
+   NodeG:=@Nodes[NodeGID];
    NodeC^.Children[0]:=aNodeID;
    NodeC^.Parent:=NodeA^.Parent;
    NodeA^.Parent:=NodeCID;
-   if NodeC^.Parent>=0 then begin
-    if Nodes^[NodeC^.Parent].Children[0]=aNodeID then begin
-     Nodes^[NodeC^.Parent].Children[0]:=NodeCID;
+   if NodeC.Parent>=0 then begin
+    if Nodes[NodeC^.Parent].Children[0]=aNodeID then begin
+     Nodes[NodeC^.Parent].Children[0]:=NodeCID;
     end else begin
-     Nodes^[NodeC^.Parent].Children[1]:=NodeCID;
+     Nodes[NodeC^.Parent].Children[1]:=NodeCID;
     end;
    end else begin
     Root:=NodeCID;
@@ -264,16 +259,16 @@ begin
   end else if NodeBalance<-1 then begin
    NodeDID:=NodeB^.Children[0];
    NodeEID:=NodeB^.Children[1];
-   NodeD:=@Nodes^[NodeDID];
-   NodeE:=@Nodes^[NodeEID];
+   NodeD:=@Nodes[NodeDID];
+   NodeE:=@Nodes[NodeEID];
    NodeB^.Children[0]:=aNodeID;
    NodeB^.Parent:=NodeA^.Parent;
    NodeA^.Parent:=NodeBID;
    if NodeB^.Parent>=0 then begin
-    if Nodes^[NodeB^.Parent].Children[0]=aNodeID then begin
-     Nodes^[NodeB^.Parent].Children[0]:=NodeBID;
+    if Nodes[NodeB^.Parent].Children[0]=aNodeID then begin
+     Nodes[NodeB^.Parent].Children[0]:=NodeBID;
     end else begin
-     Nodes^[NodeB^.Parent].Children[1]:=NodeBID;
+     Nodes[NodeB^.Parent].Children[1]:=NodeBID;
     end;
    end else begin
     Root:=NodeBID;
@@ -313,31 +308,32 @@ begin
  inc(InsertionCount);
  if Root<0 then begin
   Root:=aLeaf;
-  Nodes^[aLeaf].Parent:=NULLNODE;
+  Nodes[aLeaf].Parent:=NULLNODE;
  end else begin
-  LeafAABB:=Nodes^[aLeaf].AABB;
+  LeafAABB:=Nodes[aLeaf].AABB;
   Index:=Root;
-  while Nodes^[Index].Children[0]>=0 do begin
-   Children[0]:=Nodes^[Index].Children[0];
-   Children[1]:=Nodes^[Index].Children[1];
+  while Nodes[Index].Children[0]>=0 do begin
 
-   CombinedAABB:=Nodes^[Index].AABB.Combine(LeafAABB);
+   Children[0]:=Nodes[Index].Children[0];
+   Children[1]:=Nodes[Index].Children[1];
+
+   CombinedAABB:=Nodes[Index].AABB.Combine(LeafAABB);
    CombinedCost:=CombinedAABB.Cost;
    Cost:=CombinedCost*2.0;
-   InheritanceCost:=2.0*(CombinedCost-Nodes^[Index].AABB.Cost);
+   InheritanceCost:=2.0*(CombinedCost-Nodes[Index].AABB.Cost);
 
-   AABB:=LeafAABB.Combine(Nodes^[Children[0]].AABB);
-   if Nodes^[Children[0]].Children[0]<0 then begin
+   AABB:=LeafAABB.Combine(Nodes[Children[0]].AABB);
+   if Nodes[Children[0]].Children[0]<0 then begin
     Costs[0]:=AABB.Cost+InheritanceCost;
    end else begin
-    Costs[0]:=(AABB.Cost-Nodes^[Children[0]].AABB.Cost)+InheritanceCost;
+    Costs[0]:=(AABB.Cost-Nodes[Children[0]].AABB.Cost)+InheritanceCost;
    end;
 
-   AABB:=LeafAABB.Combine(Nodes^[Children[1]].AABB);
-   if Nodes^[Children[1]].Children[1]<0 then begin
+   AABB:=LeafAABB.Combine(Nodes[Children[1]].AABB);
+   if Nodes[Children[1]].Children[1]<0 then begin
     Costs[1]:=AABB.Cost+InheritanceCost;
    end else begin
-    Costs[1]:=(AABB.Cost-Nodes^[Children[1]].AABB.Cost)+InheritanceCost;
+    Costs[1]:=(AABB.Cost-Nodes[Children[1]].AABB.Cost)+InheritanceCost;
    end;
 
    if (Cost<Costs[0]) and (Cost<Costs[1]) then begin
@@ -354,37 +350,37 @@ begin
 
   Sibling:=Index;
 
-  OldParent:=Nodes^[Sibling].Parent;
+  OldParent:=Nodes[Sibling].Parent;
   NewParent:=AllocateNode;
-  Nodes^[NewParent].Parent:=OldParent;
-  Nodes^[NewParent].UserData:=0;
-  Nodes^[NewParent].AABB:=LeafAABB.Combine(Nodes^[Sibling].AABB);
-  Nodes^[NewParent].Height:=Nodes^[Sibling].Height+1;
+  Nodes[NewParent].Parent:=OldParent;
+  Nodes[NewParent].UserData:=0;
+  Nodes[NewParent].AABB:=LeafAABB.Combine(Nodes[Sibling].AABB);
+  Nodes[NewParent].Height:=Nodes[Sibling].Height+1;
 
   if OldParent>=0 then begin
-   if Nodes^[OldParent].Children[0]=Sibling then begin
-    Nodes^[OldParent].Children[0]:=NewParent;
+   if Nodes[OldParent].Children[0]=Sibling then begin
+    Nodes[OldParent].Children[0]:=NewParent;
    end else begin
-    Nodes^[OldParent].Children[1]:=NewParent;
+    Nodes[OldParent].Children[1]:=NewParent;
    end;
-   Nodes^[NewParent].Children[0]:=Sibling;
-   Nodes^[NewParent].Children[1]:=aLeaf;
-   Nodes^[Sibling].Parent:=NewParent;
-   Nodes^[aLeaf].Parent:=NewParent;
+   Nodes[NewParent].Children[0]:=Sibling;
+   Nodes[NewParent].Children[1]:=aLeaf;
+   Nodes[Sibling].Parent:=NewParent;
+   Nodes[aLeaf].Parent:=NewParent;
   end else begin
-   Nodes^[NewParent].Children[0]:=Sibling;
-   Nodes^[NewParent].Children[1]:=aLeaf;
-   Nodes^[Sibling].Parent:=NewParent;
-   Nodes^[aLeaf].Parent:=NewParent;
+   Nodes[NewParent].Children[0]:=Sibling;
+   Nodes[NewParent].Children[1]:=aLeaf;
+   Nodes[Sibling].Parent:=NewParent;
+   Nodes[aLeaf].Parent:=NewParent;
    Root:=NewParent;
   end;
 
-  Index:=Nodes^[aLeaf].Parent;
+  Index:=Nodes[aLeaf].Parent;
   while Index>=0 do begin
    Index:=Balance(Index);
-   Node:=@Nodes^[Index];
-   Node^.AABB:=Nodes^[Node^.Children[0]].AABB.Combine(Nodes^[Node^.Children[1]].AABB);
-   Node^.Height:=1+Max(Nodes^[Node^.Children[0]].Height,Nodes^[Node^.Children[1]].Height);
+   Node:=@Nodes[Index];
+   Node^.AABB:=Nodes[Node^.Children[0]].AABB.Combine(Nodes[Node^.Children[1]].AABB);
+   Node^.Height:=1+Max(Nodes[Node^.Children[0]].Height,Nodes[Node^.Children[1]].Height);
    Index:=Node^.Parent;
   end;
 
@@ -398,32 +394,32 @@ begin
  if Root=aLeaf then begin
   Root:=NULLNODE;
  end else begin
-  Parent:=Nodes^[aLeaf].Parent;
-  GrandParent:=Nodes^[Parent].Parent;
-  if Nodes^[Parent].Children[0]=aLeaf then begin
-   Sibling:=Nodes^[Parent].Children[1];
+  Parent:=Nodes[aLeaf].Parent;
+  GrandParent:=Nodes[Parent].Parent;
+  if Nodes[Parent].Children[0]=aLeaf then begin
+   Sibling:=Nodes[Parent].Children[1];
   end else begin
-   Sibling:=Nodes^[Parent].Children[0];
+   Sibling:=Nodes[Parent].Children[0];
   end;
   if GrandParent>=0 then begin
-   if Nodes^[GrandParent].Children[0]=Parent then begin
-    Nodes^[GrandParent].Children[0]:=Sibling;
+   if Nodes[GrandParent].Children[0]=Parent then begin
+    Nodes[GrandParent].Children[0]:=Sibling;
    end else begin
-    Nodes^[GrandParent].Children[1]:=Sibling;
+    Nodes[GrandParent].Children[1]:=Sibling;
    end;
-   Nodes^[Sibling].Parent:=GrandParent;
+   Nodes[Sibling].Parent:=GrandParent;
    FreeNode(Parent);
    Index:=GrandParent;
    while Index>=0 do begin
     Index:=Balance(Index);
-    Node:=@Nodes^[Index];
-    Node^.AABB:=Nodes^[Node^.Children[0]].AABB.Combine(Nodes^[Node^.Children[1]].AABB);
-    Node^.Height:=1+Max(Nodes^[Node^.Children[0]].Height,Nodes^[Node^.Children[1]].Height);
+    Node:=@Nodes[Index];
+    Node^.AABB:=Nodes[Node^.Children[0]].AABB.Combine(Nodes[Node^.Children[1]].AABB);
+    Node^.Height:=1+Max(Nodes[Node^.Children[0]].Height,Nodes[Node^.Children[1]].Height);
     Index:=Node^.Parent;
    end;
   end else begin
    Root:=Sibling;
-   Nodes^[Sibling].Parent:=NULLNODE;
+   Nodes[Sibling].Parent:=NULLNODE;
    FreeNode(Parent);
   end;
  end;
@@ -433,7 +429,7 @@ function TpvBVHDynamicAABBTree.CreateProxy(const aAABB:TpvAABB;const aUserData:T
 var Node:PTreeNode;
 begin
  result:=AllocateNode;
- Node:=@Nodes^[result];
+ Node:=@Nodes[result];
  Node^.AABB.Min:=aAABB.Min-ThresholdAABBVector;
  Node^.AABB.Max:=aAABB.Max+ThresholdAABBVector;
  Node^.UserData:=aUserData;
@@ -452,7 +448,7 @@ var Node:PTreeNode;
     b:TpvAABB;
     d:TpvVector3;
 begin
- Node:=@Nodes^[aNodeID];
+ Node:=@Nodes[aNodeID];
  result:=not Node^.AABB.Contains(aAABB);
  if result then begin
   RemoveLeaf(aNodeID);

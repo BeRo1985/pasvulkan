@@ -5946,6 +5946,7 @@ begin
  for Group in fGroups do begin
   Group.Update(aSwapChainImageIndex);
  end;
+
 end;
 
 procedure TpvScene3D.Draw(const aSwapChainImageIndex:TpvSizeInt;
