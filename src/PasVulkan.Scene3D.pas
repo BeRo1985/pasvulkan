@@ -752,6 +752,7 @@ type EpvScene3D=class(Exception);
                                  end;
                                  PPrimitiveIndexRange=^TPrimitiveIndexRange;
                            private
+                            fMaterial:TpvScene3D.TMaterial;
                             fPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
                             fStartIndex:TpvSizeInt;
                             fCountIndices:TpvSizeInt;
@@ -4209,6 +4210,7 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
         if not assigned(SceneMaterial) then begin
          SceneMaterial:=TpvScene3D.TGroup.TScene.TMaterial.Create;
          try
+          SceneMaterial.fMaterial:=Material;
           aScene.fMaterialHashMap[Material]:=SceneMaterial;
          finally
           aScene.fMaterials.Add(SceneMaterial);
@@ -5462,12 +5464,17 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aMaterialMode:TMaterialMode;const aRenderingMode:TRenderingMode);
-var NodeIndex,MeshPrimitiveIndex:TpvSizeInt;
-    Node:TpvScene3D.TGroup.TNode;
-    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+const Offsets:TVkDeviceSize=0;
+var SceneIndex,SceneMaterialIndex,NodeIndex,MeshPrimitiveIndex:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
     VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
+
+ aCommandBuffer.CmdBindVertexBuffers(0,1,@fGroup.fVulkanVertexBuffer.Handle,@Offsets);
+
+ aCommandBuffer.CmdBindIndexBuffer(fGroup.fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
 
  // Push constants = Model matrix
  //VertexStagePushConstants.ModelMatrix:=;
@@ -5477,38 +5484,30 @@ begin
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
                                  @VertexStagePushConstants);
 
- // Set 0 = Globals (View port globals)
- //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,0,1,@);
+ // Set 0 = Mesh
+ //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,0,1,@fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle);
 
- // Set 1 = Group (Morph target vertices, joint blocks)
- //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,1,1,@);
+ if fScene<0 then begin
+  SceneIndex:=0;
+ end else if fScene>=fGroup.fScenes.Count then begin
+  SceneIndex:=fGroup.fScenes.Count-1;
+ end else begin
+  SceneIndex:=fScene;
+ end;
 
- // Set 2 = Instance (Node matrices, Morph target weights)
- //aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,2,1,@);
-
- for NodeIndex:=0 to fGroup.fNodes.Count-1 do begin
-
-  Node:=fGroup.fNodes[NodeIndex];
-
-  if assigned(Node.Mesh) then begin
-
-   for MeshPrimitiveIndex:=0 to length(Node.Mesh.fPrimitives)-1 do begin
-
-    Primitive:=@Node.Mesh.fPrimitives[MeshPrimitiveIndex];
-
-    if assigned(Primitive^.Material) then begin
-
-     Material:=Primitive^.Material;
-
-     // Set 3 = Material
-//     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,3,1,@Material.fVulkanDescriptorSet.Handle);
-
+ if (SceneIndex>=0) and (SceneIndex<fGroup.fScenes.Count) then begin
+  Scene:=fGroup.fScenes[SceneIndex];
+  if assigned(Scene) then begin
+   for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
+    SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
+    if SceneMaterial.fCountIndices>0 then begin
+     Material:=SceneMaterial.fMaterial;
+     // Set 1 = Material
+//   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,nil,1,1,@Material.fVulkanDescriptorSet.Handle);
+     aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
     end;
-
    end;
-
   end;
-
  end;
 
 end;
