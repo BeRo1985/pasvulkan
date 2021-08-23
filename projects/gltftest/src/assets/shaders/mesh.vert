@@ -154,4 +154,5 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(inPosition, 1.0);
+  //gl_PointSize = 1.0;
 }
