@@ -54,7 +54,7 @@ var Application:TApplication=nil;
 
 implementation
 
-uses UnitScreenBlank;
+uses UnitScreenMain;
 
 constructor TApplication.Create;
 begin
@@ -76,7 +76,7 @@ begin
  end;
  Title:='gltftest';
  PathName:='gltftest.pasvulkan';
- StartScreen:=TScreenBlank;
+ StartScreen:=TScreenMain;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
