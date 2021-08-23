@@ -92,7 +92,8 @@ type EpvScene3D=class(Exception);
      TpvScene3D=class(TpvResource)
       public
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-            TPrimitiveTopologyPipelines=array[TPrimitiveTopology] of TpvVulkanPipeline;
+            TDoubleSided=boolean;
+            TGraphicsPipelines=array[TPrimitiveTopology,TDoubleSided] of TpvVulkanPipeline;
             TVertexAttributeBindingLocations=class
              public
               const Position=0;
@@ -894,7 +895,7 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                     procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                     const aSwapChainImageIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -956,7 +957,7 @@ type EpvScene3D=class(Exception);
               fBoundingBox:TpvAABB;
               procedure ConstructBuffers;
               procedure CollectMaterialPrimitives;
-              procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+              procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                              const aSwapChainImageIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -1031,7 +1032,7 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
-       procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+       procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aSwapChainImageIndex:TpvSizeInt;
                       const aRenderPassIndex:TpvSizeInt;
                       const aViewMatrix:TpvMatrix4x4;
@@ -4702,7 +4703,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                  const aSwapChainImageIndex:TpvSizeInt;
                                  const aRenderPassIndex:TpvSizeInt;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -5583,7 +5584,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                            const aSwapChainImageIndex:TpvSizeInt;
                                            const aRenderPassIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -5613,7 +5614,7 @@ begin
        PrimitiveIndexRange:=@SceneMaterial.fCombinedPrimitiveIndexRanges.Items[PrimitiveIndexRangeIndex];
        if PrimitiveIndexRange^.Count>0 then begin
         PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
-        Pipeline:=aGraphicsPipelines[PrimitiveTopology];
+        Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
         if aPipeline<>Pipeline then begin
          aPipeline:=Pipeline;
          if assigned(Pipeline) then begin
@@ -6133,7 +6134,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                           const aSwapChainImageIndex:TpvSizeInt;
                           const aRenderPassIndex:TpvSizeInt;
                           const aViewMatrix:TpvMatrix4x4;
