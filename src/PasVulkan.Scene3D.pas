@@ -4299,6 +4299,7 @@ begin
       end;
       if FoundIndex<0 then begin
        FoundIndex:=SceneMaterial.fCombinedPrimitiveIndexRanges.AddNew;
+       SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].PrimitiveTopology:=PrimitiveTopology;
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fMaterialIndices.Count;
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
       end;
