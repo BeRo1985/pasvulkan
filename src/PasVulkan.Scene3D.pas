@@ -91,7 +91,9 @@ type EpvScene3D=class(Exception);
 
      TpvScene3D=class(TpvResource)
       public
-       type TVertexAttributeBindingLocations=class
+       type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            TPrimitiveTopologyPipelines=array[TPrimitiveTopology] of TpvVulkanPipeline;
+            TVertexAttributeBindingLocations=class
              public
               const Position=0;
                     NodeIndex=1;
@@ -104,6 +106,7 @@ type EpvScene3D=class(Exception);
                     JointBlockBaseIndex=8;
                     CountJointBlocks=9;
             end;
+            TVkPrimitiveTopologySet=set of TVkPrimitiveTopology;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
             TInt16Vector4=array[0..3] of TpvInt16;
@@ -751,6 +754,7 @@ type EpvScene3D=class(Exception);
                           TMaterial=class
                            public
                             type TPrimitiveIndexRange=record
+                                  PrimitiveTopology:TPrimitiveTopology;
                                   Index:TpvSizeInt;
                                   Count:TpvSizeInt;
                                  end;
@@ -758,6 +762,7 @@ type EpvScene3D=class(Exception);
                            private
                             fMaterial:TpvScene3D.TMaterial;
                             fPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
+                            fCombinedPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
                             fStartIndex:TpvSizeInt;
                             fCountIndices:TpvSizeInt;
                            public
@@ -889,9 +894,11 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+                     procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                                    const aSwapChainImageIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    var aPipeline:TpvVulkanPipeline;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
@@ -949,9 +956,11 @@ type EpvScene3D=class(Exception);
               fBoundingBox:TpvAABB;
               procedure ConstructBuffers;
               procedure CollectMaterialPrimitives;
-              procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+              procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                             const aSwapChainImageIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
+                             var aPipeline:TpvVulkanPipeline;
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
              public
@@ -1022,7 +1031,8 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
-       procedure Draw(const aSwapChainImageIndex:TpvSizeInt;
+       procedure Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                      const aSwapChainImageIndex:TpvSizeInt;
                       const aRenderPassIndex:TpvSizeInt;
                       const aViewMatrix:TpvMatrix4x4;
                       const aProjectionMatrix:TpvMatrix4x4;
@@ -3830,11 +3840,13 @@ constructor TpvScene3D.TGroup.TScene.TMaterial.Create;
 begin
  inherited Create;
  fPrimitiveIndexRanges.Initialize;
+ fCombinedPrimitiveIndexRanges.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TScene.TMaterial.Destroy;
 begin
  fPrimitiveIndexRanges.Finalize;
+ fCombinedPrimitiveIndexRanges.Finalize;
  inherited Destroy;
 end;
 
@@ -4241,6 +4253,7 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
           aScene.fMaterials.Add(SceneMaterial);
          end;
         end;
+        PrimitiveIndexRange.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology(Primitive^.PrimitiveMode);
         PrimitiveIndexRange.Index:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
         PrimitiveIndexRange.Count:=Primitive^.CountIndices;
         SceneMaterial.fPrimitiveIndexRanges.Add(PrimitiveIndexRange);
@@ -4258,6 +4271,8 @@ var Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    Index,FoundIndex:TpvSizeInt;
 begin
  for Scene in fScenes do begin
   for Node in Scene.fNodes do begin
@@ -4267,9 +4282,24 @@ begin
    SceneMaterial.fStartIndex:=fMaterialIndices.Count;
    SceneMaterial.fCountIndices:=0;
    SceneMaterial.fPrimitiveIndexRanges.Finish;
-   for PrimitiveIndexRange in SceneMaterial.fPrimitiveIndexRanges.Items do begin
-    if PrimitiveIndexRange.Count>0 then begin
-     fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange.Index,PrimitiveIndexRange.Count));
+   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+    for PrimitiveIndexRange in SceneMaterial.fPrimitiveIndexRanges.Items do begin
+     if (PrimitiveIndexRange.Count>0) and (PrimitiveIndexRange.PrimitiveTopology=PrimitiveTopology) then begin
+      FoundIndex:=-1;
+      for Index:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
+       if SceneMaterial.fCombinedPrimitiveIndexRanges.Items[Index].PrimitiveTopology=PrimitiveTopology then begin
+        FoundIndex:=Index;
+        break;
+       end;
+      end;
+      if FoundIndex<0 then begin
+       FoundIndex:=SceneMaterial.fCombinedPrimitiveIndexRanges.AddNew;
+       SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fMaterialIndices.Count;
+       SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
+      end;
+      fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange.Index,PrimitiveIndexRange.Count));
+      inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange.Count);
+     end;
     end;
    end;
    SceneMaterial.fCountIndices:=fMaterialIndices.Count-SceneMaterial.fStartIndex;
@@ -4672,9 +4702,11 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.Draw(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                                 const aSwapChainImageIndex:TpvSizeInt;
                                  const aRenderPassIndex:TpvSizeInt;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
+                                 var aPipeline:TpvVulkanPipeline;
                                  const aPipelineLayout:TpvVulkanPipelineLayout;
                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 const Offsets:TVkDeviceSize=0;
@@ -4683,7 +4715,13 @@ begin
  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
  aCommandBuffer.CmdBindIndexBuffer(fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  for Instance in fInstances do begin
-  Instance.Draw(aSwapChainImageIndex,aRenderPassIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
+  Instance.Draw(aGraphicsPipelines,
+                aSwapChainImageIndex,
+                aRenderPassIndex,
+                aCommandBuffer,
+                aPipeline,
+                aPipelineLayout,
+                aMaterialAlphaModes);
  end;
 end;
 
@@ -5545,15 +5583,20 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Draw(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                                           const aSwapChainImageIndex:TpvSizeInt;
                                            const aRenderPassIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
+                                           var aPipeline:TpvVulkanPipeline;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneMaterialIndex:TpvSizeInt;
+var SceneMaterialIndex,PrimitiveIndexRangeIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    Pipeline:TpvVulkanPipeline;
     First:boolean;
 begin
  if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
@@ -5565,24 +5608,37 @@ begin
     if SceneMaterial.fCountIndices>0 then begin
      Material:=SceneMaterial.fMaterial;
      if Material.fData.AlphaMode in aMaterialAlphaModes then begin
-      if First then begin
-       First:=false;
-       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            aPipelineLayout.Handle,
-                                            0,
-                                            1,
-                                            @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
-                                            0,
-                                            nil);
+      for PrimitiveIndexRangeIndex:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
+       PrimitiveIndexRange:=@SceneMaterial.fCombinedPrimitiveIndexRanges.Items[PrimitiveIndexRangeIndex];
+       if PrimitiveIndexRange^.Count>0 then begin
+        PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
+        Pipeline:=aGraphicsPipelines[PrimitiveTopology];
+        if aPipeline<>Pipeline then begin
+         aPipeline:=Pipeline;
+         if assigned(Pipeline) then begin
+          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+         end;
+        end;
+        if First then begin
+         First:=false;
+         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                              aPipelineLayout.Handle,
+                                              0,
+                                              1,
+                                              @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                              0,
+                                              nil);
+        end;
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             aPipelineLayout.Handle,
+                                             1,
+                                             1,
+                                             @Material.fVulkanDescriptorSet.Handle,
+                                             0,
+                                             nil);
+        aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
+       end;
       end;
-      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           aPipelineLayout.Handle,
-                                           1,
-                                           1,
-                                           @Material.fVulkanDescriptorSet.Handle,
-                                           0,
-                                           nil);
-      aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
      end;
     end;
    end;
@@ -6070,7 +6126,8 @@ begin
  end;
 end;
 
-procedure TpvScene3D.Draw(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TPrimitiveTopologyPipelines;
+                          const aSwapChainImageIndex:TpvSizeInt;
                           const aRenderPassIndex:TpvSizeInt;
                           const aViewMatrix:TpvMatrix4x4;
                           const aProjectionMatrix:TpvMatrix4x4;
@@ -6083,7 +6140,11 @@ var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     VisibleBit:TPasMPUInt32;
     Frustum:TpvFrustum;
+    Pipeline:TpvVulkanPipeline;
+
 begin
+
+ Pipeline:=nil;
 
  VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
 
@@ -6108,7 +6169,13 @@ begin
                                  @VertexStagePushConstants);
 
  for Group in fGroups do begin
-  Group.Draw(aSwapChainImageIndex,aRenderPassIndex,aCommandBuffer,aPipelineLayout,aMaterialAlphaModes);
+  Group.Draw(aGraphicsPipelines,
+             aSwapChainImageIndex,
+             aRenderPassIndex,
+             aCommandBuffer,
+             Pipeline,
+             aPipelineLayout,
+             aMaterialAlphaModes);
  end;
 
 end;
