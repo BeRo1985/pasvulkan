@@ -5636,7 +5636,7 @@ begin
                                              @Material.fVulkanDescriptorSet.Handle,
                                              0,
                                              nil);
-        aCommandBuffer.CmdDrawIndexed(SceneMaterial.fCountIndices,0,SceneMaterial.fStartIndex,0,0);
+        aCommandBuffer.CmdDrawIndexed(PrimitiveIndexRange^.Count,0,PrimitiveIndexRange^.Index,0,0);
        end;
       end;
      end;
