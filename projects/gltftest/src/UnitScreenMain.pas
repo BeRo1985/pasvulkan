@@ -376,7 +376,7 @@ begin
 
   fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
+{ VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
 
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
@@ -391,7 +391,7 @@ begin
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
   VulkanCommandBuffer.EndRecording;
-
+ }
  end;
 
 end;
@@ -420,20 +420,57 @@ begin
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var VulkanCommandBuffer:TpvVulkanCommandBuffer;
+    ModelMatrix:TpvMatrix4x4;
+    ViewMatrix:TpvMatrix4x4;
+    ProjectionMatrix:TpvMatrix4x4;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
 
+  ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,1024.0);
+
+  fGroupInstance.ModelMatrix:=ModelMatrix;
+
   fScene3D.Update(aSwapChainImageIndex);
 
-  //fScene3D.Upload;
+  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
 
-  fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(pvApplication.VulkanDevice.GraphicsQueue,
-                                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                            aWaitSemaphore,
-                                                            fVulkanRenderSemaphores[aSwapChainImageIndex],
-                                                            aWaitFence,
-                                                            false);
+  VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                    pvApplication.VulkanFrameBuffers[aSwapChainImageIndex],
+                                    VK_SUBPASS_CONTENTS_INLINE,
+                                    0,
+                                    0,
+                                    pvApplication.VulkanSwapChain.Width,
+                                    pvApplication.VulkanSwapChain.Height);
+
+  fScene3D.Draw(fVulkanGraphicsPipelines,
+                aSwapChainImageIndex,
+                0,
+                ViewMatrix,
+                ProjectionMatrix,
+                VulkanCommandBuffer,
+                fVulkanPipelineLayout,
+                [TpvScene3D.TMaterial.TAlphaMode.Opaque,
+                 TpvScene3D.TMaterial.TAlphaMode.Blend,
+                 TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
+
+  VulkanCommandBuffer.EndRecording;
+
+  VulkanCommandBuffer.Execute(pvApplication.VulkanDevice.GraphicsQueue,
+                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                              aWaitSemaphore,
+                              fVulkanRenderSemaphores[aSwapChainImageIndex],
+                              aWaitFence,
+                              false);
 
   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
