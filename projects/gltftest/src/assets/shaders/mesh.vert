@@ -28,11 +28,10 @@ layout (push_constant) uniform PushConstants {
 } pushConstants;
 
 struct MorphTargetVertex {
-   vec3 position;
-   vec3 normal;
-   vec3 tangent;
-   uint index;
-   uint next;
+   vec4 position;
+   vec4 normal;
+   vec4 tangent;
+   uvec4 metaData; // x = index, y = next
 };
 
 layout(std430, set = 0, binding = 0) buffer MorphTargetVertices {
@@ -49,7 +48,6 @@ layout(std430, set = 0, binding = 1) buffer JointBlocks {
 };
 
 layout(std430, set = 0, binding = 2) buffer NodeMatrices {
-  mat4 ModelMatrix;
 	mat4 nodeMatrices[];
 };
 
@@ -91,9 +89,9 @@ mat3 QTangentToMatrix(vec4 q){
 
 void main() {
 
-  mat4 nodeMatrix = nodeMatrices[inNodeIndex];
+  mat4 nodeMatrix = nodeMatrices[inNodeIndex + 1];
 
-  mat4 modelMatrix = ModelMatrix * nodeMatrix;
+  mat4 modelMatrix = nodeMatrices[0] * nodeMatrix;
 
   vec3 position = inPosition;
   mat3 tangentSpace = QTangentToMatrix(inQTangent);
@@ -108,11 +106,11 @@ void main() {
       uint tries = 1024u;  // for to prevent endless loops on bit-flipped vRAM content (=> driver timeouts, or even worse, maybe also BSODs)
       while ((morphTargetVertexBaseIndex != 0xffffffffu) && (tries-- > 0u)) {
         MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
-        float weight = morphTargetWeights[morphTargetVertex.index];
-        position += morphTargetVertex.position * weight;
-        normal += morphTargetVertex.normal * weight;
-        tangent.xyz += morphTargetVertex.tangent * weight;
-        morphTargetVertexIndex = morphTargetVertex.next;
+        float weight = morphTargetWeights[morphTargetVertex.metaData.x];
+        position += morphTargetVertex.position.xyz * weight;
+        normal += morphTargetVertex.normal.xyz * weight;
+        tangent.xyz += morphTargetVertex.tangent.xyz * weight;
+        morphTargetVertexIndex = morphTargetVertex.metaData.y;
       }
       normal = normalize(normal);
       tangent.xyz = normalize(tangent.xyz);
@@ -131,10 +129,10 @@ void main() {
       vec4 weights = jointBlock.weights;
       if (any(not(equal(weights, vec4(0.0))))) {
         uvec4 joints = jointBlock.joints;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.x]) * weights.x;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.y]) * weights.y;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.z]) * weights.z;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w]) * weights.w;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.x + 1]) * weights.x;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.y + 1]) * weights.y;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.z + 1]) * weights.z;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w + 1]) * weights.w;
       }
       jointBlockBaseIndex++;
     }while(--countJointBlocks > 0u);

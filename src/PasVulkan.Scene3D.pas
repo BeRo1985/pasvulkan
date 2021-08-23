@@ -492,14 +492,18 @@ type EpvScene3D=class(Exception);
                    TMorphTargetVertex=packed record
                     case boolean of
                      false:(
-                      Position:TpvVector3;               //  12   12
-                      Normal:TpvVector3;                 // +12   24
-                      Tangent:TpvVector3;                // +12   36
-                      Index:TpvUInt32;                   // + 4   40
-                      Next:TpvUInt32;                    // + 4   44
+                      Position:TpvVector4;               //  16   16
+                      Normal:TpvVector4;                 // +16   32
+                      Tangent:TpvVector4;                // +16   48
+                      // uvec4 metaData begin
+                       Index:TpvUInt32;                  // + 4   52
+                       Next:TpvUInt32;                   // + 4   56
+                       Reserved0:TpvUInt32;              // + 4   60
+                       Reserved1:TpvUInt32;              // + 4   64
+                      // uvec4 metaData end
                      );                                  //  ==   ==
-                     true:(                              //  44   44 per vertex
-                      Padding:array[0..31] of TpvUInt8;
+                     true:(                              //  64   64 per vertex
+                      Padding:array[0..63] of TpvUInt8;
                      );
                    end;
                    PMorphTargetVertex=^TMorphTargetVertex;
@@ -3490,9 +3494,9 @@ begin
          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
          MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
          MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
-         MorphTargetVertex^.Position:=DestinationMeshPrimitiveTargetVertex^.Position;
-         MorphTargetVertex^.Normal:=DestinationMeshPrimitiveTargetVertex^.Normal;
-         MorphTargetVertex^.Tangent:=DestinationMeshPrimitiveTargetVertex^.Tangent;
+         MorphTargetVertex^.Position:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
+         MorphTargetVertex^.Normal:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Normal,0.0);
+         MorphTargetVertex^.Tangent:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Tangent,0.0);
          MorphTargetVertex^.Index:=DestinationMeshPrimitive^.MorphTargetBaseIndex+TargetIndex;
          if (TargetIndex+1)<length(DestinationMeshPrimitive^.Targets) then begin
           MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
