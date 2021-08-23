@@ -770,7 +770,7 @@ type EpvScene3D=class(Exception);
                             constructor Create; reintroduce;
                             destructor Destroy; override;
                           end;
-                          TMaterials=class(TpvObjectList<TpvScene3D.TGroup.TScene.TMaterial>);
+                          TMaterials=class(TpvObjectGenericList<TpvScene3D.TGroup.TScene.TMaterial>);
                           TMaterialHashMap=class(TpvHashMap<TpvScene3D.TMaterial,TpvScene3D.TGroup.TScene.TMaterial>);
                     private
                      fIndex:TpvSizeInt;
@@ -801,7 +801,7 @@ type EpvScene3D=class(Exception);
                             property Factor:TPasGLTFFloat read fFactor write fFactor;
                             property Time:TPasGLTFFloat read fTime write fTime;
                           end;
-                          TAnimations=array of TAnimation;
+                          TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
                           TNode=record
                            public
                             type TOverwriteFlag=
@@ -836,13 +836,15 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                           end;
-                          PNode=^TNode;
-                          TNodes=array of TNode;
+                          TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
+                          PNode=^TInstanceNode;
+                          TNodes=array of TpvScene3D.TGroup.TInstance.TNode;
                           TSkin=record
                            Used:boolean;
                           end;
-                          PSkin=^TSkin;
-                          TSkins=array of TSkin;
+                          TInstanceSkin=TpvScene3D.TGroup.TInstance.TSkin;
+                          PSkin=^TInstanceSkin;
+                          TSkins=array of TpvScene3D.TGroup.TInstance.TSkin;
                           TNodeIndices=array of TpvSizeInt;
                           TOnNodeMatrix=procedure(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4) of object;
                           TNodeMatrices=array of TpvMatrix4x4;
@@ -869,9 +871,9 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fActive:boolean;
                      fScene:TPasGLTFSizeInt;
-                     fAnimations:TAnimations;
-                     fNodes:TNodes;
-                     fSkins:TSkins;
+                     fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
+                     fNodes:TpvScene3D.TGroup.TInstance.TNodes;
+                     fSkins:TpvScene3D.TGroup.TInstance.TSkins;
                      fLightNodes:TNodeIndices;
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
@@ -892,7 +894,7 @@ type EpvScene3D=class(Exception);
                      fActives:array[0..MaxSwapChainImages+1] of boolean;
                      fAABBTreeProxy:TpvSizeInt;
                      fVisibleBitmap:TPasMPUInt32;
-                     function GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
+                     function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
@@ -915,13 +917,15 @@ type EpvScene3D=class(Exception);
                      property Active:boolean read fActive write fActive;
                      property Scene:TpvSizeInt read fScene write SetScene;
                     public
-                     property Nodes:TNodes read fNodes;
-                     property Skins:TSkins read fSkins;
+                     property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
+                     property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
                      property UserData:pointer read fUserData write fUserData;
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                     published
                      property VulkanData:TVulkanData read fVulkanData;
-                     property Automations[const aIndex:TPasGLTFSizeInt]:TAnimation read GetAutomation;
+                    public
+                     property Automations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
+                    published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                    end;
@@ -4938,7 +4942,7 @@ begin
  inherited BeforeDestruction;
 end;
 
-function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TAnimation;
+function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
 begin
  result:=fAnimations[aIndex+1];
 end;
