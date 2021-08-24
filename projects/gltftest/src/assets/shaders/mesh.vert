@@ -14,12 +14,15 @@ layout(location = 7) in uint inCountMorphTargetVertices;
 layout(location = 8) in uint inJointBlockBaseIndex;
 layout(location = 9) in uint inCountJointBlocks;
 
-layout(location = 0) out vec3 outViewSpacePosition;
-layout(location = 1) out vec3 outTangent;
-layout(location = 2) out vec3 outBitangent;
-layout(location = 3) out vec3 outNormal;
-layout(location = 4) out vec2 outTexCoord0;
-layout(location = 5) out vec2 outTexCoord1;
+layout(location = 0) out vec3 outWorldSpacePosition;
+layout(location = 1) out vec3 outViewSpacePosition;
+layout(location = 2) out vec3 outCameraRelativePosition;
+layout(location = 3) out vec3 outTangent;
+layout(location = 4) out vec3 outBitangent;
+layout(location = 5) out vec3 outNormal;
+layout(location = 6) out vec2 outTexCoord0;
+layout(location = 7) out vec2 outTexCoord1;
+layout(location = 8) out vec4 outColor;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -90,6 +93,7 @@ mat3 QTangentToMatrix(vec4 q){
 /* clang-format on */
 
 void main() {
+
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
   mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
@@ -142,12 +146,15 @@ void main() {
 
   mat4 modelViewMatrix = pushConstants.viewMatrix * modelNodeMatrix;
 
+  outWorldSpacePosition = (modelNodeMatrix * vec4(position, 1.0)).xyz;
   outViewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+  outCameraRelativePosition = outWorldSpacePosition - inverse(pushConstants.viewMatrix)[3].xyz;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
   outNormal = tangentSpace[2];
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
-  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+  outColor = inColor0;
+  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);  
   // gl_PointSize = 1.0;
 }
