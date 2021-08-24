@@ -2746,7 +2746,7 @@ begin
    NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=Primitive^.StartBufferIndexOffset;
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
-    Vertex^.NodeIndex:=aNodeIndex;
+    Vertex^.NodeIndex:=aNodeIndex+1;
     if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -2780,7 +2780,7 @@ begin
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
     NewVertexIndex:=fGroup.fVertices.Add(fGroup.fVertices.Items[VertexIndex]);
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
-    Vertex^.NodeIndex:=aNodeIndex;
+    Vertex^.NodeIndex:=aNodeIndex+1;
     if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -3252,17 +3252,33 @@ begin
         if CountJointBlocks>0 then begin
          FillChar(MaxJointBlocks^,SizeOf(TMaxJointBlocks),#0);
          for JointBlockIndex:=0 to CountJointBlocks-1 do begin
-          if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
-           MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0];
-           MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1];
-           MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2];
-           MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3];
-          end;
           if VertexIndex<length(TemporaryWeights[JointBlockIndex]) then begin
            MaxJointBlocks^[JointBlockIndex].Weights.x:=TemporaryWeights[JointBlockIndex][VertexIndex][0];
            MaxJointBlocks^[JointBlockIndex].Weights.y:=TemporaryWeights[JointBlockIndex][VertexIndex][1];
            MaxJointBlocks^[JointBlockIndex].Weights.z:=TemporaryWeights[JointBlockIndex][VertexIndex][2];
            MaxJointBlocks^[JointBlockIndex].Weights.w:=TemporaryWeights[JointBlockIndex][VertexIndex][3];
+          end;
+          if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
+           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.x) then begin
+            MaxJointBlocks^[JointBlockIndex].Joints[0]:=0;
+           end else begin
+            MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0]+1;
+           end;
+           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.y) then begin
+            MaxJointBlocks^[JointBlockIndex].Joints[1]:=0;
+           end else begin
+            MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1]+1;
+           end;
+           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.z) then begin
+            MaxJointBlocks^[JointBlockIndex].Joints[2]:=0;
+           end else begin
+            MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2]+1;
+           end;
+           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.w) then begin
+            MaxJointBlocks^[JointBlockIndex].Joints[3]:=0;
+           end else begin
+            MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3]+1;
+           end;
           end;
          end;
          if not MaxJointBlocksHashMap.TryGet(MaxJointBlocks^,Vertex^.JointBlockBaseIndex) then begin

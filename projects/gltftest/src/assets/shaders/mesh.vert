@@ -89,7 +89,7 @@ mat3 QTangentToMatrix(vec4 q){
 
 void main() {
 
-  mat4 nodeMatrix = nodeMatrices[inNodeIndex + 1];
+  mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
   mat4 modelMatrix = nodeMatrices[0] * nodeMatrix;
 
@@ -129,10 +129,10 @@ void main() {
       vec4 weights = jointBlock.weights;
       if (any(not(equal(weights, vec4(0.0))))) {
         uvec4 joints = jointBlock.joints;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.x + 1]) * weights.x;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.y + 1]) * weights.y;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.z + 1]) * weights.z;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w + 1]) * weights.w;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.x]) * weights.x;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.y]) * weights.y;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.z]) * weights.z;
+        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w]) * weights.w;
       }
       jointBlockBaseIndex++;
     }while(--countJointBlocks > 0u);
