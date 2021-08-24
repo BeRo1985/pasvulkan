@@ -2783,8 +2783,8 @@ begin
     Vertex^.NodeIndex:=aNodeIndex;
     if (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountMorphTargetVertices>0) then begin
      WeightIndex:=0;
-     Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+     Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
       NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
       fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex]:=fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
@@ -2796,7 +2796,7 @@ begin
        break;
       end else begin
        MorphTargetVertexIndex:=MorphTargetVertex^.Next;
-       MorphTargetVertex^.Next:=fGroup.fMorphTargetVertices.Count+1;
+       MorphTargetVertex^.Next:=fGroup.fMorphTargetVertices.Count;
       end;
      end;
     end else begin
