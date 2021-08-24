@@ -1628,7 +1628,8 @@ begin
    fImage.IncRef;
   end;
  end else begin
-  raise EPasGLTFInvalidDocument.Create('Image index out of range');
+  fImage:=nil;
+//raise EPasGLTFInvalidDocument.Create('Image index out of range');
  end;
  if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
   fSampler:=aSamplerMap[aSourceTexture.Sampler];
