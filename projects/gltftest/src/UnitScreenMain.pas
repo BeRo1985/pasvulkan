@@ -92,7 +92,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test4.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
