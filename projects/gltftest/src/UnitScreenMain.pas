@@ -92,7 +92,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test3.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -437,21 +437,21 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  CameraRotationX:=0.125;
+  CameraRotationX:=0.0;
   CameraRotationY:=0.0;
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
   Zoom:=1.0;
-  ViewMatrix:=TpvMatrix4x4.FlipYClipSpace*
-              TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                   sin(-CameraRotationY*PI*2.0),
                                                                   cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*6.0*Zoom)),
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*Zoom)),
                                         Center,
-                                        TpvVector3.Create(0.0,1.0,0.0));
+                                        TpvVector3.Create(0.0,1.0,0.0))*
+               TpvMatrix4x4.FlipYClipSpace;
 
 //ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,4096.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,4096.0);
 
   fGroupInstance.ModelMatrix:=ModelMatrix;
 
