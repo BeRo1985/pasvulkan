@@ -114,6 +114,7 @@ type EpvScene3D=class(Exception);
             PUInt32Vector4=^TUInt32Vector4;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
+            TSizeIntDynamicArrayEx=array of TpvSizeInt;
             TViewPortGlobalsUniformBuffer=record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
@@ -662,7 +663,7 @@ type EpvScene3D=class(Exception);
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
                      fNodeMeshInstances:TpvSizeInt;
-                     function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset:TpvUInt32):TpvSizeInt;
+                     function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -733,6 +734,7 @@ type EpvScene3D=class(Exception);
                      fLight:TLight;
                      fWeights:TpvFloatDynamicArray;
                      fWeightsOffset:TPasGLTFSizeInt;
+                     fJointNodeOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
                      fMatrix:TpvMatrix4x4;
                      fTranslation:TpvVector3;
@@ -949,10 +951,12 @@ type EpvScene3D=class(Exception);
               fIndices:TGroupIndices;
               fMaterialIndices:TGroupIndices;
               fJointBlocks:TGroupJointBlocks;
+              fJointBlockOffsets:TSizeIntDynamicArrayEx;
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
               fSkinStorageBufferSize:TpvSizeInt;
               fMorphTargetCount:TpvSizeInt;
               fCountNodeWeights:TpvSizeInt;
+              fCountJointNodeMatrices:TpvSizeInt;
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
@@ -2715,7 +2719,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset:TpvUInt32):TpvSizeInt;
+function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
 var PrimitiveIndex,
     NodeMeshPrimitiveInstanceIndex,
     VertexIndex,
@@ -2724,7 +2728,8 @@ var PrimitiveIndex,
     NewMorphTargetVertexIndex,
     WeightIndex,
     JointBlockIndex,
-    NewJointBlockIndex:TpvSizeInt;
+    NewJointBlockIndex,
+    Old:TpvSizeInt;
     Primitive:TMesh.PPrimitive;
     NodeMeshPrimitiveInstance:TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
     Vertex:PVertex;
@@ -2760,6 +2765,20 @@ begin
        MorphTargetVertexIndex:=MorphTargetVertex^.Next;
       end;
      end;
+    end;
+    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
+     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
+      NewJointBlockIndex:=Vertex^.JointBlockBaseIndex+JointBlockIndex;
+      if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
+       Old:=length(fGroup.fJointBlockOffsets);
+       SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
+       FillChar(fGroup.fJointBlockOffsets[Old],((length(fGroup.fJointBlockOffsets)-Old)+1)*SizeOf(TpvSizeInt),#0);
+      end;
+      fGroup.fJointBlockOffsets[NewJointBlockIndex]:=aJointNodeOffset;
+     end;
+    end else begin
+     Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
+     Vertex^.CountJointBlocks:=0;
     end;
    end;
   end;
@@ -2803,11 +2822,17 @@ begin
      Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
      Vertex^.CountMorphTargetVertices:=0;
     end;
+
     if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
-     Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
      for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
       fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[Vertex^.JointBlockBaseIndex+JointBlockIndex];
+      if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
+       Old:=length(fGroup.fJointBlockOffsets);
+       SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
+       FillChar(fGroup.fJointBlockOffsets[Old],((length(fGroup.fJointBlockOffsets)-Old)+1)*SizeOf(TpvSizeInt),#0);
+      end;
+      fGroup.fJointBlockOffsets[NewJointBlockIndex]:=aJointNodeOffset;
      end;
     end else begin
      Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
@@ -3252,36 +3277,20 @@ begin
         if CountJointBlocks>0 then begin
          FillChar(MaxJointBlocks^,SizeOf(TMaxJointBlocks),#0);
          for JointBlockIndex:=0 to CountJointBlocks-1 do begin
+          if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
+           MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0];
+           MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1];
+           MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2];
+           MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3];
+          end;
           if VertexIndex<length(TemporaryWeights[JointBlockIndex]) then begin
            MaxJointBlocks^[JointBlockIndex].Weights.x:=TemporaryWeights[JointBlockIndex][VertexIndex][0];
            MaxJointBlocks^[JointBlockIndex].Weights.y:=TemporaryWeights[JointBlockIndex][VertexIndex][1];
            MaxJointBlocks^[JointBlockIndex].Weights.z:=TemporaryWeights[JointBlockIndex][VertexIndex][2];
            MaxJointBlocks^[JointBlockIndex].Weights.w:=TemporaryWeights[JointBlockIndex][VertexIndex][3];
           end;
-          if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
-           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.x) then begin
-            MaxJointBlocks^[JointBlockIndex].Joints[0]:=0;
-           end else begin
-            MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0]+1;
-           end;
-           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.y) then begin
-            MaxJointBlocks^[JointBlockIndex].Joints[1]:=0;
-           end else begin
-            MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1]+1;
-           end;
-           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.z) then begin
-            MaxJointBlocks^[JointBlockIndex].Joints[2]:=0;
-           end else begin
-            MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2]+1;
-           end;
-           if IsZero(MaxJointBlocks^[JointBlockIndex].Weights.w) then begin
-            MaxJointBlocks^[JointBlockIndex].Joints[3]:=0;
-           end else begin
-            MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3]+1;
-           end;
-          end;
          end;
-         if not MaxJointBlocksHashMap.TryGet(MaxJointBlocks^,Vertex^.JointBlockBaseIndex) then begin
+         {if not MaxJointBlocksHashMap.TryGet(MaxJointBlocks^,Vertex^.JointBlockBaseIndex) then }begin
           Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
           for JointBlockIndex:=0 to CountJointBlocks-1 do begin
            fGroup.fJointBlocks.Add(MaxJointBlocks^[JointBlockIndex]);
@@ -3806,9 +3815,11 @@ begin
 
  fWeightsOffset:=Group.fCountNodeWeights;
 
+ fJointNodeOffset:=Group.fCountJointNodeMatrices;
+
  if assigned(fMesh) then begin
   Mesh:=fMesh;
-  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset);
+  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,fJointNodeOffset);
   Count:=length(fWeights);
   if Count<length(Mesh.fWeights) then begin
    SetLength(fWeights,length(Mesh.fWeights));
@@ -3821,6 +3832,10 @@ begin
  end;
 
  inc(fGroup.fCountNodeWeights,length(fWeights));
+
+ if assigned(fSkin) then begin
+  inc(Group.fCountJointNodeMatrices,fSkin.fJoints.Count);
+ end;
 
  fChildNodeIndices.Initialize;
  fChildNodeIndices.Resize(aSourceNode.Children.Count);
@@ -3953,6 +3968,8 @@ begin
 
  fJointBlocks.Initialize;
 
+ fJointBlockOffsets:=nil;
+
  fSkinStorageBufferSize:=0;
 
  fMorphTargetCount:=0;
@@ -4000,6 +4017,8 @@ begin
  fMorphTargetVertices.Finalize;
 
  fJointBlocks.Finalize;
+
+ fJointBlockOffsets:=nil;
 
  FreeAndNil(fLock);
 
@@ -4573,11 +4592,12 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessNodes;
- var Index:TpvSizeInt;
+ var Index,Offset:TpvSizeInt;
      SourceNode:TPasGLTF.TNode;
      Node:TNode;
  begin
   fCountNodeWeights:=0;
+  fCountJointNodeMatrices:=0;
   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
    SourceNode:=aSourceDocument.Nodes[Index];
    Node:=TNode.Create(self,Index);
@@ -4590,6 +4610,39 @@ var LightMap:TpvScene3D.TGroup.TLights;
   for Index:=0 to fNodes.Count-1 do begin
    fNodes[Index].Finish;
   end;
+
+  begin
+   Offset:=fNodes.Count+1;
+   for Index:=0 to length(fJointBlockOffsets)-1 do begin
+    inc(fJointBlockOffsets[Index],Offset);
+   end;
+   for Index:=0 to fNodes.Count-1 do begin
+    inc(fNodes[Index].fJointNodeOffset,Offset);
+   end;
+   for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
+    if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
+     fJointBlocks.Items[Index].Joints[0]:=0;
+    end else begin
+     inc(fJointBlocks.Items[Index].Joints[0],fJointBlockOffsets[Index]);
+    end;
+    if IsZero(fJointBlocks.Items[Index].Weights.y) then begin
+     fJointBlocks.Items[Index].Joints[1]:=0;
+    end else begin
+     inc(fJointBlocks.Items[Index].Joints[1],fJointBlockOffsets[Index]);
+    end;
+    if IsZero(fJointBlocks.Items[Index].Weights.z) then begin
+     fJointBlocks.Items[Index].Joints[2]:=0;
+    end else begin
+     inc(fJointBlocks.Items[Index].Joints[2],fJointBlockOffsets[Index]);
+    end;
+    if IsZero(fJointBlocks.Items[Index].Weights.w) then begin
+     fJointBlocks.Items[Index].Joints[3]:=0;
+    end else begin
+     inc(fJointBlocks.Items[Index].Joints[3],fJointBlockOffsets[Index]);
+    end;
+   end;
+  end;
+
 { if fCountNodeWeights=fMorphTargetCount then begin
   end;}
  end;
@@ -4999,7 +5052,7 @@ begin
  if not fUploaded then begin
   try
 
-   SetLength(fNodeMatrices,fGroup.fNodes.Count+1);
+   SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
 
    SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
 
@@ -5556,6 +5609,24 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    ProcessNode(Node.Children[Index].Index,Matrix);
   end;
  end;
+ procedure ProcessSkinNode(const aNodeIndex:TpvSizeInt);
+ var Index:TpvSizeInt;
+     //InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Node:TpvScene3D.TGroup.TNode;
+     Skin:TpvScene3D.TGroup.TSkin;
+ begin
+  //InstanceNode:=@fNodes[aNodeIndex];
+  Node:=fGroup.fNodes[aNodeIndex];
+  Skin:=Node.fSkin;
+  if assigned(Skin) and (Skin.fJoints.Count>0) then begin
+   for Index:=0 to Skin.fJoints.Count-1 do begin
+    fNodeMatrices[Node.fJointNodeOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
+   end;
+  end;
+  for Index:=0 to Node.Children.Count-1 do begin
+   ProcessSkinNode(Node.Children[Index].Index);
+  end;
+ end;
 var Index:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
@@ -5589,6 +5660,9 @@ begin
    end;
    for Index:=0 to Scene.fNodes.Count-1 do begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+   end;
+   for Index:=0 to Scene.fNodes.Count-1 do begin
+    ProcessSkinNode(Scene.fNodes[Index].Index);
    end;
    fNodeMatrices[0]:=fModelMatrix;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
