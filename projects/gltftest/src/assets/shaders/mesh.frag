@@ -2,7 +2,6 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
@@ -12,7 +11,7 @@ layout(location = 4) in vec3 inBitangent;
 layout(location = 5) in vec3 inNormal;
 layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
-layout(location = 8) in vec4 inColor;
+layout(location = 8) in vec4 inColor0;
 
 layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
@@ -58,9 +57,7 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
   return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), c / vec3(12.92), lessThan(c, vec3(4.045e-2)));  //
 }
 
-vec4 convertSRGBToLinearRGB(vec4 c) {
-  return vec4(convertSRGBToLinearRGB(c.xyz), c.w);
-}
+vec4 convertSRGBToLinearRGB(vec4 c) { return vec4(convertSRGBToLinearRGB(c.xyz), c.w); }
 
 const float PI = 3.14159265358979323846, PI2 = 6.283185307179586476925286766559, OneOverPI = 1.0 / PI;
 
@@ -141,8 +138,11 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor)
 
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
   vec3 reflectionVector = normalize(reflect(viewDirection, normal.xyz));
-  float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0), ao = cavity * ambientOcclusion, lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))), specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  return (vec3(1.0f) * specularOcclusion) * OneOverPI;
+  float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0),                                                            //
+      ao = cavity * ambientOcclusion,                                                                                                   //
+      lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
+      specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
+  return max(vec3(0.0), (vec3(0.1f) * specularOcclusion) * OneOverPI);
   // vec2 brdf = textureLod(uBRDFLUTTexture, vec2(roughness, NdotV), 0.0).xy;
   //  return (textureLod(uEnvMapTexture, reflectionVector, clamp((float(uEnvMapMaxLevel) - 1.0) - (1.0 - (1.2 * log2(roughness))), 0.0, float(uEnvMapMaxLevel))).xyz * ((specularColor.xyz * brdf.x) +'+' (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) * specularOcclusion) * OneOverPI;
 }
@@ -212,16 +212,16 @@ const uint smPBRMetallicRoughness = 0u,  //
 uvec2 texCoordIndices = uMaterial.alphaCutOffFlagsTex0Tex1.zw;
 vec2 texCoords[2] = vec2[2](inTexCoord0, inTexCoord1);
 
-vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue) {
+vec4 textureFetch(const sampler2D tex, const in int textureIndex, const in vec4 defaultValue) {
   uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
-  return (which < 0x2u) ? texture(uTextures[textureIndex], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy) : defaultValue;
+  return (which < 0x2u) ? texture(tex, (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy) : defaultValue;
 }
 
-vec4 textureFetchSRGB(const in int textureIndex, const in vec4 defaultValue) {
+vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in vec4 defaultValue) {
   uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
   vec4 texel;
   if (which < 0x2u) {
-    texel = texture(uTextures[textureIndex], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy);
+    texel = texture(tex, (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy);
     texel.xyz = convertSRGBToLinearRGB(texel.xyz);
   } else {
     texel = defaultValue;
@@ -238,7 +238,7 @@ void main() {
   float s = d * d;
   vec4 m = vec4(d, s, s * d, s * s);
   oOutput = m;
-  float alpha = textureFetch(0, vec4(1.0)).w * uMaterial.baseColorFactor.w * vColor.w;
+  float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * vColor.w;
 #else
   vec4 color = vec4(0.0);
 #ifdef EXTRAEMISSIONOUTPUT
@@ -252,29 +252,29 @@ void main() {
       switch (shadingModel) {
         case smPBRMetallicRoughness: {
           const vec3 f0 = vec3(0.04);  // dielectricSpecular
-          vec4 baseColor = textureFetchSRGB(0, vec4(1.0)) * uMaterial.baseColorFactor;
-          vec2 metallicRoughness = clamp(textureFetch(1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
+          vec4 baseColor = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor;
+          vec2 metallicRoughness = clamp(textureFetch(uTextures[1], 1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4((baseColor.xyz * (vec3(1.0) - f0) * (1.0 - metallicRoughness.x)) * PI, baseColor.w);
           specularColorRoughness = vec4(mix(f0, baseColor.xyz, metallicRoughness.x) * PI, metallicRoughness.y);
           break;
         }
         case smPBRSpecularGlossiness: {
-          vec4 specularGlossiness = textureFetchSRGB(1, vec4(1.0)) * vec4(uMaterial.specularFactor.xyz, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
-          diffuseColorAlpha = textureFetchSRGB(0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((1.0 - max(max(specularGlossiness.x, specularGlossiness.y), specularGlossiness.z)) * PI, 1.0).xxxy;
+          vec4 specularGlossiness = textureFetchSRGB(uTextures[1], 1, vec4(1.0)) * vec4(uMaterial.specularFactor.xyz, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
+          diffuseColorAlpha = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((1.0 - max(max(specularGlossiness.x, specularGlossiness.y), specularGlossiness.z)) * PI, 1.0).xxxy;
           specularColorRoughness = vec4(specularGlossiness.xyz * PI, clamp(1.0 - specularGlossiness.w, 1e-3, 1.0));
           break;
         }
       }
       vec3 normal;
       if ((texCoordIndices.x & 0x00000f00u) != 0x00000f00u) {
-        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx);
+        vec4 normalTexture = textureFetch(uTextures[2], 2, vec2(0.0, 1.0).xxyx);
         normal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
       } else {
         normal = normalize(inNormal);
       }
       normal *= (((flags & (1u << 5u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
-      vec4 occlusionTexture = textureFetch(3, vec4(1.0));
-      vec4 emissiveTexture = textureFetchSRGB(4, vec4(1.0));
+      vec4 occlusionTexture = textureFetch(uTextures[3], 3, vec4(1.0));
+      vec4 emissiveTexture = textureFetchSRGB(uTextures[4], 4, vec4(1.0));
       cavity = clamp(mix(1.0, occlusionTexture.x, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
       transparency = 0.0;
       refractiveAngle = 0.0;
@@ -291,7 +291,7 @@ void main() {
       if ((flags & (1u << 6u)) != 0u) {
         sheenColorIntensityFactor = uMaterial.sheenColorFactorSheenIntensityFactor;
         if ((texCoordIndices.x & 0x00f00000u) != 0x00f00000u) {
-          sheenColorIntensityFactor *= textureFetchSRGB(5, vec4(1.0));
+          sheenColorIntensityFactor *= textureFetchSRGB(uTextures[5], 5, vec4(1.0));
         }
         sheenRoughness = max(specularColorRoughness.w, 1e-7);
       }
@@ -300,13 +300,13 @@ void main() {
         clearcoatRoughness = uMaterial.clearcoatFactorClearcoatRoughnessFactor.y;
         clearcoatF0 = vec3(0.04);
         if ((texCoordIndices.x & 0x0f000000u) != 0x0f000000u) {
-          clearcoatFactor *= textureFetch(6, vec4(1.0)).x;
+          clearcoatFactor *= textureFetch(uTextures[6], 6, vec4(1.0)).x;
         }
         if ((texCoordIndices.x & 0xf0000000u) != 0xf0000000u) {
-          clearcoatRoughness *= textureFetch(7, vec4(1.0)).y;
+          clearcoatRoughness *= textureFetch(uTextures[7], 7, vec4(1.0)).y;
         }
         if ((texCoordIndices.y & 0x0000000fu) != 0x0000000fu) {
-          vec4 normalTexture = textureFetch(8, vec2(0.0, 1.0).xxyx);
+          vec4 normalTexture = textureFetch(uTextures[8], 8, vec2(0.0, 1.0).xxyx);
           clearcoatNormal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
         } else {
           clearcoatNormal = normalize(inNormal);
@@ -420,24 +420,24 @@ void main() {
                          (vec3(1.0) - clearcoatBlendFactor)) +
                         mix(specularOutput, clearcoatOutput, clearcoatBlendFactor)),
                    diffuseColorAlpha.w);
-//        color = vec4(clearcoatOutput * clearcoatBlendFactor, diffuseColorAlpha.w);
+//    color = vec4(clearcoatOutput * clearcoatBlendFactor, diffuseColorAlpha.w);
 #ifdef EXTRAEMISSIONOUTPUT
       emissionColor.xyz = vec4((emissiveTexture.xyz * uMaterial.emissiveFactor.xyz) * (vec3(1.0) - clearcoatBlendFactor), 1.0);
 #endif
       break;
     }
     case smUnlit: {
-      color = textureFetchSRGB(0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
+      color = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
       break;
     }
   }
-  float alpha = color.w * inColor.w, outputAlpha = mix(1.0, color.w * inColor.w, float(int(uint((flags >> 4u) & 1u))));
-  outFragColor = vec4(color.xyz * inColor.xyz, outputAlpha);
+  float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 4u) & 1u))));
+  outFragColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #ifdef EXTRAEMISSIONOUTPUT
-  outFragEmission = vec4(emissionColor.xyz * inColor.xyz, outputAlpha);
+  outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
 #endif
 #endif
-#ifdef aAlphaTest
+#ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
     discard;
   }

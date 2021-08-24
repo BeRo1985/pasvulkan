@@ -22,7 +22,7 @@ layout(location = 4) out vec3 outBitangent;
 layout(location = 5) out vec3 outNormal;
 layout(location = 6) out vec2 outTexCoord0;
 layout(location = 7) out vec2 outTexCoord1;
-layout(location = 8) out vec4 outColor;
+layout(location = 8) out vec4 outColor0;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -93,6 +93,13 @@ mat3 QTangentToMatrix(vec4 q){
 /* clang-format on */
 
 void main() {
+#if 0
+  // The actual standard approach
+  vec3 cameraPosition = inverse(pushConstants.viewMatrix)[3].xyz;
+#else
+  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
+  vec3 cameraPosition = (-pushConstants.viewMatrix[3].xyz) * mat3(pushConstants.viewMatrix);
+#endif
 
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
@@ -114,11 +121,9 @@ void main() {
       tangent.xyz += morphTargetVertex.tangent.xyz * weight;
       morphTargetVertexIndex = morphTargetVertex.metaData.y;
     }
-    if (abs(normal.w) > 1e-7f) {
-      normal.xyz = normalize(normal.xyz);
-      tangent.xyz = normalize(tangent.xyz);
-      tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
-    }
+    normal.xyz = normalize(normal.xyz);
+    tangent.xyz = normalize(tangent.xyz);
+    tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
   }
 
   if (inCountJointBlocks > 0u) {
@@ -146,15 +151,20 @@ void main() {
 
   mat4 modelViewMatrix = pushConstants.viewMatrix * modelNodeMatrix;
 
-  outWorldSpacePosition = (modelNodeMatrix * vec4(position, 1.0)).xyz;
-  outViewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
-  outCameraRelativePosition = outWorldSpacePosition - inverse(pushConstants.viewMatrix)[3].xyz;
+  vec4 worldSpacePosition = modelNodeMatrix * vec4(position, 1.0);
+  worldSpacePosition.xyz /= worldSpacePosition.w;
+
+  vec4 viewSpacePosition = modelViewMatrix * vec4(position, 1.0);
+  viewSpacePosition.xyz /= viewSpacePosition.w;
+
+  outWorldSpacePosition = worldSpacePosition.xyz;
+  outViewSpacePosition = viewSpacePosition.xyz.xyz;
+  outCameraRelativePosition = worldSpacePosition.xyz - cameraPosition;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
   outNormal = tangentSpace[2];
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
-  outColor = inColor0;
-  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);  
-  // gl_PointSize = 1.0;
+  outColor0 = inColor0;
+  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
 }

@@ -18,8 +18,8 @@ uses SysUtils,
 
 const NumSamples=4096;
 
-      Width=1024;
-      Height=1024;
+      Width=512;
+      Height=512;
 
 type PFloat=^TFloat;
      TFloat=double;
