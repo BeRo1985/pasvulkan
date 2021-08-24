@@ -99,29 +99,22 @@ void main() {
 
   uint countMorphTargetVertices = inCountMorphTargetVertices;
   if (countMorphTargetVertices > 0u) {
-    uint morphTargetVertexBaseIndex = inMorphTargetVertexBaseIndex;
-    do {
-      uint morphTargetVertexIndex = morphTargetVertexBaseIndex;
-      vec3 normal = tangentSpace[2];
-      vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
-      uint tries = 1024u;  // for to prevent endless loops on bit-flipped vRAM content (=> driver timeouts, or even worse, maybe also BSODs)
-      float weightSum = 0.0f;
-      while ((morphTargetVertexIndex != 0xffffffffu) && (tries-- > 0u)) {
-        MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
-        float weight = morphTargetWeights[morphTargetVertex.metaData.x];
-        position += morphTargetVertex.position.xyz * weight;
-        normal += morphTargetVertex.normal.xyz * weight;
-        tangent.xyz += morphTargetVertex.tangent.xyz * weight;
-        weightSum += weight;
-        morphTargetVertexIndex = morphTargetVertex.metaData.y;
-      }
-      if (abs(weightSum) > 1e-6f) {
-        normal = normalize(normal);
-        tangent.xyz = normalize(tangent.xyz);
-        tangentSpace = mat3(tangent.xyz, normalize(cross(normal, tangent.xyz) * tangent.w), normal);
-      }
-      morphTargetVertexBaseIndex++;
-    } while (--countMorphTargetVertices > 0u);
+    vec4 normal = vec4(tangentSpace[2], 0.0f);
+    vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
+    uint morphTargetVertexIndex = inMorphTargetVertexBaseIndex;
+    while ((morphTargetVertexIndex != 0xffffffffu) && (countMorphTargetVertices-- > 0u)) {
+      MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
+      float weight = morphTargetWeights[morphTargetVertex.metaData.x];
+      position += morphTargetVertex.position.xyz * weight;
+      normal += vec4(morphTargetVertex.normal.xyz, 1.0) * weight;
+      tangent.xyz += morphTargetVertex.tangent.xyz * weight;
+      morphTargetVertexIndex = morphTargetVertex.metaData.y;
+    }
+    if (abs(normal.w) > 1e-7f) {
+      normal.xyz = normalize(normal.xyz);
+      tangent.xyz = normalize(tangent.xyz);
+      tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
+    }
   }
 
   uint countJointBlocks = inCountJointBlocks;
