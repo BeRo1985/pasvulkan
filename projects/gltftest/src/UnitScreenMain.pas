@@ -322,7 +322,7 @@ begin
     end else begin
      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
     end;
-    VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+    VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
@@ -437,12 +437,13 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  CameraRotationX:=0.0;
+  CameraRotationX:=0.125;
   CameraRotationY:=0.0;
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
   Zoom:=1.0;
-  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+  ViewMatrix:=TpvMatrix4x4.FlipYClipSpace*
+              TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                   sin(-CameraRotationY*PI*2.0),
                                                                   cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
                                                         (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*Zoom)),

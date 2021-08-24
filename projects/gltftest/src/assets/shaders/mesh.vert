@@ -14,12 +14,12 @@ layout(location = 7) in uint inCountMorphTargetVertices;
 layout(location = 8) in uint inJointBlockBaseIndex;
 layout(location = 9) in uint inCountJointBlocks;
 
-layout (location = 0) out vec3 outViewSpacePosition;
-layout (location = 1) out vec3 outTangent;
-layout (location = 2) out vec3 outBitangent;
-layout (location = 3) out vec3 outNormal;
-layout (location = 4) out vec2 outTexCoord0;
-layout (location = 5) out vec2 outTexCoord1;
+layout(location = 0) out vec3 outViewSpacePosition;
+layout(location = 1) out vec3 outTangent;
+layout(location = 2) out vec3 outBitangent;
+layout(location = 3) out vec3 outNormal;
+layout(location = 4) out vec2 outTexCoord0;
+layout(location = 5) out vec2 outTexCoord1;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -90,7 +90,6 @@ mat3 QTangentToMatrix(vec4 q){
 /* clang-format on */
 
 void main() {
-
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
   mat4 modelMatrix = nodeMatrices[0] * nodeMatrix;
@@ -101,12 +100,12 @@ void main() {
   uint countMorphTargetVertices = inCountMorphTargetVertices;
   if (countMorphTargetVertices > 0u) {
     uint morphTargetVertexBaseIndex = inMorphTargetVertexBaseIndex;
-    do{
+    do {
       uint morphTargetVertexIndex = morphTargetVertexBaseIndex;
       vec3 normal = tangentSpace[2];
       vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
       uint tries = 1024u;  // for to prevent endless loops on bit-flipped vRAM content (=> driver timeouts, or even worse, maybe also BSODs)
-      float weightSum = 0.0f; 
+      float weightSum = 0.0f;
       while ((morphTargetVertexIndex != 0xffffffffu) && (tries-- > 0u)) {
         MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
         float weight = morphTargetWeights[morphTargetVertex.metaData.x];
@@ -116,13 +115,13 @@ void main() {
         weightSum += weight;
         morphTargetVertexIndex = morphTargetVertex.metaData.y;
       }
-      if(abs(weightSum) > 1e-6f){
+      if (abs(weightSum) > 1e-6f) {
         normal = normalize(normal);
         tangent.xyz = normalize(tangent.xyz);
-        tangentSpace = mat3(tangent, normalize(cross(normal, tangent.xyz) * tangent.w), normal);
+        tangentSpace = mat3(tangent.xyz, normalize(cross(normal, tangent.xyz) * tangent.w), normal);
       }
       morphTargetVertexBaseIndex++;
-    }while(--countMorphTargetVertices > 0u);
+    } while (--countMorphTargetVertices > 0u);
   }
 
   uint countJointBlocks = inCountJointBlocks;
@@ -130,7 +129,7 @@ void main() {
     mat4 inverseNodeMatrix = inverse(nodeMatrix);
     uint jointBlockBaseIndex = inJointBlockBaseIndex;
     mat4 skinMatrix = mat4(vec4(0.0f), vec4(0.0f), vec4(0.0f), vec4(0.0f));
-    do{
+    do {
       JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
       vec4 weights = jointBlock.weights;
       if (any(not(equal(weights, vec4(0.0))))) {
@@ -141,7 +140,7 @@ void main() {
         skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w]) * weights.w;
       }
       jointBlockBaseIndex++;
-    }while(--countJointBlocks > 0u);
+    } while (--countJointBlocks > 0u);
     modelMatrix *= skinMatrix;
   }
 
@@ -162,5 +161,5 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
-  //gl_PointSize = 1.0;
+  // gl_PointSize = 1.0;
 }
