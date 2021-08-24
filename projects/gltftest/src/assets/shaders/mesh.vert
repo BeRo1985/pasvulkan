@@ -82,6 +82,8 @@ mat3 QTangentToMatrix(vec4 q){
   mat3 m = mat3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2,
                 qxqy2 - qzqw2, 1.0 - (qxqx2 + qzqz2), qyqz2 + qxqw2,
                 qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));
+/*m[0] = normalize(m[0]);              
+  m[1] = normalize(m[1]);*/              
   m[2] = normalize(cross(m[0], m[1])) * ((q.w < 0.0) ? -1.0 : 1.0);
   return m;
 }
@@ -104,17 +106,21 @@ void main() {
       vec3 normal = tangentSpace[2];
       vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
       uint tries = 1024u;  // for to prevent endless loops on bit-flipped vRAM content (=> driver timeouts, or even worse, maybe also BSODs)
+      float weightSum = 0.0f; 
       while ((morphTargetVertexBaseIndex != 0xffffffffu) && (tries-- > 0u)) {
         MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
         float weight = morphTargetWeights[morphTargetVertex.metaData.x];
         position += morphTargetVertex.position.xyz * weight;
         normal += morphTargetVertex.normal.xyz * weight;
         tangent.xyz += morphTargetVertex.tangent.xyz * weight;
+        weightSum += weight;
         morphTargetVertexIndex = morphTargetVertex.metaData.y;
       }
-      normal = normalize(normal);
-      tangent.xyz = normalize(tangent.xyz);
-      tangentSpace = mat3(tangent, normalize(cross(normal, tangent.xyz) * tangent.w), normal);
+      if(abs(weightSum) > 1e-6f){
+        normal = normalize(normal);
+        tangent.xyz = normalize(tangent.xyz);
+        tangentSpace = mat3(tangent, normalize(cross(normal, tangent.xyz) * tangent.w), normal);
+      }
       morphTargetVertexBaseIndex++;
     }while(--countMorphTargetVertices > 0u);
   }
@@ -142,6 +148,10 @@ void main() {
   mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
 
   tangentSpace = normalMatrix * tangentSpace;
+
+  tangentSpace[0] = normalize(tangentSpace[0]);
+  tangentSpace[1] = normalize(tangentSpace[1]);
+  tangentSpace[2] = normalize(tangentSpace[2]);
 
   mat4 modelViewMatrix = pushConstants.viewMatrix * modelMatrix;
 
