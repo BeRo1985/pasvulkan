@@ -92,7 +92,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test3.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -446,12 +446,12 @@ begin
               TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                   sin(-CameraRotationY*PI*2.0),
                                                                   cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*Zoom)),
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*6.0*Zoom)),
                                         Center,
                                         TpvVector3.Create(0.0,1.0,0.0));
 
 //ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,1024.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,4096.0);
 
   fGroupInstance.ModelMatrix:=ModelMatrix;
 
