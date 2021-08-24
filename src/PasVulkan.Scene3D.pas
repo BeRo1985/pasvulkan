@@ -676,6 +676,7 @@ type EpvScene3D=class(Exception);
                     private
                      fIndex:TpvSizeInt;
                      fSkeleton:TpvSizeInt;
+                     fJointMatrixOffset:TPasGLTFSizeInt;
                      fInverseBindMatrices:TMatrix4x4DynamicArray;
                      fMatrices:TMatrix4x4DynamicArray;
                      fJoints:TSizeIntDynamicArray;
@@ -734,7 +735,6 @@ type EpvScene3D=class(Exception);
                      fLight:TLight;
                      fWeights:TpvFloatDynamicArray;
                      fWeightsOffset:TPasGLTFSizeInt;
-                     fJointNodeOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
                      fMatrix:TpvMatrix4x4;
                      fTranslation:TpvVector3;
@@ -3578,6 +3578,7 @@ constructor TpvScene3D.TGroup.TSkin.Create(const aGroup:TGroup;const aIndex:TpvS
 begin
  inherited Create(aGroup);
  fIndex:=aIndex;
+ fJointMatrixOffset:=0;
 end;
 
 destructor TpvScene3D.TGroup.TSkin.Destroy;
@@ -3771,7 +3772,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TLights);
-var WeightIndex,ChildrenIndex,Count,LightIndex:TPasGLTFSizeInt;
+var WeightIndex,ChildrenIndex,Count,LightIndex,JointMatrixOffset:TPasGLTFSizeInt;
     Mesh:TMesh;
     ExtensionObject:TPasJSONItemObject;
     KHRLightsPunctualItem:TPasJSONItem;
@@ -3815,11 +3816,15 @@ begin
 
  fWeightsOffset:=Group.fCountNodeWeights;
 
- fJointNodeOffset:=Group.fCountJointNodeMatrices;
+ if assigned(fSkin) then begin
+  JointMatrixOffset:=fSkin.fJointMatrixOffset;
+ end else begin
+  JointMatrixOffset:=0;
+ end;
 
  if assigned(fMesh) then begin
   Mesh:=fMesh;
-  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,fJointNodeOffset);
+  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,JointMatrixOffset);
   Count:=length(fWeights);
   if Count<length(Mesh.fWeights) then begin
    SetLength(fWeights,length(Mesh.fWeights));
@@ -3832,10 +3837,6 @@ begin
  end;
 
  inc(fGroup.fCountNodeWeights,length(fWeights));
-
- if assigned(fSkin) then begin
-  inc(Group.fCountJointNodeMatrices,fSkin.fJoints.Count);
- end;
 
  fChildNodeIndices.Initialize;
  fChildNodeIndices.Resize(aSourceNode.Children.Count);
@@ -4537,6 +4538,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      SourceSkin:TPasGLTF.TSkin;
      Skin:TSkin;
  begin
+  fCountJointNodeMatrices:=0;
   fSkinStorageBufferSize:=0;
   for Index:=0 to aSourceDocument.Skins.Count-1 do begin
    SourceSkin:=aSourceDocument.Skins[Index];
@@ -4546,6 +4548,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
    finally
     fSkins.Add(Skin);
    end;
+   Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
+   inc(fCountJointNodeMatrices,Skin.fJoints.Count);
    Skin.fStorageBufferObjectOffset:=fSkinStorageBufferSize;
    if Skin.fJoints.Count>0 then begin
     Skin.fStorageBufferObjectSize:=Skin.fJoints.Count*SizeOf(TpvMatrix4x4);
@@ -4597,7 +4601,6 @@ var LightMap:TpvScene3D.TGroup.TLights;
      Node:TNode;
  begin
   fCountNodeWeights:=0;
-  fCountJointNodeMatrices:=0;
   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
    SourceNode:=aSourceDocument.Nodes[Index];
    Node:=TNode.Create(self,Index);
@@ -4616,12 +4619,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
    for Index:=0 to length(fJointBlockOffsets)-1 do begin
     inc(fJointBlockOffsets[Index],Offset);
    end;
-   for Index:=0 to fNodes.Count-1 do begin
-    if assigned(fNodes[Index].Skin) then begin
-     inc(fNodes[Index].fJointNodeOffset,Offset);
-    end else begin
-     fNodes[Index].fJointNodeOffset:=-1;
-    end;
+   for Index:=0 to fSkins.Count-1 do begin
+    inc(fSkins[Index].fJointMatrixOffset,Offset);
    end;
    for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
     if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
@@ -5602,7 +5601,7 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
   if assigned(Node.fMesh) then begin
-   if SkinUsed and assigned(Node.fSkin) then begin
+   if {SkinUsed and} assigned(Node.fSkin) then begin
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
@@ -5613,22 +5612,19 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    ProcessNode(Node.Children[Index].Index,Matrix);
   end;
  end;
- procedure ProcessSkinNode(const aNodeIndex:TpvSizeInt);
- var Index:TpvSizeInt;
-     //InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-     Node:TpvScene3D.TGroup.TNode;
+ procedure ProcessSkins;
+ var SkinIndex,Index:TpvSizeInt;
      Skin:TpvScene3D.TGroup.TSkin;
+     InstanceSkin:TpvScene3D.TGroup.TInstance.PSkin;
  begin
-  //InstanceNode:=@fNodes[aNodeIndex];
-  Node:=fGroup.fNodes[aNodeIndex];
-  Skin:=Node.fSkin;
-  if assigned(Skin) and (Skin.fJoints.Count>0) then begin
-   for Index:=0 to Skin.fJoints.Count-1 do begin
-    fNodeMatrices[Node.fJointNodeOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
+  for SkinIndex:=0 to fGroup.fSkins.Count-1 do begin
+   Skin:=fGroup.fSkins[SkinIndex];
+   InstanceSkin:=@fSkins[SkinIndex];
+   if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
+    for Index:=0 to Skin.fJoints.Count-1 do begin
+     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
+    end;
    end;
-  end;
-  for Index:=0 to Node.Children.Count-1 do begin
-   ProcessSkinNode(Node.Children[Index].Index);
   end;
  end;
 var Index:TPasGLTFSizeInt;
@@ -5665,9 +5661,7 @@ begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
    end;
-   for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessSkinNode(Scene.fNodes[Index].Index);
-   end;
+   ProcessSkins;
    fNodeMatrices[0]:=fModelMatrix;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     Node:=fGroup.fNodes[Index];
