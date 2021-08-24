@@ -135,7 +135,7 @@ vec4 getEnvMap(sampler2D texEnvMap, float texLOD, vec3 rayDirection) {
 
 vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor) {
   float ao = cavity * ambientOcclusion;
-  return (vec3(0.0f) * diffuseColor * ao) * OneOverPI;
+  return (vec3(1.0f) * diffuseColor * ao) * OneOverPI;
   // return (textureLod(uEnvMapTexture, normal.xyz, float(uEnvMapMaxLevel)).xyz * diffuseColor * ao) * OneOverPI;
 }
 

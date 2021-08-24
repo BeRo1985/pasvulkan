@@ -2081,15 +2081,15 @@ begin
                                                0,
                                                9,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                               [NormalTextureDescriptorImageInfo,
-                                                OcclusionTextureDescriptorImageInfo,
-                                                EmissiveTextureDescriptorImageInfo,
-                                                BaseColorOrDiffuseTextureDescriptorImageInfo,
-                                                MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo,
-                                                SheenColorIntensityTextureDescriptorImageInfo,
-                                                ClearCoatNormalTextureDescriptorImageInfo,
-                                                ClearCoatRoughnessTextureDescriptorImageInfo,
-                                                ClearCoatTextureDescriptorImageInfo],
+                                               [BaseColorOrDiffuseTextureDescriptorImageInfo,                    // 0
+                                                MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo, // 1
+                                                NormalTextureDescriptorImageInfo,                                // 2
+                                                OcclusionTextureDescriptorImageInfo,                             // 3
+                                                EmissiveTextureDescriptorImageInfo,                              // 4
+                                                SheenColorIntensityTextureDescriptorImageInfo,                   // 5
+                                                ClearCoatNormalTextureDescriptorImageInfo,                       // 6
+                                                ClearCoatRoughnessTextureDescriptorImageInfo,                    // 7
+                                                ClearCoatTextureDescriptorImageInfo],                            // 8
                                                [],
                                                [],
                                                false);
