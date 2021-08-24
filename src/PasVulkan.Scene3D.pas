@@ -5622,6 +5622,7 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    InstanceSkin:=@fSkins[SkinIndex];
    if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
     for Index:=0 to Skin.fJoints.Count-1 do begin
+//   Assert(fGroup.fNodes[Skin.fJoints.Items[Index]].Index=Skin.fJoints.Items[Index]);
      fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
     end;
    end;

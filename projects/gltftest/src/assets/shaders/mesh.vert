@@ -90,7 +90,6 @@ mat3 QTangentToMatrix(vec4 q){
 /* clang-format on */
 
 void main() {
-
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
   mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
@@ -118,23 +117,20 @@ void main() {
     }
   }
 
-  uint countJointBlocks = inCountJointBlocks;
-  if (countJointBlocks > 0u) {
+  if (inCountJointBlocks > 0u) {
     mat4 inverseNodeMatrix = inverse(nodeMatrix);
     mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-    uint jointBlockBaseIndex = inJointBlockBaseIndex;
-    do {
+    for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
+         jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
+         jointBlockBaseIndex++) {
       JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
-      vec4 weights = jointBlock.weights;
-      if (any(not(equal(weights, vec4(0.0))))) {
-        uvec4 joints = jointBlock.joints;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.x]) * weights.x;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.y]) * weights.y;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.z]) * weights.z;
-        skinMatrix += (inverseNodeMatrix * nodeMatrices[joints.w]) * weights.w;
+      if (any(not(equal(jointBlock.weights, vec4(0.0))))) {
+        skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
+                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.y]) * jointBlock.weights.y) +  //
+                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.z]) * jointBlock.weights.z) +  //
+                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
       }
-      jointBlockBaseIndex++;
-    } while (--countJointBlocks > 0u);
+    }
     modelNodeMatrix *= skinMatrix;
   }
 
