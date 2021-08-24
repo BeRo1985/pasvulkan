@@ -4617,7 +4617,11 @@ var LightMap:TpvScene3D.TGroup.TLights;
     inc(fJointBlockOffsets[Index],Offset);
    end;
    for Index:=0 to fNodes.Count-1 do begin
-    inc(fNodes[Index].fJointNodeOffset,Offset);
+    if assigned(fNodes[Index].Skin) then begin
+     inc(fNodes[Index].fJointNodeOffset,Offset);
+    end else begin
+     fNodes[Index].fJointNodeOffset:=-1;
+    end;
    end;
    for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
     if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
