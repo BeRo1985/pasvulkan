@@ -90,9 +90,10 @@ mat3 QTangentToMatrix(vec4 q){
 /* clang-format on */
 
 void main() {
+
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
-  mat4 modelMatrix = nodeMatrices[0] * nodeMatrix;
+  mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
 
   vec3 position = inPosition;
   mat3 tangentSpace = QTangentToMatrix(inQTangent);
@@ -120,8 +121,8 @@ void main() {
   uint countJointBlocks = inCountJointBlocks;
   if (countJointBlocks > 0u) {
     mat4 inverseNodeMatrix = inverse(nodeMatrix);
+    mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
     uint jointBlockBaseIndex = inJointBlockBaseIndex;
-    mat4 skinMatrix = mat4(vec4(0.0f), vec4(0.0f), vec4(0.0f), vec4(0.0f));
     do {
       JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
       vec4 weights = jointBlock.weights;
@@ -134,10 +135,10 @@ void main() {
       }
       jointBlockBaseIndex++;
     } while (--countJointBlocks > 0u);
-    modelMatrix *= skinMatrix;
+    modelNodeMatrix *= skinMatrix;
   }
 
-  mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
+  mat3 normalMatrix = transpose(inverse(mat3(modelNodeMatrix)));
 
   tangentSpace = normalMatrix * tangentSpace;
 
@@ -145,7 +146,7 @@ void main() {
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
 
-  mat4 modelViewMatrix = pushConstants.viewMatrix * modelMatrix;
+  mat4 modelViewMatrix = pushConstants.viewMatrix * modelNodeMatrix;
 
   outViewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
   outTangent = tangentSpace[0];
