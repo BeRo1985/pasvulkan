@@ -1395,12 +1395,40 @@ const PNGHeaderTemplate:TPNGHeader=
    end;
   end;
  end;
+{$if not defined(FPC_BIG_ENDIAN)}
+ function SwapEndian(const ImageDataSize:TpvUInt32):pointer;
+ var Counter:TpvSizeUInt;
+     InPixel,OutPixel:PpvUInt16;
+     Value:TpvUInt16;
+ begin
+  result:=nil;
+  case aImagePixelFormat of
+   TpvPNGPixelFormat.R16G16B16A16:begin
+    GetMem(result,ImageDataSize);
+    InPixel:=aImageData;
+    OutPixel:=result;
+    for Counter:=1 to aImageWidth*aImageHeight*4 do begin
+     Value:=InPixel^;
+{$ifdef fpc}
+     OutPixel^:=RolWord(Value,8);
+{$else}
+     OutPixel^:=(Value shr 8) or (Value shl 8);
+{$endif}
+     inc(InPixel);
+     inc(OutPixel);
+    end;
+   end;
+   else begin
+   end;
+  end;
+ end;
+{$ifend}
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
     CRC32ChecksumValue,ImageDataSize,RowSize,LineIndex,Index,ByteWidth,
     InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TpvUInt32;
     IDATDataSize:TpvSizeUInt;
-    ImageData,IDATData:TpvPointer;
+    ImageData,IDATData{$if not defined(FPC_BIG_ENDIAN)},TemporaryImageData{$endif}:TpvPointer;
 begin
  result:=false;
  case aImagePixelFormat of
@@ -1417,95 +1445,114 @@ begin
  end;
  RowSize:=aImageWidth*ByteWidth;
  ImageDataSize:=(RowSize+1)*aImageHeight;
- GetMem(ImageData,ImageDataSize);
+{$if not defined(FPC_BIG_ENDIAN)}
+ TemporaryImageData:=SwapEndian(ImageDataSize);
  try
-  InByteIndex:=0;
-  OutByteIndex:=0;
-  for LineIndex:=1 to aImageHeight do begin
-   BestFakeEntropy:=$ffffffff;
-   BestLineFilterIndex:=0;
-   if not aFast then begin
-    for LineFilterIndex:=0 to 4 do begin
-     if (LineIndex>1) or (LineFilterIndex in [0,1]) then begin
-      ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
-      FakeEntropy:=0;
-      for Index:=0 to RowSize do begin
-       inc(FakeEntropy,PBytes(ImageData)^[OutByteIndex+Index]);
+{$ifend}
+  GetMem(ImageData,ImageDataSize);
+  try
+   InByteIndex:=0;
+   OutByteIndex:=0;
+   for LineIndex:=1 to aImageHeight do begin
+    BestFakeEntropy:=$ffffffff;
+    BestLineFilterIndex:=0;
+    if not aFast then begin
+     for LineFilterIndex:=0 to 4 do begin
+      if (LineIndex>1) or (LineFilterIndex in [0,1]) then begin
+       if assigned(TemporaryImageData) then begin
+        ProcessLineFilter(@PBytes(TemporaryImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
+       end else begin
+        ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
+       end;
+       FakeEntropy:=0;
+       for Index:=0 to RowSize do begin
+        inc(FakeEntropy,PBytes(ImageData)^[OutByteIndex+Index]);
+       end;
+       if BestFakeEntropy>FakeEntropy then begin
+        BestFakeEntropy:=FakeEntropy;
+        BestLineFilterIndex:=LineFilterIndex;
+       end;
+      end else begin
+       break;
       end;
-      if BestFakeEntropy>FakeEntropy then begin
-       BestFakeEntropy:=FakeEntropy;
-       BestLineFilterIndex:=LineFilterIndex;
-      end;
-     end else begin
-      break;
      end;
+    end;
+    if assigned(TemporaryImageData) then begin
+     ProcessLineFilter(@PBytes(TemporaryImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,BestLineFilterIndex);
+    end else begin
+     ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,BestLineFilterIndex);
+    end;
+    inc(InByteIndex,RowSize);
+    inc(OutByteIndex,RowSize+1);
+   end;
+   if aFast then begin
+    DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.VeryFast,true);
+   end else begin
+    DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.Medium,true);
+   end;
+   if assigned(IDATData) then begin
+    try
+     if assigned(ImageData) then begin
+      FreeMem(ImageData);
+      ImageData:=nil;
+     end;
+     aDestDataSize:=TpvUInt32(TpvUInt32(SizeOf(TPNGHeader)+SizeOf(TPNGFooter))+IDATDataSize);
+     GetMem(aDestData,aDestDataSize);
+     PNGHeader:=TpvPointer(@PBytes(aDestData)^[0]);
+     PNGHeader^:=PNGHeaderTemplate;
+     case aImagePixelFormat of
+      TpvPNGPixelFormat.R8G8B8A8:begin
+       PNGHeader^.IHDRChunkBitDepth:=$08;
+      end;
+      TpvPNGPixelFormat.R16G16B16A16:begin
+       PNGHeader^.IHDRChunkBitDepth:=$10;
+      end;
+      else begin
+       Assert(false);
+      end;
+     end;
+     PNGHeader^.IHDRChunkWidth[0]:=(aImageWidth shr 24) and $ff;
+     PNGHeader^.IHDRChunkWidth[1]:=(aImageWidth shr 16) and $ff;
+     PNGHeader^.IHDRChunkWidth[2]:=(aImageWidth shr 8) and $ff;
+     PNGHeader^.IHDRChunkWidth[3]:=(aImageWidth shr 0) and $ff;
+     PNGHeader^.IHDRChunkHeight[0]:=(aImageHeight shr 24) and $ff;
+     PNGHeader^.IHDRChunkHeight[1]:=(aImageHeight shr 16) and $ff;
+     PNGHeader^.IHDRChunkHeight[2]:=(aImageHeight shr 8) and $ff;
+     PNGHeader^.IHDRChunkHeight[3]:=(aImageHeight shr 0) and $ff;
+     CRC32ChecksumValue:=CRC32(@PNGHeader^.IHDRChunkSignature,{%H-}TpvPtrUInt(TpvPointer(@PPNGHeader(nil)^.IHDRChunkCRC32Checksum))-{%H-}TpvPtrUInt(TpvPointer(@PPNGHeader(nil)^.IHDRChunkSignature)));
+     PNGHeader^.IHDRChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
+     PNGHeader^.IHDRChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
+     PNGHeader^.IHDRChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
+     PNGHeader^.IHDRChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
+     PNGHeader^.IDATChunkSize[0]:=(IDATDataSize shr 24) and $ff;
+     PNGHeader^.IDATChunkSize[1]:=(IDATDataSize shr 16) and $ff;
+     PNGHeader^.IDATChunkSize[2]:=(IDATDataSize shr 8) and $ff;
+     PNGHeader^.IDATChunkSize[3]:=(IDATDataSize shr 0) and $ff;
+     Move(IDATData^,PBytes(aDestData)^[SizeOf(TPNGHeader)],IDATDataSize);
+     PNGFooter:=TpvPointer(@PBytes(aDestData)^[TpvUInt32(SizeOf(TPNGHeader))+IDATDataSize]);
+     PNGFooter^:=PNGFooterTemplate;
+     CRC32ChecksumValue:=CRC32(@PNGHeader^.IDATChunkSignature,IDATDataSize+SizeOf(PPNGHeader(nil)^.IDATChunkSignature));
+     PNGFooter.IDATChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
+     PNGFooter.IDATChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
+     PNGFooter.IDATChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
+     PNGFooter.IDATChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
+     result:=true;
+    finally
+     FreeMem(IDATData);
     end;
    end;
-   ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,BestLineFilterIndex);
-   inc(InByteIndex,RowSize);
-   inc(OutByteIndex,RowSize+1);
-  end;
-  if aFast then begin
-   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.VeryFast,true);
-  end else begin
-   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.Medium,true);
-  end;
-  if assigned(IDATData) then begin
-   try
-    if assigned(ImageData) then begin
-     FreeMem(ImageData);
-     ImageData:=nil;
-    end;
-    aDestDataSize:=TpvUInt32(TpvUInt32(SizeOf(TPNGHeader)+SizeOf(TPNGFooter))+IDATDataSize);
-    GetMem(aDestData,aDestDataSize);
-    PNGHeader:=TpvPointer(@PBytes(aDestData)^[0]);
-    PNGHeader^:=PNGHeaderTemplate;
-    case aImagePixelFormat of
-     TpvPNGPixelFormat.R8G8B8A8:begin
-      PNGHeader^.IHDRChunkBitDepth:=$08;
-     end;
-     TpvPNGPixelFormat.R16G16B16A16:begin
-      PNGHeader^.IHDRChunkBitDepth:=$10;
-     end;
-     else begin
-      Assert(false);
-     end;
-    end;
-    PNGHeader^.IHDRChunkWidth[0]:=(aImageWidth shr 24) and $ff;
-    PNGHeader^.IHDRChunkWidth[1]:=(aImageWidth shr 16) and $ff;
-    PNGHeader^.IHDRChunkWidth[2]:=(aImageWidth shr 8) and $ff;
-    PNGHeader^.IHDRChunkWidth[3]:=(aImageWidth shr 0) and $ff;
-    PNGHeader^.IHDRChunkHeight[0]:=(aImageHeight shr 24) and $ff;
-    PNGHeader^.IHDRChunkHeight[1]:=(aImageHeight shr 16) and $ff;
-    PNGHeader^.IHDRChunkHeight[2]:=(aImageHeight shr 8) and $ff;
-    PNGHeader^.IHDRChunkHeight[3]:=(aImageHeight shr 0) and $ff;
-    CRC32ChecksumValue:=CRC32(@PNGHeader^.IHDRChunkSignature,{%H-}TpvPtrUInt(TpvPointer(@PPNGHeader(nil)^.IHDRChunkCRC32Checksum))-{%H-}TpvPtrUInt(TpvPointer(@PPNGHeader(nil)^.IHDRChunkSignature)));
-    PNGHeader^.IHDRChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
-    PNGHeader^.IHDRChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
-    PNGHeader^.IHDRChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
-    PNGHeader^.IHDRChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
-    PNGHeader^.IDATChunkSize[0]:=(IDATDataSize shr 24) and $ff;
-    PNGHeader^.IDATChunkSize[1]:=(IDATDataSize shr 16) and $ff;
-    PNGHeader^.IDATChunkSize[2]:=(IDATDataSize shr 8) and $ff;
-    PNGHeader^.IDATChunkSize[3]:=(IDATDataSize shr 0) and $ff;
-    Move(IDATData^,PBytes(aDestData)^[SizeOf(TPNGHeader)],IDATDataSize);
-    PNGFooter:=TpvPointer(@PBytes(aDestData)^[TpvUInt32(SizeOf(TPNGHeader))+IDATDataSize]);
-    PNGFooter^:=PNGFooterTemplate;
-    CRC32ChecksumValue:=CRC32(@PNGHeader^.IDATChunkSignature,IDATDataSize+SizeOf(PPNGHeader(nil)^.IDATChunkSignature));
-    PNGFooter.IDATChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
-    PNGFooter.IDATChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
-    PNGFooter.IDATChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
-    PNGFooter.IDATChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
-    result:=true;
-   finally
-    FreeMem(IDATData);
+  finally
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
    end;
   end;
+{$if not defined(FPC_BIG_ENDIAN)}
  finally
-  if assigned(ImageData) then begin
-   FreeMem(ImageData);
+  if assigned(TemporaryImageData) then begin
+   FreeMem(TemporaryImageData);
   end;
  end;
+{$ifend}
 end;
 
 function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
