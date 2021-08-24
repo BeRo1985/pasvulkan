@@ -4873,6 +4873,7 @@ begin
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
  end;
+ fAnimations[0].Factor:=1.0;
  fNodeMatrices:=nil;
  fMorphTargetVertexWeights:=nil;
  for Index:=0 to length(fVulkanDatas)-1 do begin

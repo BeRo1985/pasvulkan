@@ -47,6 +47,7 @@ type { TScreenMain }
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
+       fTime:Double;
       public
 
        constructor Create; override;
@@ -123,6 +124,8 @@ var Index:TpvInt32;
 begin
 
  inherited Show;
+
+ fTime:=0.0;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -427,6 +430,7 @@ var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     ProjectionMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY,Zoom:TpvScalar;
+    t0,t1:Double;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
@@ -449,6 +453,18 @@ begin
   ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,1024.0);
 
   fGroupInstance.ModelMatrix:=ModelMatrix;
+
+  if fGroupInstance.Group.Animations.Count>0 then begin
+   fGroupInstance.Automations[-1].Factor:=0.0;
+   fGroupInstance.Automations[-1].Time:=0.0;
+   fGroupInstance.Automations[0].Factor:=1.0;
+   t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
+   t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
+   fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
+  end else begin
+   fGroupInstance.Automations[-1].Factor:=1.0;
+   fGroupInstance.Automations[-1].Time:=0.0;
+  end;
 
   fScene3D.Update(aSwapChainImageIndex);
 
@@ -489,6 +505,8 @@ begin
                               false);
 
   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
+
+  fTime:=fTime+pvApplication.DeltaTime;
 
  end;
 end;
