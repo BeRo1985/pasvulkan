@@ -423,7 +423,7 @@ begin
     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TexCoord1)));
     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Color0)));
     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.MorphTargetVertexBaseIndex)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountMorphTargetVertices)));
+    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountMorphTargetVertices_)));
     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.JointBlockBaseIndex)));
     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
 
@@ -553,7 +553,7 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  CameraRotationX:=frac(fTime*0.03125);
+  CameraRotationX:=-0.175;//frac(fTime*0.03125);
   CameraRotationY:=0.0;
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
@@ -561,7 +561,7 @@ begin
   ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                   sin(-CameraRotationY*PI*2.0),
                                                                   cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*Zoom)),
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*Zoom)),
                                         Center,
                                         TpvVector3.Create(0.0,1.0,0.0))*
                TpvMatrix4x4.FlipYClipSpace;
@@ -574,10 +574,10 @@ begin
   if fGroupInstance.Group.Animations.Count>0 then begin
    fGroupInstance.Automations[-1].Factor:=0.0;
    fGroupInstance.Automations[-1].Time:=0.0;
-   fGroupInstance.Automations[0].Factor:=1.0;
-   t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
-   t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
-   fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
+   fGroupInstance.Automations[3].Factor:=1.0;
+   t0:=fGroupInstance.Group.Animations[3].GetAnimationBeginTime;
+   t1:=fGroupInstance.Group.Animations[3].GetAnimationEndTime;
+   fGroupInstance.Automations[3].Time:=ModuloPos(fTime,t1-t0)+t0;
   end else begin
    fGroupInstance.Automations[-1].Factor:=1.0;
    fGroupInstance.Automations[-1].Time:=0.0;

@@ -69,7 +69,7 @@ out gl_PerVertex {
 
 /* clang-format off */
 mat3 QTangentToMatrix(vec4 q){  
-  q = normalize(q);
+  /*q = normalize(q);
   float qx2 = q.x + q.x,
         qy2 = q.y + q.y,
         qz2 = q.z + q.z,
@@ -85,11 +85,25 @@ mat3 QTangentToMatrix(vec4 q){
   mat3 m = mat3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2,
                 qxqy2 - qzqw2, 1.0 - (qxqx2 + qzqz2), qyqz2 + qxqw2,
                 qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));
-/*m[0] = normalize(m[0]);              
-  m[1] = normalize(m[1]);*/              
   m[2] = normalize(cross(m[0], m[1])) * ((q.w < 0.0) ? -1.0 : 1.0);
-  return m;
+  return m;*/
+  float fTx  = 2.0 * q.x,
+        fTy  = 2.0 * q.y,
+        fTz  = 2.0 * q.z, 
+        fTwx = fTx * q.w,
+        fTwy = fTy * q.w, 
+        fTwz = fTz * q.w, 
+        fTxx = fTx * q.x, 
+        fTxy = fTy * q.x, 
+        fTxz = fTz * q.x, 
+        fTyy = fTy * q.y, 
+        fTyz = fTz * q.y, 
+        fTzz = fTz * q.z;
+  vec3 x = normalize(vec3(1.0 - (fTyy+fTzz), fTxy+fTwz, fTxz-fTwy ));  
+  vec3 y = normalize(vec3( fTxy-fTwz, 1.0-(fTxx+fTzz), fTyz+fTwx ));    
+  return mat3(y, normalize(cross(y, x) * sign(q.w)), x);
 }
+
 /* clang-format on */
 
 void main() {
@@ -108,12 +122,12 @@ void main() {
   vec3 position = inPosition;
   mat3 tangentSpace = QTangentToMatrix(inQTangent);
 
-  uint countMorphTargetVertices = inCountMorphTargetVertices;
-  if (countMorphTargetVertices > 0u) {
+  if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
     vec4 normal = vec4(tangentSpace[2], 0.0f);
     vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
     uint morphTargetVertexIndex = inMorphTargetVertexBaseIndex;
-    while ((morphTargetVertexIndex != 0xffffffffu) && (countMorphTargetVertices-- > 0u)) {
+    uint protectionCounter = 0x0ffffu;
+    while ((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)) {
       MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
       float weight = morphTargetWeights[morphTargetVertex.metaData.x];
       position += morphTargetVertex.position.xyz * weight;
