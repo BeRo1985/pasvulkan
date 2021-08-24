@@ -18662,7 +18662,7 @@ begin
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,KTXHeader.PixelWidth),
                    Max(1,KTXHeader.PixelHeight),
-                   Max(1,KTXHeader.PixelDepth),
+                   KTXHeader.PixelDepth,
                    IfThen(NumberOfArrayElements=1,0,NumberOfArrayElements),
                    NumberOfFaces,
                    NumberOfMipMapLevels,

@@ -34,8 +34,19 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       private
+       fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
+       fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+       fVulkanTransferCommandPool:TpvVulkanCommandPool;
+       fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
+       fImageBasedLightingBRDFLUTTexture:TpvVulkanTexture;
+       fImageBasedLightingEnvMapTexture:TpvVulkanTexture;
+       fImageBasedLightingVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fImageBasedLightingVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fImageBasedLightingVulkanDescriptorSet:TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -87,7 +98,9 @@ var GLTF:TPasGLTF.TDocument;
     AssetStream:TStream;
 begin
  inherited Create;
+
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
+
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
   GLTF:=TPasGLTF.TDocument.Create;
@@ -127,6 +140,56 @@ begin
 
  fTime:=0.0;
 
+ fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ fVulkanTransferCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.TransferQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanTransferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ Stream:=pvApplication.Assets.GetAssetStream('textures/brdflut.png');
+ try
+  fImageBasedLightingBRDFLUTTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                                      pvApplication.VulkanDevice.GraphicsQueue,
+                                                                      fVulkanGraphicsCommandBuffer,
+                                                                      fVulkanGraphicsCommandBufferFence,
+                                                                      pvApplication.VulkanDevice.TransferQueue,
+                                                                      fVulkanTransferCommandBuffer,
+                                                                      fVulkanTransferCommandBufferFence,
+                                                                      Stream,
+                                                                      false,
+                                                                      false);
+  fImageBasedLightingBRDFLUTTexture.UpdateSampler;
+ finally
+  FreeAndNil(Stream);
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('textures/envmap.ktx');
+ try
+  fImageBasedLightingEnvMapTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                                     pvApplication.VulkanDevice.GraphicsQueue,
+                                                                     fVulkanGraphicsCommandBuffer,
+                                                                     fVulkanGraphicsCommandBufferFence,
+                                                                     pvApplication.VulkanDevice.TransferQueue,
+                                                                     fVulkanTransferCommandBuffer,
+                                                                     fVulkanTransferCommandBufferFence,
+                                                                     Stream,
+                                                                     false,
+                                                                     false);
+  fImageBasedLightingEnvMapTexture.UpdateSampler;
+ finally
+  FreeAndNil(Stream);
+ end;
+
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -159,10 +222,48 @@ begin
 
  fVulkanPipelineShaderStageMeshFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshFragmentShaderModule,'main');
 
+ fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
+                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                         []);
+ fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
+                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                         []);
+ fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
+
+ fImageBasedLightingVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
+ fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2);
+ fImageBasedLightingVulkanDescriptorPool.Initialize;
+
+ fImageBasedLightingVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fImageBasedLightingVulkanDescriptorPool,
+                                                                       fImageBasedLightingVulkanDescriptorSetLayout);
+ fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
+                                                             0,
+                                                             1,
+                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                             [fImageBasedLightingBRDFLUTTexture.DescriptorImageInfo],
+                                                             [],
+                                                             [],
+                                                             false);
+ fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
+                                                             0,
+                                                             1,
+                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                             [fImageBasedLightingEnvMapTexture.DescriptorImageInfo],
+                                                             [],
+                                                             [],
+                                                             false);
+ fImageBasedLightingVulkanDescriptorSet.Flush;
+
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fScene3D.MeshVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fScene3D.MaterialVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fImageBasedLightingVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
 end;
@@ -174,6 +275,14 @@ begin
  fScene3D.Unload;
 
  FreeAndNil(fVulkanPipelineLayout);
+
+ FreeAndNil(fImageBasedLightingVulkanDescriptorSet);
+ FreeAndNil(fImageBasedLightingVulkanDescriptorPool);
+ FreeAndNil(fImageBasedLightingVulkanDescriptorSetLayout);
+
+ FreeAndNil(fImageBasedLightingEnvMapTexture);
+
+ FreeAndNil(fImageBasedLightingBRDFLUTTexture);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
@@ -189,6 +298,13 @@ begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
+
+ FreeAndNil(fVulkanTransferCommandBufferFence);
+ FreeAndNil(fVulkanTransferCommandBuffer);
+ FreeAndNil(fVulkanTransferCommandPool);
+ FreeAndNil(fVulkanGraphicsCommandBufferFence);
+ FreeAndNil(fVulkanGraphicsCommandBuffer);
+ FreeAndNil(fVulkanGraphicsCommandPool);
 
  inherited Hide;
 end;
@@ -482,6 +598,14 @@ begin
                                     0,
                                     pvApplication.VulkanSwapChain.Width,
                                     pvApplication.VulkanSwapChain.Height);
+
+  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            fVulkanPipelineLayout.Handle,
+                                            2,
+                                            1,
+                                            @fImageBasedLightingVulkanDescriptorSet.Handle,
+                                            0,
+                                            nil);
 
   fScene3D.Draw(fVulkanGraphicsPipelines,
                 aSwapChainImageIndex,
