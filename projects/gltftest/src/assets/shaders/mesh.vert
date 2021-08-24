@@ -124,12 +124,10 @@ void main() {
          jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
          jointBlockBaseIndex++) {
       JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
-      if (any(not(equal(jointBlock.weights, vec4(0.0))))) {
-        skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
-                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.y]) * jointBlock.weights.y) +  //
-                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.z]) * jointBlock.weights.z) +  //
-                      ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
-      }
+      skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
+                    ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.y]) * jointBlock.weights.y) +  //
+                    ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.z]) * jointBlock.weights.z) +  //
+                    ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
     }
     modelNodeMatrix *= skinMatrix;
   }
