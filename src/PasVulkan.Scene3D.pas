@@ -797,9 +797,17 @@ type EpvScene3D=class(Exception);
                     public
                      type { TAnimation }
                           TAnimation=class
+                           public
+                            type TChannel=class
+                                  private
+                                   fNode:Pointer;
+                                   fOverwrite:TpvSizeInt;
+                                 end;
+                                 TChannels=TpvObjectGenericList<TChannel>;
                            private
                             fFactor:TPasGLTFFloat;
                             fTime:TPasGLTFFloat;
+                            fChannels:TChannels;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -4879,10 +4887,13 @@ end;
 constructor TpvScene3D.TGroup.TInstance.TAnimation.Create;
 begin
  inherited Create;
+ fChannels:=TChannels.Create;
+ fChannels.OwnsObjects:=true;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TAnimation.Destroy;
 begin
+ FreeAndNil(fChannels);
  inherited Destroy;
 end;
 
@@ -4928,6 +4939,11 @@ begin
  SetLength(fAnimations,fGroup.fAnimations.Count+1);
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
+  if Index>0 then begin
+   for OtherIndex:=0 to length(fGroup.fAnimations[Index-1].fChannels)-1 do begin
+    fAnimations[Index].fChannels.Add(TpvScene3D.TGroup.TInstance.TAnimation.TChannel.Create);
+   end;
+  end;
  end;
  fAnimations[0].Factor:=1.0;
  fNodeMatrices:=nil;
@@ -5176,6 +5192,8 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
  end;
  procedure ProcessAnimation(const aAnimationIndex:TPasGLTFSizeInt;const aAnimationTime:TPasGLTFFloat;const aFactor:TPasGLTFFloat);
  var ChannelIndex,
+     InstanceChannelIndex,
+     CountInstanceChannels,
      InputTimeArrayIndex,
      WeightIndex,
      CountWeights,
@@ -5183,6 +5201,8 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
      l,r,m:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+     InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
+     InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
      //Node:TpvScene3D.TGroup.TNode;
      Node:TpvScene3D.TGroup.TInstance.PNode;
      Time,Factor,Scalar,Value,SqrFactor,CubeFactor,KeyDelta,v0,v1,a,b:TpvFloat;
@@ -5193,6 +5213,16 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
      TimeIndices:array[0..1] of TpvSizeInt;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
  begin
+
+  InstanceAnimation:=fAnimations[aAnimationIndex+1];
+
+  for InstanceChannelIndex:=0 to InstanceAnimation.fChannels.Count-1 do begin
+   InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+   InstanceAnimationChannel.fNode:=nil;
+   InstanceAnimationChannel.fOverwrite:=-1;
+  end;
+
+  CountInstanceChannels:=0;
 
   Animation:=fGroup.fAnimations[aAnimationIndex];
 
@@ -5265,13 +5295,30 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
 
      Node:=@fNodes[AnimationChannel^.Node];
 
-     if (aFactor>=-0.5) and (Node.CountOverwrites<length(Node.Overwrites)) then begin
-      Overwrite:=@Node.Overwrites[Node.CountOverwrites];
-      Overwrite^.Flags:=[];
-      Overwrite^.Factor:=Max(aFactor,0.0);
-      inc(Node^.CountOverwrites);
-     end else begin
-      Overwrite:=nil;
+     Overwrite:=nil;
+
+     if aFactor>=-0.5 then begin
+      InstanceAnimationChannel:=nil;
+      for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+       if InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node then begin
+        InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+        break;
+       end;
+      end;
+      if assigned(InstanceAnimationChannel) then begin
+       Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+      end else if (Node.CountOverwrites<length(Node.Overwrites)) and
+                  (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+       InstanceChannelIndex:=CountInstanceChannels;
+       inc(CountInstanceChannels);
+       InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+       InstanceAnimationChannel.fNode:=Node;
+       InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
+       inc(Node.CountOverwrites);
+       Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+       Overwrite^.Flags:=[];
+       Overwrite^.Factor:=Max(aFactor,0.0);
+      end;
      end;
 
      case AnimationChannel^.Target of
