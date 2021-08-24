@@ -107,7 +107,7 @@ void main() {
       vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
       uint tries = 1024u;  // for to prevent endless loops on bit-flipped vRAM content (=> driver timeouts, or even worse, maybe also BSODs)
       float weightSum = 0.0f; 
-      while ((morphTargetVertexBaseIndex != 0xffffffffu) && (tries-- > 0u)) {
+      while ((morphTargetVertexIndex != 0xffffffffu) && (tries-- > 0u)) {
         MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
         float weight = morphTargetWeights[morphTargetVertex.metaData.x];
         position += morphTargetVertex.position.xyz * weight;
@@ -155,12 +155,12 @@ void main() {
 
   mat4 modelViewMatrix = pushConstants.viewMatrix * modelMatrix;
 
-  outViewSpacePosition = (modelViewMatrix * vec4(inPosition, 1.0)).xyz;
+  outViewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
   outNormal = tangentSpace[2];
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
-  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(inPosition, 1.0);
+  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
   //gl_PointSize = 1.0;
 }
