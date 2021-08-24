@@ -14,7 +14,7 @@ layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor;
 
-layout(binding = 1) uniform sampler2D uTextures[];
+layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
@@ -22,7 +22,7 @@ layout(location = 1) out vec4 outFragEmission;
 #endif
 
 /* clang-format off */
-layout(std140, set = 2, binding = 0) uniform uboMaterial {
+layout(std140, set = 1, binding = 0) uniform uboMaterial {
   vec4 baseColorFactor;
   vec4 specularFactor;
   vec4 emissiveFactor;
@@ -56,6 +56,10 @@ vec3 convertLinearRGBToSRGB(vec3 c) {
 
 vec3 convertSRGBToLinearRGB(vec3 c) {
   return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), c / vec3(12.92), lessThan(c, vec3(4.045e-2)));  //
+}
+
+vec4 convertSRGBToLinearRGB(vec4 c) {
+  return vec4(convertSRGBToLinearRGB(c.xyz), c.w);
 }
 
 const float PI = 3.14159265358979323846, PI2 = 6.283185307179586476925286766559, OneOverPI = 1.0 / PI;
@@ -229,8 +233,7 @@ void main() {
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #ifdef SHADOWMAP
-f:
-  = f + vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(vWorldSpacePosition, 1.0);
+  vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(vWorldSpacePosition, 1.0);
   float d = fma(t.z / t.w, 0.5, 0.5);
   float s = d * d;
   vec4 m = vec4(d, s, s * d, s * s);
