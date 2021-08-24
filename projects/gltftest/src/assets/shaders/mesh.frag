@@ -142,7 +142,7 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor)
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
   vec3 reflectionVector = normalize(reflect(viewDirection, normal.xyz));
   float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0), ao = cavity * ambientOcclusion, lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))), specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  return (vec3(0.0f) * specularOcclusion) * OneOverPI;
+  return (vec3(1.0f) * specularOcclusion) * OneOverPI;
   // vec2 brdf = textureLod(uBRDFLUTTexture, vec2(roughness, NdotV), 0.0).xy;
   //  return (textureLod(uEnvMapTexture, reflectionVector, clamp((float(uEnvMapMaxLevel) - 1.0) - (1.0 - (1.2 * log2(roughness))), 0.0, float(uEnvMapMaxLevel))).xyz * ((specularColor.xyz * brdf.x) +'+' (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) * specularOcclusion) * OneOverPI;
 }
