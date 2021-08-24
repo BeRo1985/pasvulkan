@@ -5653,7 +5653,7 @@ begin
                                               0,
                                               nil);
         end;
-        aCommandBuffer.CmdDrawIndexed(PrimitiveIndexRange^.Count,0,PrimitiveIndexRange^.Index,0,0);
+        aCommandBuffer.CmdDrawIndexed(PrimitiveIndexRange^.Count,1,PrimitiveIndexRange^.Index,0,0);
        end;
       end;
      end;
