@@ -948,7 +948,7 @@ type EpvScene3D=class(Exception);
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
              private
-              fMaximalCountInstances:TpvSizeInt;
+              fCulling:boolean;
               fObjects:TBaseObjects;
               fAnimations:TAnimations;
               fCameras:TCameras;
@@ -995,11 +995,12 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               procedure Update(const aSwapChainImageIndex:TpvSizeInt);
-              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
+              procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function CreateInstance:TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
              published
+              property Culling:boolean read fCulling write fCulling;
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
               property Cameras:TCameras read fCameras;
@@ -4087,7 +4088,7 @@ begin
 
  fMorphTargetCount:=0;
 
- fMaximalCountInstances:=1;
+ fCulling:=false;
 
  fInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 
@@ -4466,7 +4467,7 @@ begin
  fMaterialIndices.Finish;
 end;
 
-procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aMaximalCountInstances:TpvSizeInt=1);
+procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var LightMap:TpvScene3D.TGroup.TLights;
     ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
@@ -4805,8 +4806,6 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
 begin
-
- fMaximalCountInstances:=aMaximalCountInstances;
 
  HasLights:=aSourceDocument.ExtensionsUsed.IndexOf('KHR_lights_punctual')>=0;
 
