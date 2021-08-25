@@ -1428,7 +1428,7 @@ var PNGHeader:PPNGHeader;
     CRC32ChecksumValue,ImageDataSize,RowSize,LineIndex,Index,ByteWidth,
     InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TpvUInt32;
     IDATDataSize:TpvSizeUInt;
-    ImageData,IDATData{$if not defined(FPC_BIG_ENDIAN)},TemporaryImageData{$endif}:TpvPointer;
+    ImageData,IDATData{$if not defined(FPC_BIG_ENDIAN)},TemporaryImageData{$ifend}:TpvPointer;
 begin
  result:=false;
  case aImagePixelFormat of
