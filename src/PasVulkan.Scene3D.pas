@@ -767,12 +767,15 @@ type EpvScene3D=class(Exception);
                                   PrimitiveTopology:TPrimitiveTopology;
                                   Index:TpvSizeInt;
                                   Count:TpvSizeInt;
+                                  Node:TpvSizeInt;
                                  end;
                                  PPrimitiveIndexRange=^TPrimitiveIndexRange;
+                                 TPrimitiveIndexRanges=TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
+                                 PPrimitiveIndexRanges=^TPrimitiveIndexRanges;
                            private
                             fMaterial:TpvScene3D.TMaterial;
-                            fPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
-                            fCombinedPrimitiveIndexRanges:TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
+                            fPrimitiveIndexRanges:TPrimitiveIndexRanges;
+                            fCombinedPrimitiveIndexRanges:TPrimitiveIndexRanges;
                             fStartIndex:TpvSizeInt;
                             fCountIndices:TpvSizeInt;
                            public
@@ -852,6 +855,7 @@ type EpvScene3D=class(Exception);
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
+                            VisibleBitmap:TpvUInt32;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -4414,6 +4418,7 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
         PrimitiveIndexRange.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology(Primitive^.PrimitiveMode);
         PrimitiveIndexRange.Index:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
         PrimitiveIndexRange.Count:=Primitive^.CountIndices;
+        PrimitiveIndexRange.Node:=Node.fIndex;
         SceneMaterial.fPrimitiveIndexRanges.Add(PrimitiveIndexRange);
        end;
       end;
@@ -5841,16 +5846,18 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            var aPipeline:TpvVulkanPipeline;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneMaterialIndex,PrimitiveIndexRangeIndex:TpvSizeInt;
+var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
+    PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     Pipeline:TpvVulkanPipeline;
-    MeshFirst,MaterialFirst:boolean;
+    Culling,MeshFirst,MaterialFirst:boolean;
 begin
  if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+  Culling:=fGroup.fCulling;
   Scene:=fScenes[aSwapChainImageIndex];
   if assigned(Scene) then begin
    MeshFirst:=true;
@@ -5860,9 +5867,16 @@ begin
      Material:=SceneMaterial.fMaterial;
      if Material.fData.AlphaMode in aMaterialAlphaModes then begin
       MaterialFirst:=true;
-      for PrimitiveIndexRangeIndex:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
-       PrimitiveIndexRange:=@SceneMaterial.fCombinedPrimitiveIndexRanges.Items[PrimitiveIndexRangeIndex];
-       if PrimitiveIndexRange^.Count>0 then begin
+      if Culling then begin
+       PrimitiveIndexRanges:=@SceneMaterial.fPrimitiveIndexRanges;
+      end else begin
+       PrimitiveIndexRanges:=@SceneMaterial.fCombinedPrimitiveIndexRanges;
+      end;
+      for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
+       PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
+       if (PrimitiveIndexRange^.Count>0) and
+          ((not Culling) or
+           ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0)) then begin
         PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
         Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
         if aPipeline<>Pipeline then begin
