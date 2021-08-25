@@ -132,37 +132,20 @@ type EpvScene3D=class(Exception);
               false:(
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-               Normal:TpvVector3;                    // +12 = 28 (signed 16-bit oct-encoded normal)
-               Tangent:TpvVector4;                   // +16 = 44 (signed 16-bit oct-encoded tangent)
-               TexCoord0:TpvVector2;                 // + 8 = 52 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               TexCoord1:TpvVector2;                 // + 8 = 60 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               Color0:TpvHalfFloatVector4;           // + 8 = 68 (must be at least half-float for HDR)
-               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 76 (unsigned 32-bit morph target vertex base index)
-               JointBlockBaseIndex:TpvUInt32;        // + 4 = 80 (unsigned 32-bit joint block base index)
-               CountJointBlocks:TpvUInt32;           // + 4 = 84 (unsigned 32-bit count of joint blocks)
-              );                                     //  ==   ==
-              true:(                                 //  84   84 per vertex
-               Padding:array[0..95] of TpvUInt8;
-              );
-            end;
-{           TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
-             case boolean of
-              false:(
-               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
-               NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-               Normal:TpvVector3;                    // + 4 = 20 (signed 16-bit oct-encoded normal)
-               Tangent:TpvVector4;                   // + 4 = 24 (signed 16-bit oct-encoded tangent)
+               Normal:TInt16Vector2;                 // + 4 = 20 (signed 16-bit oct-encoded normal)
+               Tangent:TInt16Vector2;                // + 4 = 24 (signed 16-bit oct-encoded tangent)
                TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
                JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
-               CountJointBlocks:TpvUInt32;           // + 4 = 60 (unsigned 31-bit count of joint blocks + 1 bit TBN reflection)
+               CountJointBlocks:TpvUInt32;           // + 4 = 60 (unsigned 32-bit count of joint blocks)
+               Flags:TpvUInt32;                      // + 4 = 64 (unsigned 32-bit dflags)
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
               );
-            end;}
+            end;
             PVertex=^TVertex;
             TVertices=array of TVertex;
             TJointBlock=packed record
@@ -2888,8 +2871,8 @@ begin
       end;
      end;
     end;
-    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and ((Vertex^.CountJointBlocks and $7fffffff)>0) then begin
-     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks and $7fffffff)-1 do begin
+    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
+     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=Vertex^.JointBlockBaseIndex+JointBlockIndex;
       if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
        Old:=length(fGroup.fJointBlockOffsets);
@@ -2900,7 +2883,7 @@ begin
      end;
     end else begin
      Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-     Vertex^.CountJointBlocks:=Vertex^.CountJointBlocks and not TpvUInt32($7fffffff);
+     Vertex^.CountJointBlocks:=0;
     end;
    end;
   end;
@@ -2944,8 +2927,8 @@ begin
      Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
     end;
 
-    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and ((Vertex^.CountJointBlocks and $7fffffff)>0) then begin
-     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks and $7fffffff)-1 do begin
+    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
+     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
       fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[Vertex^.JointBlockBaseIndex+JointBlockIndex];
       if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
@@ -2957,7 +2940,7 @@ begin
      end;
     end else begin
      Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-     Vertex^.CountJointBlocks:=Vertex^.CountJointBlocks and not $7fffffff;
+     Vertex^.CountJointBlocks:=0;
     end;
 
    end;
@@ -3016,8 +2999,7 @@ var Index,
     Area:TPasGLTFFloat;
     HasMorphVertexTargets,
     HasJoints,
-    DoNeedCalculateTangents,
-    TBNReflection:boolean;
+    DoNeedCalculateTangents:boolean;
     DestinationMeshPrimitiveVertices:TVertices;
     DestinationMeshPrimitiveIndices:TpvUInt32DynamicArray;
     MaxJointBlocks:PMaxJointBlocks;
@@ -3352,6 +3334,7 @@ begin
         FillChar(Vertex^,SizeOf(TVertex),#0);
         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
+        Vertex^.Flags:=0;
         if VertexIndex<length(TemporaryNormals) then begin
          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
         end else begin
@@ -3359,10 +3342,8 @@ begin
         end;
         if VertexIndex<length(TemporaryTangents) then begin
          TangentSpaceMatrix.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
-         Vertex^.Tangent.w:=TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w;
         end else begin
          TangentSpaceMatrix.Tangent:=TpvVector3.XAxis;
-         Vertex^.Tangent.w:=1.0;
         end;
         if VertexIndex<length(TemporaryBitangents) then begin
          TangentSpaceMatrix.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
@@ -3370,14 +3351,13 @@ begin
          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
         end;
         TangentSpaceMatrix:=TangentSpaceMatrix.RobustOrthoNormalize;
-        Vertex^.Normal:=TangentSpaceMatrix.Normal;
-        Vertex^.Tangent.xyz:=TangentSpaceMatrix.Tangent;
-{       Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
+        Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
-        Vertex^.Bitangent:=OctEncode(TangentSpaceMatrix.Bitangent);
         TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
-        TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);}
-        TBNReflection:=false;//TangentSpaceMatrix.Normal.Cross(TangentSpaceMatrix.Tangent).Dot(TangentSpaceMatrix.Bitangent)<0;
+        TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
+        if TangentSpaceMatrix.Normal.Cross(TangentSpaceMatrix.Tangent).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
+         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+        end;
         if VertexIndex<length(TemporaryTexCoord0) then begin
          Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
         end;
@@ -3423,10 +3403,10 @@ begin
           end;
           MaxJointBlocksHashMap.Add(MaxJointBlocks^,Vertex^.JointBlockBaseIndex);
          end;
-         Vertex^.CountJointBlocks:=(CountJointBlocks and $7fffffff) or (TpvUInt32(ord(TBNReflection) and 1) shl 31);
+         Vertex^.CountJointBlocks:=CountJointBlocks;
         end else begin
          Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-         Vertex^.CountJointBlocks:=TpvUInt32(ord(TBNReflection) and 1) shl 31;
+         Vertex^.CountJointBlocks:=0;
         end;
        end;
       end;
@@ -3521,7 +3501,7 @@ begin
            TemporaryPositions[VertexIndex,0]:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
            TemporaryPositions[VertexIndex,1]:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
            TemporaryPositions[VertexIndex,2]:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
-           TangentSpaceMatrix.Normal:={OctDecode}(Vertex^.Normal);
+           TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
            TemporaryNormals[VertexIndex,0]:=TangentSpaceMatrix.Normal.x+DestinationMeshPrimitiveTargetVertex^.Normal.x;
            TemporaryNormals[VertexIndex,1]:=TangentSpaceMatrix.Normal.y+DestinationMeshPrimitiveTargetVertex^.Normal.y;
            TemporaryNormals[VertexIndex,2]:=TangentSpaceMatrix.Normal.z+DestinationMeshPrimitiveTargetVertex^.Normal.z;
@@ -3601,7 +3581,7 @@ begin
          for VertexIndex:=0 to length(DestinationMeshPrimitiveTarget^.Vertices)-1 do begin
           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
           Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-          TangentSpaceMatrix.Tangent:={OctDecode}(Vertex^.Tangent.xyz);
+          TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0]-TangentSpaceMatrix.Tangent.x;
           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1]-TangentSpaceMatrix.Tangent.y;
           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2]-TangentSpaceMatrix.Tangent.z;

@@ -5,15 +5,15 @@
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in uint inNodeIndex;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec4 inTangent;
+layout(location = 2) in vec2 inNormal;
+layout(location = 3) in vec2 inTangent;
 layout(location = 4) in vec2 inTexCoord0;
 layout(location = 5) in vec2 inTexCoord1;
 layout(location = 6) in vec4 inColor0;
 layout(location = 7) in uint inMorphTargetVertexBaseIndex;
 layout(location = 8) in uint inJointBlockBaseIndex;
 layout(location = 9) in uint inCountJointBlocks;
-//layout(location = 10) in vec2 inBitangent;
+layout(location = 10) in uint inFlags;
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
@@ -91,16 +91,13 @@ void main() {
 
   vec3 position = inPosition;
  
- /* 
   mat3 tangentSpace;
   {
     vec3 tangent = octDecode(inTangent);
-    vec3 bitangent = octDecode(inBitangent);
     vec3 normal = octDecode(inNormal);
-    tangentSpace = mat3(tangent, bitangent, normal);
-//  tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * (((inCountJointBlocks & 0x80000000u) != 0) ? -1.0 : 1.0), normal);
-  }*/
-  mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
+    tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * (((inFlags & (1u << 0)) != 0) ? -1.0 : 1.0), normal);
+  }
+  //mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
  
   if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
     vec4 normal = vec4(tangentSpace[2], 0.0f);
