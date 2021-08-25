@@ -61,6 +61,9 @@ type { TScreenMain }
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
        fTime:Double;
+       fCameraRotationX:TpvScalar;
+       fCameraRotationY:TpvScalar;
+       fZoom:TpvScalar;
       public
 
        constructor Create; override;
@@ -89,6 +92,10 @@ type { TScreenMain }
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
 
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
+
      end;
 
 implementation
@@ -107,7 +114,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test8.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -141,6 +148,12 @@ begin
  inherited Show;
 
  fTime:=0.0;
+
+ fCameraRotationX:=0.0;//frac(fTime*0.03125);
+
+ fCameraRotationY:=0.0;
+
+ fZoom:=1.0;
 
  fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                          pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -574,7 +587,6 @@ var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     ViewMatrix:TpvMatrix4x4;
     ProjectionMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
-    CameraRotationX,CameraRotationY,Zoom:TpvScalar;
     t0,t1:Double;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -582,15 +594,12 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  CameraRotationX:=-0.175;//frac(fTime*0.03125);
-  CameraRotationY:=0.0;
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
-  Zoom:=1.0;
-  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
-                                                                  sin(-CameraRotationY*PI*2.0),
-                                                                  cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*Zoom)),
+  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                  sin(-fCameraRotationY*PI*2.0),
+                                                                  cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
                                         Center,
                                         TpvVector3.Create(0.0,1.0,0.0))*
                TpvMatrix4x4.FlipYClipSpace;
@@ -695,6 +704,28 @@ begin
   if aKeyEvent.KeyCode=KEYCODE_ESCAPE then begin
    pvApplication.Terminate;
   end;
+ end;
+end;
+
+function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+ if not result then begin
+  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Motion) and
+     (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
+   fCameraRotationX:=frac(fCameraRotationX+(1.0-(aPointerEvent.RelativePosition.x*(1.0/pvApplication.VulkanSwapChain.Width))));
+   fCameraRotationY:=frac(fCameraRotationY+(1.0-(aPointerEvent.RelativePosition.y*(1.0/pvApplication.VulkanSwapChain.Height))));
+   result:=true;
+  end;
+ end;
+end;
+
+function TScreenMain.Scrolled(const aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=inherited Scrolled(aRelativeAmount);
+ if not result then begin
+  fZoom:=Max(1e-4,fZoom+((aRelativeAmount.x+aRelativeAmount.y)*0.1));
+  result:=true;
  end;
 end;
 

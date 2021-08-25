@@ -1733,7 +1733,8 @@ begin
    fSampler.IncRef;
   end;
  end else begin
-  raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
+  fSampler:=nil;
+//raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
  end;
 end;
 
