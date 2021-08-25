@@ -582,8 +582,8 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
-                     function GetAnimationBeginTime:TpvFloat;
-                     function GetAnimationEndTime:TpvFloat;
+                     function GetAnimationBeginTime:TpvDouble;
+                     function GetAnimationEndTime:TpvDouble;
                     published
                      property Index:TpvSizeInt read fIndex;
                    end;
@@ -2721,7 +2721,7 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.TAnimation.GetAnimationBeginTime:TpvFloat;
+function TpvScene3D.TGroup.TAnimation.GetAnimationBeginTime:TpvDouble;
 var Index:TpvSizeInt;
     Channel:TAnimation.PChannel;
 begin
@@ -2738,7 +2738,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.TAnimation.GetAnimationEndTime:TpvFloat;
+function TpvScene3D.TGroup.TAnimation.GetAnimationEndTime:TpvDouble;
 var Index:TpvSizeInt;
     Channel:TAnimation.PChannel;
 begin
@@ -5283,7 +5283,7 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    end;
   end;
  end;
- procedure ProcessAnimation(const aAnimationIndex:TPasGLTFSizeInt;const aAnimationTime:TPasGLTFFloat;const aFactor:TPasGLTFFloat);
+ procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
  var ChannelIndex,
      InstanceChannelIndex,
      CountInstanceChannels,
