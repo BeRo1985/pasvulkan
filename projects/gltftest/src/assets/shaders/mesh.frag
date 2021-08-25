@@ -61,7 +61,9 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
   return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), c / vec3(12.92), lessThan(c, vec3(4.045e-2)));  //
 }
 
-vec4 convertSRGBToLinearRGB(vec4 c) { return vec4(convertSRGBToLinearRGB(c.xyz), c.w); }
+vec4 convertSRGBToLinearRGB(vec4 c) {
+  return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
+}
 
 const float PI = 3.14159265358979323846, PI2 = 6.283185307179586476925286766559, OneOverPI = 1.0 / PI;
 
