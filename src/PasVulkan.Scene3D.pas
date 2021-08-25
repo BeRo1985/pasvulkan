@@ -1079,7 +1079,8 @@ type EpvScene3D=class(Exception);
                       const aProjectionMatrix:TpvMatrix4x4;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aPipelineLayout:TpvVulkanPipelineLayout;
-                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                      const aFrustumCulling:boolean=true);
       published
        property MeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshVulkanDescriptorSetLayout;
        property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
@@ -6411,7 +6412,8 @@ procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines
                           const aProjectionMatrix:TpvMatrix4x4;
                           const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aPipelineLayout:TpvVulkanPipelineLayout;
-                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                          const aFrustumCulling:boolean=true);
 var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
     Group:TpvScene3D.TGroup;
     Instance:TpvScene3D.TGroup.TInstance;
@@ -6426,16 +6428,26 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
 
- for Instance in fGroupInstances do begin
-  TPasMPInterlocked.BitwiseAnd(Instance.fVisibleBitmap,not VisibleBit);
+ if aFrustumCulling then begin
+
+  for Instance in fGroupInstances do begin
+   TPasMPInterlocked.BitwiseAnd(Instance.fVisibleBitmap,not VisibleBit);
+  end;
+
+  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
+
+  Frustum.Init;
+  Frustum.ExtractFrustum(@aViewMatrix,@aProjectionMatrix);
+
+  CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
+
+ end else begin
+
+  for Instance in fGroupInstances do begin
+   TPasMPInterlocked.BitwiseOr(Instance.fVisibleBitmap,VisibleBit);
+  end;
+
  end;
-
- AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
-
- Frustum.Init;
- Frustum.ExtractFrustum(@aViewMatrix,@aProjectionMatrix);
-
- CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
 
  VertexStagePushConstants.ViewMatrix:=aViewMatrix;
  VertexStagePushConstants.ProjectionMatrix:=aProjectionMatrix;

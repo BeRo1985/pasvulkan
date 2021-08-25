@@ -785,6 +785,7 @@ type PpvScalar=^TpvScalar;
        constructor CreatePerspectiveLeftHandedZeroToOne(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveRightHandedNegativeOneToPositiveOne(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveRightHandedZeroToOne(const fovy,Aspect,zNear,zFar:TpvScalar);
+       constructor CreatePerspectiveReversedZ(const aFOVY,aAspectRatio,aZNear:TpvScalar);
        constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreateLookAt(const Eye,Center,Up:TpvVector3);
        constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvVector3);
@@ -8607,6 +8608,30 @@ begin
   RawComponents[3,2]:=(-(zNear*zFar))/(zFar-zNear);
   RawComponents[3,3]:=0.0;
  end;
+end;
+
+constructor TpvMatrix4x4.CreatePerspectiveReversedZ(const aFOVY,aAspectRatio,aZNear:TpvScalar);
+var t,sx,sy:TpvScalar;
+begin
+ t:=tan(aFOVY*DEG2RAD*0.5);
+ sy:=1.0/t;
+ sx:=sy/aAspectRatio;
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=0.0;
+ RawComponents[2,3]:=-1.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=aZNear;
+ RawComponents[3,3]:=0.0;
 end;
 
 constructor TpvMatrix4x4.CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
