@@ -943,6 +943,7 @@ type PpvScalar=^TpvScalar;
              NormalizedSpace:TpvMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
              FlipYClipSpace:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)));
              FlipYHalfZClipSpace:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.5,0.0),(0.0,0.0,0.5,1.0)));
+             FlipZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0)));
      end;
 
      TpvQuaternionHelper=record helper for TpvQuaternion

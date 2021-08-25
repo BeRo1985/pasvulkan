@@ -114,7 +114,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test5.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -411,7 +411,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=0.0;
- fVulkanRenderPass.ClearValues[1].depthStencil.depth:=1.0;
+ fVulkanRenderPass.ClearValues[1].depthStencil.depth:=0.0;
 
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
 
@@ -513,7 +513,7 @@ begin
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
-     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
 
@@ -582,19 +582,6 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
-  Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
-  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                  sin(-fCameraRotationY*PI*2.0),
-                                                                  cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                        Center,
-                                        TpvVector3.Create(0.0,1.0,0.0))*
-               TpvMatrix4x4.FlipYClipSpace;
-
-//ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1,1024.0);//(Max(Max(Bounds[0],Bounds[1]),Bounds[2])*1.0));
-
   fGroupInstance.ModelMatrix:=ModelMatrix;
 
   if fGroupInstance.Group.Animations.Count>0 then begin
@@ -617,6 +604,17 @@ begin
   end;
 
   fScene3D.Update(aSwapChainImageIndex);
+
+  Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+  Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                  sin(-fCameraRotationY*PI*2.0),
+                                                                  cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                        Center,
+                                        TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
+
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
 
   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
 

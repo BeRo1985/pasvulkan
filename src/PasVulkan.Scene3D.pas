@@ -894,7 +894,7 @@ type EpvScene3D=class(Exception);
                      fLightNodes:TNodeIndices;
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
-                     fDynamicBoundingBox:TpvAABB;
+                     fBoundingBox:TpvAABB;
                      fWorstCaseStaticBoundingBox:TpvAABB;
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
@@ -1043,6 +1043,7 @@ type EpvScene3D=class(Exception);
        fGroupInstances:TGroup.TInstances;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
+       fBoundingBox:TpvAABB;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
        procedure CullAABBTreeWithFrustum(const aFrustum:TpvFrustum;
@@ -1064,6 +1065,12 @@ type EpvScene3D=class(Exception);
                       const aPipelineLayout:TpvVulkanPipelineLayout;
                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
                       const aFrustumCulling:boolean=true);
+       procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
+                              const aAspectRatio:TpvScalar;
+                              out aZNear:TpvScalar;
+                              out aZFar:TpvScalar);
+      public
+       property BoundingBox:TpvAABB read fBoundingBox;
       published
        property MeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshVulkanDescriptorSetLayout;
        property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
@@ -5817,8 +5824,9 @@ begin
   if assigned(fVulkanData) then begin
    fVulkanData.Update;
   end;
+  fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
   if fAABBTreeProxy>=0 then begin
-   fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fGroup.fBoundingBox.Transform(fModelMatrix),TpvVector3.Create(1.0,1.0,1.0));
+   fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
   end;
  end;
 end;
@@ -6283,7 +6291,9 @@ end;
 
 procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    First:boolean;
 begin
 
  for Group in fGroups do begin
@@ -6300,6 +6310,20 @@ begin
   AABBTreeState^.Root:=fAABBTree.Root;
  end else begin
   AABBTreeState^.Root:=-1;
+ end;
+
+ First:=true;
+ fBoundingBox.Min:=TpvVector3.Origin;
+ fBoundingBox.Max:=TpvVector3.Origin;
+ for GroupInstance in fGroupInstances do begin
+  if GroupInstance.fActive then begin
+   if First then begin
+    First:=false;
+    fBoundingBox:=GroupInstance.fBoundingBox;
+   end else begin
+    fBoundingBox:=fBoundingBox.Combine(GroupInstance.fBoundingBox);
+   end;
+  end;
  end;
 
 end;
@@ -6419,7 +6443,7 @@ begin
   AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
 
   Frustum.Init;
-  Frustum.ExtractFrustum(@aViewMatrix,@aProjectionMatrix);
+  Frustum.ExtractFrustum(aViewMatrix,aProjectionMatrix);
 
   CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
 
@@ -6449,6 +6473,43 @@ begin
              aPipelineLayout,
              aMaterialAlphaModes);
  end;
+
+end;
+
+procedure TpvScene3D.GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
+                                  const aAspectRatio:TpvScalar;
+                                  out aZNear:TpvScalar;
+                                  out aZFar:TpvScalar);
+var x,y,z:TpVInt32;
+    InverseViewMatrix:TpvMatrix4x4;
+    CameraPosition,CameraDirection,Corner:TpvVector3;
+    Dot:TpvScalar;
+begin
+
+ InverseViewMatrix:=aViewMatrix.Inverse;
+
+ CameraPosition:=PpvVector3(@InverseViewMatrix.RawComponents[3,0])^;
+
+ CameraDirection:=-PpvVector3(@InverseViewMatrix.RawComponents[2,0])^.Normalize;
+
+ Corner:=fBoundingBox.Min;
+ Dot:=CameraDirection.Dot(Corner-CameraPosition);
+ aZNear:=Dot;
+ aZFar:=Dot;
+
+ for x:=0 to 1 do begin
+  for y:=0 to 1 do begin
+   for z:=0 to 1 do begin
+    Corner:=TpvVector3.Create(fBoundingBox.MinMax[x].x,fBoundingBox.MinMax[y].y,fBoundingBox.MinMax[z].z);
+    Dot:=CameraDirection.Dot(Corner-CameraPosition);
+    aZNear:=Min(aZNear,Dot);
+    aZFar:=Max(aZFar,Dot);
+   end;
+  end;
+ end;
+
+ aZNear:=Max(0.1,aZNear-0.1);
+ aZFar:=Max(0.2,aZFar+0.1);
 
 end;
 
