@@ -638,6 +638,12 @@ begin
                                             0,
                                             nil);
 
+  fScene3D.Prepare(aSwapChainImageIndex,
+                   0,
+                   ViewMatrix,
+                   ProjectionMatrix,
+                   true);
+
   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                 aSwapChainImageIndex,
                 0,
@@ -649,7 +655,7 @@ begin
 
   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                 aSwapChainImageIndex,
-                1,
+                0,
                 ViewMatrix,
                 ProjectionMatrix,
                 VulkanCommandBuffer,
@@ -658,7 +664,7 @@ begin
 
   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                 aSwapChainImageIndex,
-                2,
+                0,
                 ViewMatrix,
                 ProjectionMatrix,
                 VulkanCommandBuffer,

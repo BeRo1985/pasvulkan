@@ -1056,6 +1056,11 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+       procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                         const aRenderPassIndex:TpvSizeInt;
+                         const aViewMatrix:TpvMatrix4x4;
+                         const aProjectionMatrix:TpvMatrix4x4;
+                         const aFrustumCulling:boolean=true);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aSwapChainImageIndex:TpvSizeInt;
                       const aRenderPassIndex:TpvSizeInt;
@@ -1063,8 +1068,7 @@ type EpvScene3D=class(Exception);
                       const aProjectionMatrix:TpvMatrix4x4;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aPipelineLayout:TpvVulkanPipelineLayout;
-                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                      const aFrustumCulling:boolean=true);
+                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
        procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
                               const aAspectRatio:TpvScalar;
                               out aZNear:TpvScalar;
@@ -6411,26 +6415,16 @@ begin
  end;
 end;
 
-procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                          const aSwapChainImageIndex:TpvSizeInt;
-                          const aRenderPassIndex:TpvSizeInt;
-                          const aViewMatrix:TpvMatrix4x4;
-                          const aProjectionMatrix:TpvMatrix4x4;
-                          const aCommandBuffer:TpvVulkanCommandBuffer;
-                          const aPipelineLayout:TpvVulkanPipelineLayout;
-                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                          const aFrustumCulling:boolean=true);
-var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
-    Group:TpvScene3D.TGroup;
+procedure TpvScene3D.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                             const aRenderPassIndex:TpvSizeInt;
+                             const aViewMatrix:TpvMatrix4x4;
+                             const aProjectionMatrix:TpvMatrix4x4;
+                             const aFrustumCulling:boolean=true);
+var VisibleBit:TPasMPUInt32;
+    Frustum:TpvFrustum;
     Instance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
-    VisibleBit:TPasMPUInt32;
-    Frustum:TpvFrustum;
-    Pipeline:TpvVulkanPipeline;
-
 begin
-
- Pipeline:=nil;
 
  VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
 
@@ -6453,6 +6447,26 @@ begin
   end;
 
  end;
+
+end;
+
+procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                          const aSwapChainImageIndex:TpvSizeInt;
+                          const aRenderPassIndex:TpvSizeInt;
+                          const aViewMatrix:TpvMatrix4x4;
+                          const aProjectionMatrix:TpvMatrix4x4;
+                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                          const aPipelineLayout:TpvVulkanPipelineLayout;
+                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
+    Group:TpvScene3D.TGroup;
+    VisibleBit:TPasMPUInt32;
+    Pipeline:TpvVulkanPipeline;
+begin
+
+ Pipeline:=nil;
+
+ VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
 
  VertexStagePushConstants.ViewMatrix:=aViewMatrix;
  VertexStagePushConstants.ProjectionMatrix:=aProjectionMatrix;
