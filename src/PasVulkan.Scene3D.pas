@@ -567,7 +567,7 @@ type EpvScene3D=class(Exception);
                                  Node:TpvSizeInt;
                                  Target:TTarget;
                                  Interpolation:TInterpolation;
-                                 InputTimeArray:TpvFloatDynamicArray;
+                                 InputTimeArray:TpvDoubleDynamicArray;
                                  OutputScalarArray:TpvFloatDynamicArray;
                                  OutputVector3Array:TpvVector3Array;
                                  OutputVector4Array:TpvVector4Array;
@@ -809,14 +809,14 @@ type EpvScene3D=class(Exception);
                                  TChannels=TpvObjectGenericList<TChannel>;
                            private
                             fFactor:TPasGLTFFloat;
-                            fTime:TPasGLTFFloat;
+                            fTime:TPasGLTFDouble;
                             fChannels:TChannels;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
                            published
                             property Factor:TPasGLTFFloat read fFactor write fFactor;
-                            property Time:TPasGLTFFloat read fTime write fTime;
+                            property Time:TPasGLTFDouble read fTime write fTime;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
                           TNode=record
@@ -2618,6 +2618,7 @@ var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
     OutputVector3Array:TPasGLTF.TVector3DynamicArray;
     OutputVector4Array:TPasGLTF.TVector4DynamicArray;
     OutputScalarArray:TPasGLTFFloatDynamicArray;
+    OutputScalar64Array:TPasGLTFDoubleDynamicArray;
 begin
 
  fName:=aSourceAnimation.Name;
@@ -2663,14 +2664,14 @@ begin
     end;
    end;
    begin
-    OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Input].DecodeAsFloatArray(false);
+    OutputScalar64Array:=aSourceDocument.Accessors[SourceAnimationSampler.Input].DecodeAsDoubleArray(false);
     try
-     SetLength(DestinationAnimationChannel^.InputTimeArray,length(OutputScalarArray));
-     if length(OutputScalarArray)>0 then begin
-      Move(OutputScalarArray[0],DestinationAnimationChannel^.InputTimeArray[0],length(OutputScalarArray)*SizeOf(TpvFloat));
+     SetLength(DestinationAnimationChannel^.InputTimeArray,length(OutputScalar64Array));
+     if length(OutputScalar64Array)>0 then begin
+      Move(OutputScalar64Array[0],DestinationAnimationChannel^.InputTimeArray[0],length(OutputScalar64Array)*SizeOf(TpvDouble));
      end;
     finally
-     OutputScalarArray:=nil;
+     OutputScalar64Array:=nil;
     end;
    end;
    case DestinationAnimationChannel^.Target of
@@ -5297,7 +5298,7 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
      InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
      //Node:TpvScene3D.TGroup.TNode;
      Node:TpvScene3D.TGroup.TInstance.PNode;
-     Time,Factor,Scalar,Value,SqrFactor,CubeFactor,KeyDelta,v0,v1,a,b:TpvFloat;
+     Time,Factor,Scalar,Value,SqrFactor,CubeFactor,KeyDelta,v0,v1,a,b:TpvDouble;
      Vector3:TpvVector3;
      Vector4:TpvVector4;
      Vector3s:array[0..1] of PpvVector3;

@@ -114,7 +114,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test10.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test5.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -593,7 +593,7 @@ begin
                TpvMatrix4x4.FlipYClipSpace;
 
 //ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,1.0,(Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*2.0));
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1,1024.0);//(Max(Max(Bounds[0],Bounds[1]),Bounds[2])*1.0));
 
   fGroupInstance.ModelMatrix:=ModelMatrix;
 
