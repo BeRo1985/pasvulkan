@@ -856,6 +856,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             VisibleBitmap:TpvUInt32;
+                            BoundingBoxes:array[0..MaxSwapChainImages+1] of TpvAABB;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -5865,14 +5866,39 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aSwapChainImageIndex:TpvSize
                                               const aRenderPassIndex:TpvSizeInt;
                                               const aFrustum:TpvFrustum;
                                               const aFrustumCulling:boolean);
+var VisibleBit:TpvUInt32;
+ procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
+ var NodeIndex:TpvSizeInt;
+     Mask:TpvUInt32;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Node:TpvScene3D.TGroup.TNode;
+ begin
+  if aNodeIndex>=0 then begin
+   InstanceNode:=@fNodes[aNodeIndex];
+   Mask:=aMask;
+   if not (((Mask and $80000000)<>0) and (aFrustum.AABBInFrustum(InstanceNode^.BoundingBoxes[aSwapChainImageIndex],Mask)=TpvFrustum.COMPLETE_OUT)) then begin
+    TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+    Node:=fGroup.fNodes[aNodeIndex];
+    for NodeIndex:=0 to Node.fChildren.Count-1 do begin
+     ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+    end;
+   end;
+  end;
+ end;
 var NodeIndex:TpvSizeInt;
-    VisibleBit:TpvUInt32;
+    Scene:TpvScene3D.TGroup.TScene;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
  if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   if aFrustumCulling then begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
-    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+   end;
+   Scene:=fScenes[aSwapChainImageIndex];
+   if assigned(Scene) then begin
+    for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
+     ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+    end;
    end;
   end else begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
@@ -5881,7 +5907,7 @@ begin
   end;
  end else begin
   for NodeIndex:=0 to length(fNodes)-1 do begin
-   TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+   TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
   end;
  end;
 end;
