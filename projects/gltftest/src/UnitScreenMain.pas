@@ -114,7 +114,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test8.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -188,7 +188,7 @@ begin
   FreeAndNil(Stream);
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('textures/envmap.ktx');
+ Stream:=pvApplication.Assets.GetAssetStream('textures/envmap.jpg');
  try
   fImageBasedLightingEnvMapTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
                                                                      pvApplication.VulkanDevice.GraphicsQueue,
@@ -198,7 +198,7 @@ begin
                                                                      fVulkanTransferCommandBuffer,
                                                                      fVulkanTransferCommandBufferFence,
                                                                      Stream,
-                                                                     false,
+                                                                     true,
                                                                      false);
   fImageBasedLightingEnvMapTexture.UpdateSampler;
  finally
@@ -249,12 +249,7 @@ begin
  fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         1,
-                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                         []);
- fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
-                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         1,
+                                                         2,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
@@ -267,17 +262,10 @@ begin
                                                                        fImageBasedLightingVulkanDescriptorSetLayout);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
                                                              0,
-                                                             1,
+                                                             2,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fImageBasedLightingBRDFLUTTexture.DescriptorImageInfo],
-                                                             [],
-                                                             [],
-                                                             false);
- fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
-                                                             0,
-                                                             1,
-                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fImageBasedLightingEnvMapTexture.DescriptorImageInfo],
+                                                             [fImageBasedLightingBRDFLUTTexture.DescriptorImageInfo,
+                                                              fImageBasedLightingEnvMapTexture.DescriptorImageInfo],
                                                              [],
                                                              [],
                                                              false);
@@ -524,7 +512,7 @@ begin
      end;
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;

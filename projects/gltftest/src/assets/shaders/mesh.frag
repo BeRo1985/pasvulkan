@@ -15,8 +15,7 @@ layout(location = 8) in vec4 inColor0;
 
 layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
-layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFLUTTexture;
-layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMapTexture;
+layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingTextures[];
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
@@ -138,14 +137,14 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
   }
 }
 
-vec4 getEnvMap(sampler2D texEnvMap, float texLOD, vec3 rayDirection) {
+vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
   rayDirection = normalize(rayDirection);
   return textureLod(texEnvMap, (vec2((atan(rayDirection.z, rayDirection.x) / PI2) + 0.5, acos(rayDirection.y) / 3.1415926535897932384626433832795)), texLOD);
 }
 
 vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor) {
   float ao = cavity * ambientOcclusion;
-  return (textureLod(uImageBasedLightingEnvMapTexture, normal.xyz, float(envMapMaxLevel)).xyz * diffuseColor * ao) * OneOverPI;
+  return (getEnvMap(uImageBasedLightingTextures[1], normal.xyz, float(envMapMaxLevel)).xyz * diffuseColor * ao) * OneOverPI;
 }
 
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
@@ -154,12 +153,12 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  vec2 brdf = textureLod(uImageBasedLightingBRDFLUTTexture, vec2(roughness, NdotV), 0.0).xy;
-  return (textureLod(uImageBasedLightingEnvMapTexture,      //
-                     reflectionVector,                      //
-                     clamp((float(envMapMaxLevel) - 1.0) -  //
-                               (1.0 - (1.2 * log2(roughness))),
-                           0.0, float(envMapMaxLevel)))
+  vec2 brdf = textureLod(uImageBasedLightingTextures[0], vec2(roughness, NdotV), 0.0).xy;
+  return (getEnvMap(uImageBasedLightingTextures[1],        //
+                    reflectionVector,                      //
+                    clamp((float(envMapMaxLevel) - 1.0) -  //
+                              (1.0 - (1.2 * log2(roughness))),
+                          0.0, float(envMapMaxLevel)))
               .xyz *                                                                                                                           //
           ((specularColor.xyz * brdf.x) + (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) *  //
           specularOcclusion) *
@@ -249,7 +248,7 @@ vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in v
 }
 
 void main() {
-  envMapMaxLevel = log2(textureSize(uImageBasedLightingEnvMapTexture, 0).x);
+  envMapMaxLevel = textureQueryLevels(uImageBasedLightingTextures[1]);
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #ifdef SHADOWMAP
@@ -428,10 +427,13 @@ void main() {
 #endif
       diffuseOutput += getDiffuseImageBasedLight(normal.xyz, diffuseColorAlpha.xyz);
       specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, viewDirection, litIntensity);
+      if ((flags & (1u << 7u)) != 0u) {
+        // TODO
+      }
       if ((flags & (1u << 8u)) != 0u) {
         clearcoatOutput += getSpecularImageBasedLight(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, viewDirection, litIntensity);
-        clearcoatBlendFactor = vec3(clearcoatFactor * specularF(clearcoatF0, clamp(dot(clearcoatNormal, -viewDirection), 0.0, 1.0)));      
-      }else{ 
+        clearcoatBlendFactor = vec3(clearcoatFactor * specularF(clearcoatF0, clamp(dot(clearcoatNormal, -viewDirection), 0.0, 1.0)));
+      } else {
         clearcoatBlendFactor = vec3(0);
       }
       color = vec4(vec3(((diffuseOutput +
@@ -442,7 +444,7 @@ void main() {
                          (vec3(1.0) - clearcoatBlendFactor)) +
                         mix(specularOutput, clearcoatOutput, clearcoatBlendFactor)),
                    diffuseColorAlpha.w);
-//    color = vec4(clearcoatOutput * clearcoatBlendFactor, diffuseColorAlpha.w);
+      // color = vec4(sheenOutput, diffuseColorAlpha.w);
 #ifdef EXTRAEMISSIONOUTPUT
       emissionColor.xyz = vec4((emissiveTexture.xyz * uMaterial.emissiveFactor.xyz) * (vec3(1.0) - clearcoatBlendFactor), 1.0);
 #endif
