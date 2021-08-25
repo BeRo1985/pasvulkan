@@ -117,12 +117,11 @@ void main() {
     tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
   }
 
-  uint countJointBlocks = inCountJointBlocks & 0x7fffffffu;
-  if (countJointBlocks > 0u) {
+  if (inCountJointBlocks > 0u) {
     mat4 inverseNodeMatrix = inverse(nodeMatrix);
     mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + countJointBlocks;  //
-         jointBlockBaseIndex < endJointBlockBaseIndex;                                                                       //
+    for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
+         jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
          jointBlockBaseIndex++) {
       JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
       skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
