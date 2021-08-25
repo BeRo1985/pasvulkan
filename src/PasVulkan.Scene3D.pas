@@ -2875,7 +2875,7 @@ begin
     if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
      for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=Vertex^.JointBlockBaseIndex+JointBlockIndex;
-      if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
+      if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
        Old:=length(fGroup.fJointBlockOffsets);
        SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
        FillChar(fGroup.fJointBlockOffsets[Old],((length(fGroup.fJointBlockOffsets)-Old)+1)*SizeOf(TpvSizeInt),#0);
@@ -2932,7 +2932,7 @@ begin
      for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
       fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[Vertex^.JointBlockBaseIndex+JointBlockIndex];
-      if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
+      if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
        Old:=length(fGroup.fJointBlockOffsets);
        SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
        FillChar(fGroup.fJointBlockOffsets[Old],((length(fGroup.fJointBlockOffsets)-Old)+1)*SizeOf(TpvSizeInt),#0);
