@@ -918,6 +918,10 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
+                     procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                                       const aRenderPassIndex:TpvSizeInt;
+                                       const aFrustum:TpvFrustum;
+                                       const aFrustumCulling:boolean);
                      procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                     const aSwapChainImageIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
@@ -984,6 +988,10 @@ type EpvScene3D=class(Exception);
               fBoundingBox:TpvAABB;
               procedure ConstructBuffers;
               procedure CollectMaterialPrimitives;
+              procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                                const aRenderPassIndex:TpvSizeInt;
+                                const aFrustum:TpvFrustum;
+                                const aFrustumCulling:boolean);
               procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                              const aSwapChainImageIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
@@ -4900,6 +4908,20 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                                    const aRenderPassIndex:TpvSizeInt;
+                                    const aFrustum:TpvFrustum;
+                                    const aFrustumCulling:boolean);
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.Prepare(aSwapChainImageIndex,
+                   aRenderPassIndex,
+                   aFrustum,
+                   aFrustumCulling);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                  const aSwapChainImageIndex:TpvSizeInt;
                                  const aRenderPassIndex:TpvSizeInt;
@@ -5839,6 +5861,31 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.TInstance.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                                              const aRenderPassIndex:TpvSizeInt;
+                                              const aFrustum:TpvFrustum;
+                                              const aFrustumCulling:boolean);
+var NodeIndex:TpvSizeInt;
+    VisibleBit:TpvUInt32;
+begin
+ VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
+ if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+  if aFrustumCulling then begin
+   for NodeIndex:=0 to length(fNodes)-1 do begin
+    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+   end;
+  end else begin
+   for NodeIndex:=0 to length(fNodes)-1 do begin
+    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
+   end;
+  end;
+ end else begin
+  for NodeIndex:=0 to length(fNodes)-1 do begin
+   TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                                            const aSwapChainImageIndex:TpvSizeInt;
                                            const aRenderPassIndex:TpvSizeInt;
@@ -5855,11 +5902,13 @@ var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     Pipeline:TpvVulkanPipeline;
     Culling,MeshFirst,MaterialFirst:boolean;
+    VisibleBit:TpvUInt32;
 begin
  if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   Culling:=fGroup.fCulling;
   Scene:=fScenes[aSwapChainImageIndex];
   if assigned(Scene) then begin
+   VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
    MeshFirst:=true;
    for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
     SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
@@ -5876,7 +5925,7 @@ begin
        PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
        if (PrimitiveIndexRange^.Count>0) and
           ((not Culling) or
-           ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0)) then begin
+           ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and VisibleBit)<>0)) then begin
         PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
         Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
         if aPipeline<>Pipeline then begin
@@ -6435,7 +6484,8 @@ procedure TpvScene3D.Prepare(const aSwapChainImageIndex:TpvSizeInt;
                              const aFrustumCulling:boolean=true);
 var VisibleBit:TPasMPUInt32;
     Frustum:TpvFrustum;
-    Instance:TpvScene3D.TGroup.TInstance;
+    Group:TpvScene3D.TGroup;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
 begin
 
@@ -6443,22 +6493,29 @@ begin
 
  if aFrustumCulling then begin
 
-  for Instance in fGroupInstances do begin
-   TPasMPInterlocked.BitwiseAnd(Instance.fVisibleBitmap,not VisibleBit);
+  for GroupInstance in fGroupInstances do begin
+   TPasMPInterlocked.BitwiseAnd(GroupInstance.fVisibleBitmap,not VisibleBit);
   end;
 
-  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
-
   Frustum.Init(aViewMatrix,aProjectionMatrix);
+
+  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
 
   CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
 
  end else begin
 
-  for Instance in fGroupInstances do begin
-   TPasMPInterlocked.BitwiseOr(Instance.fVisibleBitmap,VisibleBit);
+  for GroupInstance in fGroupInstances do begin
+   TPasMPInterlocked.BitwiseOr(GroupInstance.fVisibleBitmap,VisibleBit);
   end;
 
+ end;
+
+ for Group in fGroups do begin
+  Group.Prepare(aSwapChainImageIndex,
+                aRenderPassIndex,
+                Frustum,
+                aFrustumCulling);
  end;
 
 end;
