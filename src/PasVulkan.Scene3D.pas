@@ -6442,8 +6442,7 @@ begin
 
   AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
 
-  Frustum.Init;
-  Frustum.ExtractFrustum(aViewMatrix,aProjectionMatrix);
+  Frustum.Init(aViewMatrix,aProjectionMatrix);
 
   CullAABBTreeWithFrustum(Frustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
 

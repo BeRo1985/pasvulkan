@@ -90,8 +90,7 @@ type { TpvFrustum }
        fPlanes:TPlanes;
        fAbsoluteNormals:TAbsoluteNormals;
       public
-       procedure Init;
-       procedure ExtractFrustum(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
+       procedure Init(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
        class function ExtractFrustumSphere(const aZNear,aZFar,aFOV,aAspectRatio:TpvScalar;const aPosition,aDirection:TpvVector3):TpvSphere; static;
        function AABBInFrustum(const aAABB:TpvAABB):TpvInt32; overload;
        function AABBInFrustum(const aAABB:TpvAABB;var aMask:TpvUInt32):TpvInt32; overload;
@@ -104,8 +103,6 @@ type { TpvFrustum }
 
 implementation
 
-type TGLMatrix=array[0..15] of TpvFloat;
-
 function IntersectionPoint(const a,b,c:TpvPlane):TpvVector3;
 begin
  result:=((b.Normal.Cross(c.Normal)*a.Distance)+
@@ -113,12 +110,7 @@ begin
           (a.Normal.Cross(b.Normal)*c.Distance))/(-a.Normal.Dot(b.Normal.Cross(c.Normal)));
 end;
 
-procedure TpvFrustum.Init;
-begin
- FillChar(self,SizeOf(TpvFrustum),#0);
-end;
-
-procedure TpvFrustum.ExtractFrustum(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
+procedure TpvFrustum.Init(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
 var FrustumSide:TFrustumSide;
     ViewProjectionMatrix:TpvMatrix4x4;
 begin
