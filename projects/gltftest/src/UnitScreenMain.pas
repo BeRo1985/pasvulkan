@@ -42,6 +42,7 @@ type { TScreenMain }
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
+       fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
        fImageBasedLightingBRDFLUTTexture:TpvVulkanTexture;
        fImageBasedLightingEnvMapTexture:TpvVulkanTexture;
        fImageBasedLightingVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -49,8 +50,9 @@ type { TScreenMain }
        fImageBasedLightingVulkanDescriptorSet:TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
        fVulkanRenderPass:TpvVulkanRenderPass;
-       fVulkanGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+       fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
@@ -105,7 +107,7 @@ begin
  try
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test3.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -218,9 +220,18 @@ begin
   Stream.Free;
  end;
 
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_frag.spv');
+ try
+  fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
 
  fVulkanPipelineShaderStageMeshFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshFragmentShaderModule,'main');
+
+ fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
  fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
@@ -288,9 +299,13 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshFragment);
 
+ FreeAndNil(fVulkanPipelineShaderStageMeshMaskedFragment);
+
  FreeAndNil(fMeshVertexShaderModule);
 
  FreeAndNil(fMeshFragmentShaderModule);
+
+ FreeAndNil(fMeshMaskedFragmentShaderModule);
 
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
@@ -327,6 +342,7 @@ end;
 procedure TScreenMain.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TpvVulkanCommandBuffer;
+    AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
@@ -335,9 +351,11 @@ begin
 
  FreeAndNil(fVulkanRenderPass);
 
- for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-  for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
-   FreeAndNil(fVulkanGraphicsPipelines[PrimitiveTopology,DoubleSided]);
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+    FreeAndNil(fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]);
+   end;
   end;
  end;
 
@@ -393,95 +411,117 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
- for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
 
-  for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
 
-   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
-                                                            pvApplication.VulkanPipelineCache,
-                                                            0,
-                                                            [],
-                                                            fVulkanPipelineLayout,
-                                                            fVulkanRenderPass,
-                                                            0,
-                                                            nil,
-                                                            0);
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
 
-   try
+    VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
+                                                             pvApplication.VulkanPipelineCache,
+                                                             0,
+                                                             [],
+                                                             fVulkanPipelineLayout,
+                                                             fVulkanRenderPass,
+                                                             0,
+                                                             nil,
+                                                             0);
 
-    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
-    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshFragment);
+    try
 
-    VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
-    VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
+     if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshMaskedFragment);
+     end else begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshFragment);
+     end;
 
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Position)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.NodeIndex)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TangentSpace)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TexCoord0)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TexCoord1)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Color0)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.MorphTargetVertexBaseIndex)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountMorphTargetVertices_)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.JointBlockBaseIndex)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
+     VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
+     VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
-    VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,0.0,1.0);
-    VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Position)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.NodeIndex)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Normal)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Tangent)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TexCoord0)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.TexCoord1)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Color0)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.MorphTargetVertexBaseIndex)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.JointBlockBaseIndex)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
 
-    VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
-    if DoubleSided then begin
-     VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
-    end else begin
-     VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+
+     VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+     if DoubleSided then begin
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+     end else begin
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+     end;
+     VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+     VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+     VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+     VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+     VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+     VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+     VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+     VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+     if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend then begin
+      VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                          VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                          VK_BLEND_OP_ADD,
+                                                                          VK_BLEND_FACTOR_ONE,
+                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                          VK_BLEND_OP_ADD,
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+     end else begin
+      VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                          VK_BLEND_FACTOR_ZERO,
+                                                                          VK_BLEND_FACTOR_ZERO,
+                                                                          VK_BLEND_OP_ADD,
+                                                                          VK_BLEND_FACTOR_ZERO,
+                                                                          VK_BLEND_FACTOR_ZERO,
+                                                                          VK_BLEND_OP_ADD,
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+     end;
+
+     VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS;
+     VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+     VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+     VulkanGraphicsPipeline.Initialize;
+
+     VulkanGraphicsPipeline.FreeMemory;
+
+    finally
+     fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]:=VulkanGraphicsPipeline;
     end;
-    VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
-    VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
-    VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
-    VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
-    VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-    VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
-    VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
-
-    VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
-    VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                                        VK_BLEND_FACTOR_ZERO,
-                                                                        VK_BLEND_FACTOR_ZERO,
-                                                                        VK_BLEND_OP_ADD,
-                                                                        VK_BLEND_FACTOR_ZERO,
-                                                                        VK_BLEND_FACTOR_ZERO,
-                                                                        VK_BLEND_OP_ADD,
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
-
-    VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-    VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
-    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS;
-    VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
-    VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
-
-    VulkanGraphicsPipeline.Initialize;
-
-    VulkanGraphicsPipeline.FreeMemory;
-
-   finally
-    fVulkanGraphicsPipelines[PrimitiveTopology,DoubleSided]:=VulkanGraphicsPipeline;
    end;
 
   end;
@@ -496,34 +536,21 @@ begin
 
   fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-{ VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
-
-  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-
-  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    pvApplication.VulkanFrameBuffers[SwapChainImageIndex],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    pvApplication.VulkanSwapChain.Width,
-                                    pvApplication.VulkanSwapChain.Height);
-
-  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
-
-  VulkanCommandBuffer.EndRecording;
- }
  end;
 
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
-var PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
 begin
  FreeAndNil(fVulkanRenderPass);
- for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-  for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
-   FreeAndNil(fVulkanGraphicsPipelines[PrimitiveTopology,DoubleSided]);
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+    FreeAndNil(fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]);
+   end;
   end;
  end;
  inherited BeforeDestroySwapChain;
@@ -553,7 +580,7 @@ begin
 
   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-  CameraRotationX:=-0.175;//frac(fTime*0.03125);
+  CameraRotationX:=frac(fTime*0.03125);
   CameraRotationY:=0.0;
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
@@ -561,7 +588,7 @@ begin
   ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                   sin(-CameraRotationY*PI*2.0),
                                                                   cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*Zoom)),
+                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*3.0*Zoom)),
                                         Center,
                                         TpvVector3.Create(0.0,1.0,0.0))*
                TpvMatrix4x4.FlipYClipSpace;
@@ -574,10 +601,10 @@ begin
   if fGroupInstance.Group.Animations.Count>0 then begin
    fGroupInstance.Automations[-1].Factor:=0.0;
    fGroupInstance.Automations[-1].Time:=0.0;
-   fGroupInstance.Automations[3].Factor:=1.0;
-   t0:=fGroupInstance.Group.Animations[3].GetAnimationBeginTime;
-   t1:=fGroupInstance.Group.Animations[3].GetAnimationEndTime;
-   fGroupInstance.Automations[3].Time:=ModuloPos(fTime,t1-t0)+t0;
+   fGroupInstance.Automations[0].Factor:=1.0;
+   t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
+   t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
+   fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
   end else begin
    fGroupInstance.Automations[-1].Factor:=1.0;
    fGroupInstance.Automations[-1].Time:=0.0;
@@ -607,16 +634,32 @@ begin
                                             0,
                                             nil);
 
-  fScene3D.Draw(fVulkanGraphicsPipelines,
+  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                 aSwapChainImageIndex,
                 0,
                 ViewMatrix,
                 ProjectionMatrix,
                 VulkanCommandBuffer,
                 fVulkanPipelineLayout,
-                [TpvScene3D.TMaterial.TAlphaMode.Opaque,
-                 TpvScene3D.TMaterial.TAlphaMode.Blend,
-                 TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+
+  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                aSwapChainImageIndex,
+                1,
+                ViewMatrix,
+                ProjectionMatrix,
+                VulkanCommandBuffer,
+                fVulkanPipelineLayout,
+                [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                aSwapChainImageIndex,
+                2,
+                ViewMatrix,
+                ProjectionMatrix,
+                VulkanCommandBuffer,
+                fVulkanPipelineLayout,
+                [TpvScene3D.TMaterial.TAlphaMode.Blend]);
 
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 

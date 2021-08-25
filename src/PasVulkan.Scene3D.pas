@@ -110,6 +110,8 @@ type EpvScene3D=class(Exception);
             TVkPrimitiveTopologySet=set of TVkPrimitiveTopology;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
+            TInt16Vector2=array[0..1] of TpvInt16;
+            TInt16Vector3=array[0..2] of TpvInt16;
             TInt16Vector4=array[0..3] of TpvInt16;
             PUInt32Vector4=^TUInt32Vector4;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
@@ -130,17 +132,17 @@ type EpvScene3D=class(Exception);
               false:(
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-               TangentSpace:TInt16Vector4;           // + 8 = 24 (signed 16-bit integer QTangent)
-               TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
-               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
-               CountMorphTargetVertices_:TpvUInt32;   // + 4 = 56 (unsigned 32-bit count of morph target vertices)
-               JointBlockBaseIndex:TpvUInt32;        // + 4 = 60 (unsigned 32-bit joint block base index)
-               CountJointBlocks:TpvUInt32;           // + 4 = 64 (unsigned 32-bit count of joint blocks)
+               Normal:TpvVector3;                    // +12 = 28 (signed 16-bit oct-encoded normal)
+               Tangent:TpvVector4;                   // +16 = 44 (signed 16-bit oct-encoded tangent)
+               TexCoord0:TpvVector2;                 // + 8 = 52 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               TexCoord1:TpvVector2;                 // + 8 = 60 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               Color0:TpvHalfFloatVector4;           // + 8 = 68 (must be at least half-float for HDR)
+               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 76 (unsigned 32-bit morph target vertex base index)
+               JointBlockBaseIndex:TpvUInt32;        // + 4 = 80 (unsigned 32-bit joint block base index)
+               CountJointBlocks:TpvUInt32;           // + 4 = 84 (unsigned 32-bit count of joint blocks)
               );                                     //  ==   ==
-              true:(                                 //  64   64 per vertex
-               Padding:array[0..63] of TpvUInt8;
+              true:(                                 //  84   84 per vertex
+               Padding:array[0..95] of TpvUInt8;
               );
             end;
 {           TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
@@ -148,19 +150,19 @@ type EpvScene3D=class(Exception);
               false:(
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-               Normal:TpvInt16Vector3;               // + 6 = 22 (32-bit float 3D normal)
-               CountJointBlocks:TpvUInt16;           // + 2 = 24 (unsigned 16-bit count of joint blocks)
-               Tangent:TpvInt16Vector4;              // + 8 = 32 (32-bit float 3D normal)
-               TexCoord0:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               TexCoord1:TpvVector2;                 // + 8 = 48 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               Color0:TpvHalfFloatVector4;           // + 8 = 56 (must be at least half-float for HDR)
-               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 60 (unsigned 32-bit morph target vertex base index)
-               JointBlockBaseIndex:TpvUInt32;        // + 4 = 64 (unsigned 32-bit joint block base index)
+               Normal:TpvVector3;                    // + 4 = 20 (signed 16-bit oct-encoded normal)
+               Tangent:TpvVector4;                   // + 4 = 24 (signed 16-bit oct-encoded tangent)
+               TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
+               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
+               JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
+               CountJointBlocks:TpvUInt32;           // + 4 = 60 (unsigned 31-bit count of joint blocks + 1 bit TBN reflection)
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
               );
-            end;   }
+            end;}
             PVertex=^TVertex;
             TVertices=array of TVertex;
             TJointBlock=packed record
@@ -1084,6 +1086,98 @@ type EpvScene3D=class(Exception);
      end;
 
 implementation
+
+function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
+var x,y,s,tx,ty:TpvScalar;
+begin
+ s:=abs(aVector.x)+abs(aVector.y)+abs(aVector.z);
+ x:=aVector.x/s;
+ y:=aVector.y/s;
+ if aVector.z<0.0 then begin
+  tx:=1.0-abs(y);
+  if x<0.0 then begin
+   tx:=-tx;
+  end;
+  ty:=1.0-abs(x);
+  if y<0.0 then begin
+   ty:=-ty;
+  end;
+  x:=tx;
+  y:=ty;
+ end;
+ if aFloorX then begin
+  result[0]:=Min(Max(trunc(Floor(x*32767.5)),-32768),32767);
+ end else begin
+  result[0]:=Min(Max(trunc(Ceil(x*32767.5)),-32768),32767);
+ end;
+ if aFloorX then begin
+  result[1]:=Min(Max(trunc(Floor(y*32767.5)),-32768),32767);
+ end else begin
+  result[1]:=Min(Max(trunc(Ceil(y*32767.5)),-32768),32767);
+ end;
+end;
+
+function OctDecode(const aOct:TpvScene3D.TInt16Vector2):TpvVector3;
+var x,y,z,s,tx,ty:TpvScalar;
+begin
+ x:=aOct[0];
+ y:=aOct[1];
+ if x<0.0 then begin
+  x:=x/32768.0;
+ end else begin
+  x:=x/32767.0;
+ end;
+ if y<0.0 then begin
+  y:=y/32768.0;
+ end else begin
+  y:=y/32767.0;
+ end;
+ z:=(1.0-abs(x))-abs(y);
+ if z<0 then begin
+  tx:=1.0-abs(y);
+  if x<0.0 then begin
+   tx:=-tx;
+  end;
+  ty:=1.0-abs(x);
+  if y<0.0 then begin
+   ty:=-ty;
+  end;
+  x:=tx;
+  y:=ty;
+ end;
+ result:=TpvVector3.Create(x,y,z).Normalize;
+end;
+
+function OctEncode(const aVector:TpvVector3):TpvScene3D.TInt16Vector2; overload;
+var Oct:TpvScene3D.TInt16Vector2;
+    BestDot,Dot:TpvScalar;
+begin
+
+ result:=OctEncode(aVector,false,false);
+ BestDot:=aVector.Dot(OctDecode(result));
+
+ Oct:=OctEncode(aVector,false,true);
+ Dot:=aVector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
+ Oct:=OctEncode(aVector,true,true);
+ Dot:=aVector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
+ Oct:=OctEncode(aVector,true,false);
+ Dot:=aVector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
+end;
 
 { TpvScene3D.TBaseObject }
 
@@ -2793,8 +2887,8 @@ begin
       end;
      end;
     end;
-    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
-     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
+    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and ((Vertex^.CountJointBlocks and $7fffffff)>0) then begin
+     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks and $7fffffff)-1 do begin
       NewJointBlockIndex:=Vertex^.JointBlockBaseIndex+JointBlockIndex;
       if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
        Old:=length(fGroup.fJointBlockOffsets);
@@ -2805,7 +2899,7 @@ begin
      end;
     end else begin
      Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-     Vertex^.CountJointBlocks:=0;
+     Vertex^.CountJointBlocks:=Vertex^.CountJointBlocks and not TpvUInt32($7fffffff);
     end;
    end;
   end;
@@ -2849,8 +2943,8 @@ begin
      Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
     end;
 
-    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
-     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
+    if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and ((Vertex^.CountJointBlocks and $7fffffff)>0) then begin
+     for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks and $7fffffff)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
       fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[Vertex^.JointBlockBaseIndex+JointBlockIndex];
       if NewJointBlockIndex<=length(fGroup.fJointBlockOffsets) then begin
@@ -2862,7 +2956,7 @@ begin
      end;
     end else begin
      Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-     Vertex^.CountJointBlocks:=0;
+     Vertex^.CountJointBlocks:=Vertex^.CountJointBlocks and not $7fffffff;
     end;
 
    end;
@@ -2921,7 +3015,8 @@ var Index,
     Area:TPasGLTFFloat;
     HasMorphVertexTargets,
     HasJoints,
-    DoNeedCalculateTangents:boolean;
+    DoNeedCalculateTangents,
+    TBNReflection:boolean;
     DestinationMeshPrimitiveVertices:TVertices;
     DestinationMeshPrimitiveIndices:TpvUInt32DynamicArray;
     MaxJointBlocks:PMaxJointBlocks;
@@ -3263,19 +3358,25 @@ begin
         end;
         if VertexIndex<length(TemporaryTangents) then begin
          TangentSpaceMatrix.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
+         Vertex^.Tangent.w:=TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w;
         end else begin
          TangentSpaceMatrix.Tangent:=TpvVector3.XAxis;
+         Vertex^.Tangent.w:=1.0;
         end;
         if VertexIndex<length(TemporaryBitangents) then begin
          TangentSpaceMatrix.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
         end else begin
          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
         end;
-        TangentSpaceQuaternion:=TangentSpaceMatrix.ToQTangent;
-        Vertex^.TangentSpace[0]:=Min(Max(round(TangentSpaceQuaternion.x*32767.0),-32768),32767);
-        Vertex^.TangentSpace[1]:=Min(Max(round(TangentSpaceQuaternion.y*32767.0),-32768),32767);
-        Vertex^.TangentSpace[2]:=Min(Max(round(TangentSpaceQuaternion.z*32767.0),-32768),32767);
-        Vertex^.TangentSpace[3]:=Min(Max(round(TangentSpaceQuaternion.w*32767.0),-32768),32767);
+        TangentSpaceMatrix:=TangentSpaceMatrix.RobustOrthoNormalize;
+        Vertex^.Normal:=TangentSpaceMatrix.Normal;
+        Vertex^.Tangent.xyz:=TangentSpaceMatrix.Tangent;
+{       Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
+        Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
+        Vertex^.Bitangent:=OctEncode(TangentSpaceMatrix.Bitangent);
+        TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
+        TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);}
+        TBNReflection:=false;//TangentSpaceMatrix.Normal.Cross(TangentSpaceMatrix.Tangent).Dot(TangentSpaceMatrix.Bitangent)<0;
         if VertexIndex<length(TemporaryTexCoord0) then begin
          Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
         end;
@@ -3321,10 +3422,10 @@ begin
           end;
           MaxJointBlocksHashMap.Add(MaxJointBlocks^,Vertex^.JointBlockBaseIndex);
          end;
-         Vertex^.CountJointBlocks:=CountJointBlocks;
+         Vertex^.CountJointBlocks:=(CountJointBlocks and $7fffffff) or (TpvUInt32(ord(TBNReflection) and 1) shl 31);
         end else begin
          Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-         Vertex^.CountJointBlocks:=0;
+         Vertex^.CountJointBlocks:=TpvUInt32(ord(TBNReflection) and 1) shl 31;
         end;
        end;
       end;
@@ -3419,10 +3520,7 @@ begin
            TemporaryPositions[VertexIndex,0]:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
            TemporaryPositions[VertexIndex,1]:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
            TemporaryPositions[VertexIndex,2]:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
-           TangentSpaceMatrix:=TpvMatrix3x3.CreateFromQTangent(TpvQuaternion.Create(Min(Max(Vertex^.TangentSpace[0]/32767.0,-1.0),1.0),
-                                                                                    Min(Max(Vertex^.TangentSpace[1]/32767.0,-1.0),1.0),
-                                                                                    Min(Max(Vertex^.TangentSpace[2]/32767.0,-1.0),1.0),
-                                                                                    Min(Max(Vertex^.TangentSpace[3]/32767.0,-1.0),1.0)));
+           TangentSpaceMatrix.Normal:={OctDecode}(Vertex^.Normal);
            TemporaryNormals[VertexIndex,0]:=TangentSpaceMatrix.Normal.x+DestinationMeshPrimitiveTargetVertex^.Normal.x;
            TemporaryNormals[VertexIndex,1]:=TangentSpaceMatrix.Normal.y+DestinationMeshPrimitiveTargetVertex^.Normal.y;
            TemporaryNormals[VertexIndex,2]:=TangentSpaceMatrix.Normal.z+DestinationMeshPrimitiveTargetVertex^.Normal.z;
@@ -3502,10 +3600,7 @@ begin
          for VertexIndex:=0 to length(DestinationMeshPrimitiveTarget^.Vertices)-1 do begin
           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
           Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-          TangentSpaceMatrix:=TpvMatrix3x3.CreateFromQTangent(TpvQuaternion.Create(Min(Max(Vertex^.TangentSpace[0]/32767.0,-1.0),1.0),
-                                                                                   Min(Max(Vertex^.TangentSpace[1]/32767.0,-1.0),1.0),
-                                                                                   Min(Max(Vertex^.TangentSpace[2]/32767.0,-1.0),1.0),
-                                                                                   Min(Max(Vertex^.TangentSpace[3]/32767.0,-1.0),1.0)));
+          TangentSpaceMatrix.Tangent:={OctDecode}(Vertex^.Tangent.xyz);
           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0]-TangentSpaceMatrix.Tangent.x;
           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1]-TangentSpaceMatrix.Tangent.y;
           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2]-TangentSpaceMatrix.Tangent.z;
@@ -5996,7 +6091,14 @@ begin
 end;
 
 procedure TpvScene3D.UploadWhiteTexture;
-const Pixel:TpvUInt32=TpvUInt32($ffffffff);
+const Pixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff));
 var GraphicsQueue:TpvVulkanQueue;
     GraphicsCommandPool:TpvVulkanCommandPool;
     GraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -6026,8 +6128,8 @@ begin
                                                          GraphicsFence,
                                                          VK_FORMAT_R8G8B8A8_UNORM,
                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                         1,
-                                                         1,
+                                                         8,
+                                                         8,
                                                          0,
                                                          0,
                                                          1,
@@ -6036,8 +6138,8 @@ begin
                                                           TpvVulkanTextureUsageFlag.TransferDst,
                                                           TpvVulkanTextureUsageFlag.TransferSrc,
                                                           TpvVulkanTextureUsageFlag.Sampled],
-                                                         @Pixel,
-                                                         SizeOf(TpvUInt32),
+                                                         @Pixels,
+                                                         SizeOf(TpvUInt32)*64,
                                                          false,
                                                          false,
                                                          0,
@@ -6063,7 +6165,14 @@ begin
 end;
 
 procedure TpvScene3D.UploadDefaultNormalMapTexture;
-const Pixel:TpvUInt32=TpvUInt32($80808080);
+const Pixels:array[0..63] of TpvUInt32=(TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
 var GraphicsQueue:TpvVulkanQueue;
     GraphicsCommandPool:TpvVulkanCommandPool;
     GraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -6093,8 +6202,8 @@ begin
                                                                     GraphicsFence,
                                                                     VK_FORMAT_R8G8B8A8_UNORM,
                                                                     VK_SAMPLE_COUNT_1_BIT,
-                                                                    1,
-                                                                    1,
+                                                                    8,
+                                                                    8,
                                                                     0,
                                                                     0,
                                                                     1,
@@ -6103,8 +6212,8 @@ begin
                                                                      TpvVulkanTextureUsageFlag.TransferDst,
                                                                      TpvVulkanTextureUsageFlag.TransferSrc,
                                                                      TpvVulkanTextureUsageFlag.Sampled],
-                                                                    @Pixel,
-                                                                    SizeOf(TpvUInt32),
+                                                                    @Pixels,
+                                                                    SizeOf(TpvUInt32)*64,
                                                                     false,
                                                                     false,
                                                                     0,

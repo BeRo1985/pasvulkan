@@ -124,12 +124,12 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
   vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
   diffuseOutput += diffuseFunction(diffuseColor, materialRoughness, nDotV, nDotL, vDotH) * (1.0 - materialTransparency) * lit;
   specularOutput += specularF(specularColor, max(vDotH, refractiveAngle)) * specularD(materialRoughness, nDotH) * specularG(materialRoughness, nDotV, nDotL) * lit;
-  if ((flags & (1u << 6u)) != 0u) {
+  if ((flags & (1u << 7u)) != 0u) {
     float sheenDistribution = sheenDistributionCarlie(sheenRoughness, nDotH);
     float sheenVisibility = visibilityNeubelt(nDotL, nDotV);
     sheenOutput += (sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w * sheenDistribution * sheenVisibility * PI) * lit;
   }
-  if ((flags & (1u << 7u)) != 0u) {
+  if ((flags & (1u << 8u)) != 0u) {
     float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
     float nDotV = clamp(abs(dot(clearcoatNormal, viewDirection)) + 1e-5, 0.0, 1.0);
     float nDotH = clamp(dot(clearcoatNormal, halfVector), 0.0, 1.0);
@@ -292,7 +292,7 @@ void main() {
       } else {
         normal = normalize(inNormal);
       }
-      normal *= (((flags & (1u << 5u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+      normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
       vec4 occlusionTexture = textureFetch(uTextures[3], 3, vec4(1.0));
       vec4 emissiveTexture = textureFetchSRGB(uTextures[4], 4, vec4(1.0));
       cavity = clamp(mix(1.0, occlusionTexture.x, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
@@ -308,14 +308,14 @@ void main() {
       imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 #endif
       diffuseOutput = specularOutput = sheenOutput = clearcoatOutput = vec3(0.0);
-      if ((flags & (1u << 6u)) != 0u) {
+      if ((flags & (1u << 7u)) != 0u) {
         sheenColorIntensityFactor = uMaterial.sheenColorFactorSheenIntensityFactor;
         if ((texCoordIndices.x & 0x00f00000u) != 0x00f00000u) {
           sheenColorIntensityFactor *= textureFetchSRGB(uTextures[5], 5, vec4(1.0));
         }
         sheenRoughness = max(specularColorRoughness.w, 1e-7);
       }
-      if ((flags & (1u << 7u)) != 0u) {
+      if ((flags & (1u << 8u)) != 0u) {
         clearcoatFactor = uMaterial.clearcoatFactorClearcoatRoughnessFactor.x;
         clearcoatRoughness = uMaterial.clearcoatFactorClearcoatRoughnessFactor.y;
         clearcoatF0 = vec3(0.04);
@@ -331,7 +331,7 @@ void main() {
         } else {
           clearcoatNormal = normalize(inNormal);
         }
-        clearcoatNormal *= (((flags & (1u << 5u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+        clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
         clearcoatRoughness = clamp(clearcoatRoughness, 0.0, 1.0);
       }
 #ifdef LIGHTS
@@ -428,9 +428,11 @@ void main() {
 #endif
       diffuseOutput += getDiffuseImageBasedLight(normal.xyz, diffuseColorAlpha.xyz);
       specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, viewDirection, litIntensity);
-      if ((flags & (1u << 7u)) != 0u) {
+      if ((flags & (1u << 8u)) != 0u) {
         clearcoatOutput += getSpecularImageBasedLight(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, viewDirection, litIntensity);
-        clearcoatBlendFactor = vec3(clearcoatFactor * specularF(clearcoatF0, clamp(dot(clearcoatNormal, -viewDirection), 0.0, 1.0)));
+        clearcoatBlendFactor = vec3(clearcoatFactor * specularF(clearcoatF0, clamp(dot(clearcoatNormal, -viewDirection), 0.0, 1.0)));      
+      }else{ 
+        clearcoatBlendFactor = vec3(0);
       }
       color = vec4(vec3(((diffuseOutput +
 #ifndef EXTRAEMISSIONOUTPUT
@@ -451,7 +453,7 @@ void main() {
       break;
     }
   }
-  float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 4u) & 1u))));
+  float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
   outFragColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
