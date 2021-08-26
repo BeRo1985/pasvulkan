@@ -981,7 +981,7 @@ type EpvScene3D=class(Exception);
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
-              fVulkanIndexBuffer:TpvVulkanBuffer;
+              //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
               fVulkanJointBlockBuffer:TpvVulkanBuffer;
@@ -4227,7 +4227,7 @@ var Index:TpvSizeInt;
                                  fVertices.Count*SizeOf(TVertex),
                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
-  fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+{ fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -4240,7 +4240,7 @@ var Index:TpvSizeInt;
                                 fIndices.Items[0],
                                 0,
                                 fIndices.Count*SizeOf(TVkUInt32),
-                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);//}
 
   fVulkanMaterialIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                      fPerMaterialCondensedIndices.Count*SizeOf(TVkUInt32),
@@ -4356,7 +4356,7 @@ begin
    if fUploaded then begin
     try
      FreeAndNil(fVulkanVertexBuffer);
-     FreeAndNil(fVulkanIndexBuffer);
+//   FreeAndNil(fVulkanIndexBuffer);
      FreeAndNil(fVulkanMaterialIndexBuffer);
      FreeAndNil(fVulkanMorphTargetVertexBuffer);
      FreeAndNil(fVulkanJointBlockBuffer);
@@ -5993,7 +5993,7 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            var aPipeline:TpvVulkanPipeline;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex,
+var SceneMaterialIndex,PrimitiveIndexRangeIndex,
     IndicesStart,IndicesCount:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
@@ -6013,9 +6013,6 @@ var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex,
     aPipeline:=Pipeline;
     if assigned(Pipeline) then begin
      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-     // And just for to be sure for some drivers:
-     MeshFirst:=true;
-     MaterialFirst:=true;
     end;
    end;
    if MeshFirst then begin
