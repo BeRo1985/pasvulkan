@@ -1,4 +1,4 @@
-unit UnitSkyCubeMap;
+unit UnitGGXBRDF;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -28,13 +28,13 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
-type { TSkyCubeMap }
-     TSkyCubeMap=class
+type { TGGXBRDF }
+     TGGXBRDF=class
       public
        const Width=1024;
              Height=1024;
-             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
-             LightDirection:TpvVector4=(x:0.333333333333;y:-0.666666666666;z:-0.666666666666;w:0.0);
+             ImageFormat=TVkFormat(VK_FORMAT_R16G16_SFLOAT);
+             LightDirection:TpvVector4=(x:0.0;y:0.0;z:-1.0;w:0.0);
       private
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
@@ -62,9 +62,9 @@ type { TSkyCubeMap }
 
 implementation
 
-{ TSkyCubeMap }
+{ TGGXBRDF }
 
-constructor TSkyCubeMap.Create;
+constructor TGGXBRDF.Create;
 var Index:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -85,14 +85,14 @@ var Index:TpvSizeInt;
 begin
  inherited Create;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_vert.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/fullscreen_vert.spv');
  try
   fVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/brdf_ggx_frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -104,14 +104,14 @@ begin
  fVulkanPipelineShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
-                                     TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
+                                     0,
                                      VK_IMAGE_TYPE_2D,
                                      ImageFormat,
                                      Width,
                                      Height,
                                      1,
                                      1,
-                                     6,
+                                     1,
                                      VK_SAMPLE_COUNT_1_BIT,
                                      VK_IMAGE_TILING_OPTIMAL,
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
@@ -172,7 +172,7 @@ begin
     ImageSubresourceRange.baseMipLevel:=0;
     ImageSubresourceRange.levelCount:=1;
     ImageSubresourceRange.baseArrayLayer:=0;
-    ImageSubresourceRange.layerCount:=6;
+    ImageSubresourceRange.layerCount:=1;
     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                            TVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
                            TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
@@ -201,7 +201,7 @@ begin
 
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,
-                                                TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                                TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D),
                                                 ImageFormat,
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -211,11 +211,11 @@ begin
                                                 0,
                                                 1,
                                                 0,
-                                                6);
+                                                1);
 
     ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                          fVulkanImage,
-                                         TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                         TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D),
                                          ImageFormat,
                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -225,7 +225,7 @@ begin
                                          0,
                                          1,
                                          0,
-                                         6);
+                                         1);
     try
 
      RenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
@@ -291,7 +291,6 @@ begin
 
         PipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
         try
-         PipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvVector4));
          PipelineLayout.Initialize;
 
          Pipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
@@ -368,12 +367,7 @@ begin
 
           CommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
 
-          CommandBuffer.CmdPushConstants(PipelineLayout.Handle,
-                                         TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
-                                         0,
-                                         SizeOf(TpvVector4),@LightDirection);
-
-          CommandBuffer.CmdDraw(18,1,0,0);
+          CommandBuffer.CmdDraw(3,1,0,0);
 
           RenderPass.EndRenderPass(CommandBuffer);
 
@@ -419,7 +413,7 @@ begin
 
 end;
 
-destructor TSkyCubeMap.Destroy;
+destructor TGGXBRDF.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);

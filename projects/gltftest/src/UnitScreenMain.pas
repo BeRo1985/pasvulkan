@@ -30,6 +30,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.Resources,
      PasVulkan.Scene3D,
+     UnitGGXBRDF,
      UnitSkyCubeMap;
 
 type { TScreenMain }
@@ -58,7 +59,8 @@ type { TScreenMain }
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
-       fSkyBox:TSkyCubeMap;
+       fGGXBRDF:TGGXBRDF;
+       fSkyCubeMap:TSkyCubeMap;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -150,7 +152,9 @@ begin
 
  inherited Show;
 
- fSkyBox:=TSkyCubeMap.Create;
+ fGGXBRDF:=TGGXBRDF.Create;
+
+ fSkyCubeMap:=TSkyCubeMap.Create;
 
  fTime:=0.0;
 
@@ -327,7 +331,9 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
 
- FreeAndNil(fSkyBox);
+ FreeAndNil(fSkyCubeMap);
+
+ FreeAndNil(fGGXBRDF);
 
  inherited Hide;
 end;
