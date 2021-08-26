@@ -857,6 +857,7 @@ type EpvScene3D=class(Exception);
                             WorkMatrix:TpvMatrix4x4;
                             VisibleBitmap:TpvUInt32;
                             BoundingBoxes:array[0..MaxSwapChainImages+1] of TpvAABB;
+                            BoundingBoxFilled:array[0..MaxSwapChainImages+1] of boolean;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -5806,27 +5807,63 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    end;
   end;
  end;
+ procedure ProcessBoundingBoxNode(const aNodeIndex:TpvSizeInt);
+ var Index:TPasGLTFSizeInt;
+     Node:TpvScene3D.TGroup.TNode;
+     InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     AABB,OtherAABB:PpvAABB;
+     Filled:PBoolean;
+ begin
+  InstanceNode:=@fNodes[aNodeIndex];
+  Node:=fGroup.fNodes[aNodeIndex];
+  AABB:=@InstanceNode^.BoundingBoxes[aSwapChainImageIndex];
+  Filled:=@InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex];
+  for Index:=0 to Node.Children.Count-1 do begin
+   ProcessBoundingBoxNode(Node.Children[Index].Index);
+   OtherInstanceNode:=@fNodes[Node.Children[Index].Index];
+   if OtherInstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] then begin
+    OtherAABB:=@OtherInstanceNode^.BoundingBoxes[aSwapChainImageIndex];
+    if Filled^ then begin
+     AABB^:=AABB^.Combine(OtherAABB^);
+    end else begin
+     Filled^:=true;
+     AABB^:=OtherAABB^;
+    end;
+   end;
+  end;
+ end;
 var Index:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+    AABB:TpvAABB;
 begin
+
  fActives[aSwapChainImageIndex]:=fActive;
+
  if fActive then begin
+
   Scene:=GetScene;
+
   if assigned(Scene) then begin
+
    fScenes[aSwapChainImageIndex]:=Scene;
+
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
+
    for Index:=0 to length(fLightNodes)-1 do begin
     fLightNodes[Index]:=-1;
    end;
+
    for Index:=0 to Scene.Nodes.Count-1 do begin
     ResetNode(Scene.Nodes[Index].Index);
    end;
+
    for Index:=0 to length(fSkins)-1 do begin
     fSkins[Index].Used:=false;
    end;
+
    for Index:=-1 to length(fAnimations)-2 do begin
     Animation:=fAnimations[Index+1];
     if Animation.fFactor>=-0.5 then begin
@@ -5837,11 +5874,15 @@ begin
      end;
     end;
    end;
+
    for Index:=0 to Scene.fNodes.Count-1 do begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
    end;
+
    ProcessSkins;
+
    fNodeMatrices[0]:=fModelMatrix;
+
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=@fNodes[Index];
@@ -5850,16 +5891,46 @@ begin
      Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
     end;
    end;
+
+   for Index:=0 to fGroup.fNodes.Count-1 do begin
+    Node:=fGroup.fNodes[Index];
+    InstanceNode:=@fNodes[Index];
+    if assigned(Node.fMesh) then begin
+     InstanceNode^.BoundingBoxes[aSwapChainImageIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
+     InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex]:=true;
+    end else begin
+     InstanceNode^.BoundingBoxes[aSwapChainImageIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+     InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex]:=false;
+    end;
+   end;
+
+   for Index:=0 to Scene.fNodes.Count-1 do begin
+    ProcessBoundingBoxNode(Scene.fNodes[Index].Index);
+   end;
+
   end;
+
   fVulkanData:=fVulkanDatas[aSwapChainImageIndex];
   if assigned(fVulkanData) then begin
    fVulkanData.Update;
   end;
+
   fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
+  if assigned(Scene) then begin
+   for Index:=0 to Scene.fNodes.Count-1 do begin
+    InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
+    if InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] then begin
+     fBoundingBox:=fBoundingBox.Combine(InstanceNode^.BoundingBoxes[aSwapChainImageIndex]);
+    end;
+   end;
+  end;
+
   if fAABBTreeProxy>=0 then begin
    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aSwapChainImageIndex:TpvSizeInt;
@@ -5876,7 +5947,7 @@ var VisibleBit:TpvUInt32;
   if aNodeIndex>=0 then begin
    InstanceNode:=@fNodes[aNodeIndex];
    Mask:=aMask;
-   if not (((Mask and $80000000)<>0) and (aFrustum.AABBInFrustum(InstanceNode^.BoundingBoxes[aSwapChainImageIndex],Mask)=TpvFrustum.COMPLETE_OUT)) then begin
+   if InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] and not (((Mask and $80000000)<>0) and (aFrustum.AABBInFrustum(InstanceNode^.BoundingBoxes[aSwapChainImageIndex],Mask)=TpvFrustum.COMPLETE_OUT)) then begin
     TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
     Node:=fGroup.fNodes[aNodeIndex];
     for NodeIndex:=0 to Node.fChildren.Count-1 do begin
