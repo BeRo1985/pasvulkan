@@ -112,9 +112,10 @@ begin
 
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
+  fGroup.Culling:=true;
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('track0.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);

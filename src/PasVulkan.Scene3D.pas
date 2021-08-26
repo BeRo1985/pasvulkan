@@ -4428,7 +4428,7 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
         PrimitiveIndexRange.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology(Primitive^.PrimitiveMode);
         PrimitiveIndexRange.Index:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
         PrimitiveIndexRange.Count:=Primitive^.CountIndices;
-        PrimitiveIndexRange.Node:=Node.fIndex;
+        PrimitiveIndexRange.Node:=aNode.fIndex;
         SceneMaterial.fPrimitiveIndexRanges.Add(PrimitiveIndexRange);
        end;
       end;
@@ -4443,9 +4443,9 @@ procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
 var Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
-    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    Index,FoundIndex:TpvSizeInt;
+    Index,FoundIndex,PrimitiveIndexRangeIndex,IndexValue:TpvSizeInt;
 begin
  for Scene in fScenes do begin
   for Node in Scene.fNodes do begin
@@ -4456,8 +4456,9 @@ begin
    SceneMaterial.fCountIndices:=0;
    SceneMaterial.fPrimitiveIndexRanges.Finish;
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-    for PrimitiveIndexRange in SceneMaterial.fPrimitiveIndexRanges.Items do begin
-     if (PrimitiveIndexRange.Count>0) and (PrimitiveIndexRange.PrimitiveTopology=PrimitiveTopology) then begin
+    for PrimitiveIndexRangeIndex:=0 to SceneMaterial.fPrimitiveIndexRanges.Count-1 do begin
+     PrimitiveIndexRange:=@SceneMaterial.fPrimitiveIndexRanges.Items[PrimitiveIndexRangeIndex];
+     if (PrimitiveIndexRange^.Count>0) and (PrimitiveIndexRange^.PrimitiveTopology=PrimitiveTopology) then begin
       FoundIndex:=-1;
       for Index:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
        if SceneMaterial.fCombinedPrimitiveIndexRanges.Items[Index].PrimitiveTopology=PrimitiveTopology then begin
@@ -4471,8 +4472,10 @@ begin
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fMaterialIndices.Count;
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
       end;
-      fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange.Index,PrimitiveIndexRange.Count));
-      inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange.Count);
+      IndexValue:=fMaterialIndices.Count;
+      fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange^.Index,PrimitiveIndexRange^.Count));
+      PrimitiveIndexRange^.Index:=IndexValue;
+      inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange^.Count);
      end;
     end;
    end;
