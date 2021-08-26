@@ -12,6 +12,59 @@ layout (push_constant) uniform PushConstants {
   vec3 lightDirection;
 } pushConstants;
 
+const float HALF_PI = 1.57079632679;
+const float PI = 3.1415926535897932384626433832795;
+const float TWO_PI = 6.28318530718;
+
+#ifdef FAST
+vec4 atmosphereGet(vec3 rayOrigin, vec3 rayDirection){
+  vec3 sunDirection = pushConstants.lightDirection;
+  vec3 sunLightColor = vec3(1.70, 1.15, 0.70);
+  const float atmosphereHaze = 0.03;
+  const float atmosphereHazeFadeScale = 1.0;
+  const float atmosphereDensity = 0.25;
+  const float atmosphereBrightness = 1.0;
+  const float atmospherePlanetSize = 1.0;
+  const float atmosphereHeight = 1.0;
+  const float atmosphereClarity = 10.0;
+  const float atmosphereSunDiskSize = 1.0;
+  const float atmosphereSunDiskPower = 16.0;
+  const float atmosphereSunDiskBrightness = 4.0;
+  const float earthRadius = 6.371e6;
+  const float earthAtmosphereHeight = 0.1e6;
+  const float planetRadius = earthRadius * atmospherePlanetSize;
+  const float planetAtmosphereRadius = planetRadius + (earthAtmosphereHeight * atmosphereHeight);
+  const vec3 atmosphereRadius = vec3(planetRadius, planetAtmosphereRadius * planetAtmosphereRadius, (planetAtmosphereRadius * planetAtmosphereRadius) - (planetRadius * planetRadius));
+  const float gm = mix(0.75, 0.9, atmosphereHaze);
+  const vec3 lambda = vec3(680e-9, 550e-9, 450e-9);
+  const vec3 brt = vec3(1.86e-31 / atmosphereDensity) / pow(lambda, vec3(4.0));
+  const vec3 bmt = pow(vec3(2.0 * PI) / lambda, vec3(2.0)) * vec3(0.689235, 0.6745098, 0.662745) * atmosphereHazeFadeScale * (1.36e-19 * max(atmosphereHaze, 1e-3));
+  const vec3 brmt = (brt / vec3(1.0 + atmosphereClarity)) + bmt;
+  const vec3 br = (brt / brmt) * (3.0 / (16.0 * PI));
+  const vec3 bm = (bmt / brmt) * (((1.0 - gm) * (1.0 - gm)) / (4.0 * PI));
+  const vec3 brm = brmt / 0.693147180559945309417;
+  const float sunDiskParameterY1 = -(1.0 - (0.0075 * atmosphereSunDiskSize));
+  const float sunDiskParameterX = 1.0 / (1.0 + sunDiskParameterY1);
+  const vec4 sunDiskParameters = vec4(sunDiskParameterX, sunDiskParameterX * sunDiskParameterY1, atmosphereSunDiskBrightness, atmosphereSunDiskPower);
+  float cosTheta = dot(rayDirection, -sunDirection);
+  float a = atmosphereRadius.x * max(rayDirection.y, min(-sunDirection.y, 0.0));
+  float rayDistance = sqrt((a * a) + atmosphereRadius.z) - a;
+  vec3 extinction = exp(-(rayDistance * brm));
+  vec3 position = rayDirection * (rayDistance * max(0.15 - (0.75 * sunDirection.y), 0.0));
+  position.y = max(position.y, 0.0) + atmosphereRadius.x;
+  a = dot(position, -sunDirection);
+  float sunLightRayDistance = sqrt(((a * a) + atmosphereRadius.y) - dot(position, position)) - a;
+  vec3 inscattering = ((exp(-(sunLightRayDistance * brm)) *
+                        ((br * (1.0 + (cosTheta * cosTheta))) +
+                         (bm * pow(1.0 + gm * (gm - (2.0 * cosTheta)), -1.5))) * (1.0 - extinction)) *
+                       vec3(1.0)) + 
+                      (sunDiskParameters.z *
+                       extinction *
+                       sunLightColor *
+                       pow(clamp((cosTheta * sunDiskParameters.x) + sunDiskParameters.y, 0.0, 1.0), sunDiskParameters.w));
+  return vec4(inscattering * atmosphereBrightness, 1.0);
+}
+#else
 const float luxScale = 1e-4;
 const float planetScale = 1e0;
 const float planetInverseScale = 1.0 / planetScale;
@@ -36,9 +89,7 @@ const vec3 scatteringCoefficientOzone = vec3(3.486, 8.298, 0.356) * planetInvers
 const vec3 scatteringCoefficientAbsorption = vec3(3.486e-3, 8.298e-3, 0.356e-3) * planetInverseScale;
 const float skyTurbidity = 0.2;
 const float skyMieCoefficientG = 0.98;
-const float HALF_PI = 1.57079632679;
-const float PI = 3.1415926535897932384626433832795;
-const float TWO_PI = 6.28318530718;
+
 vec2 intersectSphere(vec3 rayOrigin, vec3 rayDirection, vec4 sphere){
   vec3 v = rayOrigin - sphere.xyz;
   float b = dot(v, rayDirection),
@@ -48,6 +99,7 @@ vec2 intersectSphere(vec3 rayOrigin, vec3 rayDirection, vec4 sphere){
              ? vec2(-1.0)
              : ((vec2(-1.0, 1.0) * sqrt(d)) - vec2(b));
 }
+
 void getAtmosphereParticleDensity(const in vec4 planetGroundSphere,
                                   const in float inverseHeightScaleRayleigh,
                                   const in float inverseHeightScaleMie,
@@ -58,6 +110,7 @@ void getAtmosphereParticleDensity(const in vec4 planetGroundSphere,
   rayleigh = exp(-(height * inverseHeightScaleRayleigh));
   mie = exp(-(height * inverseHeightScaleMie));
 }
+
 void getAtmosphere(vec3 rayOrigin,
                    vec3 rayDirection,
                    const in float startOffset,
@@ -164,6 +217,8 @@ void getAtmosphere(vec3 rayOrigin,
     extinction = vec3(1.0);
   }
 }
+#endif
+
 vec3 getCubeMapDirection(in vec2 uv,
                          in int faceIndex){
   vec3 zDir = vec3(ivec3((faceIndex <= 1) ? 1 : 0,
@@ -180,8 +235,12 @@ vec3 getCubeMapDirection(in vec2 uv,
                    (mix(-1.0, 1.0, uv.y) * yDir) +
                    zDir);
 }
+
 void main(){
   vec3 direction = getCubeMapDirection(inTexCoord, inFaceIndex);
+#ifdef FAST
+  outFragColor = atmosphereGet(vec3(0.0), direction);
+#else
   vec3 tempInscattering, tempTransmittance;
   getAtmosphere(vec3(0.0, 0.0, 0.0),
                 vec3(direction.x, max(0.0, direction.y), direction.z),
@@ -196,4 +255,5 @@ void main(){
                 tempInscattering,
                 tempTransmittance);
   outFragColor = vec4(tempInscattering, 1.0);
+#endif
 }
