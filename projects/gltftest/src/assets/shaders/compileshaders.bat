@@ -10,6 +10,8 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V cubemap_ggx_filter.frag -o cubemap_ggx_filter_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.vert -o skybox_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.frag -o skybox_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V tonemapping.frag -o tonemapping_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V antialiasing.frag -o antialiasing_frag.spv
 for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
