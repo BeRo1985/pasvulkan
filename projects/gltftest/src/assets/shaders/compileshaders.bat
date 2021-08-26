@@ -8,6 +8,8 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V cubemap_sky.frag -o cubemap_sky_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V cubemap_sky.frag -DFAST -o cubemap_sky_fast_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V cubemap_ggx_filter.frag -o cubemap_ggx_filter_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V passthrough.vert -o passthrough_vert.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V dummy.frag -o dummy_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.vert -o skybox_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.frag -o skybox_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V tonemapping.frag -o tonemapping_frag.spv

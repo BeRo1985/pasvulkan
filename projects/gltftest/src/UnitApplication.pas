@@ -84,7 +84,8 @@ begin
  UseAudio:=true;
 //DesiredCountSwapChainImages:=2;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
- VulkanAPIVersion:=VK_API_VERSION_1_0;
+// VulkanAPIVersion:=VK_API_VERSION_1_0;
+ VulkanAPIVersion:=0;//VK_API_VERSION_1_0;
 end;
 
 procedure TApplication.Start;
@@ -99,6 +100,9 @@ end;
 
 procedure TApplication.Load;
 begin
+ if not VulkanMultiviewSupportEnabled then begin
+  raise EpvVulkanException.Create('Missing Vulkan multi-view support');
+ end;
  inherited Load;
 end;
 

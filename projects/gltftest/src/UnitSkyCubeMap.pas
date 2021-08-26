@@ -33,6 +33,8 @@ type { TSkyCubeMap }
       public
        const Width=1024;
              Height=1024;
+             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+             LightDirection:TpvVector4=(x:0.0;y:0.0;z:-1.0;w:0.0);
       private
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
@@ -78,6 +80,8 @@ var Index:TpvSizeInt;
     FrameBuffer:TpvVulkanFrameBuffer;
     RenderPass:TpvVulkanRenderPass;
     FrameBufferColorAttachment:TpvVulkanFrameBufferAttachment;
+    PipelineLayout:TpvVulkanPipelineLayout;
+    Pipeline:TpvVulkanGraphicsPipeline;
 begin
  inherited Create;
 
@@ -198,7 +202,7 @@ begin
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,
                                                 TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT),
+                                                ImageFormat,
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -212,7 +216,7 @@ begin
     ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                          fVulkanImage,
                                          TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                         TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT),
+                                         ImageFormat,
                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -227,17 +231,17 @@ begin
      RenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
      try
 
-      RenderPass.AddSubpassDescription(0,
+       RenderPass.AddSubpassDescription(0,
                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        [],
                                        [RenderPass.AddAttachmentReference(RenderPass.AddAttachmentDescription(0,
-                                                                                                              TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT),
+                                                                                                              ImageFormat,
                                                                                                               VK_SAMPLE_COUNT_1_BIT,
                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED,
                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                                                                                                              ),
                                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -246,6 +250,20 @@ begin
                                        VK_NULL_HANDLE,
                                        []
                                       );
+      RenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                      0,
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                      TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+      RenderPass.AddSubpassDependency(0,
+                                      VK_SUBPASS_EXTERNAL,
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                      TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
       RenderPass.Initialize;
 
       RenderPass.ClearValues[0].color.float32[0]:=0.0;
@@ -258,7 +276,7 @@ begin
                                                                         ImageView,
                                                                         Width,
                                                                         Height,
-                                                                        TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT),
+                                                                        ImageFormat,
                                                                         false);
       try
 
@@ -271,7 +289,108 @@ begin
                                                 false);
        try
 
+        PipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+        try
+         PipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvVector4));
+         PipelineLayout.Initialize;
 
+         Pipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
+                                                    pvApplication.VulkanPipelineCache,
+                                                    0,
+                                                    [],
+                                                    PipelineLayout,
+                                                    RenderPass,
+                                                    0,
+                                                    nil,
+                                                    0);
+         try
+
+          Pipeline.AddStage(fVulkanPipelineShaderStageVertex);
+          Pipeline.AddStage(fVulkanPipelineShaderStageFragment);
+
+          Pipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+          Pipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+          Pipeline.VertexInputState.AddVertexInputBindingDescription(0,12,VK_VERTEX_INPUT_RATE_VERTEX);
+          Pipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
+
+          Pipeline.ViewPortState.AddViewPort(0.0,0.0,Width,Height,0.0,1.0);
+          Pipeline.ViewPortState.AddScissor(0,0,Width,Height);
+
+          Pipeline.RasterizationState.DepthClampEnable:=false;
+          Pipeline.RasterizationState.RasterizerDiscardEnable:=false;
+          Pipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+          Pipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+          Pipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+          Pipeline.RasterizationState.DepthBiasEnable:=false;
+          Pipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+          Pipeline.RasterizationState.DepthBiasClamp:=0.0;
+          Pipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+          Pipeline.RasterizationState.LineWidth:=1.0;
+
+          Pipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+          Pipeline.MultisampleState.SampleShadingEnable:=false;
+          Pipeline.MultisampleState.MinSampleShading:=0.0;
+          Pipeline.MultisampleState.CountSampleMasks:=0;
+          Pipeline.MultisampleState.AlphaToCoverageEnable:=false;
+          Pipeline.MultisampleState.AlphaToOneEnable:=false;
+
+          Pipeline.ColorBlendState.LogicOpEnable:=false;
+          Pipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+          Pipeline.ColorBlendState.BlendConstants[0]:=0.0;
+          Pipeline.ColorBlendState.BlendConstants[1]:=0.0;
+          Pipeline.ColorBlendState.BlendConstants[2]:=0.0;
+          Pipeline.ColorBlendState.BlendConstants[3]:=0.0;
+          Pipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+          Pipeline.DepthStencilState.DepthTestEnable:=false;
+          Pipeline.DepthStencilState.DepthWriteEnable:=false;
+          Pipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+          Pipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+          Pipeline.DepthStencilState.StencilTestEnable:=false;
+
+          Pipeline.Initialize;
+
+          Pipeline.FreeMemory;
+
+          CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+          CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+          RenderPass.BeginRenderPass(CommandBuffer,FrameBuffer,VK_SUBPASS_CONTENTS_INLINE,0,0,Width,Height);
+
+          CommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+
+          CommandBuffer.CmdPushConstants(PipelineLayout.Handle,
+                                         TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
+                                         0,
+                                         SizeOf(TpvVector4),@LightDirection);
+
+          CommandBuffer.CmdDraw(18,1,0,0);
+
+          RenderPass.EndRenderPass(CommandBuffer);
+
+          CommandBuffer.EndRecording;
+
+          CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,Fence,true);
+
+         finally
+          FreeAndNil(Pipeline);
+         end;
+
+        finally
+         FreeAndNil(PipelineLayout);
+        end;
 
        finally
         FreeAndNil(FrameBuffer);
