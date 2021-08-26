@@ -5993,16 +5993,55 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            var aPipeline:TpvVulkanPipeline;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex:TpvSizeInt;
+var SceneMaterialIndex,NodeIndex,PrimitiveIndexRangeIndex,
+    IndicesStart,IndicesCount:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
-    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    Pipeline:TpvVulkanPipeline;
     Culling,MeshFirst,MaterialFirst:boolean;
     VisibleBit:TpvUInt32;
+ procedure Flush;
+ var Pipeline:TpvVulkanPipeline;
+     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+ begin
+  if IndicesCount>0 then begin
+   PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
+   Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
+   if aPipeline<>Pipeline then begin
+    aPipeline:=Pipeline;
+    if assigned(Pipeline) then begin
+     aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+     // And just for to be sure for some drivers:
+     MeshFirst:=true;
+     MaterialFirst:=true;
+    end;
+   end;
+   if MeshFirst then begin
+    MeshFirst:=false;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         aPipelineLayout.Handle,
+                                         0,
+                                         1,
+                                         @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                         0,
+                                         nil);
+   end;
+   if MaterialFirst then begin
+    MaterialFirst:=false;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         aPipelineLayout.Handle,
+                                         1,
+                                         1,
+                                         @Material.fVulkanDescriptorSet.Handle,
+                                         0,
+                                         nil);
+   end;
+   aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+   IndicesCount:=0;
+  end;
+ end;
 begin
  if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   Culling:=fGroup.fCulling;
@@ -6021,45 +6060,21 @@ begin
       end else begin
        PrimitiveIndexRanges:=@SceneMaterial.fCombinedPrimitiveIndexRanges;
       end;
+      IndicesStart:=0;
+      IndicesCount:=0;
       for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
        PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
        if (PrimitiveIndexRange^.Count>0) and
           ((not Culling) or
            ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and VisibleBit)<>0)) then begin
-        PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
-        Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
-        if aPipeline<>Pipeline then begin
-         aPipeline:=Pipeline;
-         if assigned(Pipeline) then begin
-          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-          // And just for to be sure for some drivers:
-          MeshFirst:=true;
-          MaterialFirst:=true;
-         end;
+        if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.Index) then begin
+         Flush;
+         IndicesStart:=PrimitiveIndexRange^.Index;
         end;
-        if MeshFirst then begin
-         MeshFirst:=false;
-         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                              aPipelineLayout.Handle,
-                                              0,
-                                              1,
-                                              @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
-                                              0,
-                                              nil);
-        end;
-        if MaterialFirst then begin
-         MaterialFirst:=false;
-         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                              aPipelineLayout.Handle,
-                                              1,
-                                              1,
-                                              @Material.fVulkanDescriptorSet.Handle,
-                                              0,
-                                              nil);
-        end;
-        aCommandBuffer.CmdDrawIndexed(PrimitiveIndexRange^.Count,1,PrimitiveIndexRange^.Index,0,0);
+        inc(IndicesCount,PrimitiveIndexRange^.Count);
        end;
       end;
+      Flush;
      end;
     end;
    end;
