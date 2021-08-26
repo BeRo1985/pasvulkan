@@ -44,6 +44,7 @@ type { TSkyCubeMap }
        fVulkanSampler:TpvVulkanSampler;
        fVulkanImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       fDescriptorImageInfo:TVkDescriptorImageInfo;
       public
 
        constructor Create;
@@ -57,6 +58,10 @@ type { TSkyCubeMap }
        property VulkanSampler:TpvVulkanSampler read fVulkanSampler;
 
        property VulkanImageView:TpvVulkanImageView read fVulkanImageView;
+
+      public
+
+       property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
 
      end;
 
@@ -212,6 +217,10 @@ begin
                                                 1,
                                                 0,
                                                 6);
+
+    fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                        fVulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                          fVulkanImage,
