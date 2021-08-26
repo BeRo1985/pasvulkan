@@ -970,7 +970,7 @@ type EpvScene3D=class(Exception);
               fScene:TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
-              fMaterialIndices:TGroupIndices;
+              fPerMaterialCondensedIndices:TGroupIndices;
               fJointBlocks:TGroupJointBlocks;
               fJointBlockOffsets:TSizeIntDynamicArrayEx;
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
@@ -4090,7 +4090,7 @@ begin
 
  fIndices.Initialize;
 
- fMaterialIndices.Initialize;
+ fPerMaterialCondensedIndices.Initialize;
 
  fMorphTargetVertices.Initialize;
 
@@ -4136,7 +4136,7 @@ begin
 
  FreeAndNil(fObjects);
 
- fMaterialIndices.Finalize;
+ fPerMaterialCondensedIndices.Finalize;
 
  fIndices.Finalize;
 
@@ -4196,8 +4196,8 @@ var Index:TpvSizeInt;
   if fIndices.Count=0 then begin
    fIndices.Add(0);
   end;
-  if fMaterialIndices.Count=0 then begin
-   fMaterialIndices.Add(0);
+  if fPerMaterialCondensedIndices.Count=0 then begin
+   fPerMaterialCondensedIndices.Add(0);
   end;
   if fMorphTargetVertices.Count=0 then begin
    fMorphTargetVertices.AddNew;
@@ -4208,7 +4208,7 @@ var Index:TpvSizeInt;
 
   fVertices.Finish;
   fIndices.Finish;
-  fMaterialIndices.Finish;
+  fPerMaterialCondensedIndices.Finish;
   fMorphTargetVertices.Finish;
   fJointBlocks.Finish;
 
@@ -4243,7 +4243,7 @@ var Index:TpvSizeInt;
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
   fVulkanMaterialIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                     fMaterialIndices.Count*SizeOf(TVkUInt32),
+                                                     fPerMaterialCondensedIndices.Count*SizeOf(TVkUInt32),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                      [],
@@ -4252,9 +4252,9 @@ var Index:TpvSizeInt;
   fVulkanMaterialIndexBuffer.UploadData(UniversalQueue,
                                         UniversalCommandBuffer,
                                         UniversalFence,
-                                        fMaterialIndices.Items[0],
+                                        fPerMaterialCondensedIndices.Items[0],
                                         0,
-                                        fMaterialIndices.Count*SizeOf(TVkUInt32),
+                                        fPerMaterialCondensedIndices.Count*SizeOf(TVkUInt32),
                                         TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
   fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -4452,7 +4452,7 @@ begin
    ProcessNode(Scene,Node);
   end;
   for SceneMaterial in Scene.fMaterials do begin
-   SceneMaterial.fStartIndex:=fMaterialIndices.Count;
+   SceneMaterial.fStartIndex:=fPerMaterialCondensedIndices.Count;
    SceneMaterial.fCountIndices:=0;
    SceneMaterial.fPrimitiveIndexRanges.Finish;
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -4469,20 +4469,20 @@ begin
       if FoundIndex<0 then begin
        FoundIndex:=SceneMaterial.fCombinedPrimitiveIndexRanges.AddNew;
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].PrimitiveTopology:=PrimitiveTopology;
-       SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fMaterialIndices.Count;
+       SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fPerMaterialCondensedIndices.Count;
        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
       end;
-      IndexValue:=fMaterialIndices.Count;
-      fMaterialIndices.Add(copy(fIndices.Items,PrimitiveIndexRange^.Index,PrimitiveIndexRange^.Count));
+      IndexValue:=fPerMaterialCondensedIndices.Count;
+      fPerMaterialCondensedIndices.Add(copy(fIndices.Items,PrimitiveIndexRange^.Index,PrimitiveIndexRange^.Count));
       PrimitiveIndexRange^.Index:=IndexValue;
       inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange^.Count);
      end;
     end;
    end;
-   SceneMaterial.fCountIndices:=fMaterialIndices.Count-SceneMaterial.fStartIndex;
+   SceneMaterial.fCountIndices:=fPerMaterialCondensedIndices.Count-SceneMaterial.fStartIndex;
   end;
  end;
- fMaterialIndices.Finish;
+ fPerMaterialCondensedIndices.Finish;
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
