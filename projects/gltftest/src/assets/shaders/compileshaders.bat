@@ -16,9 +16,7 @@ for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
 )
-copy /y mesh_vert.spv ..\..\..\assets\shaders\mesh_vert.spv
-copy /y mesh_frag.spv ..\..\..\assets\shaders\mesh_frag.spv
-copy /y mesh_masked_frag.spv ..\..\..\assets\shaders\mesh_masked_frag.spv
+copy /y *.spv ..\..\..\assets\shaders\*.spv
 rem del /f /q *.spv
 
 

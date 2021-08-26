@@ -29,7 +29,8 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Resources,
-     PasVulkan.Scene3D;
+     PasVulkan.Scene3D,
+     UnitSkyCubeMap;
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
@@ -57,6 +58,7 @@ type { TScreenMain }
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fSkyBox:TSkyCubeMap;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -115,7 +117,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -147,6 +149,8 @@ var Index:TpvInt32;
 begin
 
  inherited Show;
+
+ fSkyBox:=TSkyCubeMap.Create;
 
  fTime:=0.0;
 
@@ -322,6 +326,8 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBufferFence);
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
+
+ FreeAndNil(fSkyBox);
 
  inherited Hide;
 end;
