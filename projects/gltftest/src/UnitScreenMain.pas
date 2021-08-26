@@ -45,7 +45,6 @@ type { TScreenMain }
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
        fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
-       fImageBasedLightingBRDFLUTTexture:TpvVulkanTexture;
        fImageBasedLightingEnvMapTexture:TpvVulkanTexture;
        fImageBasedLightingVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fImageBasedLightingVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -180,23 +179,6 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('textures/brdflut.png');
- try
-  fImageBasedLightingBRDFLUTTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
-                                                                      pvApplication.VulkanDevice.GraphicsQueue,
-                                                                      fVulkanGraphicsCommandBuffer,
-                                                                      fVulkanGraphicsCommandBufferFence,
-                                                                      pvApplication.VulkanDevice.TransferQueue,
-                                                                      fVulkanTransferCommandBuffer,
-                                                                      fVulkanTransferCommandBufferFence,
-                                                                      Stream,
-                                                                      false,
-                                                                      false);
-  fImageBasedLightingBRDFLUTTexture.UpdateSampler;
- finally
-  FreeAndNil(Stream);
- end;
-
  Stream:=pvApplication.Assets.GetAssetStream('textures/envmap.jpg');
  try
   fImageBasedLightingEnvMapTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
@@ -273,7 +255,7 @@ begin
                                                              0,
                                                              2,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fImageBasedLightingBRDFLUTTexture.DescriptorImageInfo,
+                                                             [fGGXBRDF.DescriptorImageInfo,
                                                               fImageBasedLightingEnvMapTexture.DescriptorImageInfo],
                                                              [],
                                                              [],
@@ -302,8 +284,6 @@ begin
  FreeAndNil(fImageBasedLightingVulkanDescriptorSetLayout);
 
  FreeAndNil(fImageBasedLightingEnvMapTexture);
-
- FreeAndNil(fImageBasedLightingBRDFLUTTexture);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
