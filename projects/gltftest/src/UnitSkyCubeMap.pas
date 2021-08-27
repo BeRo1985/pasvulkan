@@ -31,8 +31,8 @@ uses SysUtils,
 type { TSkyCubeMap }
      TSkyCubeMap=class
       public
-       const Width=1024;
-             Height=1024;
+       const Width=512;
+             Height=512;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
              LightDirection:TpvVector4=(x:0.333333333333;y:-0.666666666666;z:-0.666666666666;w:0.0);
       private
@@ -97,7 +97,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_fast_frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally

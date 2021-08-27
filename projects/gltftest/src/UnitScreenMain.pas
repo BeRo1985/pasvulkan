@@ -121,7 +121,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('RecursiveSkeletons.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -626,6 +626,8 @@ begin
                                     pvApplication.VulkanSwapChain.Width,
                                     pvApplication.VulkanSwapChain.Height);
 
+  fSkyBox.Draw(VulkanCommandBuffer,ViewMatrix,ProjectionMatrix);
+
   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                             fVulkanPipelineLayout.Handle,
                                             2,
@@ -633,8 +635,6 @@ begin
                                             @fImageBasedLightingVulkanDescriptorSet.Handle,
                                             0,
                                             nil);
-
-  fSkyBox.Draw(VulkanCommandBuffer,ViewMatrix,ProjectionMatrix);
 
   fScene3D.Prepare(aSwapChainImageIndex,
                    0,

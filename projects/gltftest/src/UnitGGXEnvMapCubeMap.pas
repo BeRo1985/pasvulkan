@@ -31,10 +31,10 @@ uses SysUtils,
 type { TGGXEnvMapCubeMap }
      TGGXEnvMapCubeMap=class
       public
-       const MipMaps=10; // 1 shl 10 = 1024
+       const MipMaps=9; // 1 shl 9 = 512
              Width=1 shl MipMaps;
              Height=1 shl MipMaps;
-             Samples=1024;
+             Samples=64;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
       private
        fComputeShaderModule:TpvVulkanShaderModule;
