@@ -97,7 +97,14 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_fast_frag.spv');
+ case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
+  TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_frag.spv');
+  end;
+  else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_fast_frag.spv');
+  end;
+ end;
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
