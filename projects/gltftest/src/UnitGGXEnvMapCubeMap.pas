@@ -98,6 +98,7 @@ var Index:TpvSizeInt;
     PipelineLayout:TpvVulkanPipelineLayout;
     Pipeline:TpvVulkanComputePipeline;
     PushConstants:TPushConstants;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  inherited Create;
 
@@ -337,6 +338,28 @@ begin
 
              ComputeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
+             FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+             ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+             ImageMemoryBarrier.pNext:=nil;
+             ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+             ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+             ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+             ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+             ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+             ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+             ImageMemoryBarrier.image:=fVulkanImage.Handle;
+             ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+             ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+             ImageMemoryBarrier.subresourceRange.levelCount:=MipMaps+1;
+             ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+             ImageMemoryBarrier.subresourceRange.layerCount:=1;
+             ComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                     0,
+                                                     0,nil,
+                                                     0,nil,
+                                                     1,@ImageMemoryBarrier);
+
              ComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
 
              for Index:=0 to MipMaps do begin
@@ -362,6 +385,28 @@ begin
               ComputeCommandBuffer.CmdDispatch(Width shr 4,Height shr 4,1);
 
              end;
+
+             FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+             ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+             ImageMemoryBarrier.pNext:=nil;
+             ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+             ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+             ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+             ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+             ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+             ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+             ImageMemoryBarrier.image:=fVulkanImage.Handle;
+             ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+             ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+             ImageMemoryBarrier.subresourceRange.levelCount:=MipMaps+1;
+             ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+             ImageMemoryBarrier.subresourceRange.layerCount:=1;
+             ComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                     0,
+                                                     0,nil,
+                                                     0,nil,
+                                                     1,@ImageMemoryBarrier);
 
              ComputeCommandBuffer.EndRecording;
 

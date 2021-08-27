@@ -158,11 +158,11 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
   vec2 brdf = textureLod(uImageBasedLightingGGXBRDFTexture, vec2(roughness, NdotV), 0.0).xy;
-  return (texture(uImageBasedLightingGGXEnvMap,            //
-                    reflectionVector,                      //
-                    clamp((float(envMapMaxLevel) - 1.0) -  //
-                              (1.0 - (1.2 * log2(roughness))),
-                          0.0, float(envMapMaxLevel)))
+  return (texture(uImageBasedLightingGGXEnvMap,          //
+                  reflectionVector,                      //
+                  clamp((float(envMapMaxLevel) - 1.0) -  //
+                            (1.0 - (1.2 * log2(roughness))),
+                        0.0, float(envMapMaxLevel)))
               .xyz *                                                                                                                           //
           ((specularColor.xyz * brdf.x) + (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) *  //
           specularOcclusion) *
@@ -428,6 +428,18 @@ void main() {
           }
         }
       }
+#else
+      doSingleLight(vec3(1.7, 1.15, 0.70),              //
+                    vec3(1.0),                          //
+                    normalize(-vec3(0.5, -1.0, -1.0)),  //
+                    normal.xyz,                         //
+                    diffuseColorAlpha.xyz,              //
+                    specularColorRoughness.xyz,         //
+                    -viewDirection,                     //
+                    refractiveAngle,                    //
+                    transparency,                       //
+                    specularColorRoughness.w,           //
+                    cavity);                            //
 #endif
       diffuseOutput += getDiffuseImageBasedLight(normal.xyz, diffuseColorAlpha.xyz);
       specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, viewDirection, litIntensity);
