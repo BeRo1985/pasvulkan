@@ -42,28 +42,6 @@ vec3 ImportanceSampleGGX(const in vec2 e, const in float roughness, const in vec
   return (tangentX * h.x) + (tangentY * h.y) + (tangentZ * h.z);
 }
 
-vec4 process(vec3 rayDirection) {
-  if (pushConstants.mipMapLevel == 0) {
-    return textureLod(uSourceTexture, normalize(rayDirection) * vec2(1.0, -1.0).xyy, 0.0);
-  } else {
-    float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
-    vec3 N = rayDirection;
-    vec3 V = rayDirection;
-    vec4 r = vec4(0.0);
-    float w = 0.0;
-    for (int i = 0; i < pushConstants.numSamples; i++) {
-      vec3 H = ImportanceSampleGGX(Hammersley(i, pushConstants.numSamples), roughness, N);
-      vec3 L = -reflect(V, H);
-      float nDotL = clamp(dot(N, L), 0.0, 1.0);
-      if (nDotL > 0.0) {
-        r += textureLod(uSourceTexture, normalize(L), 0.0) * nDotL;
-        w += nDotL;
-      }
-    }
-    return r / max(w, 1e-4);
-  }
-}
-
 /* clang-format off */
 vec3 getCubeMapDirection(in vec2 uv,
                          in int faceIndex){                        
@@ -87,6 +65,27 @@ void main() {
   ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
-    imageStore(uDestinationTexture, uvw, process(getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z)));
+    vec3 rayDirection = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
+    vec4 r;
+    if (pushConstants.mipMapLevel == 0) {
+      r = textureLod(uSourceTexture, normalize(rayDirection), 0.0);
+    } else {
+      float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
+      vec3 N = rayDirection;
+      vec3 V = rayDirection;
+      r = vec4(0.0);
+      float w = 0.0;
+      for (int i = 0; i < pushConstants.numSamples; i++) {
+        vec3 H = ImportanceSampleGGX(Hammersley(i, pushConstants.numSamples), roughness, N);
+        vec3 L = -reflect(V, H);
+        float nDotL = clamp(dot(N, L), 0.0, 1.0);
+        if (nDotL > 0.0) {
+          r += textureLod(uSourceTexture, normalize(L), 0.0) * nDotL;
+          w += nDotL;
+        }
+      }
+      r /= max(w, 1e-6);
+    }
+    imageStore(uDestinationTexture, uvw, r);
   }
 }
