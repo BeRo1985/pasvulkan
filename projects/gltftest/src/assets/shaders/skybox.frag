@@ -10,5 +10,5 @@ layout(location = 0) out vec4 outFragColor;
 layout (set = 0, binding = 0) uniform samplerCube uTexture;
 
 void main(){
-	 outFragColor = texture(uTexture, normalize(inPosition));
+   outFragColor = texture(uTexture, normalize(inPosition));
 }

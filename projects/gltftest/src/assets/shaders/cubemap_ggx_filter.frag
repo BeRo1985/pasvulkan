@@ -55,28 +55,29 @@ vec3 getCubeMapDirection(in vec2 uv,
                    (mix(-1.0, 1.0, uv.y) * yDir) +
                    zDir);
 }
+
 void main(){
   vec3 direction = getCubeMapDirection(inTexCoord, inFaceIndex);
   if(pushConstants.mipMapLevel == 0){
     outFragColor = textureLod(uTexture, direction, 0.0);
-	}else{
-	  float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
-	  const int numSamples = 64;
-	  vec3 R = direction;
-	  vec3 N = R;
-	  vec3 V = R;
-	  vec4 r = vec4(0.0);
-	  float w = 0.0;
-	  for(int i = 0; i < numSamples; i++){
-	    vec3 H = ImportanceSampleGGX(Hammersley(i, numSamples), roughness, N);
-	    vec3 L = -reflect(V, H);
-	    float nDotL = clamp(dot(N, L), 0.0, 1.0);
-	    if(nDotL > 0.0){
-	      vec3 rayDirection = normalize(L);
-	      r += textureLod(uTexture, rayDirection, 0.0) * nDotL;
-	      w += nDotL;
-	    }
-	  }
-	  outFragColor = r / max(w, 1e-4);
+  }else{
+    float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
+    const int numSamples = 64;
+    vec3 R = direction;
+    vec3 N = R;
+    vec3 V = R;
+    vec4 r = vec4(0.0);
+    float w = 0.0;
+    for(int i = 0; i < numSamples; i++){
+      vec3 H = ImportanceSampleGGX(Hammersley(i, numSamples), roughness, N);
+      vec3 L = -reflect(V, H);
+      float nDotL = clamp(dot(N, L), 0.0, 1.0);
+      if(nDotL > 0.0){
+        vec3 rayDirection = normalize(L);
+        r += textureLod(uTexture, rayDirection, 0.0) * nDotL;
+        w += nDotL;
+      }
+    }
+    outFragColor = r / max(w, 1e-4);
   }
 }

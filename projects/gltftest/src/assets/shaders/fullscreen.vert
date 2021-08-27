@@ -8,6 +8,6 @@
 layout(location = 0) out vec2 outTexCoord;
 
 void main(){
-	outTexCoord = vec2((gl_VertexIndex >> 1) * 2.0, (gl_VertexIndex & 1) * 2.0);
-	gl_Position = vec4(((gl_VertexIndex >> 1) * 4.0) - 1.0, ((gl_VertexIndex & 1) * 4.0) - 1.0, 0.0, 1.0);
+  outTexCoord = vec2((gl_VertexIndex >> 1) * 2.0, (gl_VertexIndex & 1) * 2.0);
+  gl_Position = vec4(((gl_VertexIndex >> 1) * 4.0) - 1.0, ((gl_VertexIndex & 1) * 4.0) - 1.0, 0.0, 1.0);
 }

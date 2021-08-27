@@ -193,7 +193,7 @@ void getAtmosphere(vec3 rayOrigin,
             float visibility = 1.0;
             inscatteringRayleigh += differentialInscatteringAmountRayleigh * visibility;
             inscatteringMie += differentialInscatteringAmountMie * visibility;
-          }	
+          }  
         }
       }
       float cosTheta = dot(rayDirection, lightDirection),

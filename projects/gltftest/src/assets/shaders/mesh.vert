@@ -27,8 +27,8 @@ layout(location = 8) out vec4 outColor0;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
-	mat4 viewMatrix;
-	mat4 projectionMatrix;
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
 } pushConstants;
 
 struct MorphTargetVertex {
@@ -39,7 +39,7 @@ struct MorphTargetVertex {
 };
 
 layout(std430, set = 0, binding = 0) buffer MorphTargetVertices {
-	MorphTargetVertex morphTargetVertices[];
+  MorphTargetVertex morphTargetVertices[];
 };
 
 struct JointBlock {
@@ -48,19 +48,19 @@ struct JointBlock {
 };
 
 layout(std430, set = 0, binding = 1) buffer JointBlocks {
-	JointBlock jointBlocks[];
+  JointBlock jointBlocks[];
 };
 
 layout(std430, set = 0, binding = 2) buffer NodeMatrices {
-	mat4 nodeMatrices[];
+  mat4 nodeMatrices[];
 };
 
 layout(std430, set = 0, binding = 3) buffer MorphTargetWeights {
-	float morphTargetWeights[];
+  float morphTargetWeights[];
 };
 
 layout(set = 1, binding = 0) uniform Material {
-	uint test; //mat4 items[];
+  uint test; //mat4 items[];
 } material;
 
 out gl_PerVertex {

@@ -16,8 +16,8 @@ void main(){
       vertexIndex = vertexID % 3,
       faceIndex = vertexID / 3,
       stripVertexID = faceIndex + (((faceIndex & 1) == 0) ? (2 - vertexIndex) : vertexIndex),
-	     reversed = int(stripVertexID > 6),
-	     index = (reversed == 1) ? (13 - stripVertexID) : stripVertexID;
+       reversed = int(stripVertexID > 6),
+       index = (reversed == 1) ? (13 - stripVertexID) : stripVertexID;
    outPosition = (vec3(ivec3(int((index < 3) || (index == 4)), reversed ^ int((index > 0) && (index < 4)), reversed ^ int((index < 2) || (index > 5)))) * 2.0) - vec3(1.0);
-	 gl_Position = (pushConstants.viewProjectionMatrix * vec4(outPosition, 1.0)).xyww;
+   gl_Position = (pushConstants.viewProjectionMatrix * vec4(outPosition, 1.0)).xyww;
 }
