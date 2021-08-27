@@ -293,7 +293,7 @@ begin
                                                 RenderPass,
                                                 Width,
                                                 Height,
-                                                1,
+                                                6,
                                                 [FrameBufferColorAttachment],
                                                 false);
        try
