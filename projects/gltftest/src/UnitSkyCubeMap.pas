@@ -380,7 +380,8 @@ begin
           CommandBuffer.CmdPushConstants(PipelineLayout.Handle,
                                          TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                          0,
-                                         SizeOf(TpvVector4),@LightDirection);
+                                         SizeOf(TpvVector4),
+                                         @LightDirection);
 
           CommandBuffer.CmdDraw(18,1,0,0);
 

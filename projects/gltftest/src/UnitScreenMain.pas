@@ -32,6 +32,7 @@ uses SysUtils,
      PasVulkan.Scene3D,
      UnitGGXBRDF,
      UnitSkyCubeMap,
+     UnitGGXEnvMapCubeMap,
      UnitSkyBox;
 
 type { TScreenMain }
@@ -61,6 +62,7 @@ type { TScreenMain }
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fGGXBRDF:TGGXBRDF;
        fSkyCubeMap:TSkyCubeMap;
+       fGGXEnvMapCubeMap:TGGXEnvMapCubeMap;
        fSkyBox:TSkyBox;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
@@ -120,7 +122,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test1.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -156,6 +158,8 @@ begin
  fGGXBRDF:=TGGXBRDF.Create;
 
  fSkyCubeMap:=TSkyCubeMap.Create;
+
+ fGGXEnvMapCubeMap:=TGGXEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
 
  fTime:=0.0;
 
@@ -312,6 +316,8 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBufferFence);
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
+
+ FreeAndNil(fGGXEnvMapCubeMap);
 
  FreeAndNil(fSkyCubeMap);
 
