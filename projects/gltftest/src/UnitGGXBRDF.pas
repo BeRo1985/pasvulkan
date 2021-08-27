@@ -255,7 +255,7 @@ begin
                                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                           )],
                                        [],
-                                       VK_NULL_HANDLE,
+                                       TpvInt32(VK_ATTACHMENT_UNUSED),
                                        []
                                       );
       RenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,

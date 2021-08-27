@@ -241,24 +241,24 @@ begin
      try
 
        RenderPass.AddSubpassDescription(0,
-                                       VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       [],
-                                       [RenderPass.AddAttachmentReference(RenderPass.AddAttachmentDescription(0,
-                                                                                                              ImageFormat,
-                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED,
-                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                                                                                             ),
-                                                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                          )],
-                                       [],
-                                       VK_NULL_HANDLE,
-                                       []
-                                      );
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        [],
+                                        [RenderPass.AddAttachmentReference(RenderPass.AddAttachmentDescription(0,
+                                                                                                               ImageFormat,
+                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                                                                              ),
+                                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                           )],
+                                        [],
+                                        TpvInt32(VK_ATTACHMENT_UNUSED),
+                                        []
+                                       );
       RenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                       0,
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),

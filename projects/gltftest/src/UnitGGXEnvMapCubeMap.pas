@@ -338,7 +338,7 @@ begin
 
              ComputeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-             FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+{            FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
              ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
              ImageMemoryBarrier.pNext:=nil;
              ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
@@ -359,7 +359,7 @@ begin
                                                      0,nil,
                                                      0,nil,
                                                      1,@ImageMemoryBarrier);
-
+}
              ComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
 
              for Index:=0 to MipMaps do begin
@@ -386,7 +386,7 @@ begin
 
              end;
 
-             FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+{            FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
              ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
              ImageMemoryBarrier.pNext:=nil;
              ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -406,7 +406,7 @@ begin
                                                      0,
                                                      0,nil,
                                                      0,nil,
-                                                     1,@ImageMemoryBarrier);
+                                                     1,@ImageMemoryBarrier); }
 
              ComputeCommandBuffer.EndRecording;
 
