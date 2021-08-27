@@ -40,7 +40,7 @@ vec3 ImportanceSampleGGX(const in vec2 e, const in float roughness, const in vec
 }
 
 vec3 getCubeMapDirection(in vec2 uv,
-                         in int faceIndex){
+                         in int faceIndex){                        
   vec3 zDir = vec3(ivec3((faceIndex <= 1) ? 1 : 0,
                          (faceIndex & 2) >> 1,
                          (faceIndex & 4) >> 2)) *

@@ -219,7 +219,7 @@ begin
 
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,
-                                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                          fVulkanImage,

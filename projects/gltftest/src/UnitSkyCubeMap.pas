@@ -191,9 +191,9 @@ begin
                                             TVkFilter(VK_FILTER_LINEAR),
                                             TVkFilter(VK_FILTER_LINEAR),
                                             TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER),
+                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
                                             0.0,
                                             false,
                                             1.0,
@@ -220,7 +220,7 @@ begin
 
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,
-                                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                          fVulkanImage,

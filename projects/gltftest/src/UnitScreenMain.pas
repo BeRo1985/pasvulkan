@@ -31,7 +31,8 @@ uses SysUtils,
      PasVulkan.Resources,
      PasVulkan.Scene3D,
      UnitGGXBRDF,
-     UnitSkyCubeMap;
+     UnitSkyCubeMap,
+     UnitSkyBox;
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
@@ -60,6 +61,7 @@ type { TScreenMain }
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fGGXBRDF:TGGXBRDF;
        fSkyCubeMap:TSkyCubeMap;
+       fSkyBox:TSkyBox;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -534,6 +536,8 @@ begin
 
  end;
 
+ fSkyBox:=TSkyBox.Create(fSkyCubeMap.DescriptorImageInfo,fVulkanRenderPass,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
@@ -541,7 +545,7 @@ var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
 begin
- FreeAndNil(fVulkanRenderPass);
+ FreeAndNil(fSkyBox);
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
@@ -549,6 +553,7 @@ begin
    end;
   end;
  end;
+ FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
 end;
 
@@ -630,6 +635,8 @@ begin
                                             @fImageBasedLightingVulkanDescriptorSet.Handle,
                                             0,
                                             nil);
+
+  fSkyBox.Draw(VulkanCommandBuffer,ViewMatrix,ProjectionMatrix);
 
   fScene3D.Prepare(aSwapChainImageIndex,
                    0,
