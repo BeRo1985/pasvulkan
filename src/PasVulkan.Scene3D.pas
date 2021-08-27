@@ -2865,7 +2865,7 @@ var PrimitiveIndex,
     Old:TpvSizeInt;
     Primitive:TMesh.PPrimitive;
     NodeMeshPrimitiveInstance:TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
-    Vertex:PVertex;
+    Vertex,OldVertex:PVertex;
     MorphTargetVertex:PMorphTargetVertex;
     MorphTargetVertexIndex:TpvUInt32;
 begin
@@ -2930,7 +2930,8 @@ begin
 
    NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=fGroup.fVertices.Count;
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
-    NewVertexIndex:=fGroup.fVertices.Add(fGroup.fVertices.Items[VertexIndex]);
+    OldVertex:=@fGroup.fVertices.Items[VertexIndex];
+    NewVertexIndex:=fGroup.fVertices.Add(OldVertex^);
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
@@ -2956,9 +2957,10 @@ begin
     end;
 
     if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
+     Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
      for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
-      fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[Vertex^.JointBlockBaseIndex+JointBlockIndex];
+      fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[OldVertex^.JointBlockBaseIndex+JointBlockIndex];
       if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
        Old:=length(fGroup.fJointBlockOffsets);
        SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
@@ -5804,7 +5806,8 @@ var {NonSkinnedShadingShader,SkinnedShadingShader:TShadingShader;
    InstanceSkin:=@fSkins[SkinIndex];
    if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
     for Index:=0 to Skin.fJoints.Count-1 do begin
-//   Assert(fGroup.fNodes[Skin.fJoints.Items[Index]].Index=Skin.fJoints.Items[Index]);
+//
+     Assert(fGroup.fNodes[Skin.fJoints.Items[Index]].Index=Skin.fJoints.Items[Index]);
      fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
     end;
    end;
