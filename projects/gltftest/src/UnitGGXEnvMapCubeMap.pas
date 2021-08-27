@@ -218,7 +218,7 @@ begin
                                                false,
                                                TVkCompareOp(VK_COMPARE_OP_NEVER),
                                                0.0,
-                                               1.0,
+                                               MipMaps+1,
                                                TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                                false);
 
