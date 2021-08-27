@@ -47,7 +47,6 @@ type { TScreenMain }
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
        fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
-       fImageBasedLightingEnvMapTexture:TpvVulkanTexture;
        fImageBasedLightingVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fImageBasedLightingVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fImageBasedLightingVulkanDescriptorSet:TpvVulkanDescriptorSet;
@@ -185,23 +184,6 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('textures/envmap.jpg');
- try
-  fImageBasedLightingEnvMapTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
-                                                                     pvApplication.VulkanDevice.GraphicsQueue,
-                                                                     fVulkanGraphicsCommandBuffer,
-                                                                     fVulkanGraphicsCommandBufferFence,
-                                                                     pvApplication.VulkanDevice.TransferQueue,
-                                                                     fVulkanTransferCommandBuffer,
-                                                                     fVulkanTransferCommandBufferFence,
-                                                                     Stream,
-                                                                     true,
-                                                                     false);
-  fImageBasedLightingEnvMapTexture.UpdateSampler;
- finally
-  FreeAndNil(Stream);
- end;
-
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -246,7 +228,12 @@ begin
  fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         2,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                         []);
+ fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
+                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                         1,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
@@ -259,10 +246,17 @@ begin
                                                                        fImageBasedLightingVulkanDescriptorSetLayout);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
                                                              0,
-                                                             2,
+                                                             1,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fGGXBRDF.DescriptorImageInfo,
-                                                              fImageBasedLightingEnvMapTexture.DescriptorImageInfo],
+                                                             [fGGXBRDF.DescriptorImageInfo],
+                                                             [],
+                                                             [],
+                                                             false);
+ fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
+                                                             0,
+                                                             1,
+                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                             [fGGXEnvMapCubeMap.DescriptorImageInfo],
                                                              [],
                                                              [],
                                                              false);
@@ -288,8 +282,6 @@ begin
  FreeAndNil(fImageBasedLightingVulkanDescriptorSet);
  FreeAndNil(fImageBasedLightingVulkanDescriptorPool);
  FreeAndNil(fImageBasedLightingVulkanDescriptorSetLayout);
-
- FreeAndNil(fImageBasedLightingEnvMapTexture);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 

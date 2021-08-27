@@ -34,7 +34,7 @@ type { TGGXEnvMapCubeMap }
        const MipMaps=10; // 1 shl 10 = 1024
              Width=1 shl MipMaps;
              Height=1 shl MipMaps;
-             Samples=64;
+             Samples=1024;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
       private
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -90,11 +90,11 @@ var Index:TpvSizeInt;
     ComputeCommandPool:TpvVulkanCommandPool;
     ComputeCommandBuffer:TpvVulkanCommandBuffer;
     ComputeFence:TpvVulkanFence;
-    ImageViews:array[0..MipMaps-1] of TpvVulkanImageView;
+    ImageViews:array[0..MipMaps] of TpvVulkanImageView;
     VulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
     VulkanDescriptorPool:TpvVulkanDescriptorPool;
-    VulkanDescriptorSets:array[0..MipMaps-1] of TpvVulkanDescriptorSet;
-    DescriptorImageInfos:array[0..MipMaps-1] of TVkDescriptorImageInfo;
+    VulkanDescriptorSets:array[0..MipMaps] of TpvVulkanDescriptorSet;
+    DescriptorImageInfos:array[0..MipMaps] of TVkDescriptorImageInfo;
     PipelineLayout:TpvVulkanPipelineLayout;
     Pipeline:TpvVulkanComputePipeline;
     PushConstants:TPushConstants;
@@ -108,7 +108,7 @@ begin
   Stream.Free;
  end;
 
- fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fComputeShaderModule,'main');
+ fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
@@ -117,7 +117,7 @@ begin
                                      Width,
                                      Height,
                                      1,
-                                     MipMaps,
+                                     MipMaps+1,
                                      6,
                                      VK_SAMPLE_COUNT_1_BIT,
                                      VK_IMAGE_TILING_OPTIMAL,
@@ -192,9 +192,10 @@ begin
        FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
        ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
        ImageSubresourceRange.baseMipLevel:=0;
-       ImageSubresourceRange.levelCount:=MipMaps;
+       ImageSubresourceRange.levelCount:=MipMaps+1;
        ImageSubresourceRange.baseArrayLayer:=0;
        ImageSubresourceRange.layerCount:=6;
+
        fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                               TVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
                               TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
@@ -231,7 +232,7 @@ begin
                                                    TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                    0,
-                                                   MipMaps,
+                                                   MipMaps+1,
                                                    0,
                                                    6);
 
@@ -239,7 +240,7 @@ begin
                                                            fVulkanImageView.Handle,
                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-       for Index:=0 to MipMaps-1 do begin
+       for Index:=0 to MipMaps do begin
         ImageViews[Index]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                      fVulkanImage,
                                                      TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
@@ -278,13 +279,13 @@ begin
 
          VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                              MipMaps);
+                                                              MipMaps+1);
          try
-          VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MipMaps);
-          VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,MipMaps);
+          VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MipMaps+1);
+          VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,MipMaps+1);
           VulkanDescriptorPool.Initialize;
 
-          for Index:=0 to MipMaps-1 do begin
+          for Index:=0 to MipMaps do begin
            VulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
                                                                       VulkanDescriptorSetLayout);
 
@@ -338,7 +339,7 @@ begin
 
              ComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
 
-             for Index:=0 to MipMaps-1 do begin
+             for Index:=0 to MipMaps do begin
 
               ComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                                          PipelineLayout.Handle,
@@ -384,7 +385,7 @@ begin
            end;
 
           finally
-           for Index:=0 to MipMaps-1 do begin
+           for Index:=0 to MipMaps do begin
             FreeAndNil(VulkanDescriptorSets[Index]);
            end;
           end;
@@ -398,7 +399,7 @@ begin
         end;
 
        finally
-        for Index:=0 to MipMaps-1 do begin
+        for Index:=0 to MipMaps do begin
          FreeAndNil(ImageViews[Index]);
         end;
        end;
