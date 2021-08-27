@@ -22,6 +22,7 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -382,7 +383,9 @@ begin
                                                     SizeOf(TPushConstants),
                                                     @PushConstants);
 
-              ComputeCommandBuffer.CmdDispatch(Width shr 4,Height shr 4,1);
+              ComputeCommandBuffer.CmdDispatch(Max(1,(Width+((1 shl (4+Index))-1)) shr (4+Index)),
+                                               Max(1,(Height+((1 shl (4+Index))-1)) shr (4+Index)),
+                                               6);
 
              end;
 
