@@ -77,10 +77,12 @@ void main() {
       float w = 0.0;
       for (int i = 0; i < pushConstants.numSamples; i++) {
         vec3 H = ImportanceSampleGGX(Hammersley(i, pushConstants.numSamples), roughness, N);
-        vec3 L = -reflect(V, H);
+        vec3 L = normalize(-reflect(V, H));
+        float A = roughness * roughness;
+        L = normalize(mix(N, L, (1.0 - A) * (sqrt(1.0 - A) + A)));
         float nDotL = clamp(dot(N, L), 0.0, 1.0);
         if (nDotL > 0.0) {
-          r += textureLod(uSourceTexture, normalize(L), 0.0) * nDotL;
+          r += textureLod(uSourceTexture, L, 0.0) * nDotL;
           w += nDotL;
         }
       }
