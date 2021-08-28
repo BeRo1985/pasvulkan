@@ -159,7 +159,7 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 viewDirection
   vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
   vec3 FmsEms = (Ems * FssEss * F_avg) / (1.0 - (F_avg * Ems));
   vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;
-  return (FmsEms + k_D) * irradiance;
+  return (FmsEms + k_D) * irradiance * OneOverPI;
   // Freturn (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
 }
 
@@ -195,7 +195,8 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
               ) *                                                                                             //
 #endif
           specularWeight *  //
-          specularOcclusion);
+          specularOcclusion *
+          OneOverPI);
 }
 
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
