@@ -32,8 +32,8 @@ uses SysUtils,
 type { TLambertianEnvMapCubeMap }
      TLambertianEnvMapCubeMap=class
       public
-       const Width=512;
-             Height=512;
+       const Width=256;
+             Height=256;
              Samples=2048;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
       private

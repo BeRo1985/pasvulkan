@@ -31,8 +31,8 @@ uses SysUtils,
 type { TGGXBRDF }
      TGGXBRDF=class
       public
-       const Width=512;
-             Height=512;
+       const Width=1024;
+             Height=1024;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16_SFLOAT);
       private
        fVertexShaderModule:TpvVulkanShaderModule;

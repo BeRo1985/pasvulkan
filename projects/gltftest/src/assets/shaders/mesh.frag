@@ -158,14 +158,15 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 viewDirection
   float Ems = 1.0 - (f_ab.x + f_ab.y);
   vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
   vec3 FmsEms = (Ems * FssEss * F_avg) / (1.0 - (F_avg * Ems));
-  vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;  
+  vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;
   return (FmsEms + k_D) * irradiance;
-  //Freturn (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
+  // Freturn (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
 }
 
-vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
+vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity) {
   vec3 reflectionVector = normalize(reflect(viewDirection, normal.xyz));
   float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0),                                                            //
+      NdotVclamped = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0),                                                                   //
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
@@ -175,8 +176,25 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
                   clamp((float(envMapMaxLevelGGX) - 1.0) -  //
                             (1.0 - (1.2 * log2(roughness))),
                         0.0, float(envMapMaxLevelGGX)))
-              .xyz *                                                                                                                           //
-          ((specularColor.xyz * brdf.x) + (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) *  //
+              .xyz *  //
+#if 0
+          fma(F0 + ((max(vec3(1.0 - 0.), F0) - F0) * pow(1.0 - NdotVclamped, 5.0)),  //
+              brdf.xxx,                                                              //
+              brdf.yyy                                                               //
+              ) *                                                                    //
+          specularColor.xyz *                                                        //
+#elif 1
+          fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotVclamped, 5.0)),                    //
+              brdf.xxx * specularColor.xyz,                                                                   //
+              brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0)  //
+              ) *                                                                                             //
+#else
+          fma(specularColor.xyz,                                                                              //
+              brdf.xxx,                                                                                       //
+              brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0)  //
+              ) *                                                                                             //
+#endif
+          specularWeight *  //
           specularOcclusion);
 }
 
@@ -276,7 +294,7 @@ void main() {
 #else
   vec4 color = vec4(0.0);
   const vec3 f0 = vec3(0.04);  // dielectricSpecular
-  float specularWeight = 1.0; 
+  float specularWeight = 1.0;
 #ifdef EXTRAEMISSIONOUTPUT
   vec4 emissionColor = vec4(0.0);
 #endif
@@ -457,12 +475,12 @@ void main() {
                     cavity);                            //
 #endif
       diffuseOutput += getDiffuseImageBasedLight(normal.xyz, viewDirection, specularColorRoughness.w, diffuseColorAlpha.xyz, f0, specularWeight);
-      specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, viewDirection, litIntensity);
+      specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, f0, specularWeight, viewDirection, litIntensity);
       if ((flags & (1u << 7u)) != 0u) {
         // TODO
       }
       if ((flags & (1u << 8u)) != 0u) {
-        clearcoatOutput += getSpecularImageBasedLight(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, viewDirection, litIntensity);
+        clearcoatOutput += getSpecularImageBasedLight(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, f0, specularWeight, viewDirection, litIntensity);
         clearcoatBlendFactor = vec3(clearcoatFactor * specularF(clearcoatF0, clamp(dot(clearcoatNormal, -viewDirection), 0.0, 1.0)));
       } else {
         clearcoatBlendFactor = vec3(0);
