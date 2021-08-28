@@ -146,9 +146,21 @@ vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
   return textureLod(texEnvMap, (vec2((atan(rayDirection.z, rayDirection.x) / PI2) + 0.5, acos(rayDirection.y) / 3.1415926535897932384626433832795)), texLOD);
 }
 
-vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor) {
+vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
   float ao = cavity * ambientOcclusion;
-  return (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
+  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+  vec2 brdfSamplePoint = clamp(vec2(roughness, NdotV), vec2(0.0, 0.0), vec2(1.0, 1.0));
+  vec2 f_ab = texture(uImageBasedLightingGGXBRDFTexture, brdfSamplePoint).rg;
+  vec3 irradiance = texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz;
+  vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
+  vec3 k_S = F0 + (Fr * pow(1.0 - NdotV, 5.0));
+  vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
+  float Ems = 1.0 - (f_ab.x + f_ab.y);
+  vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
+  vec3 FmsEms = (Ems * FssEss * F_avg) / (1.0 - (F_avg * Ems));
+  vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;  
+  return (FmsEms + k_D) * irradiance;
+  //Freturn (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
 }
 
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
@@ -157,7 +169,7 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  vec2 brdf = textureLod(uImageBasedLightingGGXBRDFTexture, vec2(roughness, NdotV), 0.0).xy;
+  vec2 brdf = textureLod(uImageBasedLightingGGXBRDFTexture, clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],            //
                   reflectionVector,                         //
                   clamp((float(envMapMaxLevelGGX) - 1.0) -  //
@@ -165,8 +177,7 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
                         0.0, float(envMapMaxLevelGGX)))
               .xyz *                                                                                                                           //
           ((specularColor.xyz * brdf.x) + (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) *  //
-          specularOcclusion) *
-         OneOverPI;
+          specularOcclusion);
 }
 
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
@@ -264,6 +275,8 @@ void main() {
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * vColor.w;
 #else
   vec4 color = vec4(0.0);
+  const vec3 f0 = vec3(0.04);  // dielectricSpecular
+  float specularWeight = 1.0; 
 #ifdef EXTRAEMISSIONOUTPUT
   vec4 emissionColor = vec4(0.0);
 #endif
@@ -274,7 +287,6 @@ void main() {
       vec4 diffuseColorAlpha, specularColorRoughness;
       switch (shadingModel) {
         case smPBRMetallicRoughness: {
-          const vec3 f0 = vec3(0.04);  // dielectricSpecular
           vec4 baseColor = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(uTextures[1], 1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4((baseColor.xyz * (vec3(1.0) - f0) * (1.0 - metallicRoughness.x)) * PI, baseColor.w);
@@ -444,7 +456,7 @@ void main() {
                     specularColorRoughness.w,           //
                     cavity);                            //
 #endif
-      diffuseOutput += getDiffuseImageBasedLight(normal.xyz, diffuseColorAlpha.xyz);
+      diffuseOutput += getDiffuseImageBasedLight(normal.xyz, viewDirection, specularColorRoughness.w, diffuseColorAlpha.xyz, f0, specularWeight);
       specularOutput += getSpecularImageBasedLight(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, viewDirection, litIntensity);
       if ((flags & (1u << 7u)) != 0u) {
         // TODO
