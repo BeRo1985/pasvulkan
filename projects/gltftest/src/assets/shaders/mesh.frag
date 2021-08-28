@@ -15,7 +15,7 @@ layout(location = 8) in vec4 inColor0;
 
 layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
-layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie
+layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
@@ -181,26 +181,34 @@ vec3 clearcoatFresnel = vec3(0.0);
 
 float albedoSheenScaling = 1.0;
 
-void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 specularColor, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float materialRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness) {
+float albedoSheenScalingLUT(float NdotV, float sheenRoughnessFactor) {
+  return texture(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor)).r;  //
+}
+
+void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 specularColor, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float materialRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
   vec3 halfVector = normalize(viewDirection + lightDirection);
   float nDotL = clamp(dot(normal, lightDirection), 1e-5, 1.0);
   float nDotV = clamp(abs(dot(normal, viewDirection)) + 1e-5, 0.0, 1.0);
   float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
   float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
   vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
+  //diffuseOutput += BRDF_lambertian(specularColor, vec3(1.0), diffuseColor, specularWeight, vDotH) * lit;
+  //specularOutput += BRDF_specularGGX(specularColor, vec3(1.0), materialRoughness * materialRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH);
   diffuseOutput += diffuseFunction(diffuseColor * PI, materialRoughness, nDotV, nDotL, vDotH) * (1.0 - materialTransparency) * lit;
-  specularOutput += specularF(specularColor * PI, max(vDotH, refractiveAngle)) * specularD(materialRoughness, nDotH) * specularG(materialRoughness, nDotV, nDotL) * lit;
+  specularOutput += specularF(specularColor * PI, max(vDotH, refractiveAngle)) * specularD(materialRoughness, nDotH) * specularG(materialRoughness, nDotV, nDotL) * specularWeight * lit;
   if ((flags & (1u << 7u)) != 0u) {
-    float sheenDistribution = sheenDistributionCarlie(sheenRoughness, nDotH);
-    float sheenVisibility = visibilityNeubelt(nDotL, nDotV);
-    sheenOutput += (sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w * sheenDistribution * sheenVisibility) * lit;
+    float sheenColorMax = max(max(sheenColorIntensityFactor.x, sheenColorIntensityFactor.y), sheenColorIntensityFactor.z);
+    albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), 1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
+    sheenOutput += BRDF_specularSheen(sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w, sheenRoughness, nDotL, nDotV, nDotH) * lit;
   }
   if ((flags & (1u << 8u)) != 0u) {
     float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
     float nDotV = clamp(abs(dot(clearcoatNormal, viewDirection)) + 1e-5, 0.0, 1.0);
     float nDotH = clamp(dot(clearcoatNormal, halfVector), 0.0, 1.0);
     vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-    clearcoatOutput += specularF(clearcoatF0, max(vDotH, refractiveAngle)) * specularD(clearcoatRoughness, nDotH) * specularG(clearcoatRoughness, nDotV, nDotL) * lit;
+    clearcoatOutput += F_Schlick(clearcoatF0, vec3(1.0), vDotH) *  //
+                       D_GGX(nDotH, clearcoatRoughness) *          //
+                       V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * lit;
   }
 }
 
@@ -568,7 +576,8 @@ void main() {
                           sheenRoughness,                                     //
                           clearcoatNormal,                                    //
                           clearcoatF0,                                        //
-                          clearcoatRoughness);                                //
+                          clearcoatRoughness,                                 //
+                          specularWeight);                                    //
           }
         }
       }
@@ -588,7 +597,8 @@ void main() {
                     sheenRoughness,                     //
                     clearcoatNormal,                    //
                     clearcoatF0,                        //
-                    clearcoatRoughness);                //
+                    clearcoatRoughness,                 //
+                    specularWeight);                    //
 #endif
       diffuseOutput += getIBLRadianceLambertian(normal.xyz, viewDirection, specularRoughness, diffuseColorAlpha.xyz, f0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal.xyz, specularColor, specularRoughness, f0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);

@@ -68,6 +68,7 @@ type { TScreenMain }
        fCharlieBRDF:TCharlieBRDF;
        fCharlieEnvMapCubeMap:TCharlieEnvMapCubeMap;
        fLambertianEnvMapCubeMap:TLambertianEnvMapCubeMap;
+       fSheenELUT:TpvVulkanTexture;
        fSkyBox:TSkyBox;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
@@ -127,7 +128,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test8.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -210,6 +211,23 @@ begin
 
  fScene3D.Upload;
 
+ Stream:=pvApplication.Assets.GetAssetStream('textures/sheenelut.png');
+ try
+  fSheenELUT:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                pvApplication.VulkanDevice.GraphicsQueue,
+                                                fVulkanGraphicsCommandBuffer,
+                                                fVulkanGraphicsCommandBufferFence,
+                                                pvApplication.VulkanDevice.TransferQueue,
+                                                fVulkanTransferCommandBuffer,
+                                                fVulkanTransferCommandBufferFence,
+                                                Stream,
+                                                false,
+                                                false);
+  fSheenELUT.UpdateSampler;
+ finally
+  FreeAndNil(Stream);
+ end;
+
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -240,7 +258,7 @@ begin
  fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         2,
+                                                         3,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
@@ -251,17 +269,18 @@ begin
  fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
 
  fImageBasedLightingVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
- fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5);
+ fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6);
  fImageBasedLightingVulkanDescriptorPool.Initialize;
 
  fImageBasedLightingVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fImageBasedLightingVulkanDescriptorPool,
                                                                        fImageBasedLightingVulkanDescriptorSetLayout);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
                                                              0,
-                                                             2,
+                                                             3,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                              [fGGXBRDF.DescriptorImageInfo,
-                                                              fCharlieBRDF.DescriptorImageInfo],
+                                                              fCharlieBRDF.DescriptorImageInfo,
+                                                              fSheenELUT.DescriptorImageInfo],
                                                              [],
                                                              [],
                                                              false);
@@ -323,6 +342,8 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBufferFence);
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
+
+ FreeAndNil(fSheenELUT);
 
  FreeAndNil(fCharlieEnvMapCubeMap);
 
