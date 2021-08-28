@@ -15,9 +15,9 @@ layout(location = 8) in vec4 inColor0;
 
 layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
-layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingGGXBRDFTexture;
+layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[]; // 0 = GGX, 1 = Charlie
 
-layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];
+layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[]; // 0 = GGX, 1 = Charlie, 2 = Lambertian 
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
@@ -207,8 +207,8 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 viewDirection
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(roughness, NdotV), vec2(0.0, 0.0), vec2(1.0, 1.0));
-  vec2 f_ab = texture(uImageBasedLightingGGXBRDFTexture, brdfSamplePoint).rg;
-  vec3 irradiance = texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz;
+  vec2 f_ab = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).rg;
+  vec3 irradiance = texture(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
   vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
   vec3 k_S = F0 + (Fr * pow(1.0 - NdotV, 5.0));
   vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
@@ -226,7 +226,7 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  vec2 brdf = textureLod(uImageBasedLightingGGXBRDFTexture, clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
+  vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],            //
                   reflectionVector,                         //
                   clamp((float(envMapMaxLevelGGX) - 1.0) -  //

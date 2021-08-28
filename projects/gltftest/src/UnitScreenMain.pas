@@ -30,9 +30,11 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.Resources,
      PasVulkan.Scene3D,
-     UnitGGXBRDF,
      UnitSkyCubeMap,
+     UnitGGXBRDF,
      UnitGGXEnvMapCubeMap,
+     UnitCharlieBRDF,
+     UnitCharlieEnvMapCubeMap,
      UnitLambertianEnvMapCubeMap,
      UnitSkyBox;
 
@@ -60,9 +62,11 @@ type { TScreenMain }
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
-       fGGXBRDF:TGGXBRDF;
        fSkyCubeMap:TSkyCubeMap;
+       fGGXBRDF:TGGXBRDF;
        fGGXEnvMapCubeMap:TGGXEnvMapCubeMap;
+       fCharlieBRDF:TCharlieBRDF;
+       fCharlieEnvMapCubeMap:TCharlieEnvMapCubeMap;
        fLambertianEnvMapCubeMap:TLambertianEnvMapCubeMap;
        fSkyBox:TSkyBox;
        fScene3D:TpvScene3D;
@@ -156,11 +160,15 @@ begin
 
  inherited Show;
 
- fGGXBRDF:=TGGXBRDF.Create;
-
  fSkyCubeMap:=TSkyCubeMap.Create;
 
+ fGGXBRDF:=TGGXBRDF.Create;
+
  fGGXEnvMapCubeMap:=TGGXEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
+
+ fCharlieBRDF:=TCharlieBRDF.Create;
+
+ fCharlieEnvMapCubeMap:=TCharlieEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
 
  fLambertianEnvMapCubeMap:=TLambertianEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
 
@@ -232,35 +240,37 @@ begin
  fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         1,
+                                                         2,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         2,
+                                                         3,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
 
  fImageBasedLightingVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
- fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3);
+ fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5);
  fImageBasedLightingVulkanDescriptorPool.Initialize;
 
  fImageBasedLightingVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fImageBasedLightingVulkanDescriptorPool,
                                                                        fImageBasedLightingVulkanDescriptorSetLayout);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
                                                              0,
-                                                             1,
+                                                             2,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fGGXBRDF.DescriptorImageInfo],
+                                                             [fGGXBRDF.DescriptorImageInfo,
+                                                              fCharlieBRDF.DescriptorImageInfo],
                                                              [],
                                                              [],
                                                              false);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
                                                              0,
-                                                             2,
+                                                             3,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                              [fGGXEnvMapCubeMap.DescriptorImageInfo,
+                                                              fCharlieEnvMapCubeMap.DescriptorImageInfo,
                                                               fLambertianEnvMapCubeMap.DescriptorImageInfo],
                                                              [],
                                                              [],
@@ -314,13 +324,17 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
 
+ FreeAndNil(fCharlieEnvMapCubeMap);
+
+ FreeAndNil(fCharlieBRDF);
+
  FreeAndNil(fGGXEnvMapCubeMap);
+
+ FreeAndNil(fGGXBRDF);
 
  FreeAndNil(fLambertianEnvMapCubeMap);
 
  FreeAndNil(fSkyCubeMap);
-
- FreeAndNil(fGGXBRDF);
 
  inherited Hide;
 end;
