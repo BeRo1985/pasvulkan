@@ -139,6 +139,40 @@ vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, floa
   return sheenColor * D_Charlie(sheenRoughness, NdotH) * V_Sheen(NdotL, NdotV, sheenRoughness);  //
 }
 
+vec3 diffuseLambert(vec3 diffuseColor) {
+  return diffuseColor * OneOverPI;  //
+}
+
+vec3 diffuseFunction(vec3 diffuseColor, float roughness, float nDotV, float nDotL, float vDotH) {
+  float FD90 = 0.5 + (2.0 * (vDotH * vDotH * roughness)), FdV = 1.0 + ((FD90 - 1.0) * pow(1.0 - nDotV, 5.0)), FdL = 1.0 + ((FD90 - 1.0) * pow(1.0 - nDotL, 5.0));
+  return diffuseColor * (OneOverPI * FdV * FdL);
+}
+
+vec3 specularF(const in vec3 specularColor, const in float vDotH) {
+  float fc = pow(1.0 - vDotH, 5.0);
+  return vec3(clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0) * fc) + ((1.0 - fc) * specularColor);
+}
+
+float specularD(const in float roughness, const in float nDotH) {
+  float a = roughness * roughness;
+  float a2 = a * a;
+  float d = (((nDotH * a2) - nDotH) * nDotH) + 1.0;
+  return a2 / (PI * (d * d));
+}
+
+float specularG(const in float roughness, const in float nDotV, const in float nDotL) {
+  float k = (roughness * roughness) * 0.5;
+  vec2 GVL = (vec2(nDotV, nDotL) * (1.0 - k)) + vec2(k);
+  return 0.25 / (GVL.x * GVL.y);
+}
+
+float visibilityNeubelt(float NdotL, float NdotV) { return clamp(1.0 / (4.0 * ((NdotL + NdotV) - (NdotL * NdotV))), 0.0, 1.0); }
+
+float sheenDistributionCarlie(float sheenRoughness, float NdotH) {
+  float invR = 1.0 / (sheenRoughness * sheenRoughness);
+  return (2.0 + invR) * pow(1.0 - (NdotH * NdotH), invR * 0.5) / PI2;
+}
+
 vec3 diffuseOutput = vec3(0.0);
 vec3 specularOutput = vec3(0.0);
 vec3 sheenOutput = vec3(0.0);
