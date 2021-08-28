@@ -2,6 +2,7 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) flat in int inFaceIndex;
@@ -15,6 +16,15 @@ layout (push_constant) uniform PushConstants {
 
 layout (set = 0, binding = 0) uniform samplerCube uTexture;
 
+#include "ibl.glsl"
+
+void main(){
+  vec3 direction = getCubeMapDirection(inTexCoord, inFaceIndex);
+  float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
+  const int numSamples = 64;
+  outFragColor = filterGGX(uTexture, direction, numSamples, roughness);
+}
+/*
 vec2 Hammersley(const in int index, const in int numSamples){
   uint reversedIndex = uint(index);
   reversedIndex = (reversedIndex << 16u) | (reversedIndex >> 16u);
@@ -31,29 +41,12 @@ vec3 ImportanceSampleGGX(const in vec2 e, const in float roughness, const in vec
   float phi = 2.0 * 3.1415926535897932384626433832795 * e.x;
   float cosTheta = sqrt((1.0 - e.y) / (1.0 + ((m2 - 1.0) * e.y)));
   float sinTheta = sqrt(1.0 - (cosTheta * cosTheta));
-  vec3 h = vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+  vec3 h = vec3(vec2(cos(phi), sin(phi)) * sinTheta, cosTheta);
   vec3 tangentZ = normalize(normal);
   vec3 upVector = (abs(tangentZ.z) < 0.999) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
   vec3 tangentX = normalize(cross(upVector, tangentZ));
   vec3 tangentY = cross(tangentZ, tangentX);
   return (tangentX * h.x) + (tangentY * h.y) + (tangentZ * h.z);
-}
-
-vec3 getCubeMapDirection(in vec2 uv,
-                         in int faceIndex){                        
-  vec3 zDir = vec3(ivec3((faceIndex <= 1) ? 1 : 0,
-                         (faceIndex & 2) >> 1,
-                         (faceIndex & 4) >> 2)) *
-             (((faceIndex & 1) == 1) ? -1.0 : 1.0),
-       yDir = (faceIndex == 2)
-                ? vec3(0.0, 0.0, 1.0)
-                : ((faceIndex == 3)
-                     ? vec3(0.0, 0.0, -1.0)
-                     : vec3(0.0, -1.0, 0.0)),
-       xDir = cross(zDir, yDir);
-  return normalize((mix(-1.0, 1.0, uv.x) * xDir) +
-                   (mix(-1.0, 1.0, uv.y) * yDir) +
-                   zDir);
 }
 
 void main(){
@@ -80,4 +73,4 @@ void main(){
     }
     outFragColor = r / max(w, 1e-4);
   }
-}
+}*/
