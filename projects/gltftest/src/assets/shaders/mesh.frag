@@ -67,12 +67,11 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
 
-const float PI = 3.14159265358979323846, PI2 = 6.283185307179586476925286766559, OneOverPI = 1.0 / PI;
+const float PI = 3.14159265358979323846,     //
+    PI2 = 6.283185307179586476925286766559,  //
+    OneOverPI = 1.0 / PI;
 
-vec3 f0 = vec3(0.04);  // dielectricSpecular
-float sheenRoughness, cavity, transparency, refractiveAngle, ambientOcclusion, shadow, reflectance, clearcoatFactor, clearcoatRoughness, specularWeight;
-vec4 sheenColorIntensityFactor;
-vec3 clearcoatF0, clearcoatF90, clearcoatNormal, imageLightBasedLightDirection;
+float cavity, ambientOcclusion;
 uint flags, shadingModel;
 
 vec3 approximateAnalyticBRDF(vec3 specularColor, float roughness, float NoV) {
@@ -174,11 +173,15 @@ float sheenDistributionCarlie(float sheenRoughness, float NdotH) {
   return (2.0 + invR) * pow(1.0 - (NdotH * NdotH), invR * 0.5) / PI2;
 }
 
-vec3 diffuseOutput, specularOutput, sheenOutput, clearcoatOutput, clearcoatFresnel;
+vec3 diffuseOutput = vec3(0.0);
+vec3 specularOutput = vec3(0.0);
+vec3 sheenOutput = vec3(0.0);
+vec3 clearcoatOutput = vec3(0.0);
+vec3 clearcoatFresnel = vec3(0.0);
 
 float albedoSheenScaling = 1.0;
 
-void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 specularColor, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float materialRoughness, const in float materialCavity) {
+void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 specularColor, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float materialRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness) {
   vec3 halfVector = normalize(viewDirection + lightDirection);
   float nDotL = clamp(dot(normal, lightDirection), 1e-5, 1.0);
   float nDotV = clamp(abs(dot(normal, viewDirection)) + 1e-5, 0.0, 1.0);
@@ -209,7 +212,7 @@ vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
 vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  vec2 brdfSamplePoint = clamp(vec2(roughness, NdotV), vec2(0.0, 0.0), vec2(1.0, 1.0));
+  vec2 brdfSamplePoint = clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0));
   vec2 f_ab = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).rg;
   vec3 irradiance = texture(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
   vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
@@ -217,12 +220,13 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
   float Ems = 1.0 - (f_ab.x + f_ab.y);
   vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
-  vec3 FmsEms = (Ems * FssEss * F_avg) / (1.0 - (F_avg * Ems));
-  vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;
+  vec3 FmsEms = (Ems * FssEss * F_avg) / (vec3(1.0) - (F_avg * Ems));
+  vec3 k_D = (diffuseColor * ((1.0 - FssEss) + FmsEms) * ao);
   return (FmsEms + k_D) * irradiance;
+  // return max(vec3(0.0), (FmsEms + k_D) * irradiance);
 }
 
-vec3 getIBLRadianceGGX(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity) {
+vec3 getIBLRadianceGGX(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
   vec3 reflectionVector = normalize(reflect(viewDirection, normal.xyz));
   float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0),                                                            //
       NdotVclamped = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0),                                                                   //
@@ -268,7 +272,8 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
                        0.0, float(envMapMaxLevelCharlie)))        //
              .xyz *                                               //
          sheenColor *                                             //
-         texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(sheenRoughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).x * ao;
+         texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(sheenRoughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).x *
+         ao;
 }
 
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
@@ -367,7 +372,6 @@ void main() {
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * vColor.w;
 #else
   vec4 color = vec4(0.0);
-  specularWeight = 1.0;
 #ifdef EXTRAEMISSIONOUTPUT
   vec4 emissionColor = vec4(0.0);
 #endif
@@ -375,22 +379,38 @@ void main() {
   switch (shadingModel) {
     case smPBRMetallicRoughness:
     case smPBRSpecularGlossiness: {
-      vec4 diffuseColorAlpha, specularColorRoughness;
+      vec3 f0 = vec3(0.04);  // dielectricSpecular
+      vec4 diffuseColorAlpha = vec4(1.0);
+      vec3 specularColorFactor = vec3(1.0);
+      vec3 specularColor = vec3(0.0);
+      float specularFactor = 1.0;
+      float specularRoughness = 1.0;
+      float specularWeight = 1.0;
       switch (shadingModel) {
         case smPBRMetallicRoughness: {
+          specularFactor = uMaterial.specularFactor.w;
+          specularColorFactor = uMaterial.specularFactor.xyz;
+          if ((flags & (1u << 9u)) != 0u) {
+            specularFactor *= textureFetch(uTextures[9], 9, vec4(1.0)).x;
+            specularColorFactor *= textureFetchSRGB(uTextures[10], 10, vec4(1.0)).xyz;
+          }
+          vec3 dielectricSpecularF0 = clamp(f0 * specularColorFactor * specularFactor, vec3(0.0), vec3(1.0));
           vec4 baseColor = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(uTextures[1], 1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
-          diffuseColorAlpha = vec4((baseColor.xyz * (vec3(1.0) - f0) * (1.0 - metallicRoughness.x)), baseColor.w);
-          specularColorRoughness = vec4(mix(f0, baseColor.xyz, metallicRoughness.x), metallicRoughness.y);
+          diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (vec3(1.0) - max(max(dielectricSpecularF0.x, dielectricSpecularF0.y), dielectricSpecularF0.z)) * (1.0 - metallicRoughness.x)), baseColor.w);
+          specularColor = mix(dielectricSpecularF0, baseColor.xyz, metallicRoughness.x);
+          specularRoughness = metallicRoughness.y;
           break;
         }
         case smPBRSpecularGlossiness: {
           vec4 specularGlossiness = textureFetchSRGB(uTextures[1], 1, vec4(1.0)) * vec4(uMaterial.specularFactor.xyz, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
           diffuseColorAlpha = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((1.0 - max(max(specularGlossiness.x, specularGlossiness.y), specularGlossiness.z)), 1.0).xxxy;
-          specularColorRoughness = vec4(specularGlossiness.xyz, clamp(1.0 - specularGlossiness.w, 1e-3, 1.0));
+          specularColor = specularGlossiness.xyz;
+          specularRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
           break;
         }
       }
+
       vec3 normal;
       if ((texCoordIndices.x & 0x00000f00u) != 0x00000f00u) {
         vec4 normalTexture = textureFetch(uTextures[2], 2, vec2(0.0, 1.0).xxyx);
@@ -402,32 +422,44 @@ void main() {
         normal = normalize(inNormal);
       }
       normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+
       vec4 occlusionTexture = textureFetch(uTextures[3], 3, vec4(1.0));
-      vec4 emissiveTexture = textureFetchSRGB(uTextures[4], 4, vec4(1.0));
+
       cavity = clamp(mix(1.0, occlusionTexture.x, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
-      transparency = 0.0;
-      refractiveAngle = 0.0;
+
+      vec4 emissiveTexture = textureFetchSRGB(uTextures[4], 4, vec4(1.0));
+
+      float transparency = 0.0;
+      float refractiveAngle = 0.0;
+      float shadow = 1.0;
       ambientOcclusion = 1.0;
-      shadow = 1.0;
-      reflectance = max(max(specularColorRoughness.x, specularColorRoughness.y), specularColorRoughness.z);
+
       vec3 viewDirection = normalize(inCameraRelativePosition);
+
 #ifdef LIGHTS
-      imageLightBasedLightDirection = (lightMetaData.x != 0u) ? lights[0].directionZFar.xyz : vec3(0.0, 0.0, -1.0);
+      vec3 imageLightBasedLightDirection = (lightMetaData.x != 0u) ? lights[0].directionZFar.xyz : vec3(0.0, 0.0, -1.0);
 #else
-      imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
+      vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 #endif
-      diffuseOutput = specularOutput = sheenOutput = clearcoatOutput = clearcoatFresnel = vec3(0.0);
+
+      vec4 sheenColorIntensityFactor = vec4(1.0);
+      float sheenRoughness = 0.0;
       if ((flags & (1u << 7u)) != 0u) {
         sheenColorIntensityFactor = uMaterial.sheenColorFactorSheenIntensityFactor;
         if ((texCoordIndices.x & 0x00f00000u) != 0x00f00000u) {
           sheenColorIntensityFactor *= textureFetchSRGB(uTextures[5], 5, vec4(1.0));
         }
-        sheenRoughness = max(specularColorRoughness.w, 1e-7);
+        sheenRoughness = max(specularRoughness, 1e-7);
       }
+
+      vec3 clearcoatF0 = vec3(0.04);
+      vec3 clearcoatF90 = vec3(0.0);
+      vec3 clearcoatNormal = normal;
+      float clearcoatFactor = 1.0;
+      float clearcoatRoughness = 1.0;
       if ((flags & (1u << 8u)) != 0u) {
         clearcoatFactor = uMaterial.clearcoatFactorClearcoatRoughnessFactor.x;
         clearcoatRoughness = uMaterial.clearcoatFactorClearcoatRoughnessFactor.y;
-        clearcoatF0 = vec3(0.04);
         if ((texCoordIndices.x & 0x0f000000u) != 0x0f000000u) {
           clearcoatFactor *= textureFetch(uTextures[6], 6, vec4(1.0)).x;
         }
@@ -443,6 +475,7 @@ void main() {
         clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
         clearcoatRoughness = clamp(clearcoatRoughness, 0.0, 1.0);
       }
+
 #ifdef LIGHTS
       if (lightMetaData.x != 0u) {
         for (int lightIndex = 0, lightCount = int(lightMetaData.x); lightIndex < lightCount; lightIndex++) {
@@ -525,35 +558,45 @@ void main() {
                           lightDirection,                                     //
                           normal.xyz,                                         //
                           diffuseColorAlpha.xyz,                              //
-                          specularColorRoughness.xyz,                         //
+                          specularColor.xyz,                                  //
                           -viewDirection,                                     //
                           refractiveAngle,                                    //
                           transparency,                                       //
-                          specularColorRoughness.w,                           //
-                          cavity);                                            //
+                          specularRoughness,                                  //
+                          cavity,                                             //
+                          sheenColorIntensityFactor,                          //
+                          sheenRoughness,                                     //
+                          clearcoatNormal,                                    //
+                          clearcoatF0,                                        //
+                          clearcoatRoughness);                                //
           }
         }
       }
-#elif 0
+#elif 1
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //
                     normal.xyz,                         //
                     diffuseColorAlpha.xyz,              //
-                    specularColorRoughness.xyz,         //
+                    specularColor.xyz,                  //
                     -viewDirection,                     //
                     refractiveAngle,                    //
                     transparency,                       //
-                    specularColorRoughness.w,           //
-                    cavity);                            //
+                    specularRoughness,                  //
+                    cavity,                             //
+                    sheenColorIntensityFactor,          //
+                    sheenRoughness,                     //
+                    clearcoatNormal,                    //
+                    clearcoatF0,                        //
+                    clearcoatRoughness);                //
 #endif
-      diffuseOutput += getIBLRadianceLambertian(normal.xyz, viewDirection, specularColorRoughness.w, diffuseColorAlpha.xyz, f0, specularWeight);
-      specularOutput += getIBLRadianceGGX(normal.xyz, specularColorRoughness.xyz, specularColorRoughness.w, f0, specularWeight, viewDirection, litIntensity);
+      diffuseOutput += getIBLRadianceLambertian(normal.xyz, viewDirection, specularRoughness, diffuseColorAlpha.xyz, f0, specularWeight);
+      specularOutput += getIBLRadianceGGX(normal.xyz, specularColor, specularRoughness, f0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
         sheenOutput += getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColorIntensityFactor.xyz);
       }
       if ((flags & (1u << 8u)) != 0u) {
-        clearcoatOutput += getIBLRadianceGGX(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, f0, 1.0, viewDirection, litIntensity);
+        clearcoatOutput += getIBLRadianceGGX(clearcoatNormal.xyz, clearcoatF0.xyz, clearcoatRoughness, f0, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
       vec3 emissiveOutput = emissiveTexture.xyz * uMaterial.emissiveFactor.xyz;
