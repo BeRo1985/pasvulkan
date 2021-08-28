@@ -33,6 +33,7 @@ uses SysUtils,
      UnitGGXBRDF,
      UnitSkyCubeMap,
      UnitGGXEnvMapCubeMap,
+     UnitLambertianEnvMapCubeMap,
      UnitSkyBox;
 
 type { TScreenMain }
@@ -62,6 +63,7 @@ type { TScreenMain }
        fGGXBRDF:TGGXBRDF;
        fSkyCubeMap:TSkyCubeMap;
        fGGXEnvMapCubeMap:TGGXEnvMapCubeMap;
+       fLambertianEnvMapCubeMap:TLambertianEnvMapCubeMap;
        fSkyBox:TSkyBox;
        fScene3D:TpvScene3D;
        fGroup:TpvScene3D.TGroup;
@@ -160,6 +162,8 @@ begin
 
  fGGXEnvMapCubeMap:=TGGXEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
 
+ fLambertianEnvMapCubeMap:=TLambertianEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo);
+
  fTime:=0.0;
 
  fCameraRotationX:=0.0;//frac(fTime*0.03125);
@@ -233,13 +237,13 @@ begin
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
                                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         1,
+                                                         2,
                                                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                          []);
  fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
 
  fImageBasedLightingVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
- fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2);
+ fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3);
  fImageBasedLightingVulkanDescriptorPool.Initialize;
 
  fImageBasedLightingVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fImageBasedLightingVulkanDescriptorPool,
@@ -254,9 +258,10 @@ begin
                                                              false);
  fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
                                                              0,
-                                                             1,
+                                                             2,
                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fGGXEnvMapCubeMap.DescriptorImageInfo],
+                                                             [fGGXEnvMapCubeMap.DescriptorImageInfo,
+                                                              fLambertianEnvMapCubeMap.DescriptorImageInfo],
                                                              [],
                                                              [],
                                                              false);
@@ -310,6 +315,8 @@ begin
  FreeAndNil(fVulkanGraphicsCommandPool);
 
  FreeAndNil(fGGXEnvMapCubeMap);
+
+ FreeAndNil(fLambertianEnvMapCubeMap);
 
  FreeAndNil(fSkyCubeMap);
 

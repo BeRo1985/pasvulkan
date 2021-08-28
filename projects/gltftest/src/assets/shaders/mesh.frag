@@ -17,7 +17,7 @@ layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
 layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingGGXBRDFTexture;
 
-layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingGGXEnvMap;
+layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
@@ -53,7 +53,7 @@ layout(std430, set=2, binding = 1) buffer LightData {
 
 /* clang-format on */
 
-float envMapMaxLevel;
+float envMapMaxLevelGGX;
 
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
@@ -148,7 +148,7 @@ vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
 
 vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 diffuseColor) {
   float ao = cavity * ambientOcclusion;
-  return (texture(uImageBasedLightingGGXEnvMap, normal.xyz, float(envMapMaxLevel)).xyz * diffuseColor * ao) * OneOverPI;
+  return (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
 }
 
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 viewDirection, const in float litIntensity) {
@@ -158,11 +158,11 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
   vec2 brdf = textureLod(uImageBasedLightingGGXBRDFTexture, vec2(roughness, NdotV), 0.0).xy;
-  return (texture(uImageBasedLightingGGXEnvMap,          //
-                  reflectionVector,                      //
-                  clamp((float(envMapMaxLevel) - 1.0) -  //
+  return (texture(uImageBasedLightingEnvMaps[0],            //
+                  reflectionVector,                         //
+                  clamp((float(envMapMaxLevelGGX) - 1.0) -  //
                             (1.0 - (1.2 * log2(roughness))),
-                        0.0, float(envMapMaxLevel)))
+                        0.0, float(envMapMaxLevelGGX)))
               .xyz *                                                                                                                           //
           ((specularColor.xyz * brdf.x) + (brdf.yyy * clamp(max(max(specularColor.x, specularColor.y), specularColor.z) * 50.0, 0.0, 1.0))) *  //
           specularOcclusion) *
@@ -252,7 +252,7 @@ vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in v
 }
 
 void main() {
-  envMapMaxLevel = textureQueryLevels(uImageBasedLightingGGXEnvMap);
+  envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #ifdef SHADOWMAP

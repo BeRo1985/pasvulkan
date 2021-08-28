@@ -1,4 +1,4 @@
-unit UnitGGXEnvMapCubeMap;
+unit UnitLambertianEnvMapCubeMap;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -29,12 +29,12 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
-type { TGGXEnvMapCubeMap }
-     TGGXEnvMapCubeMap=class
+type { TLambertianEnvMapCubeMap }
+     TLambertianEnvMapCubeMap=class
       public
        const Width=512;
              Height=512;
-             Samples=1024;
+             Samples=2048;
              ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
       private
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -66,9 +66,9 @@ type { TGGXEnvMapCubeMap }
 
 implementation
 
-{ TGGXEnvMapCubeMap }
+{ TLambertianEnvMapCubeMap }
 
-constructor TGGXEnvMapCubeMap.Create(const aDescriptorImageInfo:TVkDescriptorImageInfo);
+constructor TLambertianEnvMapCubeMap.Create(const aDescriptorImageInfo:TVkDescriptorImageInfo);
 type TPushConstants=record
       MipMapLevel:TpvInt32;
       MaxMipMapLevel:TpvInt32;
@@ -102,14 +102,14 @@ var Index,MipMaps:TpvSizeInt;
 begin
  inherited Create;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_ggx_filter_comp.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_lambertian_filter_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- MipMaps:=IntLog2(Max(Width,Height))+1;
+ MipMaps:=1;
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
@@ -496,7 +496,7 @@ begin
 
 end;
 
-destructor TGGXEnvMapCubeMap.Destroy;
+destructor TLambertianEnvMapCubeMap.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
