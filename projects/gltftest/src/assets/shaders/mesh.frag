@@ -82,6 +82,63 @@ vec3 approximateAnalyticBRDF(vec3 specularColor, float roughness, float NoV) {
   return fma(specularColor, AB.xxx, AB.yyy);
 }
 
+vec3 F_Schlick(vec3 f0, vec3 f90, float VdotH) {
+  return f0 + ((f90 - f0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0));  //
+}
+
+float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
+  float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+  float GGX = (NdotL * sqrt((NdotV * NdotV * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
+              (NdotV * sqrt((NdotL * NdotL * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq));
+  return (GGX > 0.0) ? (0.5 / GGX) : 0.0;
+}
+
+float D_GGX(float NdotH, float alphaRoughness) {
+  float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+  float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
+  return alphaRoughnessSq / (PI * (f * f));
+}
+
+float lambdaSheenNumericHelper(float x, float alphaG) {
+  float oneMinusAlphaSq = (1.0 - alphaG) * (1.0 - alphaG);
+  return ((mix(21.5473, 25.3245, oneMinusAlphaSq) /          //
+           (1.0 + (mix(3.82987, 3.32435, oneMinusAlphaSq) *  //
+                   pow(x, mix(0.19823, 0.16801, oneMinusAlphaSq))))) +
+          (mix(-1.97760, -1.27393, oneMinusAlphaSq) * x)) +  //
+         mix(-4.32054, -4.85967, oneMinusAlphaSq);
+}
+
+float lambdaSheen(float cosTheta, float alphaG) {
+  return (abs(cosTheta) < 0.5) ?  //
+             exp(lambdaSheenNumericHelper(cosTheta, alphaG))
+                               :  //
+             exp((2.0 * lambdaSheenNumericHelper(0.5, alphaG)) - lambdaSheenNumericHelper(1.0 - cosTheta, alphaG));
+}
+
+float V_Sheen(float NdotL, float NdotV, float sheenRoughness) {
+  sheenRoughness = max(sheenRoughness, 0.000001);
+  float alphaG = sheenRoughness * sheenRoughness;
+  return clamp(1.0 / (((1.0 + lambdaSheen(NdotV, alphaG)) + lambdaSheen(NdotL, alphaG)) * (4.0 * NdotV * NdotL)), 0.0, 1.0);
+}
+
+float D_Charlie(float sheenRoughness, float NdotH) {
+  sheenRoughness = max(sheenRoughness, 0.000001);
+  float invR = 1.0 / (sheenRoughness * sheenRoughness);
+  return ((2.0 + invR) * pow(1.0 - (NdotH * NdotH), invR * 0.5)) / (2.0 * PI);
+}
+
+vec3 BRDF_lambertian(vec3 f0, vec3 f90, vec3 diffuseColor, float specularWeight, float VdotH) {
+  return (1.0 - specularWeight * F_Schlick(f0, f90, VdotH)) * (diffuseColor / PI);  //
+}
+
+vec3 BRDF_specularGGX(vec3 f0, vec3 f90, float alphaRoughness, float specularWeight, float VdotH, float NdotL, float NdotV, float NdotH) {
+  return specularWeight * F_Schlick(f0, f90, VdotH) * V_GGX(NdotL, NdotV, alphaRoughness) * D_GGX(NdotH, alphaRoughness);  //
+}
+
+vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH) {
+  return sheenColor * D_Charlie(sheenRoughness, NdotH) * V_Sheen(NdotL, NdotV, sheenRoughness);  //
+}
+
 vec3 diffuseLambert(vec3 diffuseColor) {
   return diffuseColor * OneOverPI;  //
 }
@@ -125,12 +182,12 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
   float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
   float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
   vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-  diffuseOutput += diffuseFunction(diffuseColor, materialRoughness, nDotV, nDotL, vDotH) * (1.0 - materialTransparency) * lit;
-  specularOutput += specularF(specularColor, max(vDotH, refractiveAngle)) * specularD(materialRoughness, nDotH) * specularG(materialRoughness, nDotV, nDotL) * lit;
+  diffuseOutput += diffuseFunction(diffuseColor * PI, materialRoughness, nDotV, nDotL, vDotH) * (1.0 - materialTransparency) * lit;
+  specularOutput += specularF(specularColor * PI, max(vDotH, refractiveAngle)) * specularD(materialRoughness, nDotH) * specularG(materialRoughness, nDotV, nDotL) * lit;
   if ((flags & (1u << 7u)) != 0u) {
     float sheenDistribution = sheenDistributionCarlie(sheenRoughness, nDotH);
     float sheenVisibility = visibilityNeubelt(nDotL, nDotV);
-    sheenOutput += (sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w * sheenDistribution * sheenVisibility * PI) * lit;
+    sheenOutput += (sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w * sheenDistribution * sheenVisibility) * lit;
   }
   if ((flags & (1u << 8u)) != 0u) {
     float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
@@ -159,8 +216,7 @@ vec3 getDiffuseImageBasedLight(const in vec3 normal, const in vec3 viewDirection
   vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
   vec3 FmsEms = (Ems * FssEss * F_avg) / (1.0 - (F_avg * Ems));
   vec3 k_D = diffuseColor * ((1.0 - FssEss) + FmsEms) * ao;
-  return (FmsEms + k_D) * irradiance * OneOverPI;
-  // Freturn (texture(uImageBasedLightingEnvMaps[1], normal.xyz, 0.0).xyz * diffuseColor * ao) * OneOverPI;
+  return (FmsEms + k_D) * irradiance;
 }
 
 vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColor, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity) {
@@ -195,8 +251,7 @@ vec3 getSpecularImageBasedLight(const in vec3 normal, const in vec3 specularColo
               ) *                                                                                             //
 #endif
           specularWeight *  //
-          specularOcclusion *
-          OneOverPI);
+          specularOcclusion);
 }
 
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
@@ -308,14 +363,14 @@ void main() {
         case smPBRMetallicRoughness: {
           vec4 baseColor = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(uTextures[1], 1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
-          diffuseColorAlpha = vec4((baseColor.xyz * (vec3(1.0) - f0) * (1.0 - metallicRoughness.x)) * PI, baseColor.w);
-          specularColorRoughness = vec4(mix(f0, baseColor.xyz, metallicRoughness.x) * PI, metallicRoughness.y);
+          diffuseColorAlpha = vec4((baseColor.xyz * (vec3(1.0) - f0) * (1.0 - metallicRoughness.x)), baseColor.w);
+          specularColorRoughness = vec4(mix(f0, baseColor.xyz, metallicRoughness.x), metallicRoughness.y);
           break;
         }
         case smPBRSpecularGlossiness: {
           vec4 specularGlossiness = textureFetchSRGB(uTextures[1], 1, vec4(1.0)) * vec4(uMaterial.specularFactor.xyz, uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
-          diffuseColorAlpha = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((1.0 - max(max(specularGlossiness.x, specularGlossiness.y), specularGlossiness.z)) * PI, 1.0).xxxy;
-          specularColorRoughness = vec4(specularGlossiness.xyz * PI, clamp(1.0 - specularGlossiness.w, 1e-3, 1.0));
+          diffuseColorAlpha = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor * vec2((1.0 - max(max(specularGlossiness.x, specularGlossiness.y), specularGlossiness.z)), 1.0).xxxy;
+          specularColorRoughness = vec4(specularGlossiness.xyz, clamp(1.0 - specularGlossiness.w, 1e-3, 1.0));
           break;
         }
       }
@@ -462,7 +517,7 @@ void main() {
           }
         }
       }
-#else
+#elif 0
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //
