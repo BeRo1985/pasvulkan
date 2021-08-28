@@ -22,6 +22,7 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -70,7 +71,7 @@ implementation
 { TSkyCubeMap }
 
 constructor TSkyCubeMap.Create;
-var Index:TpvSizeInt;
+var Index,FaceIndex,MipMaps:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -87,8 +88,11 @@ var Index:TpvSizeInt;
     FrameBufferColorAttachment:TpvVulkanFrameBufferAttachment;
     PipelineLayout:TpvVulkanPipelineLayout;
     Pipeline:TpvVulkanGraphicsPipeline;
+    ImageBlit:TVkImageBlit;
 begin
  inherited Create;
+
+ MipMaps:=IntLog2(Max(Width,Height))+1;
 
  Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_vert.spv');
  try
@@ -122,11 +126,14 @@ begin
                                      Width,
                                      Height,
                                      1,
-                                     1,
+                                     MipMaps,
                                      6,
                                      VK_SAMPLE_COUNT_1_BIT,
                                      VK_IMAGE_TILING_OPTIMAL,
-                                     TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
                                      nil,
@@ -182,7 +189,7 @@ begin
     FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
     ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
     ImageSubresourceRange.baseMipLevel:=0;
-    ImageSubresourceRange.levelCount:=1;
+    ImageSubresourceRange.levelCount:=MipMaps;
     ImageSubresourceRange.baseArrayLayer:=0;
     ImageSubresourceRange.layerCount:=6;
     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
@@ -207,7 +214,7 @@ begin
                                             false,
                                             TVkCompareOp(VK_COMPARE_OP_NEVER),
                                             0.0,
-                                            1.0,
+                                            MipMaps,
                                             TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                             false);
 
@@ -221,7 +228,7 @@ begin
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                 0,
-                                                1,
+                                                MipMaps,
                                                 0,
                                                 6);
 
@@ -420,6 +427,54 @@ begin
 
     finally
      FreeAndNil(ImageView);
+    end;
+
+    // Generate mipmaps
+    begin
+
+     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                            TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                            TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                            @ImageSubresourceRange,
+                            CommandBuffer,
+                            Queue,
+                            Fence,
+                            true);
+
+     for FaceIndex:=0 to 5 do begin
+      for Index:=1 to MipMaps-1 do begin
+       ImageBlit:=TVkImageBlit.Create(TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                       Index-1,
+                                                                       FaceIndex,
+                                                                       1),
+                                      [TVkOffset3D.Create(Width shr (Index-1),Height shr (Index-1),1)],
+                                      TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                       Index,
+                                                                       FaceIndex,
+                                                                       1),
+                                      [TVkOffset3D.Create(Width shr Index,Height shr Index,1)]
+                                     );
+       CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+       CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+       CommandBuffer.CmdBlitImage(fVulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                  fVulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                  1,
+                                  @ImageBlit,
+                                  TVkFilter(VK_FILTER_LINEAR));
+       CommandBuffer.EndRecording;
+       CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,Fence,true);
+      end;
+     end;
+
+     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                            TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                            TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                            @ImageSubresourceRange,
+                            CommandBuffer,
+                            Queue,
+                            Fence,
+                            true);
+
     end;
 
    finally
