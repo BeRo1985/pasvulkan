@@ -291,7 +291,10 @@ void main() {
       vec3 normal;
       if ((texCoordIndices.x & 0x00000f00u) != 0x00000f00u) {
         vec4 normalTexture = textureFetch(uTextures[2], 2, vec2(0.0, 1.0).xxyx);
-        normal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
+        normal = normalize(                                                                                                                      //
+            mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) *                                                            //
+            normalize((normalTexture.xyz - vec3(0.5)) * (vec2(uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
+        );
       } else {
         normal = normalize(inNormal);
       }

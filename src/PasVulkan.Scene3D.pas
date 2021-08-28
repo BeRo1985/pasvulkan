@@ -1098,12 +1098,14 @@ type EpvScene3D=class(Exception);
 implementation
 
 function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
-var x,y,s,tx,ty:TpvScalar;
+var Vector:TpvVector3;
+    x,y,s,tx,ty:TpvScalar;
 begin
- s:=abs(aVector.x)+abs(aVector.y)+abs(aVector.z);
- x:=aVector.x/s;
- y:=aVector.y/s;
- if aVector.z<0.0 then begin
+ Vector:=aVector.Normalize;
+ s:=abs(Vector.x)+abs(Vector.y)+abs(Vector.z);
+ x:=Vector.x/s;
+ y:=Vector.y/s;
+ if Vector.z<0.0 then begin
   tx:=1.0-abs(y);
   if x<0.0 then begin
    tx:=-tx;
@@ -1120,7 +1122,7 @@ begin
  end else begin
   result[0]:=Min(Max(trunc(Ceil(x*32767.5)),-32768),32767);
  end;
- if aFloorX then begin
+ if aFloorY then begin
   result[1]:=Min(Max(trunc(Floor(y*32767.5)),-32768),32767);
  end else begin
   result[1]:=Min(Max(trunc(Ceil(y*32767.5)),-32768),32767);
@@ -1159,29 +1161,32 @@ begin
 end;
 
 function OctEncode(const aVector:TpvVector3):TpvScene3D.TInt16Vector2; overload;
-var Oct:TpvScene3D.TInt16Vector2;
+var Vector:TpvVector3;
+    Oct:TpvScene3D.TInt16Vector2;
     BestDot,Dot:TpvScalar;
 begin
 
- result:=OctEncode(aVector,false,false);
- BestDot:=aVector.Dot(OctDecode(result));
+ Vector:=aVector.Normalize;
 
- Oct:=OctEncode(aVector,false,true);
- Dot:=aVector.Dot(OctDecode(Oct));
+ result:=OctEncode(Vector,false,false);
+ BestDot:=Vector.Dot(OctDecode(result));
+
+ Oct:=OctEncode(Vector,false,true);
+ Dot:=Vector.Dot(OctDecode(Oct));
  if BestDot>Dot then begin
   result:=Oct;
   BestDot:=Dot;
  end;
 
- Oct:=OctEncode(aVector,true,true);
- Dot:=aVector.Dot(OctDecode(Oct));
+ Oct:=OctEncode(Vector,true,true);
+ Dot:=Vector.Dot(OctDecode(Oct));
  if BestDot>Dot then begin
   result:=Oct;
   BestDot:=Dot;
  end;
 
- Oct:=OctEncode(aVector,true,false);
- Dot:=aVector.Dot(OctDecode(Oct));
+ Oct:=OctEncode(Vector,true,false);
+ Dot:=Vector.Dot(OctDecode(Oct));
  if BestDot>Dot then begin
   result:=Oct;
   BestDot:=Dot;
@@ -3319,7 +3324,10 @@ begin
        end else begin
         SetLength(TemporaryBitangents,length(TemporaryPositions));
         for VertexIndex:=0 to length(TemporaryBitangents)-1 do begin
-         PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=(PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize.Cross(PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize)).Normalize*TemporaryTangents[VertexIndex,3];
+         Normal:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize;
+         Tangent:=PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize;
+         Bitangent:=Normal.Cross(Tangent).Normalize;
+         PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent*TemporaryTangents[VertexIndex,3];
         end;
        end;
       end;
@@ -3380,14 +3388,17 @@ begin
         end else begin
          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
         end;
-        TangentSpaceMatrix:=TangentSpaceMatrix.RobustOrthoNormalize;
         Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
-        TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
-        TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
-        if TangentSpaceMatrix.Normal.Cross(TangentSpaceMatrix.Tangent).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
+{$if true}
+        if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
          Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
         end;
+{$else}
+        if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
+         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+        end;
+{$ifend}
         if VertexIndex<length(TemporaryTexCoord0) then begin
          Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
         end;
