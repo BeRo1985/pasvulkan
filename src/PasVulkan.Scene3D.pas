@@ -320,6 +320,10 @@ type EpvScene3D=class(Exception);
                     RoughnessFactor:TpvFloat;
                     MetallicFactor:TpvFloat;
                     MetallicRoughnessTexture:TTextureReference;
+                    SpecularFactor:TpvFloat;
+                    SpecularTexture:TTextureReference;
+                    SpecularColorFactor:TpvVector3;
+                    SpecularColorTexture:TTextureReference;
                    end;
                    PPBRMetallicRoughness=^TPBRMetallicRoughness;
                    TPBRSpecularGlossiness=record
@@ -409,6 +413,10 @@ type EpvScene3D=class(Exception);
                       RoughnessFactor:1.0;
                       MetallicFactor:1.0;
                       MetallicRoughnessTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      SpecularFactor:1.0;
+                      SpecularTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      SpecularColorFactor:(x:1.0;y:1.0;z:1.0);
+                      SpecularColorTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
                      PBRSpecularGlossiness:(
                       DiffuseFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
@@ -1862,6 +1870,20 @@ begin
    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
   end;
  end;
+ if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+  try
+   fData.PBRMetallicRoughness.SpecularTexture.Texture.DecRef;
+  finally
+   fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+  try
+   fData.PBRMetallicRoughness.SpecularColorTexture.Texture.DecRef;
+  finally
+   fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
+  end;
+ end;
  if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
   try
    fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
@@ -1968,6 +1990,20 @@ begin
      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
     end;
    end;
+   if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+    try
+     fData.PBRMetallicRoughness.SpecularTexture.Texture.DecRef;
+    finally
+     fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+    try
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture.DecRef;
+    finally
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
+    end;
+   end;
    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
     try
      fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
@@ -2035,6 +2071,8 @@ var UniversalQueue:TpvVulkanQueue;
     EmissiveTextureDescriptorImageInfo,
     BaseColorOrDiffuseTextureDescriptorImageInfo,
     MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo,
+    SpecularFactorTextureDescriptorImageInfo,
+    SpecularColorFactorTextureDescriptorImageInfo,
     SheenColorIntensityTextureDescriptorImageInfo,
     ClearCoatNormalTextureDescriptorImageInfo,
     ClearCoatRoughnessTextureDescriptorImageInfo,
@@ -2089,6 +2127,18 @@ begin
        end else begin
         MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
        end;
+       if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+        fData.PBRMetallicRoughness.SpecularTexture.Texture.Upload;
+        SpecularFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
+       if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+        fData.PBRMetallicRoughness.SpecularColorTexture.Texture.Upload;
+        SpecularColorFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularColorTexture.Texture.GetDescriptorImageInfo;
+       end else begin
+        SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       end;
       end;
       TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness:begin
        if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
@@ -2103,6 +2153,8 @@ begin
        end else begin
         MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
        end;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
       end;
       TpvScene3D.TMaterial.TShadingModel.Unlit:begin
        if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
@@ -2112,10 +2164,14 @@ begin
         BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
        end;
        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
       end;
       else begin
        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
       end;
      end;
 
@@ -2193,7 +2249,7 @@ begin
 
      fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),2);
      fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
-     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9);
+     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,11);
      fVulkanDescriptorPool.Initialize;
      fVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                          fSceneInstance.fMaterialVulkanDescriptorSetLayout);
@@ -2207,7 +2263,7 @@ begin
                                                false);
      fVulkanDescriptorSet.WriteToDescriptorSet(1,
                                                0,
-                                               9,
+                                               11,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                [BaseColorOrDiffuseTextureDescriptorImageInfo,                    // 0
                                                 MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo, // 1
@@ -2217,7 +2273,9 @@ begin
                                                 SheenColorIntensityTextureDescriptorImageInfo,                   // 5
                                                 ClearCoatNormalTextureDescriptorImageInfo,                       // 6
                                                 ClearCoatRoughnessTextureDescriptorImageInfo,                    // 7
-                                                ClearCoatTextureDescriptorImageInfo],                            // 8
+                                                ClearCoatTextureDescriptorImageInfo,                             // 8
+                                                SpecularFactorTextureDescriptorImageInfo,                        // 9
+                                                SpecularColorFactorTextureDescriptorImageInfo],                  // 10
                                                [],
                                                [],
                                                false);
@@ -2337,6 +2395,45 @@ begin
   end;
   fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord;
   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.MetallicRoughnessTexture,aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Extensions);
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_specular'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
+   fData.PBRMetallicRoughness.SpecularFactor:=TPasJSON.GetNumber(JSONObject.Properties['specularFactor'],1.0);
+   JSONItem:=JSONObject.Properties['specularTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.PBRMetallicRoughness.SpecularTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+      fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.SpecularTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularTexture.TexCoord);
+    fData.PBRMetallicRoughness.SpecularTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+   JSONItem:=JSONObject.Properties['specularColorFactor'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+    fData.PBRMetallicRoughness.SpecularColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.DiffuseFactor[0]);
+    fData.PBRMetallicRoughness.SpecularColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.DiffuseFactor[1]);
+    fData.PBRMetallicRoughness.SpecularColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.DiffuseFactor[2]);
+   end;
+   JSONItem:=JSONObject.Properties['specularColorTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord);
+    fData.PBRMetallicRoughness.SpecularColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+  end;
  end;
  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_unlit'];
  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
@@ -2533,6 +2630,19 @@ begin
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[1]:=fData.PBRMetallicRoughness.RoughnessFactor;
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[2]:=fData.NormalTextureScale;
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[3]:=fData.OcclusionTextureStrength;
+   if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) or
+      assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+    fShaderData.Flags:=fShaderData.Flags or (1 shl 9);
+   end;
+   fShaderData.SpecularFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.SpecularColorFactor[0],fData.PBRMetallicRoughness.SpecularColorFactor[1],fData.PBRMetallicRoughness.SpecularColorFactor[2],fData.PBRMetallicRoughness.SpecularFactor);
+   if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+    fShaderData.Textures1:=(fShaderData.Textures1 and not ($f shl (1 shl 2))) or (TpvUInt32(fData.PBRMetallicRoughness.SpecularTexture.TexCoord and $f) shl (1 shl 2));
+    fShaderData.TextureTransforms[9]:=fData.PBRMetallicRoughness.SpecularTexture.Transform.ToMatrix4x4;
+   end;
+   if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+    fShaderData.Textures1:=(fShaderData.Textures1 and not ($f shl (2 shl 2))) or (TpvUInt32(fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord and $f) shl (2 shl 2));
+    fShaderData.TextureTransforms[10]:=fData.PBRMetallicRoughness.SpecularColorTexture.Transform.ToMatrix4x4;
+   end;
   end;
   TMaterial.TShadingModel.PBRSpecularGlossiness:begin
    fShaderData.Flags:=fShaderData.Flags or ((1 and $f) shl 0);
@@ -6185,12 +6295,12 @@ begin
  fMaterialVulkanDescriptorSetLayout.AddBinding(0,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
  fMaterialVulkanDescriptorSetLayout.AddBinding(1,
                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                               9,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               11,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
 
@@ -6556,7 +6666,7 @@ var StackPointer:TpvSizeInt;
     Mask:TpvUInt32;
     Stack:array[0..31] of TStackItem;
 begin
- if aRoot>=0 then begin
+ if (aRoot>=0) and (length(aTreeNodes)>0) then begin
   Stack[0].Node:=aRoot;
   Stack[0].Mask:=$ffffffff;
   StackPointer:=1;

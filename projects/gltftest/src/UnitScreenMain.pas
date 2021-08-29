@@ -24,6 +24,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -40,6 +41,14 @@ uses SysUtils,
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
+      public
+       type TSwapChainImageState=record
+             Ready:TPasMPBool32;
+             ViewMatrix:TpvMatrix4x4;
+             ProjectionMatrix:TpvMatrix4x4;
+            end;
+            PSwapChainImageState=^TSwapChainImageState;
+            TSwapChainImageStates=array[0..MaxSwapChainImages+1] of TSwapChainImageState;
       private
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -77,6 +86,8 @@ type { TScreenMain }
        fCameraRotationX:TpvScalar;
        fCameraRotationY:TpvScalar;
        fZoom:TpvScalar;
+       fSwapChainImageStates:TSwapChainImageStates;
+       fUpdateLock:TPasMPCriticalSection;
       public
 
        constructor Create; override;
@@ -121,6 +132,8 @@ var GLTF:TPasGLTF.TDocument;
 begin
  inherited Create;
 
+ fUpdateLock:=TPasMPCriticalSection.Create;
+
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
 
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
@@ -151,6 +164,7 @@ begin
  FreeAndNil(fGroupInstance);
  FreeAndNil(fGroup);
  FreeAndNil(fScene3D);
+ FreeAndNil(fUpdateLock);
  inherited Destroy;
 end;
 
@@ -302,6 +316,8 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fScene3D.MaterialVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fImageBasedLightingVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
+
+ FillChar(fSwapChainImageStates,SizeOf(TSwapChainImageStates),#0);
 
 end;
 
@@ -578,6 +594,8 @@ begin
 
  fSkyBox:=TSkyBox.Create(fSkyCubeMap.DescriptorImageInfo,fVulkanRenderPass,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
 
+//FillChar(fSwapChainImageStates,SizeOf(TSwapChainImageStates),#0);
+
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
@@ -603,56 +621,76 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
+var ModelMatrix:TpvMatrix4x4;
+    Center,Bounds:TpvVector3;
+    t0,t1:Double;
+    SwapChainImageState:PSwapChainImageState;
 begin
  inherited Update(aDeltaTime);
+
+ SwapChainImageState:=@fSwapChainImageStates[pvApplication.UpdateSwapChainImageIndex];
+
+ if assigned(fVulkanRenderPass) then begin
+
+  fUpdateLock.Acquire;
+  try
+
+   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+
+   fGroupInstance.ModelMatrix:=ModelMatrix;
+
+   if fGroupInstance.Group.Animations.Count>0 then begin
+    fGroupInstance.Automations[-1].Factor:=0.0;
+    fGroupInstance.Automations[-1].Time:=0.0;
+    if fGroupInstance.Group.Animations.Count>4 then begin
+     fGroupInstance.Automations[3].Factor:=1.0;
+     t0:=fGroupInstance.Group.Animations[3].GetAnimationBeginTime;
+     t1:=fGroupInstance.Group.Animations[3].GetAnimationEndTime;
+     fGroupInstance.Automations[3].Time:=ModuloPos(fTime,t1-t0)+t0;
+    end else begin
+     fGroupInstance.Automations[0].Factor:=1.0;
+     t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
+     t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
+     fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
+    end;
+   end else begin
+    fGroupInstance.Automations[-1].Factor:=1.0;
+    fGroupInstance.Automations[-1].Time:=0.0;
+   end;
+
+   fScene3D.Update(pvApplication.UpdateSwapChainImageIndex);
+
+   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+   SwapChainImageState^.ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                                        sin(-fCameraRotationY*PI*2.0),
+                                                                                        cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                                              (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                                              Center,
+                                                              TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
+
+   SwapChainImageState^.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
+
+   TPasMPInterlocked.Write(SwapChainImageState^.Ready,true);
+
+   fTime:=fTime+pvApplication.DeltaTime;
+
+  finally
+   fUpdateLock.Release;
+  end;
+
+ end;
+
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var VulkanCommandBuffer:TpvVulkanCommandBuffer;
-    ModelMatrix:TpvMatrix4x4;
-    ViewMatrix:TpvMatrix4x4;
-    ProjectionMatrix:TpvMatrix4x4;
-    Center,Bounds:TpvVector3;
-    t0,t1:Double;
+    SwapChainImageState:PSwapChainImageState;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
 
-  ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
-
-  fGroupInstance.ModelMatrix:=ModelMatrix;
-
-  if fGroupInstance.Group.Animations.Count>0 then begin
-   fGroupInstance.Automations[-1].Factor:=0.0;
-   fGroupInstance.Automations[-1].Time:=0.0;
-   if fGroupInstance.Group.Animations.Count>4 then begin
-    fGroupInstance.Automations[3].Factor:=1.0;
-    t0:=fGroupInstance.Group.Animations[3].GetAnimationBeginTime;
-    t1:=fGroupInstance.Group.Animations[3].GetAnimationEndTime;
-    fGroupInstance.Automations[3].Time:=ModuloPos(fTime,t1-t0)+t0;
-   end else begin
-    fGroupInstance.Automations[0].Factor:=1.0;
-    t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
-    t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
-    fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
-   end;
-  end else begin
-   fGroupInstance.Automations[-1].Factor:=1.0;
-   fGroupInstance.Automations[-1].Time:=0.0;
-  end;
-
-  fScene3D.Update(aSwapChainImageIndex);
-
-  Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
-  Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
-  ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                  sin(-fCameraRotationY*PI*2.0),
-                                                                  cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                        (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                        Center,
-                                        TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
-
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
+  SwapChainImageState:=@fSwapChainImageStates[aSwapChainImageIndex];
 
   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
 
@@ -668,48 +706,52 @@ begin
                                     pvApplication.VulkanSwapChain.Width,
                                     pvApplication.VulkanSwapChain.Height);
 
-  fSkyBox.Draw(VulkanCommandBuffer,ViewMatrix,ProjectionMatrix);
+  if TPasMPInterlocked.CompareExchange(SwapChainImageState^.Ready,false,true) then begin
 
-  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            fVulkanPipelineLayout.Handle,
-                                            2,
-                                            1,
-                                            @fImageBasedLightingVulkanDescriptorSet.Handle,
-                                            0,
-                                            nil);
+   fSkyBox.Draw(VulkanCommandBuffer,SwapChainImageState^.ViewMatrix,SwapChainImageState^.ProjectionMatrix);
 
-  fScene3D.Prepare(aSwapChainImageIndex,
-                   0,
-                   ViewMatrix,
-                   ProjectionMatrix,
-                   true);
+   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fVulkanPipelineLayout.Handle,
+                                             2,
+                                             1,
+                                             @fImageBasedLightingVulkanDescriptorSet.Handle,
+                                             0,
+                                             nil);
 
-  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                aSwapChainImageIndex,
-                0,
-                ViewMatrix,
-                ProjectionMatrix,
-                VulkanCommandBuffer,
-                fVulkanPipelineLayout,
-                [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+   fScene3D.Prepare(aSwapChainImageIndex,
+                    0,
+                    SwapChainImageState^.ViewMatrix,
+                    SwapChainImageState^.ProjectionMatrix,
+                    true);
 
-  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                aSwapChainImageIndex,
-                0,
-                ViewMatrix,
-                ProjectionMatrix,
-                VulkanCommandBuffer,
-                fVulkanPipelineLayout,
-                [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                 aSwapChainImageIndex,
+                 0,
+                 SwapChainImageState^.ViewMatrix,
+                 SwapChainImageState^.ProjectionMatrix,
+                 VulkanCommandBuffer,
+                 fVulkanPipelineLayout,
+                 [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-  fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                aSwapChainImageIndex,
-                0,
-                ViewMatrix,
-                ProjectionMatrix,
-                VulkanCommandBuffer,
-                fVulkanPipelineLayout,
-                [TpvScene3D.TMaterial.TAlphaMode.Blend]);
+   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                 aSwapChainImageIndex,
+                 0,
+                 SwapChainImageState^.ViewMatrix,
+                 SwapChainImageState^.ProjectionMatrix,
+                 VulkanCommandBuffer,
+                 fVulkanPipelineLayout,
+                 [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+   fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                 aSwapChainImageIndex,
+                 0,
+                 SwapChainImageState^.ViewMatrix,
+                 SwapChainImageState^.ProjectionMatrix,
+                 VulkanCommandBuffer,
+                 fVulkanPipelineLayout,
+                 [TpvScene3D.TMaterial.TAlphaMode.Blend]);
+
+  end;
 
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
@@ -723,8 +765,6 @@ begin
                               false);
 
   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
-
-  fTime:=fTime+pvApplication.DeltaTime;
 
  end;
 end;
@@ -745,8 +785,13 @@ begin
  if not result then begin
   if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Motion) and
      (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
-   fCameraRotationX:=frac(fCameraRotationX+(1.0-(aPointerEvent.RelativePosition.x*(1.0/pvApplication.VulkanSwapChain.Width))));
-   fCameraRotationY:=frac(fCameraRotationY+(1.0-(aPointerEvent.RelativePosition.y*(1.0/pvApplication.VulkanSwapChain.Height))));
+   fUpdateLock.Acquire;
+   try
+    fCameraRotationX:=frac(fCameraRotationX+(1.0-(aPointerEvent.RelativePosition.x*(1.0/pvApplication.VulkanSwapChain.Width))));
+    fCameraRotationY:=frac(fCameraRotationY+(1.0-(aPointerEvent.RelativePosition.y*(1.0/pvApplication.VulkanSwapChain.Height))));
+   finally
+    fUpdateLock.Release;
+   end;
    result:=true;
   end;
  end;
@@ -756,7 +801,12 @@ function TScreenMain.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=inherited Scrolled(aRelativeAmount);
  if not result then begin
-  fZoom:=Max(1e-4,fZoom+((aRelativeAmount.x+aRelativeAmount.y)*0.1));
+  fUpdateLock.Acquire;
+  try
+   fZoom:=Max(1e-4,fZoom+((aRelativeAmount.x+aRelativeAmount.y)*0.1));
+  finally
+   fUpdateLock.Release;
+  end;
   result:=true;
  end;
 end;
