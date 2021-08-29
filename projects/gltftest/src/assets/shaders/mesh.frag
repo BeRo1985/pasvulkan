@@ -128,7 +128,7 @@ float D_Charlie(float sheenRoughness, float NdotH) {
 }
 
 vec3 BRDF_lambertian(vec3 f0, vec3 f90, vec3 diffuseColor, float specularWeight, float VdotH) {
-  return (1.0 - specularWeight * F_Schlick(f0, f90, VdotH)) * (diffuseColor / PI);  //
+  return (1.0 - (specularWeight * F_Schlick(f0, f90, VdotH))) * (diffuseColor * OneOverPI);  //
 }
 
 vec3 BRDF_specularGGX(vec3 f0, vec3 f90, float alphaRoughness, float specularWeight, float VdotH, float NdotL, float NdotV, float NdotH) {
