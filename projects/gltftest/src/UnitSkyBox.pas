@@ -42,7 +42,7 @@ type { TSkyBox }
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
 
-       constructor Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32);
+       constructor Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 
        destructor Destroy; override;
 
@@ -54,7 +54,7 @@ implementation
 
 { TSkyBox }
 
-constructor TSkyBox.Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32);
+constructor TSkyBox.Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 var Stream:TStream;
 begin
  inherited Create;
@@ -136,7 +136,7 @@ begin
  fVulkanPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
  fVulkanPipeline.RasterizationState.LineWidth:=1.0;
 
- fVulkanPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
  fVulkanPipeline.MultisampleState.SampleShadingEnable:=false;
  fVulkanPipeline.MultisampleState.MinSampleShading:=0.0;
  fVulkanPipeline.MultisampleState.CountSampleMasks:=0;

@@ -485,7 +485,7 @@ begin
      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
-     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -547,7 +547,8 @@ begin
  fSkyBox:=TSkyBox.Create(fParent.fSkyCubeMap.DescriptorImageInfo,
                          fVulkanRenderPass,
                          fWidth,
-                         fHeight);
+                         fHeight,
+                         fParent.fVulkanSampleCountFlagBits);
 
 end;
 
