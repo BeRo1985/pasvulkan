@@ -6,7 +6,7 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outColor;
 
-layout(input_attachment_index = 0, set = 0, binding = 1) uniform subpassInput uSubpassInput;
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInput;
 
 #define HDRToneMappingOperator 7
 
@@ -83,8 +83,7 @@ vec3 doToneMapping(vec3 color){
 
 void main(){
 #if 1
-  vec4 c = subpassLoad(uSubpassInput);
-  
+  vec4 c = subpassLoad(uSubpassInput);  
   outColor = vec4(doToneMapping(c.xyz), c.w);
 #else
   outColor = vec4(1.0);

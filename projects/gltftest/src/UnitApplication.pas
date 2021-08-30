@@ -74,6 +74,8 @@ begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
+ VulkanDebugging:=true;
+ VulkanValidation:=true;
  Title:='PasVulkan GLTF Test';
  PathName:='gltftest.pasvulkan';
  StartScreen:=TScreenMain;
@@ -82,6 +84,7 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
+ SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 //DesiredCountSwapChainImages:=2;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
