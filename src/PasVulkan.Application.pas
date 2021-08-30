@@ -8030,6 +8030,8 @@ begin
 
       fDrawFrameCounter:=fFrameCounter;
 
+      fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex;
+
       Check(fUpdateDeltaTime);
 
       UpdateJobFunction(nil,0);
