@@ -1162,8 +1162,8 @@ begin
   end;
  finally
  end;
+
  fGroupInstance:=fGroup.CreateInstance;
-//fGroup.AssignFromGLTF();
 
  fFrameGraph:=TpvFrameGraph.Create(pvApplication.VulkanDevice);
 
