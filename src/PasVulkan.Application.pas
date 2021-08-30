@@ -845,6 +845,8 @@ type EpvApplication=class(Exception)
 
        procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
 
+       function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; virtual;
+
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
@@ -1396,6 +1398,8 @@ type EpvApplication=class(Exception)
 
        procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
 
+       function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; virtual;
+
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
@@ -1435,6 +1439,8 @@ type EpvApplication=class(Exception)
 
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
+
+       property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
@@ -4800,6 +4806,11 @@ procedure TpvApplicationScreen.BeginFrame(const aDeltaTime:TpvDouble);
 begin
 end;
 
+function TpvApplicationScreen.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+begin
+ result:=true;
+end;
+
 procedure TpvApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
 end;
@@ -7951,7 +7962,7 @@ begin
 
   fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
 
-  if fSkipNextDrawFrame then begin
+  if fSkipNextDrawFrame or not IsReadyForDrawOfSwapChainImageIndex(fDrawSwapChainImageIndex) then begin
 
    fSkipNextDrawFrame:=false;
 
@@ -7977,6 +7988,15 @@ begin
    inc(fFrameCounter);
 
    FrameRateLimiter;
+
+   inc(fDrawSwapChainImageIndex);
+   if fDrawSwapChainImageIndex>=fCountSwapChainImages then begin
+    dec(fDrawSwapChainImageIndex,fCountSwapChainImages);
+   end;
+   fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex+1;
+   if fUpdateSwapChainImageIndex>=fCountSwapChainImages then begin
+    dec(fUpdateSwapChainImageIndex,fCountSwapChainImages);
+   end;
 
   end else begin
 
@@ -8768,6 +8788,11 @@ begin
  if assigned(fScreen) then begin
   fScreen.BeginFrame(aDeltaTime);
  end;
+end;
+
+function TpvApplication.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+begin
+ result:=assigned(fScreen) and fScreen.IsReadyForDrawOfSwapChainImageIndex(aSwapChainImageIndex);
 end;
 
 procedure TpvApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);

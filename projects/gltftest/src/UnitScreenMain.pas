@@ -198,6 +198,8 @@ type { TScreenMain }
 
        procedure Update(const aDeltaTime:TpvDouble); override;
 
+       function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; override;
+
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
@@ -576,7 +578,7 @@ var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
 
- SwapChainImageState:=@fParent.fSwapChainImageStates[aSwapChainImageIndex];
+ SwapChainImageState:=@fParent.fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex];
 
  if TPasMPInterlocked.CompareExchange(SwapChainImageState^.Ready,false,true) then begin
 
@@ -590,14 +592,14 @@ begin
                                        0,
                                        nil);
 
-  fParent.fScene3D.Prepare(aSwapChainImageIndex,
-                   0,
-                   SwapChainImageState^.ViewMatrix,
-                   SwapChainImageState^.ProjectionMatrix,
-                   true);
+  fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
+                           0,
+                           SwapChainImageState^.ViewMatrix,
+                           SwapChainImageState^.ProjectionMatrix,
+                           true);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                        aSwapChainImageIndex,
+                        pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.ViewMatrix,
                         SwapChainImageState^.ProjectionMatrix,
@@ -606,7 +608,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
+                        pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.ViewMatrix,
                         SwapChainImageState^.ProjectionMatrix,
@@ -615,7 +617,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        aSwapChainImageIndex,
+                        pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.ViewMatrix,
                         SwapChainImageState^.ProjectionMatrix,
@@ -1365,6 +1367,8 @@ begin
 
  fFrameGraph.Show;
 
+ pvApplication.SkipNextDrawFrame:=true;
+
 end;
 
 procedure TScreenMain.Hide;
@@ -1406,6 +1410,7 @@ end;
 procedure TScreenMain.Resume;
 begin
  inherited Resume;
+ pvApplication.SkipNextDrawFrame:=true;
 end;
 
 procedure TScreenMain.Pause;
@@ -1416,6 +1421,7 @@ end;
 procedure TScreenMain.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
+ pvApplication.SkipNextDrawFrame:=true;
 end;
 
 procedure TScreenMain.AfterCreateSwapChain;
@@ -1435,6 +1441,8 @@ begin
 
  fFrameGraph.AfterCreateSwapChain;
 
+ pvApplication.SkipNextDrawFrame:=true;
+
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
@@ -1445,7 +1453,7 @@ end;
 
 function TScreenMain.CanBeParallelProcessed:boolean;
 begin
- result:=false;//true;
+ result:=true;
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
@@ -1511,6 +1519,11 @@ begin
 
  fFrameGraph.Update(pvApplication.UpdateSwapChainImageIndex,pvApplication.UpdateFrameCounter);
 
+end;
+
+function TScreenMain.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+begin
+ result:=TPasMPInterlocked.Read(fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex].Ready);
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
