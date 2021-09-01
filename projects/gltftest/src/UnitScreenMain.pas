@@ -1477,7 +1477,7 @@ begin
    fGroupInstance.ModelMatrix:=ModelMatrix;
 
    if fGroupInstance.Group.Animations.Count>0 then begin
-    fGroupInstance.Automations[-1].Factor:=0.0;
+    fGroupInstance.Automations[-1].Factor:=-1.0;
     fGroupInstance.Automations[-1].Time:=0.0;
     if fGroupInstance.Group.Animations.Count>4 then begin
      fGroupInstance.Automations[3].Factor:=1.0;
