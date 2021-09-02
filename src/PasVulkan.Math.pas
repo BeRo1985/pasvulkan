@@ -534,6 +534,7 @@ type PpvScalar=^TpvScalar;
        function Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function Elerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function Sqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
@@ -610,6 +611,7 @@ type PpvScalar=^TpvScalar;
        function Lerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Elerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Sqlerp(const aB,aC,aD:TpvDecomposedMatrix3x3;const aTime:TpvScalar):TpvDecomposedMatrix3x3;
      end;
 
@@ -697,10 +699,12 @@ type PpvScalar=^TpvScalar;
        function SimpleLerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleNlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleElerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSqlerp(const aB,aC,aD:TpvMatrix3x3;const aTime:TpvScalar):TpvMatrix3x3;
        function Lerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Elerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Sqlerp(const aB,aC,aD:TpvMatrix3x3;const aTime:TpvScalar):TpvMatrix3x3;
        function MulInverse(const a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulInverse(const a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -727,6 +731,7 @@ type PpvScalar=^TpvScalar;
        function Lerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Elerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Sqlerp(const aB,aC,aD:TpvDecomposedMatrix4x4;const aTime:TpvScalar):TpvDecomposedMatrix4x4;
      end;
 
@@ -853,10 +858,12 @@ type PpvScalar=^TpvScalar;
        function SimpleLerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleNlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleElerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSqlerp(const aB,aC,aD:TpvMatrix4x4;const aTime:TpvScalar):TpvMatrix4x4;
        function Lerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Elerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Sqlerp(const aB,aC,aD:TpvMatrix4x4;const aTime:TpvScalar):TpvMatrix4x4;
        function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -5643,6 +5650,23 @@ begin
  result:=(s0*self)+(aToQuaternion*(s1*s2));
 end;
 
+function TpvQuaternion.Elerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+var SignFactor:TpvScalar;
+begin
+ if Dot(aToQuaternion)<0.0 then begin
+  SignFactor:=-1.0;
+ end else begin
+  SignFactor:=1.0;
+ end;
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aToQuaternion*SignFactor;
+ end else begin
+  result:=((Log*(1.0-aTime))+((aToQuaternion*SignFactor).Log*aTime)).Exp;
+ end;
+end;
+
 function TpvQuaternion.Sqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 begin
  result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
@@ -6047,6 +6071,19 @@ begin
   result.Scale:=Scale.Lerp(b.Scale,t);
   result.Skew:=Skew.Lerp(b.Skew,t);
   result.Rotation:=Rotation.Slerp(b.Rotation,t);
+ end;
+end;
+
+function TpvDecomposedMatrix3x3.Elerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result.Scale:=Scale.Lerp(b.Scale,t);
+  result.Skew:=Skew.Lerp(b.Skew,t);
+  result.Rotation:=Rotation.Elerp(b.Rotation,t);
  end;
 end;
 
@@ -7242,6 +7279,27 @@ begin
  end;
 end;
 
+function TpvMatrix3x3.SimpleElerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
+var Scale:TpvVector3;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  Scale:=TpvVector3.Create(Right.Length,
+                           Up.Length,
+                           Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
+                                                                   b.Up.Length,
+                                                                   b.Forwards.Length),
+                                                 t);
+  result:=TpvMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Elerp(b.Normalize.ToQuaternion,t));
+  result.Right:=result.Right*Scale.x;
+  result.Up:=result.Up*Scale.y;
+  result.Forwards:=result.Forwards*Scale.z;
+ end;
+end;
+
 function TpvMatrix3x3.SimpleSqlerp(const aB,aC,aD:TpvMatrix3x3;const aTime:TpvScalar):TpvMatrix3x3;
 begin
  result:=SimpleSlerp(aD,aTime).SimpleSlerp(aB.SimpleSlerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
@@ -7277,6 +7335,17 @@ begin
   result:=b;
  end else begin
   result:=TpvMatrix3x3.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
+ end;
+end;
+
+function TpvMatrix3x3.Elerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result:=TpvMatrix3x3.CreateRecomposed(Decompose.Elerp(b.Decompose,t));
  end;
 end;
 
@@ -7418,6 +7487,21 @@ begin
   result.Scale:=Scale.Lerp(b.Scale,t);
   result.Skew:=Skew.Lerp(b.Skew,t);
   result.Rotation:=Rotation.Slerp(b.Rotation,t);
+ end;
+end;
+
+function TpvDecomposedMatrix4x4.Elerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result.Perspective:=Perspective.Lerp(b.Perspective,t);
+  result.Translation:=Translation.Lerp(b.Translation,t);
+  result.Scale:=Scale.Lerp(b.Scale,t);
+  result.Skew:=Skew.Lerp(b.Skew,t);
+  result.Rotation:=Rotation.Elerp(b.Rotation,t);
  end;
 end;
 
@@ -11097,6 +11181,33 @@ begin
  end;
 end;
 
+function TpvMatrix4x4.SimpleElerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
+var InvT:TpvScalar;
+    Scale:TpvVector3;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  Scale:=TpvVector3.Create(Right.xyz.Length,
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
+                                                                       b.Up.xyz.Length,
+                                                                       b.Forwards.xyz.Length),
+                                                     t);
+  result:=TpvMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Elerp(b.Normalize.ToQuaternion,t));
+  result.Right.xyz:=result.Right.xyz*Scale.x;
+  result.Up.xyz:=result.Up.xyz*Scale.y;
+  result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
+  result.Translation:=Translation.Lerp(b.Translation,t);
+  InvT:=1.0-t;
+  result[0,3]:=(RawComponents[0,3]*InvT)+(b.RawComponents[0,3]*t);
+  result[1,3]:=(RawComponents[1,3]*InvT)+(b.RawComponents[1,3]*t);
+  result[2,3]:=(RawComponents[2,3]*InvT)+(b.RawComponents[2,3]*t);
+ end;
+end;
+
 function TpvMatrix4x4.SimpleSqlerp(const aB,aC,aD:TpvMatrix4x4;const aTime:TpvScalar):TpvMatrix4x4;
 begin
  result:=SimpleSlerp(aD,aTime).SimpleSlerp(aB.SimpleSlerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
@@ -11132,6 +11243,17 @@ begin
   result:=b;
  end else begin
   result:=TpvMatrix4x4.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
+ end;
+end;
+
+function TpvMatrix4x4.Elerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result:=TpvMatrix4x4.CreateRecomposed(Decompose.Elerp(b.Decompose,t));
  end;
 end;
 

@@ -5776,6 +5776,9 @@ var CullFace,Blend:TPasGLTFInt32;
      // }
      // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
      // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
+     // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes
+     // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes
+     // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No
      Rotation:=Rotation.Slerp(aRotation,aFactor/(RotationFactorSum+aFactor)); // Rolling weighted average
     end;
     inc(RotationCounter);
