@@ -5758,7 +5758,25 @@ var CullFace,Blend:TPasGLTFInt32;
     if RotationCounter=0 then begin
      Rotation:=aRotation;
     end else begin
-     Rotation:=Rotation.Slerp(aRotation,aFactor/(RotationFactorSum+aFactor)); // Rolling average
+     // Informal rolling weighted average proof as javascript/ecmascript:
+     // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
+     // var weightedAverage = 0, weightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   weightSum += data[i][1];
+     // }
+     // for(var i = 0; i < data.length; i++){
+     //    weightedAverage += data[i][0] * data[i][1];
+     // };
+     // weightedAverage /= weightSum;
+     // var rollingAverage = 0, rollingWeightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
+     //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
+     //   rollingWeightSum += data[i][1];
+     // }
+     // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
+     // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
+     Rotation:=Rotation.Slerp(aRotation,aFactor/(RotationFactorSum+aFactor)); // Rolling weighted average
     end;
     inc(RotationCounter);
     RotationFactorSum:=RotationFactorSum+aFactor;
