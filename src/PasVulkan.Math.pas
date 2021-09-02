@@ -471,6 +471,7 @@ type PpvScalar=^TpvScalar;
        constructor Create(const aX:TpvScalar); overload;
        constructor Create(const aX,aY,aZ,aW:TpvScalar); overload;
        constructor Create(const aVector:TpvVector4); overload;
+       constructor CreateFromAngularVelocity(const aAngularVelocity:TpvVector3);
        constructor CreateFromAngleAxis(const aAngle:TpvScalar;const aAxis:TpvVector3);
        constructor CreateFromEuler(const aPitch,aYaw,aRoll:TpvScalar); overload;
        constructor CreateFromEuler(const aAngles:TpvVector3); overload;
@@ -515,6 +516,7 @@ type PpvScalar=^TpvScalar;
        function ToPitch:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function ToYaw:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function ToRoll:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToAngularVelocity:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        procedure ToAngleAxis(out aAngle:TpvScalar;out aAxis:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
        function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4432,6 +4434,25 @@ begin
  Vector:=aVector;
 end;
 
+constructor TpvQuaternion.CreateFromAngularVelocity(const aAngularVelocity:TpvVector3);
+var Magnitude,Sinus,Cosinus,SinusGain:TpvScalar;
+begin
+ Magnitude:=aAngularVelocity.Length;
+ if Magnitude<EPSILON then begin
+  x:=0.0;
+  y:=0.0;
+  z:=0.0;
+  w:=1.0;
+ end else begin
+  SinCos(Magnitude*0.5,Sinus,Cosinus);
+  SinusGain:=Sinus/Magnitude;
+  x:=aAngularVelocity.x*SinusGain;
+  y:=aAngularVelocity.y*SinusGain;
+  z:=aAngularVelocity.z*SinusGain;
+  w:=Cosinus;
+ end;
+end;
+
 constructor TpvQuaternion.CreateFromAngleAxis(const aAngle:TpvScalar;const aAxis:TpvVector3);
 var s:TpvScalar;
 begin
@@ -5125,6 +5146,22 @@ begin
   result:=ArcTan2(2.0*((x*z)-(y*w)),1.0-(2.0*(sqr(y)+sqr(z))));
  end else begin
   result:=ArcTan2(2.0*((x*y)+(z*w)),1.0-(2.0*(sqr(x)+sqr(z))));
+ end;
+end;
+
+function TpvQuaternion.ToAngularVelocity:TpvVector3;
+var Angle,Gain:TpvScalar;
+begin
+ if System.abs(1.0-w)<EPSILON then begin
+  result.x:=0.0;
+  result.y:=0.0;
+  result.z:=0.0;
+ end else begin
+  Angle:=ArcCos(System.abs(w));
+  Gain:=(Sign(w)*2.0)*(Angle/Sin(Angle));
+  result.x:=x*Gain;
+  result.y:=y*Gain;
+  result.z:=z*Gain;
  end;
 end;
 
