@@ -1,4 +1,5 @@
 @echo off
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.vert -o mesh_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -o mesh_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DALPHATEST -o mesh_masked_frag.spv
