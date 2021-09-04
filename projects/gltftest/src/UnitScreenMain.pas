@@ -597,6 +597,8 @@ begin
                            0,
                            SwapChainImageState^.ViewMatrix,
                            SwapChainImageState^.ProjectionMatrix,
+                           fWidth,
+                           fHeight,
                            true);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],

@@ -1063,8 +1063,8 @@ type PpvScalar=^TpvScalar;
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix4x4):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function MatrixMul(const Transform:TpvMatrix4x4):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function ScissorRect(var Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function ScissorRect(var Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(out Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(out Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TpvAABB;var t:TpvScalar):boolean;
        function SweepTest(const bAABB:TpvAABB;const aV,bV:TpvVector3;var FirstTime,LastTime:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        case boolean of
@@ -13947,7 +13947,7 @@ begin
  result.Max:=result.Max+NewCenter;
 end;
 
-function TpvAABB.ScissorRect(var Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean;
+function TpvAABB.ScissorRect(out Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean;
 var p:TpvVector4;
     i,x,y,z_far,z_near:TpvInt32;
 begin
@@ -14032,7 +14032,7 @@ begin
  end;
 end;
 
-function TpvAABB.ScissorRect(var Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean;
+function TpvAABB.ScissorRect(out Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean;
 var p:TpvVector4;
     i,z_far,z_near:TpvInt32;
 begin

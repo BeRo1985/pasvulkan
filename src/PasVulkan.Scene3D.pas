@@ -73,6 +73,7 @@ uses {$ifdef Windows}
      PasJSON,
      PasGLTF,
      PasVulkan.Types,
+     PasVulkan.Utils,
      PasVulkan.Math,
      PasVulkan.Hash.SHA3,
      PasVulkan.Collections,
@@ -91,6 +92,20 @@ type EpvScene3D=class(Exception);
 
      TpvScene3D=class(TpvResource)
       public
+       const MaxVisibleLights=65536;
+             // Light cluster index 3D grid size = ceil(CanvasWidth/64) x ceil(CanvasHeight/64) x 16
+             LightClusterTileWidthBits=6;
+             LightClusterTileHeightBits=6;
+             LightClusterTileWidth=1 shl LightClusterTileWidthBits;
+             LightClusterTileHeight=1 shl LightClusterTileHeightBits;
+             LightClusterTileWidthMask=LightClusterTileWidth-1;
+             LightClusterTileHeightMask=LightClusterTileHeight-1;
+             // LightClusterGridWidth:=(CanvasWidth+LightClusterTileWidthMask) shr LightClusterTileWidthBits;
+             // LightClusterGridHeight:=(CanvasHeight+LightClusterTileHeightMask) shr LightClusterTileHeightBits;
+             LightClusterGridDepth=16;
+             LightClusterGridHashBits=16;
+             LightClusterGridHashSize=1 shl LightClusterGridHashBits;
+             LightClusterGridHashMask=LightClusterGridHashSize-1;
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             TDoubleSided=boolean;
             TGraphicsPipelines=array[TPrimitiveTopology,TDoubleSided] of TpvVulkanPipeline;
@@ -493,6 +508,67 @@ type EpvScene3D=class(Exception);
               procedure FillShaderData;
             end;
             TMaterials=TpvObjectGenericList<TMaterial>;
+            TLightData=record
+             public
+              type TType=
+                    (
+                     None=0,
+                     Directional=1,
+                     Point=2,
+                     Spot=3
+                    );
+             private
+              fType_:TType;
+              fIntensity:TpvFloat;
+              fRange:TpvFloat;
+              fInnerConeAngle:TpvFloat;
+              fOuterConeAngle:TpvFloat;
+              fColor:TpvVector3;
+              fCastShadows:boolean;
+              fVisible:boolean;
+              fAlways:boolean;
+             public
+              property Type_:TType read fType_ write fType_;
+              property Intensity:TpvFloat read fIntensity write fIntensity;
+              property Range:TpvFloat read fRange write fRange;
+              property InnerConeAngle:TpvFloat read fInnerConeAngle write fInnerConeAngle;
+              property OuterConeAngle:TpvFloat read fOuterConeAngle write fOuterConeAngle;
+              property Color:TpvVector3 read fColor write fColor;
+              property CastShadows:boolean read fCastShadows write fCastShadows;
+              property Visible:boolean read fVisible write fVisible;
+              property Always:boolean read fAlways write fAlways;
+            end;
+            { TLight }
+            TLight=class
+             public
+              type TType=
+                    (
+                     None=0,
+                     Directional=1,
+                     Point=2,
+                     Spot=3
+                    );
+             private
+              fVisible:boolean;
+              fData:TLightData;
+              fShadowMapIndex:TpvInt32;
+              fMatrix:TpvMatrix4x4;
+              fViewSpacePosition:TpvVector3;
+              fScissorRect:TpvFloatClipRect;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure Assign(const aFrom:TpvScene3D.TLightData);
+             public
+              property Data:TLightData read fData write fData;
+             published
+              property ShadowMapIndex:TpvInt32 read fShadowMapIndex write fShadowMapIndex;
+             public
+              property Visible:boolean read fVisible write fVisible;
+              property Matrix:TpvMatrix4x4 read fMatrix write fMatrix;
+              property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
+            end;
+            TLights=TpvObjectGenericList<TpvScene3D.TLight>;
             { TGroup }
             TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
@@ -703,35 +779,43 @@ type EpvScene3D=class(Exception);
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
                    TNodes=TpvObjectGenericList<TNode>;
+                   TLightClusterGridLightItem=packed record
+                    // uvec4 MetaData; begin
+                     Type_:TpvUInt32;
+                     ShadowMapIndex:TpvUInt32;
+       {             InnerConeCosinus:TpvFloat;
+                     OuterConeCosinus:TpvFloat;}
+                     LightAngleScale:TpvFloat;
+                     LightAngleOffset:TpvFloat;
+                    // uvec4 MetaData; end
+                    ColorIntensity:TpvVector4; // XYZ = Color RGB, W = Intensity
+                    PositionRange:TpvVector4; // XYZ = Position, W = Range
+                    DirectionZFar:TpvVector4; // XYZ = Direction, W = Unused
+                    ShadowMapMatrix:TPasGLTF.TMatrix4x4;
+                   end;
+                   PLightClusterGridLightItem=^TLightClusterGridLightItem;
+                   TLightClusterGridLightItems=array of TLightClusterGridLightItem;
+                   TLightClusterGridLightIndex=packed record
+                    Offset:TpvUInt32;
+                    Count:TpvUInt32;
+                   end;
                    TLight=class(TGroupObject)
-                    public
-                     type TType=
-                           (
-                            None=0,
-                            Directional=1,
-                            Point=2,
-                            Spot=3
-                           );
                     private
+                     fData:TLightData;
                      fIndex:TpvSizeInt;
-                     fType_:TType;
                      fNodes:TNodes;
-                     fShadowMapIndex:TpvInt32;
-                     fIntensity:TpvFloat;
-                     fRange:TpvFloat;
-                     fInnerConeAngle:TpvFloat;
-                     fOuterConeAngle:TpvFloat;
-                     fDirection:TpvVector3;
-                     fColor:TpvVector3;
-                     fCastShadows:boolean;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
+                    public
+                     property Data:TLightData read fData write fData;
                     published
+                     property Group:TGroup read fGroup write fGroup;
                      property Index:TpvSizeInt read fIndex;
+                     property Nodes:TNodes read fNodes write fNodes;
                    end;
-                   TLights=TpvObjectGenericList<TLight>;
+                   TLights=TpvObjectGenericList<TpvScene3D.TGroup.TLight>;
                    TNode=class(TGroupObject)
                     public
                      type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
@@ -743,7 +827,7 @@ type EpvScene3D=class(Exception);
                      fNodeMeshInstanceIndex:TPasGLTFSizeInt;
                      fCamera:TCamera;
                      fSkin:TSkin;
-                     fLight:TLight;
+                     fLight:TpvScene3D.TGroup.TLight;
                      fWeights:TpvFloatDynamicArray;
                      fWeightsOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
@@ -757,7 +841,7 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
-                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TLights);
+                     procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Children:TNodes read fChildren;
@@ -972,7 +1056,7 @@ type EpvScene3D=class(Exception);
               fCameras:TCameras;
               fMeshes:TMeshes;
               fSkins:TSkins;
-              fLights:TLights;
+              fLights:TpvScene3D.TGroup.TLights;
               fNodes:TNodes;
               fScenes:TScenes;
               fScene:TScene;
@@ -1028,7 +1112,7 @@ type EpvScene3D=class(Exception);
               property Cameras:TCameras read fCameras;
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
-              property Lights:TLights read fLights;
+              property Lights:TpvScene3D.TGroup.TLights read fLights;
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
@@ -1060,6 +1144,10 @@ type EpvScene3D=class(Exception);
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
        fMaterialHashMap:TMaterialHashMap;
+       fLights:array[0..MaxSwapChainImages+1] of TpvScene3D.TLights;
+       fCountLights:array[0..MaxSwapChainImages+1] of TpvSizeInt;
+       fIndirectLights:array[0..MaxSwapChainImages+1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
+       fCountIndirectLights:array[0..MaxSwapChainImages+1] of TpvSizeInt;
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -1069,6 +1157,9 @@ type EpvScene3D=class(Exception);
        fBoundingBox:TpvAABB;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
+       function AddLight(const aSwapChainImageIndex:TpvSizeInt;
+                         const aLightData:TpvScene3D.TLightData;
+                         const aMatrix:TpvMatrix4x4):boolean;
        procedure CullAABBTreeWithFrustum(const aFrustum:TpvFrustum;
                                          const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                          const aRoot:TpvSizeInt;
@@ -1079,10 +1170,19 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+       procedure PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
+                               const aViewMatrix:TpvMatrix4x4;
+                               const aProjectionMatrix:TpvMatrix4x4;
+                               const aViewPortWidth:TpvInt32;
+                               const aViewPortHeight:TpvInt32;
+                               const aFrustum:TpvFrustum;
+                               const aFrustumCulling:boolean=true);
        procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
                          const aRenderPassIndex:TpvSizeInt;
                          const aViewMatrix:TpvMatrix4x4;
                          const aProjectionMatrix:TpvMatrix4x4;
+                         const aViewPortWidth:TpvInt32;
+                         const aViewPortHeight:TpvInt32;
                          const aFrustumCulling:boolean=true);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aSwapChainImageIndex:TpvSizeInt;
@@ -2725,6 +2825,23 @@ begin
 
 end;
 
+{ TpvScene3D.TLight }
+
+constructor TpvScene3D.TLight.Create;
+begin
+ inherited Create;
+end;
+
+destructor TpvScene3D.TLight.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TLight.Assign(const aFrom:TpvScene3D.TLightData);
+begin
+ fData:=aFrom;
+end;
+
 { TpvScene3D.TGroup.TGroupObject }
 
 constructor TpvScene3D.TGroup.TGroupObject.Create(const aGroup:TGroup);
@@ -3890,6 +4007,7 @@ end;
 constructor TpvScene3D.TGroup.TLight.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+ fName:='';
  fIndex:=aIndex;
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
@@ -3909,68 +4027,67 @@ var TypeString:TPasJSONUTF8String;
 begin
  fName:='';
  fNodes.Clear;
- fType_:=TType.None;
- fShadowMapIndex:=-1;
- fIntensity:=1.0;
- fRange:=0.0;
- fInnerConeAngle:=0.0;
- fOuterConeAngle:=pi*0.25;
- fColor.x:=1.0;
- fColor.y:=1.0;
- fColor.z:=1.0;
- fCastShadows:=false;
+ fData.fType_:=TpvScene3D.TLightData.TType.None;
+ fData.fIntensity:=1.0;
+ fData.fRange:=0.0;
+ fData.fInnerConeAngle:=0.0;
+ fData.fOuterConeAngle:=pi*0.25;
+ fData.fColor.x:=1.0;
+ fData.fColor.y:=1.0;
+ fData.fColor.z:=1.0;
+ fData.fCastShadows:=false;
  if assigned(aSourceLight) then begin
   fName:=TPasJSON.GetString(aSourceLight.Properties['name'],'');
   TypeString:=TPasJSON.GetString(aSourceLight.Properties['type'],'');
   if pos('_noshadows',String(fName))>0 then begin
-   fCastShadows:=false;
+   fData.fCastShadows:=false;
   end else begin
-   fCastShadows:=TPasJSON.GetBoolean(aSourceLight.Properties['castShadows'],true);
+   fData.fCastShadows:=TPasJSON.GetBoolean(aSourceLight.Properties['castShadows'],true);
   end;
   if TypeString='directional' then begin
-   fType_:=TType.Directional;
+   fData.fType_:=TpvScene3D.TLightData.TType.Directional;
 {  if fCastShadows then begin
     fShadowMapIndex:=fCountNormalShadowMaps;
     inc(fCountNormalShadowMaps);
    end;}
   end else if TypeString='point' then begin
-   fType_:=TType.Point;
+   fData.fType_:=TpvScene3D.TLightData.TType.Point;
 {  if fCastShadows then begin
     fShadowMapIndex:=fCountCubeMapShadowMaps;
     inc(fCountCubeMapShadowMaps);
    end;}
   end else if TypeString='spot' then begin
-   fType_:=TType.Spot;
+   fData.fType_:=TpvScene3D.TLightData.TType.Spot;
 {  if fCastShadows then begin
     fShadowMapIndex:=fCountNormalShadowMaps;
     inc(fCountNormalShadowMaps);
    end;}
   end else begin
-   fType_:=TType.None;
+   fData.fType_:=TpvScene3D.TLightData.TType.None;
 {  if fCastShadows then begin
     fShadowMapIndex:=fCountNormalShadowMaps;
     inc(fCountNormalShadowMaps);
    end;}
   end;
-  fIntensity:=TPasJSON.GetNumber(aSourceLight.Properties['intensity'],fIntensity);
-  fRange:=TPasJSON.GetNumber(aSourceLight.Properties['range'],fRange);
+  fData.fIntensity:=TPasJSON.GetNumber(aSourceLight.Properties['intensity'],fData.fIntensity);
+  fData.fRange:=TPasJSON.GetNumber(aSourceLight.Properties['range'],fData.fRange);
   SpotItem:=aSourceLight.Properties['spot'];
   if assigned(SpotItem) and (SpotItem is TPasJSONItemObject) then begin
    SpotObject:=TPasJSONItemObject(SpotItem);
-   fInnerConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['innerConeAngle'],fInnerConeAngle);
-   fOuterConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['outerConeAngle'],fOuterConeAngle);
+   fData.fInnerConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['innerConeAngle'],fData.fInnerConeAngle);
+   fData.fOuterConeAngle:=TPasJSON.GetNumber(SpotObject.Properties['outerConeAngle'],fData.fOuterConeAngle);
   end;
   ColorItem:=aSourceLight.Properties['color'];
   if assigned(ColorItem) and (ColorItem is TPasJSONItemArray) then begin
    ColorArray:=TPasJSONItemArray(ColorItem);
    if ColorArray.Count>0 then begin
-    fColor.x:=TPasJSON.GetNumber(ColorArray.Items[0],fColor.x);
+    fData.fColor.x:=TPasJSON.GetNumber(ColorArray.Items[0],fData.fColor.x);
    end;
    if ColorArray.Count>1 then begin
-    fColor.y:=TPasJSON.GetNumber(ColorArray.Items[1],fColor.y);
+    fData.fColor.y:=TPasJSON.GetNumber(ColorArray.Items[1],fData.fColor.y);
    end;
    if ColorArray.Count>2 then begin
-    fColor.z:=TPasJSON.GetNumber(ColorArray.Items[2],fColor.z);
+    fData.fColor.z:=TPasJSON.GetNumber(ColorArray.Items[2],fData.fColor.z);
    end;
   end;
  end;
@@ -4021,7 +4138,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TLights);
+procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
 var WeightIndex,ChildrenIndex,Count,LightIndex,JointMatrixOffset:TPasGLTFSizeInt;
     Mesh:TMesh;
     ExtensionObject:TPasJSONItemObject;
@@ -4203,7 +4320,7 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
 
- fLights:=TLights.Create;
+ fLights:=TpvScene3D.TGroup.TLights.Create;
  fLights.OwnsObjects:=true;
 
  fScenes:=TScenes.Create;
@@ -4815,7 +4932,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  end;
  procedure ProcessLights;
  var Index:TpvSizeInt;
-     Light:TLight;
+     Light:TpvScene3D.TGroup.TLight;
      ExtensionObject:TPasJSONItemObject;
      KHRLightsPunctualItem,LightsItem,LightItem:TPasJSONItem;
      KHRLightsPunctualObject:TPasJSONItemObject;
@@ -4833,7 +4950,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
       for Index:=0 to LightsArray.Count-1 do begin
        LightItem:=LightsArray.Items[Index];
        if assigned(LightItem) and (LightItem is TPasJSONItemObject) then begin
-        Light:=TLight.Create(self,Index);
+        Light:=TpvScene3D.TGroup.TLight.Create(self,Index);
         try
          Light.AssignFromGLTF(aSourceDocument,TPasJSONItemObject(LightItem));
         finally
@@ -5939,9 +6056,9 @@ var CullFace,Blend:TPasGLTFInt32;
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
-{ if (Node^.Light>=0) and (Node^.Light<=length(fLightNodes)) then begin
-   fLightNodes[Node^.Light]:=aNodeIndex;
-  end;}
+  if assigned(Node.fLight) then begin
+   fSceneInstance.AddLight(aSwapChainImageIndex,Node.fLight.fData,Matrix);
+  end;
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessNode(Node.Children[Index].Index,Matrix);
   end;
@@ -6270,6 +6387,15 @@ begin
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
+ for Index:=0 to length(fLights)-1 do begin
+  fLights[Index]:=TpvScene3D.TLights.Create;
+  fLights[Index].OwnsObjects:=true;
+ end;
+
+ for Index:=0 to length(fCountLights)-1 do begin
+  fCountLights[Index]:=0;
+ end;
+
  fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
@@ -6372,6 +6498,10 @@ begin
  end;
  FreeAndNil(fGroups);
  FreeAndNil(fGroupListLock);
+
+ for Index:=0 to length(fLights)-1 do begin
+  FreeAndNil(fLights[Index]);
+ end;
 
  while fMaterials.Count>0 do begin
   fMaterials[fMaterials.Count-1].Free;
@@ -6620,12 +6750,38 @@ begin
  end;
 end;
 
+function TpvScene3D.AddLight(const aSwapChainImageIndex:TpvSizeInt;
+                             const aLightData:TpvScene3D.TLightData;
+                             const aMatrix:TpvMatrix4x4):boolean;
+var Index:TpvSizeInt;
+    Count:PpvSizeInt;
+    Lights:TpvScene3D.TLights;
+    Light:TpvScene3D.TLight;
+begin
+ Count:=@fCountLights[aSwapChainImageIndex];
+ result:=Count^<MaxVisibleLights;
+ if result then begin
+  Index:=Count^;
+  inc(Count^);
+  Lights:=fLights[aSwapChainImageIndex];
+  while Lights.Count<=Index do begin
+   Lights.Add(TpvScene3D.TLight.Create);
+  end;
+  Light:=Lights[Index];
+  Light.fData:=aLightData;
+  Light.fMatrix:=aMatrix;
+  Light.fShadowMapIndex:=-1;
+ end;
+end;
+
 procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
 begin
+
+ fCountLights[aSwapChainImageIndex]:=0;
 
  for Group in fGroups do begin
   Group.Update(aSwapChainImageIndex);
@@ -6742,10 +6898,146 @@ begin
  end;
 end;
 
+function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
+begin
+ result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1)-
+              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1));
+ if result=0 then begin
+  result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
+  if result=0 then begin
+  end;
+ end;
+end;
+
+procedure TpvScene3D.PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
+                                   const aViewMatrix:TpvMatrix4x4;
+                                   const aProjectionMatrix:TpvMatrix4x4;
+                                   const aViewPortWidth:TpvInt32;
+                                   const aViewPortHeight:TpvInt32;
+                                   const aFrustum:TpvFrustum;
+                                   const aFrustumCulling:boolean=true);
+const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
+      LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
+      MinLuminance=1e-3;
+      Constant=0.0;
+      Linear=0.0;
+      Threshold=1e-3;
+var Index,VisibleForce:TpvSizeInt;
+    Lights:TpvScene3D.TLights;
+    Light:TpvScene3D.TLight;
+    Position,Direction:TpvVector3;
+    AABB:TpvAABB;
+    Luminance,Radius{,Quadratic}:TpvFloat;
+    Matrix3x3:TpvMatrix3x3;
+    ViewProjectionMatrix:TpvMatrix4x4;
+    ViewPort:TpvFloatClipRect;
+begin
+
+ ViewProjectionMatrix:=aViewMatrix*aProjectionMatrix;
+
+ ViewPort[0]:=0;
+ ViewPort[1]:=0;
+ ViewPort[2]:=aViewPortWidth;
+ ViewPort[3]:=aViewPortHeight;
+
+ Lights:=fLights[aSwapChainImageIndex];
+
+ fCountIndirectLights[aSwapChainImageIndex]:=0;
+
+ for Index:=0 to fCountLights[aSwapChainImageIndex]-1 do begin
+  Light:=Lights[Index];
+  if Light.fData.fVisible then begin
+   Position:=(Light.fMatrix*TpvVector3.Origin).xyz;
+   Direction:=(((Light.fMatrix*DownZ).xyz)-Position).Normalize;
+   if Light.fData.Type_ in [TpvScene3D.TLightData.TType.Point,TpvScene3D.TLightData.TType.Spot] then begin
+    if Light.fData.fRange>1e-7 then begin
+     // float distanceByRange = currentDistance / light.positionRange.w;
+     // lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+     Radius:=Threshold/Light.fData.fRange;
+     if Radius>1e-7 then begin
+      Radius:=1.0/sqrt(sqrt(Radius));
+     end else begin
+      Radius:=EPSILON;
+     end;
+    end else begin
+     // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+     Luminance:=Light.fData.Color.Dot(LinearRGBLuminance);
+     if Luminance>1e-7 then begin
+      Radius:=Threshold/Luminance;
+      if Radius>1e-7 then begin
+       Radius:=1.0/sqrt(Radius);
+      end else begin
+       Radius:=EPSILON;
+      end;
+     end else begin
+      Radius:=1.0;
+     end;
+    end;
+   end else begin
+    Radius:=16777216.0;
+   end;
+   case Light.fData.Type_ of
+    TpvScene3D.TLightData.TType.Directional:begin
+     VisibleForce:=1;
+     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+    end;
+    TpvScene3D.TLightData.TType.Point:begin
+     VisibleForce:=0;
+     AABB:=TpvSphere.Create(Position,Radius).ToAABB(1.0);
+    end;
+    TpvScene3D.TLightData.TType.Spot:begin
+     VisibleForce:=0;
+     // TODO: Take innerConeCosinus and outerConeCosinus into the calculations!
+     Matrix3x3:=Light.fMatrix.ToMatrix3x3;
+     AABB.Min:=Position;
+     AABB.Max:=Position;
+     AABB:=AABB.CombineVector3(Position+(Direction*Radius)+(Matrix3x3.Tangent*Radius));
+     AABB:=AABB.CombineVector3(Position+(Direction*Radius)-(Matrix3x3.Tangent*Radius));
+     AABB:=AABB.CombineVector3(Position+(Direction*Radius)+(Matrix3x3.Bitangent*Radius));
+     AABB:=AABB.CombineVector3(Position+(Direction*Radius)-(Matrix3x3.Bitangent*Radius));
+    end;
+    else {TpvScene3D.TLightData.TType.None:}begin
+     VisibleForce:=-1;
+     AABB.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+     AABB.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+    end;
+   end;
+   if (VisibleForce<>-1) and
+      ((VisibleForce=1) or
+       ((not aFrustumCulling) or (aFrustum.AABBInFrustum(AABB)<>TpvFrustum.COMPLETE_OUT))) then begin
+    if AABB.ScissorRect(Light.fScissorRect,
+                        ViewProjectionMatrix,
+                        ViewPort,
+                        true) then begin
+     Light.fVisible:=true;
+     Light.fViewSpacePosition:=(aViewMatrix*Position).xyz;
+     fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=Light;
+     inc(fCountIndirectLights[aSwapChainImageIndex]);
+    end else begin
+     Light.fVisible:=false;
+    end;
+   end else begin
+    Light.fVisible:=false;
+   end;
+  end else begin
+   Light.fVisible:=false;
+  end;
+ end;
+
+ if fCountIndirectLights[aSwapChainImageIndex]>0 then begin
+  IndirectIntroSort(@fIndirectLights[aSwapChainImageIndex,0],0,fCountIndirectLights[aSwapChainImageIndex],TpvScene3DCompareIndirectLights);
+
+ end;
+
+end;
+
 procedure TpvScene3D.Prepare(const aSwapChainImageIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aViewMatrix:TpvMatrix4x4;
                              const aProjectionMatrix:TpvMatrix4x4;
+                             const aViewPortWidth:TpvInt32;
+                             const aViewPortHeight:TpvInt32;
                              const aFrustumCulling:boolean=true);
 var VisibleBit:TPasMPUInt32;
     Frustum:TpvFrustum;
@@ -6782,6 +7074,14 @@ begin
                 Frustum,
                 aFrustumCulling);
  end;
+
+ PrepareLights(aSwapChainImageIndex,
+               aViewMatrix,
+               aProjectionMatrix,
+               aViewPortWidth,
+               aViewPortHeight,
+               Frustum,
+               aFrustumCulling);
 
 end;
 
