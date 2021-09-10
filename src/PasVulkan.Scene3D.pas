@@ -551,7 +551,7 @@ type EpvScene3D=class(Exception);
              private
               fSceneInstance:TpvScene3D;
               fVisible:boolean;
-              fData:TLightData;
+              fData:TpvScene3D.TLightData;
               fShadowMapIndex:TpvInt32;
               fMatrix:TpvMatrix4x4;
               fViewSpacePosition:TpvVector3;
@@ -565,7 +565,14 @@ type EpvScene3D=class(Exception);
               procedure Assign(const aFrom:TpvScene3D.TLightData);
               procedure Update;
              public
-              property Data:TLightData read fData write fData;
+              property Data:TpvScene3D.TLightData read fData write fData;
+              property Type_:TpvScene3D.TLightData.TType read fData.fType_ write fData.fType_;
+              property Intensity:TpvFloat read fData.fIntensity write fData.fIntensity;
+              property Range:TpvFloat read fData.fRange write fData.fRange;
+              property InnerConeAngle:TpvFloat read fData.fInnerConeAngle write fData.fInnerConeAngle;
+              property OuterConeAngle:TpvFloat read fData.fOuterConeAngle write fData.fOuterConeAngle;
+              property Color:TpvVector3 read fData.fColor write fData.fColor;
+              property CastShadows:boolean read fData.fCastShadows write fData.fCastShadows;
              published
               property ShadowMapIndex:TpvInt32 read fShadowMapIndex write fShadowMapIndex;
              public
@@ -1162,7 +1169,9 @@ type EpvScene3D=class(Exception);
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroup.TInstances;
        fLightAABBTree:TpvBVHDynamicAABBTree;
+       fLightAABBTreeGeneration:TpvUInt32;
        fLightAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
+       fLightAABBTreeStateGenerations:array[0..MaxSwapChainImages+1] of TpvUInt32;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
@@ -2850,8 +2859,11 @@ destructor TpvScene3D.TLight.Destroy;
 begin
  if fAABBTreeProxy>=0 then begin
   try
-   if assigned(fSceneInstance) and assigned(fSceneInstance.fLightAABBTree) then begin
-    fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+   if assigned(fSceneInstance) then begin
+    if assigned(fSceneInstance.fLightAABBTree) then begin
+     fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+    TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
    end;
   finally
    fAABBTreeProxy:=-1;
@@ -2935,11 +2947,13 @@ begin
   end else begin
    fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
   end;
+  TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
  end else begin
   if fAABBTreeProxy>=0 then begin
    try
     if assigned(fSceneInstance) and assigned(fSceneInstance.fLightAABBTree) then begin
      fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+     TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
     end;
    finally
     fAABBTreeProxy:=-1;
@@ -6181,12 +6195,16 @@ var CullFace,Blend:TPasGLTFInt32;
   if assigned(Node.fLight) then begin
    if assigned(InstanceNode^.Light) then begin
     Light:=InstanceNode^.Light;
+    if Light.fMatrix<>Matrix then begin
+     Light.fMatrix:=Matrix;
+     Light.Update;
+    end;
    end else begin
     Light:=TpvScene3D.TLight.Create(fSceneInstance);
     Light.fData:=Node.fLight.fData;
+    Light.fMatrix:=Matrix;
+    Light.Update;
    end;
-   Light.fMatrix:=Matrix;
-   Light.Update;
   end;
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessNode(Node.Children[Index].Index,Matrix);
@@ -6627,8 +6645,14 @@ begin
 
  fLightAABBTree:=TpvBVHDynamicAABBTree.Create;
 
+ fLightAABBTreeGeneration:=0;
+
  for Index:=0 to length(fLightAABBTreeStates)-1 do begin
   fLightAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
+ for Index:=0 to length(fLightAABBTreeStateGenerations)-1 do begin
+  fLightAABBTreeStateGenerations[Index]:=fLightAABBTreeGeneration-1;
  end;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
@@ -6933,6 +6957,7 @@ var Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
+    OldGeneration:TpvUInt32;
 begin
 
  fCountLights[aSwapChainImageIndex]:=0;
@@ -6941,16 +6966,19 @@ begin
   Group.Update(aSwapChainImageIndex);
  end;
 
- LightAABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
- if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
-  if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
-   LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+ OldGeneration:=fLightAABBTreeStateGenerations[aSwapChainImageIndex];
+ if TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aSwapChainImageIndex],fLightAABBTreeGeneration,OldGeneration)=OldGeneration then begin
+  LightAABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+  if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
+   if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
+    LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+   end else begin
+    Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   end;
+   LightAABBTreeState^.Root:=fLightAABBTree.Root;
   end else begin
-   Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   LightAABBTreeState^.Root:=-1;
   end;
-  LightAABBTreeState^.Root:=fLightAABBTree.Root;
- end else begin
-  LightAABBTreeState^.Root:=-1;
  end;
 
  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
