@@ -93,9 +93,13 @@ unit PasVulkan.BVH.DynamicAABBTree;
 
 interface
 
-uses SysUtils,Classes,Math,
+uses SysUtils,
+     Classes,
+     Math,
+     PasMP,
      PasVulkan.Types,
-     PasVulkan.Math;
+     PasVulkan.Math,
+     PasVulkan.Collections;
 
 type TpvBVHDynamicAABBTree=class
       public
@@ -103,17 +107,18 @@ type TpvBVHDynamicAABBTree=class
              AABBMULTIPLIER=2.0;
              ThresholdAABBVector:TpvVector3=(x:AABBEPSILON;y:AABBEPSILON;z:AABBEPSILON);
        type TTreeNode=record
-             AABB:TpvAABB;
-             UserData:TpvPtrInt;
-             Children:array[0..1] of TpvSizeInt;
-             Height:TpvSizeInt;
-             case boolean of
-              false:(
-               Parent:TpvSizeInt;
-              );
-              true:(
-               Next:TpvSizeInt;
-              );
+             public
+              AABB:TpvAABB;
+              UserData:TpvPtrInt;
+              Children:array[0..1] of TpvSizeInt;
+              Height:TpvSizeInt;
+              case boolean of
+               false:(
+                Parent:TpvSizeInt;
+               );
+               true:(
+                Next:TpvSizeInt;
+               );
             end;
             PTreeNode=^TTreeNode;
             TTreeNodes=array of TTreeNode;
@@ -124,6 +129,31 @@ type TpvBVHDynamicAABBTree=class
             PState=^TState;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
+            TSkipListNode=packed record
+             public
+              // (u)vec4 centerSkipCount
+              AABBMin:TpvVector3;
+              SkipCount:TpvUInt32;
+              // (u)vec4 extentsUserData
+              AABBMax:TpvVector3;
+              UserData:TpvUInt32;
+            end;
+            PSkipListNode=^TSkipListNode;
+            TSkipListNodes=array of TSkipListNode;
+            TSkipListNodeArray=TpvDynamicArray<TSkipListNode>;
+            TSkipListNodeMap=array of TpvSizeUInt;
+            TSkipListNodeStackItem=record
+             Pass:TpvSizeInt;
+             Node:TpvSizeInt;
+            end;
+            PSkipListNodeStackItem=^TSkipListNodeStackItem;
+            TSkipListNodeStack=TpvDynamicStack<TSkipListNodeStackItem>;
+            TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32;
+      private
+       fSkipListNodeLock:TPasMPSpinLock;
+       fSkipListNodeArray:TSkipListNodeArray;
+       fSkipListNodeMap:TSkipListNodeMap;
+       fSkipListNodeStack:TSkipListNodeStack;
       public
        Root:TpvSizeInt;
        Nodes:TTreeNodes;
@@ -143,6 +173,7 @@ type TpvBVHDynamicAABBTree=class
        procedure DestroyProxy(const aNodeID:TpvSizeInt);
        function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
        procedure Rebalance(const aIterations:TpvSizeInt);
+       procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
      end;
 
 implementation
@@ -168,10 +199,18 @@ begin
  FreeList:=0;
  Path:=0;
  InsertionCount:=0;
+ fSkipListNodeLock:=TPasMPSpinLock.Create;
+ fSkipListNodeArray.Initialize;
+ fSkipListNodeMap:=nil;
+ fSkipListNodeStack.Initialize;
 end;
 
 destructor TpvBVHDynamicAABBTree.Destroy;
 begin
+ fSkipListNodeStack.Finalize;
+ fSkipListNodeMap:=nil;
+ fSkipListNodeArray.Finalize;
+ FreeAndNil(fSkipListNodeLock);
  Nodes:=nil;
  inherited Destroy;
 end;
@@ -501,6 +540,71 @@ begin
     break;
    end;
   end;
+ end;
+end;
+
+procedure TpvBVHDynamicAABBTree.GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
+const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
+var StackItem,NewStackItem:TSkipListNodeStackItem;
+    Node:PTreeNode;
+    SkipListNode:TSkipListNode;
+    SkipListNodeIndex:TpvSizeInt;
+begin
+ fSkipListNodeLock.Acquire;
+ try
+  if Root>=0 then begin
+   if length(fSkipListNodeMap)<length(Nodes) then begin
+    SetLength(fSkipListNodeMap,(length(Nodes)*3) shr 1);
+   end;
+   aSkipListNodeArray.Count:=0;
+   NewStackItem.Pass:=0;
+   NewStackItem.Node:=Root;
+   fSkipListNodeStack.Push(NewStackItem);
+   while fSkipListNodeStack.Pop(StackItem) do begin
+    case StackItem.Pass of
+     0:begin
+      if StackItem.Node>=0 then begin
+       Node:=@Nodes[StackItem.Node];
+       SkipListNode.AABBMin:=Node^.AABB.Min;
+       SkipListNode.AABBMax:=Node^.AABB.Max;
+       SkipListNode.SkipCount:=0;
+       if Node^.UserData<>0 then begin
+        if assigned(aGetUserDataIndex) then begin
+         SkipListNode.UserData:=aGetUserDataIndex(Node^.UserData);
+        end else begin
+         SkipListNode.UserData:=Node^.UserData;
+        end;
+       end else begin
+        SkipListNode.UserData:=High(TpvUInt32);
+       end;
+       SkipListNodeIndex:=aSkipListNodeArray.Add(SkipListNode);
+       fSkipListNodeMap[StackItem.Node]:=SkipListNodeIndex;
+       NewStackItem.Pass:=1;
+       NewStackItem.Node:=StackItem.Node;
+       fSkipListNodeStack.Push(NewStackItem);
+       if Node^.Children[1]>=0 then begin
+        NewStackItem.Pass:=0;
+        NewStackItem.Node:=Node^.Children[1];
+        fSkipListNodeStack.Push(NewStackItem);
+       end;
+       if Node^.Children[0]>=0 then begin
+        NewStackItem.Pass:=0;
+        NewStackItem.Node:=Node^.Children[0];
+        fSkipListNodeStack.Push(NewStackItem);
+       end;
+      end;
+     end;
+     1:begin
+      if StackItem.Node>=0 then begin
+       SkipListNodeIndex:=fSkipListNodeMap[StackItem.Node];
+       aSkipListNodeArray.Items[SkipListNodeIndex].SkipCount:=aSkipListNodeArray.Count-SkipListNodeIndex;
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  fSkipListNodeLock.Release;
  end;
 end;
 
