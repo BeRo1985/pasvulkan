@@ -101,6 +101,8 @@ type { TpvFrustum }
        property AbsoluteNormals:TAbsoluteNormals read fAbsoluteNormals write fAbsoluteNormals;
      end;
 
+     PpvFrustum=^TpvFrustum;
+
 implementation
 
 function IntersectionPoint(const a,b,c:TpvPlane):TpvVector3;

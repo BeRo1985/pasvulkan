@@ -549,16 +549,21 @@ type EpvScene3D=class(Exception);
                      Spot=3
                     );
              private
+              fSceneInstance:TpvScene3D;
               fVisible:boolean;
               fData:TLightData;
               fShadowMapIndex:TpvInt32;
               fMatrix:TpvMatrix4x4;
               fViewSpacePosition:TpvVector3;
+              fBoundingBox:TpvAABB;
+              fBoundingSphere:TpvSphere;
               fScissorRect:TpvFloatClipRect;
+              fAABBTreeProxy:TpvSizeInt;
              public
-              constructor Create; reintroduce;
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               procedure Assign(const aFrom:TpvScene3D.TLightData);
+              procedure Update;
              public
               property Data:TLightData read fData write fData;
              published
@@ -937,6 +942,7 @@ type EpvScene3D=class(Exception);
                                  POverwrite=^TOverwrite;
                                  TOverwrites=array of TOverwrite;
                            public
+                            Processed:LongBool;
                             Overwrites:TOverwrites;
                             CountOverwrites:TpvSizeInt;
                             OverwriteFlags:TOverwriteFlags;
@@ -948,6 +954,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             VisibleBitmap:TpvUInt32;
+                            Light:TpvScene3D.TLight;
                             BoundingBoxes:array[0..MaxSwapChainImages+1] of TpvAABB;
                             BoundingBoxFilled:array[0..MaxSwapChainImages+1] of boolean;
                           end;
@@ -985,6 +992,7 @@ type EpvScene3D=class(Exception);
                     private
                      fGroup:TGroup;
                      fActive:boolean;
+                     fPreviousActive:boolean;
                      fScene:TPasGLTFSizeInt;
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
@@ -1030,6 +1038,7 @@ type EpvScene3D=class(Exception);
                      procedure BeforeDestruction; override;
                      procedure Upload; override;
                      procedure Unload; override;
+                     procedure UpdateInvisible;
                      procedure Update(const aSwapChainImageIndex:TpvSizeInt);
                     published
                      property Group:TGroup read fGroup write fGroup;
@@ -1152,18 +1161,21 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroup.TInstances;
+       fLightAABBTree:TpvBVHDynamicAABBTree;
+       fLightAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
-       function AddLight(const aSwapChainImageIndex:TpvSizeInt;
-                         const aLightData:TpvScene3D.TLightData;
-                         const aMatrix:TpvMatrix4x4):boolean;
        procedure CullAABBTreeWithFrustum(const aFrustum:TpvFrustum;
                                          const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                          const aRoot:TpvSizeInt;
                                          const aVisibleBit:TPasMPUInt32);
+       procedure CullLightAABBTreeWithFrustum(const aSwapChainImageIndex:TpvSizeInt;
+                                              const aFrustum:PpvFrustum;
+                                              const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                              const aRoot:TpvSizeInt);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -2827,19 +2839,113 @@ end;
 
 { TpvScene3D.TLight }
 
-constructor TpvScene3D.TLight.Create;
+constructor TpvScene3D.TLight.Create(const aSceneInstance:TpvScene3D);
 begin
  inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fAABBTreeProxy:=-1;
 end;
 
 destructor TpvScene3D.TLight.Destroy;
 begin
+ if fAABBTreeProxy>=0 then begin
+  try
+   if assigned(fSceneInstance) and assigned(fSceneInstance.fLightAABBTree) then begin
+    fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+   end;
+  finally
+   fAABBTreeProxy:=-1;
+  end;
+ end;
  inherited Destroy;
 end;
 
 procedure TpvScene3D.TLight.Assign(const aFrom:TpvScene3D.TLightData);
 begin
  fData:=aFrom;
+end;
+
+procedure TpvScene3D.TLight.Update;
+const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
+      LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
+      MinLuminance=1e-3;
+      Constant=0.0;
+      Linear=0.0;
+      Threshold=1e-3;
+      Infinity=16777216.0;
+var Position,Direction:TpvVector3;
+    OBB:TpvOBB;
+    AABB:TpvAABB;
+    Radius,Luminance,OppositeLength:TpvScalar;
+begin
+ if fData.fVisible then begin
+  Position:=(fMatrix*TpvVector3.Origin).xyz;
+  Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
+  case fData.Type_ of
+   TpvScene3D.TLightData.TType.Point,
+   TpvScene3D.TLightData.TType.Spot:begin
+    if fData.fRange>1e-7 then begin
+     // float distanceByRange = currentDistance / light.positionRange.w;
+     // lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0) / (currentDistance * currentDistance);
+     Radius:=fData.fRange;
+    end else begin
+     // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+     Luminance:=fData.Color.Dot(LinearRGBLuminance);
+     if Luminance>1e-7 then begin
+      Radius:=Threshold/Luminance;
+      if Radius>1e-7 then begin
+       Radius:=1.0/sqrt(Radius);
+      end else begin
+       Radius:=EPSILON;
+      end;
+     end else begin
+      Radius:=1.0;
+     end;
+    end;
+   end;
+   else begin
+    Radius:=Infinity;
+   end;
+  end;
+  case fData.Type_ of
+   TpvScene3D.TLightData.TType.Directional:begin
+    AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+    AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+   end;
+   TpvScene3D.TLightData.TType.Point:begin
+    AABB.Min:=Position-TpvVector3.InlineableCreate(Radius,Radius,Radius);
+    AABB.Max:=Position+TpvVector3.InlineableCreate(Radius,Radius,Radius);
+   end;
+   TpvScene3D.TLightData.TType.Spot:begin
+    OppositeLength:=Tan(fData.fOuterConeAngle*0.5)*Radius;
+    OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,Radius*0.5);
+    OBB.Extents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,-Radius*0.5);
+    OBB.Matrix:=fMatrix.ToMatrix3x3;
+    AABB:=TpvAABB.CreateFromOBB(OBB);
+   end;
+   else {TpvScene3D.TLightData.TType.None:}begin
+    AABB.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+    AABB.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+   end;
+  end;
+  fBoundingBox:=AABB;
+  fBoundingSphere:=TpvSphere.CreateFromAABB(AABB);
+  if fAABBTreeProxy<0 then begin
+   fAABBTreeProxy:=fSceneInstance.fLIghtAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+  end else begin
+   fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
+  end;
+ end else begin
+  if fAABBTreeProxy>=0 then begin
+   try
+    if assigned(fSceneInstance) and assigned(fSceneInstance.fLightAABBTree) then begin
+     fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+   finally
+    fAABBTreeProxy:=-1;
+   end;
+  end;
+ end;
 end;
 
 { TpvScene3D.TGroup.TGroupObject }
@@ -5298,6 +5404,7 @@ begin
   fGroup:=nil;
  end;
  fActive:=true;
+ fPreviousActive:=false;
  fUploaded:=false;
  fModelMatrix:=TpvMatrix4x4.Identity;
  fScene:=-1;
@@ -5315,6 +5422,7 @@ begin
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   InstanceNode:=@fNodes[Index];
   Node:=fGroup.fNodes[Index];
+  InstanceNode^.Processed:=false;
   SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
@@ -5356,6 +5464,11 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+ for Index:=0 to length(fNodes)-1 do begin
+  if assigned(fNodes[Index].Light) then begin
+   FreeAndNil(fNodes[Index].Light);
+  end;
+ end;
  for Index:=0 to length(fVulkanDatas)-1 do begin
   FreeAndNil(fVulkanDatas[Index]);
  end;
@@ -5385,9 +5498,6 @@ begin
   fGroup.fInstances.Add(self);
  finally
   fGroup.fInstanceListLock.Release;
- end;
- if fAABBTreeProxy<0 then begin
-  fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fGroup.fBoundingBox.Transform(fModelMatrix),TpvPtrInt(Pointer(self)));
  end;
 end;
 
@@ -5538,6 +5648,16 @@ begin
    fMorphTargetVertexWeights:=nil;
   finally
    fUploaded:=false;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateInvisible;
+var Index:TPasGLTFSizeInt;
+begin
+ for Index:=0 to length(fNodes)-1 do begin
+  if assigned(fNodes[Index].Light) then begin
+   FreeAndNil(fNodes[Index].Light);
   end;
  end;
 end;
@@ -5869,6 +5989,7 @@ var CullFace,Blend:TPasGLTFInt32;
      WeightsFactorSum:TpvDouble;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
      FirstWeights,SkinUsed:boolean;
+     Light:TpvScene3D.TLight;
   procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble);
   begin
    if not IsZero(aFactor) then begin
@@ -5906,6 +6027,7 @@ var CullFace,Blend:TPasGLTFInt32;
   SkinUsed:=false;
   InstanceNode:=@fNodes[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
+  InstanceNode^.Processed:=true;
   if InstanceNode^.CountOverwrites>0 then begin
    SkinUsed:=true;
    TranslationSum.x:=0.0;
@@ -6057,7 +6179,14 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
   end;
   if assigned(Node.fLight) then begin
-   fSceneInstance.AddLight(aSwapChainImageIndex,Node.fLight.fData,Matrix);
+   if assigned(InstanceNode^.Light) then begin
+    Light:=InstanceNode^.Light;
+   end else begin
+    Light:=TpvScene3D.TLight.Create(fSceneInstance);
+    Light.fData:=Node.fLight.fData;
+   end;
+   Light.fMatrix:=Matrix;
+   Light.Update;
   end;
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessNode(Node.Children[Index].Index,Matrix);
@@ -6073,7 +6202,6 @@ var CullFace,Blend:TPasGLTFInt32;
    InstanceSkin:=@fSkins[SkinIndex];
    if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
     for Index:=0 to Skin.fJoints.Count-1 do begin
-//
      Assert(fGroup.fNodes[Skin.fJoints.Items[Index]].Index=Skin.fJoints.Items[Index]);
      fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
     end;
@@ -6133,6 +6261,10 @@ begin
     ResetNode(Scene.Nodes[Index].Index);
    end;
 
+   for Index:=0 to length(fNodes)-1 do begin
+    fNodes[Index].Processed:=false;
+   end;
+
    for Index:=0 to length(fSkins)-1 do begin
     fSkins[Index].Used:=false;
    end;
@@ -6150,6 +6282,14 @@ begin
 
    for Index:=0 to Scene.fNodes.Count-1 do begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+   end;
+
+   for Index:=0 to length(fNodes)-1 do begin
+    if not fNodes[Index].Processed then begin
+     if assigned(fNodes[Index].Light) then begin
+      FreeAndNil(fNodes[Index].Light);
+     end;
+    end;
    end;
 
    ProcessSkins;
@@ -6198,9 +6338,35 @@ begin
    end;
   end;
 
-  if fAABBTreeProxy>=0 then begin
+  if fAABBTreeProxy<0 then begin
+   fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+  end else begin
    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
   end;
+
+  fPreviousActive:=true;
+
+ end else if fPreviousActive then begin
+
+  if fAABBTreeProxy>=0 then begin
+   try
+    if assigned(fGroup) and
+       assigned(fGroup.fSceneInstance) and
+       assigned(fGroup.fSceneInstance.fAABBTree) then begin
+     fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+   finally
+    fAABBTreeProxy:=-1;
+   end;
+  end;
+
+  for Index:=0 to length(fNodes)-1 do begin
+   if assigned(fNodes[Index].Light) then begin
+    FreeAndNil(fNodes[Index].Light);
+   end;
+  end;
+
+  fPreviousActive:=false;
 
  end;
 
@@ -6459,6 +6625,12 @@ begin
                                                []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
 
+ fLightAABBTree:=TpvBVHDynamicAABBTree.Create;
+
+ for Index:=0 to length(fLightAABBTreeStates)-1 do begin
+  fLightAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  for Index:=0 to length(fAABBTreeStates)-1 do begin
@@ -6478,6 +6650,12 @@ begin
  end;
 
  FreeAndNil(fAABBTree);
+
+ for Index:=0 to length(fLightAABBTreeStates)-1 do begin
+  fLightAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
+ FreeAndNil(fLightAABBTree);
 
  FreeAndNil(fMeshVulkanDescriptorSetLayout);
 
@@ -6750,34 +6928,10 @@ begin
  end;
 end;
 
-function TpvScene3D.AddLight(const aSwapChainImageIndex:TpvSizeInt;
-                             const aLightData:TpvScene3D.TLightData;
-                             const aMatrix:TpvMatrix4x4):boolean;
-var Index:TpvSizeInt;
-    Count:PpvSizeInt;
-    Lights:TpvScene3D.TLights;
-    Light:TpvScene3D.TLight;
-begin
- Count:=@fCountLights[aSwapChainImageIndex];
- result:=Count^<MaxVisibleLights;
- if result then begin
-  Index:=Count^;
-  inc(Count^);
-  Lights:=fLights[aSwapChainImageIndex];
-  while Lights.Count<=Index do begin
-   Lights.Add(TpvScene3D.TLight.Create);
-  end;
-  Light:=Lights[Index];
-  Light.fData:=aLightData;
-  Light.fMatrix:=aMatrix;
-  Light.fShadowMapIndex:=-1;
- end;
-end;
-
 procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
-    AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
 begin
 
@@ -6785,6 +6939,18 @@ begin
 
  for Group in fGroups do begin
   Group.Update(aSwapChainImageIndex);
+ end;
+
+ LightAABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+ if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
+  if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
+   LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+  end else begin
+   Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+  end;
+  LightAABBTreeState^.Root:=fLightAABBTree.Root;
+ end else begin
+  LightAABBTreeState^.Root:=-1;
  end;
 
  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
@@ -6909,6 +7075,95 @@ begin
  end;
 end;
 
+procedure TpvScene3D.CullLightAABBTreeWithFrustum(const aSwapChainImageIndex:TpvSizeInt;
+                                                  const aFrustum:PpvFrustum;
+                                                  const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                                  const aRoot:TpvSizeInt);
+ procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
+ var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Mask:TpvUInt32;
+ begin
+  if aNode>=0 then begin
+   TreeNode:=@aTreeNodes[aNode];
+   Mask:=aMask;
+   if not (assigned(aFrustum) and (((Mask and $80000000)<>0) and (aFrustum^.AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT))) then begin
+    if TreeNode^.UserData<>0 then begin
+     if fCountIndirectLights[aSwapChainImageIndex]<MaxVisibleLights then begin
+      fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+      inc(fCountIndirectLights[aSwapChainImageIndex]);
+     end;
+    end;
+    if TreeNode^.Children[0]>=0 then begin
+     ProcessNode(TreeNode^.Children[0],Mask);
+    end;
+    if TreeNode^.Children[1]>=0 then begin
+     ProcessNode(TreeNode^.Children[1],Mask);
+    end;
+   end;
+  end;
+ end;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Node:TpvSizeInt;
+      Mask:TpvUInt32;
+     end;
+var StackPointer:TpvSizeInt;
+    StackItem:PStackItem;
+    Node:TpvSizeInt;
+    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Mask:TpvUInt32;
+    Stack:array[0..31] of TStackItem;
+begin
+ if (aRoot>=0) and (length(aTreeNodes)>0) then begin
+  Stack[0].Node:=aRoot;
+  Stack[0].Mask:=$ffffffff;
+  StackPointer:=1;
+  while StackPointer>0 do begin
+   dec(StackPointer);
+   StackItem:=@Stack[StackPointer];
+   Node:=StackItem^.Node;
+   Mask:=StackItem^.Mask;
+   while Node>=0 do begin
+    TreeNode:=@aTreeNodes[Node];
+    if assigned(aFrustum) and (((Mask and $80000000)<>0) and (aFrustum^.AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)) then begin
+     break;
+    end;
+    if TreeNode^.UserData<>0 then begin
+     if fCountIndirectLights[aSwapChainImageIndex]<MaxVisibleLights then begin
+      fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+      inc(fCountIndirectLights[aSwapChainImageIndex]);
+     end;
+    end;
+    if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
+     if TreeNode^.Children[0]>=0 then begin
+      ProcessNode(TreeNode^.Children[0],Mask);
+     end;
+     if TreeNode^.Children[1]>=0 then begin
+      ProcessNode(TreeNode^.Children[1],Mask);
+     end;
+    end else begin
+     if TreeNode^.Children[0]>=0 then begin
+      if TreeNode^.Children[1]>=0 then begin
+       StackItem:=@Stack[StackPointer];
+       StackItem^.Node:=TreeNode^.Children[1];
+       StackItem^.Mask:=Mask;
+       inc(StackPointer);
+      end;
+      Node:=TreeNode^.Children[0];
+      continue;
+     end else begin
+      if TreeNode^.Children[1]>=0 then begin
+       Node:=TreeNode^.Children[1];
+       continue;
+      end;
+     end;
+    end;
+    break;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
                                    const aViewMatrix:TpvMatrix4x4;
                                    const aProjectionMatrix:TpvMatrix4x4;
@@ -6916,118 +7171,35 @@ procedure TpvScene3D.PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
                                    const aViewPortHeight:TpvInt32;
                                    const aFrustum:TpvFrustum;
                                    const aFrustumCulling:boolean=true);
-const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
-      LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
-      MinLuminance=1e-3;
-      Constant=0.0;
-      Linear=0.0;
-      Threshold=1e-3;
-var Index,VisibleForce:TpvSizeInt;
-    Lights:TpvScene3D.TLights;
+var Index:TpvSizeInt;
+   {Lights:TpvScene3D.TLights;
     Light:TpvScene3D.TLight;
-    Position,Direction:TpvVector3;
-    AABB:TpvAABB;
-    Luminance,Radius{,Quadratic}:TpvFloat;
-    Matrix3x3:TpvMatrix3x3;
     ViewProjectionMatrix:TpvMatrix4x4;
-    ViewPort:TpvFloatClipRect;
+    ViewPort:TpvFloatClipRect;}
+    AABBTreeState:TpvBVHDynamicAABBTree.PState;
 begin
 
- ViewProjectionMatrix:=aViewMatrix*aProjectionMatrix;
+{ViewProjectionMatrix:=aViewMatrix*aProjectionMatrix;
 
  ViewPort[0]:=0;
  ViewPort[1]:=0;
  ViewPort[2]:=aViewPortWidth;
- ViewPort[3]:=aViewPortHeight;
+ ViewPort[3]:=aViewPortHeight;   }
 
- Lights:=fLights[aSwapChainImageIndex];
+ //Lights:=fLights[aSwapChainImageIndex];
 
  fCountIndirectLights[aSwapChainImageIndex]:=0;
 
- for Index:=0 to fCountLights[aSwapChainImageIndex]-1 do begin
-  Light:=Lights[Index];
-  if Light.fData.fVisible then begin
-   Position:=(Light.fMatrix*TpvVector3.Origin).xyz;
-   Direction:=(((Light.fMatrix*DownZ).xyz)-Position).Normalize;
-   if Light.fData.Type_ in [TpvScene3D.TLightData.TType.Point,TpvScene3D.TLightData.TType.Spot] then begin
-    if Light.fData.fRange>1e-7 then begin
-     // float distanceByRange = currentDistance / light.positionRange.w;
-     // lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
-     Radius:=Threshold/Light.fData.fRange;
-     if Radius>1e-7 then begin
-      Radius:=1.0/sqrt(sqrt(Radius));
-     end else begin
-      Radius:=EPSILON;
-     end;
-    end else begin
-     // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-     Luminance:=Light.fData.Color.Dot(LinearRGBLuminance);
-     if Luminance>1e-7 then begin
-      Radius:=Threshold/Luminance;
-      if Radius>1e-7 then begin
-       Radius:=1.0/sqrt(Radius);
-      end else begin
-       Radius:=EPSILON;
-      end;
-     end else begin
-      Radius:=1.0;
-     end;
-    end;
-   end else begin
-    Radius:=16777216.0;
-   end;
-   case Light.fData.Type_ of
-    TpvScene3D.TLightData.TType.Directional:begin
-     VisibleForce:=1;
-     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
-     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
-    end;
-    TpvScene3D.TLightData.TType.Point:begin
-     VisibleForce:=0;
-     AABB:=TpvSphere.Create(Position,Radius).ToAABB(1.0);
-    end;
-    TpvScene3D.TLightData.TType.Spot:begin
-     VisibleForce:=0;
-     // TODO: Take innerConeCosinus and outerConeCosinus into the calculations!
-     Matrix3x3:=Light.fMatrix.ToMatrix3x3;
-     AABB.Min:=Position;
-     AABB.Max:=Position;
-     AABB:=AABB.CombineVector3(Position+(Direction*Radius)+(Matrix3x3.Tangent*Radius));
-     AABB:=AABB.CombineVector3(Position+(Direction*Radius)-(Matrix3x3.Tangent*Radius));
-     AABB:=AABB.CombineVector3(Position+(Direction*Radius)+(Matrix3x3.Bitangent*Radius));
-     AABB:=AABB.CombineVector3(Position+(Direction*Radius)-(Matrix3x3.Bitangent*Radius));
-    end;
-    else {TpvScene3D.TLightData.TType.None:}begin
-     VisibleForce:=-1;
-     AABB.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
-     AABB.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
-    end;
-   end;
-   if (VisibleForce<>-1) and
-      ((VisibleForce=1) or
-       ((not aFrustumCulling) or (aFrustum.AABBInFrustum(AABB)<>TpvFrustum.COMPLETE_OUT))) then begin
-    if AABB.ScissorRect(Light.fScissorRect,
-                        ViewProjectionMatrix,
-                        ViewPort,
-                        true) then begin
-     Light.fVisible:=true;
-     Light.fViewSpacePosition:=(aViewMatrix*Position).xyz;
-     fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=Light;
-     inc(fCountIndirectLights[aSwapChainImageIndex]);
-    end else begin
-     Light.fVisible:=false;
-    end;
-   end else begin
-    Light.fVisible:=false;
-   end;
-  end else begin
-   Light.fVisible:=false;
-  end;
+ AABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+
+ if aFrustumCulling then begin
+  CullLightAABBTreeWithFrustum(aSwapChainImageIndex,@aFrustum,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
+ end else begin
+  CullLightAABBTreeWithFrustum(aSwapChainImageIndex,nil,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
  end;
 
  if fCountIndirectLights[aSwapChainImageIndex]>0 then begin
   IndirectIntroSort(@fIndirectLights[aSwapChainImageIndex,0],0,fCountIndirectLights[aSwapChainImageIndex],TpvScene3DCompareIndirectLights);
-
  end;
 
 end;
