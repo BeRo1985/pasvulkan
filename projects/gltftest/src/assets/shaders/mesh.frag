@@ -13,12 +13,6 @@ layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
-layout(set = 1, binding = 1) uniform sampler2D uTextures[];
-
-layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
-
-layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
-
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
 layout(location = 1) out vec4 outFragEmission;
@@ -36,6 +30,8 @@ layout(std140, set = 1, binding = 0) uniform uboMaterial {
   mat4 textureTransforms[16];
 } uMaterial;
 
+layout(set = 1, binding = 1) uniform sampler2D uTextures[];
+
 #ifdef LIGHTS
 struct Light {
   uvec4 metaData;
@@ -45,7 +41,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set=3, binding = 0) buffer LightItemData {
+layout(std430, set = 2, binding = 0) buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -55,10 +51,14 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(std430, set=3, binding = 1) buffer LightTreeNodeData {
+layout(std430, set = 2, binding = 1) buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 #endif
+
+layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
+
+layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 /* clang-format on */
 

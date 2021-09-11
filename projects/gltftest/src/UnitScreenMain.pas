@@ -370,6 +370,7 @@ begin
  fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MeshVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MaterialVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fImageBasedLightingVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -587,7 +588,7 @@ begin
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        fVulkanPipelineLayout.Handle,
-                                       2,
+                                       3,
                                        1,
                                        @fImageBasedLightingVulkanDescriptorSet.Handle,
                                        0,

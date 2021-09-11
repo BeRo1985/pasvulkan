@@ -7604,6 +7604,14 @@ begin
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
                                  @VertexStagePushConstants);
 
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      aPipelineLayout.Handle,
+                                      2,
+                                      1,
+                                      @fGlobalVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                      0,
+                                      nil);
+
  for Group in fGroups do begin
   Group.Draw(aGraphicsPipelines,
              aSwapChainImageIndex,
