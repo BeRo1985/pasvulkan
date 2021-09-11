@@ -459,6 +459,7 @@ void main() {
             vec3 lightDirection;
             vec3 lightVector = light.positionRange.xyz - vWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
+#ifdef SHADOWS
             if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
               switch (light.metaData.x) {
                 case 1u:    // Directional
@@ -484,6 +485,7 @@ void main() {
                 litIntensity = lightAttenuation;
               }
             }
+#endif            
             switch (light.metaData.x) {
               case 1u: {  // Directional
                 lightDirection = -light.directionZFar.xyz;
