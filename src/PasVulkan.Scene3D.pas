@@ -7067,7 +7067,7 @@ begin
                                                               [fLightBuffers[Index].fLightItemsVulkanBuffer.DescriptorBufferInfo],
                                                               [],
                                                               false);
-      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
                                                               0,
                                                               1,
                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
