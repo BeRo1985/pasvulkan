@@ -45,9 +45,18 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set=2, binding = 1) buffer LightData {
-  uvec4 lightMetaData;
+layout(std430, set=2, binding = 2) buffer LightItemData {
+//uvec4 lightMetaData;
   Light lights[];
+};
+
+struct LightTreeNode {
+  uvec4 aabbMinSkipCount;
+  uvec4 aabbMaxUserData;
+};
+
+layout(std430, set=2, binding = 3) buffer LightTreeNodeData {
+  LightTreeNode lightTreeNodes[];
 };
 #endif
 
@@ -437,101 +446,111 @@ void main() {
       }
 
 #ifdef LIGHTS
-      if (lightMetaData.x != 0u) {
-        for (int lightIndex = 0, lightCount = int(lightMetaData.x); lightIndex < lightCount; lightIndex++) {
-          Light light = lights[lightIndex];
-          float lightAttenuation = 1.0;
-          vec3 lightDirection;
-          vec3 lightVector = light.positionRange.xyz - vWorldSpacePosition.xyz;
-          vec3 normalizedLightVector = normalize(lightVector);
-          if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
-            switch (light.metaData.x) {
-              case 1u:    // Directional
-              case 3u: {  // Spot
-                vec4 shadowNDC = light.shadowMapMatrix * vec4(vWorldSpacePosition, 1.0);
-                shadowNDC /= shadowNDC.w;
-                if (all(greaterThanEqual(shadowNDC, vec4(-1.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
-                  shadowNDC.xyz = fma(shadowNDC.xyz, vec3(0.5), vec3(0.5));
-                  vec4 moments = (textureLod(uNormalShadowMapArrayTexture, vec3(shadowNDC.xy, float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                  lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
+      uint lightTreeNodeIndex = 0;
+      uint lightTreeNodeLastMax = lightTreeNode[0].aabbMinSkipCount.w;
+      while (lightTreeNodeIndex <= lightTreeNodeLastMax) {
+        LightTreeNode lightTreeNode = lightTreeNodes[lightTreeNodeIndex];
+        vec3 aabbMin = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMinSkipCount.xyz)));
+        vec3 aabbMax = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMaxUserData.xyz)));
+        if (all(greaterThanEqual(vWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(vWorldSpacePosition.xyz, aabbMax))) {
+          if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
+            Light light = lights[lightTreeNode.aabbMaxUserData.w];
+            float lightAttenuation = 1.0;
+            vec3 lightDirection;
+            vec3 lightVector = light.positionRange.xyz - vWorldSpacePosition.xyz;
+            vec3 normalizedLightVector = normalize(lightVector);
+            if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
+              switch (light.metaData.x) {
+                case 1u:    // Directional
+                case 3u: {  // Spot
+                  vec4 shadowNDC = light.shadowMapMatrix * vec4(vWorldSpacePosition, 1.0);
+                  shadowNDC /= shadowNDC.w;
+                  if (all(greaterThanEqual(shadowNDC, vec4(-1.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
+                    shadowNDC.xyz = fma(shadowNDC.xyz, vec3(0.5), vec3(0.5));
+                    vec4 moments = (textureLod(uNormalShadowMapArrayTexture, vec3(shadowNDC.xy, float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
+                    lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
+                  }
+                  break;
                 }
+                case 2u: {  // Point
+                  float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
+                  vec3 vector = light.positionRange.xyz - vWorldSpacePosition;
+                  vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
+                  lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
+                  break;
+                }
+              }
+              if (lightIndex == 0) {
+                litIntensity = lightAttenuation;
+              }
+            }
+            switch (light.metaData.x) {
+              case 1u: {  // Directional
+                lightDirection = -light.directionZFar.xyz;
                 break;
               }
               case 2u: {  // Point
-                float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
-                vec3 vector = light.positionRange.xyz - vWorldSpacePosition;
-                vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
+                lightDirection = normalizedLightVector;
+                break;
+              }
+              case 3u: {  // Spot
+#if 1
+                float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+#else
+                // Just for as reference
+                float innerConeCosinus = uintBitsToFloat(light.metaData.z);
+                float outerConeCosinus = uintBitsToFloat(light.metaData.w);
+                float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
+                float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
+#endif
+                lightAttenuation *= angularAttenuation * angularAttenuation;
+                lightDirection = normalizedLightVector;
+                break;
+              }
+              default: {
+                continue;
+              }
+            }
+            switch (light.metaData.x) {
+              case 2u:    // Point
+              case 3u: {  // Spot
+                if (light.positionRange.w >= 0.0) {
+                  float currentDistance = length(lightVector);
+                  if (currentDistance > 0.0) {
+                    lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+                    if (light.positionRange.w > 0.0) {
+                      float distanceByRange = currentDistance / light.positionRange.w;
+                      lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+                    }
+                  }
+                }
                 break;
               }
             }
-            if (lightIndex == 0) {
-              litIntensity = lightAttenuation;
+            if (lightAttenuation > 0.0) {
+              doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
+                            vec3(lightAttenuation),                             //
+                            lightDirection,                                     //
+                            normal.xyz,                                         //
+                            diffuseColorAlpha.xyz,                              //
+                            F0,                                                 //
+                            F90,                                                //
+                            viewDirection,                                      //
+                            refractiveAngle,                                    //
+                            transparency,                                       //
+                            alphaRoughness,                                     //
+                            cavity,                                             //
+                            sheenColorIntensityFactor,                          //
+                            sheenRoughness,                                     //
+                            clearcoatNormal,                                    //
+                            clearcoatF0,                                        //
+                            clearcoatRoughness,                                 //
+                            specularWeight);                                    //
             }
           }
-          switch (light.metaData.x) {
-            case 1u: {  // Directional
-              lightDirection = -light.directionZFar.xyz;
-              break;
-            }
-            case 2u: {  // Point
-              lightDirection = normalizedLightVector;
-              break;
-            }
-            case 3u: {  // Spot
-#if 1
-              float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
-#else
-              // Just for as reference
-              float innerConeCosinus = uintBitsToFloat(light.metaData.z);
-              float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-              float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
-              float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
-#endif
-              lightAttenuation *= angularAttenuation * angularAttenuation;
-              lightDirection = normalizedLightVector;
-              break;
-            }
-            default: {
-              continue;
-            }
-          }
-          switch (light.metaData.x) {
-            case 2u:    // Point
-            case 3u: {  // Spot
-              if (light.positionRange.w >= 0.0) {
-                float currentDistance = length(lightVector);
-                if (currentDistance > 0.0) {
-                  lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                  if (light.positionRange.w > 0.0) {
-                    float distanceByRange = currentDistance / light.positionRange.w;
-                    lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
-                  }
-                }
-              }
-              break;
-            }
-          }
-          if (lightAttenuation > 0.0) {
-            doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
-                          vec3(lightAttenuation),                             //
-                          lightDirection,                                     //
-                          normal.xyz,                                         //
-                          diffuseColorAlpha.xyz,                              //
-                          F0,                                                 //
-                          F90,                                                //
-                          viewDirection,                                      //
-                          refractiveAngle,                                    //
-                          transparency,                                       //
-                          alphaRoughness,                                     //
-                          cavity,                                             //
-                          sheenColorIntensityFactor,                          //
-                          sheenRoughness,                                     //
-                          clearcoatNormal,                                    //
-                          clearcoatF0,                                        //
-                          clearcoatRoughness,                                 //
-                          specularWeight);                                    //
-          }
+          lightTreeNodeIndex++;
+        } else {
+          lightTreeNodeIndex += max(1u, lightTreeNode.aabbMinSkipCount.w);
         }
       }
 #elif 1
