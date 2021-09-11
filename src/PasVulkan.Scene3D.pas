@@ -3075,12 +3075,12 @@ begin
   if fLightAABBTreeGeneration<>fSceneInstance.fLightAABBTreeGeneration then begin
    fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration;
    if fLightItems.Count>0 then begin
-    fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem));
+    fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),true);
    end;
    if fLightTree.Count>0 then begin
-    fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+    fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),true);
    end else begin
-    fLightTreeVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+    fLightTreeVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),true);
    end;
    fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
    fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);
@@ -5510,8 +5510,8 @@ procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aSwapChainImageIn
 begin
  Upload;
  if fUploaded then begin
-  fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
-  fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+  fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),true);
+  fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),true);
   fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fNodeMatricesBuffer);
   fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);
  end;

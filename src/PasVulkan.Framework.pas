@@ -1018,10 +1018,12 @@ type EpvVulkanException=class(Exception);
                             const aData;
                             const aDataOffset:TVkDeviceSize;
                             const aDataSize:TVkDeviceSize;
-                            const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                            const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic;
+                            const aForceFlush:boolean=false);
        procedure UpdateData(const aData;
                             const aDataOffset:TVkDeviceSize;
-                            const aDataSize:TVkDeviceSize);
+                            const aDataSize:TVkDeviceSize;
+                            const aForceFlush:boolean=false);
        procedure DownloadData(const aTransferQueue:TpvVulkanQueue;
                               const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                               const aTransferFence:TpvVulkanFence;
@@ -10448,7 +10450,8 @@ procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
                                      const aData;
                                      const aDataOffset:TVkDeviceSize;
                                      const aDataSize:TVkDeviceSize;
-                                     const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                                     const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic;
+                                     const aForceFlush:boolean=false);
 var StagingBuffer:TpvVulkanBuffer;
     p:TpvPointer;
     VkBufferCopy:TVkBufferCopy;
@@ -10505,7 +10508,7 @@ begin
    try
     if assigned(p) then begin
      Move(aData,p^,aDataSize);
-     if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+     if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
       Memory.FlushMappedMemoryRange(p,aDataSize);
      end;
     end else begin
@@ -10524,7 +10527,8 @@ end;
 
 procedure TpvVulkanBuffer.UpdateData(const aData;
                                      const aDataOffset:TVkDeviceSize;
-                                     const aDataSize:TVkDeviceSize);
+                                     const aDataSize:TVkDeviceSize;
+                                     const aForceFlush:boolean=false);
 var p:TpvPointer;
 begin
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
@@ -10532,7 +10536,7 @@ begin
   try
    if assigned(p) then begin
     Move(aData,p^,aDataSize);
-    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+    if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
      Memory.FlushMappedMemoryRange(p,aDataSize);
     end;
    end else begin
