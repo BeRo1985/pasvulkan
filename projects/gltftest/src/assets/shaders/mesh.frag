@@ -208,8 +208,7 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
 
 vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  float NdotV = clamp(abs(dot(normal.xyz, viewDirection)) + 1e-5, 0.0, 1.0),                                                            //
-      NdotVclamped = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0),                                                                   //
+  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0),                                                                            //
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
@@ -219,12 +218,12 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
                   clamp((float(envMapMaxLevelGGX) - 1.0) -  //
                             (1.0 - (1.2 * log2(roughness))),
                         0.0, float(envMapMaxLevelGGX)))
-              .xyz *                                                                        //
-          fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotVclamped, 5.0)),  //
-              brdf.xxx,                                                                     //
-              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *              //
-          specularWeight *                                                                  //
-          specularOcclusion *                                                               //
+              .xyz *                                                                 //
+          fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
+              brdf.xxx,                                                              //
+              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *       //
+          specularWeight *                                                           //
+          specularOcclusion *                                                        //
           1.0);
 }
 
@@ -378,6 +377,11 @@ void main() {
         }
       }
 
+      {
+        vec3 dxy = max(abs(dFdx(inNormal)), abs(dFdy(inNormal)));
+        perceptualRoughness = min(max(perceptualRoughness, 0.0525) + max(max(dxy.x, dxy.y), dxy.z), 1.0);
+      }
+
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
       vec3 normal;
@@ -458,9 +462,9 @@ void main() {
 #ifdef SHADOWS
             if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
               switch (light.metaData.x) {
-                case 1u: {   // Directional
-                   imageLightBasedLightDirection = light.directionZFar.xyz; 
-                   // fall-through
+                case 1u: {  // Directional
+                  imageLightBasedLightDirection = light.directionZFar.xyz;
+                  // fall-through
                 }
                 case 3u: {  // Spot
                   vec4 shadowNDC = light.shadowMapMatrix * vec4(vWorldSpacePosition, 1.0);
@@ -484,7 +488,7 @@ void main() {
                 litIntensity = lightAttenuation;
               }
             }
-#endif            
+#endif
             switch (light.metaData.x) {
               case 1u: {  // Directional
                 lightDirection = -light.directionZFar.xyz;
@@ -553,6 +557,26 @@ void main() {
         } else {
           lightTreeNodeIndex += max(1u, lightTreeNode.aabbMinSkipCount.w);
         }
+      }
+      if (lightTreeNodeIndex == 0u) {
+        doSingleLight(vec3(1.7, 1.15, 0.70),              //
+                      vec3(1.0),                          //
+                      normalize(-vec3(0.5, -1.0, -1.0)),  //
+                      normal.xyz,                         //
+                      diffuseColorAlpha.xyz,              //
+                      F0,                                 //
+                      F90,                                //
+                      viewDirection,                      //
+                      refractiveAngle,                    //
+                      transparency,                       //
+                      alphaRoughness,                     //
+                      cavity,                             //
+                      sheenColorIntensityFactor,          //
+                      sheenRoughness,                     //
+                      clearcoatNormal,                    //
+                      clearcoatF0,                        //
+                      clearcoatRoughness,                 //
+                      specularWeight);                    //
       }
 #elif 1
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
