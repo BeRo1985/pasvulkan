@@ -538,6 +538,39 @@ type EpvScene3D=class(Exception);
               property Visible:boolean read fVisible write fVisible;
               property Always:boolean read fAlways write fAlways;
             end;
+            TLightItem=packed record
+             // uvec4 MetaData; begin
+              Type_:TpvUInt32;
+              ShadowMapIndex:TpvUInt32;
+{             InnerConeCosinus:TpvFloat;
+              OuterConeCosinus:TpvFloat;}
+              LightAngleScale:TpvFloat;
+              LightAngleOffset:TpvFloat;
+             // uvec4 MetaData; end
+             ColorIntensity:TpvVector4; // XYZ = Color RGB, W = Intensity
+             PositionRange:TpvVector4; // XYZ = Position, W = Range
+             DirectionZFar:TpvVector4; // XYZ = Direction, W = Unused
+             ShadowMapMatrix:TpvMatrix4x4;
+            end;
+            PLightItem=^TLightItem;
+            TLightItems=TpvDynamicArray<TLightItem>;
+            { TLightBuffer }
+            TLightBuffer=class
+             private
+              fSceneInstance:TpvScene3D;
+              fLightItems:TLightItems;
+              fLightAABBTreeGeneration:TpvUInt32;
+              fLightTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
+              fLightItemsVulkanBuffer:TpvVulkanBuffer;
+              fLightTreeVulkanBuffer:TpvVulkanBuffer;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure Upload;
+              procedure Unload;
+              procedure Update;
+            end;
+            TLightBuffers=array[0..MaxSwapChainImages+1] of TLightBuffer;
             { TLight }
             TLight=class
              public
@@ -553,12 +586,15 @@ type EpvScene3D=class(Exception);
               fVisible:boolean;
               fData:TpvScene3D.TLightData;
               fShadowMapIndex:TpvInt32;
+              fPosition:TpvVector3;
+              fDirection:TpvVector3;
               fMatrix:TpvMatrix4x4;
               fViewSpacePosition:TpvVector3;
               fBoundingBox:TpvAABB;
               fBoundingSphere:TpvSphere;
               fScissorRect:TpvFloatClipRect;
               fAABBTreeProxy:TpvSizeInt;
+              fLightItemIndex:TpvSizeInt;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -791,26 +827,6 @@ type EpvScene3D=class(Exception);
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
                    TNodes=TpvObjectGenericList<TNode>;
-                   TLightClusterGridLightItem=packed record
-                    // uvec4 MetaData; begin
-                     Type_:TpvUInt32;
-                     ShadowMapIndex:TpvUInt32;
-       {             InnerConeCosinus:TpvFloat;
-                     OuterConeCosinus:TpvFloat;}
-                     LightAngleScale:TpvFloat;
-                     LightAngleOffset:TpvFloat;
-                    // uvec4 MetaData; end
-                    ColorIntensity:TpvVector4; // XYZ = Color RGB, W = Intensity
-                    PositionRange:TpvVector4; // XYZ = Position, W = Range
-                    DirectionZFar:TpvVector4; // XYZ = Direction, W = Unused
-                    ShadowMapMatrix:TPasGLTF.TMatrix4x4;
-                   end;
-                   PLightClusterGridLightItem=^TLightClusterGridLightItem;
-                   TLightClusterGridLightItems=array of TLightClusterGridLightItem;
-                   TLightClusterGridLightIndex=packed record
-                    Offset:TpvUInt32;
-                    Count:TpvUInt32;
-                   end;
                    TLight=class(TGroupObject)
                     private
                      fData:TLightData;
@@ -1172,6 +1188,7 @@ type EpvScene3D=class(Exception);
        fLightAABBTreeGeneration:TpvUInt32;
        fLightAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fLightAABBTreeStateGenerations:array[0..MaxSwapChainImages+1] of TpvUInt32;
+       fLightBuffers:TpvScene3D.TLightBuffers;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
@@ -1185,6 +1202,10 @@ type EpvScene3D=class(Exception);
                                               const aFrustum:PpvFrustum;
                                               const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                               const aRoot:TpvSizeInt);
+       procedure CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                            const aRoot:TpvSizeInt;
+                                            var aLightItemArray:TpvScene3D.TLightItems);
+       function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
@@ -2893,6 +2914,8 @@ begin
  if fData.fVisible then begin
   Position:=(fMatrix*TpvVector3.Origin).xyz;
   Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
+  fPosition:=Position;
+  fDirection:=Direction;
   case fData.Type_ of
    TpvScene3D.TLightData.TType.Point,
    TpvScene3D.TLightData.TType.Spot:begin
@@ -2958,6 +2981,87 @@ begin
    finally
     fAABBTreeProxy:=-1;
    end;
+  end;
+ end;
+end;
+
+{ TpvScene3D.TLightBuffer }
+
+constructor TpvScene3D.TLightBuffer.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fLightTree.Initialize;
+ fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-2;
+end;
+
+destructor TpvScene3D.TLightBuffer.Destroy;
+begin
+ Unload;
+ fLightTree.Finalize;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TLightBuffer.Upload;
+begin
+ Update;
+end;
+
+procedure TpvScene3D.TLightBuffer.Unload;
+begin
+ FreeAndNil(fLightItemsVulkanBuffer);
+ FreeAndNil(fLightTreeVulkanBuffer);
+end;
+
+procedure TpvScene3D.TLightBuffer.Update;
+const EmptySkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
+       (AABBMin:(x:0.0;y:0.0;z:0.0);
+        SkipCount:0;
+        AABBMax:(x:0.0;y:0.0;z:0.0);
+        UserData:TpvUInt32($ffffffff)
+       );
+begin
+ if (not assigned(fLightItemsVulkanBuffer)) or (fLightItemsVulkanBuffer.Size>(fLightItems.Count*SizeOf(TLightItem))) then begin
+  FreeAndNil(fLightItemsVulkanBuffer);
+  fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                  Max(128,fLightItems.Count)*SizeOf(TLightItem)*2,
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [TpvVulkanBufferFlag.PersistentMapped]
+                                                 );
+ end;
+ if (not assigned(fLightTreeVulkanBuffer)) or (fLightTreeVulkanBuffer.Size>(fLightTree.Count*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode))) then begin
+  FreeAndNil(fLightTreeVulkanBuffer);
+  fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                  Max(1024,fLightTree.Count)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode)*2,
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [TpvVulkanBufferFlag.PersistentMapped]
+                                                 );
+ end;
+ if fLightAABBTreeGeneration<>fSceneInstance.fLightAABBTreeGeneration then begin
+  fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration;
+  if fLightItems.Count>0 then begin
+   fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,fLightItems.Count*SizeOf(TLightItem));
+  end;
+  if fLightTree.Count>0 then begin
+   fLightItemsVulkanBuffer.UpdateData(fLightTree.Items[0],0,fLightTree.Count*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+  end else begin
+   fLightItemsVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
   end;
  end;
 end;
@@ -6655,6 +6759,10 @@ begin
   fLightAABBTreeStateGenerations[Index]:=fLightAABBTreeGeneration-1;
  end;
 
+ for Index:=0 to length(fLightBuffers)-1 do begin
+  fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self);
+ end;
+
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  for Index:=0 to length(fAABBTreeStates)-1 do begin
@@ -6677,6 +6785,10 @@ begin
 
  for Index:=0 to length(fLightAABBTreeStates)-1 do begin
   fLightAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
+ for Index:=0 to length(fLightBuffers)-1 do begin
+  FreeAndNil(fLightBuffers[Index]);
  end;
 
  FreeAndNil(fLightAABBTree);
@@ -6920,6 +7032,7 @@ var Group:TGroup;
     Texture:TTexture;
     Sampler:TSampler;
     Image:TImage;
+    Index:TpvSizeInt;
 begin
  if fUploaded then begin
   fLock.Acquire;
@@ -6942,6 +7055,9 @@ begin
       Image.Unload;
      end;
      FreeAndNil(fWhiteTexture);
+     for Index:=0 to length(fLightBuffers)-1 do begin
+      fLightBuffers[Index].Unload;
+     end;
     finally
      fUploaded:=false;
     end;
@@ -6952,12 +7068,18 @@ begin
  end;
 end;
 
+function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
+begin
+ result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
+end;
+
 procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
     OldGeneration:TpvUInt32;
+    LightBuffer:TpvScene3D.TLightBuffer;
 begin
 
  fCountLights[aSwapChainImageIndex]:=0;
@@ -6968,7 +7090,9 @@ begin
 
  OldGeneration:=fLightAABBTreeStateGenerations[aSwapChainImageIndex];
  if TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aSwapChainImageIndex],fLightAABBTreeGeneration,OldGeneration)=OldGeneration then begin
+
   LightAABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+
   if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
    if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
     LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
@@ -6979,6 +7103,12 @@ begin
   end else begin
    LightAABBTreeState^.Root:=-1;
   end;
+
+  LightBuffer:=fLightBuffers[aSwapChainImageIndex];
+  CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems);
+  fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
+  LightBuffer.Update;
+
  end;
 
  AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
@@ -7109,7 +7239,7 @@ procedure TpvScene3D.CullLightAABBTreeWithFrustum(const aSwapChainImageIndex:Tpv
                                                   const aRoot:TpvSizeInt);
  procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
  var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-    Mask:TpvUInt32;
+     Mask:TpvUInt32;
  begin
   if aNode>=0 then begin
    TreeNode:=@aTreeNodes[aNode];
@@ -7175,6 +7305,96 @@ begin
        StackItem:=@Stack[StackPointer];
        StackItem^.Node:=TreeNode^.Children[1];
        StackItem^.Mask:=Mask;
+       inc(StackPointer);
+      end;
+      Node:=TreeNode^.Children[0];
+      continue;
+     end else begin
+      if TreeNode^.Children[1]>=0 then begin
+       Node:=TreeNode^.Children[1];
+       continue;
+      end;
+     end;
+    end;
+    break;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                                const aRoot:TpvSizeInt;
+                                                var aLightItemArray:TpvScene3D.TLightItems);
+ procedure ProcessLight(const aLight:TpvScene3D.TLight);
+ var LightItem:TpvScene3D.PLightItem;
+     InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
+ begin
+  aLight.fLightItemIndex:=aLightItemArray.AddNew;
+  LightItem:=@aLightItemArray.Items[aLight.fLightItemIndex];
+  LightItem^.Type_:=TpvUInt32(aLight.fData.Type_);
+  LightItem^.ShadowMapIndex:=-1;
+  InnerConeAngleCosinus:=cos(aLight.fData.InnerConeAngle);
+  OuterConeAngleCosinus:=cos(aLight.fData.OuterConeAngle);
+ {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
+  LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
+  LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
+  LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+  LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fData.fColor,aLight.fData.fIntensity);
+  LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fData.fRange);
+  LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
+  LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+ end;
+ procedure ProcessNode(const aNode:TpvSizeint);
+ var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+ begin
+  if aNode>=0 then begin
+   TreeNode:=@aTreeNodes[aNode];
+   if TreeNode^.UserData<>0 then begin
+    ProcessLight(TpvScene3D.TLight(Pointer(TreeNode^.UserData)));
+   end;
+   if TreeNode^.Children[0]>=0 then begin
+    ProcessNode(TreeNode^.Children[0]);
+   end;
+   if TreeNode^.Children[1]>=0 then begin
+    ProcessNode(TreeNode^.Children[1]);
+   end;
+  end;
+ end;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Node:TpvSizeInt;
+     end;
+var StackPointer:TpvSizeInt;
+    StackItem:PStackItem;
+    Node:TpvSizeInt;
+    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Stack:array[0..31] of TStackItem;
+begin
+ aLightItemArray.Count:=0;
+ if (aRoot>=0) and (length(aTreeNodes)>0) then begin
+  Stack[0].Node:=aRoot;
+  StackPointer:=1;
+  while StackPointer>0 do begin
+   dec(StackPointer);
+   StackItem:=@Stack[StackPointer];
+   Node:=StackItem^.Node;
+   while Node>=0 do begin
+    TreeNode:=@aTreeNodes[Node];
+    if TreeNode^.UserData<>0 then begin
+     ProcessLight(TpvScene3D.TLight(Pointer(TreeNode^.UserData)));
+    end;
+    if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
+     if TreeNode^.Children[0]>=0 then begin
+      ProcessNode(TreeNode^.Children[0]);
+     end;
+     if TreeNode^.Children[1]>=0 then begin
+      ProcessNode(TreeNode^.Children[1]);
+     end;
+    end else begin
+     if TreeNode^.Children[0]>=0 then begin
+      if TreeNode^.Children[1]>=0 then begin
+       StackItem:=@Stack[StackPointer];
+       StackItem^.Node:=TreeNode^.Children[1];
        inc(StackPointer);
       end;
       Node:=TreeNode^.Children[0];

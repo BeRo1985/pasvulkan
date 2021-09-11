@@ -148,7 +148,7 @@ type TpvBVHDynamicAABBTree=class
             end;
             PSkipListNodeStackItem=^TSkipListNodeStackItem;
             TSkipListNodeStack=TpvDynamicStack<TSkipListNodeStackItem>;
-            TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32;
+            TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32 of object;
       private
        fSkipListNodeLock:TPasMPSpinLock;
        fSkipListNodeArray:TSkipListNodeArray;
