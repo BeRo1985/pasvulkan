@@ -1,8 +1,8 @@
 @echo off
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.vert -o mesh_vert.spv
-"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -o mesh_frag.spv
-"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DALPHATEST -o mesh_masked_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -o mesh_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DALPHATEST -o mesh_masked_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V brdf_charlie.frag -o brdf_charlie_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V brdf_ggx.frag -o brdf_ggx_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V fullscreen.vert -o fullscreen_vert.spv

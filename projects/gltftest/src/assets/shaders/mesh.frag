@@ -405,11 +405,7 @@ void main() {
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
 
-#ifdef LIGHTS
-      vec3 imageLightBasedLightDirection = (lightMetaData.x != 0u) ? lights[0].directionZFar.xyz : vec3(0.0, 0.0, -1.0);
-#else
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
-#endif
 
       vec4 sheenColorIntensityFactor = vec4(1.0);
       float sheenRoughness = 0.0;
@@ -447,22 +443,25 @@ void main() {
 
 #ifdef LIGHTS
       uint lightTreeNodeIndex = 0;
-      uint lightTreeNodeLastMax = lightTreeNode[0].aabbMinSkipCount.w;
+      uint lightTreeNodeLastMax = lightTreeNodes[0].aabbMinSkipCount.w;
       while (lightTreeNodeIndex <= lightTreeNodeLastMax) {
         LightTreeNode lightTreeNode = lightTreeNodes[lightTreeNodeIndex];
         vec3 aabbMin = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMinSkipCount.xyz)));
         vec3 aabbMax = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMaxUserData.xyz)));
-        if (all(greaterThanEqual(vWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(vWorldSpacePosition.xyz, aabbMax))) {
+        if (all(greaterThanEqual(inWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(inWorldSpacePosition.xyz, aabbMax))) {
           if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
             float lightAttenuation = 1.0;
             vec3 lightDirection;
-            vec3 lightVector = light.positionRange.xyz - vWorldSpacePosition.xyz;
+            vec3 lightVector = light.positionRange.xyz - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
             if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
               switch (light.metaData.x) {
-                case 1u:    // Directional
+                case 1u: {   // Directional
+                   imageLightBasedLightDirection = light.directionZFar.xyz; 
+                   // fall-through
+                }
                 case 3u: {  // Spot
                   vec4 shadowNDC = light.shadowMapMatrix * vec4(vWorldSpacePosition, 1.0);
                   shadowNDC /= shadowNDC.w;
