@@ -45,7 +45,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set=2, binding = 2) buffer LightItemData {
+layout(std430, set=3, binding = 0) buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -55,7 +55,7 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(std430, set=2, binding = 3) buffer LightTreeNodeData {
+layout(std430, set=3, binding = 1) buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 #endif

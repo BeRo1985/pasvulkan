@@ -558,6 +558,7 @@ type EpvScene3D=class(Exception);
             TLightBuffer=class
              private
               fSceneInstance:TpvScene3D;
+              fUploaded:TPasMPBool32;
               fLightItems:TLightItems;
               fLightAABBTreeGeneration:TpvUInt32;
               fLightTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
@@ -1163,6 +1164,9 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
        fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -1243,6 +1247,7 @@ type EpvScene3D=class(Exception);
       published
        property MeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshVulkanDescriptorSetLayout;
        property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
+       property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
      end;
 
 implementation
@@ -2991,6 +2996,7 @@ constructor TpvScene3D.TLightBuffer.Create(const aSceneInstance:TpvScene3D);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
+ fUploaded:=false;
  fLightTree.Initialize;
  fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-2;
 end;
@@ -3004,13 +3010,53 @@ end;
 
 procedure TpvScene3D.TLightBuffer.Upload;
 begin
- Update;
+ if not fUploaded then begin
+  try
+   FreeAndNil(fLightItemsVulkanBuffer);
+   FreeAndNil(fLightTreeVulkanBuffer);
+   fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                   MaxVisibleLights*SizeOf(TLightItem),
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                   [],
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   [TpvVulkanBufferFlag.PersistentMapped]
+                                                  );
+   fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                  (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [TpvVulkanBufferFlag.PersistentMapped]
+                                                 );
+   Update;
+  finally
+   fUploaded:=true;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TLightBuffer.Unload;
 begin
- FreeAndNil(fLightItemsVulkanBuffer);
- FreeAndNil(fLightTreeVulkanBuffer);
+ if fUploaded then begin
+  try
+   FreeAndNil(fLightItemsVulkanBuffer);
+   FreeAndNil(fLightTreeVulkanBuffer);
+  finally
+   fUploaded:=false;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TLightBuffer.Update;
@@ -3021,47 +3067,17 @@ const EmptySkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
         UserData:TpvUInt32($ffffffff)
        );
 begin
- if (not assigned(fLightItemsVulkanBuffer)) or (fLightItemsVulkanBuffer.Size>(fLightItems.Count*SizeOf(TLightItem))) then begin
-  FreeAndNil(fLightItemsVulkanBuffer);
-  fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                  Max(128,fLightItems.Count)*SizeOf(TLightItem)*2,
-                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                  [],
-                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  [TpvVulkanBufferFlag.PersistentMapped]
-                                                 );
- end;
- if (not assigned(fLightTreeVulkanBuffer)) or (fLightTreeVulkanBuffer.Size>(fLightTree.Count*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode))) then begin
-  FreeAndNil(fLightTreeVulkanBuffer);
-  fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                  Max(1024,fLightTree.Count)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode)*2,
-                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                  [],
-                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  [TpvVulkanBufferFlag.PersistentMapped]
-                                                 );
- end;
- if fLightAABBTreeGeneration<>fSceneInstance.fLightAABBTreeGeneration then begin
-  fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration;
-  if fLightItems.Count>0 then begin
-   fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,fLightItems.Count*SizeOf(TLightItem));
-  end;
-  if fLightTree.Count>0 then begin
-   fLightItemsVulkanBuffer.UpdateData(fLightTree.Items[0],0,fLightTree.Count*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
-  end else begin
-   fLightItemsVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+ if fUploaded then begin
+  if fLightAABBTreeGeneration<>fSceneInstance.fLightAABBTreeGeneration then begin
+   fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration;
+   if fLightItems.Count>0 then begin
+    fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem));
+   end;
+   if fLightTree.Count>0 then begin
+    fLightItemsVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+   end else begin
+    fLightItemsVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+   end;
   end;
  end;
 end;
@@ -6747,6 +6763,19 @@ begin
                                                []);
  fMaterialVulkanDescriptorSetLayout.Initialize;
 
+ fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(0,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(1,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.Initialize;
+
  fLightAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  fLightAABBTreeGeneration:=0;
@@ -6777,6 +6806,11 @@ begin
 
  Unload;
 
+ for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
+  FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
+ end;
+ FreeAndNil(fGlobalVulkanDescriptorPool);
+
  for Index:=0 to length(fAABBTreeStates)-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
  end;
@@ -6796,6 +6830,8 @@ begin
  FreeAndNil(fMeshVulkanDescriptorSetLayout);
 
  FreeAndNil(fMaterialVulkanDescriptorSetLayout);
+
+ FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
  FreeAndNil(fWhiteTexture);
 
@@ -7006,6 +7042,7 @@ end;
 
 procedure TpvScene3D.Upload;
 var Group:TGroup;
+    Index:TpvSizeInt;
 begin
  if not fUploaded then begin
   fLock.Acquire;
@@ -7013,6 +7050,33 @@ begin
    if not fUploaded then begin
     try
      UploadWhiteTexture;
+     for Index:=0 to length(fLightBuffers)-1 do begin
+      fLightBuffers[Index].Upload;
+     end;
+     fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
+     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*2);
+     fGlobalVulkanDescriptorPool.Initialize;
+     for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
+      fGlobalVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
+                                                                        fGlobalVulkanDescriptorSetLayout);
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                              0,
+                                                              1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                              [],
+                                                              [fLightBuffers[Index].fLightItemsVulkanBuffer.DescriptorBufferInfo],
+                                                              [],
+                                                              false);
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                              0,
+                                                              1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                              [],
+                                                              [fLightBuffers[Index].fLightTreeVulkanBuffer.DescriptorBufferInfo],
+                                                              [],
+                                                              false);
+      fGlobalVulkanDescriptorSets[Index].Flush;
+     end;
      for Group in fGroups do begin
       Group.Upload;
      end;
@@ -7039,6 +7103,13 @@ begin
   try
    if fUploaded then begin
     try
+     for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
+      FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
+     end;
+     FreeAndNil(fGlobalVulkanDescriptorPool);
+     for Index:=0 to length(fLightBuffers)-1 do begin
+      fLightBuffers[Index].Unload;
+     end;
      for Group in fGroups do begin
       Group.Unload;
      end;
@@ -7055,9 +7126,6 @@ begin
       Image.Unload;
      end;
      FreeAndNil(fWhiteTexture);
-     for Index:=0 to length(fLightBuffers)-1 do begin
-      fLightBuffers[Index].Unload;
-     end;
     finally
      fUploaded:=false;
     end;
@@ -7329,20 +7397,24 @@ procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAA
  var LightItem:TpvScene3D.PLightItem;
      InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
  begin
-  aLight.fLightItemIndex:=aLightItemArray.AddNew;
-  LightItem:=@aLightItemArray.Items[aLight.fLightItemIndex];
-  LightItem^.Type_:=TpvUInt32(aLight.fData.Type_);
-  LightItem^.ShadowMapIndex:=-1;
-  InnerConeAngleCosinus:=cos(aLight.fData.InnerConeAngle);
-  OuterConeAngleCosinus:=cos(aLight.fData.OuterConeAngle);
- {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
-  LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
-  LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
-  LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-  LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fData.fColor,aLight.fData.fIntensity);
-  LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fData.fRange);
-  LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
-  LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+  if aLightItemArray.Count<MaxVisibleLights then begin
+   aLight.fLightItemIndex:=aLightItemArray.AddNew;
+   LightItem:=@aLightItemArray.Items[aLight.fLightItemIndex];
+   LightItem^.Type_:=TpvUInt32(aLight.fData.Type_);
+   LightItem^.ShadowMapIndex:=0;
+   InnerConeAngleCosinus:=cos(aLight.fData.InnerConeAngle);
+   OuterConeAngleCosinus:=cos(aLight.fData.OuterConeAngle);
+  {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
+   LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
+   LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
+   LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+   LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fData.fColor,aLight.fData.fIntensity);
+   LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fData.fRange);
+   LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
+   LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+  end else begin
+   aLight.fLightItemIndex:=-1;
+  end;
  end;
  procedure ProcessNode(const aNode:TpvSizeint);
  var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
