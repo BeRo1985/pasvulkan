@@ -561,7 +561,7 @@ type EpvScene3D=class(Exception);
               fUploaded:TPasMPBool32;
               fLightItems:TLightItems;
               fLightAABBTreeGeneration:TpvUInt32;
-              fLightTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
+              fLightTree:TpvBVHDynamicAABBTree.TGPUSkipListNodeArray;
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
               fLightTreeVulkanBuffer:TpvVulkanBuffer;
              public
@@ -3033,7 +3033,7 @@ begin
                                                    [TpvVulkanBufferFlag.PersistentMapped]
                                                   );
    fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                  (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                  (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),
                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                   [],
@@ -3064,7 +3064,7 @@ begin
 end;
 
 procedure TpvScene3D.TLightBuffer.Update(const aSwapChainImageIndex:TpvSizeInt);
-const EmptySkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
+const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TGPUSkipListNode=
        (AABBMin:(x:0.0;y:0.0;z:0.0);
         SkipCount:0;
         AABBMax:(x:0.0;y:0.0;z:0.0);
@@ -3078,9 +3078,9 @@ begin
     fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),true);
    end;
    if fLightTree.Count>0 then begin
-    fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),true);
+    fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),true);
    end else begin
-    fLightTreeVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),true);
+    fLightTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),true);
    end;
    fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
    fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);
@@ -4257,6 +4257,7 @@ begin
  fIndex:=aIndex;
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
+ fData.fVisible:=true;
 end;
 
 destructor TpvScene3D.TGroup.TLight.Destroy;
@@ -4281,6 +4282,7 @@ begin
  fData.fColor.x:=1.0;
  fData.fColor.y:=1.0;
  fData.fColor.z:=1.0;
+ fData.fVisible:=true;
  fData.fCastShadows:=false;
  if assigned(aSourceLight) then begin
   fName:=TPasJSON.GetString(aSourceLight.Properties['name'],'');
@@ -6329,9 +6331,13 @@ var CullFace,Blend:TPasGLTFInt32;
     end;
    end else begin
     Light:=TpvScene3D.TLight.Create(fSceneInstance);
-    Light.fData:=Node.fLight.fData;
-    Light.fMatrix:=Matrix;
-    Light.Update;
+    try
+     Light.fData:=Node.fLight.fData;
+     Light.fMatrix:=Matrix;
+     Light.Update;
+    finally
+     InstanceNode^.Light:=Light;
+    end;
    end;
   end;
   for Index:=0 to Node.Children.Count-1 do begin
@@ -7215,7 +7221,7 @@ begin
 
   LightBuffer:=fLightBuffers[aSwapChainImageIndex];
   CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems);
-  fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
+  fLightAABBTree.GetGPUSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
   LightBuffer.Update(aSwapChainImageIndex);
 
  end;
@@ -7560,7 +7566,7 @@ begin
  end;
 
  if fCountIndirectLights[aSwapChainImageIndex]>0 then begin
-  IndirectIntroSort(@fIndirectLights[aSwapChainImageIndex,0],0,fCountIndirectLights[aSwapChainImageIndex],TpvScene3DCompareIndirectLights);
+// IndirectIntroSort(@fIndirectLights[aSwapChainImageIndex,0],0,fCountIndirectLights[aSwapChainImageIndex],TpvScene3DCompareIndirectLights);
  end;
 
 end;

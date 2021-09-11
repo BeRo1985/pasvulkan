@@ -443,8 +443,8 @@ void main() {
 
 #ifdef LIGHTS
       uint lightTreeNodeIndex = 0;
-      uint lightTreeNodeLastMax = lightTreeNodes[0].aabbMinSkipCount.w;
-      while (lightTreeNodeIndex <= lightTreeNodeLastMax) {
+      uint lightTreeNodeCount = lightTreeNodes[0].aabbMinSkipCount.w;
+      while (lightTreeNodeIndex < lightTreeNodeCount) {
         LightTreeNode lightTreeNode = lightTreeNodes[lightTreeNodeIndex];
         vec3 aabbMin = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMinSkipCount.xyz)));
         vec3 aabbMax = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMaxUserData.xyz)));
