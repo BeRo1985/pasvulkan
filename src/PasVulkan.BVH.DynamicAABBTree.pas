@@ -131,10 +131,10 @@ type TpvBVHDynamicAABBTree=class
             PSizeIntArray=^TSizeIntArray;
             TSkipListNode=packed record
              public
-              // (u)vec4 centerSkipCount
+              // (u)vec4 aabbMinSkipCount
               AABBMin:TpvVector3;
               SkipCount:TpvUInt32;
-              // (u)vec4 extentsUserData
+              // (u)vec4 aabbMaxUserData
               AABBMax:TpvVector3;
               UserData:TpvUInt32;
             end;
