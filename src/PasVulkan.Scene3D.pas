@@ -3074,9 +3074,9 @@ begin
     fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem));
    end;
    if fLightTree.Count>0 then begin
-    fLightItemsVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+    fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
    end else begin
-    fLightItemsVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+    fLightTreeVulkanBuffer.UpdateData(EmptySkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
    end;
   end;
  end;
