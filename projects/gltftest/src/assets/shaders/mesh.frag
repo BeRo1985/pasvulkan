@@ -377,10 +377,13 @@ void main() {
         }
       }
 
+      float geometryRoughness;
       {
         vec3 dxy = max(abs(dFdx(inNormal)), abs(dFdy(inNormal)));
-        perceptualRoughness = min(max(perceptualRoughness, 0.0525) + max(max(dxy.x, dxy.y), dxy.z), 1.0);
+        geometryRoughness = max(max(dxy.x, dxy.y), dxy.z);
       }
+
+      perceptualRoughness = min(max(perceptualRoughness, 0.0525) + geometryRoughness, 1.0);
 
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
@@ -442,7 +445,7 @@ void main() {
           clearcoatNormal = normalize(inNormal);
         }
         clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
-        clearcoatRoughness = clamp(clearcoatRoughness, 0.0, 1.0);
+        clearcoatRoughness = min(max(clearcoatRoughness, 0.0525) + geometryRoughness, 1.0);
       }
 
 #ifdef LIGHTS
