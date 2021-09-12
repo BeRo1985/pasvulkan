@@ -2,6 +2,7 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
@@ -61,6 +62,8 @@ layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[]
 layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 /* clang-format on */
+
+#include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 
@@ -215,14 +218,7 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
   vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],  //
                   reflectionVector,               //
-#if 1
-                  clamp(roughness, 0.0, envMapMaxLevelGGX)
-#else
-                  clamp((float(envMapMaxLevelGGX) - 1.0) -  //
-                            (1.0 - (1.2 * log2(roughness))),
-                        0.0, float(envMapMaxLevelGGX))
-#endif
-                      )
+                  roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
               .xyz *                                                                 //
           fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
               brdf.xxx,                                                              //
@@ -238,14 +234,7 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
   return texture(uImageBasedLightingEnvMaps[1],  //
                  reflectionVector,               //
-#if 1
-                 clamp(sheenRoughness, 0.0, envMapMaxLevelCharlie)
-#else
-                 clamp((float(envMapMaxLevelCharlie) - 1.0) -     //
-                           (1.0 - (1.2 * log2(sheenRoughness))),  //
-                       0.0, float(envMapMaxLevelCharlie))         //
-#endif
-                     )
+                 roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie))
              .xyz *    //
          sheenColor *  //
          texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(sheenRoughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).x *
