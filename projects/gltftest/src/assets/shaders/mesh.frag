@@ -347,8 +347,8 @@ void main() {
     case smPBRSpecularGlossiness: {
       vec4 diffuseColorAlpha = vec4(1.0);
       vec3 specularColorFactor = vec3(1.0);
-      float ior = uMaterial.ior;
-      vec3 F0 = vec3((abs(uMaterial.ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) /  (ior + 1.0), 2.0));
+      float ior = uMaterial.ior.x;
+      vec3 F0 = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
       float specularFactor = 1.0;
       float perceptualRoughness = 1.0;
