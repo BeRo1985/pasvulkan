@@ -27,6 +27,7 @@ layout(std140, set = 1, binding = 0) uniform uboMaterial {
   vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
+  vec4 ior;
   uvec4 alphaCutOffFlagsTex0Tex1;
   mat4 textureTransforms[16];
 } uMaterial;
@@ -346,7 +347,8 @@ void main() {
     case smPBRSpecularGlossiness: {
       vec4 diffuseColorAlpha = vec4(1.0);
       vec3 specularColorFactor = vec3(1.0);
-      vec3 F0 = vec3(0.004);
+      float ior = uMaterial.ior;
+      vec3 F0 = vec3((abs(uMaterial.ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) /  (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
       float specularFactor = 1.0;
       float perceptualRoughness = 1.0;

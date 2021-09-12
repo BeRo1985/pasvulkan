@@ -378,6 +378,7 @@ type EpvScene3D=class(Exception);
                       MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
                       SheenColorFactorSheenIntensityFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
+                      IOR:TpvVector4;
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -407,6 +408,7 @@ type EpvScene3D=class(Exception);
                     PBRSheen:TPBRSheen;
                     PBRClearCoat:TPBRClearCoat;
                     Unlit:TUnlit;
+                    IOR:TpvFloat;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -457,6 +459,7 @@ type EpvScene3D=class(Exception);
                      Unlit:(
                       Dummy:0;
                      );
+                     IOR:1.5;
                     );
                    DefaultShaderData:TShaderData=
                     (
@@ -466,6 +469,7 @@ type EpvScene3D=class(Exception);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
+                     ior:(x:1.5;y:0.0;z:0.0;w:0.0);
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:$ffffffff;
@@ -2735,6 +2739,13 @@ begin
   end;
  end;
 
+ begin
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_ior'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   fData.IOR:=TPasJSON.GetNumber(JSONObject.Properties['ior'],1.5);
+  end;
+ end;
+
  FillShaderData;
 
 end;
@@ -2815,6 +2826,10 @@ begin
    fShaderData.SpecularFactor[1]:=fData.PBRSpecularGlossiness.SpecularFactor[1];
    fShaderData.SpecularFactor[2]:=fData.PBRSpecularGlossiness.SpecularFactor[2];
    fShaderData.SpecularFactor[3]:=0.0;
+   fShaderData.IOR[0]:=fData.IOR;
+   fShaderData.IOR[1]:=0.0;
+   fShaderData.IOR[2]:=0.0;
+   fShaderData.IOR[3]:=0.0;
   end;
   TMaterial.TShadingModel.Unlit:begin
    fShaderData.Flags:=fShaderData.Flags or ((2 and $f) shl 0);
