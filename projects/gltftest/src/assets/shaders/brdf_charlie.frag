@@ -13,7 +13,7 @@ const int numSamples = 1024;
 #include "ibl.glsl"
 
 void main(){
-  float roughness = inTexCoord.x;
-  float nDotV = inTexCoord.y;
+  float nDotV = inTexCoord.x;
+  float roughness = inTexCoord.y;
   outFragColor = vec4(LUTCharlie(nDotV, roughness, numSamples));
 }

@@ -87,7 +87,7 @@ const float PI = 3.14159265358979323846,     //
 float cavity, ambientOcclusion;
 uint flags, shadingModel;
 
-vec3 approximateAnalyticBRDF(vec3 specularColor, float roughness, float NoV) {
+vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
   const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
   const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
   vec4 r = fma(c0, vec4(roughness), c1);
@@ -197,7 +197,7 @@ vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
 vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  vec2 brdfSamplePoint = clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0));
+  vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
   vec2 f_ab = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).rg;
   vec3 irradiance = texture(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
   vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
@@ -216,7 +216,7 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
-  vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
+  vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],  //
                   reflectionVector,               //
                   roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
@@ -238,7 +238,7 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
                  roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie))
              .xyz *    //
          sheenColor *  //
-         texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(sheenRoughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).x *
+         texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
          ao;
 }
 
