@@ -26,7 +26,8 @@ void main() {
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
     vec3 direction = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
-    float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
+    float roughness = clamp(float(pushConstants.mipMapLevel) / float(pushConstants.maxMipMapLevel), 0.0, 1.0);
+    //   float roughness = clamp(exp2((1.0 - float((pushConstants.maxMipMapLevel - 1) - pushConstants.mipMapLevel)) / 1.2), 0.0, 1.0);
     imageStore(uDestinationTexture, uvw, filterLambertian(uSourceTexture, direction, pushConstants.numSamples, roughness));
   }
 }

@@ -213,11 +213,16 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
   vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(roughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).xy;
-  return (texture(uImageBasedLightingEnvMaps[0],            //
-                  reflectionVector,                         //
+  return (texture(uImageBasedLightingEnvMaps[0],  //
+                  reflectionVector,               //
+#if 1
+                  clamp(roughness, 0.0, envMapMaxLevelGGX)
+#else
                   clamp((float(envMapMaxLevelGGX) - 1.0) -  //
                             (1.0 - (1.2 * log2(roughness))),
-                        0.0, float(envMapMaxLevelGGX)))
+                        0.0, float(envMapMaxLevelGGX))
+#endif
+                      )
               .xyz *                                                                 //
           fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
               brdf.xxx,                                                              //
@@ -231,13 +236,18 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0);
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  return texture(uImageBasedLightingEnvMaps[1],                   //
-                 reflectionVector,                                //
+  return texture(uImageBasedLightingEnvMaps[1],  //
+                 reflectionVector,               //
+#if 1
+                 clamp(sheenRoughness, 0.0, envMapMaxLevelCharlie)
+#else
                  clamp((float(envMapMaxLevelCharlie) - 1.0) -     //
                            (1.0 - (1.2 * log2(sheenRoughness))),  //
-                       0.0, float(envMapMaxLevelCharlie)))        //
-             .xyz *                                               //
-         sheenColor *                                             //
+                       0.0, float(envMapMaxLevelCharlie))         //
+#endif
+                     )
+             .xyz *    //
+         sheenColor *  //
          texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(sheenRoughness, NdotV), vec2(0.0), vec2(1.0)), 0.0).x *
          ao;
 }
