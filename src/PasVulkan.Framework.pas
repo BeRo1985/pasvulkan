@@ -8900,7 +8900,7 @@ begin
     end else begin
      fMappedOffset:=0;
      fMappedSize:=BestWantedChunkSize;
-     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,aSize,0,@fMemory));
+     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory));
     end;
    end else begin
     raise EpvVulkanException.Create('Memory can''t mapped');
@@ -9320,7 +9320,7 @@ begin
     end else begin
      fMappedOffset:=aOffset;
      fMappedSize:=aSize;
-     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,aOffset,aSize,0,@result));
+     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@result));
      fMemory:=result;
     end;
    end else begin
