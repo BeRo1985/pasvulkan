@@ -56,7 +56,7 @@ var Application:TApplication=nil;
 
 implementation
 
-uses UnitScreenMain,PasVulkan.Scene3D;
+uses UnitScreenMain;
 
 constructor TApplication.Create;
 {$if not (defined(Android) or defined(iOS))}
@@ -77,9 +77,9 @@ begin
   end else if (Parameter='--force-no-vsync') or
               (Parameter='/force-no-vsync') then begin
    fForceNoVSync:=true;
-  end else if (Parameter='--flush-update-data') or
+{ end else if (Parameter='--flush-update-data') or
               (Parameter='/flush-update-data') then begin
-   FlushUpdateData:=true;
+   FlushUpdateData:=true; //}
   end;
  end;
 {$ifend}

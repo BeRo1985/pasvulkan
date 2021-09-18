@@ -1259,9 +1259,9 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
      end;
 
-var FlushUpdateData:boolean=false;
-
 implementation
+
+const FlushUpdateData=false;
 
 function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
 var Vector:TpvVector3;
@@ -3099,8 +3099,8 @@ begin
    end else begin
     fLightTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
    end;
-   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
-   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);
+{  fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
+   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);}
   end;
  end;
 end;
@@ -5531,8 +5531,8 @@ begin
  if fUploaded then begin
   fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
   fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
-  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fNodeMatricesBuffer);
-  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);
+{ fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fNodeMatricesBuffer);
+  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);}
  end;
 end;
 
