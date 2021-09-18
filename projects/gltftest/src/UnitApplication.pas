@@ -33,6 +33,8 @@ const ApplicationTag='gltftest';
 type TApplication=class(TpvApplication)
       public
       private
+       fForceUseValidationLayers:boolean;
+       fForceNoVSync:boolean;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -54,12 +56,33 @@ var Application:TApplication=nil;
 
 implementation
 
-uses UnitScreenMain;
+uses UnitScreenMain,PasVulkan.Scene3D;
 
 constructor TApplication.Create;
+{$if not (defined(Android) or defined(iOS))}
+var Index:TpvInt32;
+    Parameter:String;
+{$ifend}
 begin
  inherited Create;
  Application:=self;
+ fForceUseValidationLayers:=false;
+ fForceNoVSync:=false;
+{$if not (defined(Android) or defined(iOS))}
+ for Index:=1 to ParamCount do begin
+  Parameter:=LowerCase(ParamStr(Index));
+  if (Parameter='--force-use-validation-layers') or
+     (Parameter='/force-use-validation-layers') then begin
+   fForceUseValidationLayers:=true;
+  end else if (Parameter='--force-no-vsync') or
+              (Parameter='/force-no-vsync') then begin
+   fForceNoVSync:=true;
+  end else if (Parameter='--flush-update-data') or
+              (Parameter='/flush-update-data') then begin
+   FlushUpdateData:=true;
+  end;
+ end;
+{$ifend}
 end;
 
 destructor TApplication.Destroy;
@@ -70,12 +93,10 @@ end;
 
 procedure TApplication.Setup;
 begin
- if Debugging then begin
+ if Debugging or fForceUseValidationLayers then begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
- VulkanDebugging:=true;
- VulkanValidation:=true;
  Title:='PasVulkan GLTF Test';
  PathName:='gltftest.pasvulkan';
  StartScreen:=TScreenMain;
@@ -86,7 +107,11 @@ begin
  UseAudio:=true;
  SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 //DesiredCountSwapChainImages:=2;
- PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
+ if fForceNoVSync then begin
+  PresentMode:=TpvApplicationPresentMode.Mailbox;
+ end else begin
+  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
+ end;
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
  VulkanAPIVersion:=0;//VK_API_VERSION_1_0;
 end;
