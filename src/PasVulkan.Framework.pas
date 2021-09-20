@@ -2954,6 +2954,14 @@ type EpvVulkanException=class(Exception);
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream);
+       constructor CreateFromKTX2(const aDevice:TpvVulkanDevice;
+                                  const aGraphicsQueue:TpvVulkanQueue;
+                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                  const aGraphicsFence:TpvVulkanFence;
+                                  const aTransferQueue:TpvVulkanQueue;
+                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                  const aTransferFence:TpvVulkanFence;
+                                  const aStream:TStream);
        constructor CreateFromDDS(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3158,7 +3166,7 @@ procedure VulkanDisableFloatingPointExceptions;
 
 implementation
 
-uses PasVulkan.Utils;
+uses PasVulkan.Utils,PasVulkan.Streams;
 
 const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
@@ -18683,6 +18691,238 @@ begin
 
 end;
 
+constructor TpvVulkanTexture.CreateFromKTX2(const aDevice:TpvVulkanDevice;
+                                            const aGraphicsQueue:TpvVulkanQueue;
+                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                            const aGraphicsFence:TpvVulkanFence;
+                                            const aTransferQueue:TpvVulkanQueue;
+                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                            const aTransferFence:TpvVulkanFence;
+                                            const aStream:TStream);
+const	SUPERCOMPRESSION_NONE=0;
+      SUPERCOMPRESSION_CRN=1;
+      SUPERCOMPRESSION_ZLIB=2;
+      SUPERCOMPRESSION_ZSTD=3;
+type TKTX2Identifier=array[0..11] of TpvUInt8;
+     PKTX2Identifier=^TKTX2Identifier;
+     TKTX2Header=packed record
+      Identifier:TKTX2Identifier;
+      VkFormat:TpvUInt32;
+      TypeSize:TpvUInt32;
+      PixelWidth:TpvUInt32;
+      PixelHeight:TpvUInt32;
+      PixelDepth:TpvUInt32;
+      LayerCount:TpvUInt32;
+      FaceCount:TpvUInt32;
+      LevelCount:TpvUInt32;
+      SuperCompressionScheme:TpvUInt32;
+      dfdByteOffset:TpvUInt32;
+      dfdByteLength:TpvUInt32;
+      kvdByteOffset:TpvUInt32;
+      kvdByteLength:TpvUInt32;
+      sgdByteOffset:TpvUInt32;
+      sgdByteLength:TpvUInt32;
+     end;
+     PKTX2Header=^TKTX2Header;
+     TKTX2Level=packed record
+      ByteOffset:UInt64;
+      ByteLength:UInt64;
+      UncompressedByteLength:UInt64;
+     end;
+     PKTX2Level=^TKTX2Level;
+     TKTX2Levels=array of TKTX2Level;
+     TKTX2DataFormatDescriptor=packed record
+      dfdTotalSize:UInt32;
+     end;
+     PKTX2DataFormatDescriptor=^TKTX2DataFormatDescriptor;
+     TKTX2DataFormatDescriptorBasicFormat=packed record
+      VendorID:UInt16;
+      DescriptorType:UInt16;
+      VersionNumber:UInt16;
+      DescriptionBlockSize:UInt16;
+      ColorModel:UInt8;
+      ColorPrimaries:UInt8;
+      TransferFunction:UInt8;
+      Flags:UInt8;
+      TexelBlockDimensions:array[0..3] of UInt8;
+      BytePlanes:array[0..7] of UInt8;
+     end;
+     TKTX2DataFormatDescriptorSample=packed record
+      BitOffset:UInt16;
+      BitLength:UInt8;
+      ChannelID:UInt8;
+      SamplePositions:array[0..3] of UInt8;
+      SampleLower:UInt32;
+      SampleUpper:UInt32;
+     end;
+     PKTX2DataFormatDescriptorSample=^TKTX2DataFormatDescriptorSample;
+     TKTX2DataFormatDescriptorSamples=array of TKTX2DataFormatDescriptorSample;
+     TKeyValueHashMap=TpvStringHashMap<RawByteString>;
+var KTX2Header:TKTX2Header;
+    KTX2Levels:TKTX2Levels;
+    KTX2DataFormatDescriptor:TKTX2DataFormatDescriptor;
+    KTX2DataFormatDescriptorBasicFormat:TKTX2DataFormatDescriptorBasicFormat;
+    KTX2DataFormatDescriptorSamples:TKTX2DataFormatDescriptorSamples;
+    KeyValueByteLength,LevelCount,Remain,Count,CountSamples:UInt32;
+    NullPosition:Int32;
+    NewPosition,BasePosition:UInt64;
+    KeyValue,Key,Value:RawByteString;
+    KeyValueHashMap:TKeyValueHashMap;
+    DFDChunkSystem:TpvChunkStream;
+    KVDChunkSystem:TpvChunkStream;
+    SGDChunkSystem:TpvChunkStream;
+begin
+
+ BasePosition:=aStream.Position;
+
+ if aStream.Read(KTX2Header,SizeOf(TKTX2Header))<>SizeOf(TKTX2Header) then begin
+  raise EpvVulkanTextureException.Create('Stream read error');
+ end;
+
+ if (KTX2Header.Identifier[0]<>$ab) or
+    (KTX2Header.Identifier[1]<>$4b) or
+    (KTX2Header.Identifier[2]<>$54) or
+    (KTX2Header.Identifier[3]<>$58) or
+    (KTX2Header.Identifier[4]<>$20) or
+    (KTX2Header.Identifier[5]<>$32) or
+    (KTX2Header.Identifier[6]<>$30) or
+    (KTX2Header.Identifier[7]<>$bb) or
+    (KTX2Header.Identifier[8]<>$0d) or
+    (KTX2Header.Identifier[9]<>$0a) or
+    (KTX2Header.Identifier[10]<>$1a) or
+    (KTX2Header.Identifier[11]<>$0a) then begin
+  raise EpvVulkanTextureException.Create('Invalid KTX2 stream');
+ end;
+
+ if not (KTX2Header.FaceCount in [1,6]) then begin
+  raise EpvVulkanTextureException.Create('Invalid KTX2 stream (Count of faces must be 1 or 6)');
+ end;
+
+  if KTX2Header.LevelCount<>0 then begin
+  LevelCount:=KTX2Header.LevelCount;
+ end else begin
+  LevelCount:=1;
+ end;
+
+ KTX2Levels:=nil;
+ try
+
+  SetLength(KTX2Levels,LevelCount);
+
+  if aStream.Read(KTX2Levels[0],LevelCount*SizeOf(TKTX2Level))<>(LevelCount*SizeOf(TKTX2Level)) then begin
+   raise EpvVulkanTextureException.Create('Stream read error');
+  end;
+
+  if aStream.Read(KTX2DataFormatDescriptor,SizeOf(TKTX2DataFormatDescriptor))<>SizeOf(TKTX2DataFormatDescriptor) then begin
+   raise EpvVulkanTextureException.Create('Stream read error');
+  end;
+
+  DFDChunkSystem:=TpvChunkStream.Create(aStream,BasePosition+KTX2Header.dfdByteOffset,KTX2Header.dfdByteLength,false);
+  try
+
+   FillChar(KTX2DataFormatDescriptorBasicFormat,SizeOf(TKTX2DataFormatDescriptorBasicFormat),#0);
+
+   Remain:=KTX2DataFormatDescriptor.dfdTotalSize;
+   Count:=Min(SizeOf(KTX2DataFormatDescriptorBasicFormat),Remain);
+   if Count>0 then begin
+    if DFDChunkSystem.Read(KTX2DataFormatDescriptorBasicFormat,Count)<>Count then begin
+     raise EpvVulkanTextureException.Create('Stream read error');
+    end;
+    dec(Remain,Count);
+   end;
+   NewPosition:=DFDChunkSystem.Position+Remain;
+   if DFDChunkSystem.Seek(NewPosition,soBeginning)<>NewPosition then begin
+    raise EpvVulkanTextureException.Create('Stream seek error');
+   end;
+   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[0]);
+   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[1]);
+   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[2]);
+   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[3]);
+
+   CountSamples:=((KTX2DataFormatDescriptorBasicFormat.DescriptionBlockSize shr 2)-6) shr 2;
+
+   KTX2DataFormatDescriptorSamples:=nil;
+   try
+
+    if CountSamples>0 then begin
+     SetLength(KTX2DataFormatDescriptorSamples,CountSamples);
+     if DFDChunkSystem.Read(KTX2DataFormatDescriptorSamples[0],CountSamples*SizeOf(TKTX2DataFormatDescriptorSample))<>(CountSamples*SizeOf(TKTX2DataFormatDescriptorSample)) then begin
+      raise EpvVulkanTextureException.Create('Stream read error');
+     end;
+    end;
+
+    KVDChunkSystem:=TpvChunkStream.Create(aStream,BasePosition+KTX2Header.kvdByteOffset,KTX2Header.kvdByteLength,false);
+    try
+
+     KeyValueHashMap:=TKeyValueHashMap.Create('');
+     try
+
+      while KVDChunkSystem.Position<KVDChunkSystem.Size do begin
+       if KVDChunkSystem.Read(KeyValueByteLength,SizeOf(UInt32))<>SizeOf(UInt32) then begin
+        raise EpvVulkanTextureException.Create('Stream read error');
+       end;
+       KeyValue:='';
+       try
+        if KeyValueByteLength>0 then begin
+         SetLength(KeyValue,KeyValueByteLength);
+         if KVDChunkSystem.Read(KeyValue[1],KeyValueByteLength)<>KeyValueByteLength then begin
+          raise EpvVulkanTextureException.Create('Stream read error');
+         end;
+         NullPosition:=pos(AnsiChar(#0),KeyValue);
+         if NullPosition>0 then begin
+          Key:=Copy(KeyValue,1,NullPosition-1);
+          Value:=Copy(KeyValue,NullPosition+1,length(KeyValue)-NullPosition);
+          KeyValueHashMap.Add(Key,Value);
+         end;
+        end;
+       finally
+        KeyValue:='';
+       end;
+       if (KVDChunkSystem.Position and 3)<>0 then begin
+        NewPosition:=KVDChunkSystem.Position+(4-(KVDChunkSystem.Position and 3));
+        if KVDChunkSystem.Seek(NewPosition,soBeginning)<>NewPosition then begin
+         raise EpvVulkanTextureException.Create('Stream seek error');
+        end;
+       end;
+      end;
+
+      // TODO: Complete it!
+
+      if KTX2Header.sgdByteLength>0 then begin
+       SGDChunkSystem:=TpvChunkStream.Create(aStream,BasePosition+KTX2Header.sgdByteOffset,KTX2Header.sgdByteLength,false);
+       try
+
+
+
+       finally
+        FreeAndNil(SGDChunkSystem);
+       end;
+      end;
+
+     finally
+      FreeAndNil(KeyValueHashMap);
+     end;
+
+    finally
+     FreeAndNil(KVDChunkSystem);
+    end;
+
+   finally
+    KTX2DataFormatDescriptorSamples:=nil;
+   end;
+
+  finally
+   FreeAndNil(DFDChunkSystem);
+  end;
+
+ finally
+  KTX2Levels:=nil;
+ end;
+
+
+
+end;
+
 constructor TpvVulkanTexture.CreateFromDDS(const aDevice:TpvVulkanDevice;
                                            const aGraphicsQueue:TpvVulkanQueue;
                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -20099,7 +20339,18 @@ begin
  FillChar(FirstBytes,SizeOf(FirstBytes),#0);
  aStream.ReadBuffer(FirstBytes,Min(SizeOf(FirstBytes),aStream.Size));
  aStream.Seek(0,soBeginning);
- if (FirstBytes[0]=$ab) and (FirstBytes[1]=$4b) and (FirstBytes[2]=$54) and (FirstBytes[3]=$58) and (FirstBytes[4]=$20) and (FirstBytes[5]=$31) and (FirstBytes[6]=$31) and (FirstBytes[7]=$bb) and (FirstBytes[8]=$0d) and (FirstBytes[9]=$0a) and (FirstBytes[10]=$1a) and (FirstBytes[11]=$0a) then begin
+ if (FirstBytes[0]=$ab) and
+    (FirstBytes[1]=$4b) and
+    (FirstBytes[2]=$54) and
+    (FirstBytes[3]=$58) and
+    (FirstBytes[4]=$20) and
+    (FirstBytes[5]=$31) and
+    (FirstBytes[6]=$31) and
+    (FirstBytes[7]=$bb) and
+    (FirstBytes[8]=$0d) and
+    (FirstBytes[9]=$0a) and
+    (FirstBytes[10]=$1a) and
+    (FirstBytes[11]=$0a) then begin
   CreateFromKTX(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -20108,6 +20359,26 @@ begin
                 aTransferCommandBuffer,
                 aTransferFence,
                 aStream);
+ end else if (FirstBytes[0]=$ab) and
+             (FirstBytes[1]=$4b) and
+             (FirstBytes[2]=$54) and
+             (FirstBytes[3]=$58) and
+             (FirstBytes[4]=$20) and
+             (FirstBytes[5]=$32) and
+             (FirstBytes[6]=$30) and
+             (FirstBytes[7]=$bb) and
+             (FirstBytes[8]=$0d) and
+             (FirstBytes[9]=$0a) and
+             (FirstBytes[10]=$1a) and
+             (FirstBytes[11]=$0a) then begin
+  CreateFromKTX2(aDevice,
+                 aGraphicsQueue,
+                 aGraphicsCommandBuffer,
+                 aGraphicsFence,
+                 aTransferQueue,
+                 aTransferCommandBuffer,
+                 aTransferFence,
+                 aStream);
  end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
   CreateFromPNG(aDevice,
                 aGraphicsQueue,
