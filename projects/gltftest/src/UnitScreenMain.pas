@@ -138,8 +138,6 @@ type { TScreenMain }
       public
        type TSwapChainImageState=record
              Ready:TPasMPBool32;
-             ViewMatrix:TpvMatrix4x4;
-             ProjectionMatrix:TpvMatrix4x4;
             end;
             PSwapChainImageState=^TSwapChainImageState;
             TSwapChainImageStates=array[0..MaxSwapChainImages+1] of TSwapChainImageState;
@@ -546,7 +544,8 @@ begin
 
  end;
 
- fSkyBox:=TSkyBox.Create(fParent.fSkyCubeMap.DescriptorImageInfo,
+ fSkyBox:=TSkyBox.Create(fParent.fScene3D,
+                         fParent.fSkyCubeMap.DescriptorImageInfo,
                          fVulkanRenderPass,
                          fWidth,
                          fHeight,
@@ -585,7 +584,10 @@ begin
 
  if TPasMPInterlocked.CompareExchange(SwapChainImageState^.Ready,false,true) then begin
 
-  fSkyBox.Draw(aCommandBuffer,SwapChainImageState^.ViewMatrix,SwapChainImageState^.ProjectionMatrix);
+  fSkyBox.Draw(aSwapChainImageIndex,
+               fParent.fFinalViewIndices[aSwapChainImageIndex],
+               1,
+               aCommandBuffer);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        fVulkanPipelineLayout.Handle,
@@ -1518,15 +1520,6 @@ begin
    fFinalViewIndices[pvApplication.UpdateSwapChainImageIndex]:=fScene3D.AddView(View);
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
-
-   SwapChainImageState^.ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                                        sin(-fCameraRotationY*PI*2.0),
-                                                                                        cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                                              (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                                              Center,
-                                                              TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
-
-   SwapChainImageState^.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
 
    TPasMPInterlocked.Write(SwapChainImageState^.Ready,true);
 

@@ -41,7 +41,7 @@ struct View {
 };
 
 layout(std140, set = 2, binding = 0) uniform uboViews {
-  View views[];
+  View views[512];
 } uView;
 
 #ifdef LIGHTS

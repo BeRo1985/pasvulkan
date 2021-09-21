@@ -26,27 +26,29 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D;
 
 type { TSkyBox }
      TSkyBox=class
       private
+       fScene3D:TpvScene3D;
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fVulkanDescriptorSet:TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
 
-       constructor Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+       constructor Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 
        destructor Destroy; override;
 
-       procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
+       procedure Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 
      end;
 
@@ -54,10 +56,13 @@ implementation
 
 { TSkyBox }
 
-constructor TSkyBox.Create(const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
-var Stream:TStream;
+constructor TSkyBox.Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+var Index:TpvSizeInt;
+    Stream:TStream;
 begin
  inherited Create;
+
+ fScene3D:=aScene3D;
 
  Stream:=pvApplication.Assets.GetAssetStream('shaders/skybox_vert.spv');
  try
@@ -79,30 +84,46 @@ begin
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(1,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fVulkanDescriptorSets));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fVulkanDescriptorSets));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fVulkanDescriptorSets));
  fVulkanDescriptorPool.Initialize;
 
- fVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                                       fVulkanDescriptorSetLayout);
- fVulkanDescriptorSet.WriteToDescriptorSet(0,
-                                           0,
-                                           1,
-                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                           [aSkyCubeMap],
-                                           [],
-                                           [],
-                                           false);
- fVulkanDescriptorSet.Flush;
+ for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+  fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                              fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                    [],
+                                                    [fScene3D.GlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                    [aSkyCubeMap],
+                                                    [],
+                                                    [],
+                                                    false);
+  fVulkanDescriptorSets[Index].Flush;
+ end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvUInt32));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -174,10 +195,13 @@ begin
 end;
 
 destructor TSkyBox.Destroy;
+var Index:TpvSizeInt;
 begin
  FreeAndNil(fVulkanPipeline);
  FreeAndNil(fVulkanPipelineLayout);
- FreeAndNil(fVulkanDescriptorSet);
+ for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[Index]);
+ end;
  FreeAndNil(fVulkanDescriptorPool);
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -187,27 +211,20 @@ begin
  inherited Destroy;
 end;
 
-procedure TSkyBox.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
-var ViewMatrix,ViewProjectionMatrix:TpvMatrix4x4;
+procedure TSkyBox.Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+var ViewBaseIndex:TpvUInt32;
 begin
- ViewMatrix:=aViewMatrix;
- ViewMatrix.RawComponents[0,3]:=0.0;
- ViewMatrix.RawComponents[1,3]:=0.0;
- ViewMatrix.RawComponents[2,3]:=0.0;
- ViewMatrix.RawComponents[3,0]:=0.0;
- ViewMatrix.RawComponents[3,1]:=0.0;
- ViewMatrix.RawComponents[3,2]:=0.0;
- ViewProjectionMatrix:=ViewMatrix*aProjectionMatrix;
+ ViewBaseIndex:=aViewBaseIndex;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                  0,
-                                 SizeOf(TpvMatrix4x4),@ViewProjectionMatrix);
+                                 SizeOf(TpvUInt32),@ViewBaseIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
-                                      @fVulkanDescriptorSet.Handle,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
                                       0,
                                       nil);
  aCommandBuffer.CmdDraw(36,1,0,0);

@@ -143,6 +143,7 @@ type EpvScene3D=class(Exception);
              Items:array[0..MaxViews-1] of TView;
             end;
             PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
+            TGlobalVulkanViewUniformBuffers=array[0..MaxSwapChainImages+1] of TpvVulkanBuffer;
             TVertexStagePushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
@@ -1175,7 +1176,7 @@ type EpvScene3D=class(Exception);
        fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanViews:array[0..MaxSwapChainImages+1] of TGlobalViewUniformBuffer;
-       fGlobalVulkanViewUniformBuffers:array[0..MaxSwapChainImages+1] of TpvVulkanBuffer;
+       fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
@@ -1263,6 +1264,7 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
+       property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
       published
        property MeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshVulkanDescriptorSetLayout;
        property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
