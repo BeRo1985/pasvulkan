@@ -132,31 +132,17 @@ type EpvScene3D=class(Exception);
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
-            TViewUniformBufferItem=packed record
+            TView=packed record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
             end;
-            PViewUniformBufferItem=^TViewUniformBufferItem;
-            TGlobalViewUniformBuffer=record
-             Items:array[0..(65536 div SizeOf(TViewUniformBufferItem))-1] of TViewUniformBufferItem;
+            PView=^TView;
+            TViews=TpvDynamicArray<TView>;
+       const MaxViews=65536 div SizeOf(TView);
+       type TGlobalViewUniformBuffer=record
+             Items:array[0..MaxViews-1] of TView;
             end;
             PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
-            { TView }
-            TView=class
-             private
-              fViewUniformBufferItem:TViewUniformBufferItem;
-              fIndex:TpvUInt32;
-             public
-              constructor Create; reintroduce;
-              destructor Destroy; override;
-             public
-              property ViewMatrix:TpvMatrix4x4 read fViewUniformBufferItem.ViewMatrix write fViewUniformBufferItem.ViewMatrix;
-              property ProjectionMatrix:TpvMatrix4x4 read fViewUniformBufferItem.ProjectionMatrix write fViewUniformBufferItem.ProjectionMatrix;
-             published
-              property Index:TpvUInt32 read fIndex write fIndex;
-            end;
-            TViews=class(TpvObjectGenericList<TpvScene3D.TView>)
-            end;
             TVertexStagePushConstants=record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
@@ -1190,6 +1176,8 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
        fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalVulkanViews:array[0..MaxSwapChainImages+1] of TGlobalViewUniformBuffer;
+       fGlobalVulkanViewUniformBuffers:array[0..MaxSwapChainImages+1] of TpvVulkanBuffer;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
@@ -1223,6 +1211,7 @@ type EpvScene3D=class(Exception);
        fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
        fSwapChainImageBufferMemoryBarriers:TSwapChainImageBufferMemoryBarriers;
+       fViews:TViews;
        procedure AddSwapChainImageBufferMemoryBarrier(const aSwapChainImageIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
        procedure UploadWhiteTexture;
@@ -1245,6 +1234,10 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+       procedure ClearViews;
+       function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
+       function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
+       procedure UpdateViews(const aSwapChainImageIndex:TpvSizeInt);
        procedure PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
                                const aViewMatrix:TpvMatrix4x4;
                                const aProjectionMatrix:TpvMatrix4x4;
@@ -1378,21 +1371,6 @@ begin
   BestDot:=Dot;
  end;
 
-end;
-
-{ TpvScene3D.TView }
-
-constructor TpvScene3D.TView.Create;
-begin
- inherited Create;
- fViewUniformBufferItem.ViewMatrix:=TpvMatrix4x4.Identity;
- fViewUniformBufferItem.ProjectionMatrix:=TpvMatrix4x4.Identity;
- fIndex:=0;
-end;
-
-destructor TpvScene3D.TView.Destroy;
-begin
- inherited Destroy;
 end;
 
 { TpvScene3D.TBaseObject }
@@ -6766,6 +6744,8 @@ begin
   fCountLights[Index]:=0;
  end;
 
+ fViews.Initialize;
+
  fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
@@ -6881,6 +6861,10 @@ begin
  end;
  FreeAndNil(fGlobalVulkanDescriptorPool);
 
+ for Index:=0 to length(fGlobalVulkanViewUniformBuffers)-1 do begin
+  FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
+ end;
+
  for Index:=0 to length(fAABBTreeStates)-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
  end;
@@ -6960,6 +6944,8 @@ begin
  FreeAndNil(fWhiteTextureLock);
 
  FreeAndNil(fDefaultNormalMapTextureLock);
+
+ fViews.Finalize;
 
  FreeAndNil(fLock);
 
@@ -7142,6 +7128,7 @@ end;
 procedure TpvScene3D.Upload;
 var Group:TGroup;
     Index:TpvSizeInt;
+    ViewUniformBuffer:TpvVulkanBuffer;
 begin
  if not fUploaded then begin
   fLock.Acquire;
@@ -7152,7 +7139,27 @@ begin
      for Index:=0 to length(fLightBuffers)-1 do begin
       fLightBuffers[Index].Upload;
      end;
+     for Index:=0 to length(fGlobalVulkanViewUniformBuffers)-1 do begin
+      ViewUniformBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                SizeOf(TGlobalViewUniformBuffer),
+                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                [],
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                [TpvVulkanBufferFlag.PersistentMapped]);
+      try
+
+      finally
+       fGlobalVulkanViewUniformBuffers[Index]:=ViewUniformBuffer;
+      end;
+     end;
      fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
+     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*1);
      fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*2);
      fGlobalVulkanDescriptorPool.Initialize;
      for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
@@ -7161,12 +7168,20 @@ begin
       fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
                                                               0,
                                                               1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                              [],
+                                                              [fGlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                              [],
+                                                              false);
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                              0,
+                                                              1,
                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                               [],
                                                               [fLightBuffers[Index].fLightItemsVulkanBuffer.DescriptorBufferInfo],
                                                               [],
                                                               false);
-      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
                                                               0,
                                                               1,
                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -7206,6 +7221,9 @@ begin
       FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
      end;
      FreeAndNil(fGlobalVulkanDescriptorPool);
+     for Index:=0 to length(fGlobalVulkanViewUniformBuffers)-1 do begin
+      FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
+     end;
      for Index:=0 to length(fLightBuffers)-1 do begin
       fLightBuffers[Index].Unload;
      end;
@@ -7579,6 +7597,45 @@ begin
     end;
     break;
    end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.ClearViews;
+begin
+ fViews.Count:=0;
+end;
+
+function TpvScene3D.AddView(const aView:TpvScene3D.TView):TpvSizeInt;
+begin
+ if (fViews.Count+1)<TpvScene3D.MaxViews then begin
+  result:=fViews.Add(aView);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvScene3D.AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
+begin
+ if (length(aViews)>0) and ((fViews.Count+length(aViews))<TpvScene3D.MaxViews) then begin
+  result:=fViews.Add(aViews);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TpvScene3D.UpdateViews(const aSwapChainImageIndex:TpvSizeInt);
+begin
+ if fViews.Count>0 then begin
+  Move(fViews.Items[0],
+       fGlobalVulkanViews[aSwapChainImageIndex].Items[0],
+       fViews.Count*SizeOf(TpvScene3D.TView));
+  if assigned(fGlobalVulkanViewUniformBuffers[aSwapChainImageIndex]) then begin
+   fGlobalVulkanViewUniformBuffers[aSwapChainImageIndex].UpdateData(fViews.Items[0],
+                                                                    0,
+                                                                    fViews.Count*SizeOf(TpvScene3D.TView),
+                                                                    FlushUpdateData
+                                                                   );
   end;
  end;
 end;

@@ -64,6 +64,15 @@ layout(set = 1, binding = 0) uniform Material {
   uint test; //mat4 items[];
 } material;
 
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+};
+
+layout(std140, set = 2, binding = 0) uniform uboViews {
+  View views[];
+} uView;
+
 out gl_PerVertex {
     vec4 gl_Position;   
 };

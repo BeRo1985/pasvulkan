@@ -35,6 +35,15 @@ layout(std140, set = 1, binding = 0) uniform uboMaterial {
 
 layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+};
+
+layout(std140, set = 2, binding = 0) uniform uboViews {
+  View views[];
+} uView;
+
 #ifdef LIGHTS
 struct Light {
   uvec4 metaData;
@@ -44,7 +53,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set = 2, binding = 0) buffer LightItemData {
+layout(std430, set = 2, binding = 1) buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -54,7 +63,7 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(std430, set = 2, binding = 1) buffer LightTreeNodeData {
+layout(std430, set = 2, binding = 2) buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 #endif
