@@ -103,6 +103,8 @@ type { TpvFrustum }
 
      PpvFrustum=^TpvFrustum;
 
+     TpvFrustumDynamicArray=array of TpvFrustum;
+
 implementation
 
 function IntersectionPoint(const a,b,c:TpvPlane):TpvVector3;

@@ -163,6 +163,7 @@ type { TScreenMain }
        fSheenELUT:TpvVulkanTexture;
        fScene3D:TpvScene3D;
        fFrameGraph:TpvFrameGraph;
+       fFinalViewIndices:array[0..MaxSwapChainImages-1] of TpvSizeInt;
        fForwardRenderingRenderPass:TForwardRenderingRenderPass;
        fTonemappingRenderPass:TTonemappingRenderPass;
        fAntialiasingRenderPass:TAntialiasingRenderPass;
@@ -596,8 +597,8 @@ begin
 
   fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
                            0,
-                           SwapChainImageState^.ViewMatrix,
-                           SwapChainImageState^.ProjectionMatrix,
+                           fParent.fFinalViewIndices[aSwapChainImageIndex],
+                           1,
                            fWidth,
                            fHeight,
                            true);
@@ -605,8 +606,8 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        SwapChainImageState^.ViewMatrix,
-                        SwapChainImageState^.ProjectionMatrix,
+                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
@@ -614,8 +615,8 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        SwapChainImageState^.ViewMatrix,
-                        SwapChainImageState^.ProjectionMatrix,
+                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -623,8 +624,8 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        SwapChainImageState^.ViewMatrix,
-                        SwapChainImageState^.ProjectionMatrix,
+                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Blend]);
@@ -1464,6 +1465,7 @@ procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var ModelMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
+    View:TpvScene3D.TView;
     SwapChainImageState:PSwapChainImageState;
 begin
  inherited Update(aDeltaTime);
@@ -1500,8 +1502,23 @@ begin
 
    fScene3D.Update(pvApplication.UpdateSwapChainImageIndex);
 
+   fScene3D.ClearViews;
+
    Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
    Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                         sin(-fCameraRotationY*PI*2.0),
+                                                                         cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                               (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                               Center,
+                                               TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
+
+   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
+
+   fFinalViewIndices[pvApplication.UpdateSwapChainImageIndex]:=fScene3D.AddView(View);
+
+   fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
+
    SwapChainImageState^.ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
                                                                                         sin(-fCameraRotationY*PI*2.0),
                                                                                         cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*

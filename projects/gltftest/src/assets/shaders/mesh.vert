@@ -28,8 +28,8 @@ layout(location = 8) out vec4 outColor0;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
+  uint viewBaseIndex;
+  uint countViews;
 } pushConstants;
 
 struct MorphTargetVertex {
@@ -70,7 +70,7 @@ struct View {
 };
 
 layout(std140, set = 2, binding = 0) uniform uboViews {
-  View views[];
+  View views[512]; // 65536 / (64 * 2) = 512
 } uView;
 
 out gl_PerVertex {
@@ -87,12 +87,17 @@ vec3 octDecode(vec2 oct) {
 }
 
 void main() {
+
+  uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+
+  View view = uView.views[viewIndex];
+
 #if 1
   // The actual standard approach
-  vec3 cameraPosition = inverse(pushConstants.viewMatrix)[3].xyz;
+  vec3 cameraPosition = inverse(view.viewMatrix)[3].xyz;
 #else
   // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  vec3 cameraPosition = (-pushConstants.viewMatrix[3].xyz) * mat3(pushConstants.viewMatrix);
+  vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
 #endif
 
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
@@ -150,7 +155,7 @@ void main() {
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
 
-  mat4 modelViewMatrix = pushConstants.viewMatrix * modelNodeMatrix;
+  mat4 modelViewMatrix = view.viewMatrix * modelNodeMatrix;
 
   vec4 worldSpacePosition = modelNodeMatrix * vec4(position, 1.0);
   worldSpacePosition.xyz /= worldSpacePosition.w;
@@ -167,5 +172,5 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
-  gl_Position = (pushConstants.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+  gl_Position = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
 }
