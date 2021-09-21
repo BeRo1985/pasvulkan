@@ -18798,7 +18798,7 @@ begin
   raise EpvVulkanTextureException.Create('Invalid KTX2 stream (Count of faces must be 1 or 6)');
  end;
 
-  if KTX2Header.LevelCount<>0 then begin
+ if KTX2Header.LevelCount<>0 then begin
   LevelCount:=KTX2Header.LevelCount;
  end else begin
   LevelCount:=1;

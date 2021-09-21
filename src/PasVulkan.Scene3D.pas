@@ -132,11 +132,31 @@ type EpvScene3D=class(Exception);
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
-            TViewPortGlobalsUniformBuffer=record
+            TViewUniformBufferItem=packed record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
             end;
-            PViewPortGlobalsUniformBuffer=^TViewPortGlobalsUniformBuffer;
+            PViewUniformBufferItem=^TViewUniformBufferItem;
+            TGlobalViewUniformBuffer=record
+             Items:array[0..(65536 div SizeOf(TViewUniformBufferItem))-1] of TViewUniformBufferItem;
+            end;
+            PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
+            { TView }
+            TView=class
+             private
+              fViewUniformBufferItem:TViewUniformBufferItem;
+              fIndex:TpvUInt32;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+             public
+              property ViewMatrix:TpvMatrix4x4 read fViewUniformBufferItem.ViewMatrix write fViewUniformBufferItem.ViewMatrix;
+              property ProjectionMatrix:TpvMatrix4x4 read fViewUniformBufferItem.ProjectionMatrix write fViewUniformBufferItem.ProjectionMatrix;
+             published
+              property Index:TpvUInt32 read fIndex write fIndex;
+            end;
+            TViews=class(TpvObjectGenericList<TpvScene3D.TView>)
+            end;
             TVertexStagePushConstants=record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
@@ -1358,6 +1378,21 @@ begin
   BestDot:=Dot;
  end;
 
+end;
+
+{ TpvScene3D.TView }
+
+constructor TpvScene3D.TView.Create;
+begin
+ inherited Create;
+ fViewUniformBufferItem.ViewMatrix:=TpvMatrix4x4.Identity;
+ fViewUniformBufferItem.ProjectionMatrix:=TpvMatrix4x4.Identity;
+ fIndex:=0;
+end;
+
+destructor TpvScene3D.TView.Destroy;
+begin
+ inherited Destroy;
 end;
 
 { TpvScene3D.TBaseObject }
