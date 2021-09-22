@@ -138,6 +138,7 @@ type { TScreenMain }
       public
        type TSwapChainImageState=record
              Ready:TPasMPBool32;
+             FinalViewIndex:TpvSizeInt;
             end;
             PSwapChainImageState=^TSwapChainImageState;
             TSwapChainImageStates=array[0..MaxSwapChainImages+1] of TSwapChainImageState;
@@ -161,7 +162,6 @@ type { TScreenMain }
        fSheenELUT:TpvVulkanTexture;
        fScene3D:TpvScene3D;
        fFrameGraph:TpvFrameGraph;
-       fFinalViewIndices:array[0..MaxSwapChainImages-1] of TpvSizeInt;
        fForwardRenderingRenderPass:TForwardRenderingRenderPass;
        fTonemappingRenderPass:TTonemappingRenderPass;
        fAntialiasingRenderPass:TAntialiasingRenderPass;
@@ -585,7 +585,7 @@ begin
  if TPasMPInterlocked.CompareExchange(SwapChainImageState^.Ready,false,true) then begin
 
   fSkyBox.Draw(aSwapChainImageIndex,
-               fParent.fFinalViewIndices[aSwapChainImageIndex],
+               SwapChainImageState^.FinalViewIndex,
                1,
                aCommandBuffer);
 
@@ -599,7 +599,7 @@ begin
 
   fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
                            0,
-                           fParent.fFinalViewIndices[aSwapChainImageIndex],
+                           SwapChainImageState^.FinalViewIndex,
                            1,
                            fWidth,
                            fHeight,
@@ -608,7 +608,7 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        SwapChainImageState^.FinalViewIndex,
                         1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
@@ -617,7 +617,7 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        SwapChainImageState^.FinalViewIndex,
                         1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
@@ -626,7 +626,7 @@ begin
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         pvApplication.DrawSwapChainImageIndex,
                         0,
-                        fParent.fFinalViewIndices[aSwapChainImageIndex],
+                        SwapChainImageState^.FinalViewIndex,
                         1,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
@@ -1517,7 +1517,7 @@ begin
 
    View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
 
-   fFinalViewIndices[pvApplication.UpdateSwapChainImageIndex]:=fScene3D.AddView(View);
+   SwapChainImageState^.FinalViewIndex:=fScene3D.AddView(View);
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
 
