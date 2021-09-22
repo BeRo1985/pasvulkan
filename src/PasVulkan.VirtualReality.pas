@@ -632,8 +632,15 @@ procedure TpvVirtualReality.UpdateMatrices;
 
   for EyeIndex:=0 to 1 do begin
 
-   OpenVRMatrix.m44:=fOpenVR_VR_IVRSystem_FnTable^.GetProjectionMatrix(OpenVREyes[EyeIndex],fZNear,fZFar);
-   fOpenVR_ProjectionMatrices[EyeIndex]:=OpenVRMatrix.Matrix.Transpose*TpvMatrix4x4.FlipYClipSpace;
+   OpenVRMatrix.m44:=fOpenVR_VR_IVRSystem_FnTable^.GetProjectionMatrix(OpenVREyes[EyeIndex],fZNear,IfThen(IsInfinite(fZFar),1024.0,fZFar));
+   fOpenVR_ProjectionMatrices[EyeIndex]:=OpenVRMatrix.Matrix.Transpose;
+   if IsInfinite(fZFar) then begin
+    // Convert to reversed infinite Z
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=0.0;
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=fZNear;
+   end;
+   fOpenVR_ProjectionMatrices[EyeIndex]:=fOpenVR_ProjectionMatrices[EyeIndex]*TpvMatrix4x4.FlipYClipSpace;
 
    OpenVRMatrix.m44.m[3,0]:=0.0;
    OpenVRMatrix.m44.m[3,1]:=0.0;
@@ -1598,14 +1605,32 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
    Right:=(WidthRatio*AspectRatio)+EyeOffset;
    Top:=WidthRatio;
    Bottom:=-WidthRatio;
-   result:=TpvMatrix4x4.CreateFrustumRightHandedZeroToOne(Left,Right,Bottom,Top,fZNear,fZFar)*TpvMatrix4x4.FlipYClipSpace;
+   result:=TpvMatrix4x4.CreateFrustumRightHandedZeroToOne(Left,
+                                                          Right,
+                                                          Bottom,
+                                                          Top,
+                                                          fZNear,
+                                                          IfThen(IsInfinite(fZFar),1024.0,fZFar));
+   if IsInfinite(fZFar) then begin
+    // Convert to reversed infinite Z
+    result.RawComponents[2,2]:=0.0;
+    result.RawComponents[2,3]:=-1.0;
+    result.RawComponents[3,2]:=fZNear;
+   end;
+   result:=result*TpvMatrix4x4.FlipYClipSpace;
   end;
   else {TMode.Disabled:}begin
    result:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
                                                               fWidth/fHeight,
                                                               fZNear,
-                                                              fZFar)*
-                       TpvMatrix4x4.FlipYClipSpace;
+                                                              IfThen(IsInfinite(fZFar),1024.0,fZFar));
+   if IsInfinite(fZFar) then begin
+    // Convert to reversed infinite Z
+    result.RawComponents[2,2]:=0.0;
+    result.RawComponents[2,3]:=-1.0;
+    result.RawComponents[3,2]:=fZNear;
+   end;
+   result:=result*TpvMatrix4x4.FlipYClipSpace;
   end;
  end;
  case fProjectionMatrixMode of

@@ -47,8 +47,6 @@ type { TScreenMain }
              TForwardRenderingRenderPass=class(TpvFrameGraph.TRenderPass)
               public
                fVulkanRenderPass:TpvVulkanRenderPass;
-               fWidth:TpvSizeInt;
-               fHeight:TpvSizeInt;
                fParent:TScreenMain;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
@@ -162,6 +160,7 @@ type { TScreenMain }
        fSheenELUT:TpvVulkanTexture;
        fScene3D:TpvScene3D;
        fFrameGraph:TpvFrameGraph;
+       fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
        fForwardRenderingRenderPass:TForwardRenderingRenderPass;
        fTonemappingRenderPass:TTonemappingRenderPass;
        fAntialiasingRenderPass:TAntialiasingRenderPass;
@@ -211,7 +210,8 @@ type { TScreenMain }
 
 implementation
 
-uses PasGLTF;
+uses PasGLTF,
+     UnitApplication;
 
 { TScreenMain.TForwardRenderingRenderPass }
 
@@ -223,11 +223,15 @@ inherited Create(aFrameGraph);
 
  Name:='ForwardRendering';
 
- MultiviewMask:=0;
+ MultiviewMask:=UnitApplication.Application.VirtualReality.MultiviewMask;
 
  Queue:=aFrameGraph.UniversalQueue;
 
- Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0);
+ Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                       1.0,
+                                       1.0,
+                                       1.0,
+                                       UnitApplication.Application.VirtualReality.CountImages);
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
@@ -414,10 +418,6 @@ begin
 
  fVulkanRenderPass:=VulkanRenderPass;
 
- fWidth:=pvApplication.VulkanSwapChain.Width;
-
- fHeight:=pvApplication.VulkanSwapChain.Height;
-
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
@@ -547,8 +547,8 @@ begin
  fSkyBox:=TSkyBox.Create(fParent.fScene3D,
                          fParent.fSkyCubeMap.DescriptorImageInfo,
                          fVulkanRenderPass,
-                         fWidth,
-                         fHeight,
+                         fParent.fWidth,
+                         fParent.fHeight,
                          fParent.fVulkanSampleCountFlagBits);
 
 end;
@@ -601,8 +601,8 @@ begin
                            0,
                            SwapChainImageState^.FinalViewIndex,
                            1,
-                           fWidth,
-                           fHeight,
+                           fParent.fWidth,
+                           fParent.fHeight,
                            true,
                            true);
 
@@ -648,7 +648,7 @@ begin
 
  Name:='Tonemapping';
 
- MultiviewMask:=0;
+ MultiviewMask:=UnitApplication.Application.VirtualReality.MultiviewMask;
 
  Queue:=aFrameGraph.UniversalQueue;
 
@@ -658,7 +658,9 @@ begin
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
                                        1.0,
-                                       1.0);
+                                       1.0,
+                                       1.0,
+                                       UnitApplication.Application.VirtualReality.CountImages);
 
  fResourceColor:=AddImageInput('resourcetype_color',
                                'forwardrendering_color',
@@ -878,7 +880,7 @@ begin
 
  Name:='Antialiasing';
 
- MultiviewMask:=0;
+ MultiviewMask:=UnitApplication.Application.VirtualReality.MultiviewMask;
 
  Queue:=aFrameGraph.UniversalQueue;
 
@@ -888,7 +890,9 @@ begin
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
                                        1.0,
-                                       1.0);
+                                       1.0,
+                                       1.0,
+                                       UnitApplication.Application.VirtualReality.CountImages);
 
  fResourceColor:=AddImageInput('resourcetype_color',
                                'tonemapping_color',
@@ -896,15 +900,15 @@ begin
                                []
                               );
 
- fResourceSurface:=AddImageOutput('resourcetype_surface',
+{fResourceSurface:=AddImageOutput('resourcetype_surface',
                                   'resource_surface',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                 );
+                                 );}
 
-{fResourceSurface:=AddImageOutput('resourcetype_output_color',
+ fResourceSurface:=AddImageOutput('resourcetype_output_color',
                                   'resource_output',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -912,7 +916,7 @@ begin
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment],
                                   TpvFrameGraph.TResourceInstanceType.Default,
                                   fParent.fExternalOutputImageData
-                                 );}
+                                 );
 
 end;
 
@@ -1016,7 +1020,7 @@ begin
                                                                     0,
                                                                     1,
                                                                     0,
-                                                                    1
+                                                                    UnitApplication.Application.VirtualReality.CountImages
                                                                    );
   fVulkanDescriptorSets[SwapChainImageIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                             fVulkanDescriptorSetLayout);
@@ -1209,7 +1213,7 @@ begin
 
  end;
 
- fFrameGraph.AddImageResourceType('resourcetype_surface',
+{fFrameGraph.AddImageResourceType('resourcetype_surface',
                                   true,
                                   TVkFormat(VK_FORMAT_UNDEFINED),
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
@@ -1217,9 +1221,12 @@ begin
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
-                                 );
+                                 );}
 
-{[fFrameGraph.AddImageResourceType('resourcetype_output_color',
+ fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
+
+
+ fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                   true,
                                   UnitApplication.Application.VirtualReality.ImageFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
@@ -1227,14 +1234,14 @@ begin
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
-                                 ); }
+                                 );
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color',
                                   true,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   fVulkanSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1244,7 +1251,7 @@ begin
                                   pvApplication.VulkanDepthImageFormat,
                                   fVulkanSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.From(pvApplication.VulkanDepthImageFormat),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
                                  );
@@ -1254,7 +1261,7 @@ begin
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1264,7 +1271,7 @@ begin
                                   VK_FORMAT_R8G8B8A8_SRGB,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1274,7 +1281,7 @@ begin
                                   pvApplication.VulkanDepthImageFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.From(pvApplication.VulkanDepthImageFormat),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,UnitApplication.Application.VirtualReality.CountImages),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
                                  );
@@ -1433,19 +1440,28 @@ begin
 end;
 
 procedure TScreenMain.AfterCreateSwapChain;
+var Index:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
 
- fWidth:=pvApplication.VulkanSwapChain.Width;
+ fWidth:=UnitApplication.Application.VirtualReality.Width;
 
- fHeight:=pvApplication.VulkanSwapChain.Height;
+ fHeight:=UnitApplication.Application.VirtualReality.Height;
 
 //FillChar(fSwapChainImageStates,SizeOf(TSwapChainImageStates),#0);
 
-{}fFrameGraph.SetSwapChain(pvApplication.VulkanSwapChain,
-                           pvApplication.VulkanDepthImageFormat);{}
+ fFrameGraph.SetSwapChain(pvApplication.VulkanSwapChain,
+                          pvApplication.VulkanDepthImageFormat);
 
-//(fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
+ fFrameGraph.SurfaceWidth:=fWidth;
+ fFrameGraph.SurfaceHeight:=fHeight;
+
+ fExternalOutputImageData.VulkanImages.Clear;
+ for Index:=0 to UnitApplication.Application.VirtualReality.VulkanImages.Count-1 do begin
+  fExternalOutputImageData.VulkanImages.Add(UnitApplication.Application.VirtualReality.VulkanImages[Index]);
+ end;
+
+ (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
 
  fFrameGraph.AfterCreateSwapChain;
 
@@ -1456,6 +1472,7 @@ end;
 procedure TScreenMain.BeforeDestroySwapChain;
 begin
  fFrameGraph.BeforeDestroySwapChain;
+fExternalOutputImageData.VulkanImages.Clear;
  inherited BeforeDestroySwapChain;
 end;
 
@@ -1468,7 +1485,7 @@ procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var ModelMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
-    View:TpvScene3D.TView;
+    View,ViewLeft,ViewRight:TpvScene3D.TView;
     SwapChainImageState:PSwapChainImageState;
 begin
  inherited Update(aDeltaTime);
@@ -1514,11 +1531,17 @@ begin
                                                                          cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
                                                                (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
                                                Center,
-                                               TpvVector3.Create(0.0,1.0,0.0))*TpvMatrix4x4.FlipYClipSpace;
+                                               TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
 
    View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
 
-   SwapChainImageState^.FinalViewIndex:=fScene3D.AddView(View);
+   ViewLeft.ViewMatrix:=View.ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(0);
+   ViewLeft.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(0);//View.ProjectionMatrix;
+
+   ViewRight.ViewMatrix:=View.ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(1);
+   ViewRight.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(1);//View.ProjectionMatrix;
+
+   SwapChainImageState^.FinalViewIndex:=fScene3D.AddViews([ViewLeft,ViewRight]);
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
 
