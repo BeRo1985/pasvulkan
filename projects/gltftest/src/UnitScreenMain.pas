@@ -584,7 +584,7 @@ begin
 
  if TPasMPInterlocked.CompareExchange(SwapChainImageState^.Ready,false,true) then begin
 
-  fSkyBox.Draw(aSwapChainImageIndex,
+  fSkyBox.Draw(pvApplication.DrawSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
                1,
                aCommandBuffer);
@@ -1157,7 +1157,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('bath_day.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
