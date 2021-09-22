@@ -1482,10 +1482,10 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
-var ModelMatrix:TpvMatrix4x4;
+var ModelMatrix,ViewMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
-    View,ViewLeft,ViewRight:TpvScene3D.TView;
+    ViewLeft,ViewRight:TpvScene3D.TView;
     SwapChainImageState:PSwapChainImageState;
 begin
  inherited Update(aDeltaTime);
@@ -1526,20 +1526,18 @@ begin
 
    Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
    Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
-   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                         sin(-fCameraRotationY*PI*2.0),
-                                                                         cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                               (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                               Center,
-                                               TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+   ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                   sin(-fCameraRotationY*PI*2.0),
+                                                                   cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                         (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                         Center,
+                                         TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
 
-   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveReversedZ(60.0,pvApplication.VulkanSwapChain.Width/pvApplication.VulkanSwapChain.Height,0.1);
+   ViewLeft.ViewMatrix:=ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(0);
+   ViewLeft.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(0);
 
-   ViewLeft.ViewMatrix:=View.ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(0);
-   ViewLeft.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(0);//View.ProjectionMatrix;
-
-   ViewRight.ViewMatrix:=View.ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(1);
-   ViewRight.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(1);//View.ProjectionMatrix;
+   ViewRight.ViewMatrix:=ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(1);
+   ViewRight.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(1);
 
    SwapChainImageState^.FinalViewIndex:=fScene3D.AddViews([ViewLeft,ViewRight]);
 
