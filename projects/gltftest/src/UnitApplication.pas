@@ -85,9 +85,11 @@ begin
 {$if not (defined(Android) or defined(iOS))}
  for Index:=1 to ParamCount do begin
   Parameter:=LowerCase(ParamStr(Index));
-  if Parameter='--openvr' then begin
+  if (Parameter='--openvr') or
+     (Parameter='/openvr') then begin
    VirtualRealityMode:=TpvVirtualReality.TMode.OpenVR;
-  end else if Parameter='--fakedvr' then begin
+  end else if (Parameter='--fakedvr') or
+              (Parameter='/fakedvr') then begin
    VirtualRealityMode:=TpvVirtualReality.TMode.Faked;
   end else if (Parameter='--force-use-validation-layers') or
               (Parameter='/force-use-validation-layers') then begin
