@@ -60,10 +60,6 @@ layout(std430, set = 0, binding = 3) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
-layout(set = 1, binding = 0) uniform Material {
-  uint test; //mat4 items[];
-} material;
-
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;

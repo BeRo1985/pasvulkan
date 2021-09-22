@@ -1249,6 +1249,7 @@ type EpvScene3D=class(Exception);
                          const aCountViews:TpvSizeInt;
                          const aViewPortWidth:TpvInt32;
                          const aViewPortHeight:TpvInt32;
+                         const aLights:boolean=true;
                          const aFrustumCulling:boolean=true);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aSwapChainImageIndex:TpvSizeInt;
@@ -7764,6 +7765,7 @@ procedure TpvScene3D.Prepare(const aSwapChainImageIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
                              const aViewPortHeight:TpvInt32;
+                             const aLights:boolean=true;
                              const aFrustumCulling:boolean=true);
 var Index:TpvSizeInt;
     VisibleBit:TPasMPUInt32;
@@ -7812,12 +7814,16 @@ begin
                   Frustums);
    end;
 
-   PrepareLights(aSwapChainImageIndex,
-                 aViewBaseIndex,
-                 aCountViews,
-                 aViewPortWidth,
-                 aViewPortHeight,
-                 Frustums);
+   if aLights then begin
+    PrepareLights(aSwapChainImageIndex,
+                  aViewBaseIndex,
+                  aCountViews,
+                  aViewPortWidth,
+                  aViewPortHeight,
+                  Frustums);
+   end else begin
+    fCountIndirectLights[aSwapChainImageIndex]:=0;
+   end;
 
   finally
    Frustums:=nil;
