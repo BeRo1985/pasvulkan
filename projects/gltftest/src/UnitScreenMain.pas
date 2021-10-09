@@ -137,6 +137,7 @@ type { TScreenMain }
        type TSwapChainImageState=record
              Ready:TPasMPBool32;
              FinalViewIndex:TpvSizeInt;
+             CountViews:TpvSizeInt;
             end;
             PSwapChainImageState=^TSwapChainImageState;
             TSwapChainImageStates=array[0..MaxSwapChainImages+1] of TSwapChainImageState;
@@ -160,6 +161,7 @@ type { TScreenMain }
        fSheenELUT:TpvVulkanTexture;
        fScene3D:TpvScene3D;
        fFrameGraph:TpvFrameGraph;
+       fCountViews:TpvSizeInt;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
        fForwardRenderingRenderPass:TForwardRenderingRenderPass;
        fTonemappingRenderPass:TTonemappingRenderPass;
@@ -586,7 +588,7 @@ begin
 
   fSkyBox.Draw(pvApplication.DrawSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
-               1,
+               SwapChainImageState^.CountViews,
                aCommandBuffer);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -600,7 +602,7 @@ begin
   fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
                            0,
                            SwapChainImageState^.FinalViewIndex,
-                           1,
+                           SwapChainImageState^.CountViews,
                            fParent.fWidth,
                            fParent.fHeight,
                            true,
@@ -610,7 +612,7 @@ begin
                         pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
-                        1,
+                        SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
@@ -619,7 +621,7 @@ begin
                         pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
-                        1,
+                        SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -628,7 +630,7 @@ begin
                         pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
-                        1,
+                        SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Blend]);
@@ -1162,7 +1164,7 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test2.glb');
+   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);
@@ -1184,6 +1186,8 @@ begin
  fFrameGraph.SurfaceIsSwapchain:=true;
 
  fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.InstancePerSwapChainImage;
+
+ fCountViews:=UnitApplication.Application.VirtualReality.CountImages;
 
  SampleCounts:=pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferDepthSampleCounts and
@@ -1471,7 +1475,7 @@ end;
 procedure TScreenMain.BeforeDestroySwapChain;
 begin
  fFrameGraph.BeforeDestroySwapChain;
-fExternalOutputImageData.VulkanImages.Clear;
+ fExternalOutputImageData.VulkanImages.Clear;
  inherited BeforeDestroySwapChain;
 end;
 
@@ -1539,6 +1543,8 @@ begin
    ViewRight.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(1);
 
    SwapChainImageState^.FinalViewIndex:=fScene3D.AddViews([ViewLeft,ViewRight]);
+
+   SwapChainImageState^.CountViews:=fCountViews;
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
 
