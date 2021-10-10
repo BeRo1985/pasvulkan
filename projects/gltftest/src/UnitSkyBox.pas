@@ -44,9 +44,16 @@ type { TSkyBox }
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
 
-       constructor Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+       constructor Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 
        destructor Destroy; override;
+
+       procedure AfterCreateSwapChain(const aRenderPass:TpvVulkanRenderPass;
+                                      const aWidth:TpvInt32;
+                                      const aHeight:TpvInt32;
+                                      const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+
+       procedure BeforeDestroySwapChain;
 
        procedure Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 
@@ -56,7 +63,7 @@ implementation
 
 { TSkyBox }
 
-constructor TSkyBox.Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo;const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32;const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+constructor TSkyBox.Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
@@ -127,6 +134,30 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
+end;
+
+destructor TSkyBox.Destroy;
+var Index:TpvSizeInt;
+begin
+ FreeAndNil(fVulkanPipelineLayout);
+ for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[Index]);
+ end;
+ FreeAndNil(fVulkanDescriptorPool);
+ FreeAndNil(fVulkanDescriptorSetLayout);
+ FreeAndNil(fVulkanPipelineShaderStageVertex);
+ FreeAndNil(fVulkanPipelineShaderStageFragment);
+ FreeAndNil(fVertexShaderModule);
+ FreeAndNil(fFragmentShaderModule);
+ inherited Destroy;
+end;
+
+procedure TSkyBox.AfterCreateSwapChain(const aRenderPass:TpvVulkanRenderPass;
+                                       const aWidth:TpvInt32;
+                                       const aHeight:TpvInt32;
+                                       const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+begin
+
  fVulkanPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
                                                    pvApplication.VulkanPipelineCache,
                                                    0,
@@ -194,21 +225,9 @@ begin
 
 end;
 
-destructor TSkyBox.Destroy;
-var Index:TpvSizeInt;
+procedure TSkyBox.BeforeDestroySwapChain;
 begin
  FreeAndNil(fVulkanPipeline);
- FreeAndNil(fVulkanPipelineLayout);
- for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
-  FreeAndNil(fVulkanDescriptorSets[Index]);
- end;
- FreeAndNil(fVulkanDescriptorPool);
- FreeAndNil(fVulkanDescriptorSetLayout);
- FreeAndNil(fVulkanPipelineShaderStageVertex);
- FreeAndNil(fVulkanPipelineShaderStageFragment);
- FreeAndNil(fVertexShaderModule);
- FreeAndNil(fFragmentShaderModule);
- inherited Destroy;
 end;
 
 procedure TSkyBox.Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);

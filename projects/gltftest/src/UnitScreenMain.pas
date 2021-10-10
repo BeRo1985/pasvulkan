@@ -379,10 +379,15 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fImageBasedLightingVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
+ fSkyBox:=TSkyBox.Create(fParent.fScene3D,
+                         fParent.fSkyCubeMap.DescriptorImageInfo);
+
 end;
 
 procedure TScreenMain.TForwardRenderingRenderPass.Hide;
 begin
+
+ FreeAndNil(fSkyBox);
 
  FreeAndNil(fVulkanPipelineLayout);
 
@@ -546,12 +551,10 @@ begin
 
  end;
 
- fSkyBox:=TSkyBox.Create(fParent.fScene3D,
-                         fParent.fSkyCubeMap.DescriptorImageInfo,
-                         fVulkanRenderPass,
-                         fParent.fWidth,
-                         fParent.fHeight,
-                         fParent.fVulkanSampleCountFlagBits);
+ fSkyBox.AfterCreateSwapChain(fVulkanRenderPass,
+                              fParent.fWidth,
+                              fParent.fHeight,
+                              fParent.fVulkanSampleCountFlagBits);
 
 end;
 
@@ -560,7 +563,7 @@ var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
 begin
- FreeAndNil(fSkyBox);
+ fSkyBox.BeforeDestroySwapChain;
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
