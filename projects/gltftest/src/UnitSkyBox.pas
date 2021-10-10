@@ -130,7 +130,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvUInt32));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -231,14 +231,16 @@ begin
 end;
 
 procedure TSkyBox.Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-var ViewBaseIndex:TpvUInt32;
+var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
- ViewBaseIndex:=aViewBaseIndex;
+ VertexStagePushConstants.ViewBaseIndex:=aViewBaseIndex;
+ VertexStagePushConstants.CountViews:=aCountViews;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                  0,
-                                 SizeOf(TpvUInt32),@ViewBaseIndex);
+                                 SizeOf(TpvScene3D.TVertexStagePushConstants),
+                                 @VertexStagePushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

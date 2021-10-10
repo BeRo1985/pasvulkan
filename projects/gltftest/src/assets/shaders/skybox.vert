@@ -12,6 +12,7 @@ layout(location = 0) out vec3 outPosition;
 
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;  //
+  uint countViews;     //
 } pushConstants;
 
 struct View {
