@@ -11020,7 +11020,9 @@ end;
 destructor TpvVulkanCommandBuffer.Destroy;
 begin
  if fCommandBufferHandle<>VK_NULL_HANDLE then begin
-  fDevice.fDeviceVulkan.FreeCommandBuffers(fDevice.fDeviceHandle,fCommandPool.fCommandPoolHandle,1,@fCommandBufferHandle);
+  if fDevice.fDeviceHandle<>VK_NULL_HANDLE then begin
+   fDevice.fDeviceVulkan.FreeCommandBuffers(fDevice.fDeviceHandle,fCommandPool.fCommandPoolHandle,1,@fCommandBufferHandle);
+  end;
   fCommandBufferHandle:=VK_NULL_HANDLE;
  end;
 //FreeAndNil(fFence);
@@ -12169,7 +12171,7 @@ begin
   fImageView:=nil;
  end;
  if fImageHandle<>VK_NULL_HANDLE then begin
-  if fDoDestroy then begin
+  if fDoDestroy and (fDevice.fDeviceHandle<>VK_NULL_HANDLE) then begin
    fDevice.fDeviceVulkan.DestroyImage(fDevice.fDeviceHandle,fImageHandle,fDevice.fAllocationCallbacks);
   end;
   fImageHandle:=VK_NULL_HANDLE;
@@ -12589,7 +12591,9 @@ begin
   fImage:=nil;
  end;
  if fImageViewHandle<>VK_NULL_HANDLE then begin
-  fDevice.fDeviceVulkan.DestroyImageView(fDevice.fDeviceHandle,fImageViewHandle,fDevice.fAllocationCallbacks);
+  if fDevice.fDeviceHandle<>VK_NULL_HANDLE then begin
+   fDevice.fDeviceVulkan.DestroyImageView(fDevice.fDeviceHandle,fImageViewHandle,fDevice.fAllocationCallbacks);
+  end;
   fImageViewHandle:=VK_NULL_HANDLE;
  end;
  inherited Destroy;

@@ -16,6 +16,7 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V dummy.frag -o dummy_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.vert -o skybox_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox.frag -o skybox_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox_realtime.frag -o skybox_realtime_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V tonemapping.frag -o tonemapping_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V antialiasing.frag -o antialiasing_frag.spv
 for %%f in (*.spv) do (
