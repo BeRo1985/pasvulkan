@@ -89,6 +89,7 @@ var Index,FaceIndex,MipMaps:TpvSizeInt;
     PipelineLayout:TpvVulkanPipelineLayout;
     Pipeline:TpvVulkanGraphicsPipeline;
     ImageBlit:TVkImageBlit;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  inherited Create;
 
@@ -441,39 +442,96 @@ begin
                             Fence,
                             true);
 
-     for FaceIndex:=0 to 5 do begin
-      for Index:=1 to MipMaps-1 do begin
+     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                      0,
+                                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                                      TVkQueue(VK_QUEUE_FAMILY_IGNORED),
+                                                      TVkQueue(VK_QUEUE_FAMILY_IGNORED),
+                                                      fVulkanImage.Handle,
+                                                      ImageSubresourceRange);
+
+     CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+     for Index:=1 to MipMaps-1 do begin
+
+      ImageMemoryBarrier.subresourceRange.levelCount:=1;
+      ImageMemoryBarrier.subresourceRange.baseMipLevel:=Index-1;
+      ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+      ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+      CommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        0,
+                                        0,
+                                        nil,
+                                        0,
+                                        nil,
+                                        1,
+                                        @ImageMemoryBarrier);
+
+      for FaceIndex:=0 to 5 do begin
        ImageBlit:=TVkImageBlit.Create(TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                        Index-1,
                                                                        FaceIndex,
                                                                        1),
-                                      [TVkOffset3D.Create(Width shr (Index-1),Height shr (Index-1),1)],
+                                      [TVkOffset3D.Create(0,
+                                                          0,
+                                                          0),
+                                       TVkOffset3D.Create(Width shr (Index-1),
+                                                          Height shr (Index-1),
+                                                          1)],
                                       TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                        Index,
                                                                        FaceIndex,
                                                                        1),
-                                      [TVkOffset3D.Create(Width shr Index,Height shr Index,1)]
+                                      [TVkOffset3D.Create(0,
+                                                          0,
+                                                          0),
+                                       TVkOffset3D.Create(Width shr Index,
+                                                          Height shr Index,
+                                                          1)]
                                      );
-       CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-       CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
        CommandBuffer.CmdBlitImage(fVulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                   fVulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                   1,
                                   @ImageBlit,
                                   TVkFilter(VK_FILTER_LINEAR));
-       CommandBuffer.EndRecording;
-       CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,Fence,true);
       end;
-     end;
 
-     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                            TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-                            TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                            @ImageSubresourceRange,
-                            CommandBuffer,
-                            Queue,
-                            Fence,
-                            true);
+      ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+      ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+      CommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                       0,
+                                       0,
+                                       nil,
+                                       0,
+                                       nil,
+                                       1,
+                                       @ImageMemoryBarrier);
+
+     end;
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=MipMaps-1;
+     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+     CommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                      0,
+                                      0,
+                                      nil,
+                                      0,
+                                      nil,
+                                      1,
+                                      @ImageMemoryBarrier);
+     CommandBuffer.EndRecording;
+     CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,Fence,true);
 
     end;
 
