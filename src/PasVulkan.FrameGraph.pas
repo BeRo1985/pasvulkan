@@ -5148,6 +5148,26 @@ type TEventBeforeAfter=(Event,Before,After);
                               SubpassDependency.DstStageMask
                              );
 
+        if ResourceTransition.fPass is TComputePass then begin
+         SubpassDependency.SrcStageMask:=SubpassDependency.SrcStageMask and not (TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
+        end else if ResourceTransition.fPass is TRenderPass then begin
+         SubpassDependency.SrcStageMask:=SubpassDependency.SrcStageMask and not TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+        end;
+
+        if OtherResourceTransition.fPass is TComputePass then begin
+         SubpassDependency.DstStageMask:=SubpassDependency.DstStageMask and not (TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
+        end else if OtherResourceTransition.fPass is TRenderPass then begin
+         SubpassDependency.DstStageMask:=SubpassDependency.DstStageMask and not TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+        end;
+
         GetAccessMasks(ResourceTransition,
                        OtherResourceTransition,
                        SubpassDependency.SrcAccessMask,
