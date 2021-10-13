@@ -297,15 +297,15 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_API_VERSION_1_0=(0 shl 22) or (1 shl 12) or (0 shl 0);
+      VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_API_VERSION_1_1=(0 shl 22) or (1 shl 12) or (0 shl 0);
+      VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_API_VERSION_1_2=(0 shl 22) or (1 shl 12) or (0 shl 0);
+      VK_API_VERSION_1_2=(1 shl 22) or (2 shl 12) or (0 shl 0);
 
       VK_HEADER_VERSION=185;
 
-      VK_HEADER_VERSION_COMPLETE=(0 shl 22) or (1 shl 12) or (VK_HEADER_VERSION shl 0);
+      VK_HEADER_VERSION_COMPLETE=(1 shl 22) or (2 shl 12) or (VK_HEADER_VERSION shl 0);
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;

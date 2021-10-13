@@ -6466,8 +6466,8 @@ begin
  end;
  if fApplicationInfo.apiVersion<VK_API_VERSION_1_0 then begin
   fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
- end else if fApplicationInfo.apiVersion>VK_API_VERSION_1_1 then begin
-  fApplicationInfo.apiVersion:=VK_API_VERSION_1_1;
+ end else if fApplicationInfo.apiVersion>VK_API_VERSION_1_2 then begin
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_2;
  end;
 
  fValidation:=aValidation;

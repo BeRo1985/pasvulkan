@@ -3633,6 +3633,12 @@ begin
              delete(Text,1,j);
              Text:=trim(Text);
              j:=pos(',',Text);
+             if (VersionMajor=0) and (j>0) then begin
+              VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+              delete(Text,1,j);
+              Text:=trim(Text);
+              j:=pos(',',Text);
+             end;
              if j>0 then begin
               VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
               delete(Text,1,j);
