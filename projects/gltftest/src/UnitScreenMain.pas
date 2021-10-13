@@ -1167,7 +1167,11 @@ begin
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
-   AssetStream:=pvApplication.Assets.GetAssetStream('test.glb');
+   if FileExists(GLTFFileName) then begin
+    AssetStream:=TFileStream.Create(GLTFFileName,fmOpenRead or fmShareDenyWrite);
+   end else begin
+    AssetStream:=pvApplication.Assets.GetAssetStream(GLTFFileName);
+   end;
    if assigned(AssetStream) then begin
     try
      GLTF.LoadFromStream(AssetStream);

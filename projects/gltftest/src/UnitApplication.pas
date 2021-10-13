@@ -66,6 +66,8 @@ type TApplication=class(TpvApplication)
 
 var Application:TApplication=nil;
 
+    GLTFFileName:UTF8String='test.glb';
+
 implementation
 
 uses UnitScreenMain;
@@ -106,6 +108,8 @@ begin
 { end else if (Parameter='--flush-update-data') or
               (Parameter='/flush-update-data') then begin
    FlushUpdateData:=true; //}
+  end else begin
+   GLTFFileName:=Parameter;
   end;
  end;
 {$ifend}
