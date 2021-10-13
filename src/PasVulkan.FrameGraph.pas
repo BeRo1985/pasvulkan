@@ -3767,9 +3767,9 @@ begin
 
  fVulkanDevice:=aVulkanDevice;
 
- fMultiviewEnabled:=((fVulkanDevice.Instance.APIVersion=VK_API_VERSION_1_0) and
+ fMultiviewEnabled:=(((fVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
                      (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>0)) or
-                    (fVulkanDevice.Instance.APIVersion>=VK_API_VERSION_1_1);
+                    ((fVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_1);
 
  fSurfaceIsSwapchain:=false;
 

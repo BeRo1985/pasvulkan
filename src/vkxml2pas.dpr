@@ -3416,7 +3416,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      end;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
-var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:longint;
+var i,j,k,ArraySize,CountTypeDefinitions,VersionVariant,VersionMajor,VersionMinor,VersionPatch:longint;
     ChildItem,ChildChildItem,NextChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
     Category,Type_,Name,Text,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine,
@@ -3615,7 +3615,12 @@ begin
        if Category='include' then begin
        end else if Category='define' then begin
         Name:=ParseText(ChildTag.FindTag('name'),['']);
-        if (pos('VK_API_VERSION',Name)=1) or (pos('VK_HEADER_VERSION_COMPLETE',Name)=1) then begin
+        if ((pos('VK_API_VERSION',Name)=1) or (pos('VK_HEADER_VERSION_COMPLETE',Name)=1)) and
+           ((Name<>'VK_API_VERSION_VARIANT') and
+            (Name<>'VK_API_VERSION_MAJOR') and
+            (Name<>'VK_API_VERSION_MINOR') and
+            (Name<>'VK_API_VERSION_PATCH')) then begin
+         VersionVariant:=0;
          VersionMajor:=1;
          VersionMinor:=0;
          VersionPatch:=0;
@@ -3627,32 +3632,59 @@ begin
            j:=pos(')',Text);
            if j>0 then begin
             Text:=copy(Text,1,j-1);
-            j:=pos(',',Text);
-            if j>0 then begin
-             VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-             delete(Text,1,j);
-             Text:=trim(Text);
-             j:=pos(',',Text);
-             if (VersionMajor=0) and (j>0) then begin
-              VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-              delete(Text,1,j);
-              Text:=trim(Text);
-              j:=pos(',',Text);
+            k:=0;
+            for j:=1 to length(Text) do begin
+             if Text[j]=',' then begin
+              inc(k);
              end;
-             if j>0 then begin
-              VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-              delete(Text,1,j);
-              Text:=trim(Text);
-              VersionPatch:=StrToIntDef(Text,0);
+            end;
+            case k of
+             2:begin
+              // Major, Minor, Patch
+              j:=pos(',',Text);
+              if j>0 then begin
+               VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+               delete(Text,1,j);
+               Text:=trim(Text);
+               j:=pos(',',Text);
+               if j>0 then begin
+                VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+                delete(Text,1,j);
+                Text:=trim(Text);
+                VersionPatch:=StrToIntDef(Text,0);
+               end;
+              end;
+             end;
+             3:begin
+              // Variant, Major, Minor, Patch
+              j:=pos(',',Text);
+              if j>0 then begin
+               VersionVariant:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+               delete(Text,1,j);
+               Text:=trim(Text);
+               j:=pos(',',Text);
+               if j>0 then begin
+                VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+                delete(Text,1,j);
+                Text:=trim(Text);
+                j:=pos(',',Text);
+                if j>0 then begin
+                 VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+                 delete(Text,1,j);
+                 Text:=trim(Text);
+                 VersionPatch:=StrToIntDef(Text,0);
+                end;
+               end;
+              end;
              end;
             end;
            end;
           end;
          end;
          if Name='VK_HEADER_VERSION_COMPLETE' then begin
-          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or (VK_HEADER_VERSION shl 0);');
+          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionVariant)+' shl 29) or ('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or (VK_HEADER_VERSION shl 0);');
          end else begin
-          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+          VersionConstants.Add('      '+Name+'=('+IntToStr(VersionVariant)+' shl 29) or ('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
          end;
          VersionConstants.Add('');
         end else if pos('VK_HEADER_VERSION',Name)=1 then begin
@@ -5129,6 +5161,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('      VK_NULL_INSTANCE=0;');
    OutputPAS.Add('');
+   OutputPAS.Add('      VK_API_VERSION_WITHOUT_PATCH_MASK=TVkUInt32($fffff000);');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(VersionConstants);
    OutputPAS.AddStrings(ENumConstants);
    OutputPAS.Add('');
@@ -5190,6 +5224,12 @@ begin
    OutputPAS.Add('function VK_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('');
+   OutputPAS.Add('function VK_MAKE_API_VERSION(const VersionVariant,VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('function VK_API_VERSION_VARIANT(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('function VK_API_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('function VK_API_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('function VK_API_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('');
    OutputPAS.Add('function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
@@ -5219,6 +5259,31 @@ begin
    OutputPAS.Add('end;');
    OutputPAS.Add('');
    OutputPAS.Add('function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=(Version shr 0) and $fff;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function VK_MAKE_API_VERSION(const VersionVariant,VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=(VersionVariant shl 29) or (VersionMajor shl 22) or (VersionMinor shl 12) or (VersionPatch shl 0);');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function VK_API_VERSION_VARIANT(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=Version shr 29;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function VK_API_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=(Version shr 22) and $7f;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function VK_API_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=(Version shr 12) and $3ff;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function VK_API_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=(Version shr 0) and $fff;');
    OutputPAS.Add('end;');

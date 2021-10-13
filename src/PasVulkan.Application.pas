@@ -5731,7 +5731,7 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
-  if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+  if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
    // > Vulkan API version 1.0
    if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
     if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
@@ -5899,7 +5899,7 @@ begin
 
   if fVulkanMultiviewSupportEnabled then begin
 
-   if fVulkanInstance.APIVersion>=VK_API_VERSION_1_2 then begin
+   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
     fVulkanPhysicalDeviceVulkan11Features:=fVulkanDevice.PhysicalDeviceVulkan11Features^;
 
@@ -5935,7 +5935,7 @@ begin
     fVulkanPhysicalDeviceFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewFeaturesKHR;
 
-    if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+    if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
      fVulkanInstance.Commands.GetPhysicalDeviceFeatures2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
     end else begin
      fVulkanInstance.Commands.GetPhysicalDeviceFeatures2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
@@ -5956,7 +5956,7 @@ begin
      fVulkanPhysicalDeviceProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
      fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewPropertiesKHR;
 
-     if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+     if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
       fVulkanInstance.Commands.GetPhysicalDeviceProperties2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
      end else begin
       fVulkanInstance.Commands.GetPhysicalDeviceProperties2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);

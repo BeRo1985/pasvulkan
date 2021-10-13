@@ -6467,9 +6467,9 @@ begin
    fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
   end;
  end;
- if fApplicationInfo.apiVersion<VK_API_VERSION_1_0 then begin
+ if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_0 then begin
   fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
- end else if fApplicationInfo.apiVersion>VK_API_VERSION_1_2 then begin
+ end else if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>VK_API_VERSION_1_2 then begin
   fApplicationInfo.apiVersion:=VK_API_VERSION_1_2;
  end;
 
@@ -9951,7 +9951,7 @@ end;
 procedure TpvVulkanDeviceMemoryManager.Initialize;
 begin
 
- if (((fDevice.fInstance.APIVersion shr 22)=1) or
+ if ((((fDevice.fInstance.APIVersion shr 22) and $7f)=1) or
     (((fDevice.fInstance.APIVersion shr 12) and $3ff)=0)) and
     (((fDevice.fEnabledExtensionNames.IndexOf(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)>=0) and
       (fDevice.fEnabledExtensionNames.IndexOf(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)>=0)) and
@@ -9959,7 +9959,7 @@ begin
        assigned(fDevice.fDeviceVulkan.Commands.GetBufferMemoryRequirements2KHR) and
        assigned(fDevice.fDeviceVulkan.Commands.GetImageMemoryRequirements2KHR))) then begin
   fDedicatedAllocationSupport:=TDedicatedAllocationSupport.KHR;
- end else if (((fDevice.fInstance.APIVersion shr 22)>1) or
+ end else if ((((fDevice.fInstance.APIVersion shr 22) and $7f)>1) or
              (((fDevice.fInstance.APIVersion shr 22)=1) or
               (((fDevice.fInstance.APIVersion shr 12) and $3ff)>=1))) and
              (assigned(fDevice.fDeviceVulkan) and
