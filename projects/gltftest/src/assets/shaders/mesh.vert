@@ -70,8 +70,10 @@ layout(std140, set = 2, binding = 0) uniform uboViews {
 } uView;
 
 out gl_PerVertex {
-    vec4 gl_Position;   
+	vec4 gl_Position;
+	float gl_PointSize;
 };
+
 /* clang-format on */
 
 vec3 octDecode(vec2 oct) {
@@ -169,4 +171,5 @@ void main() {
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
   gl_Position = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+  gl_PointSize = 1.0;
 }
