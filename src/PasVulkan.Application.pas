@@ -1085,6 +1085,8 @@ type EpvApplication=class(Exception)
 
        fVulkanDebuggingEnabled:boolean;
 
+       fVulkanPreferDedicatedGPUs:boolean;
+
        fVulkanMultiviewSupportEnabled:boolean;
 
        fVulkanMultiviewGeometryShader:boolean;
@@ -1508,6 +1510,8 @@ type EpvApplication=class(Exception)
        property VulkanNoUniqueObjectsValidation:boolean read fVulkanNoUniqueObjectsValidation write fVulkanNoUniqueObjectsValidation;
 
        property VulkanDebuggingEnabled:boolean read fVulkanDebuggingEnabled;
+
+       property VulkanPreferDedicatedGPUs:boolean read fVulkanPreferDedicatedGPUs write fVulkanPreferDedicatedGPUs;
 
        property VulkanMultiviewSupportEnabled:boolean read fVulkanMultiviewSupportEnabled;
 
@@ -5370,6 +5374,8 @@ begin
 
  fVulkanDebuggingEnabled:=false;
 
+ fVulkanPreferDedicatedGPUs:=true;
+
  fVulkanValidation:=false;
 
  fVulkanNoUniqueObjectsValidation:=false;
@@ -5689,7 +5695,11 @@ begin
    end;
   end;
 
-  fVulkanDevice:=TpvVulkanDevice.Create(fVulkanInstance,PhysicalDevice,aSurface,nil);
+  fVulkanDevice:=TpvVulkanDevice.Create(fVulkanInstance,
+                                        PhysicalDevice,
+                                        aSurface,
+                                        nil,
+                                        fVulkanPreferDedicatedGPUs);
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 

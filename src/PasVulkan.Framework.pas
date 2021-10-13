@@ -562,7 +562,8 @@ type EpvVulkanException=class(Exception);
        constructor Create(const aInstance:TpvVulkanInstance;
                           const aPhysicalDevice:TpvVulkanPhysicalDevice=nil;
                           const aSurface:TpvVulkanSurface=nil;
-                          const aAllocationManager:TpvVulkanAllocationManager=nil);
+                          const aAllocationManager:TpvVulkanAllocationManager=nil;
+                          const aPreferDedicatedGPUs:boolean=true);
        destructor Destroy; override;
        procedure AddQueue(const aQueueFamilyIndex:TpvUInt32;
                           const aQueuePriorities:array of TpvFloat;
@@ -7533,7 +7534,8 @@ end;
 constructor TpvVulkanDevice.Create(const aInstance:TpvVulkanInstance;
                                    const aPhysicalDevice:TpvVulkanPhysicalDevice=nil;
                                    const aSurface:TpvVulkanSurface=nil;
-                                   const aAllocationManager:TpvVulkanAllocationManager=nil);
+                                   const aAllocationManager:TpvVulkanAllocationManager=nil;
+                                   const aPreferDedicatedGPUs:boolean=true);
 var Index,SubIndex:TpvInt32;
     BestPhysicalDevice,CurrentPhysicalDevice:TpvVulkanPhysicalDevice;
     BestScore,CurrentScore,Temp,NewTemp:TpvUInt64;
@@ -7643,10 +7645,18 @@ begin
        CurrentScore:=CurrentScore or (TpvUInt64(1) shl 60);
       end;
       VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:begin
-       CurrentScore:=CurrentScore or (TpvUInt64(3) shl 60);
+       if aPreferDedicatedGPUs then begin
+        CurrentScore:=CurrentScore or (TpvUInt64(3) shl 60);
+       end else begin
+        CurrentScore:=CurrentScore or (TpvUInt64(4) shl 60);
+       end;
       end;
       VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
-       CurrentScore:=CurrentScore or (TpvUInt64(4) shl 60);
+       if aPreferDedicatedGPUs then begin
+        CurrentScore:=CurrentScore or (TpvUInt64(4) shl 60);
+       end else begin
+        CurrentScore:=CurrentScore or (TpvUInt64(3) shl 60);
+       end;
       end;
       VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:begin
        CurrentScore:=CurrentScore or (TpvUInt64(2) shl 60);

@@ -97,6 +97,12 @@ begin
   end else if (Parameter='--force-no-vsync') or
               (Parameter='/force-no-vsync') then begin
    fForceNoVSync:=true;
+  end else if (Parameter='--prefer-dgpus') or
+              (Parameter='/prefer-dgpus') then begin
+   VulkanPreferDedicatedGPUs:=true;
+  end else if (Parameter='--prefer-igpus') or
+              (Parameter='/prefer-igpus') then begin
+   VulkanPreferDedicatedGPUs:=false;
 { end else if (Parameter='--flush-update-data') or
               (Parameter='/flush-update-data') then begin
    FlushUpdateData:=true; //}
