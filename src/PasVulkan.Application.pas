@@ -6065,7 +6065,9 @@ begin
        fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
       end;
      end else begin
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_KHRONOS_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_KHRONOS_validation');
+      end else if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
        fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
       end;
      end;
