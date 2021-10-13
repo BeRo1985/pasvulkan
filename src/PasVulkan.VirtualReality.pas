@@ -720,7 +720,8 @@ begin
   end;
   else {TMode.Disabled:}begin
    fCountImages:=1;
-   fMultiviewMask:=0;
+   fMultiviewMask:=1 shl 0;
+// fMultiviewMask:=0;
   end;
  end;
 

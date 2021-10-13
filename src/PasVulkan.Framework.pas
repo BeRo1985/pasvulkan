@@ -11911,9 +11911,9 @@ begin
   if fCountCorrelationMasks>0 then begin
    MultiviewCreateInfo.correlationMaskCount:=fCountCorrelationMasks;
    MultiviewCreateInfo.pCorrelationMasks:=@fCorrelationMasks[0];
-  end else begin
+{ end else begin
    MultiviewCreateInfo.correlationMaskCount:=1;
-   MultiviewCreateInfo.pCorrelationMasks:=@DefaultCorrelationMask;
+   MultiviewCreateInfo.pCorrelationMasks:=@DefaultCorrelationMask;}
   end;
   RenderPassCreateInfo.pNext:=@MultiviewCreateInfo;
  end;
