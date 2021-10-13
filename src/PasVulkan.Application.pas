@@ -1105,6 +1105,10 @@ type EpvApplication=class(Exception)
 
        fVulkanPhysicalDeviceFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
 
+       fVulkanPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+
+       fVulkanPhysicalDeviceVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;
+
        fVulkanPhysicalDeviceMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
 
        fVulkanPhysicalDeviceProperties2KHR:TVkPhysicalDeviceProperties2KHR;
@@ -5738,6 +5742,12 @@ begin
   end else begin
    // >= Vulkan API version 1.1
    fVulkanMultiviewSupportEnabled:=true;
+   if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+    if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
+     fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+     fVulkanMultiviewSupportEnabled:=true;
+    end;
+   end;
   end;
 
   SetupVulkanDevice(fVulkanDevice);
@@ -5889,43 +5899,74 @@ begin
 
   if fVulkanMultiviewSupportEnabled then begin
 
-   FillChar(fVulkanPhysicalDeviceMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
-   fVulkanPhysicalDeviceMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+   if fVulkanInstance.APIVersion>=VK_API_VERSION_1_2 then begin
 
-   FillChar(fVulkanPhysicalDeviceFeatures2KHR,SizeOf(TVkPhysicalDeviceFeatures2KHR),#0);
-   fVulkanPhysicalDeviceFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-   fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewFeaturesKHR;
+    fVulkanPhysicalDeviceVulkan11Features:=fVulkanDevice.PhysicalDeviceVulkan11Features^;
 
-   if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
-    fVulkanInstance.Commands.GetPhysicalDeviceFeatures2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
-   end else begin
-    fVulkanInstance.Commands.GetPhysicalDeviceFeatures2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
-   end;
+    fVulkanMultiviewSupportEnabled:=fVulkanPhysicalDeviceVulkan11Features.multiview<>0;
 
-   fVulkanMultiviewSupportEnabled:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiview<>0;
+    if fVulkanMultiviewSupportEnabled then begin
 
-   if fVulkanMultiviewSupportEnabled then begin
+     fVulkanMultiviewGeometryShader:=fVulkanPhysicalDeviceVulkan11Features.multiviewGeometryShader<>0;
 
-    fVulkanMultiviewGeometryShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewGeometryShader<>0;
+     fVulkanMultiviewTessellationShader:=fVulkanPhysicalDeviceVulkan11Features.multiviewTessellationShader<>0;
 
-    fVulkanMultiviewTessellationShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewTessellationShader<>0;
+     FillChar(fVulkanPhysicalDeviceVulkan11Properties,SizeOf(TVkPhysicalDeviceVulkan11Properties),#0);
+     fVulkanPhysicalDeviceVulkan11Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
 
-    FillChar(fVulkanPhysicalDeviceMultiviewPropertiesKHR,SizeOf(TVkPhysicalDeviceMultiviewPropertiesKHR),#0);
-    fVulkanPhysicalDeviceMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+     FillChar(fVulkanPhysicalDeviceProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
+     fVulkanPhysicalDeviceProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+     fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceVulkan11Properties;
 
-    FillChar(fVulkanPhysicalDeviceProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
-    fVulkanPhysicalDeviceProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-    fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewPropertiesKHR;
-
-    if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
-     fVulkanInstance.Commands.GetPhysicalDeviceProperties2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
-    end else begin
      fVulkanInstance.Commands.GetPhysicalDeviceProperties2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
+
+     fVulkanMaxMultiviewViewCount:=fVulkanPhysicalDeviceVulkan11Properties.maxMultiviewViewCount;
+
+     fVulkanMaxMultiviewInstanceIndex:=fVulkanPhysicalDeviceVulkan11Properties.maxMultiviewInstanceIndex;
+
     end;
 
-    fVulkanMaxMultiviewViewCount:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewViewCount;
+   end else begin
 
-    fVulkanMaxMultiviewInstanceIndex:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewInstanceIndex;
+    FillChar(fVulkanPhysicalDeviceMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
+    fVulkanPhysicalDeviceMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+
+    FillChar(fVulkanPhysicalDeviceFeatures2KHR,SizeOf(TVkPhysicalDeviceFeatures2KHR),#0);
+    fVulkanPhysicalDeviceFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+    fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewFeaturesKHR;
+
+    if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+     fVulkanInstance.Commands.GetPhysicalDeviceFeatures2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
+    end else begin
+     fVulkanInstance.Commands.GetPhysicalDeviceFeatures2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
+    end;
+
+    fVulkanMultiviewSupportEnabled:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiview<>0;
+
+    if fVulkanMultiviewSupportEnabled then begin
+
+     fVulkanMultiviewGeometryShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewGeometryShader<>0;
+
+     fVulkanMultiviewTessellationShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewTessellationShader<>0;
+
+     FillChar(fVulkanPhysicalDeviceMultiviewPropertiesKHR,SizeOf(TVkPhysicalDeviceMultiviewPropertiesKHR),#0);
+     fVulkanPhysicalDeviceMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+
+     FillChar(fVulkanPhysicalDeviceProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
+     fVulkanPhysicalDeviceProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+     fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewPropertiesKHR;
+
+     if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+      fVulkanInstance.Commands.GetPhysicalDeviceProperties2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
+     end else begin
+      fVulkanInstance.Commands.GetPhysicalDeviceProperties2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
+     end;
+
+     fVulkanMaxMultiviewViewCount:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewViewCount;
+
+     fVulkanMaxMultiviewInstanceIndex:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewInstanceIndex;
+
+    end;
 
    end;
 

@@ -555,6 +555,8 @@ type EpvVulkanException=class(Exception);
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fDebugMarker:TpvVulkanDeviceDebugMarker;
        fCanvasCommon:TObject;
+       fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fPointerToPhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -573,6 +575,7 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
+       property PhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features read fPointerToPhysicalDeviceVulkan11Features;
       published
        property Instance:TpvVulkanInstance read fInstance;
        property PhysicalDevice:TpvVulkanPhysicalDevice read fPhysicalDevice;
@@ -6669,7 +6672,7 @@ begin
    InstanceCreateInfo.enabledExtensionCount:=length(fEnabledExtensionNameStrings);
    InstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
-
+  InstanceCreateInfo.pApplicationInfo:=@fApplicationInfo;
   VulkanCheckResult(fVulkan.CreateInstance(@InstanceCreateInfo,fAllocationCallbacks,@fInstanceHandle));
 
   GetMem(InstanceCommands,SizeOf(TVulkanCommands));
@@ -7707,6 +7710,8 @@ begin
 
  fPointerToEnabledFeatures:=@fEnabledFeatures;
 
+ fPointerToPhysicalDeviceVulkan11Features:=@fPhysicalDeviceVulkan11Features;
+
  fMemoryManager:=TpvVulkanDeviceMemoryManager.Create(self);
 
  fDebugMarker:=TpvVulkanDeviceDebugMarker.Create(self);
@@ -8102,6 +8107,16 @@ begin
    DeviceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   DeviceCreateInfo.pEnabledFeatures:=@fEnabledFeatures;
+  FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
+  fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  if fInstance.APIVersion>=VK_API_VERSION_1_2 then begin
+   if fPhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
+    fPhysicalDeviceVulkan11Features.multiview:=VK_TRUE;
+   end else begin
+    fPhysicalDeviceVulkan11Features.multiview:=VK_FALSE;
+   end;
+   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
+  end;
   VulkanCheckResult(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
 
   GetMem(DeviceCommands,SizeOf(TVulkanCommands));
