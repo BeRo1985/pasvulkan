@@ -114,6 +114,7 @@ begin
  end;
 {$ifend}
  fVirtualReality:=TpvVirtualReality.Create(VirtualRealityMode);
+ fVirtualReality.ZNear:=0.1;
  fVirtualReality.ZFar:=Infinity;
 end;
 
