@@ -3373,7 +3373,8 @@ var PrimitiveIndex,
     Old:TpvSizeInt;
     Primitive:TMesh.PPrimitive;
     NodeMeshPrimitiveInstance:TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
-    Vertex,OldVertex:PVertex;
+    Vertex:PVertex;
+    OldVertex:TVertex;
     MorphTargetVertex:PMorphTargetVertex;
     MorphTargetVertexIndex:TpvUInt32;
 begin
@@ -3438,8 +3439,8 @@ begin
 
    NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=fGroup.fVertices.Count;
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
-    OldVertex:=@fGroup.fVertices.Items[VertexIndex];
-    NewVertexIndex:=fGroup.fVertices.Add(OldVertex^);
+    OldVertex:=fGroup.fVertices.Items[VertexIndex];
+    NewVertexIndex:=fGroup.fVertices.Add(OldVertex);
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
@@ -3468,7 +3469,7 @@ begin
      Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
      for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
-      fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[OldVertex^.JointBlockBaseIndex+JointBlockIndex];
+      fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[OldVertex.JointBlockBaseIndex+JointBlockIndex];
       if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
        Old:=length(fGroup.fJointBlockOffsets);
        SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
