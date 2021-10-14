@@ -1168,6 +1168,7 @@ begin
   GLTF:=TPasGLTF.TDocument.Create;
   try
    if FileExists(GLTFFileName) then begin
+    GLTF.RootPath:=ExtractFilePath(ExpandFileName(GLTFFileName));
     AssetStream:=TFileStream.Create(GLTFFileName,fmOpenRead or fmShareDenyWrite);
    end else begin
     AssetStream:=pvApplication.Assets.GetAssetStream(GLTFFileName);
