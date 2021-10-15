@@ -4057,12 +4057,21 @@ type TEventBeforeAfter=(Event,Before,After);
     case aResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL,
      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      if assigned(aResourceTransition.fPass) then begin
+       if aResourceTransition.fPass is TRenderPass then begin
+        result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+       end else if aResourceTransition.fPass is TComputePass then begin
+        result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+       end else begin
+        result:=0;
+       end;
+      end else begin
+       result:=0;
+      end;
      end;
      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
       result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -5147,26 +5156,6 @@ type TEventBeforeAfter=(Event,Before,After);
                               SubpassDependency.SrcStageMask,
                               SubpassDependency.DstStageMask
                              );
-
-        if ResourceTransition.fPass is TComputePass then begin
-         SubpassDependency.SrcStageMask:=SubpassDependency.SrcStageMask and not (TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
-        end else if ResourceTransition.fPass is TRenderPass then begin
-         SubpassDependency.SrcStageMask:=SubpassDependency.SrcStageMask and not TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-        end;
-
-        if OtherResourceTransition.fPass is TComputePass then begin
-         SubpassDependency.DstStageMask:=SubpassDependency.DstStageMask and not (TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
-        end else if OtherResourceTransition.fPass is TRenderPass then begin
-         SubpassDependency.DstStageMask:=SubpassDependency.DstStageMask and not TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-        end;
 
         GetAccessMasks(ResourceTransition,
                        OtherResourceTransition,
