@@ -174,6 +174,7 @@ type { TScreenMain }
        fZoom:TpvScalar;
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
+       fAnimationIndex:Int32;
       public
 
        constructor Create; override;
@@ -1158,6 +1159,8 @@ var GLTF:TPasGLTF.TDocument;
 begin
  inherited Create;
 
+ fAnimationIndex:=0;
+
  fUpdateLock:=TPasMPCriticalSection.Create;
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
@@ -1493,7 +1496,8 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
-var ModelMatrix,ViewMatrix:TpvMatrix4x4;
+var Index:TpvSizeInt;
+    ModelMatrix,ViewMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
     ViewLeft,ViewRight:TpvScene3D.TView;
@@ -1512,23 +1516,20 @@ begin
 
    fGroupInstance.ModelMatrix:=ModelMatrix;
 
-   if fGroupInstance.Group.Animations.Count>0 then begin
-    fGroupInstance.Automations[-1].Factor:=-1.0;
-    fGroupInstance.Automations[-1].Time:=0.0;
-    if fGroupInstance.Group.Animations.Count>4 then begin
-     fGroupInstance.Automations[3].Factor:=1.0;
-     t0:=fGroupInstance.Group.Animations[3].GetAnimationBeginTime;
-     t1:=fGroupInstance.Group.Animations[3].GetAnimationEndTime;
-     fGroupInstance.Automations[3].Time:=ModuloPos(fTime,t1-t0)+t0;
+   for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
+    if Index=fAnimationIndex then begin
+     fGroupInstance.Automations[Index].Factor:=1.0;
+     if Index>=0 then begin
+      t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+      t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+      fGroupInstance.Automations[Index].Time:=ModuloPos(fTime,t1-t0)+t0;
+     end else begin
+      fGroupInstance.Automations[Index].Time:=0.0;
+     end;
     end else begin
-     fGroupInstance.Automations[0].Factor:=1.0;
-     t0:=fGroupInstance.Group.Animations[0].GetAnimationBeginTime;
-     t1:=fGroupInstance.Group.Animations[0].GetAnimationEndTime;
-     fGroupInstance.Automations[0].Time:=ModuloPos(fTime,t1-t0)+t0;
+     fGroupInstance.Automations[Index].Factor:=-1.0;
+     fGroupInstance.Automations[Index].Time:=0.0;
     end;
-   end else begin
-    fGroupInstance.Automations[-1].Factor:=1.0;
-    fGroupInstance.Automations[-1].Time:=0.0;
    end;
 
    fScene3D.Update(pvApplication.UpdateSwapChainImageIndex);
@@ -1590,8 +1591,23 @@ function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boole
 begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
-  if aKeyEvent.KeyCode=KEYCODE_ESCAPE then begin
-   pvApplication.Terminate;
+  case aKeyEvent.KeyCode of
+   KEYCODE_ESCAPE:begin
+    pvApplication.Terminate;
+   end;
+   KEYCODE_B:begin
+    if fAnimationIndex<-1 then begin
+     fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
+    end else begin
+     dec(fAnimationIndex);
+    end;
+   end;
+   KEYCODE_N:begin
+    inc(fAnimationIndex);
+    if fAnimationIndex>=fGroupInstance.Group.Animations.Count then begin
+     fAnimationIndex:=-1;
+    end;
+   end;
   end;
  end;
 end;
