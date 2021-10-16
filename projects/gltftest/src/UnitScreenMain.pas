@@ -1613,7 +1613,7 @@ begin
     pvApplication.Terminate;
    end;
    KEYCODE_V,KEYCODE_B:begin
-    if fAnimationIndex<-1 then begin
+    if fAnimationIndex<0 then begin
      fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
     end else begin
      dec(fAnimationIndex);
