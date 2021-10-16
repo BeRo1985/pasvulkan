@@ -943,17 +943,19 @@ type EpvScene3D=class(Exception);
                                  end;
                                  TChannels=TpvObjectGenericList<TChannel>;
                            private
-                            fFactor:TPasGLTFFloat;
-                            fTime:TPasGLTFDouble;
-                            fShadowTime:TPasGLTFDouble;
+                            fFactor:TpvFloat;
+                            fTime:TpvDouble;
+                            fShadowTime:TpvDouble;
+                            fComplete:LongBool;
                             fChannels:TChannels;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
                            published
-                            property Factor:TPasGLTFFloat read fFactor write fFactor;
-                            property Time:TPasGLTFDouble read fTime write fTime;
-                            property ShadowTime:TPasGLTFDouble read fShadowTime write fShadowTime;
+                            property Factor:TpvFloat read fFactor write fFactor;
+                            property Time:TpvDouble read fTime write fTime;
+                            property ShadowTime:TpvDouble read fShadowTime write fShadowTime;
+                            property Complete:LongBool read fComplete write fComplete;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
                           TNode=record
@@ -5566,6 +5568,7 @@ begin
  fChannels.OwnsObjects:=true;
  fTime:=0.0;
  fShadowTime:=0.0;
+ fComplete:=false;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TAnimation.Destroy;
@@ -6145,7 +6148,6 @@ var CullFace,Blend:TPasGLTFInt32;
        end;
       end;
      end;
-
 
     end;
 
