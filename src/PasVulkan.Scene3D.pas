@@ -3283,7 +3283,7 @@ begin
    if Index=0 then begin
     result:=Channel^.InputTimeArray[length(Channel^.InputTimeArray)-1];
    end else begin
-    result:=Max(result,Channel^.InputTimeArray[0]);
+    result:=Max(result,Channel^.InputTimeArray[length(Channel^.InputTimeArray)-1]);
    end;
   end;
  end;
