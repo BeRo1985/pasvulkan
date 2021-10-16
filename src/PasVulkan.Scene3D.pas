@@ -945,6 +945,7 @@ type EpvScene3D=class(Exception);
                            private
                             fFactor:TPasGLTFFloat;
                             fTime:TPasGLTFDouble;
+                            fShadowTime:TPasGLTFDouble;
                             fChannels:TChannels;
                            public
                             constructor Create; reintroduce;
@@ -952,6 +953,7 @@ type EpvScene3D=class(Exception);
                            published
                             property Factor:TPasGLTFFloat read fFactor write fFactor;
                             property Time:TPasGLTFDouble read fTime write fTime;
+                            property ShadowTime:TPasGLTFDouble read fShadowTime write fShadowTime;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
                           TNode=record
@@ -5555,6 +5557,8 @@ begin
  inherited Create;
  fChannels:=TChannels.Create;
  fChannels.OwnsObjects:=true;
+ fTime:=0.0;
+ fShadowTime:=0.0;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TAnimation.Destroy;

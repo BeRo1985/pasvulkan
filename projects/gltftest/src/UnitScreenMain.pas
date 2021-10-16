@@ -174,7 +174,9 @@ type { TScreenMain }
        fZoom:TpvScalar;
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
+       fLastAnimationIndex:Int32;
        fAnimationIndex:Int32;
+       fAnimationBlendTime:Double;
       public
 
        constructor Create; override;
@@ -1159,7 +1161,11 @@ var GLTF:TPasGLTF.TDocument;
 begin
  inherited Create;
 
+ fLastAnimationIndex:=0;
+
  fAnimationIndex:=0;
+
+ fAnimationBlendTime:=1.0;
 
  fUpdateLock:=TPasMPCriticalSection.Create;
 
@@ -1516,19 +1522,33 @@ begin
 
    fGroupInstance.ModelMatrix:=ModelMatrix;
 
-   for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
-    if Index=fAnimationIndex then begin
-     fGroupInstance.Automations[Index].Factor:=1.0;
-     if Index>=0 then begin
-      t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
-      t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-      fGroupInstance.Automations[Index].Time:=ModuloPos(fTime,t1-t0)+t0;
+   begin
+    for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
+     if (Index=fAnimationIndex) or (Index=fLastAnimationIndex) then begin
+      if Index=fAnimationIndex then begin
+       fGroupInstance.Automations[Index].Factor:=fAnimationBlendTime;
+      end else begin
+       fGroupInstance.Automations[Index].Factor:=1.0-fAnimationBlendTime;
+      end;
+      if Index>=0 then begin
+       t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+       t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+       fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
+       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
+      end else begin
+       fGroupInstance.Automations[Index].Time:=0.0;
+      end;
      end else begin
+      fGroupInstance.Automations[Index].Factor:=-1.0;
       fGroupInstance.Automations[Index].Time:=0.0;
      end;
-    end else begin
-     fGroupInstance.Automations[Index].Factor:=-1.0;
-     fGroupInstance.Automations[Index].Time:=0.0;
+     if fAnimationBlendTime<1.0 then begin
+      fAnimationBlendTime:=fAnimationBlendTime+(pvApplication.DeltaTime*0.25);
+      if fAnimationBlendTime>=1.0 then begin
+       fAnimationBlendTime:=1.0;
+       fLastAnimationIndex:=fAnimationIndex;
+      end;
+     end;
     end;
    end;
 
@@ -1595,17 +1615,33 @@ begin
    KEYCODE_ESCAPE:begin
     pvApplication.Terminate;
    end;
-   KEYCODE_B:begin
+   KEYCODE_V,KEYCODE_B:begin
     if fAnimationIndex<-1 then begin
      fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
     end else begin
      dec(fAnimationIndex);
     end;
+    if (fAnimationIndex>=-1) and (fAnimationIndex<fGroupInstance.Group.Animations.Count) then begin
+     fGroupInstance.Automations[fAnimationIndex].ShadowTime:=0.0;
+    end;
+    if aKeyEvent.KeyCode=KEYCODE_B then begin
+     fLastAnimationIndex:=fAnimationIndex;
+    end else begin
+     fAnimationBlendTime:=0.0;
+    end;
    end;
-   KEYCODE_N:begin
+   KEYCODE_N,KEYCODE_M:begin
     inc(fAnimationIndex);
     if fAnimationIndex>=fGroupInstance.Group.Animations.Count then begin
      fAnimationIndex:=-1;
+    end;
+    if (fAnimationIndex>=-1) and (fAnimationIndex<fGroupInstance.Group.Animations.Count) then begin
+     fGroupInstance.Automations[fAnimationIndex].ShadowTime:=0.0;
+    end;
+    if aKeyEvent.KeyCode=KEYCODE_N then begin
+     fLastAnimationIndex:=fAnimationIndex;
+    end else begin
+     fAnimationBlendTime:=0.0;
     end;
    end;
   end;
