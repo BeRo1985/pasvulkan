@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="dress.glb"/>
+        <CommandLineParams Value="fox.glb /prefer-igpus"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="dress.glb"/>
+            <CommandLineParams Value="fox.glb /prefer-igpus"/>
           </local>
         </Mode0>
       </Modes>

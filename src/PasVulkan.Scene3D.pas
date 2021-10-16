@@ -5317,6 +5317,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure CalculateBoundingBox;
+ var First:boolean;
   procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4);
   var Index:TpvSizeInt;
       Matrix:TpvMatrix4x4;
@@ -5327,7 +5328,12 @@ var LightMap:TpvScene3D.TGroup.TLights;
              (TpvMatrix4x4.CreateFromQuaternion(Node.fRotation)*
               TpvMatrix4x4.CreateTranslation(Node.fTranslation)))*Node.fMatrix)*aMatrix;
    if assigned(Node.fMesh) then begin
-    fBoundingBox:=fBoundingBox.Combine(Node.fMesh.fBoundingBox.Transform(Matrix));
+    if First then begin
+     First:=false;
+     fBoundingBox:=Node.fMesh.fBoundingBox.Transform(Matrix);
+    end else begin
+     fBoundingBox:=fBoundingBox.Combine(Node.fMesh.fBoundingBox.Transform(Matrix));
+    end;
    end;
    for Index:=0 to Node.Children.Count-1 do begin
     ProcessNode(Node.Children[Index].Index,Matrix);
@@ -5338,6 +5344,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   fBoundingBox.Min:=TpvVector3.Origin;
   fBoundingBox.Max:=TpvVector3.Origin;
+  First:=true;
   for Scene in fScenes do begin
    for Node in Scene.fNodes do begin
     ProcessNode(Node.Index,TpvMatrix4x4.Identity);
