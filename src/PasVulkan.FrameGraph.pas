@@ -3659,6 +3659,8 @@ begin
 
  fVulkanRenderPass.Initialize;
 
+//fFrameGraph.fVulkanDevice.DebugMarker.SetObjectName(fVulkanRenderPass.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT,fSubpasses[0].fRenderPass.Name);
+
  for AttachmentIndex:=0 to fAttachments.Count-1 do begin
   Attachment:=@fAttachments.Items[AttachmentIndex];
   fVulkanRenderPass.ClearValues[AttachmentIndex]^:=Attachment^.ClearValue;

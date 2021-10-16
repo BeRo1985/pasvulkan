@@ -1117,10 +1117,11 @@ begin
                                                                  VK_ATTACHMENT_STORE_OP_DONT_CARE,
                                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                  VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                                                                 );
-    InputAttachments:=[fVulkanRenderPass.AddAttachmentReference(fInputAttachment,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)];
+    InputAttachments:=[fVulkanRenderPass.AddAttachmentReference(fInputAttachment,
+                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)];
    end;
 
    fOutputAttachment:=fVulkanRenderPass.AddAttachmentDescription(0,
@@ -1148,7 +1149,7 @@ begin
                                                                                                                                VK_ATTACHMENT_STORE_OP_DONT_CARE,
                                                                                                                                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                                                VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED,
                                                                                                                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                                                               ),
                                                                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -1157,18 +1158,47 @@ begin
    fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                           0,
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                          TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+   fVulkanRenderPass.AddSubpassDependency(0,
+                                          VK_SUBPASS_EXTERNAL,
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+{  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                          0,
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                           TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
                                           TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
    fVulkanRenderPass.AddSubpassDependency(0,
                                           VK_SUBPASS_EXTERNAL,
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
                                           TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));}
    fVulkanRenderPass.Initialize;
+
+// pvApplication.VulkanDevice.DebugMarker.SetObjectName(fVulkanRenderPass.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT,'VR_Blit_RenderPass');
 
   end;
 
