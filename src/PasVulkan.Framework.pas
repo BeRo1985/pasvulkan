@@ -10578,14 +10578,14 @@ begin
        if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
         inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
         if (aDataOffset+aDataSize)>=Memory.Size then begin
-         DataSize:=Memory.Size-aDataOffset+aDataSize;
+         DataSize:=Memory.Size-(aDataOffset+aDataSize);
         end;
        end;
       end else begin
        if (DataSize mod NonCoherentAtomSize)=0 then begin
         inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
         if (aDataOffset+aDataSize)>=Memory.Size then begin
-         DataSize:=Memory.Size-aDataOffset+aDataSize;
+         DataSize:=Memory.Size-(aDataOffset+aDataSize);
         end;
        end;
       end;
