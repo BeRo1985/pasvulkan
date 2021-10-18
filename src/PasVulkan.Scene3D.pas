@@ -996,11 +996,6 @@ type EpvScene3D=class(Exception);
                             Processed:LongBool;
                             Overwrites:TOverwrites;
                             CountOverwrites:TpvSizeInt;
-                            OverwriteFlags:TOverwriteFlags;
-                            OverwriteTranslation:TpvVector3;
-                            OverwriteRotation:TpvQuaternion;
-                            OverwriteScale:TpvVector3;
-                            OverwriteWeights:TpvFloatDynamicArray;
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
@@ -5694,7 +5689,6 @@ begin
   Node:=fGroup.fNodes[Index];
   InstanceNode^.Processed:=false;
   SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
-  SetLength(InstanceNode^.OverwriteWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
   SetLength(InstanceNode^.Overwrites,fGroup.fAnimations.Count+1);
   for OtherIndex:=0 to fGroup.fAnimations.Count do begin
@@ -5943,7 +5937,6 @@ var CullFace,Blend:TPasGLTFInt32;
   InstanceNode:=@fNodes[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
   InstanceNode^.CountOverwrites:=0;
-  InstanceNode^.OverwriteFlags:=[];
   for Index:=0 to Node.Children.Count-1 do begin
    ResetNode(Node.Children[Index].Index);
   end;
@@ -6102,84 +6095,69 @@ var CullFace,Blend:TPasGLTFInt32;
       end;
      end;
 
-     case AnimationChannel^.Target of
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-       case AnimationChannel^.Interpolation of
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-         Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-         Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
-         Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
-         Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
-         Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
+     if assigned(Overwrite) then begin
+      case AnimationChannel^.Target of
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
+        case AnimationChannel^.Interpolation of
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+          Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+          Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
+          Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
+          Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
+          Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+          Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+          SqrFactor:=sqr(Factor);
+          CubeFactor:=SqrFactor*Factor;
+          Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                    (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                     (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                      (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
+         end;
+         else begin
+          Assert(false);
+         end;
         end;
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-         Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-        end;
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-         SqrFactor:=sqr(Factor);
-         CubeFactor:=SqrFactor*Factor;
-         Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                   (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                    (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                     (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
-        end;
-        else begin
-         Assert(false);
-        end;
-       end;
-       case AnimationChannel^.Target of
-        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
-         if assigned(Overwrite) then begin
+        case AnimationChannel^.Target of
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
           Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
           Overwrite^.Translation:=Vector3;
-         end else begin
-          Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
-          Node^.OverwriteTranslation:=Vector3;
          end;
-        end;
-        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-         if assigned(Overwrite) then begin
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
           Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
           Overwrite^.Scale:=Vector3;
-         end else begin
-          Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
-          Node^.OverwriteScale:=Vector3;
          end;
         end;
        end;
-      end;
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
-       case AnimationChannel^.Interpolation of
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-         Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
+        case AnimationChannel^.Interpolation of
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+          Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+          Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+          SqrFactor:=sqr(Factor);
+          CubeFactor:=SqrFactor*Factor;
+          Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                     (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                      (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                       (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
+         end;
+         else begin
+          Assert(false);
+         end;
         end;
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-         Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
-        end;
-        TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-         SqrFactor:=sqr(Factor);
-         CubeFactor:=SqrFactor*Factor;
-         Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                    (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                     (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                      (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
-        end;
-        else begin
-         Assert(false);
-        end;
-       end;
-       if assigned(Overwrite) then begin
         Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
         Overwrite^.Rotation.Vector:=Vector4;
-       end else begin
-        Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
-        Node^.OverwriteRotation.Vector:=Vector4;
        end;
-      end;
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
-       CountWeights:=length(Node^.WorkWeights);
-       if assigned(Overwrite) then begin
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
+        CountWeights:=length(Node^.WorkWeights);
         Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
         case AnimationChannel^.Interpolation of
          TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
@@ -6197,38 +6175,10 @@ var CullFace,Blend:TPasGLTFInt32;
           SqrFactor:=sqr(Factor);
           CubeFactor:=SqrFactor*Factor;
           for WeightIndex:=0 to CountWeights-1 do begin
-           Overwrite^. Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
-                                             (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
-                                             (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
-                                             ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
-          end;
-         end;
-         else begin
-          Assert(false);
-         end;
-        end;
-       end else begin
-        Include(Node^.OverwriteFlags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
-        case AnimationChannel^.Interpolation of
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Node^.OverwriteWeights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
-                                                (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
-          end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Node^.OverwriteWeights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
-          end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-          SqrFactor:=sqr(Factor);
-          CubeFactor:=SqrFactor*Factor;
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Node^.OverwriteWeights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
-                                                (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
-                                                (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
-                                                ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
+           Overwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
+                                            (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
+                                            (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
+                                            ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
           end;
          end;
          else begin
@@ -6272,41 +6222,23 @@ var CullFace,Blend:TPasGLTFInt32;
       Overwrite^.Flags:=[];
       Overwrite^.Factor:=Max(aFactor,0.0);
      end;
-     case AnimationDefaultChannel^.Target of
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
-       if assigned(Overwrite) then begin
+     if assigned(Overwrite) then begin
+      case AnimationDefaultChannel^.Target of
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
         Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
-       end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
-                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
        end;
-      end;
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-       if assigned(Overwrite) then begin
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
         Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
-       end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
-                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
        end;
-      end;
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
-       if assigned(Overwrite) then begin
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
         Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
-       end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
-                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
        end;
-      end;
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
-       if assigned(Overwrite) then begin
+       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
         Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
-       end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
-                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
        end;
       end;
      end;
@@ -6499,41 +6431,11 @@ var CullFace,Blend:TPasGLTFInt32;
     end;
    end;
   end else begin
-   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation,
-        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation]*InstanceNode^.OverwriteFlags)=
-      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation] then begin
-    Translation:=InstanceNode^.OverwriteTranslation;
-    SkinUsed:=true;
-   end else begin
-    Translation:=Node.fTranslation;
-   end;
-   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale,
-        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale]*InstanceNode^.OverwriteFlags)=
-      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale] then begin
-    Scale:=InstanceNode^.OverwriteScale;
-    SkinUsed:=true;
-   end else begin
-    Scale:=Node.fScale;
-   end;
-   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation,
-        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation]*InstanceNode^.OverwriteFlags)=
-      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation] then begin
-    Rotation:=InstanceNode^.OverwriteRotation;
-    SkinUsed:=true;
-   end else begin
-    Rotation:=Node.fRotation;
-   end;
-   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights,
-        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights]*InstanceNode^.OverwriteFlags)=
-      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights] then begin
-    SkinUsed:=true;
-    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(InstanceNode^.OverwriteWeights))-1 do begin
-     InstanceNode^.WorkWeights[Index]:=InstanceNode^.OverwriteWeights[Index];
-    end;
-   end else begin
-    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
-     InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
-    end;
+   Translation:=Node.fTranslation;
+   Scale:=Node.fScale;
+   Rotation:=Node.fRotation;
+   for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
+    InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
    end;
   end;
   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
