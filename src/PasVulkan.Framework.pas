@@ -9418,6 +9418,7 @@ begin
    end;
   end;
   if (NewOffset<fMappedOffset) or ((NewOffset+NewSize)>(fMappedOffset+fMappedSize)) then begin
+   NewOffset:=fMappedOffset;
    NewSize:=VK_WHOLE_SIZE;
   end;
   aMappedMemoryRange.offset:=NewOffset;
