@@ -5195,6 +5195,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
        Animation:=fAnimations[Index];
        FillChar(NodeTargetUsedBitmap[0],length(NodeTargetUsedBitmap)*SizeOf(TpvUInt32),#0);
        for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+        Channel:=@Animation.fChannels[ChannelIndex];
         CompactCode:=TpvUInt64(TpvUInt64(Channel^.Node) and TpvUInt64($ffffffff)) or (TpvUInt64(TpvInt32(Channel^.Target)) shl 32);
         NodeTargetIndex:=NodeTargetHashMap[CompactCode];
         if (NodeTargetIndex>=0) and (NodeTargetIndex<NodeTargetArrayList.Count) then begin
