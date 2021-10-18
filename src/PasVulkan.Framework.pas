@@ -10563,6 +10563,7 @@ procedure TpvVulkanBuffer.UpdateData(const aData;
                                      const aDataSize:TVkDeviceSize;
                                      const aForceFlush:boolean=false);
 var p:TpvPointer;
+    NonCoherentAtomSize,DataSize,WholeSize:TVkDeviceSize;
 begin
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
   p:=Memory.MapMemory(aDataOffset,aDataSize);
@@ -10570,7 +10571,26 @@ begin
    if assigned(p) then begin
     Move(aData,p^,aDataSize);
     if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
-     Memory.FlushMappedMemoryRange(p,aDataSize);
+     DataSize:=aDataSize;
+     NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+     if NonCoherentAtomSize>0 then begin
+      if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
+       if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
+        inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
+        if (aDataOffset+aDataSize)>=Memory.Size then begin
+         DataSize:=Memory.Size-aDataOffset+aDataSize;
+        end;
+       end;
+      end else begin
+       if (DataSize mod NonCoherentAtomSize)=0 then begin
+        inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
+        if (aDataOffset+aDataSize)>=Memory.Size then begin
+         DataSize:=Memory.Size-aDataOffset+aDataSize;
+        end;
+       end;
+      end;
+     end;
+     Memory.FlushMappedMemoryRange(p,DataSize);
     end;
    end else begin
     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
