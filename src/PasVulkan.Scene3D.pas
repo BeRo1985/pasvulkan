@@ -971,6 +971,7 @@ type EpvScene3D=class(Exception);
                             type TOverwriteFlag=
                                   (
                                    Defaults,
+                                   DefaultData,
                                    Translation,
                                    Rotation,
                                    Scale,
@@ -5661,6 +5662,7 @@ constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourc
 var Index,OtherIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
+    Animation:TpvScene3D.TGroup.TAnimation;
 begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
@@ -5700,7 +5702,8 @@ begin
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
   if Index>0 then begin
-   for OtherIndex:=0 to length(fGroup.fAnimations[Index-1].fChannels)-1 do begin
+   Animation:=fGroup.fAnimations[Index-1];
+   for OtherIndex:=0 to (length(Animation.fChannels)+length(Animation.fDefaultChannels))-1 do begin
     fAnimations[Index].fChannels.Add(TpvScene3D.TGroup.TInstance.TAnimation.TChannel.Create);
    end;
   end;
@@ -5970,6 +5973,7 @@ var CullFace,Blend:TPasGLTFInt32;
      l,r,m:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+     AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
      InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
      InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
      //Node:TpvScene3D.TGroup.TNode;
@@ -5983,17 +5987,22 @@ var CullFace,Blend:TPasGLTFInt32;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
  begin
 
+  Animation:=fGroup.fAnimations[aAnimationIndex];
+
   InstanceAnimation:=fAnimations[aAnimationIndex+1];
 
-  for InstanceChannelIndex:=0 to InstanceAnimation.fChannels.Count-1 do begin
+  if InstanceAnimation.Complete then begin
+   CountInstanceChannels:=InstanceAnimation.fChannels.Count;
+  end else begin
+   CountInstanceChannels:=length(Animation.fChannels);
+  end;
+  for InstanceChannelIndex:=0 to CountInstanceChannels-1 do begin
    InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
    InstanceAnimationChannel.fNode:=nil;
    InstanceAnimationChannel.fOverwrite:=-1;
   end;
 
   CountInstanceChannels:=0;
-
-  Animation:=fGroup.fAnimations[aAnimationIndex];
 
   for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
 
@@ -6233,6 +6242,75 @@ var CullFace,Blend:TPasGLTFInt32;
 
   end;
 
+  if InstanceAnimation.Complete then begin
+   for ChannelIndex:=0 to length(Animation.fDefaultChannels)-1 do begin
+    AnimationDefaultChannel:=@Animation.fDefaultChannels[ChannelIndex];
+    Node:=@fNodes[AnimationDefaultChannel^.Node];
+    Overwrite:=nil;
+    if aFactor>=-0.5 then begin
+     InstanceAnimationChannel:=nil;
+     for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+      if InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node then begin
+       InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+       break;
+      end;
+     end;
+     if assigned(InstanceAnimationChannel) then begin
+      Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+     end else if (Node.CountOverwrites<length(Node.Overwrites)) and
+                 (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+      InstanceChannelIndex:=CountInstanceChannels;
+      inc(CountInstanceChannels);
+      InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+      InstanceAnimationChannel.fNode:=Node;
+      InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
+      inc(Node.CountOverwrites);
+      Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+      Overwrite^.Flags:=[];
+      Overwrite^.Factor:=Max(aFactor,0.0);
+     end;
+     case AnimationDefaultChannel^.Target of
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
+       if assigned(Overwrite) then begin
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
+       end else begin
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
+       end;
+      end;
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
+       if assigned(Overwrite) then begin
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
+       end else begin
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
+       end;
+      end;
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
+       if assigned(Overwrite) then begin
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
+       end else begin
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
+       end;
+      end;
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
+       if assigned(Overwrite) then begin
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
+       end else begin
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+                                                    TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+
  end;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4);
  type TVector3Sum=record
@@ -6335,19 +6413,35 @@ var CullFace,Blend:TPasGLTFInt32;
       end;
      end else begin
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in Overwrite^.Flags then begin
-       TranslationSum.x:=TranslationSum.x+(Overwrite^.Translation.x*Factor);
-       TranslationSum.y:=TranslationSum.y+(Overwrite^.Translation.y*Factor);
-       TranslationSum.z:=TranslationSum.z+(Overwrite^.Translation.z*Factor);
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+        TranslationSum.x:=TranslationSum.x+(Node.fTranslation.x*Factor);
+        TranslationSum.y:=TranslationSum.y+(Node.fTranslation.y*Factor);
+        TranslationSum.z:=TranslationSum.z+(Node.fTranslation.z*Factor);
+       end else begin
+        TranslationSum.x:=TranslationSum.x+(Overwrite^.Translation.x*Factor);
+        TranslationSum.y:=TranslationSum.y+(Overwrite^.Translation.y*Factor);
+        TranslationSum.z:=TranslationSum.z+(Overwrite^.Translation.z*Factor);
+       end;
        TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in Overwrite^.Flags then begin
-       ScaleSum.x:=ScaleSum.x+(Overwrite^.Scale.x*Factor);
-       ScaleSum.y:=ScaleSum.y+(Overwrite^.Scale.y*Factor);
-       ScaleSum.z:=ScaleSum.z+(Overwrite^.Scale.z*Factor);
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+        ScaleSum.x:=ScaleSum.x+(Node.fScale.x*Factor);
+        ScaleSum.y:=ScaleSum.y+(Node.fScale.y*Factor);
+        ScaleSum.z:=ScaleSum.z+(Node.fScale.z*Factor);
+       end else begin
+        ScaleSum.x:=ScaleSum.x+(Overwrite^.Scale.x*Factor);
+        ScaleSum.y:=ScaleSum.y+(Overwrite^.Scale.y*Factor);
+        ScaleSum.z:=ScaleSum.z+(Overwrite^.Scale.z*Factor);
+       end;
        ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in Overwrite^.Flags then begin
-       AddRotation(Overwrite^.Rotation,Factor);
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+        AddRotation(Node.fRotation,Factor);
+       end else begin
+        AddRotation(Overwrite^.Rotation,Factor);
+       end;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights in Overwrite^.Flags then begin
        if FirstWeights then begin
@@ -6356,8 +6450,14 @@ var CullFace,Blend:TPasGLTFInt32;
          InstanceNode^.OverwriteWeightsSum[OtherIndex]:=0.0;
         end;
        end;
-       for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
-        InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+        for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Node.fWeights))-1 do begin
+         InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights[OtherIndex]*Factor);
+        end;
+       end else begin
+        for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
+         InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+        end;
        end;
        WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
