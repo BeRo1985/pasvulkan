@@ -692,36 +692,44 @@ type EpvScene3D=class(Exception);
                    TAnimation=class(TGroupObject)
                     public
                      type TChannel=record
-                                public
-                                 type TTarget=
-                                       (
-                                        Translation,
-                                        Rotation,
-                                        Scale,
-                                        Weights
-                                       );
-                                      TInterpolation=
-                                       (
-                                        Linear,
-                                        Step,
-                                        CubicSpline
-                                       );
-                                public
-                                 Name:TpvUTF8String;
-                                 Node:TpvSizeInt;
-                                 Target:TTarget;
-                                 Interpolation:TInterpolation;
-                                 InputTimeArray:TpvDoubleDynamicArray;
-                                 OutputScalarArray:TpvFloatDynamicArray;
-                                 OutputVector3Array:TpvVector3Array;
-                                 OutputVector4Array:TpvVector4Array;
-                                 Last:TPasGLTFSizeInt;
-                               end;
-                               PChannel=^TChannel;
-                               TChannels=array of TChannel;
+                           public
+                            type TTarget=
+                                  (
+                                   Translation,
+                                   Rotation,
+                                   Scale,
+                                   Weights
+                                  );
+                                 TInterpolation=
+                                  (
+                                   Linear,
+                                   Step,
+                                   CubicSpline
+                                  );
+                           public
+                            Name:TpvUTF8String;
+                            Node:TpvSizeInt;
+                            Target:TTarget;
+                            Interpolation:TInterpolation;
+                            InputTimeArray:TpvDoubleDynamicArray;
+                            OutputScalarArray:TpvFloatDynamicArray;
+                            OutputVector3Array:TpvVector3Array;
+                            OutputVector4Array:TpvVector4Array;
+                            Last:TPasGLTFSizeInt;
+                          end;
+                          PChannel=^TChannel;
+                          TChannels=array of TChannel;
+                          TDefaultChannel=record
+                           public
+                            Node:TpvSizeInt;
+                            Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget;
+                          end;
+                          PDefaultChannel=^TDefaultChannel;
+                          TDefaultChannels=array of TDefaultChannel;
                     private
                      fIndex:TpvSizeInt;
                      fChannels:TChannels;
+                     fDefaultChannels:TDefaultChannels;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -3141,10 +3149,14 @@ constructor TpvScene3D.TGroup.TAnimation.Create(const aGroup:TGroup;const aIndex
 begin
  inherited Create(aGroup);
  fIndex:=aIndex;
+ fChannels:=nil;
+ fDefaultChannels:=nil;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
 begin
+ fChannels:=nil;
+ fDefaultChannels:=nil;
  inherited Destroy;
 end;
 
@@ -5141,18 +5153,83 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessAnimations;
- var Index:TpvSizeInt;
+ type TNodeTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
+      TNodeTargetArrayList=TpvDynamicArrayList<TpvUInt64>;
+      TNodeTargetUsedBitmap=array of TpvUInt32;
+ var Index,ChannelIndex,NodeTargetIndex,CountDefaultChannels:TpvSizeInt;
      SourceAnimation:TPasGLTF.TAnimation;
-     Animation:TAnimation;
+     Animation:TpvScene3D.TGroup.TAnimation;
+     Channel:TpvScene3D.TGroup.TAnimation.PChannel;
+     DefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
+     NodeTargetHashMap:TNodeTargetHashMap;
+     NodeTargetArrayList:TNodeTargetArrayList;
+     NodeTargetUsedBitmap:TNodeTargetUsedBitmap;
+     CompactCode:TpvUInt64;
  begin
-  for Index:=0 to aSourceDocument.Animations.Count-1 do begin
-   SourceAnimation:=aSourceDocument.Animations[Index];
-   Animation:=TAnimation.Create(self,Index);
+  NodeTargetHashMap:=TNodeTargetHashMap.Create(-1);
+  try
+   NodeTargetArrayList:=TNodeTargetArrayList.Create;
    try
-    Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+    for Index:=0 to aSourceDocument.Animations.Count-1 do begin
+     SourceAnimation:=aSourceDocument.Animations[Index];
+     Animation:=TAnimation.Create(self,Index);
+     try
+      Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+      for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+       Channel:=@Animation.fChannels[ChannelIndex];
+       CompactCode:=TpvUInt64(TpvUInt64(Channel^.Node) and TpvUInt64($ffffffff)) or (TpvUInt64(TpvInt32(Channel^.Target)) shl 32);
+       NodeTargetIndex:=NodeTargetHashMap[CompactCode];
+       if NodeTargetIndex<0 then begin
+        NodeTargetHashMap[CompactCode]:=NodeTargetArrayList.Add(CompactCode);
+       end;
+      end;
+     finally
+      fAnimations.Add(Animation);
+     end;
+    end;
+    if NodeTargetArrayList.Count>0 then begin
+     NodeTargetUsedBitmap:=nil;
+     try
+      SetLength(NodeTargetUsedBitmap,(NodeTargetArrayList.Count+31) shr 5);
+      for Index:=0 to fAnimations.Count-1 do begin
+       Animation:=fAnimations[Index];
+       FillChar(NodeTargetUsedBitmap[0],length(NodeTargetUsedBitmap)*SizeOf(TpvUInt32),#0);
+       for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+        CompactCode:=TpvUInt64(TpvUInt64(Channel^.Node) and TpvUInt64($ffffffff)) or (TpvUInt64(TpvInt32(Channel^.Target)) shl 32);
+        NodeTargetIndex:=NodeTargetHashMap[CompactCode];
+        if (NodeTargetIndex>=0) and (NodeTargetIndex<NodeTargetArrayList.Count) then begin
+         NodeTargetUsedBitmap[NodeTargetIndex shr 5]:=NodeTargetUsedBitmap[NodeTargetIndex shr 5] or (TpvUInt32(1) shl (NodeTargetIndex and 31));
+        end;
+       end;
+       CountDefaultChannels:=0;
+       for NodeTargetIndex:=0 to NodeTargetArrayList.Count-1 do begin
+        if (NodeTargetUsedBitmap[NodeTargetIndex shr 5] and (TpvUInt32(1) shl (NodeTargetIndex and 31)))=0 then begin
+         inc(CountDefaultChannels);
+        end;
+       end;
+       if CountDefaultChannels>0 then begin
+        SetLength(Animation.fDefaultChannels,CountDefaultChannels);
+        CountDefaultChannels:=0;
+        for NodeTargetIndex:=0 to NodeTargetArrayList.Count-1 do begin
+         if (NodeTargetUsedBitmap[NodeTargetIndex shr 5] and (TpvUInt32(1) shl (NodeTargetIndex and 31)))=0 then begin
+          DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
+          inc(CountDefaultChannels);
+          CompactCode:=NodeTargetArrayList[NodeTargetIndex];
+          DefaultChannel^.Node:=TpvSizeInt(TpvUInt64(TpvUInt64(CompactCode) and TpvUInt64($ffffffff)));
+          DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 32)));
+         end;
+        end;
+       end;
+      end;
+     finally
+      NodeTargetUsedBitmap:=nil;
+     end;
+    end;
    finally
-    fAnimations.Add(Animation);
+    FreeAndNil(NodeTargetArrayList);
    end;
+  finally
+   FreeAndNil(NodeTargetHashMap);
   end;
  end;
  procedure ProcessCameras;
