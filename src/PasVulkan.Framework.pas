@@ -9332,6 +9332,7 @@ begin
 end;
 
 function TpvVulkanDeviceMemoryChunk.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
+var NonCoherentAtomSize:TVkDeviceSize;
 begin
  result:=nil;
  if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
@@ -9351,9 +9352,14 @@ begin
     if assigned(fMemory) then begin
      raise EpvVulkanException.Create('Memory is already mapped');
     end else begin
-     fMappedOffset:=aOffset;
-     fMappedSize:=aSize;
+     NonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+     fMappedOffset:=VulkanDeviceSizeAlignDown(aOffset,NonCoherentAtomSize);
+     fMappedSize:=VulkanDeviceSizeAlignUp(aOffset+aSize,NonCoherentAtomSize)-fMappedOffset;
+     if (fMappedOffset+fMappedSize)>fSize then begin
+      fMappedSize:=fSize-fMappedOffset;
+     end;
      VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@result));
+     inc(TpvPtrInt(result),TpvPtrInt(aOffset)-TpvPtrInt(fMappedOffset));
      fMemory:=result;
     end;
    end else begin
@@ -9401,15 +9407,18 @@ begin
   Offset:=aMappedMemoryRange.offset;
   Size:=aMappedMemoryRange.size;
   NewOffset:=VulkanDeviceSizeAlignDown(Offset,NonCoherentAtomSize);
-  if (Size=TVkDeviceSize(VK_WHOLE_SIZE)) or ((Offset+Size)=fSize) then begin
-   NewSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-Offset)));
+  if (Size=TVkDeviceSize(VK_WHOLE_SIZE)) or ((NewOffset+Size)=fSize) then begin
+   NewSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-NewOffset)));
   end else begin
    Assert((Offset+Size)<=fSize);
-   NewSize:=VulkanDeviceSizeAlignUp(Size+(Offset-aMappedMemoryRange.offset),NonCoherentAtomSize);
-   MaximumSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-Offset)));
+   NewSize:=VulkanDeviceSizeAlignUp(Size+(NewOffset-aMappedMemoryRange.offset),NonCoherentAtomSize);
+   MaximumSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-NewOffset)));
    if NewSize>MaximumSize then begin
     NewSize:=MaximumSize;
    end;
+  end;
+  if (NewOffset<fMappedOffset) or ((NewOffset+NewSize)>(fMappedOffset+fMappedSize)) then begin
+   NewSize:=VK_WHOLE_SIZE;
   end;
   aMappedMemoryRange.offset:=NewOffset;
   aMappedMemoryRange.size:=NewSize;
@@ -10488,6 +10497,7 @@ procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
 var StagingBuffer:TpvVulkanBuffer;
     p:TpvPointer;
     VkBufferCopy:TVkBufferCopy;
+    DataSize,NonCoherentAtomSize:TVkDeviceSize;
 begin
 
  if (aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Yes) or
@@ -10542,7 +10552,26 @@ begin
     if assigned(p) then begin
      Move(aData,p^,aDataSize);
      if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
-      Memory.FlushMappedMemoryRange(p,aDataSize);
+      DataSize:=aDataSize;
+      NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+      if NonCoherentAtomSize>0 then begin
+       if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
+        if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
+         inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
+         if (aDataOffset+aDataSize)>=Memory.Size then begin
+          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+         end;
+        end;
+       end else begin
+        if (DataSize mod NonCoherentAtomSize)=0 then begin
+         inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
+         if (aDataOffset+aDataSize)>=Memory.Size then begin
+          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+         end;
+        end;
+       end;
+      end;
+      Memory.FlushMappedMemoryRange(p,DataSize);
      end;
     end else begin
      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
