@@ -1539,8 +1539,10 @@ begin
        t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
        fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
        fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
+       fGroupInstance.Automations[Index].Complete:=true;
       end else begin
        fGroupInstance.Automations[Index].Time:=0.0;
+       fGroupInstance.Automations[Index].Complete:=false;
       end;
      end else begin
       fGroupInstance.Automations[Index].Time:=0.0;
