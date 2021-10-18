@@ -971,7 +971,10 @@ type EpvScene3D=class(Exception);
                             type TOverwriteFlag=
                                   (
                                    Defaults,
-                                   DefaultData,
+                                   DefaultTranslation,
+                                   DefaultRotation,
+                                   DefaultScale,
+                                   DefaultWeights,
                                    Translation,
                                    Rotation,
                                    Scale,
@@ -6272,37 +6275,37 @@ var CullFace,Blend:TPasGLTFInt32;
      case AnimationDefaultChannel^.Target of
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
        if assigned(Overwrite) then begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
        end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
                                                     TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
        end;
       end;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
        if assigned(Overwrite) then begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
        end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
                                                     TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
        end;
       end;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
        if assigned(Overwrite) then begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
        end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
                                                     TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
        end;
       end;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
        if assigned(Overwrite) then begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
                                             TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
        end else begin
-        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData,
+        Node^.OverwriteFlags:=Node^.OverwriteFlags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
                                                     TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
        end;
       end;
@@ -6413,7 +6416,7 @@ var CullFace,Blend:TPasGLTFInt32;
       end;
      end else begin
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
         TranslationSum.x:=TranslationSum.x+(Node.fTranslation.x*Factor);
         TranslationSum.y:=TranslationSum.y+(Node.fTranslation.y*Factor);
         TranslationSum.z:=TranslationSum.z+(Node.fTranslation.z*Factor);
@@ -6425,7 +6428,7 @@ var CullFace,Blend:TPasGLTFInt32;
        TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
         ScaleSum.x:=ScaleSum.x+(Node.fScale.x*Factor);
         ScaleSum.y:=ScaleSum.y+(Node.fScale.y*Factor);
         ScaleSum.z:=ScaleSum.z+(Node.fScale.z*Factor);
@@ -6437,7 +6440,7 @@ var CullFace,Blend:TPasGLTFInt32;
        ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
         AddRotation(Node.fRotation,Factor);
        end else begin
         AddRotation(Overwrite^.Rotation,Factor);
@@ -6450,7 +6453,7 @@ var CullFace,Blend:TPasGLTFInt32;
          InstanceNode^.OverwriteWeightsSum[OtherIndex]:=0.0;
         end;
        end;
-       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultData in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
         for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Node.fWeights))-1 do begin
          InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights[OtherIndex]*Factor);
         end;
@@ -6496,25 +6499,33 @@ var CullFace,Blend:TPasGLTFInt32;
     end;
    end;
   end else begin
-   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in InstanceNode^.OverwriteFlags then begin
+   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation,
+        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation]*InstanceNode^.OverwriteFlags)=
+      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation] then begin
     Translation:=InstanceNode^.OverwriteTranslation;
     SkinUsed:=true;
    end else begin
     Translation:=Node.fTranslation;
    end;
-   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in InstanceNode^.OverwriteFlags then begin
+   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale,
+        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale]*InstanceNode^.OverwriteFlags)=
+      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale] then begin
     Scale:=InstanceNode^.OverwriteScale;
     SkinUsed:=true;
    end else begin
     Scale:=Node.fScale;
    end;
-   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in InstanceNode^.OverwriteFlags then begin
+   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation,
+        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation]*InstanceNode^.OverwriteFlags)=
+      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation] then begin
     Rotation:=InstanceNode^.OverwriteRotation;
     SkinUsed:=true;
    end else begin
     Rotation:=Node.fRotation;
    end;
-   if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights in InstanceNode^.OverwriteFlags then begin
+   if ([TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights,
+        TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights]*InstanceNode^.OverwriteFlags)=
+      [TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights] then begin
     SkinUsed:=true;
     for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(InstanceNode^.OverwriteWeights))-1 do begin
      InstanceNode^.WorkWeights[Index]:=InstanceNode^.OverwriteWeights[Index];
