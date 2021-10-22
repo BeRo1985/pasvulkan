@@ -526,7 +526,8 @@ type EpvScene3D=class(Exception);
                      None=0,
                      Directional=1,
                      Point=2,
-                     Spot=3
+                     Spot=3,
+                     PrimaryDirectional=4
                     );
              private
               fType_:TType;
@@ -585,14 +586,6 @@ type EpvScene3D=class(Exception);
             TLightBuffers=array[0..MaxSwapChainImages+1] of TLightBuffer;
             { TLight }
             TLight=class
-             public
-              type TType=
-                    (
-                     None=0,
-                     Directional=1,
-                     Point=2,
-                     Spot=3
-                    );
              private
               fSceneInstance:TpvScene3D;
               fVisible:boolean;
@@ -2994,7 +2987,8 @@ begin
    end;
   end;
   case fData.Type_ of
-   TpvScene3D.TLightData.TType.Directional:begin
+   TpvScene3D.TLightData.TType.Directional,
+   TpvScene3D.TLightData.TType.PrimaryDirectional:begin
     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
    end;
@@ -7566,11 +7560,15 @@ end;
 
 function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
 begin
- result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1)-
-              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1));
+ result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TType.PrimaryDirectional) and 1)-
+              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TType.PrimaryDirectional) and 1));
  if result=0 then begin
-  result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
+  result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1)-
+               (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TType.Directional) and 1));
   if result=0 then begin
+   result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
+   if result=0 then begin
+   end;
   end;
  end;
 end;

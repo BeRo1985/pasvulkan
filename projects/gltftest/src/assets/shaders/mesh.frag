@@ -476,8 +476,8 @@ void main() {
 #ifdef SHADOWS
             if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
               switch (light.metaData.x) {
-                case 1u: {  // Directional
-                  imageLightBasedLightDirection = light.directionZFar.xyz;
+                case 1u: { // Directional 
+                  // imageLightBasedLightDirection = light.directionZFar.xyz;
                   // fall-through
                 }
                 case 3u: {  // Spot
@@ -497,6 +497,10 @@ void main() {
                   lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
+                case 4u: { // Primary directional 
+                  imageLightBasedLightDirection = light.directionZFar.xyz;
+                  break;
+                }
               }
               if (lightIndex == 0) {
                 litIntensity = lightAttenuation;
@@ -504,7 +508,7 @@ void main() {
             }
 #endif
             switch (light.metaData.x) {
-              case 1u: {  // Directional
+              case 1u: {   // Directional
                 lightDirection = -light.directionZFar.xyz;
                 break;
               }
@@ -524,6 +528,10 @@ void main() {
 #endif
                 lightAttenuation *= angularAttenuation * angularAttenuation;
                 lightDirection = normalizedLightVector;
+                break;
+              }
+              case 4u: {  // Primary directional
+                imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;                
                 break;
               }
               default: {
