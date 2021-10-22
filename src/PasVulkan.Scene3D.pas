@@ -3017,7 +3017,7 @@ begin
   fBoundingBox:=AABB;
   fBoundingSphere:=TpvSphere.CreateFromAABB(AABB);
   if fAABBTreeProxy<0 then begin
-   fAABBTreeProxy:=fSceneInstance.fLIghtAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+   fAABBTreeProxy:=fSceneInstance.fLightAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
    fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
   end;

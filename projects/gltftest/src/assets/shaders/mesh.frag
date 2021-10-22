@@ -572,7 +572,7 @@ void main() {
           lightTreeNodeIndex += max(1u, lightTreeNode.aabbMinSkipCount.w);
         }
       }
-      if (lightTreeNodeIndex == 0u) {
+/*    if (lightTreeNodeIndex == 0u) {
         doSingleLight(vec3(1.7, 1.15, 0.70),              //
                       vec3(1.0),                          //
                       normalize(-vec3(0.5, -1.0, -1.0)),  //
@@ -591,7 +591,7 @@ void main() {
                       clearcoatF0,                        //
                       clearcoatRoughness,                 //
                       specularWeight);                    //
-      }
+      }*/
 #elif 1
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //

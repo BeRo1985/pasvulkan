@@ -160,6 +160,7 @@ type { TScreenMain }
        fLambertianEnvMapCubeMap:TLambertianEnvMapCubeMap;
        fSheenELUT:TpvVulkanTexture;
        fScene3D:TpvScene3D;
+       fPrimaryDirectionalLight:TpvScene3D.TLight;
        fFrameGraph:TpvFrameGraph;
        fCountViews:TpvSizeInt;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
@@ -1165,6 +1166,17 @@ begin
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
 
+ fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
+ fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.Directional;
+ fPrimaryDirectionalLight.Color:=TpvVector3.InlineableCreate(1.7,1.15,0.70);
+ fPrimaryDirectionalLight.Matrix:=TpvMatrix4x4.CreateConstructZ(-TSkyCubeMap.LightDirection.xyz);
+ fPrimaryDirectionalLight.Intensity:=1.0;
+ fPrimaryDirectionalLight.Range:=0.0;
+ fPrimaryDirectionalLight.CastShadows:=true;
+ fPrimaryDirectionalLight.Data.Visible:=true;
+ fPrimaryDirectionalLight.Visible:=true;
+ fPrimaryDirectionalLight.Update;
+
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
@@ -1321,6 +1333,7 @@ begin
  FreeAndNil(fFrameGraph);
  FreeAndNil(fGroupInstance);
  FreeAndNil(fGroup);
+ FreeAndNil(fPrimaryDirectionalLight);
  FreeAndNil(fScene3D);
  FreeAndNil(fUpdateLock);
  inherited Destroy;
