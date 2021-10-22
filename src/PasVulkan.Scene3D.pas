@@ -3124,7 +3124,7 @@ begin
     fLightTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
    end;
 {  fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
-   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);{}
+   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);}
   end;
  end;
 end;
@@ -5632,7 +5632,7 @@ begin
   fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
   fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
 { fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fNodeMatricesBuffer);
-  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);{}
+  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);}
  end;
 end;
 
