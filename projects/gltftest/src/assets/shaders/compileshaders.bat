@@ -21,6 +21,7 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V skybox_realtime.frag -o skybox_realtime_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V tonemapping.frag -o tonemapping_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V antialiasing.frag -o antialiasing_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V blit.frag -o blit_frag.spv
 for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
