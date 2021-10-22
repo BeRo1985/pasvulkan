@@ -43,7 +43,9 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
-        const CountCascadedShadowMapCascades=4;
+        const CascadedShadowMapWidth=512;
+              CascadedShadowMapHeight=512;
+              CountCascadedShadowMapCascades=4;
         type { TForwardRenderingRenderPass }
              TForwardRenderingRenderPass=class(TpvFrameGraph.TRenderPass)
               public
@@ -1313,12 +1315,32 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_data',
+                                  true,
+                                  VK_FORMAT_R32G32B32A32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_depth',
+                                  true,
+                                  VK_FORMAT_D32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT),
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_data',
                                   true,
-                                  VK_FORMAT_R32_SFLOAT,
+                                  VK_FORMAT_R32G32B32A32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,1024.0,1024.0,1.0,CountCascadedShadowMapCascades),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
                                  );
@@ -1328,7 +1350,7 @@ begin
                                   VK_FORMAT_D32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,1024.0,1024.0,1.0,CountCascadedShadowMapCascades),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
                                  );
