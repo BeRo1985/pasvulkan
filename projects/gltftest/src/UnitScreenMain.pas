@@ -1462,7 +1462,7 @@ begin
 
  fHeight:=UnitApplication.Application.VirtualReality.Height;
 
-//FillChar(fSwapChainImageStates,SizeOf(TSwapChainImageStates),#0);
+ FillChar(fSwapChainImageStates,SizeOf(TSwapChainImageStates),#0);
 
  fFrameGraph.SetSwapChain(pvApplication.VulkanSwapChain,
                           pvApplication.VulkanDepthImageFormat);
