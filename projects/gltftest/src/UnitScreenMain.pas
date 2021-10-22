@@ -1167,7 +1167,7 @@ begin
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
 
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
- fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.Directional;
+ fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
  fPrimaryDirectionalLight.Color:=TpvVector3.InlineableCreate(1.7,1.15,0.70);
  fPrimaryDirectionalLight.Matrix:=TpvMatrix4x4.CreateConstructZ(-TSkyCubeMap.LightDirection.xyz);
  fPrimaryDirectionalLight.Intensity:=1.0;
