@@ -16,7 +16,11 @@ layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
 #ifdef SHADOWMAP
+#if 0
 layout(location = 0) out vec4 outFragDepth;
+#else
+layout(location = 0) out float outFragDepth;
+#endif
 #else
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
@@ -344,11 +348,15 @@ void main() {
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #ifdef SHADOWMAP
+#if 0
   //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0);
   float d = fma(/*t.z / t.w*/length(inCameraRelativePosition), 0.5, 0.5);
   float s = d * d;
   vec4 m = vec4(d, s, s * d, s * s);
   outFragDepth = m;
+#else
+  outFragDepth = length(inCameraRelativePosition);
+#endif
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * inColor0.w;
 #else
   vec4 color = vec4(0.0);
