@@ -1636,6 +1636,7 @@ var CascadedShadowMapIndex,Index,SubIndex:TpvSizeInt;
     LightPosition,LightForwardVector,LightSideVector,
     LightUpVector,LightSpaceCorner,ViewDirection,
     Corner,RayStart,RayEnd,RayDirection:TpvVector3;
+    ShadowOrigin,RoundedOrigin,RoundOffset:TpvVector2;
     TemporaryVector4:TpvVector4;
     LightViewMatrix,
     LightProjectionMatrix,
@@ -1777,21 +1778,23 @@ begin
    end;
   end;
 
-  LightSpaceAABB.Min.x:=Floor(Max(LightSpaceAABB.Min.x,SceneLightSpaceBoundingBox.Min.x)-0.1);
-  LightSpaceAABB.Min.y:=Floor(Max(LightSpaceAABB.Min.y,SceneLightSpaceBoundingBox.Min.y)-0.1);
-  LightSpaceAABB.Min.z:=Floor(Min(LightSpaceAABB.Min.z,SceneLightSpaceBoundingBox.Min.z)-0.1);
-  LightSpaceAABB.Max.x:=Ceil(Min(LightSpaceAABB.Max.x,SceneLightSpaceBoundingBox.Max.x)+0.1);
-  LightSpaceAABB.Max.y:=Ceil(Min(LightSpaceAABB.Max.y,SceneLightSpaceBoundingBox.Max.y)+0.1);
-  LightSpaceAABB.Max.z:=Ceil(Max(LightSpaceAABB.Max.z,SceneLightSpaceBoundingBox.Max.z)+0.1);
+  LightSpaceAABB:=LightSpaceAABB.GetIntersection(LightSpaceAABB);
 
   LightProjectionMatrix:=TpvMatrix4x4.CreateOrtho(LightSpaceAABB.Min.x,
                                                   LightSpaceAABB.Max.x,
                                                   LightSpaceAABB.Min.y,
                                                   LightSpaceAABB.Max.y,
-                                                  -LightSpaceAABB.Max.z,
-                                                  -LightSpaceAABB.Min.z);
+                                                  LightSpaceAABB.Min.z,
+                                                  LightSpaceAABB.Max.z);
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
+
+  // Shadow map texel snapping
+  ShadowOrigin:=(LightViewProjectionMatrix*TpvVector3.Origin).xy*TpvVector2.Create(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
+  RoundedOrigin:=TpvVector2.InlineableCreate(round(ShadowOrigin.x),round(ShadowOrigin.y));
+  RoundOffset:=(RoundedOrigin-ShadowOrigin)*TpvVector2.InlineableCreate(2.0/CascadedShadowMapWidth,2.0/CascadedShadowMapHeight);
+  LightProjectionMatrix.RawComponents[3,0]:=LightProjectionMatrix.RawComponents[3,0]+RoundOffset.x;
+  LightProjectionMatrix.RawComponents[3,1]:=LightProjectionMatrix.RawComponents[3,1]+RoundOffset.y;
 
   CascadedShadowMap.View.ViewMatrix:=LightViewMatrix;
   CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
