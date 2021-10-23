@@ -58,6 +58,13 @@ type { TScreenMain }
              TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
              PCascadedShadowMaps=^TCascadedShadowMaps;
              TSwapChainImageCascadedShadowMaps=array[0..MaxSwapChainImages-1] of TCascadedShadowMaps;
+             TCascadedShadowMapUniformBuffer=packed record
+              Matrices:array[0..CountCascadedShadowMapCascades-1] of TpvMatrix4x4;
+              SplitDepths:array[0..CountCascadedShadowMapCascades-1] of TpvVector2;
+             end;
+             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
+             TCascadedShadowMapUniformBuffers=array[0..MaxSwapChainImages-1] of TCascadedShadowMapUniformBuffer;
+             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
              { TForwardRenderingRenderPass }
              TForwardRenderingRenderPass=class(TpvFrameGraph.TRenderPass)
               public
@@ -72,9 +79,9 @@ type { TScreenMain }
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
-               fImageBasedLightingVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-               fImageBasedLightingVulkanDescriptorPool:TpvVulkanDescriptorPool;
-               fImageBasedLightingVulkanDescriptorSet:TpvVulkanDescriptorSet;
+               fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+               fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
+               fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
                fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
                fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
                fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
@@ -187,6 +194,8 @@ type { TScreenMain }
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
        fSwapChainImageCascadedShadowMaps:TSwapChainImageCascadedShadowMaps;
+       fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
+       fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
        fTime:Double;
        fCameraRotationX:TpvScalar;
        fCameraRotationY:TpvScalar;
@@ -312,7 +321,8 @@ begin
 end;
 
 procedure TScreenMain.TForwardRenderingRenderPass.Show;
-var Stream:TStream;
+var Index:TpvSizeInt;
+    Stream:TStream;
 begin
  inherited Show;
 
@@ -351,53 +361,69 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
- fImageBasedLightingVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
- fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(0,
-                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         3,
-                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                         []);
- fImageBasedLightingVulkanDescriptorSetLayout.AddBinding(1,
-                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                         3,
-                                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                         []);
- fImageBasedLightingVulkanDescriptorSetLayout.Initialize;
+ fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(0,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             3,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(1,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             3,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(2,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.Initialize;
 
- fImageBasedLightingVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),1);
- fImageBasedLightingVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6);
- fImageBasedLightingVulkanDescriptorPool.Initialize;
+ fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6*length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.Initialize;
 
- fImageBasedLightingVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fImageBasedLightingVulkanDescriptorPool,
-                                                                       fImageBasedLightingVulkanDescriptorSetLayout);
- fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(0,
-                                                             0,
-                                                             3,
-                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fParent.fGGXBRDF.DescriptorImageInfo,
-                                                              fParent.fCharlieBRDF.DescriptorImageInfo,
-                                                              fParent.fSheenELUT.DescriptorImageInfo],
-                                                             [],
-                                                             [],
-                                                             false);
- fImageBasedLightingVulkanDescriptorSet.WriteToDescriptorSet(1,
-                                                             0,
-                                                             3,
-                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                             [fParent.fGGXEnvMapCubeMap.DescriptorImageInfo,
-                                                              fParent.fCharlieEnvMapCubeMap.DescriptorImageInfo,
-                                                              fParent.fLambertianEnvMapCubeMap.DescriptorImageInfo],
-                                                             [],
-                                                             [],
-                                                             false);
- fImageBasedLightingVulkanDescriptorSet.Flush;
+ for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
+  fGlobalVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
+                                                                    fGlobalVulkanDescriptorSetLayout);
+  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                          0,
+                                                          3,
+                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                          [fParent.fGGXBRDF.DescriptorImageInfo,
+                                                           fParent.fCharlieBRDF.DescriptorImageInfo,
+                                                           fParent.fSheenELUT.DescriptorImageInfo],
+                                                          [],
+                                                          [],
+                                                          false);
+  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                          0,
+                                                          3,
+                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                          [fParent.fGGXEnvMapCubeMap.DescriptorImageInfo,
+                                                           fParent.fCharlieEnvMapCubeMap.DescriptorImageInfo,
+                                                           fParent.fLambertianEnvMapCubeMap.DescriptorImageInfo],
+                                                          [],
+                                                          [],
+                                                          false);
+  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
+                                                          0,
+                                                          1,
+                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                          [],
+                                                          [fParent.fCascadedShadowMapVulkanUniformBuffers[Index].DescriptorBufferInfo],
+                                                          [],
+                                                          false);
+  fGlobalVulkanDescriptorSets[Index].Flush;
+ end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MeshVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MaterialVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddDescriptorSetLayout(fImageBasedLightingVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
  fSkyBox:=TSkyBox.Create(fParent.fScene3D,
@@ -406,15 +432,18 @@ begin
 end;
 
 procedure TScreenMain.TForwardRenderingRenderPass.Hide;
+var Index:TpvSizeInt;
 begin
 
  FreeAndNil(fSkyBox);
 
  FreeAndNil(fVulkanPipelineLayout);
 
- FreeAndNil(fImageBasedLightingVulkanDescriptorSet);
- FreeAndNil(fImageBasedLightingVulkanDescriptorPool);
- FreeAndNil(fImageBasedLightingVulkanDescriptorSetLayout);
+ for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
+  FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
+ end;
+ FreeAndNil(fGlobalVulkanDescriptorPool);
+ FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
@@ -619,7 +648,7 @@ begin
                                        fVulkanPipelineLayout.Handle,
                                        3,
                                        1,
-                                       @fImageBasedLightingVulkanDescriptorSet.Handle,
+                                       @fGlobalVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
                                        0,
                                        nil);
 
@@ -1185,6 +1214,8 @@ begin
 
  fAnimationIndex:=0;
 
+ FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
+
  fUpdateLock:=TPasMPCriticalSection.Create;
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
@@ -1392,7 +1423,11 @@ begin
 end;
 
 destructor TScreenMain.Destroy;
+var Index:TpvSizeInt;
 begin
+ for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
+  FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[Index]);
+ end;
  FreeAndNil(fFrameGraph);
  FreeAndNil(fGroupInstance);
  FreeAndNil(fGroup);
@@ -1403,7 +1438,7 @@ begin
 end;
 
 procedure TScreenMain.Show;
-var Index:TpvInt32;
+var Index:TpvSizeInt;
     Stream:TStream;
 begin
 
@@ -1470,6 +1505,21 @@ begin
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
 
+ for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
+  fCascadedShadowMapVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                        SizeOf(TCascadedShadowMapUniformBuffer),
+                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                        [],
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        []);
+ end;
+
  fFrameGraph.Show;
 
  pvApplication.SkipNextDrawFrame:=true;
@@ -1477,13 +1527,17 @@ begin
 end;
 
 procedure TScreenMain.Hide;
-var Index:TpvInt32;
+var Index:TpvSizeInt;
 begin
 
  fFrameGraph.Hide;
 
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
+ end;
+
+ for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
+  FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[Index]);
  end;
 
  fScene3D.Unload;
@@ -1743,9 +1797,12 @@ begin
   CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
   CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
 
+  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
+  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=CascadedShadowMap^.SplitDepths;
+
  end;
 
- SwapChainImageState:=@fSwapChainImageStates[pvApplication.UpdateSwapChainImageIndex];
+ SwapChainImageState:=@fSwapChainImageStates[aSwapChainImageIndex];
 
  SwapChainImageState^.CascadedShadowMapViewIndex:=fScene3D.AddView(CascadedShadowMaps^[0].View);
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
@@ -1838,6 +1895,10 @@ begin
    CalculateCascadedShadowMaps(pvApplication.UpdateSwapChainImageIndex,
                                ViewLeft,
                                ViewRight);
+
+   fCascadedShadowMapVulkanUniformBuffers[pvApplication.UpdateSwapChainImageIndex].UpdateData(fCascadedShadowMapUniformBuffers[pvApplication.UpdateSwapChainImageIndex],
+                                                                                              0,
+                                                                                              SizeOf(TCascadedShadowMapUniformBuffer));
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
 
