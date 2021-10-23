@@ -949,11 +949,19 @@ begin
                                        1.0,
                                        UnitApplication.Application.VirtualReality.CountImages);
 
- fResourceColor:=AddImageInput('resourcetype_color',
-                               'tonemapping_color',
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               []
-                              );
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fResourceColor:=AddImageInput('resourcetype_color',
+                                'tonemapping_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                []
+                               );
+ end else begin
+  fResourceColor:=AddImageInput('resourcetype_color',
+                                'tonemapping_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
+ end;
 
 {fResourceSurface:=AddImageOutput('resourcetype_surface',
                                   'resource_surface',
@@ -1055,15 +1063,27 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        MaxSwapChainImages);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
+ end else begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,MaxSwapChainImages);
+ end;
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
- fVulkanDescriptorSetLayout.AddBinding(0,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fVulkanDescriptorSetLayout.AddBinding(0,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        []);
+ end else begin
+  fVulkanDescriptorSetLayout.AddBinding(0,
+                                        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  for SwapChainImageIndex:=0 to FrameGraph.CountSwapChainImages-1 do begin
@@ -1083,17 +1103,31 @@ begin
                                                                    );
   fVulkanDescriptorSets[SwapChainImageIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                             fVulkanDescriptorSetLayout);
-  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(0,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                 fResourceColor.VulkanImageViews[SwapChainImageIndex].Handle,
-                                                                                                 fResourceColor.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                  [],
-                                                                  [],
-                                                                  false
-                                                                 );
+  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                   [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                                                  fResourceColor.VulkanImageViews[SwapChainImageIndex].Handle,
+                                                                                                  fResourceColor.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                   [],
+                                                                   [],
+                                                                   false
+                                                                  );
+  end else begin
+   fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                  fResourceColor.VulkanImageViews[SwapChainImageIndex].Handle,
+                                                                                                  fResourceColor.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                   [],
+                                                                   [],
+                                                                   false
+                                                                  );
+  end;
   fVulkanDescriptorSets[SwapChainImageIndex].Flush;
  end;
 
