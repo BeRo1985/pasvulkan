@@ -76,20 +76,20 @@ layout(std430, set = 2, binding = 2) buffer LightTreeNodeData {
 };
 #endif
 
+#ifdef SHADOWMAP
+#else
 layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
+  mat4 shadowMapViewMatrix;
   mat4 shadowMapMatrices[4];
   vec4 shadowMapSplitDepths[4];
 } uCascadedShadowMaps;
+#endif
 
 /* clang-format on */
-
-#include "roughness.glsl"
-
-float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
@@ -102,6 +102,12 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
 vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
+
+#ifdef SHADOWMAP
+#else
+#include "roughness.glsl"
+
+float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 
 const float PI = 3.14159265358979323846,     //
     PI2 = 6.283185307179586476925286766559,  //
@@ -322,6 +328,7 @@ float getMSMShadowIntensity(vec4 moments, float depth, float depthBias, float mo
   vec4 s = (z.z < z.x) ? vec3(z.y, z.x, 1.0).xyzz : ((z.y < z.x) ? vec4(z.x, z.y, 0.0, 1.0) : vec4(0.0));
   return clamp((s.z + (s.w * ((((s.x * z.z) - (b.x * (s.x + z.z))) + b.y) / ((z.z - s.y) * (z.x - z.y))))) * 1.03, 0.0, 1.0);
 }
+#endif
 
 const uint smPBRMetallicRoughness = 0u,  //
     smPBRSpecularGlossiness = 1u,        //
@@ -348,10 +355,12 @@ vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in v
 }
 
 void main() {
+#ifndef SHADOWMAP
   envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
   envMapMaxLevelCharlie = textureQueryLevels(uImageBasedLightingEnvMaps[1]);
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
+#endif
 #ifdef SHADOWMAP
   //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0); /*t.z / t.w*/
   float d = fma(inViewSpacePosition.z, 0.5, 0.5);
