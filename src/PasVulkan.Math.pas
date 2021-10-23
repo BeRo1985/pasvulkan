@@ -951,6 +951,7 @@ type PpvScalar=^TpvScalar;
              InverseFlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
              NormalizedSpace:TpvMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
              FlipYClipSpace:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)));
+             HalfZClipSpace:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.5,0.0),(0.0,0.0,0.5,1.0)));
              FlipYHalfZClipSpace:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.5,0.0),(0.0,0.0,0.5,1.0)));
              FlipZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0)));
      end;

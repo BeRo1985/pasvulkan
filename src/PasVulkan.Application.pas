@@ -8015,7 +8015,9 @@ begin
 
   fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
 
-  if fSkipNextDrawFrame or not IsReadyForDrawOfSwapChainImageIndex(fDrawSwapChainImageIndex) then begin
+  if fSkipNextDrawFrame or not
+     ((not (CanBeParallelProcessed and (fCountSwapChainImages>1))) or
+      IsReadyForDrawOfSwapChainImageIndex(fDrawSwapChainImageIndex)) then begin
 
    fSkipNextDrawFrame:=false;
 

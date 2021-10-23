@@ -43,8 +43,8 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
-        const CascadedShadowMapWidth=512;
-              CascadedShadowMapHeight=512;
+        const CascadedShadowMapWidth=1024;
+              CascadedShadowMapHeight=1024;
               CountCascadedShadowMapCascades=4;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
@@ -304,12 +304,12 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceData:=AddImageOutput('resourcetype_cascadedshadowmap_data',
-                                 'cascadedshadowmap_data',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
+                                'cascadedshadowmap_data',
+                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                             TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
                                       'cascadedshadowmap_depth',
@@ -490,8 +490,8 @@ begin
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(10,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Flags)));
 
-     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,0.0,1.0);
-     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,CascadedShadowMapWidth,CascadedShadowMapHeight,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,CascadedShadowMapWidth,CascadedShadowMapHeight);
 
      VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
      VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -499,7 +499,8 @@ begin
      if DoubleSided then begin
       VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
      end else begin
-      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+//    VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
      end;
      VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
@@ -810,7 +811,7 @@ begin
 end;
 
 procedure TScreenMain.TForwardRenderingRenderPass.AfterCreateSwapChain;
-var Index:TpvSizeInt;
+var SwapChainImageIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
@@ -849,48 +850,48 @@ begin
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.Initialize;
 
- for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
-  fGlobalVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
-                                                                    fGlobalVulkanDescriptorSetLayout);
-  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
-                                                          0,
-                                                          3,
-                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                          [fParent.fGGXBRDF.DescriptorImageInfo,
-                                                           fParent.fCharlieBRDF.DescriptorImageInfo,
-                                                           fParent.fSheenELUT.DescriptorImageInfo],
-                                                          [],
-                                                          [],
-                                                          false);
-  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
-                                                          0,
-                                                          3,
-                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                          [fParent.fGGXEnvMapCubeMap.DescriptorImageInfo,
-                                                           fParent.fCharlieEnvMapCubeMap.DescriptorImageInfo,
-                                                           fParent.fLambertianEnvMapCubeMap.DescriptorImageInfo],
-                                                          [],
-                                                          [],
-                                                          false);
-  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
-                                                          0,
-                                                          1,
-                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                          [],
-                                                          [fParent.fCascadedShadowMapVulkanUniformBuffers[Index].DescriptorBufferInfo],
-                                                          [],
-                                                          false);
-  fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
-                                                          0,
-                                                          1,
-                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                          [TVkDescriptorImageInfo.Create(fVulkanCascadedShadowMapSampler.Handle,
-                                                                                         fResourceCascadedShadowMap.VulkanImageViews[Index].Handle,
-                                                                                         fResourceCascadedShadowMap.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                          [],
-                                                          [],
-                                                          false);
-  fGlobalVulkanDescriptorSets[Index].Flush;
+ for SwapChainImageIndex:=0 to FrameGraph.CountSwapChainImages-1 do begin
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
+                                                                                  fGlobalVulkanDescriptorSetLayout);
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(0,
+                                                                        0,
+                                                                        3,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [fParent.fGGXBRDF.DescriptorImageInfo,
+                                                                         fParent.fCharlieBRDF.DescriptorImageInfo,
+                                                                         fParent.fSheenELUT.DescriptorImageInfo],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(1,
+                                                                        0,
+                                                                        3,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [fParent.fGGXEnvMapCubeMap.DescriptorImageInfo,
+                                                                         fParent.fCharlieEnvMapCubeMap.DescriptorImageInfo,
+                                                                         fParent.fLambertianEnvMapCubeMap.DescriptorImageInfo],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(2,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                        [],
+                                                                        [fParent.fCascadedShadowMapVulkanUniformBuffers[SwapChainImageIndex].DescriptorBufferInfo],
+                                                                        [],
+                                                                        false);
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(3,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [TVkDescriptorImageInfo.Create(fVulkanCascadedShadowMapSampler.Handle,
+                                                                                                       fResourceCascadedShadowMap.VulkanImageViews[SwapChainImageIndex].Handle,
+                                                                                                       fResourceCascadedShadowMap.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  fGlobalVulkanDescriptorSets[SwapChainImageIndex].Flush;
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
@@ -1765,8 +1766,11 @@ begin
  end else begin
 
   fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
  end;
+
+ fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
 {fFrameGraph.AddImageResourceType('resourcetype_surface',
                                   true,
@@ -1842,6 +1846,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_data',
                                   true,
+//                                VK_FORMAT_R16G16B16A16_UNORM,
                                   VK_FORMAT_R32G32B32A32_SFLOAT,
                                   fVulkanShadowMapSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
@@ -1862,6 +1867,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_data',
                                   true,
+//                                VK_FORMAT_R16G16B16A16_UNORM,
                                   VK_FORMAT_R32G32B32A32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
@@ -2103,24 +2109,27 @@ end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
 const CascadedShadowMapSplitConstant=0.975;
-var CascadedShadowMapIndex,Index,SubIndex:TpvSizeInt;
+var CascadedShadowMapIndex,Index:TpvSizeInt;
     CascadedShadowMaps:TScreenMain.PCascadedShadowMaps;
     CascadedShadowMap:TScreenMain.PCascadedShadowMap;
     SceneWorldSpaceBoundingBox,
     SceneLightSpaceBoundingBox,
     LightSpaceAABB:TpvAABB;
-    LightPosition,LightForwardVector,LightSideVector,
-    LightUpVector,LightSpaceCorner,ViewDirection,
-    Corner,RayStart,RayEnd,RayDirection:TpvVector3;
-    ShadowOrigin,RoundedOrigin,RoundOffset:TpvVector2;
+    LightForwardVector,LightSideVector,
+    LightUpVector,LightSpaceCorner,
+    RayStart,RayEnd,RayDirection,
+    {SplitCenter,SplitBounds,}SplitOffset,SplitScale:TpvVector3;
+    Offset,Step:TpvVector2;
     TemporaryVector4:TpvVector4;
+    LightSpaceSphere:TpvSphere;
     LightViewMatrix,
     LightProjectionMatrix,
     LightViewProjectionMatrix,
     InverseViewProjectionMatrixLeft,
-    InverseViewProjectionMatrixRight,
-    FromViewSpaceToLightSpaceMatrix:TpvMatrix4x4;
-    MinZ,MaxZ,Ratio,FadeStartValue,LastValue,Value,z:TpvScalar;
+    InverseViewProjectionMatrixRight:TpvMatrix4x4;
+    MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
+    Ratio,FadeStartValue,LastValue,Value,z,
+    Border,RoundedUpLightSpaceSphereRadius:TpvScalar;
     WorldSpaceFrustumRayStarts,
     WorldSpaceFrustumRayDirections:array[0..7] of TpvVector3;
     SwapChainImageState:PSwapChainImageState;
@@ -2132,8 +2141,7 @@ begin
 
  SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
 
- LightForwardVector:=TSkyCubeMap.LightDirection.xyz.Normalize;
- LightPosition:=LightForwardVector*SceneWorldSpaceBoundingBox.Radius*4.0;
+ LightForwardVector:=-TSkyCubeMap.LightDirection.xyz.Normalize;
  LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
                                               -aViewLeft.ViewMatrix.RawComponents[1,2],
                                               -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;
@@ -2167,6 +2175,12 @@ begin
  MaxZ:=4096;
 
  SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
+
+ MinZExtents:=SceneLightSpaceBoundingBox.Min.z;
+ MaxZExtents:=SceneLightSpaceBoundingBox.Max.z;
+ ZMargin:=(MaxZExtents-MinZExtents)*0.1;
+ MinZExtents:=MinZExtents-ZMargin;
+ MaxZExtents:=MaXZExtents+ZMargin;
 
  for Index:=0 to 3 do begin
 
@@ -2249,23 +2263,58 @@ begin
    end;
   end;
 
-  LightSpaceAABB:=LightSpaceAABB.GetIntersection(LightSpaceAABB);
+  if LightSpaceAABB.Intersect(SceneLightSpaceBoundingBox) then begin
+   LightSpaceAABB:=LightSpaceAABB.GetIntersection(SceneLightSpaceBoundingBox);
+  end;
 
-  LightProjectionMatrix:=TpvMatrix4x4.CreateOrtho(LightSpaceAABB.Min.x,
-                                                  LightSpaceAABB.Max.x,
-                                                  LightSpaceAABB.Min.y,
-                                                  LightSpaceAABB.Max.y,
-                                                  LightSpaceAABB.Min.z,
-                                                  LightSpaceAABB.Max.z);
+  LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
+
+  Border:=4;
+
+  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius);
+
+  Step.x:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapWidth-(2.0*Border));
+  Step.y:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapHeight-(2.0*Border));
+
+  Offset.x:=floor((LightSpaceSphere.Center.x-RoundedUpLightSpaceSphereRadius)/Step.x);
+  Offset.y:=floor((LightSpaceSphere.Center.y-RoundedUpLightSpaceSphereRadius)/Step.y);
+
+{ SplitCenter.x:=(Offset.x*Step.x)+RoundedUpLightSpaceSphereRadius;
+  SplitCenter.y:=(Offset.y*Step.y)+RoundedUpLightSpaceSphereRadius;
+  SplitCenter.z:=-0.5*(MinZExtents+MaxZExtents);
+
+  SplitBounds.x:=RoundedUpLightSpaceSphereRadius;
+  SplitBounds.y:=RoundedUpLightSpaceSphereRadius;
+  SplitBounds.z:=0.5*(MaxZExtents-MinZExtents);}
+
+  SplitScale.x:=1.0/Step.x;
+  SplitScale.y:=1.0/Step.y;
+  SplitScale.z:=(-1.0)/(MaxZExtents-MinZExtents);
+
+  SplitOffset.x:=Border-Offset.x;
+  SplitOffset.y:=Border-Offset.y;
+  SplitOffset.z:=(-MinZExtents)/(MaxZExtents-MinZExtents);
+
+  LightProjectionMatrix[0,0]:=2.0*(SplitScale.x/CascadedShadowMapWidth);
+  LightProjectionMatrix[0,1]:=0.0;
+  LightProjectionMatrix[0,2]:=0.0;
+  LightProjectionMatrix[0,3]:=0.0;
+  LightProjectionMatrix[1,0]:=0.0;
+  LightProjectionMatrix[1,1]:=2.0*(SplitScale.y/CascadedShadowMapHeight);
+  LightProjectionMatrix[1,2]:=0.0;
+  LightProjectionMatrix[1,3]:=0.0;
+  LightProjectionMatrix[2,0]:=0.0;
+  LightProjectionMatrix[2,1]:=0.0;
+  LightProjectionMatrix[2,2]:=2.0*SplitScale.z;
+  LightProjectionMatrix[2,3]:=0.0;
+  LightProjectionMatrix[3,0]:=(2.0*(SplitOffset.x/CascadedShadowMapWidth))-1.0;
+  LightProjectionMatrix[3,1]:=(2.0*(SplitOffset.y/CascadedShadowMapHeight))-1.0;
+  LightProjectionMatrix[3,2]:=(2.0*SplitOffset.z)-1.0;
+  LightProjectionMatrix[3,3]:=1.0;
+
+  LightProjectionMatrix:=LightProjectionMatrix*TpvMatrix4x4.HalfZClipSpace;
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
-
-  // Shadow map texel snapping
-  ShadowOrigin:=(LightViewProjectionMatrix*TpvVector3.Origin).xy*TpvVector2.Create(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
-  RoundedOrigin:=TpvVector2.InlineableCreate(round(ShadowOrigin.x),round(ShadowOrigin.y));
-  RoundOffset:=(RoundedOrigin-ShadowOrigin)*TpvVector2.InlineableCreate(2.0/CascadedShadowMapWidth,2.0/CascadedShadowMapHeight);
-  LightProjectionMatrix.RawComponents[3,0]:=LightProjectionMatrix.RawComponents[3,0]+RoundOffset.x;
-  LightProjectionMatrix.RawComponents[3,1]:=LightProjectionMatrix.RawComponents[3,1]+RoundOffset.y;
 
   CascadedShadowMap.View.ViewMatrix:=LightViewMatrix;
   CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
@@ -2388,6 +2437,8 @@ begin
 
  fFrameGraph.Update(pvApplication.UpdateSwapChainImageIndex,pvApplication.UpdateFrameCounter);
 
+ //writeln('U: ',pvApplication.UpdateSwapChainImageIndex);
+
 end;
 
 function TScreenMain.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
@@ -2396,15 +2447,18 @@ begin
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
- fFrameGraph.Draw(aSwapChainImageIndex,
+ SwapChainImageIndex:=pvApplication.DrawSwapChainImageIndex;
+//writeln('D: ',SwapChainImageIndex,' ',aSwapChainImageIndex);
+ fFrameGraph.Draw(SwapChainImageIndex,
                   pvApplication.DrawFrameCounter,
                   aWaitSemaphore,
-                  fVulkanRenderSemaphores[aSwapChainImageIndex],
+                  fVulkanRenderSemaphores[SwapChainImageIndex],
                   aWaitFence);
- TPasMPInterlocked.Write(fSwapChainImageStates[aSwapChainImageIndex].Ready,false);
- aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
+ TPasMPInterlocked.Write(fSwapChainImageStates[SwapChainImageIndex].Ready,false);
+ aWaitSemaphore:=fVulkanRenderSemaphores[SwapChainImageIndex];
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;

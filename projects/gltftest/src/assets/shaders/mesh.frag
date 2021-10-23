@@ -16,7 +16,7 @@ layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
 #ifdef SHADOWMAP
-#if 0
+#if 1
 layout(location = 0) out vec4 outFragDepth;
 #else
 layout(location = 0) out float outFragDepth;
@@ -82,10 +82,15 @@ layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[]
 
 layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
+#ifdef SHADOWS
 layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[4];
   vec4 shadowMapSplitDepths[4];
 } uCascadedShadowMaps;
+
+layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
+#endif
+
 #endif
 
 /* clang-format on */
@@ -361,12 +366,17 @@ void main() {
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
 #ifdef SHADOWMAP
-  //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0); /*t.z / t.w*/
-  float d = fma(inViewSpacePosition.z, 0.5, 0.5);
-#if 0
+  // vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0);
+  float d = gl_FragCoord.z;  // fma(t.z / t.w, 0.5, 0.5);
+#if 1
   float s = d * d;
   vec4 m = vec4(d, s, s * d, s * s);
   outFragDepth = m;
+/*outFragDepth = (m * mat4(-2.07224649, 32.23703778, -68.571074599, 39.3703274134,       //
+                           13.7948857237, -59.4683975703, 82.0359750338, -35.364903257,  //
+                           0.105877704, -1.9077466311, 9.3496555107, -6.6543490743,      //
+                           9.7924062118, -33.7652110555, 47.9456096605, -23.9728048165)) +
+                 vec4(0.035955884801, 0.0, 0.0, 0.0);*/
 #else
   outFragDepth = d;
 #endif
@@ -499,14 +509,15 @@ void main() {
             vec3 lightVector = light.positionRange.xyz - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
-            if ((uShadows != 0) && ((light.metaData.y & 0x80000000u) == 0u)) {
+            if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u)) {
               switch (light.metaData.x) {
+#if 0
                 case 1u: { // Directional 
                   // imageLightBasedLightDirection = light.directionZFar.xyz;
                   // fall-through
                 }
                 case 3u: {  // Spot
-                  vec4 shadowNDC = light.shadowMapMatrix * vec4(vWorldSpacePosition, 1.0);
+                  vec4 shadowNDC = light.shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);                  
                   shadowNDC /= shadowNDC.w;
                   if (all(greaterThanEqual(shadowNDC, vec4(-1.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
                     shadowNDC.xyz = fma(shadowNDC.xyz, vec3(0.5), vec3(0.5));
@@ -517,23 +528,46 @@ void main() {
                 }
                 case 2u: {  // Point
                   float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
-                  vec3 vector = light.positionRange.xyz - vWorldSpacePosition;
+                  vec3 vector = light.positionRange.xyz - inWorldSpacePosition;
                   vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
                   lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
-                case 4u: { // Primary directional 
+#endif
+                case 4u: {  // Primary directional
                   imageLightBasedLightDirection = light.directionZFar.xyz;
+                  litIntensity = lightAttenuation;
+                  for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < 4; cascadedShadowMapIndex++) {
+                    mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
+                    vec4 shadowNDC = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
+                    shadowNDC /= shadowNDC.w;
+                    shadowNDC.xy = fma(shadowNDC.xy, vec2(0.5), vec2(0.5));
+                    if (all(greaterThanEqual(shadowNDC, vec4(0.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
+#if 0
+                      vec4 moments = (textureLod(uCascadedShadowMapTexture, vec3(shadowNDC.xy, float(int(cascadedShadowMapIndex))), 0.0) +  //
+                                      vec2(-0.035955884801, 0.0).xyyy) *                                                                    //
+                                     mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555,                                           //
+                                          0.1549679261, 0.1394629426, 0.7963415838, -0.172282317,                                           //
+                                          0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811,                                          //
+                                          0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
+#else                                          
+                      vec4 moments = textureLod(uCascadedShadowMapTexture, vec3(shadowNDC.xy, float(int(cascadedShadowMapIndex))), 0.0);
+#endif
+                      lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
+                    }
+                  }
                   break;
                 }
               }
+#if 0              
               if (lightIndex == 0) {
                 litIntensity = lightAttenuation;
               }
+#endif
             }
 #endif
             switch (light.metaData.x) {
-              case 1u: {   // Directional
+              case 1u: {  // Directional
                 lightDirection = -light.directionZFar.xyz;
                 break;
               }
@@ -556,7 +590,7 @@ void main() {
                 break;
               }
               case 4u: {  // Primary directional
-                imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;                
+                imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;
                 break;
               }
               default: {
