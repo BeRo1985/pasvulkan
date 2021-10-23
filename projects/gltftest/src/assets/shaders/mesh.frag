@@ -83,7 +83,6 @@ layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[]
 layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
-  mat4 shadowMapViewMatrix;
   mat4 shadowMapMatrices[4];
   vec4 shadowMapSplitDepths[4];
 } uCascadedShadowMaps;
