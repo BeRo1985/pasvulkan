@@ -353,14 +353,14 @@ void main() {
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #ifdef SHADOWMAP
+  //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0); /*t.z / t.w*/
+  float d = fma(inViewSpacePosition.z, 0.5, 0.5);
 #if 0
-  //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0);
-  float d = fma(/*t.z / t.w*/length(inCameraRelativePosition), 0.5, 0.5);
   float s = d * d;
   vec4 m = vec4(d, s, s * d, s * s);
   outFragDepth = m;
 #else
-  outFragDepth = length(inCameraRelativePosition);
+  outFragDepth = d;
 #endif
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * inColor0.w;
 #else

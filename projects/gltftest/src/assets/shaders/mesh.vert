@@ -162,7 +162,7 @@ void main() {
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outWorldSpacePosition = worldSpacePosition.xyz;
-  outViewSpacePosition = viewSpacePosition.xyz.xyz;
+  outViewSpacePosition = viewSpacePosition.xyz;
   outCameraRelativePosition = worldSpacePosition.xyz - cameraPosition;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];

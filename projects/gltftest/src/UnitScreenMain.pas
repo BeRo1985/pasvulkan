@@ -1769,12 +1769,7 @@ begin
     LightSpaceAABB.Min:=LightSpaceCorner;
     LightSpaceAABB.Max:=LightSpaceCorner;
    end else begin
-    LightSpaceAABB.Min.x:=min(LightSpaceAABB.Min.x,LightSpaceCorner.x);
-    LightSpaceAABB.Min.y:=min(LightSpaceAABB.Min.y,LightSpaceCorner.y);
-    LightSpaceAABB.Min.z:=min(LightSpaceAABB.Min.z,LightSpaceCorner.z);
-    LightSpaceAABB.Max.x:=max(LightSpaceAABB.Max.x,LightSpaceCorner.x);
-    LightSpaceAABB.Max.y:=max(LightSpaceAABB.Max.y,LightSpaceCorner.y);
-    LightSpaceAABB.Max.z:=max(LightSpaceAABB.Max.z,LightSpaceCorner.z);
+    LightSpaceAABB:=LightSpaceAABB.CombineVector3(LightSpaceCorner);
    end;
   end;
 
