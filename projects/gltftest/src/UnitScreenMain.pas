@@ -46,7 +46,19 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
-        type { TForwardRenderingRenderPass }
+        type { TCascadedShadowMap }
+             TCascadedShadowMap=record
+              public
+               View:TpvScene3D.TView;
+               CombinedMatrix:TpvMatrix4x4;
+               SplitDepths:TpvVector2;
+               Scales:TpvVector2;
+             end;
+             PCascadedShadowMap=^TCascadedShadowMap;
+             TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
+             PCascadedShadowMaps=^TCascadedShadowMaps;
+             TSwapChainImageCascadedShadowMaps=array[0..MaxSwapChainImages-1] of TCascadedShadowMaps;
+             { TForwardRenderingRenderPass }
              TForwardRenderingRenderPass=class(TpvFrameGraph.TRenderPass)
               public
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -141,6 +153,8 @@ type { TScreenMain }
              Ready:TPasMPBool32;
              FinalViewIndex:TpvSizeInt;
              CountViews:TpvSizeInt;
+             CascadedShadowMapViewIndex:TpvSizeInt;
+             CountCascadedShadowMapViews:TpvSizeInt;
             end;
             PSwapChainImageState=^TSwapChainImageState;
             TSwapChainImageStates=array[0..MaxSwapChainImages+1] of TSwapChainImageState;
@@ -172,6 +186,7 @@ type { TScreenMain }
        fAntialiasingRenderPass:TAntialiasingRenderPass;
        fGroup:TpvScene3D.TGroup;
        fGroupInstance:TpvScene3D.TGroup.TInstance;
+       fSwapChainImageCascadedShadowMaps:TSwapChainImageCascadedShadowMaps;
        fTime:Double;
        fCameraRotationX:TpvScalar;
        fCameraRotationY:TpvScalar;
@@ -179,6 +194,7 @@ type { TScreenMain }
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:Int32;
+       procedure CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
        constructor Create; override;
@@ -1555,6 +1571,191 @@ begin
  result:=false;
 end;
 
+procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
+const CascadedShadowMapSplitConstant=0.975;
+var CascadedShadowMapIndex,Index,SubIndex:TpvSizeInt;
+    CascadedShadowMaps:TScreenMain.PCascadedShadowMaps;
+    CascadedShadowMap:TScreenMain.PCascadedShadowMap;
+    SceneWorldSpaceBoundingBox,
+    SceneLightSpaceBoundingBox,
+    LightSpaceAABB:TpvAABB;
+    LightPosition,LightForwardVector,LightSideVector,
+    LightUpVector,LightSpaceCorner,ViewDirection,
+    Corner,RayStart,RayEnd,RayDirection:TpvVector3;
+    TemporaryVector4:TpvVector4;
+    LightViewMatrix,
+    LightProjectionMatrix,
+    LightViewProjectionMatrix,
+    InverseViewProjectionMatrixLeft,
+    InverseViewProjectionMatrixRight,
+    FromViewSpaceToLightSpaceMatrix:TpvMatrix4x4;
+    MinZ,MaxZ,Ratio,FadeStartValue,LastValue,Value,z:TpvScalar;
+    WorldSpaceFrustumRayStarts,
+    WorldSpaceFrustumRayDirections:array[0..7] of TpvVector3;
+    SwapChainImageState:PSwapChainImageState;
+begin
+
+ InverseViewProjectionMatrixLeft:=(aViewLeft.ViewMatrix*aViewLeft.ProjectionMatrix).Inverse;
+
+ InverseViewProjectionMatrixRight:=(aViewRight.ViewMatrix*aViewRight.ProjectionMatrix).Inverse;
+
+ SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
+
+ LightForwardVector:=TSkyCubeMap.LightDirection.xyz.Normalize;
+ LightPosition:=LightForwardVector*SceneWorldSpaceBoundingBox.Radius*4.0;
+ LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
+                                              -aViewLeft.ViewMatrix.RawComponents[1,2],
+                                              -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;
+ if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
+  if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
+   LightSideVector:=TpvVector3.YAxis;
+  end else begin
+   LightSideVector:=TpvVector3.ZAxis;
+  end;
+ end;
+ LightUpVector:=(LightForwardVector.Cross(LightSideVector)).Normalize;
+ LightSideVector:=(LightUpVector.Cross(LightForwardVector)).Normalize;
+ LightViewMatrix.RawComponents[0,0]:=LightSideVector.x;
+ LightViewMatrix.RawComponents[0,1]:=LightUpVector.x;
+ LightViewMatrix.RawComponents[0,2]:=LightForwardVector.x;
+ LightViewMatrix.RawComponents[0,3]:=0.0;
+ LightViewMatrix.RawComponents[1,0]:=LightSideVector.y;
+ LightViewMatrix.RawComponents[1,1]:=LightUpVector.y;
+ LightViewMatrix.RawComponents[1,2]:=LightForwardVector.y;
+ LightViewMatrix.RawComponents[1,3]:=0.0;
+ LightViewMatrix.RawComponents[2,0]:=LightSideVector.z;
+ LightViewMatrix.RawComponents[2,1]:=LightUpVector.z;
+ LightViewMatrix.RawComponents[2,2]:=LightForwardVector.z;
+ LightViewMatrix.RawComponents[2,3]:=0.0;
+ LightViewMatrix.RawComponents[3,0]:=0.0;
+ LightViewMatrix.RawComponents[3,1]:=0.0;
+ LightViewMatrix.RawComponents[3,2]:=0.0;
+ LightViewMatrix.RawComponents[3,3]:=1.0;
+
+ MinZ:=0.1;
+ MaxZ:=4096;
+
+ SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
+
+ for Index:=0 to 3 do begin
+
+  TemporaryVector4:=InverseViewProjectionMatrixLeft*
+                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
+                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
+                                                1.0,
+                                                1.0);
+  RayStart:=TemporaryVector4.xyz/TemporaryVector4.w;
+
+  TemporaryVector4:=InverseViewProjectionMatrixLeft*
+                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
+                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
+                                                0.1,
+                                                1.0);
+  RayEnd:=TemporaryVector4.xyz/TemporaryVector4.w;
+
+  RayDirection:=(RayEnd-RayStart).Normalize;
+
+  WorldSpaceFrustumRayStarts[Index]:=RayStart;
+  WorldSpaceFrustumRayDirections[Index]:=RayDirection;
+
+  TemporaryVector4:=InverseViewProjectionMatrixRight*
+                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
+                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
+                                                1.0,
+                                                1.0);
+  RayStart:=TemporaryVector4.xyz/TemporaryVector4.w;
+
+  TemporaryVector4:=InverseViewProjectionMatrixRight*
+                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
+                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
+                                                0.1,
+                                                1.0);
+  RayEnd:=TemporaryVector4.xyz/TemporaryVector4.w;
+
+  RayDirection:=(RayEnd-RayStart).Normalize;
+
+  WorldSpaceFrustumRayStarts[Index+4]:=RayStart;
+  WorldSpaceFrustumRayDirections[Index+4]:=RayDirection;
+
+ end;
+
+ CascadedShadowMaps:=@fSwapChainImageCascadedShadowMaps[aSwapChainImageIndex];
+
+ CascadedShadowMaps^[0].SplitDepths.x:=0.0;
+ Ratio:=MaxZ/MinZ;
+ LastValue:=0.0;
+ for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
+  Value:=(CascadedShadowMapSplitConstant*MinZ*power(Ratio,CascadedShadowMapIndex/CountCascadedShadowMapCascades))+
+         ((1.0-CascadedShadowMapSplitConstant)*(MinZ+((CascadedShadowMapIndex/CountCascadedShadowMapCascades)*(MaxZ-MinZ))));
+  FadeStartValue:=Min(Max(((Value-LastValue)*0.95)+LastValue,MinZ),MaxZ);
+  LastValue:=Value;
+  CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,MinZ),MaxZ);
+  CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,MinZ),MaxZ);
+ end;
+ CascadedShadowMaps^[CountCascadedShadowMapCascades-1].SplitDepths.y:=MaxZ;
+
+ for CascadedShadowMapIndex:=0 to CountCascadedShadowMapCascades-1 do begin
+
+  CascadedShadowMap:=@CascadedShadowMaps^[CascadedShadowMapIndex];
+
+  MinZ:=CascadedShadowMap^.SplitDepths.x;
+  MaxZ:=CascadedShadowMap^.SplitDepths.y;
+
+  for Index:=0 to 15 do begin
+   RayStart:=WorldSpaceFrustumRayStarts[(Index and 3) or ((Index shr 3) shl 2)];
+   RayDirection:=WorldSpaceFrustumRayDirections[(Index and 3) or ((Index shr 3) shl 2)];
+   if (Index and 4)<>0 then begin
+    z:=MaxZ;
+   end else begin
+    z:=MinZ;
+   end;
+   LightSpaceCorner:=LightViewMatrix*(RayStart+(RayDirection*z));
+   if Index=0 then begin
+    LightSpaceAABB.Min:=LightSpaceCorner;
+    LightSpaceAABB.Max:=LightSpaceCorner;
+   end else begin
+    LightSpaceAABB.Min.x:=min(LightSpaceAABB.Min.x,LightSpaceCorner.x);
+    LightSpaceAABB.Min.y:=min(LightSpaceAABB.Min.y,LightSpaceCorner.y);
+    LightSpaceAABB.Min.z:=min(LightSpaceAABB.Min.z,LightSpaceCorner.z);
+    LightSpaceAABB.Max.x:=max(LightSpaceAABB.Max.x,LightSpaceCorner.x);
+    LightSpaceAABB.Max.y:=max(LightSpaceAABB.Max.y,LightSpaceCorner.y);
+    LightSpaceAABB.Max.z:=max(LightSpaceAABB.Max.z,LightSpaceCorner.z);
+   end;
+  end;
+
+  LightSpaceAABB.Min.x:=Floor(Max(LightSpaceAABB.Min.x,SceneLightSpaceBoundingBox.Min.x)-0.1);
+  LightSpaceAABB.Min.y:=Floor(Max(LightSpaceAABB.Min.y,SceneLightSpaceBoundingBox.Min.y)-0.1);
+  LightSpaceAABB.Min.z:=Floor(Min(LightSpaceAABB.Min.z,SceneLightSpaceBoundingBox.Min.z)-0.1);
+  LightSpaceAABB.Max.x:=Ceil(Min(LightSpaceAABB.Max.x,SceneLightSpaceBoundingBox.Max.x)+0.1);
+  LightSpaceAABB.Max.y:=Ceil(Min(LightSpaceAABB.Max.y,SceneLightSpaceBoundingBox.Max.y)+0.1);
+  LightSpaceAABB.Max.z:=Ceil(Max(LightSpaceAABB.Max.z,SceneLightSpaceBoundingBox.Max.z)+0.1);
+
+  LightProjectionMatrix:=TpvMatrix4x4.CreateOrtho(LightSpaceAABB.Min.x,
+                                                  LightSpaceAABB.Max.x,
+                                                  LightSpaceAABB.Min.y,
+                                                  LightSpaceAABB.Max.y,
+                                                  -LightSpaceAABB.Max.z,
+                                                  -LightSpaceAABB.Min.z);
+
+  LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
+
+  CascadedShadowMap.View.ViewMatrix:=LightViewMatrix;
+  CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
+  CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
+
+ end;
+
+ SwapChainImageState:=@fSwapChainImageStates[pvApplication.UpdateSwapChainImageIndex];
+
+ SwapChainImageState^.CascadedShadowMapViewIndex:=fScene3D.AddView(CascadedShadowMaps^[0].View);
+ for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
+  fScene3D.AddView(CascadedShadowMaps^[CascadedShadowMapIndex].View);
+ end;
+
+ SwapChainImageState^.CountCascadedShadowMapViews:=CountCascadedShadowMapCascades;
+
+end;
+
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
     ModelMatrix,ViewMatrix:TpvMatrix4x4;
@@ -1615,8 +1816,8 @@ begin
 
    fScene3D.ClearViews;
 
-   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
-   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+   Center:=(fScene3D.BoundingBox.Min+fScene3D.BoundingBox.Max)*0.5;
+   Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
    ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
                                                                    sin(-fCameraRotationY*PI*2.0),
                                                                    cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
@@ -1632,7 +1833,11 @@ begin
 
    SwapChainImageState^.FinalViewIndex:=fScene3D.AddViews([ViewLeft,ViewRight]);
 
-   SwapChainImageState^.CountViews:=fCountViews;
+   SwapChainImageState^.CountViews:=2;
+
+   CalculateCascadedShadowMaps(pvApplication.UpdateSwapChainImageIndex,
+                               ViewLeft,
+                               ViewRight);
 
    fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
 
