@@ -82,7 +82,7 @@ layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  
 
 layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[4];
-  vec2 shadowMapSplitDepths[4];
+  vec4 shadowMapSplitDepths[4];
 } uCascadedShadowMaps;
 
 /* clang-format on */

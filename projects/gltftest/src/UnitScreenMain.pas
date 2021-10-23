@@ -60,7 +60,7 @@ type { TScreenMain }
              TSwapChainImageCascadedShadowMaps=array[0..MaxSwapChainImages-1] of TCascadedShadowMaps;
              TCascadedShadowMapUniformBuffer=packed record
               Matrices:array[0..CountCascadedShadowMapCascades-1] of TpvMatrix4x4;
-              SplitDepths:array[0..CountCascadedShadowMapCascades-1] of TpvVector2;
+              SplitDepths:array[0..CountCascadedShadowMapCascades-1] of TpvVector4; // actually TpvVector2 but because of alignment it is a TpvVector4 here
              end;
              PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapUniformBuffers=array[0..MaxSwapChainImages-1] of TCascadedShadowMapUniformBuffer;
@@ -1798,7 +1798,7 @@ begin
   CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
 
   fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
-  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=CascadedShadowMap^.SplitDepths;
+  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0,0.0);
 
  end;
 
