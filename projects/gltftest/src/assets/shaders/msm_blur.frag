@@ -14,7 +14,7 @@ layout(location = 0) out vec4 oOutput;
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
 layout(push_constant) uniform PushConstants { 
-  vec2 direction;
+  vec4 direction;
 } pushConstants;
 /* clang-format on */
 
@@ -41,5 +41,5 @@ vec4 GaussianBlur(const in sampler2DArray pTexSource, const in vec2 pCenterUV, c
 }
 
 void main(){
-  oOutput = GaussianBlur(uTexture, inTexCoord, float(inFaceIndex), 0.0, vec2(vec2(1.0) / vec2(textureSize(uTexture, 0).xy)) * pushConstants.direction);
+  oOutput = GaussianBlur(uTexture, inTexCoord, float(inFaceIndex), 0.0, vec2(vec2(1.0) / vec2(textureSize(uTexture, 0).xy)) * pushConstants.direction.xy);
 }
