@@ -277,7 +277,8 @@ type { TScreenMain }
 implementation
 
 uses PasGLTF,
-     UnitApplication;
+     UnitApplication,
+     PasVulkan.Frustum;
 
 { TScreenMain.TCascadedShadowMapRenderPass }
 
@@ -2118,6 +2119,17 @@ end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
 const CascadedShadowMapSplitConstant=0.975;
+      FrustumCorners:array[0..7] of TpvVector3=
+       (
+        (x:-1.0;y:-1.0;z:0.0),
+        (x:1.0;y:-1.0;z:0.0),
+        (x:-1.0;y:1.0;z:0.0),
+        (x:1.0;y:1.0;z:0.0),
+        (x:-1.0;y:-1.0;z:1.0),
+        (x:1.0;y:-1.0;z:1.0),
+        (x:-1.0;y:1.0;z:1.0),
+        (x:1.0;y:1.0;z:1.0)
+       );
 var CascadedShadowMapIndex,Index:TpvSizeInt;
     CascadedShadowMaps:TScreenMain.PCascadedShadowMaps;
     CascadedShadowMap:TScreenMain.PCascadedShadowMap;
@@ -2126,27 +2138,43 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     LightSpaceAABB:TpvAABB;
     LightForwardVector,LightSideVector,
     LightUpVector,LightSpaceCorner,
-    RayStart,RayEnd,RayDirection,
     {SplitCenter,SplitBounds,}SplitOffset,SplitScale:TpvVector3;
+    ShadowOrigin,RoundedOrigin,RoundOffset:TpvVector2;
     Offset,Step:TpvVector2;
     TemporaryVector4:TpvVector4;
     LightSpaceSphere:TpvSphere;
+    ProjectionMatrix,
     LightViewMatrix,
     LightProjectionMatrix,
     LightViewProjectionMatrix,
+    FromViewSpaceToLightSpaceMatrixLeft,
+    FromViewSpaceToLightSpaceMatrixRight,
+    InverseProjectionMatrixLeft,
+    InverseProjectionMatrixRight,
     InverseViewProjectionMatrixLeft,
     InverseViewProjectionMatrixRight:TpvMatrix4x4;
     MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
     Ratio,FadeStartValue,LastValue,Value,z,
-    Border,RoundedUpLightSpaceSphereRadius:TpvScalar;
-    WorldSpaceFrustumRayStarts,
-    WorldSpaceFrustumRayDirections:array[0..7] of TpvVector3;
+    Border,RoundedUpLightSpaceSphereRadius,
+    zNear,zFar:TpvScalar;
+    ViewSpaceFrustumCornersLeft,
+    ViewSpaceFrustumCornersRight:array[0..7] of TpvVector3;
     SwapChainImageState:PSwapChainImageState;
 begin
 
- InverseViewProjectionMatrixLeft:=(aViewLeft.ViewMatrix*aViewLeft.ProjectionMatrix).Inverse;
+ zNear:=0.1;
+ zFar:=4096.0;
+ ProjectionMatrix:=aViewLeft.ProjectionMatrix;
+ ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
+ ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ InverseViewProjectionMatrixLeft:=(aViewLeft.ViewMatrix*ProjectionMatrix).Inverse;
+ InverseProjectionMatrixLeft:=ProjectionMatrix.Inverse;
 
- InverseViewProjectionMatrixRight:=(aViewRight.ViewMatrix*aViewRight.ProjectionMatrix).Inverse;
+ ProjectionMatrix:=aViewRight.ProjectionMatrix;
+ ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
+ ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ InverseViewProjectionMatrixRight:=(aViewRight.ViewMatrix*ProjectionMatrix).Inverse;
+ InverseProjectionMatrixRight:=ProjectionMatrix.Inverse;
 
  SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
 
@@ -2180,6 +2208,10 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
+ FromViewSpaceToLightSpaceMatrixLeft:=aViewLeft.ViewMatrix.Inverse*LightViewMatrix;
+
+ FromViewSpaceToLightSpaceMatrixRight:=aViewRight.ViewMatrix.Inverse*LightViewMatrix;
+
  SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
 
  MinZExtents:=SceneLightSpaceBoundingBox.Min.z-16;
@@ -2191,46 +2223,9 @@ begin
  MinZ:=1e-3;
  MaxZ:=4096.0;
 
- for Index:=0 to 3 do begin
-
-  TemporaryVector4:=InverseViewProjectionMatrixLeft*
-                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
-                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
-                                                1.0,
-                                                1.0);
-  RayStart:=TemporaryVector4.xyz/TemporaryVector4.w;
-
-  TemporaryVector4:=InverseViewProjectionMatrixLeft*
-                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
-                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
-                                                0.1,
-                                                1.0);
-  RayEnd:=TemporaryVector4.xyz/TemporaryVector4.w;
-
-  RayDirection:=(RayEnd-RayStart).Normalize;
-
-  WorldSpaceFrustumRayStarts[Index]:=RayStart;
-  WorldSpaceFrustumRayDirections[Index]:=RayDirection;
-
-  TemporaryVector4:=InverseViewProjectionMatrixRight*
-                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
-                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
-                                                1.0,
-                                                1.0);
-  RayStart:=TemporaryVector4.xyz/TemporaryVector4.w;
-
-  TemporaryVector4:=InverseViewProjectionMatrixRight*
-                    TpvVector4.InlineableCreate(1-(((Index shr 0) and 1) shl 1), // x = -1.0 .. 1.0
-                                                1-(((Index shr 1) and 1) shl 1), // y = -1.0 .. 1.0
-                                                0.1,
-                                                1.0);
-  RayEnd:=TemporaryVector4.xyz/TemporaryVector4.w;
-
-  RayDirection:=(RayEnd-RayStart).Normalize;
-
-  WorldSpaceFrustumRayStarts[Index+4]:=RayStart;
-  WorldSpaceFrustumRayDirections[Index+4]:=RayDirection;
-
+ for Index:=0 to 7 do begin
+  ViewSpaceFrustumCornersLeft[Index]:=InverseProjectionMatrixLeft.MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
+  ViewSpaceFrustumCornersRight[Index]:=InverseProjectionMatrixRight.MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
  end;
 
  CascadedShadowMaps:=@fSwapChainImageCascadedShadowMaps[aSwapChainImageIndex];
@@ -2257,21 +2252,33 @@ begin
   MinZ:=CascadedShadowMap^.SplitDepths.x;
   MaxZ:=CascadedShadowMap^.SplitDepths.y;
 
-  for Index:=0 to 15 do begin
-   RayStart:=WorldSpaceFrustumRayStarts[(Index and 3) or ((Index shr 3) shl 2)];
-   RayDirection:=WorldSpaceFrustumRayDirections[(Index and 3) or ((Index shr 3) shl 2)];
-   if (Index and 4)<>0 then begin
-    z:=MaxZ;
-   end else begin
-    z:=MinZ;
+  for Index:=0 to 7 do begin
+   case Index of
+    0..3:begin
+     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index].Lerp(ViewSpaceFrustumCornersLeft[Index+4],(MinZ-ZNear)/(ZFar-ZNear));
+    end;
+    else {4..7:}begin
+     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index-4].Lerp(ViewSpaceFrustumCornersLeft[Index],(MaxZ-ZNear)/(ZFar-ZNear));
+    end;
    end;
-   LightSpaceCorner:=LightViewMatrix*(RayStart+(RayDirection*z));
+   LightSpaceCorner:=FromViewSpaceToLightSpaceMatrixLeft*LightSpaceCorner;
    if Index=0 then begin
     LightSpaceAABB.Min:=LightSpaceCorner;
     LightSpaceAABB.Max:=LightSpaceCorner;
    end else begin
     LightSpaceAABB:=LightSpaceAABB.CombineVector3(LightSpaceCorner);
    end;
+  end;
+  for Index:=0 to 7 do begin
+   case Index of
+    0..3:begin
+     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index].Lerp(ViewSpaceFrustumCornersRight[Index+4],(MinZ-ZNear)/(ZFar-ZNear));
+    end;
+    else {4..7:}begin
+     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index-4].Lerp(ViewSpaceFrustumCornersRight[Index],(MaxZ-ZNear)/(ZFar-ZNear));
+    end;
+   end;
+   LightSpaceAABB:=LightSpaceAABB.CombineVector3(FromViewSpaceToLightSpaceMatrixRight*LightSpaceCorner);
   end;
 
   if LightSpaceAABB.Intersect(SceneLightSpaceBoundingBox) then begin
@@ -2280,11 +2287,12 @@ begin
 
   //LightSpaceAABB:=SceneLightSpaceBoundingBox;
 
+(**)
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
 
   Border:=4;
 
-  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius*2);
+  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius);
 
   Step.x:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapWidth-(2.0*Border));
   Step.y:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapHeight-(2.0*Border));
@@ -2318,14 +2326,42 @@ begin
   LightProjectionMatrix[1,3]:=0.0;
   LightProjectionMatrix[2,0]:=0.0;
   LightProjectionMatrix[2,1]:=0.0;
-  LightProjectionMatrix[2,2]:=2.0*SplitScale.z;
+  LightProjectionMatrix[2,2]:=SplitScale.z;//2.0*SplitScale.z;
   LightProjectionMatrix[2,3]:=0.0;
   LightProjectionMatrix[3,0]:=(2.0*(SplitOffset.x/CascadedShadowMapWidth))-1.0;
   LightProjectionMatrix[3,1]:=(2.0*(SplitOffset.y/CascadedShadowMapHeight))-1.0;
-  LightProjectionMatrix[3,2]:=(2.0*SplitOffset.z)-1.0;
+  LightProjectionMatrix[3,2]:=SplitOffset.z;//(2.0*SplitOffset.z)-1.0;
   LightProjectionMatrix[3,3]:=1.0;
 
-  LightProjectionMatrix:=LightProjectionMatrix*TpvMatrix4x4.HalfZClipSpace;
+//LightProjectionMatrix:=LightProjectionMatrix*TpvMatrix4x4.HalfZClipSpace;
+
+{ LightProjectionMatrix[2,2]:=MaxZExtents/(MinZExtents-MaxZExtents);
+  LightProjectionMatrix[3,2]:=(-(MinZExtents*MaxZExtents))/(MaxZExtents-MinZExtents);}
+
+{ LightProjectionMatrix[2,2]:=(-2.0)/(MaxZExtents-MinZExtents);
+  LightProjectionMatrix[3,2]:=(-(MaxZExtents+MinZExtents))/(MaxZExtents-MinZExtents);}
+
+{*)
+
+  LightProjectionMatrix:=TpvMatrix4x4.CreateOrtho(LightSpaceAABB.Min.x,
+                                                  LightSpaceAABB.Max.x,
+                                                  LightSpaceAABB.Min.y,
+                                                  LightSpaceAABB.Max.y,
+                                                  -MaxZExtents,
+                                                  -MinZExtents);
+
+  LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
+
+  ShadowOrigin:=(LightViewProjectionMatrix.MulHomogen(TpvVector3.Origin)).xy*TpvVector2.InlineableCreate(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
+  RoundedOrigin.x:=round(ShadowOrigin.x);
+  RoundedOrigin.y:=round(ShadowOrigin.y);
+  RoundOffset:=(RoundedOrigin-ShadowOrigin)*TpvVector2.InlineableCreate(2.0/CascadedShadowMapWidth,2.0/CascadedShadowMapHeight);
+  LightProjectionMatrix[3,0]:=LightProjectionMatrix[3,0]+RoundOffset.x;
+  LightProjectionMatrix[3,1]:=LightProjectionMatrix[3,1]+RoundOffset.y;
+
+  LightProjectionMatrix:=LightProjectionMatrix*TpvMatrix4x4.FlipYHalfZClipSpace;
+
+  //}
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
