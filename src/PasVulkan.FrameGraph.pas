@@ -4719,12 +4719,13 @@ type TEventBeforeAfter=(Event,Before,After);
          (Resource.fResourceType=OtherResource.fResourceType) and
          (Resource.fResourceInstanceType=OtherResource.fResourceInstanceType) and
          (Resource.fExternalData=OtherResource.fExternalData) and
-         CanResourceReused(OtherResource) and
-         (Min(Resource.fMaximumPhysicalPassStepIndex,
-              OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
-                                                               OtherResource.fMinimumPhysicalPassStepIndex)) then begin
-       OtherResource.fResourceAliasGroup:=Resource.fResourceAliasGroup;
-       OtherResource.fResourceAliasGroup.fResources.Add(OtherResource);
+         CanResourceReused(OtherResource) then begin
+       if (Min(Resource.fMaximumPhysicalPassStepIndex,
+               OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
+                                                                OtherResource.fMinimumPhysicalPassStepIndex)) then begin
+        OtherResource.fResourceAliasGroup:=Resource.fResourceAliasGroup;
+        OtherResource.fResourceAliasGroup.fResources.Add(OtherResource);
+       end;
       end;
      end;
     end;
