@@ -262,6 +262,8 @@ type { TScreenMain }
 
        function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; override;
 
+       procedure DrawUpdate(const aSwapChainImageIndex:TpvInt32;const aDeltaTime:TpvDouble);
+
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
@@ -595,11 +597,11 @@ var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
 
- SwapChainImageState:=@fParent.fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex];
+ SwapChainImageState:=@fParent.fSwapChainImageStates[aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex}];
 
  if SwapChainImageState^.Ready then begin
 
-  fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
+  fParent.fScene3D.Prepare(aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                            1,
                            SwapChainImageState^.CascadedShadowMapViewIndex,
                            SwapChainImageState^.CountCascadedShadowMapViews,
@@ -609,7 +611,7 @@ begin
                            true);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                         1,
                         SwapChainImageState^.CascadedShadowMapViewIndex,
                         SwapChainImageState^.CountCascadedShadowMapViews,
@@ -618,7 +620,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                         1,
                         SwapChainImageState^.CascadedShadowMapViewIndex,
                         SwapChainImageState^.CountCascadedShadowMapViews,
@@ -627,7 +629,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
 { fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex, // pvApplication.DrawSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
                         SwapChainImageState^.CountViews,
@@ -1068,11 +1070,11 @@ var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
 
- SwapChainImageState:=@fParent.fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex];
+ SwapChainImageState:=@fParent.fSwapChainImageStates[aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex}];
 
  if SwapChainImageState^.Ready then begin
 
-  fSkyBox.Draw(pvApplication.DrawSwapChainImageIndex,
+  fSkyBox.Draw(aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                SwapChainImageState^.FinalViewIndex,
                SwapChainImageState^.CountViews,
                aCommandBuffer);
@@ -1081,11 +1083,11 @@ begin
                                        fVulkanPipelineLayout.Handle,
                                        3,
                                        1,
-                                       @fGlobalVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
+                                       @fGlobalVulkanDescriptorSets[aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex}].Handle,
                                        0,
                                        nil);
 
-  fParent.fScene3D.Prepare(pvApplication.DrawSwapChainImageIndex,
+  fParent.fScene3D.Prepare(aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                            0,
                            SwapChainImageState^.FinalViewIndex,
                            SwapChainImageState^.CountViews,
@@ -1095,7 +1097,7 @@ begin
                            true);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                         0,
                         SwapChainImageState^.FinalViewIndex,
                         SwapChainImageState^.CountViews,
@@ -1104,7 +1106,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                         0,
                         SwapChainImageState^.FinalViewIndex,
                         SwapChainImageState^.CountViews,
@@ -1113,7 +1115,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        pvApplication.DrawSwapChainImageIndex,
+                        aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex},
                         0,
                         SwapChainImageState^.FinalViewIndex,
                         SwapChainImageState^.CountViews,
@@ -2348,6 +2350,17 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
+begin
+ inherited Update(aDeltaTime);
+ fFrameGraph.Update(pvApplication.UpdateSwapChainImageIndex,pvApplication.UpdateFrameCounter);
+end;
+
+function TScreenMain.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+begin
+ result:=TPasMPInterlocked.Read(fSwapChainImageStates[aSwapChainImageIndex{pvApplication.DrawSwapChainImageIndex}].Ready);
+end;
+
+procedure TScreenMain.DrawUpdate(const aSwapChainImageIndex:TpvInt32;const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
     ModelMatrix,ViewMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
@@ -2358,7 +2371,7 @@ var Index:TpvSizeInt;
 begin
  inherited Update(aDeltaTime);
 
- SwapChainImageState:=@fSwapChainImageStates[pvApplication.UpdateSwapChainImageIndex];
+ SwapChainImageState:=@fSwapChainImageStates[aSwapChainImageIndex];
 
  begin
 
@@ -2446,27 +2459,21 @@ begin
 
  end;
 
- fFrameGraph.Update(pvApplication.UpdateSwapChainImageIndex,pvApplication.UpdateFrameCounter);
-
  //writeln('U: ',pvApplication.UpdateSwapChainImageIndex);
 
-end;
-
-function TScreenMain.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
-begin
- result:=TPasMPInterlocked.Read(fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex].Ready);
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 //writeln('D: ',SwapChainImageIndex,' ',aSwapChainImageIndex);
+ DrawUpdate(aSwapChainImageIndex,pvApplication.DeltaTime);
  fFrameGraph.Draw(aSwapChainImageIndex,
                   pvApplication.DrawFrameCounter,
                   aWaitSemaphore,
                   fVulkanRenderSemaphores[aSwapChainImageIndex],
                   aWaitFence);
- TPasMPInterlocked.Write(fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex].Ready,false);
+ TPasMPInterlocked.Write(fSwapChainImageStates[aSwapChainImageIndex].Ready,false);
  aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 end;
 

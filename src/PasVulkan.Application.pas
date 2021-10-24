@@ -8105,8 +8105,6 @@ begin
 
       fDrawFrameCounter:=fFrameCounter;
 
-      fDrawSwapChainImageIndex:=fRealUsedDrawSwapChainImageIndex;
-
       fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex;
 
       Check(fUpdateDeltaTime);
