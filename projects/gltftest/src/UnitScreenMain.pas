@@ -1352,7 +1352,11 @@ end;
 procedure TScreenMain.TTonemappingRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      fVulkanPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
@@ -1665,7 +1669,11 @@ end;
 procedure TScreenMain.TAntialiasingRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      fVulkanPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
@@ -2450,18 +2458,16 @@ begin
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
- SwapChainImageIndex:=pvApplication.DrawSwapChainImageIndex;
 //writeln('D: ',SwapChainImageIndex,' ',aSwapChainImageIndex);
- fFrameGraph.Draw(SwapChainImageIndex,
+ fFrameGraph.Draw(aSwapChainImageIndex,
                   pvApplication.DrawFrameCounter,
                   aWaitSemaphore,
-                  fVulkanRenderSemaphores[SwapChainImageIndex],
+                  fVulkanRenderSemaphores[aSwapChainImageIndex],
                   aWaitFence);
- TPasMPInterlocked.Write(fSwapChainImageStates[SwapChainImageIndex].Ready,false);
- aWaitSemaphore:=fVulkanRenderSemaphores[SwapChainImageIndex];
+ TPasMPInterlocked.Write(fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex].Ready,false);
+ aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
