@@ -22,6 +22,8 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V tonemapping.frag -o tonemapping_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V antialiasing.frag -o antialiasing_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V blit.frag -o blit_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V msm_blur.frag -o msm_blur_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V msm_blur.vert -o msm_blur_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V msm_resolve.frag -o msm_resolve_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V msm_resolve.vert -o msm_resolve_vert.spv
 for %%f in (*.spv) do (
