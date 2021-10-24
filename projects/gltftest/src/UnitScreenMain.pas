@@ -2416,7 +2416,7 @@ begin
     end;
    end;
 
-   fScene3D.Update(pvApplication.UpdateSwapChainImageIndex);
+   fScene3D.Update(aSwapChainImageIndex);
 
    fScene3D.ClearViews;
 
@@ -2439,15 +2439,15 @@ begin
 
    SwapChainImageState^.CountViews:=2;
 
-   CalculateCascadedShadowMaps(pvApplication.UpdateSwapChainImageIndex,
+   CalculateCascadedShadowMaps(aSwapChainImageIndex,
                                ViewLeft,
                                ViewRight);
 
-   fCascadedShadowMapVulkanUniformBuffers[pvApplication.UpdateSwapChainImageIndex].UpdateData(fCascadedShadowMapUniformBuffers[pvApplication.UpdateSwapChainImageIndex],
-                                                                                              0,
-                                                                                              SizeOf(TCascadedShadowMapUniformBuffer));
+   fCascadedShadowMapVulkanUniformBuffers[aSwapChainImageIndex].UpdateData(fCascadedShadowMapUniformBuffers[aSwapChainImageIndex],
+                                                                           0,
+                                                                           SizeOf(TCascadedShadowMapUniformBuffer));
 
-   fScene3D.UpdateViews(pvApplication.UpdateSwapChainImageIndex);
+   fScene3D.UpdateViews(aSwapChainImageIndex);
 
    TPasMPInterlocked.Write(SwapChainImageState^.Ready,true);
 
@@ -2458,8 +2458,6 @@ begin
   end;
 
  end;
-
- //writeln('U: ',pvApplication.UpdateSwapChainImageIndex);
 
 end;
 
