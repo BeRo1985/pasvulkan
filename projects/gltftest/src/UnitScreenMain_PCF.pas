@@ -51,7 +51,7 @@ type { TScreenMain }
               public
                View:TpvScene3D.TView;
                CombinedMatrix:TpvMatrix4x4;
-               SplitDepths:TpvVector3;
+               SplitDepths:TpvVector2;
                Scales:TpvVector2;
              end;
              PCascadedShadowMap=^TCascadedShadowMap;
@@ -199,7 +199,6 @@ type { TScreenMain }
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fVulkanSampleCountFlagBits:TVkSampleCountFlagBits;
-       fVulkanShadowMapSampleCountFlagBits:TVkSampleCountFlagBits;
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
@@ -301,53 +300,13 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
- if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-
-  fResourceData:=AddImageOutput('resourcetype_cascadedshadowmap_data',
-                                'cascadedshadowmap_data',
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                             TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
-
-  fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
-                                      'cascadedshadowmap_depth',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
-
- end else begin
-
-  fResourceData:=AddImageOutput('resourcetype_cascadedshadowmap_msaa_data',
-                                 'cascadedshadowmap_msaa_data',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-
-  fResourceData:=AddImageResolveOutput('resourcetype_cascadedshadowmap_data',
-                                        'cascadedshadowmap_data',
-                                        'cascadedshadowmap_msaa_data',
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                     TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
-
-  fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
-                                      'cascadedshadowmap_msaa_depth',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
-
- end;
-
+ fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
+                                     'cascadedshadowmap_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                  TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
 
 end;
 
@@ -499,16 +458,17 @@ begin
      if DoubleSided then begin
       VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
      end else begin
-      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+//    VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
      end;
      VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=true;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=1.25;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=4.0;
      VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=1.75;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=8.0;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
-     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanShadowMapSampleCountFlagBits;
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -590,7 +550,7 @@ begin
 end;
 
 procedure TScreenMain.TCascadedShadowMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                          const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+                                                           const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
@@ -659,8 +619,8 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        UnitApplication.Application.VirtualReality.CountImages);
 
- fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data',
+ fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_depth',
+                                           'cascadedshadowmap_depth',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
@@ -771,8 +731,8 @@ begin
                                                           0.0,
                                                           false,
                                                           0.0,
-                                                          false,
-                                                          VK_COMPARE_OP_ALWAYS,
+                                                          true,
+                                                          VK_COMPARE_OP_LESS,
                                                           0.0,
                                                           0.0,
                                                           VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
@@ -1081,7 +1041,7 @@ begin
                                        fVulkanPipelineLayout.Handle,
                                        3,
                                        1,
-                                       @fGlobalVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,
+                                       @fGlobalVulkanDescriptorSets[aSwapChainImageIndex].Handle,
                                        0,
                                        nil);
 
@@ -1352,7 +1312,11 @@ end;
 procedure TScreenMain.TTonemappingRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      fVulkanPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
@@ -1665,7 +1629,11 @@ end;
 procedure TScreenMain.TAntialiasingRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      fVulkanPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
@@ -1741,35 +1709,25 @@ begin
 
  {if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
   end else}if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
   end else begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
   end;
 
  end else begin
 
   fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
-  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
  end;
-
- //fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
 {fFrameGraph.AddImageResourceType('resourcetype_surface',
                                   true,
@@ -1843,45 +1801,13 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_data',
-                                  true,
-//                                VK_FORMAT_R16G16B16A16_UNORM,
-                                  VK_FORMAT_R32G32B32A32_SFLOAT,
-                                  fVulkanShadowMapSampleCountFlagBits,
-                                  TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
-                                  1
-                                 );
-
- fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_depth',
-                                  true,
-                                  VK_FORMAT_D32_SFLOAT,
-                                  fVulkanShadowMapSampleCountFlagBits,
-                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
-                                  1
-                                 );
-
- fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_data',
-                                  true,
-//                                VK_FORMAT_R16G16B16A16_UNORM,
-                                  VK_FORMAT_R32G32B32A32_SFLOAT,
-                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                  TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
-                                  1
-                                 );
-
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_depth',
                                   true,
                                   VK_FORMAT_D32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
 
@@ -2141,9 +2067,10 @@ begin
  SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
 
  LightForwardVector:=-TSkyCubeMap.LightDirection.xyz.Normalize;
- LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
+ LightSideVector:=LightForwardVector.Perpendicular;
+{LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
                                               -aViewLeft.ViewMatrix.RawComponents[1,2],
-                                              -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;
+                                              -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;}
  if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
   if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
    LightSideVector:=TpvVector3.YAxis;
@@ -2170,16 +2097,16 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
+ MinZ:=0.1;
+ MaxZ:=4096;
+
  SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
 
- MinZExtents:=SceneLightSpaceBoundingBox.Min.z-16;
- MaxZExtents:=SceneLightSpaceBoundingBox.Max.z+16;
- ZMargin:=(MaxZExtents-MinZExtents)*0.25;
+ MinZExtents:=SceneLightSpaceBoundingBox.Min.z;
+ MaxZExtents:=SceneLightSpaceBoundingBox.Max.z;
+ ZMargin:=(MaxZExtents-MinZExtents)*0.1;
  MinZExtents:=MinZExtents-ZMargin;
- MaxZExtents:=MaxZExtents+ZMargin;
-
- MinZ:=1e-3;
- MaxZ:=4096.0;
+ MaxZExtents:=MaXZExtents+ZMargin;
 
  for Index:=0 to 3 do begin
 
@@ -2225,8 +2152,7 @@ begin
 
  CascadedShadowMaps:=@fSwapChainImageCascadedShadowMaps[aSwapChainImageIndex];
 
- CascadedShadowMaps^[0].SplitDepths.x:=MinZ;
- CascadedShadowMaps^[0].SplitDepths.z:=MinZ;
+ CascadedShadowMaps^[0].SplitDepths.x:=0.0;
  Ratio:=MaxZ/MinZ;
  LastValue:=0.0;
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
@@ -2234,7 +2160,6 @@ begin
          ((1.0-CascadedShadowMapSplitConstant)*(MinZ+((CascadedShadowMapIndex/CountCascadedShadowMapCascades)*(MaxZ-MinZ))));
   FadeStartValue:=Min(Max(((Value-LastValue)*0.95)+LastValue,MinZ),MaxZ);
   LastValue:=Value;
-  CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.z:=Min(Max(Value,MinZ),MaxZ);
   CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,MinZ),MaxZ);
   CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,MinZ),MaxZ);
  end;
@@ -2268,13 +2193,13 @@ begin
    LightSpaceAABB:=LightSpaceAABB.GetIntersection(SceneLightSpaceBoundingBox);
   end;
 
-  //LightSpaceAABB:=SceneLightSpaceBoundingBox;
+ /// LightSpaceAABB:=SceneLightSpaceBoundingBox;
 
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
 
   Border:=4;
 
-  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius*2);
+  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius);
 
   Step.x:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapWidth-(2.0*Border));
   Step.y:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapHeight-(2.0*Border));
@@ -2324,7 +2249,7 @@ begin
   CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
 
   fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
-  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0);
+  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0,0.0);
 
  end;
 
@@ -2450,18 +2375,16 @@ begin
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
- SwapChainImageIndex:=pvApplication.DrawSwapChainImageIndex;
 //writeln('D: ',SwapChainImageIndex,' ',aSwapChainImageIndex);
- fFrameGraph.Draw(SwapChainImageIndex,
+ fFrameGraph.Draw(aSwapChainImageIndex,
                   pvApplication.DrawFrameCounter,
                   aWaitSemaphore,
-                  fVulkanRenderSemaphores[SwapChainImageIndex],
+                  fVulkanRenderSemaphores[aSwapChainImageIndex],
                   aWaitFence);
- TPasMPInterlocked.Write(fSwapChainImageStates[SwapChainImageIndex].Ready,false);
- aWaitSemaphore:=fVulkanRenderSemaphores[SwapChainImageIndex];
+ TPasMPInterlocked.Write(fSwapChainImageStates[pvApplication.DrawSwapChainImageIndex].Ready,false);
+ aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;

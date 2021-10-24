@@ -43,15 +43,15 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
-        const CascadedShadowMapWidth=512;
-              CascadedShadowMapHeight=512;
+        const CascadedShadowMapWidth=1024;
+              CascadedShadowMapHeight=1024;
               CountCascadedShadowMapCascades=4;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
                View:TpvScene3D.TView;
                CombinedMatrix:TpvMatrix4x4;
-               SplitDepths:TpvVector3;
+               SplitDepths:TpvVector2;
                Scales:TpvVector2;
              end;
              PCascadedShadowMap=^TCascadedShadowMap;
@@ -2170,16 +2170,16 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
+ MinZ:=0.1;
+ MaxZ:=4096;
+
  SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
 
- MinZExtents:=SceneLightSpaceBoundingBox.Min.z-16;
- MaxZExtents:=SceneLightSpaceBoundingBox.Max.z+16;
- ZMargin:=(MaxZExtents-MinZExtents)*0.25;
+ MinZExtents:=SceneLightSpaceBoundingBox.Min.z;
+ MaxZExtents:=SceneLightSpaceBoundingBox.Max.z;
+ ZMargin:=(MaxZExtents-MinZExtents)*0.1;
  MinZExtents:=MinZExtents-ZMargin;
- MaxZExtents:=MaxZExtents+ZMargin;
-
- MinZ:=1e-3;
- MaxZ:=4096.0;
+ MaxZExtents:=MaXZExtents+ZMargin;
 
  for Index:=0 to 3 do begin
 
@@ -2225,8 +2225,7 @@ begin
 
  CascadedShadowMaps:=@fSwapChainImageCascadedShadowMaps[aSwapChainImageIndex];
 
- CascadedShadowMaps^[0].SplitDepths.x:=MinZ;
- CascadedShadowMaps^[0].SplitDepths.z:=MinZ;
+ CascadedShadowMaps^[0].SplitDepths.x:=0.0;
  Ratio:=MaxZ/MinZ;
  LastValue:=0.0;
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
@@ -2234,7 +2233,6 @@ begin
          ((1.0-CascadedShadowMapSplitConstant)*(MinZ+((CascadedShadowMapIndex/CountCascadedShadowMapCascades)*(MaxZ-MinZ))));
   FadeStartValue:=Min(Max(((Value-LastValue)*0.95)+LastValue,MinZ),MaxZ);
   LastValue:=Value;
-  CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.z:=Min(Max(Value,MinZ),MaxZ);
   CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,MinZ),MaxZ);
   CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,MinZ),MaxZ);
  end;
@@ -2268,13 +2266,13 @@ begin
    LightSpaceAABB:=LightSpaceAABB.GetIntersection(SceneLightSpaceBoundingBox);
   end;
 
-  //LightSpaceAABB:=SceneLightSpaceBoundingBox;
+  LightSpaceAABB:=SceneLightSpaceBoundingBox;
 
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
 
   Border:=4;
 
-  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius*2);
+  RoundedUpLightSpaceSphereRadius:=ceil(LightSpaceSphere.Radius);
 
   Step.x:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapWidth-(2.0*Border));
   Step.y:=(2.0*RoundedUpLightSpaceSphereRadius)/(CascadedShadowMapHeight-(2.0*Border));
@@ -2324,7 +2322,7 @@ begin
   CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
 
   fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
-  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0);
+  fCascadedShadowMapUniformBuffers[aSwapChainImageIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0,0.0);
 
  end;
 
