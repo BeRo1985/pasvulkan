@@ -20,7 +20,7 @@ layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
 #ifdef SHADOWMAP
-#ifdef MSM
+#if 0 //def MSM
 #if 1
 layout(location = 0) out vec4 outFragDepth;
 #else
@@ -345,7 +345,7 @@ float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex){
   shadowNDC /= shadowNDC.w;
   shadowNDC.xy = fma(shadowNDC.xy, vec2(0.5), vec2(0.5));
   if (all(greaterThanEqual(shadowNDC, vec4(0.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
-#if 0
+#if 1
     vec4 moments = (textureLod(uCascadedShadowMapTexture, vec3(shadowNDC.xy, float(int(cascadedShadowMapIndex))), 0.0) +  //
                     vec2(-0.035955884801, 0.0).xyyy) *                                                                    //
                   mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555,                                           //
@@ -567,7 +567,7 @@ void main() {
 #endif
 #ifdef SHADOWMAP
   //vec4 t = uFrameGlobals.viewProjectionMatrix * vec4(inWorldSpacePosition, 1.0);
-#ifdef MSM
+#if 0 //def MSM
   float d = gl_FragCoord.z;  // fma(t.z / t.w, 0.5, 0.5);
 #if 1
   float s = d * d;
