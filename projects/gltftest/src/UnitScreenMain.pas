@@ -2124,8 +2124,8 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_data',
                                   true,
-//                                VK_FORMAT_R16G16B16A16_UNORM,
-                                  VK_FORMAT_R32G32B32A32_SFLOAT,
+                                  VK_FORMAT_R16G16B16A16_UNORM,
+//                                VK_FORMAT_R32G32B32A32_SFLOAT,
                                   fVulkanShadowMapSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
@@ -2145,8 +2145,8 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_data',
                                   true,
-//                                VK_FORMAT_R16G16B16A16_UNORM,
-                                  VK_FORMAT_R32G32B32A32_SFLOAT,
+                                  VK_FORMAT_R16G16B16A16_UNORM,
+//                                VK_FORMAT_R32G32B32A32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,CascadedShadowMapWidth,CascadedShadowMapHeight,1.0,CountCascadedShadowMapCascades),
