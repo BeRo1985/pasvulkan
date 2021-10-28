@@ -402,7 +402,7 @@ void main() {
         case smPBRMetallicRoughness: {
           specularFactor = uMaterial.specularFactor.w;
           specularColorFactor = uMaterial.specularFactor.xyz;
-          if ((flags & (1u << 9u)) != 0u) {
+          if ((flags & (1u << 9u)) != 0u){
             specularFactor *= textureFetch(uTextures[9], 9, vec4(1.0)).x;
             specularColorFactor *= textureFetchSRGB(uTextures[10], 10, vec4(1.0)).xyz;
           }
@@ -410,7 +410,7 @@ void main() {
           vec4 baseColor = textureFetchSRGB(uTextures[0], 0, vec4(1.0)) * uMaterial.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(uTextures[1], 1, vec4(1.0)).zy * uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (vec3(1.0) - max(max(dielectricSpecularF0.x, dielectricSpecularF0.y), dielectricSpecularF0.z)) * (1.0 - metallicRoughness.x)), baseColor.w);
-          F0 = mix(F0, baseColor.xyz, metallicRoughness.x);
+          F0 = mix(dielectricSpecularF0, baseColor.xyz, metallicRoughness.x);
           perceptualRoughness = metallicRoughness.y;
           break;
         }
