@@ -2777,7 +2777,7 @@ begin
  begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_ior'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   fData.IOR:=TPasJSON.GetNumber(JSONObject.Properties['ior'],1.5);
+   fData.IOR:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['ior'],1.5);
   end;
  end;
 

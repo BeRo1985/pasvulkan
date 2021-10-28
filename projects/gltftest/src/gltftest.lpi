@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="hippo.glb /prefer-igpus"/>
+        <CommandLineParams Value="TransmissionRoughnessTest.glb"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="hippo.glb /prefer-igpus"/>
+            <CommandLineParams Value="TransmissionRoughnessTest.glb"/>
           </local>
         </Mode0>
       </Modes>
