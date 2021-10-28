@@ -515,6 +515,7 @@ type EpvScene3D=class(Exception);
               procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
+              procedure AssignFromEmpty;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
             end;
@@ -1197,6 +1198,7 @@ type EpvScene3D=class(Exception);
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
        fMaterialHashMap:TMaterialHashMap;
+       fEmptyMaterial:TpvScene3D.TMaterial;
        fLights:array[0..MaxSwapChainImages+1] of TpvScene3D.TLights;
        fCountLights:array[0..MaxSwapChainImages+1] of TpvSizeInt;
        fIndirectLights:array[0..MaxSwapChainImages+1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
@@ -2489,6 +2491,20 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TMaterial.AssignFromEmpty;
+var Index:TpvSizeInt;
+    JSONItem:TPasJSONItem;
+    JSONObject:TPasJSONItemObject;
+begin
+
+ fName:='';
+
+ fData:=TpvScene3D.TMaterial.DefaultData;
+
+ FillShaderData;
+
+end;
+
 procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
 var Index:TpvSizeInt;
     JSONItem:TPasJSONItem;
@@ -3354,12 +3370,16 @@ end;
 destructor TpvScene3D.TGroup.TMesh.Destroy;
 var Index:TpvSizeInt;
     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    EmptyMaterial:TpvScene3D.TMaterial;
 begin
+ EmptyMaterial:=fGroup.fSceneInstance.fEmptyMaterial;
  for Index:=0 to length(fPrimitives)-1 do begin
   Primitive:=@fPrimitives[Index];
   if assigned(Primitive^.Material) then begin
    try
-    Primitive^.Material.DecRef;
+    if Primitive^.Material<>EmptyMaterial then begin
+     Primitive^.Material.DecRef;
+    end;
    finally
     Primitive^.Material:=nil;
    end;
@@ -3591,7 +3611,7 @@ begin
         DestinationMeshPrimitive^.Material.IncRef;
        end;
       end else begin
-       DestinationMeshPrimitive^.Material:=nil;
+       DestinationMeshPrimitive^.Material:=fGroup.fSceneInstance.fEmptyMaterial;
       end;
 
       HasJoints:=false;
@@ -5029,7 +5049,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Images.Count-1 do begin
    SourceImage:=aSourceDocument.Images[Index];
-   Image:=TImage.Create(pvApplication.ResourceManager,self);
+   Image:=TImage.Create(pvApplication.ResourceManager,fSceneInstance);
    try
     fSceneInstance.fImageListLock.Acquire;
     try
@@ -5061,7 +5081,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
    SourceSampler:=aSourceDocument.Samplers[Index];
-   Sampler:=TSampler.Create(pvApplication.ResourceManager,self);
+   Sampler:=TSampler.Create(pvApplication.ResourceManager,fSceneInstance);
    try
     fSceneInstance.fSamplerListLock.Acquire;
     try
@@ -5092,7 +5112,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Textures.Count-1 do begin
    SourceTexture:=aSourceDocument.Textures[Index];
-   Texture:=TTexture.Create(pvApplication.ResourceManager,self);
+   Texture:=TTexture.Create(pvApplication.ResourceManager,fSceneInstance);
    try
     fSceneInstance.fTextureListLock.Acquire;
     try
@@ -5123,7 +5143,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
    SourceMaterial:=aSourceDocument.Materials[Index];
-   Material:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,self);
+   Material:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,fSceneInstance);
    try
     fSceneInstance.fMaterialListLock.Acquire;
     try
@@ -6848,6 +6868,10 @@ begin
  fMaterials.OwnsObjects:=false;
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
+
+ fEmptyMaterial:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,self);
+ fEmptyMaterial.AssignFromEmpty;
+ fEmptyMaterial.IncRef;
 
  for Index:=0 to length(fLights)-1 do begin
   fLights[Index]:=TpvScene3D.TLights.Create;
