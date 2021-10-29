@@ -115,7 +115,8 @@ begin
 {$ifend}
  fVirtualReality:=TpvVirtualReality.Create(VirtualRealityMode);
  fVirtualReality.ZNear:=0.1;
- fVirtualReality.ZFar:=Infinity;
+ fVirtualReality.ZFar:=-1024.0;//Infinity;
+//fVirtualReality.ZFar:=-Infinity;
 end;
 
 destructor TApplication.Destroy;

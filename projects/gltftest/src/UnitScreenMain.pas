@@ -581,7 +581,7 @@ begin
      end;
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true; //AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
@@ -1259,7 +1259,7 @@ inherited Create(aFrameGraph);
                                       'forwardrendering_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                                                   TpvVector4.InlineableCreate(IfThen(UnitApplication.Application.VirtualReality.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
 
@@ -1286,7 +1286,7 @@ inherited Create(aFrameGraph);
                                       'forwardrendering_msaa_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                                                   TpvVector4.InlineableCreate(IfThen(UnitApplication.Application.VirtualReality.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
 
@@ -1588,8 +1588,12 @@ begin
      end;
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
-     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+     end else begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+     end;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
 
@@ -2742,22 +2746,34 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     Border,RoundedUpLightSpaceSphereRadius,
 {$endif}
     zNear,zFar:TpvScalar;
+    DoNeedRefitNearFarPlanes:boolean;
     ViewSpaceFrustumCornersLeft,
     ViewSpaceFrustumCornersRight:array[0..7] of TpvVector3;
     SwapChainImageState:PSwapChainImageState;
 begin
 
- zNear:=0.1;
- zFar:=4096.0;
+ if IsInfinite(UnitApplication.Application.VirtualReality.ZFar) then begin
+  zNear:=0.1;
+  zFar:=4096.0;
+  DoNeedRefitNearFarPlanes:=true;
+ end else begin
+  zNear:=abs(UnitApplication.Application.VirtualReality.ZNear);
+  zFar:=abs(UnitApplication.Application.VirtualReality.ZFar);
+  DoNeedRefitNearFarPlanes:=UnitApplication.Application.VirtualReality.ZFar<0.0;
+ end;
 
  ProjectionMatrix:=aViewLeft.ProjectionMatrix;
- ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
- ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ if DoNeedRefitNearFarPlanes then begin
+  ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
+  ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ end;
  InverseProjectionMatrixLeft:=ProjectionMatrix.Inverse;
 
  ProjectionMatrix:=aViewRight.ProjectionMatrix;
- ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
- ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ if DoNeedRefitNearFarPlanes then begin
+  ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
+  ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+ end;
  InverseProjectionMatrixRight:=ProjectionMatrix.Inverse;
 
  SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;

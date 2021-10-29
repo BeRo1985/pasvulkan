@@ -778,6 +778,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateFrustumLeftHandedZeroToOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumRightHandedNegativeOneToPositiveOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumRightHandedZeroToOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateFrustumRightHandedOneToZero(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateOrthoLeftHandedNegativeOneToPositiveOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateOrthoLeftHandedZeroToOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
@@ -790,8 +791,10 @@ type PpvScalar=^TpvScalar;
        constructor CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveLeftHandedNegativeOneToPositiveOne(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveLeftHandedZeroToOne(const fovy,Aspect,zNear,zFar:TpvScalar);
+       constructor CreatePerspectiveLeftHandedOneToZero(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveRightHandedNegativeOneToPositiveOne(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveRightHandedZeroToOne(const fovy,Aspect,zNear,zFar:TpvScalar);
+       constructor CreatePerspectiveRightHandedOneToZero(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveReversedZ(const aFOVY,aAspectRatio,aZNear:TpvScalar);
        constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreateLookAt(const Eye,Center,Up:TpvVector3);
@@ -8423,6 +8426,30 @@ begin
  RawComponents[3,3]:=0.0;
 end;
 
+constructor TpvMatrix4x4.CreateFrustumRightHandedOneToZero(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=(zNear*2.0)/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=(zNear*2.0)/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=(Right+Left)/rml;
+ RawComponents[2,1]:=(Top+Bottom)/tmb;
+ RawComponents[2,2]:=(-zNear)/fmn;
+ RawComponents[2,3]:=-1.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=(zNear*zFar)/fmn;
+ RawComponents[3,3]:=0.0;
+end;
+
 constructor TpvMatrix4x4.CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
 var rml,tmb,fmn:TpvScalar;
 begin
@@ -8699,6 +8726,24 @@ begin
  end;
 end;
 
+constructor TpvMatrix4x4.CreatePerspectiveLeftHandedOneToZero(const fovy,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovy*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent/aspect;
+  RawComponents[1,1]:=Cotangent;
+  RawComponents[2,2]:=(-zNear)/(zFar-zNear);
+  RawComponents[2,3]:=1.0;
+  RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
 constructor TpvMatrix4x4.CreatePerspectiveRightHandedNegativeOneToPositiveOne(const fovy,Aspect,zNear,zFar:TpvScalar);
 var Sine,Cotangent,ZDelta,Radians:TpvScalar;
 begin
@@ -8731,6 +8776,24 @@ begin
   RawComponents[2,2]:=zFar/(zNear-zFar);
   RawComponents[2,3]:=-1.0;
   RawComponents[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(const fovy,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovy*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent/aspect;
+  RawComponents[1,1]:=Cotangent;
+  RawComponents[2,2]:=(-zNear)/(zFar-zNear);
+  RawComponents[2,3]:=-1.0;
+  RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
   RawComponents[3,3]:=0.0;
  end;
 end;

@@ -132,6 +132,7 @@ type EpvVirtualReality=class(Exception);
             TProjectionMatrixMode=
              (
               Normal,
+              ReversedZ,
               InfiniteFarPlaneReversedZ
              );
             TVulkanMemoryBlocks=TpvObjectGenericList<TpvVulkanDeviceMemoryBlock>;
@@ -632,13 +633,20 @@ procedure TpvVirtualReality.UpdateMatrices;
 
   for EyeIndex:=0 to 1 do begin
 
-   OpenVRMatrix.m44:=fOpenVR_VR_IVRSystem_FnTable^.GetProjectionMatrix(OpenVREyes[EyeIndex],fZNear,IfThen(IsInfinite(fZFar),1024.0,fZFar));
+   OpenVRMatrix.m44:=fOpenVR_VR_IVRSystem_FnTable^.GetProjectionMatrix(OpenVREyes[EyeIndex],abs(fZNear),IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
    fOpenVR_ProjectionMatrices[EyeIndex]:=OpenVRMatrix.Matrix.Transpose;
-   if IsInfinite(fZFar) then begin
-    // Convert to reversed infinite Z
-    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=0.0;
-    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
-    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=fZNear;
+   if fZFar<0.0 then begin
+    if IsInfinite(fZFar) then begin
+     // Convert to reversed infinite Z
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=0.0;
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=abs(fZNear);
+    end else begin
+     // Convert to reversed non-infinite Z
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    end;
    end;
    fOpenVR_ProjectionMatrices[EyeIndex]:=fOpenVR_ProjectionMatrices[EyeIndex]*TpvMatrix4x4.FlipYClipSpace;
 
@@ -1629,42 +1637,82 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
 {$endif}
   TMode.Faked:begin
    AspectRatio:=(fWidth*0.5)/fHeight;
-   WidthRatio:=fZNear*tan(DEG2RAD*FakedFOV*0.5);
-   ZNearOverFocalLength:=fZNear/FocalLength;
+   WidthRatio:=abs(fZNear)*tan(DEG2RAD*FakedFOV*0.5);
+   ZNearOverFocalLength:=abs(fZNear)/FocalLength;
    EyeOffset:=(EyeSeparation*0.5*ZNearOverFocalLength)*BooleanToSign[aIndex>0];
    Left:=((-WidthRatio)*AspectRatio)+EyeOffset;
    Right:=(WidthRatio*AspectRatio)+EyeOffset;
    Top:=WidthRatio;
    Bottom:=-WidthRatio;
-   result:=TpvMatrix4x4.CreateFrustumRightHandedZeroToOne(Left,
-                                                          Right,
-                                                          Bottom,
-                                                          Top,
-                                                          fZNear,
-                                                          IfThen(IsInfinite(fZFar),1024.0,fZFar));
-   if IsInfinite(fZFar) then begin
-    // Convert to reversed infinite Z
-    result.RawComponents[2,2]:=0.0;
-    result.RawComponents[2,3]:=-1.0;
-    result.RawComponents[3,2]:=fZNear;
+   if fZFar>0.0 then begin
+    result:=TpvMatrix4x4.CreateFrustumRightHandedZeroToOne(Left,
+                                                           Right,
+                                                           Bottom,
+                                                           Top,
+                                                           abs(fZNear),
+                                                           IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+   end else begin
+    result:=TpvMatrix4x4.CreateFrustumRightHandedOneToZero(Left,
+                                                           Right,
+                                                           Bottom,
+                                                           Top,
+                                                           abs(fZNear),
+                                                           IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+   end;
+   if fZFar<0.0 then begin
+    if IsInfinite(fZFar) then begin
+     // Convert to reversed infinite Z
+     result.RawComponents[2,2]:=0.0;
+     result.RawComponents[2,3]:=-1.0;
+     result.RawComponents[3,2]:=abs(fZNear);
+    end else begin
+     // Convert to reversed non-infinite Z
+     result.RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     result.RawComponents[2,3]:=-1.0;
+     result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    end;
    end;
    result:=result*TpvMatrix4x4.FlipYClipSpace;
   end;
   else {TMode.Disabled:}begin
-   result:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
-                                                              fWidth/fHeight,
-                                                              fZNear,
-                                                              IfThen(IsInfinite(fZFar),1024.0,fZFar));
-   if IsInfinite(fZFar) then begin
-    // Convert to reversed infinite Z
-    result.RawComponents[2,2]:=0.0;
-    result.RawComponents[2,3]:=-1.0;
-    result.RawComponents[3,2]:=fZNear;
+   if fZFar>0.0 then begin
+    result:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
+                                                               fWidth/fHeight,
+                                                               abs(fZNear),
+                                                               IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+   end else begin
+    result:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
+                                                               fWidth/fHeight,
+                                                               abs(fZNear),
+                                                               IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+   end;
+   if fZFar<0.0 then begin
+    if IsInfinite(fZFar) then begin
+     // Convert to reversed infinite Z
+     result.RawComponents[2,2]:=0.0;
+     result.RawComponents[2,3]:=-1.0;
+     result.RawComponents[3,2]:=abs(fZNear);
+    end else begin
+     // Convert to reversed non-infinite Z
+     result.RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     result.RawComponents[2,3]:=-1.0;
+     result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    end;
    end;
    result:=result*TpvMatrix4x4.FlipYClipSpace;
   end;
  end;
  case fProjectionMatrixMode of
+  TProjectionMatrixMode.ReversedZ:begin
+   result.RawComponents[2,0]:=0.0;
+   result.RawComponents[2,1]:=0.0;
+   result.RawComponents[2,2]:=0.0;
+   result.RawComponents[2,3]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+   result.RawComponents[3,0]:=0.0;
+   result.RawComponents[3,1]:=0.0;
+   result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+   result.RawComponents[3,3]:=0.0;
+  end;
   TProjectionMatrixMode.InfiniteFarPlaneReversedZ:begin
    result.RawComponents[2,0]:=0.0;
    result.RawComponents[2,1]:=0.0;
@@ -1672,7 +1720,7 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
    result.RawComponents[2,3]:=-1.0;
    result.RawComponents[3,0]:=0.0;
    result.RawComponents[3,1]:=0.0;
-   result.RawComponents[3,2]:=fZNear;
+   result.RawComponents[3,2]:=abs(fZNear);
    result.RawComponents[3,3]:=0.0;
   end;
   else {TProjectionMatrixMode.Normal:}begin
