@@ -643,10 +643,14 @@ procedure TpvVirtualReality.UpdateMatrices;
      fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=abs(fZNear);
     end else begin
      // Convert to reversed non-infinite Z
-     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
      fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
      fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
     end;
+   end else begin
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[2,3]:=-1.0;
+    fOpenVR_ProjectionMatrices[EyeIndex].RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
    end;
    fOpenVR_ProjectionMatrices[EyeIndex]:=fOpenVR_ProjectionMatrices[EyeIndex]*TpvMatrix4x4.FlipYClipSpace;
 
@@ -1667,7 +1671,7 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
      result.RawComponents[3,2]:=abs(fZNear);
     end else begin
      // Convert to reversed non-infinite Z
-     result.RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     result.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
      result.RawComponents[2,3]:=-1.0;
      result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
     end;
@@ -1694,7 +1698,7 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
      result.RawComponents[3,2]:=abs(fZNear);
     end else begin
      // Convert to reversed non-infinite Z
-     result.RawComponents[2,2]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+     result.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
      result.RawComponents[2,3]:=-1.0;
      result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
     end;
@@ -1706,8 +1710,8 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
   TProjectionMatrixMode.ReversedZ:begin
    result.RawComponents[2,0]:=0.0;
    result.RawComponents[2,1]:=0.0;
-   result.RawComponents[2,2]:=0.0;
-   result.RawComponents[2,3]:=(-abs(fZNear))/(abs(fZFar)-abs(fZNear));
+   result.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
+   result.RawComponents[2,3]:=-1.0;
    result.RawComponents[3,0]:=0.0;
    result.RawComponents[3,1]:=0.0;
    result.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));

@@ -776,6 +776,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateReflect(const PpvPlane:TpvPlane);
        constructor CreateFrustumLeftHandedNegativeOneToPositiveOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumLeftHandedZeroToOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateFrustumLeftHandedOneToZero(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumRightHandedNegativeOneToPositiveOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumRightHandedZeroToOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateFrustumRightHandedOneToZero(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
@@ -8378,6 +8379,30 @@ begin
  RawComponents[3,3]:=0.0;
 end;
 
+constructor TpvMatrix4x4.CreateFrustumLeftHandedOneToZero(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=(zNear*2.0)/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=(zNear*2.0)/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=(Right+Left)/rml;
+ RawComponents[2,1]:=(Top+Bottom)/tmb;
+ RawComponents[2,2]:=(-zNear)/fmn;
+ RawComponents[2,3]:=1.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=(zFar*zNear)/fmn;
+ RawComponents[3,3]:=0.0;
+end;
+
 constructor TpvMatrix4x4.CreateFrustumRightHandedNegativeOneToPositiveOne(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
 var rml,tmb,fmn:TpvScalar;
 begin
@@ -8442,7 +8467,7 @@ begin
  RawComponents[1,3]:=0.0;
  RawComponents[2,0]:=(Right+Left)/rml;
  RawComponents[2,1]:=(Top+Bottom)/tmb;
- RawComponents[2,2]:=(-zNear)/fmn;
+ RawComponents[2,2]:=zNear/fmn;
  RawComponents[2,3]:=-1.0;
  RawComponents[3,0]:=0.0;
  RawComponents[3,1]:=0.0;
@@ -8791,7 +8816,7 @@ begin
   RawComponents:=TpvMatrix4x4.Identity.RawComponents;
   RawComponents[0,0]:=Cotangent/aspect;
   RawComponents[1,1]:=Cotangent;
-  RawComponents[2,2]:=(-zNear)/(zFar-zNear);
+  RawComponents[2,2]:=zNear/(zFar-zNear);
   RawComponents[2,3]:=-1.0;
   RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
   RawComponents[3,3]:=0.0;
