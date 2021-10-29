@@ -302,7 +302,7 @@ float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in
   z[2] = (p * -0.5) + r;
   vec4 switchVal = (z[2] < z[0]) ? vec4(z[1], z[0], 1.0, 1.0) : ((z[1] < z[0]) ? vec4(z[0], z[1], 0.0, 1.0) : vec4(0.0));
   float quotient = (switchVal[0] * z[2] - b[0] * (switchVal[0] + z[2]) + b[1]) / ((z[2] - switchVal[1]) * (z[0] - z[1]));
-  return clamp((switchVal[2] + (switchVal[3] * quotient)), 0.0, 1.0);
+  return 1.0 - clamp((switchVal[2] + (switchVal[3] * quotient)), 0.0, 1.0);
 }
 
 float linearStep(float a, float b, float v) {
@@ -315,7 +315,15 @@ float reduceLightBleeding(float pMax, float amount) {
 
 float getMSMShadowIntensity(vec4 moments, float depth, float depthBias, float momentBias) {
   vec4 b = mix(moments, vec4(0.5), momentBias);
-  float d = depth - depthBias, l32d22 = fma(-b.x, b.y, b.z), d22 = fma(-b.x, b.x, b.y), squaredDepthVariance = fma(-b.y, b.y, b.w), d33d22 = dot(vec2(squaredDepthVariance, -l32d22), vec2(d22, l32d22)), invD22 = 1.0 / d22, l32 = l32d22 * invD22;
+  float                                                  //
+      d = depth - depthBias,                             //
+      l32d22 = fma(-b.x, b.y, b.z),                      //
+      d22 = fma(-b.x, b.x, b.y),                         //
+      squaredDepthVariance = fma(-b.y, b.y, b.w),        //
+      d33d22 = dot(vec2(squaredDepthVariance, -l32d22),  //
+                   vec2(d22, l32d22)),                   //
+      invD22 = 1.0 / d22,                                //
+      l32 = l32d22 * invD22;
   vec3 c = vec3(1.0, d - b.x, d * d);
   c.z -= b.y + (l32 * c.y);
   c.yz *= vec2(invD22, d22 / d33d22);
@@ -324,10 +332,10 @@ float getMSMShadowIntensity(vec4 moments, float depth, float depthBias, float mo
   vec2 pq = c.yx / c.z;
   vec3 z = vec3(d, vec2(-(pq.x * 0.5)) + (vec2(-1.0, 1.0) * sqrt(((pq.x * pq.x) * 0.25) - pq.y)));
   vec4 s = (z.z < z.x) ? vec3(z.y, z.x, 1.0).xyzz : ((z.y < z.x) ? vec4(z.x, z.y, 0.0, 1.0) : vec4(0.0));
-  return clamp((s.z + (s.w * ((((s.x * z.z) - (b.x * (s.x + z.z))) + b.y) / ((z.z - s.y) * (z.x - z.y))))) * 1.03, 0.0, 1.0);
+  return 1.0 - clamp((s.z + (s.w * ((((s.x * z.z) - (b.x * (s.x + z.z))) + b.y) / ((z.z - s.y) * (z.x - z.y))))) * 1.03, 0.0, 1.0);
 }
 
-float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex){
+float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
   vec4 shadowNDC = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
   shadowNDC /= shadowNDC.w;
@@ -335,14 +343,15 @@ float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex){
   if (all(greaterThanEqual(shadowNDC, vec4(0.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
     vec4 moments = (textureLod(uCascadedShadowMapTexture, vec3(shadowNDC.xy, float(int(cascadedShadowMapIndex))), 0.0) +  //
                     vec2(-0.035955884801, 0.0).xyyy) *                                                                    //
-                  mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555,                                           //
+                   mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555,                                           //
                         0.1549679261, 0.1394629426, 0.7963415838, -0.172282317,                                           //
                         0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811,                                          //
                         0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-    return 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
-  }else{
+    float depthBias = clamp(0.005 * tan(acos(clamp(dot(inNormal, -lightDirection), -1.0, 1.0))), 0.0, 0.1) * 0.15;
+		return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
+  } else {
     return 1.0;
-  } 
+  }
 }
 
 #endif
@@ -402,7 +411,7 @@ void main() {
         case smPBRMetallicRoughness: {
           specularFactor = uMaterial.specularFactor.w;
           specularColorFactor = uMaterial.specularFactor.xyz;
-          if ((flags & (1u << 9u)) != 0u){
+          if ((flags & (1u << 9u)) != 0u) {
             specularFactor *= textureFetch(uTextures[9], 9, vec4(1.0)).x;
             specularColorFactor *= textureFetchSRGB(uTextures[10], 10, vec4(1.0)).xyz;
           }
@@ -522,7 +531,7 @@ void main() {
                   if (all(greaterThanEqual(shadowNDC, vec4(-1.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
                     shadowNDC.xyz = fma(shadowNDC.xyz, vec3(0.5), vec3(0.5));
                     vec4 moments = (textureLod(uNormalShadowMapArrayTexture, vec3(shadowNDC.xy, float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                    lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
+                    lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
                   }
                   break;
                 }
@@ -530,7 +539,7 @@ void main() {
                   float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
                   vec3 vector = light.positionRange.xyz - inWorldSpacePosition;
                   vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                  lightAttenuation *= 1.0 - reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
+                  lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
 #endif
@@ -540,20 +549,20 @@ void main() {
                   float viewSpaceDepth = -inViewSpacePosition.z;
                   for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepths[cascadedShadowMapIndex].xy;
-                    if((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)){
-                      float shadow = doCascadedShadowMapMSMShadow(cascadedShadowMapIndex);
+                    if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
+                      float shadow = doCascadedShadowMapMSMShadow(cascadedShadowMapIndex, light.directionZFar.xyz);
                       int nextCascadedShadowMapIndex = cascadedShadowMapIndex + 1;
-                      if(nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES){
+                      if (nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
                         vec2 nextShadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepths[nextCascadedShadowMapIndex].xy;
-                        if((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)){
+                        if ((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)) {
                           float splitFade = smoothstep(nextShadowMapSplitDepth.x, shadowMapSplitDepth.y, viewSpaceDepth);
-                          if(splitFade > 0.0){
-                            shadow = mix(shadow, doCascadedShadowMapMSMShadow(nextCascadedShadowMapIndex), splitFade);
-                          }                          
+                          if (splitFade > 0.0) {
+                            shadow = mix(shadow, doCascadedShadowMapMSMShadow(nextCascadedShadowMapIndex, light.directionZFar.xyz), splitFade);
+                          }
                         }
                       }
                       lightAttenuation *= shadow;
-                      break;                    
+                      break;
                     }
                   }
                   break;
