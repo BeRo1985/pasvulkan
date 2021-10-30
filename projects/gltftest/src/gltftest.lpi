@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="track0.glb"/>
+        <CommandLineParams Value="hippo.glb /prefer-igpus"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="track0.glb"/>
+            <CommandLineParams Value="hippo.glb /prefer-igpus"/>
           </local>
         </Mode0>
       </Modes>

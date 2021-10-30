@@ -19,7 +19,7 @@ layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
-#ifndef SHADOWMAP
+#ifndef DEPTHONLY
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
 layout(location = 1) out vec4 outFragEmission;
@@ -74,7 +74,7 @@ layout(std430, set = 2, binding = 2) buffer LightTreeNodeData {
 };
 #endif
 
-#ifdef SHADOWMAP
+#ifdef DEPTHONLY
 #else
 layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
@@ -106,7 +106,7 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
 
-#ifdef SHADOWMAP
+#ifdef DEPTHONLY
 #else
 #include "roughness.glsl"
 
@@ -382,13 +382,13 @@ vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in v
 }
 
 void main() {
-#ifndef SHADOWMAP
+#ifndef DEPTHONLY
   envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
   envMapMaxLevelCharlie = textureQueryLevels(uImageBasedLightingEnvMaps[1]);
   flags = uMaterial.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
-#ifdef SHADOWMAP
+#ifdef DEPTHONLY
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * inColor0.w;
 #else
   vec4 color = vec4(0.0);

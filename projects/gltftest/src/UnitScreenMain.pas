@@ -410,14 +410,14 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_shadow_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_shadow_masked_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
