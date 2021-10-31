@@ -39,6 +39,7 @@ uses SysUtils,
      UnitCharlieEnvMapCubeMap,
      UnitLambertianEnvMapCubeMap,
      UnitSkyBox,
+     UnitOrderIndependentTransparencyBuffer,
      UnitOrderIndependentTransparencyImage;
 
 type { TScreenMain }
@@ -47,6 +48,7 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
+              CountOITLayers=4;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
@@ -357,7 +359,7 @@ type { TScreenMain }
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:Int32;
        fUseDepthPrepass:boolean;
-       fOrderIndependentTransparencyABufferImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
+       fOrderIndependentTransparencyABufferBuffers:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyBuffer;
        fOrderIndependentTransparencyAuxImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
        fOrderIndependentTransparencySpinLockImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
        procedure CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
@@ -1330,12 +1332,6 @@ begin
  ClearRanges.baseMipLevel:=0;
  ClearRanges.layerCount:=UnitApplication.Application.VirtualReality.VulkanImages.Count;
  ClearRanges.levelCount:=1;
-
-{aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencyABufferImages[aSwapChainImageIndex].VulkanImage.Handle,
-                                   VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValue,
-                                   1,
-                                   @ClearRanges);}
 
  aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencyAuxImages[aSwapChainImageIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
@@ -3389,11 +3385,9 @@ begin
 
  for Index:=0 to fFrameGraph.CountSwapChainImages-1 do begin
 
-  fOrderIndependentTransparencyABufferImages[Index]:=TOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                               fHeight,
-                                                                                               UnitApplication.Application.VirtualReality.VulkanImages.Count,
-                                                                                               VK_FORMAT_R32G32B32A32_UINT,
-                                                                                               VK_SAMPLE_COUNT_1_BIT);
+  fOrderIndependentTransparencyABufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*CountOITLayers*UnitApplication.Application.VirtualReality.VulkanImages.Count*(SizeOf(UInt32)*4),
+                                                                                                 VK_FORMAT_R32G32B32A32_UINT,
+                                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
 
   fOrderIndependentTransparencyAuxImages[Index]:=TOrderIndependentTransparencyImage.Create(fWidth,
                                                                                            fHeight,
@@ -3421,7 +3415,7 @@ begin
  fFrameGraph.BeforeDestroySwapChain;
  fExternalOutputImageData.VulkanImages.Clear;
  for Index:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fOrderIndependentTransparencyABufferImages[Index]);
+  FreeAndNil(fOrderIndependentTransparencyABufferBuffers[Index]);
   FreeAndNil(fOrderIndependentTransparencyAuxImages[Index]);
   FreeAndNil(fOrderIndependentTransparencySpinLockImages[Index]);
  end;
