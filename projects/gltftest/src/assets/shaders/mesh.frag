@@ -108,13 +108,12 @@ layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef OIT
 
-layout(set = 3, binding = 4, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-layout(set = 3, binding = 5, r32ui) uniform coherent uimage2DArray uOITImgAux;
+layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uOITImgDepth;
+layout(set = 3, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
 #ifndef INTERLOCK
-layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
 #endif
-layout(input_attachment_index = 0, set = 3, binding = 7) uniform subpassInput uOITImgDepth;
-//layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgDepth;
 
 layout (push_constant) uniform PushConstants {
   ivec4 oitViewPort;
@@ -783,7 +782,7 @@ void main() {
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); //uint oitDepth = imageLoad(uOITImgDepth, oitCoord).r;
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
   if(
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
