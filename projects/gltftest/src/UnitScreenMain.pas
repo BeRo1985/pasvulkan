@@ -3360,7 +3360,11 @@ begin
 end;
 
 procedure TScreenMain.AfterCreateSwapChain;
-var Index:TpvSizeInt;
+var Index,
+    OITViewPortX,
+    OITViewPortY,
+    OITViewPortZ,
+    OITViewPortW:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
 
@@ -3382,6 +3386,11 @@ begin
  end;
 
  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
+
+ OITViewPortX:=fWidth;
+ OITViewPortY:=fHeight;
+ OITViewPortZ:=OITViewPortX*OITViewPortY;
+ OITViewPortW:=CountOITLayers;
 
  for Index:=0 to fFrameGraph.CountSwapChainImages-1 do begin
 

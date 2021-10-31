@@ -773,8 +773,8 @@ void main() {
   beginInvocationInterlock();
 #endif
 
-  int oitViewIndex = int(gl_ViewIndex);
-  ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitViewIndex);
+  int oitMultiViewIndex = int(gl_ViewIndex);
+  ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
@@ -795,9 +795,10 @@ void main() {
 
     finalColor.xyz *= finalColor.w; // Premultiply alpha
 
-    const int oitCountLayers = pushConstants.oitViewPort.w;
     const int oitViewSize = pushConstants.oitViewPort.z;
-    const int oitListPos = (oitViewSize * oitCountLayers * oitViewIndex) + ((oitCoord.y * pushConstants.oitViewPort.x) + oitCoord.x);
+    const int oitCountLayers = pushConstants.oitViewPort.w;
+    const int oitMultiViewSize = oitViewSize * oitCountLayers;
+    const int oitABufferBaseIndex = ((oitCoord.y * pushConstants.oitViewPort.x) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
 
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
@@ -809,13 +810,13 @@ void main() {
         const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).r;
         imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
         if(oitAuxCounter < oitCountLayers){
-          imageStore(uOITImgABuffer, oitListPos + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
+          imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
           finalColor = vec4(0.0);
         }else{
           int oitFurthest = 0;
           uint oitMaxDepth = 0;
           for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
-            uint oitTestDepth = imageLoad(uOITImgABuffer, oitListPos + (oitIndex * oitViewSize)).z;
+            uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
 #ifdef REVERSEDZ
             if(oitTestDepth < oitMaxDepth)
 #else
@@ -833,7 +834,7 @@ void main() {
           if(oitMaxDepth > oitStoreValue.z)
 #endif          
           {
-            int oitIndex = oitListPos + (oitFurthest * oitViewSize);
+            int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
             uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
             finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(oitOldValue.y));
             imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
