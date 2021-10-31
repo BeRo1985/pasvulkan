@@ -645,6 +645,7 @@ type EpvFrameGraph=class(Exception);
             TPassNameList=TpvGenericList<TpvRawByteString>;
             TComputePass=class;
             TTransferPass=class;
+            TCustomPass=class;
             TRenderPass=class;
             TPhysicalPass=class
              public
@@ -755,6 +756,19 @@ type EpvFrameGraph=class(Exception);
               fTransferPass:TTransferPass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aTransferPass:TTransferPass); reintroduce;
+              destructor Destroy; override;
+              procedure Show; override;
+              procedure Hide; override;
+              procedure AfterCreateSwapChain; override;
+              procedure BeforeDestroySwapChain; override;
+              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
+            end;
+            TPhysicalCustomPass=class(TPhysicalPass)
+             private
+              fCustomPass:TCustomPass;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aCustomPass:TCustomPass); reintroduce;
               destructor Destroy; override;
               procedure Show; override;
               procedure Hide; override;
@@ -1063,6 +1077,11 @@ type EpvFrameGraph=class(Exception);
              published
             end;
             TTransferPass=class(TPass)
+             private
+             public
+             published
+            end;
+            TCustomPass=class(TPass)
              private
              public
              published
@@ -3439,6 +3458,65 @@ begin
  SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
 end;
 
+{ TpvFrameGraph.TPhysicalCustomPass }
+
+constructor TpvFrameGraph.TPhysicalCustomPass.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aCustomPass:TCustomPass);
+begin
+ inherited Create(aFrameGraph,aCustomPass.fQueue);
+ fCustomPass:=aCustomPass;
+end;
+
+destructor TpvFrameGraph.TPhysicalCustomPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.Show;
+begin
+ inherited Show;
+ fCustomPass.Show;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.Hide;
+begin
+ fCustomPass.Hide;
+ inherited Hide;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.AfterCreateSwapChain;
+begin
+ inherited AfterCreateSwapChain;
+ fCustomPass.AfterCreateSwapChain;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.BeforeDestroySwapChain;
+begin
+ fCustomPass.BeforeDestroySwapChain;
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ if TPass.TFlag.Enabled in fCustomPass.fFlags then begin
+  fCustomPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ inherited Execute(aCommandBuffer);
+ fEventPipelineBarrierGroups.Execute(aCommandBuffer);
+ fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
+ ResetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ if fCustomPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+  fCustomPass.Execute(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+ end;
+ fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+end;
+
 { TpvFrameGraph.TPhysicalRenderPass.TSubpass }
 
 constructor TpvFrameGraph.TPhysicalRenderPass.TSubpass.Create(const aPhysicalRenderPass:TPhysicalRenderPass;
@@ -4506,6 +4584,12 @@ type TEventBeforeAfter=(Event,Before,After);
      Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
      inc(Index);
+    end else if Pass is TCustomPass then begin
+     Pass.fPhysicalPass:=TPhysicalCustomPass.Create(self,TCustomPass(Pass));
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
+     Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
+     inc(Index);
     end else if Pass is TRenderPass then begin
      OutputAttachmentImagesResources.Clear;
      for ResourceTransition in Pass.fResourceTransitions do begin
@@ -5394,37 +5478,39 @@ type TEventBeforeAfter=(Event,Before,After);
     if (Pass<>OtherPass) and
        (TPass.TFlag.Used in Pass.fFlags) and
        (TPass.TFlag.Used in OtherPass.fFlags) then begin
-     for Index:=0 to 1 do begin
-      if Index=0 then begin
-       PhyiscalPass:=OtherPass.fPhysicalPass;
-      end else begin
-       PhyiscalPass:=Pass.fPhysicalPass;
-      end;
-      if (PhyiscalPass is TPhysicalRenderPass) and
-         (TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count>0) then begin
-       begin
-        SubpassDependency.SrcSubpass:=nil;
-        SubpassDependency.DstSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[0];
-        SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                                         TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-        AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+     if not ((Pass.fPhysicalPass is TPhysicalCustomPass) or (OtherPass.fPhysicalPass is TPhysicalCustomPass)) then begin
+      for Index:=0 to 1 do begin
+       if Index=0 then begin
+        PhyiscalPass:=OtherPass.fPhysicalPass;
+       end else begin
+        PhyiscalPass:=Pass.fPhysicalPass;
        end;
-       begin
-        SubpassDependency.SrcSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count-1];
-        SubpassDependency.DstSubpass:=nil;
-        SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                                         TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-        AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+       if (PhyiscalPass is TPhysicalRenderPass) and
+          (TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count>0) then begin
+        begin
+         SubpassDependency.SrcSubpass:=nil;
+         SubpassDependency.DstSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[0];
+         SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+         SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+         SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+         SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+        end;
+        begin
+         SubpassDependency.SrcSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count-1];
+         SubpassDependency.DstSubpass:=nil;
+         SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+         SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+         SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+         SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+        end;
        end;
       end;
      end;
@@ -6083,6 +6169,7 @@ var QueueIndex,Index,SubpassIndex:TpvSizeInt;
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalTransferPass:TPhysicalTransferPass;
+    PhysicalCustomPass:TPhysicalCustomPass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
 begin
@@ -6099,6 +6186,10 @@ begin
      PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
      PhysicalTransferPass.fTransferPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
      PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalTransferPass.fTransferPass.fFlags;
+    end else if PhysicalPass is TPhysicalCustomPass then begin
+     PhysicalCustomPass:=TPhysicalCustomPass(PhysicalPass);
+     PhysicalCustomPass.fCustomPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+     PhysicalCustomPass.fCustomPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalCustomPass.fCustomPass.fFlags;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
      for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
@@ -6122,6 +6213,7 @@ var CommandBufferIndex,
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalTransferPass:TPhysicalTransferPass;
+    PhysicalCustomPass:TPhysicalCustomPass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
     Used:boolean;
@@ -6143,6 +6235,11 @@ begin
      PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
      if PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalTransferPass.Execute(VulkanCommandBuffer);
+     end;
+    end else if PhysicalPass is TPhysicalCustomPass then begin
+     PhysicalCustomPass:=TPhysicalCustomPass(PhysicalPass);
+     if PhysicalCustomPass.fCustomPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
+      PhysicalCustomPass.Execute(VulkanCommandBuffer);
      end;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
