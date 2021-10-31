@@ -1065,7 +1065,7 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
       published
        property Device:TpvVulkanDevice read fDevice;
-       property Handle:TVkRenderPass read fBufferViewHandle;
+       property Handle:TVkBufferView read fBufferViewHandle;
        property Buffer:TpvVulkanBuffer read fBuffer write fBuffer;
      end;
 
