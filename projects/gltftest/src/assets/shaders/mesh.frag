@@ -762,8 +762,8 @@ void main() {
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
 #ifdef OIT
-    alpha = 0.0;
-#else        
+    alpha = 0.0;    
+#else 
     discard;
 #endif
   }
