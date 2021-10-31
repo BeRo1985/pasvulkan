@@ -57,6 +57,17 @@ type { TScreenMain }
                SplitDepths:TpvVector3;
                Scales:TpvVector2;
              end;
+             { TOITViewPort }
+             TOITViewPort=packed record
+              x:TpvInt32;
+              y:TpvInt32;
+              z:TpvInt32;
+              w:TpvInt32;
+             end;
+             { TOITViewPort }
+             TOITPushConstants=packed record
+              ViewPort:TOITViewPort;
+             end;
              PCascadedShadowMap=^TCascadedShadowMap;
              TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
              PCascadedShadowMaps=^TCascadedShadowMaps;
@@ -359,6 +370,7 @@ type { TScreenMain }
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:Int32;
        fUseDepthPrepass:boolean;
+       fOITPushConstants:TOITPushConstants;
        fOrderIndependentTransparencyABufferBuffers:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyBuffer;
        fOrderIndependentTransparencyAuxImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
        fOrderIndependentTransparencySpinLockImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
@@ -3360,11 +3372,7 @@ begin
 end;
 
 procedure TScreenMain.AfterCreateSwapChain;
-var Index,
-    OITViewPortX,
-    OITViewPortY,
-    OITViewPortZ,
-    OITViewPortW:TpvSizeInt;
+var Index:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
 
@@ -3387,10 +3395,10 @@ begin
 
  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
 
- OITViewPortX:=fWidth;
- OITViewPortY:=fHeight;
- OITViewPortZ:=OITViewPortX*OITViewPortY;
- OITViewPortW:=CountOITLayers;
+ fOITPushConstants.ViewPort.x:=fWidth;
+ fOITPushConstants.ViewPort.y:=fHeight;
+ fOITPushConstants.ViewPort.z:=fOITPushConstants.ViewPort.x*fOITPushConstants.ViewPort.y;
+ fOITPushConstants.ViewPort.w:=CountOITLayers;
 
  for Index:=0 to fFrameGraph.CountSwapChainImages-1 do begin
 
