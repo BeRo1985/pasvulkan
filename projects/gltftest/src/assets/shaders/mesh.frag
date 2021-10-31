@@ -9,6 +9,8 @@
 
 #ifdef OIT
 #ifdef INTERLOCK
+#extension GL_ARB_post_depth_coverage : enable
+layout(post_depth_coverage) in;
 #ifdef NVIDIA
 #extension GL_NV_fragment_shader_interlock : enable
 #define beginInvocationInterlock beginInvocationInterlockNV
@@ -759,7 +761,11 @@ void main() {
 #endif
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
+#ifdef OIT
+    alpha = 0.0;
+#else        
     discard;
+#endif
   }
 #endif
 #ifdef OIT
@@ -778,12 +784,14 @@ void main() {
   // at least I hope it so:
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); //uint oitDepth = imageLoad(uOITImgDepth, oitCoord).r;
+  if(
 #ifdef REVERSEDZ
-  if (oitCurrentDepth >= oitDepth) 
+     (oitCurrentDepth >= oitDepth) &&  
 #else
-  if (oitCurrentDepth <= oitDepth) 
+     (oitCurrentDepth <= oitDepth) &&  
 #endif
-  {
+     (min(alpha, finalColor.w) > 0.0)
+    ){
 
     finalColor.xyz *= finalColor.w; // Premultiply alpha
 

@@ -600,7 +600,7 @@ begin
      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-     VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+     VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask;
      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
 
      VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
@@ -1752,7 +1752,7 @@ begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask;
       VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
 
       VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
