@@ -7,7 +7,21 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#ifndef ALPHATEST 
+#ifdef OIT
+#ifdef INTERLOCK
+#ifdef NVIDIA
+#extension GL_NV_fragment_shader_interlock : enable
+#define beginInvocationInterlock beginInvocationInterlockNV
+#define endInvocationInterlock endInvocationInterlockNV
+#else
+#extension GL_ARB_fragment_shader_interlock : enable
+#define beginInvocationInterlock beginInvocationInterlockARB
+#define endInvocationInterlock endInvocationInterlockARB
+#endif
+#endif
+#endif
+
+#ifndef ALPHATEST
 layout(early_fragment_tests) in;
 #endif
 
@@ -89,6 +103,21 @@ layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
 } uCascadedShadowMaps;
 
 layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
+
+#ifdef OIT
+
+layout(set = 3, binding = 4, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+layout(set = 3, binding = 5, r32ui) uniform coherent uimage2DArray uOITImgAux;
+#ifndef INTERLOCK
+layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+#endif
+layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgDepth;
+
+layout (push_constant) uniform PushConstants {
+  ivec4 oitViewPort;
+} pushConstants;
+
+#endif
 
 #endif
 
@@ -350,7 +379,7 @@ float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex, const in
                         0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811,                                          //
                         0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
     float depthBias = clamp(0.005 * tan(acos(clamp(dot(inNormal, -lightDirection), -1.0, 1.0))), 0.0, 0.1) * 0.15;
-		return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
+    return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
   } else {
     return 1.0;
   }
@@ -719,15 +748,101 @@ void main() {
     }
   }
   float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
-  outFragColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
+  vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
+#ifndef OIT
+  outFragColor = finalColor;
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
+#endif
 #endif
 #endif
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
     discard;
   }
+#endif
+#ifdef OIT
+#ifdef INTERLOCK
+  beginInvocationInterlock();
+#endif
+
+  int oitViewIndex = int(gl_ViewIndex);
+  ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitViewIndex);
+  uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+
+  // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
+  // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
+  // buffer values from the previous forward rendering pass, which should fix problems with 
+  // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
+  // at least I hope it so:
+  uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+  uint oitDepth = imageLoad(uOITImgDepth, oitCoord).r;
+#ifdef REVERSEDZ
+  if (oitCurrentDepth >= oitDepth) 
+#else
+  if (oitCurrentDepth <= oitDepth) 
+#endif
+  {
+
+    finalColor.xyz *= finalColor.w; // Premultiply alpha
+
+    const int oitCountLayers = pushConstants.oitViewPort.w;
+    const int oitViewSize = pushConstants.oitViewPort.z;
+    const int oitListPos = (oitViewSize * oitCountLayers * oitViewIndex) + ((oitCoord.y * pushConstants.oitViewPort.x) + oitCoord.x);
+
+    uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
+
+#ifndef INTERLOCK
+    bool oitDone = oitStoreMask == 0;
+    while(!oitDone){
+      if(imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u) == 0u){
+#endif
+        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).r;
+        imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
+        if(oitAuxCounter < oitCountLayers){
+          imageStore(uOITImgABuffer, oitListPos + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
+          finalColor = vec4(0.0);
+        }else{
+          int oitFurthest = 0;
+          uint oitMaxDepth = 0;
+          for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
+            uint oitTestDepth = imageLoad(uOITImgABuffer, oitListPos + (oitIndex * oitViewSize)).z;
+#ifdef REVERSEDZ
+            if(oitTestDepth < oitMaxDepth)
+#else
+            if(oitTestDepth > oitMaxDepth)
+#endif
+            {
+              oitMaxDepth = oitTestDepth;
+              oitFurthest = oitIndex;
+            }
+          }
+
+#ifdef REVERSEDZ
+          if(oitMaxDepth < oitStoreValue.z)
+#else
+          if(oitMaxDepth > oitStoreValue.z)
+#endif          
+          {
+            int oitIndex = oitListPos + (oitFurthest * oitViewSize);
+            uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
+            finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(oitOldValue.y));
+            imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
+          }
+        }
+#ifndef INTERLOCK
+        imageAtomicExchange(uOITImgSpinLock, oitCoord, 0u);        
+        oitDone = true;
+      }
+    }
+#endif
+
+    outFragColor = finalColor;
+  
+  }
+#ifdef INTERLOCK
+  endInvocationInterlock();
+#endif
 #endif
 }
 

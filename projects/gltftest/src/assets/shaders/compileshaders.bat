@@ -3,6 +3,10 @@
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.vert -o mesh_vert.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -o mesh_oit_spinlock_reversedz_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -DOIT -o mesh_oit_spinlock_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -DINTERLOCK -o mesh_oit_interlock_reversedz_frag.spv
+"%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DINTERLOCK -o mesh_oit_interlock_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DDEPTHONLY -o mesh_depth_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V mesh.frag -DDEPTHONLY -DALPHATEST -o mesh_depth_masked_frag.spv
 "%VULKAN_SDK%/Bin32/glslangValidator.exe" -V brdf_charlie.frag -o brdf_charlie_frag.spv
