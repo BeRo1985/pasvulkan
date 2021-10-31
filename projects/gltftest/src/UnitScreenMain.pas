@@ -1756,6 +1756,15 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
   end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
