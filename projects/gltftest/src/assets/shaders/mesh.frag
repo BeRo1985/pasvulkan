@@ -403,6 +403,11 @@ const uint smPBRMetallicRoughness = 0u,  //
 uvec2 texCoordIndices = uMaterial.alphaCutOffFlagsTex0Tex1.zw;
 vec2 texCoords[2] = vec2[2](inTexCoord0, inTexCoord1);
 
+vec2 textureUV(const sampler2D tex, const in int textureIndex, const in vec4 defaultValue) {
+  uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
+  return (which < 0x2u) ? (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy : inTexCoord0;
+}
+
 vec4 textureFetch(const sampler2D tex, const in int textureIndex, const in vec4 defaultValue) {
   uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
   return (which < 0x2u) ? texture(tex, (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy) : defaultValue;
@@ -776,6 +781,19 @@ void main() {
     finalColor.w = alpha = 1.0;    
 #endif
   }
+#ifndef OIT
+/*vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
+  vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
+  vec4 alphaDXY = vec4(vec2(dFdx(alphaTextureXY)), vec2(dFdy(alphaTextureXY)));
+  alpha *= 1.0 + (max(0.0, max(dot(alphaDXY.xy, alphaDXY.xy), dot(alphaDXY.zw, alphaDXY.zw)) * 0.5) * 0.25);*/
+  alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
+  if (alpha < 1e-2) {
+    alpha = 0.0;
+  }
+#ifndef DEPTHONLY  
+  outFragColor.w = finalColor.w = alpha;
+#endif
+#endif
 #endif
 #ifdef OIT
 

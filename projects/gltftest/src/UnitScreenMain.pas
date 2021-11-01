@@ -48,7 +48,7 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
-              CountOrderIndependentTransparencyLayers=8;
+              CountOrderIndependentTransparencyLayers=4;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
@@ -1710,11 +1710,20 @@ begin
       VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
       VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
-      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
-      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
-      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
-      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+      if (not DepthPrePass) and (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
+       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=true;
+       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
+       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+       VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=true;
+       VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+       VulkanGraphicsPipeline.MultisampleState.AddSampleMask((1 shl fParent.fCountSurfaceMSAASamples)-1);
+      end else begin
+       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+       VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+       VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+      end;
 
       VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
       VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
@@ -1732,7 +1741,7 @@ begin
                                                                            VK_BLEND_OP_ADD,
                                                                            0);
       end else begin
-       if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend then begin
+       if AlphaMode in [TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
         VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                             VK_BLEND_FACTOR_SRC_ALPHA,
                                                                             VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -1857,14 +1866,14 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+{  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          aSwapChainImageIndex,
                          0,
                          SwapChainImageState^.FinalViewIndex,
                          SwapChainImageState^.CountViews,
                          aCommandBuffer,
                          fVulkanPipelineLayout,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
 
   end;
 
@@ -1877,7 +1886,7 @@ begin
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
+  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                         aSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
@@ -1886,7 +1895,7 @@ begin
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
-  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
+{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
@@ -2546,14 +2555,14 @@ begin
                                        0,
                                        nil);
 
-  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                         aSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
                         SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,

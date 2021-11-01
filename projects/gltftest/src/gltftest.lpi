@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="transparent_cubes_test.glb"/>
+        <CommandLineParams Value="test4.glb"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="transparent_cubes_test.glb"/>
+            <CommandLineParams Value="test4.glb"/>
           </local>
         </Mode0>
       </Modes>

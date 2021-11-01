@@ -69,20 +69,37 @@ Write-Host "Count of CPU logical threads: $MaxThreads"
 Get-Job | Remove-Job
 
 ForEach ($arguments in $compileshaderarguments) {
-  While ($(Get-Job -state running).count -ge $MaxThreads) {
-     Start-Sleep -Milliseconds 10 
+  $running = @(Get-Job | Where-Object { $_.State -eq 'Running' })
+  if ($running.Count -ge $MaxThreads) {
+    $running | Wait-Job -Any | Out-Null
   }
-  Start-Job {
-    Start-Process -FilePath $args[0] -WorkingDirectory $args[1] -ArgumentList $args[2] -NoNewWindow -PassThru -Wait 
-  } -ArgumentList "$exepath", "$curDir", "$arguments"
+  Start-Job { 
+    #Start-Process -FilePath $args[0] -WorkingDirectory $args[1] -ArgumentList $args[2] -NoNewWindow -PassThru -Wait 
+    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+    $pinfo.FileName = $args[0]
+    $pinfo.RedirectStandardError = $true
+    $pinfo.RedirectStandardOutput = $true
+    $pinfo.UseShellExecute = $false
+    $pinfo.WindowStyle = 'Hidden'
+    $pinfo.CreateNoWindow = $True
+    $pinfo.WorkingDirectory = $args[1]
+    $pinfo.Arguments = $args[2]
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $pinfo
+    $p.Start() | Out-Null   
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+    $exitcode = $p.ExitCode
+    $p.WaitForExit()     
+    return "($exitcode): $stdout $stderr"
+  } -ArgumentList "$exepath", "$curDir", "$arguments" | Out-Null 
 }
 
-While ($(Get-Job -State Running).count -gt 0) {
-  start-sleep 1
-}
+Wait-Job * | Out-Null
 
 foreach ($job in Get-Job) {
-  $info = Receive-Job -Id ($job.Id)
+  $result = Receive-Job $job
+  Write-Host $result
 }
 
-Get-Job | Remove-Job
+Remove-Job -State Completed
