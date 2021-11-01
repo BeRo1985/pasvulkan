@@ -28,6 +28,23 @@ void blend(inout vec4 target, const in vec4 source) {  //
 
 void sort(inout uvec4 array[MAX_OIT_LAYERS], int count) {
 #if MAX_OIT_LAYERS > 1
+#if 1
+  for (int i = (count - 2); i >= 0; --i) {
+    for (int j = 0; j <= i; ++j) {
+      if (
+#ifdef REVERSEDZ
+          (uintBitsToFloat(array[j].z) <= uintBitsToFloat(array[j + 1].z))
+#else
+          (uintBitsToFloat(array[j].z) >= uintBitsToFloat(array[j + 1].z))
+#endif
+      ) {
+        uvec4 temp = array[j + 1];
+        array[j + 1] = array[j];
+        array[j] = temp;
+      }
+    }
+  }
+#else
   for (int i = 0, j = count - 1; i < j;) {
     if (
 #ifdef REVERSEDZ
@@ -44,12 +61,14 @@ void sort(inout uvec4 array[MAX_OIT_LAYERS], int count) {
       i++;
     }
   }
+#endif
 #endif  // #if OIT_LAYERS > 1
 }
 
 void main() {
   vec4 color = vec4(0.0);
 
+#if 1
   uvec4 oitFragments[MAX_OIT_LAYERS];
 
   int oitMultiViewIndex = int(gl_ViewIndex);
@@ -69,7 +88,7 @@ void main() {
 
   sort(oitFragments, oitCountFragments);
 
-  const int oitMSAA = int(uOIT.oitViewPort.w >> 16);
+  const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, 16);
 
   for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
     vec4 sampleColor = vec4(0.0);
@@ -83,6 +102,7 @@ void main() {
     color += sampleColor;
   }
   color /= oitMSAA;
+#endif
 
   blend(color, subpassLoad(uSubpassInputTransparent));
 
