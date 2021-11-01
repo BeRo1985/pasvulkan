@@ -48,7 +48,7 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
-              CountOITLayers=4;
+              CountOITLayers=8;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
