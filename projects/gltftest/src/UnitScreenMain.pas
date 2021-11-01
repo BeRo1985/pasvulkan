@@ -2107,7 +2107,8 @@ begin
   TpvVulkanVendorID.NVIDIA,
   TpvVulkanVendorID.Intel:begin
    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
+    if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+       (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
      OITVariant:='interlock';
     end else begin
      OITVariant:='spinlock';
