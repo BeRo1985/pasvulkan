@@ -1642,6 +1642,33 @@ const BoolToInt:array[boolean] of TpvInt32=(0,1);
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
+{$if defined(fpc)}
+function DumpExceptionCallStack(e:Exception):string;
+var i:int32;
+    Frames:PPointer;
+begin
+ result:='Program exception! '+LineEnding+'Stack trace:'+LineEnding+LineEnding;
+ if assigned(e) then begin
+  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
+ end;
+ result:=result+BackTraceStrFunc(ExceptAddr);
+ Frames:=ExceptFrames;
+ for i:=0 to ExceptFrameCount-1 do begin
+  result:=result+LineEnding+BackTraceStrFunc(Frames);
+  inc(Frames);
+ end;
+end;
+{$else}
+function DumpException(e:Exception):string;
+const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
+begin
+ result:='Program exception! '+LineEnding;
+ if assigned(e) then begin
+  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
+ end;
+end;
+{$ifend}
+
 {$if defined(Unix)}
 procedure signal_handler(aSignal:cint); cdecl;
 begin
@@ -8145,6 +8172,7 @@ end;
 
 procedure TpvApplication.Run;
 var Index:TpvInt32;
+    ExceptionString:String;
 {$if defined(PasVulkanUseSDL2)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
@@ -8543,68 +8571,81 @@ begin
 
          fLoadWasCalled:=true;
 
-         AfterCreateSwapChainWithCheck;
-
-         fLifecycleListenerListCriticalSection.Acquire;
          try
-          for Index:=0 to fLifecycleListenerList.Count-1 do begin
-           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
-            break;
+
+          AfterCreateSwapChainWithCheck;
+
+          fLifecycleListenerListCriticalSection.Acquire;
+          try
+           for Index:=0 to fLifecycleListenerList.Count-1 do begin
+            if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+             break;
+            end;
            end;
+          finally
+           fLifecycleListenerListCriticalSection.Release;
           end;
-         finally
-          fLifecycleListenerListCriticalSection.Release;
-         end;
 
-         if assigned(fStartScreen) then begin
-          SetScreen(fStartScreen.Create);
-         end;
-         try
-
-          if assigned(fAudio) then begin
- {$if defined(PasVulkanUseSDL2)}
-           SDL_PauseAudio(0);
- {$else}
- {$ifend}
+          if assigned(fStartScreen) then begin
+           SetScreen(fStartScreen.Create);
           end;
           try
 
-           while not fTerminated do begin
-            ProcessMessages;
+           if assigned(fAudio) then begin
+  {$if defined(PasVulkanUseSDL2)}
+            SDL_PauseAudio(0);
+  {$else}
+  {$ifend}
+           end;
+           try
+
+            while not fTerminated do begin
+             ProcessMessages;
+            end;
+
+           finally
+            if assigned(fAudio) then begin
+  {$if defined(PasVulkanUseSDL2)}
+             SDL_PauseAudio(1);
+  {$else}
+  {$ifend}
+            end;
            end;
 
           finally
-           if assigned(fAudio) then begin
- {$if defined(PasVulkanUseSDL2)}
-            SDL_PauseAudio(1);
- {$else}
- {$ifend}
-           end;
+
+           SetScreen(nil);
+
+           FreeAndNil(fNextScreen);
+           FreeAndNil(fScreen);
+
           end;
 
-         finally
-
-          SetScreen(nil);
-
-          FreeAndNil(fNextScreen);
-          FreeAndNil(fScreen);
-
-         end;
-
-         fLifecycleListenerListCriticalSection.Acquire;
-         try
-          for Index:=0 to fLifecycleListenerList.Count-1 do begin
-           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
-            break;
+          fLifecycleListenerListCriticalSection.Acquire;
+          try
+           for Index:=0 to fLifecycleListenerList.Count-1 do begin
+            if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+             break;
+            end;
            end;
-          end;
-          for Index:=0 to fLifecycleListenerList.Count-1 do begin
-           if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
-            break;
+           for Index:=0 to fLifecycleListenerList.Count-1 do begin
+            if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+             break;
+            end;
            end;
+          finally
+           fLifecycleListenerListCriticalSection.Release;
           end;
-         finally
-          fLifecycleListenerListCriticalSection.Release;
+
+         except
+          on e:Exception do begin
+           ExceptionString:={$ifdef fpc}DumpExceptionCallStack{$else}DumpException{$endif}(e);
+{$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
+           __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
+{$ifend}
+           TpvApplication.Log(LOG_ERROR,'TpvApplication.Run',ExceptionString);
+           //raise;
+          end;
          end;
 
         finally
