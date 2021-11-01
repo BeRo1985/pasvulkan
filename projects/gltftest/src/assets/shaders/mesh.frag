@@ -108,16 +108,16 @@ layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef OIT
 
-layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uOITImgDepth;
+layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
 layout(set = 3, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
 layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
 #ifndef INTERLOCK
 layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
 #endif
 
-layout (push_constant) uniform PushConstants {
+layout(std140, set = 3, binding = 8) uniform uboOIT {
   ivec4 oitViewPort;
-} pushConstants;
+} uOIT;
 
 #endif
 
@@ -782,7 +782,7 @@ void main() {
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r); 
   if(
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
@@ -794,10 +794,10 @@ void main() {
 
     finalColor.xyz *= finalColor.w; // Premultiply alpha
 
-    const int oitViewSize = pushConstants.oitViewPort.z;
-    const int oitCountLayers = pushConstants.oitViewPort.w;
+    const int oitViewSize = uOIT.oitViewPort.z;
+    const int oitCountLayers = uOIT.oitViewPort.w;
     const int oitMultiViewSize = oitViewSize * oitCountLayers;
-    const int oitABufferBaseIndex = ((oitCoord.y * pushConstants.oitViewPort.x) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
+    const int oitABufferBaseIndex = ((oitCoord.y * uOIT.oitViewPort.x) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
 
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
