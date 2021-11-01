@@ -761,7 +761,7 @@ void main() {
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
 #ifdef OIT
-    alpha = 0.0;    
+    finalColor = vec4(alpha = 0.0);    
 #else 
     discard;
 #endif
@@ -835,7 +835,7 @@ void main() {
           {
             int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
             uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
-            finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(oitOldValue.y));
+            finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(unpackHalf2x16(oitOldValue.y)));
             imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
           }
         }
@@ -845,10 +845,9 @@ void main() {
       }
     }
 #endif
-
-    outFragColor = finalColor;
-  
+ 
   }
+  outFragColor = finalColor;
 #ifdef INTERLOCK
   endInvocationInterlock();
 #endif
