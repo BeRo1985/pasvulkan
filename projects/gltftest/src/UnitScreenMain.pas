@@ -57,16 +57,16 @@ type { TScreenMain }
                SplitDepths:TpvVector3;
                Scales:TpvVector2;
              end;
-             { TOITViewPort }
-             TOITViewPort=packed record
+             { TOrderIndependentTransparentViewPort }
+             TOrderIndependentTransparentViewPort=packed record
               x:TpvInt32;
               y:TpvInt32;
               z:TpvInt32;
               w:TpvInt32;
              end;
-             { TOITUniformBuffer }
-             TOITUniformBuffer=packed record
-              ViewPort:TOITViewPort;
+             { TOrderIndependentTransparentUniformBuffer }
+             TOrderIndependentTransparentUniformBuffer=packed record
+              ViewPort:TOrderIndependentTransparentViewPort;
              end;
              PCascadedShadowMap=^TCascadedShadowMap;
              TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
@@ -363,6 +363,7 @@ type { TScreenMain }
        fCountSurfaceViews:TpvInt32;
        fVulkanSampleCountFlagBits:TVkSampleCountFlagBits;
        fVulkanShadowMapSampleCountFlagBits:TVkSampleCountFlagBits;
+       fCountSurfaceMSAASamples:Int32;
        fCountCascadedShadowMapMSAASamples:Int32;
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -404,8 +405,8 @@ type { TScreenMain }
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:Int32;
        fUseDepthPrepass:boolean;
-       fOITUniformBuffer:TOITUniformBuffer;
-       fOITUniformVulkanBuffer:TpvVulkanBuffer;
+       fOrderIndependentTransparentUniformBuffer:TOrderIndependentTransparentUniformBuffer;
+       fOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fOrderIndependentTransparencyABufferBuffers:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyBuffer;
        fOrderIndependentTransparencyAuxImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
        fOrderIndependentTransparencySpinLockImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
@@ -2311,7 +2312,7 @@ begin
                                                                         1,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                         [],
-                                                                        [fParent.fOITUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                        [fParent.fOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                         [],
                                                                         false);
   fGlobalVulkanDescriptorSets[SwapChainImageIndex].Flush;
@@ -2591,7 +2592,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/oit_resolve_frag.spv');
+ if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/oit_resolve_reversedz_frag.spv');
+ end else begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/oit_resolve_frag.spv');
+ end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -2628,6 +2633,9 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        MaxSwapChainImages);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,2*MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,1*MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1*MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*MaxSwapChainImages);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
@@ -2638,6 +2646,21 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(1,
                                        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(2,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(3,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(4,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
@@ -2665,6 +2688,33 @@ begin
                                                                                                  fResourceTransparent.VulkanImageViews[SwapChainImageIndex].Handle,
                                                                                                  fResourceTransparent.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                   [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(2,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+                                                                  [],
+                                                                  [],
+                                                                  [fParent.fOrderIndependentTransparencyABufferBuffers[SwapChainImageIndex].VulkanBufferView.Handle],
+                                                                  false
+                                                                 );
+  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(3,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [fParent.fOrderIndependentTransparencyAuxImages[SwapChainImageIndex].DescriptorImageInfo],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(4,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                  [],
+                                                                  [fParent.fOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                   [],
                                                                   false
                                                                  );
@@ -3421,30 +3471,37 @@ begin
  {if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
+   fCountSurfaceMSAASamples:=64;
    fCountCascadedShadowMapMSAASamples:=64;
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
+   fCountSurfaceMSAASamples:=32;
    fCountCascadedShadowMapMSAASamples:=32;
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
+   fCountSurfaceMSAASamples:=16;
    fCountCascadedShadowMapMSAASamples:=16;
   end else}if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
+   fCountSurfaceMSAASamples:=8;
    fCountCascadedShadowMapMSAASamples:=8;
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
+   fCountSurfaceMSAASamples:=4;
    fCountCascadedShadowMapMSAASamples:=4;
   end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0 then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
+   fCountSurfaceMSAASamples:=2;
    fCountCascadedShadowMapMSAASamples:=2;
   end else begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+   fCountSurfaceMSAASamples:=1;
    fCountCascadedShadowMapMSAASamples:=1;
   end;
 
@@ -3452,6 +3509,7 @@ begin
 
   fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+  fCountSurfaceMSAASamples:=1;
   fCountCascadedShadowMapMSAASamples:=1;
 
  end;
@@ -3734,8 +3792,8 @@ begin
                                                                         []);
  end;
 
- fOITUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                 SizeOf(TOITUniformBuffer),
+ fOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                 SizeOf(TOrderIndependentTransparentUniformBuffer),
                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                  [],
@@ -3769,7 +3827,7 @@ begin
 
  fScene3D.Unload;
 
- FreeAndNil(fOITUniformVulkanBuffer);
+ FreeAndNil(fOrderIndependentTransparentUniformVulkanBuffer);
 
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
@@ -3836,17 +3894,17 @@ begin
 
  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
 
- fOITUniformBuffer.ViewPort.x:=fWidth;
- fOITUniformBuffer.ViewPort.y:=fHeight;
- fOITUniformBuffer.ViewPort.z:=fOITUniformBuffer.ViewPort.x*fOITUniformBuffer.ViewPort.y;
- fOITUniformBuffer.ViewPort.w:=CountOITLayers;
+ fOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
+ fOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;
+ fOrderIndependentTransparentUniformBuffer.ViewPort.z:=fOrderIndependentTransparentUniformBuffer.ViewPort.x*fOrderIndependentTransparentUniformBuffer.ViewPort.y;
+ fOrderIndependentTransparentUniformBuffer.ViewPort.w:=(CountOITLayers and $ffff) or ((fCountSurfaceMSAASamples and $ffff) shl 16);
 
- fOITUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                    fVulkanTransferCommandBuffer,
-                                    fVulkanTransferCommandBufferFence,
-                                    fOITUniformBuffer,
-                                    0,
-                                    SizeOf(TOITUniformBuffer));
+ fOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                                            fVulkanTransferCommandBuffer,
+                                                            fVulkanTransferCommandBufferFence,
+                                                            fOrderIndependentTransparentUniformBuffer,
+                                                            0,
+                                                            SizeOf(TOrderIndependentTransparentUniformBuffer));
 
  for Index:=0 to fFrameGraph.CountSwapChainImages-1 do begin
 
