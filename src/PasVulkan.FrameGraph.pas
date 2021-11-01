@@ -1217,6 +1217,7 @@ type EpvFrameGraph=class(Exception);
                       const aToWaitOnSemaphore:TpvVulkanSemaphore=nil;
                       const aToSignalSemaphore:TpvVulkanSemaphore=nil;
                       const aWaitFence:TpvVulkanFence=nil); virtual;
+       procedure Dump;
       public
        property QueueFamilyIndices:TQueueFamilyIndices read fQueueFamilyIndices;
       published
@@ -6391,6 +6392,17 @@ begin
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
  end;
+end;
+
+procedure TpvFrameGraph.Dump;
+var Pass:TpvFrameGraph.TPass;
+begin
+ writeln;
+ for Pass in fTopologicalSortedPasses do begin
+  writeln('Pass ',Pass.Name,':');
+  writeln;
+ end;
+ writeln;
 end;
 
 end.

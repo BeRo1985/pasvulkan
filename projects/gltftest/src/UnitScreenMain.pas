@@ -598,7 +598,7 @@ begin
                                                              [],
                                                              fVulkanPipelineLayout,
                                                              fVulkanRenderPass,
-                                                             0,
+                                                             VulkanRenderPassSubpassIndex,
                                                              nil,
                                                              0);
 
@@ -1652,7 +1652,7 @@ begin
                                                               [],
                                                               fVulkanPipelineLayout,
                                                               fVulkanRenderPass,
-                                                              0,
+                                                              VulkanRenderPassSubpassIndex,
                                                               nil,
                                                               0);
 
@@ -1916,6 +1916,7 @@ constructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Create(cons
 begin
  inherited Create(aFrameGraph);
  fParent:=aParent;
+ Name:='OrderIndependentTransparencyClear';
 end;
 
 destructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Destroy;
@@ -2348,7 +2349,7 @@ begin
                                                              [],
                                                              fVulkanPipelineLayout,
                                                              fVulkanRenderPass,
-                                                             0,
+                                                             VulkanRenderPassSubpassIndex,
                                                              nil,
                                                              0);
 
@@ -3617,7 +3618,7 @@ begin
  fOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyClearCustomPass);
 
  fOrderIndependentTransparencyResolveRenderPass:=TOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
- fOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyRenderPass);
+//fOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyRenderPass);
 
  fTonemappingRenderPass:=TTonemappingRenderPass.Create(fFrameGraph,self);
 
@@ -3630,6 +3631,8 @@ begin
  fFrameGraph.DoSignalSemaphore:=true;
 
  fFrameGraph.Compile;
+
+// fFrameGraph.Dump;
 
 end;
 
