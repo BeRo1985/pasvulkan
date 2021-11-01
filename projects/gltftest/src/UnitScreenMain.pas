@@ -1855,14 +1855,14 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-{  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          aSwapChainImageIndex,
                          0,
                          SwapChainImageState^.FinalViewIndex,
                          SwapChainImageState^.CountViews,
                          aCommandBuffer,
                          fVulkanPipelineLayout,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);   }
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
   end;
 
@@ -1893,7 +1893,7 @@ begin
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Blend]); }
 
-  if fParent.fUseDepthPrepass then begin
+{ if fParent.fUseDepthPrepass then begin
 
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          aSwapChainImageIndex,
@@ -1904,7 +1904,7 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
-  end;
+  end;}
 
  end;
 
