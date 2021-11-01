@@ -5992,9 +5992,6 @@ begin
   begin
    FillChar(fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
    fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-   fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=VK_TRUE;
-   fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=VK_TRUE;
-   fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=VK_FALSE;
    if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
     fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.pNext:=fVulkanPhysicalDeviceFeatures2KHR.pNext;
     fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT;

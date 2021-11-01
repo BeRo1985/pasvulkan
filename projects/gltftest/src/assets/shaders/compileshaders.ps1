@@ -54,6 +54,7 @@ $compileshaderarguments = @(
   '-V msm_blur.frag -o msm_blur_frag.spv',
   '-V msm_blur.vert -o msm_blur_vert.spv',
   '-V msm_resolve.frag -o msm_resolve_frag.spv',
+  '-V msm_resolve.frag -DMSAA -o msm_resolve_msaa_frag.spv',
   '-V msm_resolve.vert -o msm_resolve_vert.spv'
 )
 

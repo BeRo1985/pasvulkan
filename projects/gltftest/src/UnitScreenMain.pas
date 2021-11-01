@@ -480,13 +480,23 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
- fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
-                                     'cascadedshadowmap_msaa_depth',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                  TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );
+ if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
+                                      'cascadedshadowmap_single_depth',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                   TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+ end else begin
+  fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
+                                      'cascadedshadowmap_msaa_depth',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                   TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+ end;
 
 end;
 
@@ -798,11 +808,19 @@ begin
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
- fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_msaa_depth',
-                               'cascadedshadowmap_msaa_depth',
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                              );
+ if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_depth',
+                                'cascadedshadowmap_single_depth',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
+ end else begin
+  fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_msaa_depth',
+                                'cascadedshadowmap_msaa_depth',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
+ end;
 
  fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',
                                  'cascadedshadowmap_data',
@@ -836,7 +854,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_frag.spv');
+ if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_frag.spv');
+ end else begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_msaa_frag.spv');
+ end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -2116,10 +2138,10 @@ begin
   TpvVulkanVendorID.NVIDIA,
   TpvVulkanVendorID.Intel:begin
    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-    if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+{   if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
        (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
      OITVariant:='interlock';
-    end else begin
+    end else}begin
      OITVariant:='spinlock';
     end;
    end else begin
