@@ -2094,7 +2094,31 @@ begin
   Stream.Free;
  end;
 
- OITVariant:='simple';
+ case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+  TpvVulkanVendorID.AMD:begin
+   if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+    // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
+    OITVariant:='spinlock';
+   end else begin
+    OITVariant:='simple';
+   end;
+  end;
+  TpvVulkanVendorID.NVIDIA,
+  TpvVulkanVendorID.Intel:begin
+   if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
+     OITVariant:='interlock';
+    end else begin
+     OITVariant:='spinlock';
+    end;
+   end else begin
+    OITVariant:='simple';
+   end;
+  end;
+  else begin
+   OITVariant:='simple';
+  end;
+ end;
 
  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_reversedz_frag.spv');

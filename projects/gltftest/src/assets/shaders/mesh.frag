@@ -8,9 +8,11 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #ifdef OIT
-#ifdef INTERLOCK
+#ifndef OIT_SIMPLE
 #extension GL_ARB_post_depth_coverage : enable
 layout(post_depth_coverage) in;
+#endif
+#ifdef INTERLOCK
 #ifdef NVIDIA
 #extension GL_NV_fragment_shader_interlock : enable
 #define beginInvocationInterlock beginInvocationInterlockNV
