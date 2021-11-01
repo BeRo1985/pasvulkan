@@ -110,7 +110,11 @@ layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef OIT
 
+#ifdef MSAA
 layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
+#else
+layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uOITImgDepth;
+#endif
 layout(set = 3, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
 layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
 #ifndef INTERLOCK
@@ -786,7 +790,11 @@ void main() {
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
+#ifdef MSAA 
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#else
+  const uint oitStoreMask = 1u;
+#endif
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
   // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
@@ -794,7 +802,11 @@ void main() {
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+ #ifdef MSAA 
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r); 
+ #else
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
+ #endif 
   if(
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  

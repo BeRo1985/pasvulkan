@@ -82,13 +82,13 @@ void main() {
   const int oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, int(imageLoad(uOITImgAux, oitCoord).r)));
 
   if (oitCountFragments > 0) {
-
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
       oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
     }
 
     sort(oitFragments, oitCountFragments);
 
+#ifdef MSAA
     const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, 16);
 
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
@@ -103,8 +103,16 @@ void main() {
       color += sampleColor;
     }
     color /= oitMSAA;
+#else
+    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {        //
+      uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
+      vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
+      blend(color, fragmentColor);                                                                    //
+    }
+#endif
 
   }
+  
 #endif
 
   blend(color, subpassLoad(uSubpassInputTransparent));
