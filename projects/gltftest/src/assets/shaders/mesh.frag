@@ -782,6 +782,7 @@ void main() {
 #endif
   }
 #ifndef OIT
+#ifdef MSAA
 #if 0
   vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
   vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
@@ -794,6 +795,7 @@ void main() {
   }
 #ifndef DEPTHONLY  
   outFragColor.w = finalColor.w = alpha;
+#endif
 #endif
 #endif
 #endif

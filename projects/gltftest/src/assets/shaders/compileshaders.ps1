@@ -4,6 +4,7 @@ $compileshaderarguments = @(
   '-V mesh.vert -o mesh_vert.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv',
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -o mesh_oit_spinlock_reversedz_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -DALPHATEST -o mesh_oit_spinlock_reversedz_masked_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -o mesh_oit_spinlock_frag.spv',
