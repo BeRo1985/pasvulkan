@@ -801,10 +801,10 @@ void main() {
     ){
 
 #ifndef ALPHATEST
-    const int oitViewSize = uOIT.oitViewPort.z;
-    const int oitCountLayers = uOIT.oitViewPort.w;
+    const int oitViewSize = int(uOIT.oitViewPort.z);
+    const int oitCountLayers = int(uOIT.oitViewPort.w & 0xffffu);
     const int oitMultiViewSize = oitViewSize * oitCountLayers;
-    const int oitABufferBaseIndex = ((oitCoord.y * uOIT.oitViewPort.x) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
+    const int oitABufferBaseIndex = ((oitCoord.y * int(uOIT.oitViewPort.x)) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
 
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
