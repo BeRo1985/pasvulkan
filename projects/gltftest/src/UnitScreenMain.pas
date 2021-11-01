@@ -2400,7 +2400,7 @@ begin
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
       VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=true;
-      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=true;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
      end else begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
