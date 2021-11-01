@@ -2365,7 +2365,7 @@ begin
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
      VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                         VK_BLEND_FACTOR_ONE,
                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                          VK_BLEND_OP_ADD,
                                                                          VK_BLEND_FACTOR_ONE,

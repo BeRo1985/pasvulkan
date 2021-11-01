@@ -768,6 +768,9 @@ void main() {
   }
 #endif
 #ifdef OIT
+
+  finalColor.xyz *= finalColor.w; // Premultiply alpha
+  
 #ifdef INTERLOCK
   beginInvocationInterlock();
 #endif
@@ -791,8 +794,6 @@ void main() {
 #endif
      (min(alpha, finalColor.w) > 0.0)
     ){
-
-    finalColor.xyz *= finalColor.w; // Premultiply alpha
 
     const int oitViewSize = uOIT.oitViewPort.z;
     const int oitCountLayers = uOIT.oitViewPort.w;
