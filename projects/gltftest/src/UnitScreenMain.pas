@@ -2075,6 +2075,7 @@ end;
 procedure TScreenMain.TOrderIndependentTransparencyRenderPass.Show;
 var Index:TpvSizeInt;
     Stream:TStream;
+    OITVariant:TpvUTF8String;
 begin
  inherited Show;
 
@@ -2093,10 +2094,12 @@ begin
   Stream.Free;
  end;
 
+ OITVariant:='simple';
+
  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_spinlock_reversedz_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_reversedz_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_spinlock_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_frag.spv');
  end;
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -2105,9 +2108,9 @@ begin
  end;
 
  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_spinlock_reversedz_masked_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_reversedz_masked_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_spinlock_masked_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_masked_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);

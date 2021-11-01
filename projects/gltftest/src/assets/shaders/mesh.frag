@@ -776,8 +776,10 @@ void main() {
   finalColor.xyz *= finalColor.w; // Premultiply alpha
 
 #if 1
+#ifndef OIT_SIMPLE
 #ifdef INTERLOCK
   beginInvocationInterlock();
+#endif
 #endif
 
   int oitMultiViewIndex = int(gl_ViewIndex);
@@ -808,6 +810,13 @@ void main() {
 
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
+#ifdef OIT_SIMPLE
+    const uint oitAuxCounter = imageAtomicAdd(uOITImgAux, oitCoord, 1u);
+    if(oitAuxCounter < oitCountLayers){
+      imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
+      finalColor = vec4(0.0);
+    }
+#else
 #ifndef INTERLOCK
     bool oitDone = oitStoreMask == 0;
     while(!oitDone){
@@ -853,11 +862,14 @@ void main() {
     }
 #endif
 #endif
+#endif
   } else {
     finalColor = vec4(0.0);
   }
+#ifndef OIT_SIMPLE
 #ifdef INTERLOCK
   endInvocationInterlock();
+#endif
 #endif
 #endif
   outFragColor = finalColor;
