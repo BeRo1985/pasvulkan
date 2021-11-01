@@ -79,29 +79,32 @@ void main() {
   const int oitMultiViewSize = oitViewSize * oitCountLayers;
   const int oitABufferBaseIndex = ((oitCoord.y * int(uOIT.oitViewPort.x)) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
 
-  int oitCountFragments = int(imageLoad(uOITImgAux, oitCoord).r);
-  oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, oitCountFragments));
+  const int oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, int(imageLoad(uOITImgAux, oitCoord).r)));
 
-  for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
-    oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
-  }
+  if (oitCountFragments > 0) {
 
-  sort(oitFragments, oitCountFragments);
-
-  const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, 16);
-
-  for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
-    vec4 sampleColor = vec4(0.0);
-    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
-      if ((oitFragments[oitFragmentIndex].w & (1 << oitMSAASampleIndex)) != 0) {                        //
-        uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
-        vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
-        blend(sampleColor, fragmentColor);                                                              //
-      }
+    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
+      oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
     }
-    color += sampleColor;
+
+    sort(oitFragments, oitCountFragments);
+
+    const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, 16);
+
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
+      vec4 sampleColor = vec4(0.0);
+      for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
+        if ((oitFragments[oitFragmentIndex].w & (1 << oitMSAASampleIndex)) != 0) {                        //
+          uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
+          vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
+          blend(sampleColor, fragmentColor);                                                              //
+        }
+      }
+      color += sampleColor;
+    }
+    color /= oitMSAA;
+
   }
-  color /= oitMSAA;
 #endif
 
   blend(color, subpassLoad(uSubpassInputTransparent));
