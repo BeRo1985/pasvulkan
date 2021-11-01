@@ -259,6 +259,35 @@ type { TScreenMain }
                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
              end;
+             { TOrderIndependentTransparencyResolveRenderPass }
+             TOrderIndependentTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
+               private
+                fParent:TScreenMain;
+                fVulkanRenderPass:TpvVulkanRenderPass;
+                fResourceOpaque:TpvFrameGraph.TPass.TUsedImageResource;
+                fResourceTransparent:TpvFrameGraph.TPass.TUsedImageResource;
+                fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
+                fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+                fVulkanTransferCommandBufferFence:TpvVulkanFence;
+                fVulkanVertexShaderModule:TpvVulkanShaderModule;
+                fVulkanFragmentShaderModule:TpvVulkanShaderModule;
+                fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
+                fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
+                fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+                fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+                fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+               public
+                constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+                destructor Destroy; override;
+                procedure Show; override;
+                procedure Hide; override;
+                procedure AfterCreateSwapChain; override;
+                procedure BeforeDestroySwapChain; override;
+                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
+              end;
              { TTonemappingRenderPass }
              TTonemappingRenderPass=class(TpvFrameGraph.TRenderPass)
                private
@@ -358,6 +387,7 @@ type { TScreenMain }
        fForwardRenderPass:TForwardRenderPass;
        fOrderIndependentTransparencyClearCustomPass:TOrderIndependentTransparencyClearCustomPass;
        fOrderIndependentTransparencyRenderPass:TOrderIndependentTransparencyRenderPass;
+       fOrderIndependentTransparencyResolveRenderPass:TOrderIndependentTransparencyResolveRenderPass;
        fTonemappingRenderPass:TTonemappingRenderPass;
        fAntialiasingRenderPass:TAntialiasingRenderPass;
        fGroup:TpvScene3D.TGroup;
@@ -1824,14 +1854,14 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+{  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          aSwapChainImageIndex,
                          0,
                          SwapChainImageState^.FinalViewIndex,
                          SwapChainImageState^.CountViews,
                          aCommandBuffer,
                          fVulkanPipelineLayout,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);   }
 
   end;
 
@@ -1844,7 +1874,7 @@ begin
                         fVulkanPipelineLayout,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
+{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                         aSwapChainImageIndex,
                         0,
                         SwapChainImageState^.FinalViewIndex,
@@ -1860,7 +1890,20 @@ begin
                         SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
-                        [TpvScene3D.TMaterial.TAlphaMode.Blend]);
+                        [TpvScene3D.TMaterial.TAlphaMode.Blend]); }
+
+  if fParent.fUseDepthPrepass then begin
+
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+  end;
 
  end;
 
@@ -2352,11 +2395,19 @@ begin
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
      VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
-     VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
-     VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
-     VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-     VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
-     VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+     if (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
+      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=true;
+      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
+      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=true;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=true;
+     end else begin
+      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+     end;
 
      VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
      VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
@@ -2469,6 +2520,264 @@ begin
 
 end;
 
+{ TScreenMain.TOrderIndependentTransparencyResolveRenderPass }
+
+constructor TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+begin
+
+ inherited Create(aFrameGraph);
+
+ fParent:=aParent;
+
+ Name:='OrderIndependentTransparencyResolve';
+
+ MultiviewMask:=UnitApplication.Application.VirtualReality.MultiviewMask;
+
+ Queue:=aFrameGraph.UniversalQueue;
+
+//SeparatePhysicalPass:=true;
+
+//SeparateCommandBuffer:=true;
+
+ Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                       1.0,
+                                       1.0,
+                                       1.0,
+                                       UnitApplication.Application.VirtualReality.CountImages);
+
+ fResourceOpaque:=AddImageInput('resourcetype_color',
+                                'forwardrendering_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
+
+ fResourceTransparent:=AddImageInput('resourcetype_color',
+                                     'orderindependenttransparency_tailblending_color',
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
+
+ fResourceSurface:=AddImageOutput('resourcetype_color',
+                                  'orderindependenttransparency_final_color',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+end;
+
+destructor TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Show;
+var Stream:TStream;
+begin
+
+ inherited Show;
+
+ fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/fullscreen_vert.spv');
+ try
+  fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/oit_resolve_frag.spv');
+ try
+  fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVulkanVertexShaderModule,'main');
+
+ fVulkanPipelineShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fVulkanFragmentShaderModule,'main');
+
+ fVulkanGraphicsPipeline:=nil;
+
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Hide;
+begin
+ FreeAndNil(fVulkanPipelineShaderStageVertex);
+ FreeAndNil(fVulkanPipelineShaderStageFragment);
+ FreeAndNil(fVulkanFragmentShaderModule);
+ FreeAndNil(fVulkanVertexShaderModule);
+ FreeAndNil(fVulkanTransferCommandBufferFence);
+ FreeAndNil(fVulkanTransferCommandBuffer);
+ inherited Hide;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ inherited AfterCreateSwapChain;
+
+ fVulkanRenderPass:=VulkanRenderPass;
+
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                       MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,2*MaxSwapChainImages);
+ fVulkanDescriptorPool.Initialize;
+
+ fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fVulkanDescriptorSetLayout.AddBinding(0,
+                                       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(1,
+                                       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.Initialize;
+
+ for SwapChainImageIndex:=0 to FrameGraph.CountSwapChainImages-1 do begin
+  fVulkanDescriptorSets[SwapChainImageIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                                            fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(0,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                 fResourceOpaque.VulkanImageViews[SwapChainImageIndex].Handle,
+                                                                                                 fResourceOpaque.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  fVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(1,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                 fResourceTransparent.VulkanImageViews[SwapChainImageIndex].Handle,
+                                                                                                 fResourceTransparent.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  fVulkanDescriptorSets[SwapChainImageIndex].Flush;
+ end;
+
+ fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.Initialize;
+
+ fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
+                                                           pvApplication.VulkanPipelineCache,
+                                                           0,
+                                                           [],
+                                                           fVulkanPipelineLayout,
+                                                           fVulkanRenderPass,
+                                                           VulkanRenderPassSubpassIndex,
+                                                           nil,
+                                                           0);
+
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageVertex);
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageFragment);
+
+ fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fParent.fWidth,fParent.fHeight,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fParent.fWidth,fParent.fHeight);
+
+ fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+ fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+ fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                      VK_BLEND_FACTOR_DST_ALPHA,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ONE,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+ fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+ fVulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+ fVulkanGraphicsPipeline.Initialize;
+
+ fVulkanGraphicsPipeline.FreeMemory;
+
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.BeforeDestroySwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+
+ FreeAndNil(fVulkanGraphicsPipeline);
+
+ FreeAndNil(fVulkanPipelineLayout);
+
+ for SwapChainImageIndex:=0 to FrameGraph.CountSwapChainImages-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[SwapChainImageIndex]);
+ end;
+
+ FreeAndNil(fVulkanDescriptorSetLayout);
+
+ FreeAndNil(fVulkanDescriptorPool);
+
+ fVulkanRenderPass:=nil;
+
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+begin
+ inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      fVulkanPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,0,nil);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+ aCommandBuffer.CmdDraw(3,1,0,0);
+end;
+
 { TScreenMain.TTonemappingRenderPass }
 
 constructor TScreenMain.TTonemappingRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
@@ -2495,7 +2804,7 @@ begin
                                        UnitApplication.Application.VirtualReality.CountImages);
 
  fResourceColor:=AddImageInput('resourcetype_color',
-                               'forwardrendering_color',
+                               'orderindependenttransparency_final_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
@@ -3304,8 +3613,10 @@ begin
  fOrderIndependentTransparencyRenderPass:=TOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
  fOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyClearCustomPass);
 
+ fOrderIndependentTransparencyResolveRenderPass:=TOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+ fOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyRenderPass);
+
  fTonemappingRenderPass:=TTonemappingRenderPass.Create(fFrameGraph,self);
- fTonemappingRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyRenderPass);
 
  fAntialiasingRenderPass:=TAntialiasingRenderPass.Create(fFrameGraph,self);
 

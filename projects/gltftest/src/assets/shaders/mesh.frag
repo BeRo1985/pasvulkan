@@ -765,12 +765,17 @@ void main() {
 #else 
     discard;
 #endif
+#ifdef OIT
+  }else{
+    finalColor.w = alpha = 1.0;    
+#endif
   }
 #endif
 #ifdef OIT
 
   finalColor.xyz *= finalColor.w; // Premultiply alpha
-  
+
+#if 1
 #ifdef INTERLOCK
   beginInvocationInterlock();
 #endif
@@ -795,6 +800,7 @@ void main() {
      (min(alpha, finalColor.w) > 0.0)
     ){
 
+#ifndef ALPHATEST
     const int oitViewSize = uOIT.oitViewPort.z;
     const int oitCountLayers = uOIT.oitViewPort.w;
     const int oitMultiViewSize = oitViewSize * oitCountLayers;
@@ -846,12 +852,15 @@ void main() {
       }
     }
 #endif
- 
+#endif
+  } else {
+    finalColor = vec4(0.0);
   }
-  outFragColor = finalColor;
 #ifdef INTERLOCK
   endInvocationInterlock();
 #endif
+#endif
+  outFragColor = finalColor;
 #endif
 }
 
