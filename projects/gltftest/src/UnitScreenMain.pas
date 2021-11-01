@@ -1736,7 +1736,9 @@ begin
       VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
       VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
-      if (not DepthPrePass) and (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
+      if (not DepthPrePass) and
+         (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and
+         (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
        VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=true;
        VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
        VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -1767,7 +1769,9 @@ begin
                                                                            VK_BLEND_OP_ADD,
                                                                            0);
       end else begin
-       if AlphaMode in [TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
+       if ((VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) and
+           (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask)) or
+          (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
         VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                             VK_BLEND_FACTOR_SRC_ALPHA,
                                                                             VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
