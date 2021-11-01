@@ -2141,10 +2141,18 @@ begin
   Stream.Free;
  end;
 
- if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_reversedz_masked_frag.spv');
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_reversedz_masked_frag.spv');
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_masked_frag.spv');
+  end;
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_'+OITVariant+'_masked_frag.spv');
+  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_msaa_'+OITVariant+'_reversedz_masked_frag.spv');
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_oit_msaa_'+OITVariant+'_masked_frag.spv');
+  end;
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -3562,7 +3570,7 @@ begin
 {fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
  fCountSurfaceMSAASamples:=1;
- fCountCascadedShadowMapMSAASamples:=1;}
+ fCountCascadedShadowMapMSAASamples:=1;//}
 
  //fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 

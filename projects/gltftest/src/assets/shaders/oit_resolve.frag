@@ -82,6 +82,7 @@ void main() {
   const int oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, int(imageLoad(uOITImgAux, oitCoord).r)));
 
   if (oitCountFragments > 0) {
+    
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
       oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
     }
@@ -112,7 +113,7 @@ void main() {
 #endif
 
   }
-  
+
 #endif
 
   blend(color, subpassLoad(uSubpassInputTransparent));
