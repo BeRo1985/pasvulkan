@@ -834,23 +834,25 @@ void main() {
           uint oitMaxDepth = 0;
           for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
             uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
+            if(
 #ifdef REVERSEDZ
-            if(oitTestDepth < oitMaxDepth)
+                (oitTestDepth < oitMaxDepth)
 #else
-            if(oitTestDepth > oitMaxDepth)
+                (oitTestDepth > oitMaxDepth)
 #endif
-            {
+              ){
               oitMaxDepth = oitTestDepth;
               oitFurthest = oitIndex;
             }
           }
 
+          if(
 #ifdef REVERSEDZ
-          if(oitMaxDepth < oitStoreValue.z)
+             (oitMaxDepth < oitStoreValue.z)
 #else
-          if(oitMaxDepth > oitStoreValue.z)
+             (oitMaxDepth > oitStoreValue.z)
 #endif          
-          {
+            ){
             int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
             uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
             finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(unpackHalf2x16(oitOldValue.y)));
