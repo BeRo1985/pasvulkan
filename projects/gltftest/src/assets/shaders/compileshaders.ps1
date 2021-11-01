@@ -57,13 +57,14 @@ $compileshaderarguments = @(
   '-V msm_resolve.vert -o msm_resolve_vert.spv'
 )
 
-$MaxThreads = 4
+$MaxThreads = (Get-CIMInstance -Class 'CIM_Processor').NumberOfLogicalProcessors
 
 $curDir = Get-Location
 
 $exepath = "$env:VULKAN_SDK/Bin32/glslangValidator.exe"
 
 Write-Host "Current Working Directory: $curDir"
+Write-Host "Count of CPU logical threads: $MaxThreads"
 
 Get-Job | Remove-Job
 
