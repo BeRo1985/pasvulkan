@@ -5173,6 +5173,7 @@ type TEventBeforeAfter=(Event,Before,After);
      SrcQueueFamilyIndex,
      DstQueueFamilyIndex:TVkUInt32;
      PhyiscalPass:TPhysicalPass;
+     RealTransition,
      NeedBarriers,
      NeedSemaphore:boolean;
  begin
@@ -5274,6 +5275,11 @@ type TEventBeforeAfter=(Event,Before,After);
         DstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        end;
 
+       RealTransition:=(SrcQueueFamilyIndex<>DstQueueFamilyIndex) or
+                       (SubpassDependency.SrcAccessMask<>SubpassDependency.DstAccessMask) or
+                       (SubpassDependency.SrcStageMask<>SubpassDependency.DstStageMask) or
+                       (FromResourceTransition.Layout<>ToResourceTransition.Layout);
+
        if (FromResourceTransition.fPass is TRenderPass) and
           (ToResourceTransition.fPass is TRenderPass) and
           (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
@@ -5312,7 +5318,17 @@ type TEventBeforeAfter=(Event,Before,After);
          AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
                               SubpassDependency);
 
-         NeedBarriers:=true;
+         if RealTransition then begin
+          NeedBarriers:=true;
+         end else begin
+          if (FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer<>ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer) or
+             (FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex) or
+             (FromResourceTransition.fPass.fQueue.fPhysicalQueue<>ToResourceTransition.fPass.fQueue.fPhysicalQueue) or
+             not ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+                  (ToResourceTransition.fKind in TResourceTransition.AllInputs)) then begin
+           NeedSemaphore:=true;
+          end;
+         end;
 
         end;
 
@@ -5344,7 +5360,17 @@ type TEventBeforeAfter=(Event,Before,After);
 
         SubpassDependency.DependencyFlags:=0;
 
-        NeedBarriers:=true;
+        if RealTransition then begin
+         NeedBarriers:=true;
+        end else begin
+         if (FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer<>ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer) or
+            (FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex) or
+            (FromResourceTransition.fPass.fQueue.fPhysicalQueue<>ToResourceTransition.fPass.fQueue.fPhysicalQueue) or
+            not ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+                 (ToResourceTransition.fKind in TResourceTransition.AllInputs)) then begin
+          NeedSemaphore:=true;
+         end;
+        end;
 
        end;
 
