@@ -1978,11 +1978,11 @@ inherited Create(aFrameGraph);
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceDepth:=AddImageInput('resourcetype_depth',
-                                'forwardrendering_depth',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
+  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                     'forwardrendering_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
 
   fResourceColor:=AddImageOutput('resourcetype_color',
                                  'orderindependenttransparency_tailblending_color',
@@ -1994,11 +1994,11 @@ inherited Create(aFrameGraph);
 
  end else begin
 
-  fResourceDepth:=AddImageInput('resourcetype_msaa_depth',
-                                'forwardrendering_msaa_depth',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'forwardrendering_msaa_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
                                  'orderindependenttransparency_tailblending_msaa_color',

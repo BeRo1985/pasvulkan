@@ -5828,7 +5828,18 @@ type TEventBeforeAfter=(Event,Before,After);
            end;
           end;
          end;
-         TResourceTransition.TKind.ImageDepthInput,TResourceTransition.TKind.ImageDepthOutput:begin
+         TResourceTransition.TKind.ImageDepthInput:begin
+          if Subpass.fDepthStencilAttachment<0 then begin
+           for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
+            if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
+             Subpass.fDepthStencilAttachment:=AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+             Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+             break;
+            end;
+           end;
+          end;
+         end;
+         TResourceTransition.TKind.ImageDepthOutput:begin
           if Subpass.fDepthStencilAttachment<0 then begin
            for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
             if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
