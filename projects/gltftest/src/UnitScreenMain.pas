@@ -48,7 +48,7 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
-              CountOITLayers=8;
+              CountOrderIndependentTransparencyLayers=8;
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
@@ -403,8 +403,9 @@ type { TScreenMain }
        fZoom:TpvScalar;
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
-       fAnimationIndex:Int32;
+       fAnimationIndex:TpvInt32;
        fUseDepthPrepass:boolean;
+       fCountOrderIndependentTransparencyLayers:TpvInt32;
        fOrderIndependentTransparentUniformBuffer:TOrderIndependentTransparentUniformBuffer;
        fOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fOrderIndependentTransparencyABufferBuffers:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyBuffer;
@@ -3921,10 +3922,12 @@ begin
 
  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
 
+ fCountOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;
+
  fOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
  fOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;
  fOrderIndependentTransparentUniformBuffer.ViewPort.z:=fOrderIndependentTransparentUniformBuffer.ViewPort.x*fOrderIndependentTransparentUniformBuffer.ViewPort.y;
- fOrderIndependentTransparentUniformBuffer.ViewPort.w:=(CountOITLayers and $ffff) or ((fCountSurfaceMSAASamples and $ffff) shl 16);
+ fOrderIndependentTransparentUniformBuffer.ViewPort.w:=(fCountOrderIndependentTransparencyLayers and $ffff) or ((fCountSurfaceMSAASamples and $ffff) shl 16);
 
  fOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                                             fVulkanTransferCommandBuffer,
@@ -3935,7 +3938,7 @@ begin
 
  for Index:=0 to fFrameGraph.CountSwapChainImages-1 do begin
 
-  fOrderIndependentTransparencyABufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*CountOITLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
+  fOrderIndependentTransparencyABufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
                                                                                                  VK_FORMAT_R32G32B32A32_UINT,
                                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
 
