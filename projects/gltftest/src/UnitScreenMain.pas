@@ -1531,14 +1531,14 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  fResourceColor:=AddImageResolveOutput('resourcetype_color',
+{ fResourceColor:=AddImageResolveOutput('resourcetype_color',
                                         'forwardrendering_color',
                                         'forwardrendering_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
+                                       );}
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
                                       'forwardrendering_msaa_depth',
