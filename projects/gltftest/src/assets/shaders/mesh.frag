@@ -807,6 +807,7 @@ void main() {
 #endif
 #endif
 #endif
+
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
 #if defined(OIT) || defined(MBOIT)
@@ -845,6 +846,7 @@ void main() {
 #endif
 #endif
 #endif
+
 #if defined(MBOIT)
   float depth = MBOIT_WarpDepth(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
   float transmittance = 1.0 - alpha;
@@ -879,6 +881,9 @@ void main() {
                           b0,                      //
                           b1234,                   //
                           b56);
+    if(isinf(transmittance_at_depth) || isnan(transmittance_at_depth)){
+      transmittance_at_depth = 1.0;
+    }
     outFragColor = vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth);
   } 
 #endif
