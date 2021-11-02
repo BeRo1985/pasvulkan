@@ -109,6 +109,25 @@ layout(std430, set = 2, binding = 2) buffer LightTreeNodeData {
 };
 #endif
 
+#if defined(MBOIT)
+
+layout(std140, set = 3, binding = 4) uniform uboMBOIT {
+  vec4 mboitZNearZFar;
+} uMBOIT;
+
+#if defined(MBOITPASS1)
+#elif defined(MBOITPASS2)
+#ifdef MSAA
+layout(input_attachment_index = 0, set = 3, binding = 5) uniform subpassInputMS uMBOITMoments0;
+layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInputMS uMBOITMoments1;
+#else
+layout(input_attachment_index = 0, set = 3, binding = 5) uniform subpassInput uMBOITMoments0;
+layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInput uMBOITMoments1;
+#endif
+#endif
+
+#endif
+
 #ifdef DEPTHONLY
 #else
 layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
@@ -123,19 +142,9 @@ layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
 
 layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
-#if defined(MBOIT)
-
-#ifdef MBOITPASS2
-#ifdef MSAA
-layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uMBOITMoments0;
-layout(input_attachment_index = 1, set = 3, binding = 5) uniform subpassInputMS uMBOITMoments1;
-#else
-layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uMBOITMoments0;
-layout(input_attachment_index = 1, set = 3, binding = 5) uniform subpassInput uMBOITMoments1;
-#endif
 #endif
 
-#elif defined(OIT)
+#if defined(OIT)
 
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
@@ -151,8 +160,6 @@ layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLo
 layout(std140, set = 3, binding = 8) uniform uboOIT {
   ivec4 oitViewPort;
 } uOIT;
-
-#endif
 
 #endif
 
@@ -839,7 +846,7 @@ void main() {
 #endif
 #endif
 #if defined(MBOIT)
-  float depth = MBOIT_WarpDepth(-inViewSpacePosition.z, log(0.1), log(4096));;
+  float depth = MBOIT_WarpDepth(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
   float transmittance = 1.0 - alpha;
 #ifdef MBOITPASS1
   {
