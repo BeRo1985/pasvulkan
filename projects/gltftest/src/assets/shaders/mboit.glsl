@@ -110,13 +110,13 @@ void MBOIT4_ResolveMoments(            //
       );
 }
 
-void MBOIT6_GenerateMoments(float depth, float transmittance, out float b_0, out vec4 b1234, out vec4 b56) {
+void MBOIT6_GenerateMoments(float depth, float transmittance, out float b0, out vec4 b1234, out vec4 b56) {
   float  //
       absorbance = -log(transmittance),
       depth_pow2 = depth * depth,            //
       depth_pow4 = depth_pow2 * depth_pow2,  //
       depth_pow6 = depth_pow4 * depth_pow2;
-  b_0 = absorbance;
+  b0 = absorbance;
   b1234 = vec4(depth, depth_pow2, depth_pow2 * depth, depth_pow4) * absorbance;
   b56 = vec4(depth_pow4 * depth, depth_pow6, 0.0, 0.0) * absorbance;
 }

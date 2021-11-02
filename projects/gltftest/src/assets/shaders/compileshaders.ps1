@@ -5,6 +5,12 @@ $compileshaderarguments = @(
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv',
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DMBOITPASS1 -DDEPTHONLY -o mesh_mboit_pass1_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DALPHATEST -DMBOITPASS1 -DDEPTHONLY -o mesh_mboit_masked_pass1_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DMBOITPASS2 -o mesh_mboit_pass2_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DALPHATEST -DMBOITPASS2 -o mesh_mboit_masked_pass2_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DMBOITPASS2 -DMSAA -o mesh_mboit_msaa_pass2_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DALPHATEST -DMBOITPASS2 -DMSAA -o mesh_mboit_masked_msaa_pass2_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -o mesh_oit_spinlock_reversedz_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -DREVERSEDZ -DALPHATEST -o mesh_oit_spinlock_reversedz_masked_frag.spv',
   '-V mesh.frag -DLIGHTS -DSHADOWS -DOIT -o mesh_oit_spinlock_frag.spv',

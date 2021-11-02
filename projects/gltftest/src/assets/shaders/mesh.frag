@@ -7,7 +7,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#ifdef OIT
+#if defined(MBOIT)
+#elif defined(OIT)
 #ifndef OIT_SIMPLE
 #extension GL_ARB_post_depth_coverage : enable
 layout(post_depth_coverage) in;
@@ -39,10 +40,24 @@ layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
-#ifndef DEPTHONLY
+#ifdef DEPTHONLY
+#if defined(MBOIT) && defined(MBOITPASS1)
+layout(location = 0) out vec4 outFragMBOITMoments0;
+layout(location = 1) out vec4 outFragMBOITMoments1;
+#endif
+#else
+#if defined(MBOIT)
+#if defined(MBOITPASS1)
+layout(location = 0) out vec4 outFragMBOITMoments0;
+layout(location = 1) out vec4 outFragMBOITMoments1;
+#elif defined(MBOITPASS2)
+layout(location = 0) out vec4 outFragColor;
+#endif
+#else
 layout(location = 0) out vec4 outFragColor;
 #ifdef EXTRAEMISSIONOUTPUT
 layout(location = 1) out vec4 outFragEmission;
+#endif
 #endif
 #endif
 
@@ -108,7 +123,19 @@ layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
 
 layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
-#ifdef OIT
+#if defined(MBOIT)
+
+#ifdef MBOITPASS2
+#ifdef MSAA
+layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uMBOITMoments0;
+layout(input_attachment_index = 1, set = 3, binding = 5) uniform subpassInputMS uMBOITMoments1;
+#else
+layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uMBOITMoments0;
+layout(input_attachment_index = 1, set = 3, binding = 5) uniform subpassInput uMBOITMoments1;
+#endif
+#endif
+
+#elif defined(OIT)
 
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
@@ -144,6 +171,10 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
 vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
+
+#ifdef MBOIT
+ #include "mboit.glsl"
+#endif
 
 #ifdef DEPTHONLY
 #else
@@ -762,7 +793,7 @@ void main() {
   }
   float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
-#ifndef OIT
+#if !(defined(OIT) || defined(MBOIT)) 
   outFragColor = finalColor;
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
@@ -771,17 +802,25 @@ void main() {
 #endif
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
-#ifdef OIT
+#if defined(OIT) || defined(MBOIT)
+#if defined(MBOIT) && defined(MBOITPASS1)    
+    alpha = 0.0;    
+#else
     finalColor = vec4(alpha = 0.0);    
+#endif
 #else 
     discard;
 #endif
-#ifdef OIT
+#if defined(OIT) || defined(MBOIT)
   }else{
+#if defined(MBOIT) && defined(MBOITPASS1)    
+    alpha = 1.0;    
+#else
     finalColor.w = alpha = 1.0;    
 #endif
+#endif
   }
-#ifndef OIT
+#if !(defined(OIT) || defined(MBOIT))
 #ifdef MSAA
 #if 0
   vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
@@ -799,7 +838,44 @@ void main() {
 #endif
 #endif
 #endif
-#ifdef OIT
+#if defined(MBOIT)
+  float depth = MBOIT_WarpDepth(-inViewSpacePosition.z, log(0.1), log(4096));;
+  float transmittance = 1.0 - alpha;
+#ifdef MBOITPASS1
+  {
+    float b0;
+    vec4 b1234;
+    vec4 b56;
+    MBOIT6_GenerateMoments(depth, transmittance, b0, b1234, b56);
+    outFragMBOITMoments0 = vec4(b0, b1234.xyz);
+    outFragMBOITMoments1 = vec4(b1234.w, b56.xy, 0.0);
+  }
+#elif defined(MBOITPASS2)
+  {
+#ifdef MSAA
+    vec4 mboitMoments0 = subpassLoad(uMBOITMoments0, gl_SampleID); 
+    vec4 mboitMoments1 = subpassLoad(uMBOITMoments1, gl_SampleID); 
+#else    
+    vec4 mboitMoments0 = subpassLoad(uMBOITMoments0); 
+    vec4 mboitMoments1 = subpassLoad(uMBOITMoments1); 
+#endif
+    float b0 = mboitMoments0.x;
+    vec4 b1234 = vec4(mboitMoments0.yzw, mboitMoments1.x);
+    vec4 b56 = vec3(mboitMoments1.yz, 0.0).xyzz;
+    float transmittance_at_depth = 1.0;
+    float total_transmittance = 1.0;
+    MBOIT6_ResolveMoments(transmittance_at_depth,  //
+                          total_transmittance,     //
+                          depth,                   //
+                          5e-5,                    // moment_bias
+                          0.04,                    // overestimation
+                          b0,                      //
+                          b1234,                   //
+                          b56);
+    outFragColor = vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth);
+  } 
+#endif
+#elif defined(OIT)
 
   finalColor.xyz *= finalColor.w; // Premultiply alpha
 
