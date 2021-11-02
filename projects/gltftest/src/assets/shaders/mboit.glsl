@@ -104,8 +104,8 @@ void MBOIT4_ResolveMoments(            //
           b0,                                                                   //
           b_1234,                                                               //
           depth,                                                                //
-          0.0035                                                                // moment_bias
-          0.1                                                                   // overestimation
+          0.0035,                                                               // moment_bias
+          0.1,                                                                  // overestimation
           vec4(0.0, 0.375, 0.0, 0.375)                                          // bias_vector
       );
 }
@@ -126,14 +126,14 @@ float MBOIT6_Saturate(float x) {               //
 }
 
 float MBOIT6_ArcTan2(in float y, in float x) {                           //
-  return mix(PI / 2.0 - atan(x, y), atan(y, x), bool(abs(x) > abs(y)));  //
+  return mix(/*PI / 2.0*/1.57079632679 - atan(x, y), atan(y, x), bool(abs(x) > abs(y)));  //
 }
 
 /*! Code taken from the blog "Moments in Graphics" by Christoph Peters.
     http://momentsingraphics.de/?p=105
     This function computes the three real roots of a cubic polynomial
     Coefficient[0]+Coefficient[1]*x+Coefficient[2]*x^2+Coefficient[3]*x^3.*/
-vec3 SolveCubic(vec4 Coefficient) {
+vec3 MBOIT6_SolveCubic(vec4 Coefficient) {
   // Normalize the polynomial
   Coefficient.xyz /= Coefficient.w;
   // Divide middle coefficients by three
