@@ -18,6 +18,8 @@ unit UnitScreenMain;
  {$define Windows}
 {$ifend}
 
+{$define UseMomentBasedOrderIndependentTransparency}
+
 interface
 
 uses SysUtils,
@@ -48,7 +50,9 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
               CountOrderIndependentTransparencyLayers=4;
+{$endif}
         type { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
@@ -57,6 +61,7 @@ type { TScreenMain }
                SplitDepths:TpvVector3;
                Scales:TpvVector2;
              end;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
              { TOrderIndependentTransparentViewPort }
              TOrderIndependentTransparentViewPort=packed record
               x:TpvInt32;
@@ -68,10 +73,13 @@ type { TScreenMain }
              TOrderIndependentTransparentUniformBuffer=packed record
               ViewPort:TOrderIndependentTransparentViewPort;
              end;
+{$endif}
+{$ifdef UseMomentBasedOrderIndependentTransparency}
              { TMomentBasedOrderIndependentTransparentUniformBuffer }
              TMomentBasedOrderIndependentTransparentUniformBuffer=packed record
               ZNearZFar:TpvVector4;
              end;
+{$endif}
              PCascadedShadowMap=^TCascadedShadowMap;
              TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
              PCascadedShadowMaps=^TCascadedShadowMaps;
@@ -216,6 +224,7 @@ type { TScreenMain }
                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
              end;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
              { TOrderIndependentTransparencyClearCustomPass }
              TOrderIndependentTransparencyClearCustomPass=class(TpvFrameGraph.TCustomPass)
               private
@@ -230,6 +239,70 @@ type { TScreenMain }
                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
              end;
+             { TOrderIndependentTransparencyRenderPass }
+             TOrderIndependentTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
+              private
+               fVulkanRenderPass:TpvVulkanRenderPass;
+               fParent:TScreenMain;
+               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+               fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
+               fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+               fVulkanTransferCommandBufferFence:TpvVulkanFence;
+               fMeshVertexShaderModule:TpvVulkanShaderModule;
+               fMeshFragmentShaderModule:TpvVulkanShaderModule;
+               fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
+               fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+               fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
+               fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+               fVulkanCascadedShadowMapSampler:TpvVulkanSampler;
+               fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
+               fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
+               fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+               constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+               destructor Destroy; override;
+               procedure Show; override;
+               procedure Hide; override;
+               procedure AfterCreateSwapChain; override;
+               procedure BeforeDestroySwapChain; override;
+               procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
+             end;
+             { TOrderIndependentTransparencyResolveRenderPass }
+             TOrderIndependentTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
+               private
+                fParent:TScreenMain;
+                fVulkanRenderPass:TpvVulkanRenderPass;
+                fResourceOpaque:TpvFrameGraph.TPass.TUsedImageResource;
+                fResourceTransparent:TpvFrameGraph.TPass.TUsedImageResource;
+                fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
+                fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+                fVulkanTransferCommandBufferFence:TpvVulkanFence;
+                fVulkanVertexShaderModule:TpvVulkanShaderModule;
+                fVulkanFragmentShaderModule:TpvVulkanShaderModule;
+                fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
+                fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
+                fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+                fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+                fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+               public
+                constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+                destructor Destroy; override;
+                procedure Show; override;
+                procedure Hide; override;
+                procedure AfterCreateSwapChain; override;
+                procedure BeforeDestroySwapChain; override;
+                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
+             end;
+{$endif}
+{$ifdef UseMomentBasedOrderIndependentTransparency}
              { TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass }
              TMomentOrderIndependentTransparencyAbsorbanceRenderPass=class(TpvFrameGraph.TRenderPass)
               private
@@ -329,68 +402,7 @@ type { TScreenMain }
                 procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
                 procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
              end;
-             { TOrderIndependentTransparencyRenderPass }
-             TOrderIndependentTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
-              private
-               fVulkanRenderPass:TpvVulkanRenderPass;
-               fParent:TScreenMain;
-               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
-               fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-               fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
-               fMeshVertexShaderModule:TpvVulkanShaderModule;
-               fMeshFragmentShaderModule:TpvVulkanShaderModule;
-               fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
-               fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-               fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
-               fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
-               fVulkanCascadedShadowMapSampler:TpvVulkanSampler;
-               fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
-               fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
-               fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
-               fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
-               fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-               constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
-               destructor Destroy; override;
-               procedure Show; override;
-               procedure Hide; override;
-               procedure AfterCreateSwapChain; override;
-               procedure BeforeDestroySwapChain; override;
-               procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
-               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
-             end;
-             { TOrderIndependentTransparencyResolveRenderPass }
-             TOrderIndependentTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
-               private
-                fParent:TScreenMain;
-                fVulkanRenderPass:TpvVulkanRenderPass;
-                fResourceOpaque:TpvFrameGraph.TPass.TUsedImageResource;
-                fResourceTransparent:TpvFrameGraph.TPass.TUsedImageResource;
-                fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
-                fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-                fVulkanTransferCommandBufferFence:TpvVulkanFence;
-                fVulkanVertexShaderModule:TpvVulkanShaderModule;
-                fVulkanFragmentShaderModule:TpvVulkanShaderModule;
-                fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
-                fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
-                fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-                fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-                fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-                fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
-                fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-               public
-                constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
-                destructor Destroy; override;
-                procedure Show; override;
-                procedure Hide; override;
-                procedure AfterCreateSwapChain; override;
-                procedure BeforeDestroySwapChain; override;
-                procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
-                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); override;
-             end;
+{$endif}
              { TTonemappingRenderPass }
              TTonemappingRenderPass=class(TpvFrameGraph.TRenderPass)
                private
@@ -490,12 +502,16 @@ type { TScreenMain }
        fCascadedShadowMapResolveRenderPass:TCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TCascadedShadowMapBlurRenderPass;
        fForwardRenderPass:TForwardRenderPass;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
        fOrderIndependentTransparencyClearCustomPass:TOrderIndependentTransparencyClearCustomPass;
        fOrderIndependentTransparencyRenderPass:TOrderIndependentTransparencyRenderPass;
        fOrderIndependentTransparencyResolveRenderPass:TOrderIndependentTransparencyResolveRenderPass;
+{$endif}
+{$ifdef UseMomentBasedOrderIndependentTransparency}
        fMomentOrderIndependentTransparencyAbsorbanceRenderPass:TMomentOrderIndependentTransparencyAbsorbanceRenderPass;
        fMomentOrderIndependentTransparencyTransmittanceRenderPass:TMomentOrderIndependentTransparencyTransmittanceRenderPass;
        fMomentOrderIndependentTransparencyResolveRenderPass:TMomentOrderIndependentTransparencyResolveRenderPass;
+{$endif}
        fTonemappingRenderPass:TTonemappingRenderPass;
        fAntialiasingRenderPass:TAntialiasingRenderPass;
        fGroup:TpvScene3D.TGroup;
@@ -511,14 +527,20 @@ type { TScreenMain }
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:TpvInt32;
        fUseDepthPrepass:boolean;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
        fCountOrderIndependentTransparencyLayers:TpvInt32;
+{$endif}
+{$ifdef UseMomentBasedOrderIndependentTransparency}
        fMomentBasedOrderIndependentTransparentUniformBuffer:TMomentBasedOrderIndependentTransparentUniformBuffer;
        fMomentBasedOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
+{$endif}
+{$ifndef UseMomentBasedOrderIndependentTransparency}
        fOrderIndependentTransparentUniformBuffer:TOrderIndependentTransparentUniformBuffer;
        fOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fOrderIndependentTransparencyABufferBuffers:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyBuffer;
        fOrderIndependentTransparencyAuxImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
        fOrderIndependentTransparencySpinLockImages:array[0..MaxSwapChainImages-1] of TOrderIndependentTransparencyImage;
+{$endif}
        procedure CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -2061,90 +2083,7 @@ begin
 
 end;
 
-{ TScreenMain.TOrderIndependentTransparencyClearCustomPass }
-
-constructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
-begin
- inherited Create(aFrameGraph);
- fParent:=aParent;
- Name:='OrderIndependentTransparencyClear';
-end;
-
-destructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Show;
-begin
- inherited Show;
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Hide;
-begin
- inherited Hide;
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.AfterCreateSwapChain;
-begin
- inherited AfterCreateSwapChain;
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.BeforeDestroySwapChain;
-begin
- inherited BeforeDestroySwapChain;
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
-begin
- inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
-end;
-
-procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
-var ClearValue:TVkClearColorValue;
-    ClearRanges:TVkImageSubresourceRange;
-    MemoryBarrier:TVkMemoryBarrier;
-begin
- inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
-
- ClearValue.uint32[0]:=0;
- ClearValue.uint32[1]:=0;
- ClearValue.uint32[2]:=0;
- ClearValue.uint32[3]:=0;
-
-//FillChar(ClearRanges,SizeOf(TVkImageSubresourceRange),#0);
- ClearRanges.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
- ClearRanges.baseArrayLayer:=0;
- ClearRanges.baseMipLevel:=0;
- ClearRanges.layerCount:=fParent.fCountSurfaceViews;
- ClearRanges.levelCount:=1;
-
- aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencyAuxImages[aSwapChainImageIndex].VulkanImage.Handle,
-                                   VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValue,
-                                   1,
-                                   @ClearRanges);
-
- aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencySpinLockImages[aSwapChainImageIndex].VulkanImage.Handle,
-                                   VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValue,
-                                   1,
-                                   @ClearRanges);
-
- MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
-
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   1,
-                                   @MemoryBarrier,
-                                   0,
-                                   nil,
-                                   0,
-                                   nil);
-
-end;
+{$ifdef UseMomentBasedOrderIndependentTransparency}
 
 { TScreenMain.TMomentOrderIndependentTransparencyAbsorbanceRenderPass }
 
@@ -3438,6 +3377,95 @@ begin
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
 
+{$endif}
+
+{$ifndef UseMomentBasedOrderIndependentTransparency}
+
+{ TScreenMain.TOrderIndependentTransparencyClearCustomPass }
+
+constructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+begin
+ inherited Create(aFrameGraph);
+ fParent:=aParent;
+ Name:='OrderIndependentTransparencyClear';
+end;
+
+destructor TScreenMain.TOrderIndependentTransparencyClearCustomPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Show;
+begin
+ inherited Show;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Hide;
+begin
+ inherited Hide;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.AfterCreateSwapChain;
+begin
+ inherited AfterCreateSwapChain;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.BeforeDestroySwapChain;
+begin
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+end;
+
+procedure TScreenMain.TOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+var ClearValue:TVkClearColorValue;
+    ClearRanges:TVkImageSubresourceRange;
+    MemoryBarrier:TVkMemoryBarrier;
+begin
+ inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
+
+ ClearValue.uint32[0]:=0;
+ ClearValue.uint32[1]:=0;
+ ClearValue.uint32[2]:=0;
+ ClearValue.uint32[3]:=0;
+
+//FillChar(ClearRanges,SizeOf(TVkImageSubresourceRange),#0);
+ ClearRanges.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ClearRanges.baseArrayLayer:=0;
+ ClearRanges.baseMipLevel:=0;
+ ClearRanges.layerCount:=fParent.fCountSurfaceViews;
+ ClearRanges.levelCount:=1;
+
+ aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencyAuxImages[aSwapChainImageIndex].VulkanImage.Handle,
+                                   VK_IMAGE_LAYOUT_GENERAL,
+                                   @ClearValue,
+                                   1,
+                                   @ClearRanges);
+
+ aCommandBuffer.CmdClearColorImage(fParent.fOrderIndependentTransparencySpinLockImages[aSwapChainImageIndex].VulkanImage.Handle,
+                                   VK_IMAGE_LAYOUT_GENERAL,
+                                   @ClearValue,
+                                   1,
+                                   @ClearRanges);
+
+ MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                   1,
+                                   @MemoryBarrier,
+                                   0,
+                                   nil,
+                                   0,
+                                   nil);
+
+end;
+
 { TScreenMain.TOrderIndependentTransparencyRenderPass }
 
 constructor TScreenMain.TOrderIndependentTransparencyRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
@@ -4324,6 +4352,8 @@ begin
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
 
+{$endif}
+
 { TScreenMain.TTonemappingRenderPass }
 
 constructor TScreenMain.TTonemappingRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
@@ -4349,11 +4379,19 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
+{$ifdef UseMomentBasedOrderIndependentTransparency}
+ fResourceColor:=AddImageInput('resourcetype_color',
+                               'momentbasedorderindependenttransparency_final_color',
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                              );
+{$else}
  fResourceColor:=AddImageInput('resourcetype_color',
                                'orderindependenttransparency_final_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
+{$endif}
 
  fResourceSurface:=AddImageOutput('resourcetype_color',
                                   'tonemapping_color',
@@ -5149,22 +5187,24 @@ begin
 
  fForwardRenderPass:=TForwardRenderPass.Create(fFrameGraph,self);
 
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  fOrderIndependentTransparencyClearCustomPass:=TOrderIndependentTransparencyClearCustomPass.Create(fFrameGraph,self);
 
  fOrderIndependentTransparencyRenderPass:=TOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
  fOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyClearCustomPass);
 
  fOrderIndependentTransparencyResolveRenderPass:=TOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
-//fOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fOrderIndependentTransparencyRenderPass);
+{$endif}
 
+{$ifdef UseMomentBasedOrderIndependentTransparency}
  fMomentOrderIndependentTransparencyAbsorbanceRenderPass:=TMomentOrderIndependentTransparencyAbsorbanceRenderPass.Create(fFrameGraph,self);
 
  fMomentOrderIndependentTransparencyTransmittanceRenderPass:=TMomentOrderIndependentTransparencyTransmittanceRenderPass.Create(fFrameGraph,self);
 
  fMomentOrderIndependentTransparencyResolveRenderPass:=TMomentOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+{$endif}
 
  fTonemappingRenderPass:=TTonemappingRenderPass.Create(fFrameGraph,self);
- fTonemappingRenderPass.AddExplicitPassDependency(fMomentOrderIndependentTransparencyResolveRenderPass);
 
  fAntialiasingRenderPass:=TAntialiasingRenderPass.Create(fFrameGraph,self);
 
@@ -5278,6 +5318,7 @@ begin
                                                                         []);
  end;
 
+{$ifdef UseMomentBasedOrderIndependentTransparency}
  fMomentBasedOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                     SizeOf(TMomentBasedOrderIndependentTransparentUniformBuffer),
                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -5290,7 +5331,9 @@ begin
                                                                                     0,
                                                                                     0,
                                                                                     []);
+{$endif}
 
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  fOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                          SizeOf(TOrderIndependentTransparentUniformBuffer),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -5303,6 +5346,7 @@ begin
                                                                          0,
                                                                          0,
                                                                          []);
+{$endif}
 
  fFrameGraph.Show;
 
@@ -5326,9 +5370,13 @@ begin
 
  fScene3D.Unload;
 
+{$ifdef UseMomentBasedOrderIndependentTransparency}
  FreeAndNil(fMomentBasedOrderIndependentTransparentUniformVulkanBuffer);
+{$endif}
 
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  FreeAndNil(fOrderIndependentTransparentUniformVulkanBuffer);
+{$endif}
 
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
@@ -5395,8 +5443,11 @@ begin
 
  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=UnitApplication.Application.VirtualReality.ImageFormat;
 
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  fCountOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;
+{$endif}
 
+{$ifdef UseMomentBasedOrderIndependentTransparency}
  fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.x:=abs(UnitApplication.Application.VirtualReality.ZNear);
  fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.y:=IfThen(IsInfinite(UnitApplication.Application.VirtualReality.ZFar),4096.0,abs(UnitApplication.Application.VirtualReality.ZFar));
  fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.z:=ln(fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.x);
@@ -5408,7 +5459,9 @@ begin
                                                                        fMomentBasedOrderIndependentTransparentUniformBuffer,
                                                                        0,
                                                                        SizeOf(TMomentBasedOrderIndependentTransparentUniformBuffer));
+{$endif}
 
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  fOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
  fOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;
  fOrderIndependentTransparentUniformBuffer.ViewPort.z:=fOrderIndependentTransparentUniformBuffer.ViewPort.x*fOrderIndependentTransparentUniformBuffer.ViewPort.y;
@@ -5440,6 +5493,7 @@ begin
                                                                                                 VK_SAMPLE_COUNT_1_BIT);
 
  end;
+{$endif}
 
  fFrameGraph.AfterCreateSwapChain;
 
@@ -5448,15 +5502,19 @@ begin
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
 var Index:TpvSizeInt;
+{$endif}
 begin
  fFrameGraph.BeforeDestroySwapChain;
  fExternalOutputImageData.VulkanImages.Clear;
+{$ifndef UseMomentBasedOrderIndependentTransparency}
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fOrderIndependentTransparencyABufferBuffers[Index]);
   FreeAndNil(fOrderIndependentTransparencyAuxImages[Index]);
   FreeAndNil(fOrderIndependentTransparencySpinLockImages[Index]);
  end;
+{$endif}
  inherited BeforeDestroySwapChain;
 end;
 
