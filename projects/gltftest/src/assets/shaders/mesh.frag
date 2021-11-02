@@ -848,8 +848,8 @@ void main() {
 #endif
 
 #if defined(MBOIT)
-  float depth = MBOIT_WarpDepth(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
-  float transmittance = 1.0 - alpha;
+  float depth = MBOIT_WarpDepth(clamp(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.x, uMBOIT.mboitZNearZFar.y), uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
+  float transmittance = clamp(1.0 - alpha, 1e-4, 1.0);
 #ifdef MBOITPASS1
   {
     float b0;
