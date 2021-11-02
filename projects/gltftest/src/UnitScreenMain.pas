@@ -1896,7 +1896,7 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-   if fParent.fVulkanSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
+{  if fParent.fVulkanSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
     fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                           aSwapChainImageIndex,
                           0,
@@ -1905,7 +1905,7 @@ begin
                           aCommandBuffer,
                           fVulkanPipelineLayout,
                           [TpvScene3D.TMaterial.TAlphaMode.Mask]);
-   end;
+   end;}
 
   end;
 
