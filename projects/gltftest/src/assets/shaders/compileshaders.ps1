@@ -37,6 +37,8 @@ $compileshaderarguments = @(
   '-V mesh.frag -DMSAA -DLIGHTS -DSHADOWS -DOIT -DOIT_SIMPLE -DMASKED -o mesh_oit_msaa_simple_masked_frag.spv',
   '-V mesh.frag -DDEPTHONLY -o mesh_depth_frag.spv',
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -o mesh_depth_masked_frag.spv',
+  '-V mboit_resolve.frag -o mboit_resolve_frag.spv',
+  '-V mboit_resolve.frag -DMSAA -o mboit_resolve_msaa_frag.spv',
   '-V oit_resolve.frag -o oit_resolve_frag.spv',
   '-V oit_resolve.frag -DREVERSEDZ -o oit_resolve_reversedz_frag.spv',
   '-V oit_resolve.frag -DMSAA -o oit_resolve_msaa_frag.spv',
