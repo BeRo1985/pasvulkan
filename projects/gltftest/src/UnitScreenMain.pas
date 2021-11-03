@@ -4086,6 +4086,7 @@ begin
  fCascadedShadowMapBlurRenderPasses[0]:=TCascadedShadowMapBlurRenderPass.Create(fFrameGraph,self,true);
 
  fCascadedShadowMapBlurRenderPasses[1]:=TCascadedShadowMapBlurRenderPass.Create(fFrameGraph,self,false);
+ fCascadedShadowMapBlurRenderPasses[1].AddExplicitPassDependency(fCascadedShadowMapBlurRenderPasses[0]);
 
  fForwardRenderPass:=TForwardRenderPass.Create(fFrameGraph,self);
 
