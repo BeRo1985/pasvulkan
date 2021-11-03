@@ -7,25 +7,6 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#if defined(MBOIT)
-#elif defined(OIT)
-#ifndef OIT_SIMPLE
-#extension GL_ARB_post_depth_coverage : enable
-layout(post_depth_coverage) in;
-#endif
-#ifdef INTERLOCK
-#ifdef NVIDIA
-#extension GL_NV_fragment_shader_interlock : enable
-#define beginInvocationInterlock beginInvocationInterlockNV
-#define endInvocationInterlock endInvocationInterlockNV
-#else
-#extension GL_ARB_fragment_shader_interlock : enable
-#define beginInvocationInterlock beginInvocationInterlockARB
-#define endInvocationInterlock endInvocationInterlockARB
-#endif
-#endif
-#endif
-
 #ifndef ALPHATEST
 layout(early_fragment_tests) in;
 #endif
@@ -141,25 +122,6 @@ layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
 } uCascadedShadowMaps;
 
 layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
-
-#endif
-
-#if defined(OIT)
-
-#ifdef MSAA
-layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
-#else
-layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uOITImgDepth;
-#endif
-layout(set = 3, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
-#ifndef INTERLOCK
-layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-#endif
-
-layout(std140, set = 3, binding = 8) uniform uboOIT {
-  ivec4 oitViewPort;
-} uOIT;
 
 #endif
 
@@ -800,7 +762,7 @@ void main() {
   }
   float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
-#if !(defined(OIT) || defined(MBOIT)) 
+#if !defined(MBOIT)
   outFragColor = finalColor;
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
@@ -810,7 +772,7 @@ void main() {
 
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
-#if defined(OIT) || defined(MBOIT)
+#if defined(MBOIT)
 #if defined(MBOIT) && defined(MBOITPASS1)    
     alpha = 0.0;    
 #else
@@ -819,7 +781,7 @@ void main() {
 #else 
     discard;
 #endif
-#if defined(OIT) || defined(MBOIT)
+#if defined(MBOIT)
   }else{
 #if defined(MBOIT) && defined(MBOITPASS1)    
     alpha = 1.0;    
@@ -828,7 +790,7 @@ void main() {
 #endif
 #endif
   }
-#if !(defined(OIT) || defined(MBOIT))
+#if !defined(MBOIT)
 #ifdef MSAA
 #if 0
   vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
@@ -887,119 +849,8 @@ void main() {
     outFragColor = vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth);
   } 
 #endif
-#elif defined(OIT)
-
-  finalColor.xyz *= finalColor.w; // Premultiply alpha
-
-#if 1
-#ifndef OIT_SIMPLE
-#ifdef INTERLOCK
-  beginInvocationInterlock();
-#endif
 #endif
 
-  int oitMultiViewIndex = int(gl_ViewIndex);
-  ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
-#ifdef MSAA 
-  uint oitStoreMask = uint(gl_SampleMaskIn[0]);
-#else
-  const uint oitStoreMask = 1u;
-#endif
-
-  // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
-  // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
-  // buffer values from the previous forward rendering pass, which should fix problems with 
-  // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
-  // at least I hope it so:
-  uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
- #ifdef MSAA 
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r); 
- #else
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
- #endif 
-  if(
-#ifdef REVERSEDZ
-     (oitCurrentDepth >= oitDepth) &&  
-#else
-     (oitCurrentDepth <= oitDepth) &&  
-#endif
-     (min(alpha, finalColor.w) > 0.0)
-    ){
-
-#ifndef ALPHATEST
-    const int oitViewSize = int(uOIT.oitViewPort.z);
-    const int oitCountLayers = int(uOIT.oitViewPort.w & 0xffffu);
-    const int oitMultiViewSize = oitViewSize * oitCountLayers;
-    const int oitABufferBaseIndex = ((oitCoord.y * int(uOIT.oitViewPort.x)) + oitCoord.x) + (oitMultiViewSize * oitMultiViewIndex);
-
-    uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
-
-#ifdef OIT_SIMPLE
-    const uint oitAuxCounter = imageAtomicAdd(uOITImgAux, oitCoord, 1u);
-    if(oitAuxCounter < oitCountLayers){
-      imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
-      finalColor = vec4(0.0);
-    }
-#else
-#ifndef INTERLOCK
-    bool oitDone = oitStoreMask == 0;
-    while(!oitDone){
-      if(imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u) == 0u){
-#endif
-        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).r;
-        imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
-        if(oitAuxCounter < oitCountLayers){
-          imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
-          finalColor = vec4(0.0);
-        }else{
-          int oitFurthest = 0;
-          uint oitMaxDepth = 0;
-          for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
-            uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
-            if(
-#ifdef REVERSEDZ
-                (oitTestDepth < oitMaxDepth)
-#else
-                (oitTestDepth > oitMaxDepth)
-#endif
-              ){
-              oitMaxDepth = oitTestDepth;
-              oitFurthest = oitIndex;
-            }
-          }
-
-          if(
-#ifdef REVERSEDZ
-             (oitMaxDepth < oitStoreValue.z)
-#else
-             (oitMaxDepth > oitStoreValue.z)
-#endif          
-            ){
-            int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
-            uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
-            finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(unpackHalf2x16(oitOldValue.y)));
-            imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
-          }
-        }
-#ifndef INTERLOCK
-        imageAtomicExchange(uOITImgSpinLock, oitCoord, 0u);        
-        oitDone = true;
-      }
-    }
-#endif
-#endif
-#endif
-  } else {
-    finalColor = vec4(0.0);
-  }
-#ifndef OIT_SIMPLE
-#ifdef INTERLOCK
-  endInvocationInterlock();
-#endif
-#endif
-#endif
-  outFragColor = finalColor;
-#endif
 }
 
 /*oid main() {
