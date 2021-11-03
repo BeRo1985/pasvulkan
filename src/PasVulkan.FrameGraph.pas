@@ -4142,21 +4142,12 @@ type TEventBeforeAfter=(Event,Before,After);
     case aResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL,
      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-      if assigned(aResourceTransition.fPass) then begin
-       if aResourceTransition.fPass is TRenderPass then begin
-        result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-       end else if aResourceTransition.fPass is TComputePass then begin
-        result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-       end else begin
-        result:=0;
-       end;
-      end else begin
-       result:=0;
-      end;
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
      end;
      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
       result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -4179,6 +4170,44 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
    else begin
     result:=0;
+   end;
+  end;
+  if assigned(aResourceTransition.fPass) then begin
+   if aResourceTransition.fPass is TRenderPass then begin
+    result:=result and (TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV));
+   end else if aResourceTransition.fPass is TComputePass then begin
+    result:=result and (TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV));
+   end else if aResourceTransition.fPass is TTransferPass then begin
+    result:=result and (TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
    end;
   end;
  end;
