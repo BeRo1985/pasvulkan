@@ -4131,13 +4131,27 @@ end;
 
 procedure TpvFrameGraph.Compile;
 type TEventBeforeAfter=(Event,Before,After);
+     TDirection=(Input,Output);
+     TDirections=set of TDirection;
+ function GetDirections(const aResourceTransition:TResourceTransition):TDirections;
+ begin
+  result:=[];
+  if assigned(aResourceTransition) then begin
+   if aResourceTransition.fKind in TResourceTransition.AllInputs then begin
+    Include(result,TDirection.Input);
+   end;
+   if aResourceTransition.fKind in TResourceTransition.AllOutputs then begin
+    Include(result,TDirection.Output);
+   end;
+  end;
+ end;
  function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
  begin
   case aResourceTransition.fKind of
    TpvFrameGraph.TResourceTransition.TKind.ImageInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
    TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
    TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
    TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput:begin
     case aResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL,
@@ -4211,39 +4225,7 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
  end;
- procedure GetPipelineStageMasks(const aFromResourceTransition:TResourceTransition;
-                                 const aToResourceTransition:TResourceTransition;
-                                 out aSrcStageMask:TVkPipelineStageFlags;
-                                 out aDstStageMask:TVkPipelineStageFlags);
- begin
-  case aFromResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.ImageInput,
-   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
-    aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
-   end;
-   TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
-   TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
-    aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
-   end;
-   else begin
-    aSrcStageMask:=0;
-   end;
-  end;
-  case aToResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.ImageInput,
-   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
-    aDstStageMask:=GetPipelineStageMask(aToResourceTransition);
-   end;
-   else begin
-    aDstStageMask:=0;
-   end;
-  end;
- end;
- function GetAccessMask(const aResourceTransition:TResourceTransition;const aTo:boolean):TVkAccessFlags;
+ function GetAccessMask(const aResourceTransition:TResourceTransition;const aDirections:TDirections):TVkAccessFlags;
  begin
   case aResourceTransition.fKind of
    TpvFrameGraph.TResourceTransition.TKind.ImageInput,
@@ -4315,14 +4297,6 @@ type TEventBeforeAfter=(Event,Before,After);
     result:=0;
    end;
   end;
- end;
- procedure GetAccessMasks(const aFromResourceTransition:TResourceTransition;
-                          const aToResourceTransition:TResourceTransition;
-                          out aSrcAccessMask:TVkAccessFlags;
-                          out aDstAccessMask:TVkAccessFlags);
- begin
-  aSrcAccessMask:=GetAccessMask(aFromResourceTransition,false);
-  aDstAccessMask:=GetAccessMask(aToResourceTransition,true);
  end;
  procedure IndexingPasses;
  var Index:TpvSizeInt;
@@ -5199,10 +5173,12 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceTransition,
      FromResourceTransition,
      ToResourceTransition:TResourceTransition;
+     FromDirections,ToDirections:TDirections;
      SubpassDependency:TPhysicalRenderPass.TSubpassDependency;
      SrcQueueFamilyIndex,
      DstQueueFamilyIndex:TVkUInt32;
      PhyiscalPass:TPhysicalPass;
+     DoExternalBarrier,
      RealTransition,
      NeedBarriers,
      NeedSemaphore:boolean;
@@ -5262,53 +5238,64 @@ type TEventBeforeAfter=(Event,Before,After);
      end;
     end;
 
+    DoExternalBarrier:=false;
+
     // Then add the remaining Subpass dependencies
     for ResourceTransitionIndex:=0 to Pass.fResourceTransitions.Count-1 do begin
      ResourceTransition:=Pass.fResourceTransitions[ResourceTransitionIndex];
+
      Assert(ResourceTransition.Pass=Pass);
+
      Resource:=ResourceTransition.Resource;
-     if ResourceTransition.fKind in TResourceTransition.AllInputs then begin
 
-      ToResourceTransition:=ResourceTransition;
+     FromResourceTransition:=Resource.fLastTransition;
 
-      FromResourceTransition:=Resource.fLastTransition;
+     ToResourceTransition:=ResourceTransition;
 
-      if assigned(FromResourceTransition) and
-         (FromResourceTransition<>ToResourceTransition) and
-         (FromResourceTransition.fKind in TResourceTransition.AllInputsOutputs) and
-         (TPass.TFlag.Used in FromResourceTransition.fPass.fFlags) and
-         assigned(FromResourceTransition.fPass.fPhysicalPass) then begin
+     if assigned(FromResourceTransition) and
+        assigned(ToResourceTransition) and
+        (FromResourceTransition<>ToResourceTransition) and
+        (FromResourceTransition.fKind in TResourceTransition.AllInputsOutputs) and
+        (ToResourceTransition.fKind in TResourceTransition.AllInputsOutputs) and
+        (TPass.TFlag.Used in FromResourceTransition.fPass.fFlags) and
+        (TPass.TFlag.Used in ToResourceTransition.fPass.fFlags) and
+        assigned(FromResourceTransition.fPass.fPhysicalPass) and
+        assigned(ToResourceTransition.fPass.fPhysicalPass) then begin
 
-       NeedBarriers:=false;
+      FromDirections:=GetDirections(FromResourceTransition);
 
-       NeedSemaphore:=false;
+      ToDirections:=GetDirections(ToResourceTransition);
 
-       SubpassDependency.DependencyFlags:=0;
+      SubpassDependency.DependencyFlags:=0;
 
-       GetPipelineStageMasks(FromResourceTransition,
-                             ToResourceTransition,
-                             SubpassDependency.SrcStageMask,
-                             SubpassDependency.DstStageMask
-                            );
+      SubpassDependency.SrcStageMask:=GetPipelineStageMask(FromResourceTransition);
+      SubpassDependency.SrcAccessMask:=GetAccessMask(FromResourceTransition,FromDirections);
 
-       GetAccessMasks(FromResourceTransition,
-                      ToResourceTransition,
-                      SubpassDependency.SrcAccessMask,
-                      SubpassDependency.DstAccessMask
-                     );
+      SubpassDependency.DstStageMask:=GetPipelineStageMask(ToResourceTransition);
+      SubpassDependency.DstAccessMask:=GetAccessMask(ToResourceTransition,ToDirections);
 
-       if FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
-        SrcQueueFamilyIndex:=FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
-        DstQueueFamilyIndex:=ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
-       end else begin
-        SrcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        DstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       end;
+      if FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
+       SrcQueueFamilyIndex:=FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
+       DstQueueFamilyIndex:=ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
+      end else begin
+       SrcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       DstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+      end;
 
-       RealTransition:=(SrcQueueFamilyIndex<>DstQueueFamilyIndex) or
-                       (SubpassDependency.SrcAccessMask<>SubpassDependency.DstAccessMask) or
-                       (SubpassDependency.SrcStageMask<>SubpassDependency.DstStageMask) or
-                       (FromResourceTransition.Layout<>ToResourceTransition.Layout);
+      if (FromResourceTransition.Layout in [VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL]) or
+         (ToResourceTransition.Layout in [VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL]) then begin
+       DoExternalBarrier:=true;
+      end;
+
+      RealTransition:=(SrcQueueFamilyIndex<>DstQueueFamilyIndex) or
+                      (SubpassDependency.SrcAccessMask<>SubpassDependency.DstAccessMask) or
+                      (SubpassDependency.SrcStageMask<>SubpassDependency.DstStageMask) or
+                      (FromResourceTransition.Layout<>ToResourceTransition.Layout);
+
+      if (FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
+         (ToResourceTransition.fKind in TResourceTransition.AllInputs) then begin
+
+       // Output => Input
 
        if (FromResourceTransition.fPass is TRenderPass) and
           (ToResourceTransition.fPass is TRenderPass) and
@@ -5319,7 +5306,7 @@ type TEventBeforeAfter=(Event,Before,After);
           (TResourceTransition.TFlag.Attachment in FromResourceTransition.fFlags) and
           (TResourceTransition.TFlag.Attachment in ToResourceTransition.fFlags) then begin
 
-        // Both passes are render passes
+        // Both passes are render passes and both resource transitions are for image attachments
 
         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
 
@@ -5348,27 +5335,18 @@ type TEventBeforeAfter=(Event,Before,After);
          AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
                               SubpassDependency);
 
-         if RealTransition then begin
-          NeedBarriers:=true;
-         end else begin
-          if (FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer<>ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer) or
-             (FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex) or
-             (FromResourceTransition.fPass.fQueue.fPhysicalQueue<>ToResourceTransition.fPass.fQueue.fPhysicalQueue) or
-             not ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
-                  (ToResourceTransition.fKind in TResourceTransition.AllInputs)) then begin
-           NeedSemaphore:=true;
-          end;
-         end;
+         NeedBarriers:=true;
 
         end;
 
        end else begin
 
-        // Not both passes or none of the both passes are render passes
+        // Whether not both passes or none of the both passes are render passes, or any of the both resource
+        // transitions are not for a image attachment
 
         if (FromResourceTransition.fPass is TRenderPass) and
            (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (FromResourceTransition.fKind in TResourceTransition.AllImages{Outputs}) and
+           (FromResourceTransition.fKind in TResourceTransition.AllImageOutputs) and
            (TResourceTransition.TFlag.Attachment in FromResourceTransition.fFlags) then begin
          SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
          SubpassDependency.DstSubpass:=nil;
@@ -5379,7 +5357,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
         if (ToResourceTransition.fPass is TRenderPass) and
            (ToResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (ToResourceTransition.fKind in TResourceTransition.AllImages{Outputs}) and
+           (ToResourceTransition.fKind in TResourceTransition.AllImageInputs) and
            (TResourceTransition.TFlag.Attachment in ToResourceTransition.fFlags) then begin
          SubpassDependency.SrcSubpass:=nil;
          SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
@@ -5390,17 +5368,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
         SubpassDependency.DependencyFlags:=0;
 
-        if RealTransition then begin
-         NeedBarriers:=true;
-        end else begin
-         if (FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer<>ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer) or
-            (FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex) or
-            (FromResourceTransition.fPass.fQueue.fPhysicalQueue<>ToResourceTransition.fPass.fQueue.fPhysicalQueue) or
-            not ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
-                 (ToResourceTransition.fKind in TResourceTransition.AllInputs)) then begin
-          NeedSemaphore:=true;
-         end;
-        end;
+        NeedBarriers:=true;
 
        end;
 
@@ -5435,10 +5403,9 @@ type TEventBeforeAfter=(Event,Before,After);
 
           // Same queue family
 
-{$if not (defined(Darwin) or defined(MacOS) or defined(iOS))}
           if FromResourceTransition.fPass.fQueue.fPhysicalQueue=ToResourceTransition.fPass.fQueue.fPhysicalQueue then begin
 
-           // Same queue
+           // Same queue => Use events
 
            AddPipelineBarrier(TEventBeforeAfter.Event,
                               FromResourceTransition.fPass.fPhysicalPass,
@@ -5457,12 +5424,9 @@ type TEventBeforeAfter=(Event,Before,After);
 
            NeedSemaphore:=false;
 
-          end else{$ifend}begin
+          end else begin
 
-           // Different queues, or we are on MacOS, watchOS or iOS,
-           // where MoltenVK is used which have no support for events in the
-           // current versions of MoltenVK, so therefore the possible overhead is
-           // unfortunately necessary on MacOS/watchOS/iOS.
+           // Different queues
 
            AddPipelineBarrier(TEventBeforeAfter.Before,
                               nil,
@@ -5523,25 +5487,255 @@ type TEventBeforeAfter=(Event,Before,After);
 
          end;
 
+         if NeedSemaphore then begin
+
+          // Add a semaphore
+          AddSemaphoreSignalWait(FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
+                                 ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
+                                 SubpassDependency.DstStageMask
+                                );
+
+         end;
+
         end;
 
        end;
 
-       if NeedSemaphore then begin
+      end else if (FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+                  (ToResourceTransition.fKind in TResourceTransition.AllInputs) then begin
 
-        // Add a semaphore
-        AddSemaphoreSignalWait(FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
-                               ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
-                               SubpassDependency.DstStageMask
-                              );
+       // Input => Input
+
+       if (FromResourceTransition.fPass is TRenderPass) and
+          (ToResourceTransition.fPass is TRenderPass) and
+          (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+          (ToResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+          (FromResourceTransition.fKind in TResourceTransition.AllImages) and
+          (ToResourceTransition.fKind in TResourceTransition.AllImages) then begin
+
+        // Both passes are render passes
+
+        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+
+        if FromResourceTransition.fPass.fPhysicalPass=ToResourceTransition.fPass.fPhysicalPass then begin
+
+         // Same physical render pass
+
+         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
+                              SubpassDependency);
+
+         NeedBarriers:=not ((TResourceTransition.TFlag.Attachment in FromResourceTransition.fFlags) and
+                            (TResourceTransition.TFlag.Attachment in ToResourceTransition.fFlags));
+
+        end else begin
+
+         // Different physical render passes
+
+         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         SubpassDependency.DstSubpass:=nil;
+         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
+                              SubpassDependency);
+
+         SubpassDependency.SrcSubpass:=nil;
+         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
+                              SubpassDependency);
+
+         NeedBarriers:=true;
+
+        end;
+
+       end else begin
+
+        // Whether not both passes or none of the both passes are render passes, or any of the both resource
+        // transitions are not for a image attachment
+
+        if (FromResourceTransition.fPass is TRenderPass) and
+           (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+           (FromResourceTransition.fKind in TResourceTransition.AllImages) then begin
+         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         SubpassDependency.DstSubpass:=nil;
+         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
+                              SubpassDependency);
+        end;
+
+        if (ToResourceTransition.fPass is TRenderPass) and
+           (ToResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+           (ToResourceTransition.fKind in TResourceTransition.AllImages) then begin
+         SubpassDependency.SrcSubpass:=nil;
+         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
+         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
+                              SubpassDependency);
+        end;
+
+        SubpassDependency.DependencyFlags:=0;
+
+        NeedBarriers:=true;
 
        end;
 
+       if NeedBarriers then begin
+
+        if FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer=ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer then begin
+
+         // Same command buffer (which also means: same queue and same queue family)
+
+         AddPipelineBarrier(TEventBeforeAfter.Before,
+                            nil,
+                            ToResourceTransition.fPass.fPhysicalPass,
+                            Resource.fResourceAliasGroup.fResourcePhysicalData,
+                            FromResourceTransition,
+                            ToResourceTransition,
+                            SrcQueueFamilyIndex,
+                            DstQueueFamilyIndex,
+                            SubpassDependency.SrcStageMask,
+                            SubpassDependency.DstStageMask,
+                            SubpassDependency.SrcAccessMask,
+                            SubpassDependency.DstAccessMask,
+                            SubpassDependency.DependencyFlags
+                           );
+
+         // No semaphores and no events are needed in this case, because we are in the same command buffer
+
+        end else begin
+
+         // Different command buffers
+
+         if FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex=ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
+
+          // Same queue family
+
+          if FromResourceTransition.fPass.fQueue.fPhysicalQueue=ToResourceTransition.fPass.fQueue.fPhysicalQueue then begin
+
+           // Same queue => Use events
+
+           AddPipelineBarrier(TEventBeforeAfter.Event,
+                              FromResourceTransition.fPass.fPhysicalPass,
+                              ToResourceTransition.fPass.fPhysicalPass,
+                              Resource.fResourceAliasGroup.fResourcePhysicalData,
+                              FromResourceTransition,
+                              ToResourceTransition,
+                              SrcQueueFamilyIndex,
+                              DstQueueFamilyIndex,
+                              SubpassDependency.SrcStageMask,
+                              SubpassDependency.DstStageMask,
+                              SubpassDependency.SrcAccessMask,
+                              SubpassDependency.DstAccessMask,
+                              SubpassDependency.DependencyFlags
+                             );
+
+           NeedSemaphore:=false;
+
+          end else begin
+
+           // Different queues
+
+           AddPipelineBarrier(TEventBeforeAfter.Before,
+                              nil,
+                              ToResourceTransition.fPass.fPhysicalPass,
+                              Resource.fResourceAliasGroup.fResourcePhysicalData,
+                              FromResourceTransition,
+                              ToResourceTransition,
+                              SrcQueueFamilyIndex,
+                              DstQueueFamilyIndex,
+                              SubpassDependency.SrcStageMask,
+                              SubpassDependency.DstStageMask,
+                              SubpassDependency.SrcAccessMask,
+                              SubpassDependency.DstAccessMask,
+                              SubpassDependency.DependencyFlags
+                             );
+
+           NeedSemaphore:=true;
+
+          end;
+
+         end else begin
+
+          // Different queue families (and different queues, of course)
+
+          // Release
+          AddPipelineBarrier(TEventBeforeAfter.After,
+                             nil,
+                             FromResourceTransition.fPass.fPhysicalPass,
+                             Resource.fResourceAliasGroup.fResourcePhysicalData,
+                             FromResourceTransition,
+                             ToResourceTransition,
+                             SrcQueueFamilyIndex,
+                             DstQueueFamilyIndex,
+                             SubpassDependency.SrcStageMask,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                             SubpassDependency.SrcAccessMask,
+                             0,
+                             SubpassDependency.DependencyFlags
+                            );
+
+          // Acquire
+          AddPipelineBarrier(TEventBeforeAfter.Before,
+                             nil,
+                             ToResourceTransition.fPass.fPhysicalPass,
+                             Resource.fResourceAliasGroup.fResourcePhysicalData,
+                             FromResourceTransition,
+                             ToResourceTransition,
+                             SrcQueueFamilyIndex,
+                             DstQueueFamilyIndex,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                             SubpassDependency.DstStageMask,
+                             0,
+                             SubpassDependency.DstAccessMask,
+                             SubpassDependency.DependencyFlags
+                            );
+
+          NeedSemaphore:=true;
+
+         end;
+
+         if NeedSemaphore then begin
+
+          // Add a semaphore
+          AddSemaphoreSignalWait(FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
+                                 ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
+                                 SubpassDependency.DstStageMask
+                                );
+
+         end;
+
+        end;
+
+       end;
+
+      end else if (FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+                  (ToResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+
+       // Input => Output
+
+       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0000');
+
+      end else if (FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
+                  (ToResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+
+       // Output => Output
+
+       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0001');
+
+      end else begin
+
+       // ? => ?
+
+       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-3-0000');
+
       end;
 
-     end else if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
+     end else begin
 
-      // Yet nothing
+      if assigned(FromResourceTransition) then begin
+       raise EpvFrameGraph.Create('Internal error 2021-11-04-10-55-0000');
+      end else begin
+       DoExternalBarrier:=true;
+      end;
 
      end;
 
@@ -5550,10 +5744,36 @@ type TEventBeforeAfter=(Event,Before,After);
 
     end;
 
+{   if DoExternalBarrier then begin
+     if Pass.fPhysicalPass is TPhysicalRenderPass then begin
+      if TRenderPass(Pass).VulkanRenderPassSubpassIndex=0 then begin
+       SubpassDependency.SrcSubpass:=nil;
+       SubpassDependency.DstSubpass:=TPhysicalRenderPass(Pass.fPhysicalPass).fSubpasses[0];
+       SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+       SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+       SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+       SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+       SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+       AddSubpassDependency(TPhysicalRenderPass(Pass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
+      end;
+      if TRenderPass(Pass).VulkanRenderPassSubpassIndex=(TPhysicalRenderPass(Pass.fPhysicalPass).fSubpasses.Count-1) then begin
+       SubpassDependency.SrcSubpass:=TPhysicalRenderPass(Pass.fPhysicalPass).fSubpasses[TPhysicalRenderPass(Pass.fPhysicalPass).fSubpasses.Count-1];
+       SubpassDependency.DstSubpass:=nil;
+       SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+       SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+       SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+       SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+       SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+       AddSubpassDependency(TPhysicalRenderPass(Pass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
+      end;
+     end;
+    end; }
+
     // Then add the explicit pass dependencies
     for ExplicitPassDependency in Pass.fExplicitPassDependencies do begin
      OtherPass:=ExplicitPassDependency.fPass;
      if (Pass<>OtherPass) and
+        (Pass.fPhysicalPass<>OtherPass.fPhysicalPass) and
         (TPass.TFlag.Used in Pass.fFlags) and
         (TPass.TFlag.Used in OtherPass.fFlags) then begin
       for Index:=0 to 1 do begin
