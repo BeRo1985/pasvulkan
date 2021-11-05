@@ -4807,35 +4807,41 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceTransition:TResourceTransition;
      Transient:boolean;
  begin
-  for Resource in fResources do begin
-   Transient:=false;
-   if assigned(Resource.fResourceType) and
-      (Resource.fResourceType is TImageResourceType) and
-      ((TImageResourceType(Resource.fResourceType).fImageUsage and not
-        (TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or
-         TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or
-         TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or
-         TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) or
-         TVkImageUsageFlags(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)))=0) and
-      ((Resource.fMaximumPhysicalPassStepIndex-Resource.fMinimumPhysicalPassStepIndex)<1) then begin
-    Transient:=true;
-    for ResourceTransition in Resource.fResourceTransitions do begin
-     if not ((ResourceTransition.fKind in TResourceTransition.AllImages) and
-             (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags)) then begin
-      Transient:=false;
-      break;
+  if fVulkanDevice.MemoryManager.LazilyAllocationSupport then begin
+   for Resource in fResources do begin
+    Transient:=false;
+    if assigned(Resource.fResourceType) and
+       (Resource.fResourceType is TImageResourceType) and
+       ((TImageResourceType(Resource.fResourceType).fImageUsage and not
+         (TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or
+          TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or
+          TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or
+          TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) or
+          TVkImageUsageFlags(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)))=0) and
+       ((Resource.fMaximumPhysicalPassStepIndex-Resource.fMinimumPhysicalPassStepIndex)<1) then begin
+     Transient:=true;
+     for ResourceTransition in Resource.fResourceTransitions do begin
+      if not ((ResourceTransition.fKind in TResourceTransition.AllImages) and
+              (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags)) then begin
+       Transient:=false;
+       break;
+      end;
+     end;
+     if Transient then begin
+      if Resource.fMinimumPhysicalPassStepIndex=Resource.fMaximumPhysicalPassStepIndex then begin
+       // Alright! Transient can stay true here in this case.
+      end else begin
+       Transient:=false;
+       // TODO: Add inter-subpass checking
+      end;
      end;
     end;
-    if Transient then begin
-     if Resource.fMinimumPhysicalPassStepIndex=Resource.fMaximumPhysicalPassStepIndex then begin
-      // Alright! Transient can stay true here in this case.
-     end else begin
-      Transient:=false;
-      // TODO: Add inter-subpass checking
-     end;
-    end;
+    Resource.fTransient:=Transient;
    end;
-   Resource.fTransient:=Transient;
+  end else begin
+   for Resource in fResources do begin
+    Resource.fTransient:=false;
+   end;
   end;
  end;
 //VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT

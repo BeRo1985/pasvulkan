@@ -911,6 +911,7 @@ type EpvVulkanException=class(Exception);
        fFirstMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDedicatedAllocationSupport:TDedicatedAllocationSupport;
+       fLazilyAllocationSupport:boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
@@ -960,6 +961,10 @@ type EpvVulkanException=class(Exception);
        **
        **)
        procedure Defragment;
+
+      published
+
+       property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
 
      end;
 
@@ -9953,6 +9958,8 @@ begin
 
  fDedicatedAllocationSupport:=TDedicatedAllocationSupport.None;
 
+ fLazilyAllocationSupport:=false;
+
 end;
 
 destructor TpvVulkanDeviceMemoryManager.Destroy;
@@ -9969,6 +9976,8 @@ begin
 end;
 
 procedure TpvVulkanDeviceMemoryManager.Initialize;
+var Index:TpvSizeInt;
+    MemoryPropertyFlags:TVkMemoryPropertyFlags;
 begin
 
  if ((((fDevice.fInstance.APIVersion shr 22) and $7f)=1) or
@@ -9988,6 +9997,15 @@ begin
   fDedicatedAllocationSupport:=TDedicatedAllocationSupport.Core;
  end else begin
   fDedicatedAllocationSupport:=TDedicatedAllocationSupport.None;
+ end;
+
+ fLazilyAllocationSupport:=false;
+ for Index:=0 to TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount)-1 do begin
+  MemoryPropertyFlags:=fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags;
+  if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
+   fLazilyAllocationSupport:=true;
+   break;
+  end;
  end;
 
 end;
