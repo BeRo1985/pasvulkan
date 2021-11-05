@@ -38,6 +38,7 @@ type TApplication=class(TpvApplication)
        fVirtualReality:TpvVirtualReality;
        fForceUseValidationLayers:boolean;
        fForceNoVSync:boolean;
+       fMaxMSAA:TpvInt32;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -62,6 +63,7 @@ type TApplication=class(TpvApplication)
        procedure PostPresent(const aSwapChainImageIndex:TpvInt32); override;
       published
        property VirtualReality:TpvVirtualReality read fVirtualReality;
+       property MaxMSAA:TpvInt32 read fMaxMSAA;
      end;
 
 var Application:TApplication=nil;
@@ -83,10 +85,13 @@ begin
  Application:=self;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
+ fMaxMSAA:=8;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
- for Index:=1 to ParamCount do begin
+ Index:=1;
+ while Index<=ParamCount do begin
   Parameter:=LowerCase(ParamStr(Index));
+  inc(Index);
   if (Parameter='--openvr') or
      (Parameter='/openvr') then begin
    VirtualRealityMode:=TpvVirtualReality.TMode.OpenVR;
@@ -108,6 +113,12 @@ begin
 { end else if (Parameter='--flush-update-data') or
               (Parameter='/flush-update-data') then begin
    FlushUpdateData:=true; //}
+  end else if (Parameter='--max-msaa') or
+              (Parameter='/max-msaa') then begin
+   if Index<=ParamCount then begin
+    fMaxMSAA:=StrToIntDef(ParamStr(Index),0);
+    inc(Index);
+   end;
   end else begin
    GLTFFileName:=Parameter;
   end;
