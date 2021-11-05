@@ -2043,7 +2043,29 @@ begin
                                                                       0,
                                                                       fCountArrayLayers);
 
-    if fFirstInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+    if fFirstInitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
+{    fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+                                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  TVkAccessFlags(0),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
+                                                  TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                  fFrameGraph.fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                                  nil,
+                                                  fFrameGraph.fVulkanUniversalQueueCommandBuffer,
+                                                  fFrameGraph.fUniversalQueue.fPhysicalQueue,
+                                                  fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
+                                                  true);}
+    end else begin
      if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
       fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                    VK_IMAGE_LAYOUT_UNDEFINED,
