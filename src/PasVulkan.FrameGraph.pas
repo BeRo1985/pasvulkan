@@ -4844,7 +4844,6 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
  end;
-//VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT
  procedure CreateResourceAliasGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
