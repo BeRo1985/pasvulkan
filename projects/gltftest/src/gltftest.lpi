@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="test4.glb /max-msaa 2"/>
+        <CommandLineParams Value="hamster.glb /max-msaa 2"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="test4.glb /max-msaa 2"/>
+            <CommandLineParams Value="hamster.glb /max-msaa 2"/>
           </local>
         </Mode0>
       </Modes>

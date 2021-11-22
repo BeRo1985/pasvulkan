@@ -2002,7 +2002,7 @@ begin
      MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.ImageLinear;
     end;
 
-    MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(0);
+    MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))<>0 then begin
      MemoryPreferredPropertyFlags:=MemoryPreferredPropertyFlags or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
@@ -2012,7 +2012,7 @@ begin
                                                                                                           MemoryRequirements.size,
                                                                                                           MemoryRequirements.alignment,
                                                                                                           MemoryRequirements.memoryTypeBits,
-                                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                          0,
                                                                                                           MemoryPreferredPropertyFlags,
                                                                                                           0,
                                                                                                           0,
