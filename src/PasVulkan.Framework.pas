@@ -10283,7 +10283,6 @@ begin
 
    if not assigned(result) then begin
     // Otherwise allocate a block inside a new chunk
-
     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
                                                    MemoryChunkFlags,
                                                    VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
