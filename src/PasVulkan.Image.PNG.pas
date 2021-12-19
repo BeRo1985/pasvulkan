@@ -436,6 +436,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
  var x,l,pc:TpvInt32;
      UsingBitGroup,DataIndex:TpvUInt32;
      c:TColorData;
+     Last:TpvUInt64;
      pe:TPNGPixelUI16;
      pui8:PPNGPixelUI8;
      pui16:PPNGPixelUI16;
@@ -483,8 +484,9 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
     result:=Swap64(result);
 {$endif}
     inc(DataIndex,ByteWidth);
+    Last:=result;
    end else begin
-    result:=0;
+    result:=Last;
    end;
    if ByteWidth=1 then begin
     result:=(TpvUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
