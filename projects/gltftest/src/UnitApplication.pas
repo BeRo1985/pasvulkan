@@ -85,7 +85,7 @@ begin
  Application:=self;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
- fMaxMSAA:=8;
+ fMaxMSAA:=4;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
