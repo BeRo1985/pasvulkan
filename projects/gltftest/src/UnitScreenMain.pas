@@ -3550,15 +3550,25 @@ begin
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                  );}
 
- fResourceSurface:=AddImageOutput('resourcetype_output_color',
-                                  'resource_output',
-                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment],
-                                  TpvFrameGraph.TResourceInstanceType.Default,
-                                  fParent.fExternalOutputImageData
-                                 );
+ if assigned(UnitApplication.Application.VirtualReality) then begin
+  fResourceSurface:=AddImageOutput('resourcetype_output_color',
+                                   'resource_output',
+                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment],
+                                   TpvFrameGraph.TResourceInstanceType.Default,
+                                   fParent.fExternalOutputImageData
+                                  );
+ end else begin
+  fResourceSurface:=AddImageOutput('resourcetype_output_color',
+                                   'resource_output',
+                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                  );
+ end;
 
 end;
 
