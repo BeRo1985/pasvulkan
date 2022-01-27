@@ -124,9 +124,13 @@ begin
   end;
  end;
 {$ifend}
- fVirtualReality:=TpvVirtualReality.Create(VirtualRealityMode);
- fVirtualReality.ZNear:=0.1;
- fVirtualReality.ZFar:=-Infinity;
+ if VirtualRealityMode=TpvVirtualReality.TMode.Disabled then begin
+  fVirtualReality:=nil;
+ end else begin
+  fVirtualReality:=TpvVirtualReality.Create(VirtualRealityMode);
+  fVirtualReality.ZNear:=0.1;
+  fVirtualReality.ZFar:=-Infinity;
+ end;
 end;
 
 destructor TApplication.Destroy;
@@ -139,16 +143,18 @@ end;
 procedure TApplication.SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance);
 begin
  inherited SetupVulkanInstance(aVulkanInstance);
- fVirtualReality.CheckVulkanInstanceExtensions(aVulkanInstance);
- aVulkanInstance.EnabledExtensionNames.Duplicates:=TDuplicates.dupIgnore;
- aVulkanInstance.EnabledExtensionNames.AddStrings(fVirtualReality.RequiredVulkanInstanceExtensions);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.CheckVulkanInstanceExtensions(aVulkanInstance);
+  aVulkanInstance.EnabledExtensionNames.Duplicates:=TDuplicates.dupIgnore;
+  aVulkanInstance.EnabledExtensionNames.AddStrings(fVirtualReality.RequiredVulkanInstanceExtensions);
+ end;
 end;
 
 procedure TApplication.ChooseVulkanPhysicalDevice(var aVulkanPhysicalDevice:TpvVulkanPhysicalDevice);
 var PhysicalDevice:TVkPhysicalDevice;
 begin
  inherited ChooseVulkanPhysicalDevice(aVulkanPhysicalDevice);
- if not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked]) then begin
+ if assigned(fVirtualReality) and not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked]) then begin
   fVirtualReality.ChooseVulkanPhysicalDevice(VulkanInstance,PhysicalDevice);
   pvApplication.VulkanPhysicalDeviceHandle:=PhysicalDevice;
  end;
@@ -157,9 +163,11 @@ end;
 procedure TApplication.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
 begin
  inherited SetupVulkanDevice(aVulkanDevice);
- fVirtualReality.CheckVulkanDeviceExtensions(pvApplication.VulkanPhysicalDeviceHandle);
- aVulkanDevice.EnabledExtensionNames.Duplicates:=TDuplicates.dupIgnore;
- aVulkanDevice.EnabledExtensionNames.AddStrings(fVirtualReality.RequiredVulkanDeviceExtensions);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.CheckVulkanDeviceExtensions(pvApplication.VulkanPhysicalDeviceHandle);
+  aVulkanDevice.EnabledExtensionNames.Duplicates:=TDuplicates.dupIgnore;
+  aVulkanDevice.EnabledExtensionNames.AddStrings(fVirtualReality.RequiredVulkanDeviceExtensions);
+ end;
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME);
  end;
@@ -184,7 +192,7 @@ begin
  UseAudio:=true;
  SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 //DesiredCountSwapChainImages:=2;
- if fForceNoVSync or not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked]) then begin
+ if fForceNoVSync or (assigned(fVirtualReality) and not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked])) then begin
   DesiredCountSwapChainImages:=2;
   PresentMode:=TpvApplicationPresentMode.Mailbox;
  end else begin
@@ -213,14 +221,18 @@ begin
 
  inherited Load;
 
- fVirtualReality.Load;
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.Load;
+ end;
 
 end;
 
 procedure TApplication.Unload;
 begin
 
- fVirtualReality.Unload;
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.Unload;
+ end;
 
  inherited Unload;
 
@@ -229,7 +241,9 @@ end;
 procedure TApplication.AfterCreateSwapChain;
 begin
 
- fVirtualReality.AfterCreateSwapChain;
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.AfterCreateSwapChain;
+ end;
 
  inherited AfterCreateSwapChain;
 
@@ -240,7 +254,9 @@ begin
 
  inherited BeforeDestroySwapChain;
 
- fVirtualReality.BeforeDestroySwapChain;
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.BeforeDestroySwapChain;
+ end;
 
 end;
 
@@ -270,38 +286,50 @@ end;
 
 procedure TApplication.Check(const aDeltaTime:TpvDouble);
 begin
- fVirtualReality.Check(aDeltaTime);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.Check(aDeltaTime);
+ end;
  inherited Check(aDeltaTime);
 end;
 
 procedure TApplication.Update(const aDeltaTime:TpvDouble);
 begin
- fVirtualReality.Update(aDeltaTime);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.Update(aDeltaTime);
+ end;
  inherited Update(aDeltaTime);
 end;
 
 procedure TApplication.BeginFrame(const aDeltaTime:TpvDouble);
 begin
- fVirtualReality.BeginFrame(aDeltaTime);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.BeginFrame(aDeltaTime);
+ end;
  inherited BeginFrame(aDeltaTime);
 end;
 
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
- fVirtualReality.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end;
 end;
 
 procedure TApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,nil);
- fVirtualReality.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end;
 end;
 
 procedure TApplication.PostPresent(const aSwapChainImageIndex:TpvInt32);
 begin
  inherited PostPresent(aSwapChainImageIndex);
- fVirtualReality.PostPresent(aSwapChainImageIndex);
+ if assigned(fVirtualReality) then begin
+  fVirtualReality.PostPresent(aSwapChainImageIndex);
+ end;
 end;
 
 end.
