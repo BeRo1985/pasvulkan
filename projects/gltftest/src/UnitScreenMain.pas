@@ -1886,10 +1886,10 @@ begin
 
  if SwapChainImageState^.Ready then begin
 
-  fSkyBox.Draw(aSwapChainImageIndex,
+{ fSkyBox.Draw(aSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
                SwapChainImageState^.CountViews,
-               aCommandBuffer);
+               aCommandBuffer);}
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        fVulkanPipelineLayout.Handle,
@@ -3931,7 +3931,6 @@ begin
 
  end;
 
-
  SampleCounts:=pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferDepthSampleCounts and
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferStencilSampleCounts;
@@ -4010,9 +4009,10 @@ begin
                                   1
                                  );}
 
+ if assigned(UnitApplication.Application.VirtualReality) then begin
+
  fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
 
- if assigned(UnitApplication.Application.VirtualReality) then begin
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                    true,
                                    UnitApplication.Application.VirtualReality.ImageFormat,
@@ -4023,6 +4023,9 @@ begin
                                    1
                                   );
  end else begin
+
+  fExternalOutputImageData:=nil;
+
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                    true,
                                    TVkFormat(VK_FORMAT_UNDEFINED),
@@ -4402,7 +4405,9 @@ end;
 procedure TScreenMain.BeforeDestroySwapChain;
 begin
  fFrameGraph.BeforeDestroySwapChain;
- fExternalOutputImageData.VulkanImages.Clear;
+ if assigned(UnitApplication.Application.VirtualReality) then begin
+  fExternalOutputImageData.VulkanImages.Clear;
+ end;
  inherited BeforeDestroySwapChain;
 end;
 
