@@ -310,17 +310,21 @@ end;
 
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
- inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVirtualReality) then begin
+  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
   fVirtualReality.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end else begin
+  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
 end;
 
 procedure TApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
- inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVirtualReality) then begin
+  inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,nil);
   fVirtualReality.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end else begin
+  inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
 end;
 

@@ -1886,10 +1886,10 @@ begin
 
  if SwapChainImageState^.Ready then begin
 
-{ fSkyBox.Draw(aSwapChainImageIndex,
+{}fSkyBox.Draw(aSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
                SwapChainImageState^.CountViews,
-               aCommandBuffer);}
+               aCommandBuffer);//{}
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        fVulkanPipelineLayout.Handle,
