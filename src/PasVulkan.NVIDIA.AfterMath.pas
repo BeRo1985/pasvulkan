@@ -69,6 +69,7 @@ uses {$if defined(Windows)}
      {$ifend}
      SysUtils,
      Classes,
+     PasMP,
      PasVulkan.Types;
 
 const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
@@ -506,15 +507,15 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_DisableGpuCrashDumps=function:TGFSDK_Aftermath_Result; cdecl;
 
-     TPFN_GFSDK_Aftermath_SetData=function(pData:Pointer;Size:TpvInt32):TGFSDK_Aftermath_Result; cdecl;
+     TPFN_GFSDK_Aftermath_SetData=procedure(pData:Pointer;Size:TpvInt32); cdecl;
 
-     TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb=function(pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier;setShaderDebugInfo:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+     TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb=procedure(pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier;setShaderDebugInfo:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
-     TPFN_GFSDK_Aftermath_ShaderLookupCb=function(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+     TPFN_GFSDK_Aftermath_ShaderLookupCb=procedure(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
-     TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb=function(pShaderInstructionsHash:PGFSDK_Aftermath_ShaderInstructionsHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+     TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb=procedure(pShaderInstructionsHash:PGFSDK_Aftermath_ShaderInstructionsHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
-     TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb=function(pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+     TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb=procedure(pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
      TGFSDK_Aftermath_GpuCrashDump_CreateDecoder=function(apiVersion:TGFSDK_Aftermath_Version;
                                                           pGpuCrashDump:Pointer;
@@ -603,6 +604,10 @@ var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil
 
     GFSDK_Aftermath_Active:boolean=false;
 
+    GFSDK_Aftermath_CriticalSection:TPasMPCriticalSection=nil;
+
+procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
+
 procedure LoadNVIDIAAfterMath;
 procedure FreeNVIDIAAfterMath;
 
@@ -611,7 +616,94 @@ procedure FinalizeNVIDIAAfterMath;
 
 implementation
 
-uses PasVulkan.Application;
+uses PasVulkan.Application,
+     PasVulkan.Collections;
+
+type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifier,TBytes>;
+
+     TShaderDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderHash,TBytes>;
+
+     TShaderSourceDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderDebugName,TBytes>;
+
+var ShaderDebugInfoHashMap:TShaderDebugInfoHashMap=nil;
+
+    ShaderDatabase:TShaderDatabase=nil;
+
+    ShaderSourceDatabase:TShaderSourceDatabase=nil;
+
+procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
+begin
+ if (aResult and TpvUInt32($fff00000))=GFSDK_Aftermath_Result_Fail then begin
+  case aResult of
+   GFSDK_Aftermath_Result_FAIL_VersionMismatch:begin
+    raise EGFSDK_Aftermath.Create('Version match');
+   end;
+   GFSDK_Aftermath_Result_FAIL_NotInitialized:begin
+    raise EGFSDK_Aftermath.Create('Not initialized');
+   end;
+   GFSDK_Aftermath_Result_FAIL_InvalidAdapter:begin
+    raise EGFSDK_Aftermath.Create('Invalid adapter');
+   end;
+   GFSDK_Aftermath_Result_FAIL_InvalidParameter:begin
+    raise EGFSDK_Aftermath.Create('Invalid parameter');
+   end;
+   GFSDK_Aftermath_Result_FAIL_Unknown:begin
+    raise EGFSDK_Aftermath.Create('Unknown');
+   end;
+   GFSDK_Aftermath_Result_FAIL_ApiError:begin
+    raise EGFSDK_Aftermath.Create('API error');
+   end;
+   GFSDK_Aftermath_Result_FAIL_NvApiIncompatible:begin
+    raise EGFSDK_Aftermath.Create('NvAPI incompstible');
+   end;
+   GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList:begin
+    raise EGFSDK_Aftermath.Create('Getting context data with new command list');
+   end;
+   GFSDK_Aftermath_Result_FAIL_AlreadyInitialized:begin
+    raise EGFSDK_Aftermath.Create('Already initialized');
+   end;
+   GFSDK_Aftermath_Result_FAIL_D3DDebugLayerNotCompatible:begin
+    raise EGFSDK_Aftermath.Create('D3D debug layer not compatible');
+   end;
+   GFSDK_Aftermath_Result_FAIL_DriverInitFailed:begin
+    raise EGFSDK_Aftermath.Create('Driver init failed');
+   end;
+   GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported:begin
+    raise EGFSDK_Aftermath.Create('Driver version not supported');
+   end;
+   GFSDK_Aftermath_Result_FAIL_OutOfMemory:begin
+    raise EGFSDK_Aftermath.Create('Out of memory');
+   end;
+   GFSDK_Aftermath_Result_FAIL_GetDataOnBundle:begin
+    raise EGFSDK_Aftermath.Create('Get data on bundle');
+   end;
+   GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext:begin
+    raise EGFSDK_Aftermath.Create('Get data on deferred context');
+   end;
+   GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled:begin
+    raise EGFSDK_Aftermath.Create('Feature not enabled');
+   end;
+   GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered:begin
+    raise EGFSDK_Aftermath.Create('No resources registered');
+   end;
+   GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered:begin
+    raise EGFSDK_Aftermath.Create('This resource never registered');
+   end;
+   GFSDK_Aftermath_Result_FAIL_NotSupportedInUWP:begin
+    raise EGFSDK_Aftermath.Create('Not supported in UWP');
+   end;
+   GFSDK_Aftermath_Result_FAIL_D3dDllNotSupported:begin
+    raise EGFSDK_Aftermath.Create('D3D DLL not supported');
+   end;
+   GFSDK_Aftermath_Result_FAIL_D3dDllInterceptionNotSupported:begin
+    raise EGFSDK_Aftermath.Create('D3D DLL interception not supported');
+   end;
+   GFSDK_Aftermath_Result_FAIL_Disabled:begin
+    raise EGFSDK_Aftermath.Create('Disabled');
+   end;
+  end;
+ end;
+end;
 
 function _LoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
@@ -711,12 +803,205 @@ begin
  end;
 end;
 
-procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;pUserData:Pointer); cdecl;
+procedure ShaderDebugInfoLookupCallback(pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier;setShaderDebugInfo:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
+var Data:TBytes;
 begin
+ Data:=ShaderDebugInfoHashMap[pIdentifier^];
+ if length(Data)>0 then begin
+  setShaderDebugInfo(@Data[0],length(Data));
+ end;
+end;
+
+procedure ShaderLookupCallback(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
+var Data:TBytes;
+begin
+ Data:=ShaderDatabase[pShaderHash^];
+ if length(Data)>0 then begin
+  setShaderBinary(@Data[0],length(Data));
+ end;
+end;
+
+procedure ShaderSourceDebugInfoLookupCallback(pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
+var Data:TBytes;
+begin
+ Data:=ShaderSourceDatabase[pShaderDebugName^];
+ if length(Data)>0 then begin
+  setShaderBinary(@Data[0],length(Data));
+ end;
+end;
+
+var GPUCrashDumpCallbackCounter:TpvInt32=0;
+
+procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;pUserData:Pointer); cdecl;
+var decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;
+    baseInfo:TGFSDK_Aftermath_GpuCrashDump_BaseInfo;
+    applicationNameLength:TpvUInt32;
+    applicationName:RawByteString;
+    baseFileName:RawByteString;
+    crashDumpFileName:RawByteString;
+    dumpFile:TFileStream;
+    jsonSize:TpvUInt32;
+    json:RawByteString;
+    jsonDumpFileName:RawByteString;
+    jsonFile:TFileStream;
+begin
+
+ applicationName:='';
+
+ try
+
+  GFSDK_Aftermath_CriticalSection.Acquire;
+  try
+
+   // Create a GPU crash dump decoder object for the GPU crash dump.
+   FillChar(decoder,SizeOf(TGFSDK_Aftermath_GpuCrashDump_Decoder),#0);
+   AFTERMATH_CHECK_ERROR(
+    GFSDK_Aftermath_GpuCrashDump_CreateDecoder(
+     GFSDK_Aftermath_Version_API,
+     pGpuCrashDump,
+     gpuCrashDumpSize,
+     @decoder
+    )
+   );
+
+   try
+
+    // Use the decoder object to read basic information, like application
+    // name, PID, etc. from the GPU crash dump.
+    FillChar(baseInfo,SizeOf(TGFSDK_Aftermath_GpuCrashDump_BaseInfo),#0);
+    AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_GetBaseInfo(decoder,@baseInfo));
+
+    // Use the decoder object to query the application name that was set
+    // in the GPU crash dump description.
+    applicationNameLength:=0;
+    AFTERMATH_CHECK_ERROR(
+     GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize(
+      decoder,
+      GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
+      @applicationNameLength
+     )
+    );
+
+    SetLength(applicationName,applicationNameLength+1);
+
+    AFTERMATH_CHECK_ERROR(
+     GFSDK_Aftermath_GpuCrashDump_GetDescription(
+      decoder,
+      GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
+      length(applicationName)-1,
+      @applicationName[1]
+     )
+    );
+
+    // Create a unique file name for writing the crash dump data to a file.
+    // Note: due to an Nsight Aftermath bug (will be fixed in an upcoming
+    // driver release) we may see redundant crash dumps. As a workaround,
+    // attach a unique count to each generated file name.
+    baseFileName:=applicationName+'-'+IntToStr(UInt64(MainThreadID))+'-'+IntToStr(GPUCrashDumpCallbackCounter);
+    inc(GPUCrashDumpCallbackCounter);
+
+    // Write the the crash dumShaderSourceDebugInfoLookupCallbackp data to a file using the .nv-gpudmp extension
+    // registered with Nsight Graphics.
+    crashDumpFileName:=baseFileName+'.nv-gpudmp';
+    dumpFile:=TFileStream.Create(crashDumpFileName,fmCreate or fmShareDenyWrite);
+    try
+     dumpFile.Write(pGpuCrashDump^,gpuCrashDumpSize);
+    finally
+     FreeAndNil(dumpFile);
+    end;
+
+    // Decode the crash dump to a JSON string.
+    // Step 1: Generate the JSON and get the size.
+    jsonSize:=0;
+    AFTERMATH_CHECK_ERROR(
+     GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
+      decoder,
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
+      GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
+      ShaderDebugInfoLookupCallback,
+      ShaderLookupCallback,
+      nil,
+      ShaderSourceDebugInfoLookupCallback,
+      nil,
+      @jsonSize
+     )
+    );
+
+    // Step 2: Allocate a buffer and fetch the generated JSON.
+    json:='';
+    try
+     SetLength(json,jsonSize+1);
+     AFTERMATH_CHECK_ERROR(
+      GFSDK_Aftermath_GpuCrashDump_GetJSON(
+       decoder,
+       length(json)-1,
+       @json[1]
+      )
+     );
+     // Write the the crash dump data as JSON to a file.
+     jsonDumpFileName:=crashDumpFileName+'.json';
+     jsonFile:=TFileStream.Create(jsonDumpFileName,fmCreate or fmShareDenyWrite);
+     try
+      jsonFile.Write(json[1],length(json)-1);
+     finally
+      FreeAndNil(jsonFile);
+     end;
+    finally
+     json:='';
+    end;
+
+   finally
+
+    // Destroy the GPU crash dump decoder object.
+    AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_DestroyDecoder(decoder));
+
+   end;
+
+  finally
+   GFSDK_Aftermath_CriticalSection.Release;
+  end;
+
+ finally
+  applicationName:='';
+ end;
+
 end;
 
 procedure ShaderDebugInfoCallback(pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pUserData:Pointer); cdecl;
+var identifier:TGFSDK_Aftermath_ShaderDebugInfoIdentifier;
+    Bytes:TBytes;
+    FileStream:TFileStream;
 begin
+ GFSDK_Aftermath_CriticalSection.Acquire;
+ try
+  FillChar(identifier,SizeOf(TGFSDK_Aftermath_ShaderDebugInfoIdentifier),#0);
+  AFTERMATH_CHECK_ERROR(
+   GFSDK_Aftermath_GetShaderDebugInfoIdentifier(
+    GFSDK_Aftermath_Version_API,
+     pShaderDebugInfo,
+     shaderDebugInfoSize,
+     @identifier
+    )
+   );
+  if shaderDebugInfoSize>0 then begin
+   Bytes:=nil;
+   try
+    SetLength(Bytes,shaderDebugInfoSize);
+    Move(pShaderDebugInfo^,Bytes[0],shaderDebugInfoSize);
+    ShaderDebugInfoHashMap[identifier]:=Bytes;
+    FileStream:=FileStream.Create('shader-'+IntToStr(identifier.ID[0])+IntToStr(identifier.ID[1])+'.nvdbg',fmCreate or fmShareDenyWrite);
+    try
+     FileStream.Write(Bytes[0],shaderDebugInfoSize);
+    finally
+     FreeAndNil(FileStream);
+    end;
+   finally
+    Bytes:=nil;
+   end;
+  end;
+ finally
+  GFSDK_Aftermath_CriticalSection.Release;
+ end;
 end;
 
 procedure CrashDumpDescriptionCallback(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
@@ -728,83 +1013,13 @@ begin
  end;
 end;
 
-procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
-begin
- if (aResult and TpvUInt32($fff00000))=GFSDK_Aftermath_Result_Fail then begin
-  case aResult of
-   GFSDK_Aftermath_Result_FAIL_VersionMismatch:begin
-    raise EGFSDK_Aftermath.Create('Version match');
-   end;
-   GFSDK_Aftermath_Result_FAIL_NotInitialized:begin
-    raise EGFSDK_Aftermath.Create('Not initialized');
-   end;
-   GFSDK_Aftermath_Result_FAIL_InvalidAdapter:begin
-    raise EGFSDK_Aftermath.Create('Invalid adapter');
-   end;
-   GFSDK_Aftermath_Result_FAIL_InvalidParameter:begin
-    raise EGFSDK_Aftermath.Create('Invalid parameter');
-   end;
-   GFSDK_Aftermath_Result_FAIL_Unknown:begin
-    raise EGFSDK_Aftermath.Create('Unknown');
-   end;
-   GFSDK_Aftermath_Result_FAIL_ApiError:begin
-    raise EGFSDK_Aftermath.Create('API error');
-   end;
-   GFSDK_Aftermath_Result_FAIL_NvApiIncompatible:begin
-    raise EGFSDK_Aftermath.Create('NvAPI incompstible');
-   end;
-   GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList:begin
-    raise EGFSDK_Aftermath.Create('Getting context data with new command list');
-   end;
-   GFSDK_Aftermath_Result_FAIL_AlreadyInitialized:begin
-    raise EGFSDK_Aftermath.Create('Already initialized');
-   end;
-   GFSDK_Aftermath_Result_FAIL_D3DDebugLayerNotCompatible:begin
-    raise EGFSDK_Aftermath.Create('D3D debug layer not compatible');
-   end;
-   GFSDK_Aftermath_Result_FAIL_DriverInitFailed:begin
-    raise EGFSDK_Aftermath.Create('Driver init failed');
-   end;
-   GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported:begin
-    raise EGFSDK_Aftermath.Create('Driver version not supported');
-   end;
-   GFSDK_Aftermath_Result_FAIL_OutOfMemory:begin
-    raise EGFSDK_Aftermath.Create('Out of memory');
-   end;
-   GFSDK_Aftermath_Result_FAIL_GetDataOnBundle:begin
-    raise EGFSDK_Aftermath.Create('Get data on bundle');
-   end;
-   GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext:begin
-    raise EGFSDK_Aftermath.Create('Get data on deferred context');
-   end;
-   GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled:begin
-    raise EGFSDK_Aftermath.Create('Feature not enabled');
-   end;
-   GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered:begin
-    raise EGFSDK_Aftermath.Create('No resources registered');
-   end;
-   GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered:begin
-    raise EGFSDK_Aftermath.Create('This resource never registered');
-   end;
-   GFSDK_Aftermath_Result_FAIL_NotSupportedInUWP:begin
-    raise EGFSDK_Aftermath.Create('Not supported in UWP');
-   end;
-   GFSDK_Aftermath_Result_FAIL_D3dDllNotSupported:begin
-    raise EGFSDK_Aftermath.Create('D3D DLL not supported');
-   end;
-   GFSDK_Aftermath_Result_FAIL_D3dDllInterceptionNotSupported:begin
-    raise EGFSDK_Aftermath.Create('D3D DLL interception not supported');
-   end;
-   GFSDK_Aftermath_Result_FAIL_Disabled:begin
-    raise EGFSDK_Aftermath.Create('Disabled');
-   end;
-  end;
- end;
-end;
-
 procedure InitializeNVIDIAAfterMath;
 begin
  if not GFSDK_Aftermath_Active then begin
+  GFSDK_Aftermath_CriticalSection:=TPasMPCriticalSection.Create;
+  ShaderDebugInfoHashMap:=TShaderDebugInfoHashMap.Create(nil);
+  ShaderDatabase:=TShaderDatabase.Create(nil);
+  ShaderSourceDatabase:=TShaderSourceDatabase.Create(nil);
   LoadNVIDIAAfterMath;
   if assigned(@GFSDK_Aftermath_EnableGpuCrashDumps) then begin
    AFTERMATH_CHECK_ERROR(
@@ -827,6 +1042,10 @@ procedure FinalizeNVIDIAAfterMath;
 begin
  if GFSDK_Aftermath_Active and assigned(@GFSDK_Aftermath_DisableGpuCrashDumps) then begin
   AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_DisableGpuCrashDumps);
+  FreeAndNil(ShaderSourceDatabase);
+  FreeAndNil(ShaderDatabase);
+  FreeAndNil(ShaderDebugInfoHashMap);
+  FreeAndNil(GFSDK_Aftermath_CriticalSection);
   GFSDK_Aftermath_Active:=false;
  end;
 end;
