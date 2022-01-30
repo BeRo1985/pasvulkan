@@ -251,6 +251,84 @@ const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
       GFSDK_Aftermath_GraphicsApi_D3D_12_0=6;
       GFSDK_Aftermath_GraphicsApi_Vulkan=7;
 
+      GFSDK_Aftermath_ShaderType_Unknown=0;
+      GFSDK_Aftermath_ShaderType_Vertex=1;
+      GFSDK_Aftermath_ShaderType_Tessellation_Control=2;
+      GFSDK_Aftermath_ShaderType_Hull=GFSDK_Aftermath_ShaderType_Tessellation_Control;
+      GFSDK_Aftermath_ShaderType_Tessellation_Evaluation=3;
+      GFSDK_Aftermath_ShaderType_Domain=GFSDK_Aftermath_ShaderType_Tessellation_Evaluation;
+      GFSDK_Aftermath_ShaderType_Geometry=4;
+      GFSDK_Aftermath_ShaderType_Fragment=5;
+      GFSDK_Aftermath_ShaderType_Pixel=GFSDK_Aftermath_ShaderType_Fragment;
+      GFSDK_Aftermath_ShaderType_Compute=6;
+      GFSDK_Aftermath_ShaderType_RayTracing_RayGeneration=7;
+      GFSDK_Aftermath_ShaderType_RayTracing_Miss=8;
+      GFSDK_Aftermath_ShaderType_RayTracing_Intersection=9;
+      GFSDK_Aftermath_ShaderType_RayTracing_AnyHit=10;
+      GFSDK_Aftermath_ShaderType_RayTracing_ClosestHit=11;
+      GFSDK_Aftermath_ShaderType_RayTracing_Callable=12;
+      GFSDK_Aftermath_ShaderType_RayTracing_Internal=13;
+      GFSDK_Aftermath_ShaderType_Mesh=14;
+      GFSDK_Aftermath_ShaderType_Task=15;
+
+      GFSDK_Aftermath_Context_Type_Invalid=0;
+      GFSDK_Aftermath_Context_Type_Immediate=1;
+      GFSDK_Aftermath_Context_Type_CommandList=2;
+      GFSDK_Aftermath_Context_Type_Bundle=3;
+      GFSDK_Aftermath_Context_Type_CommandQueue=4;
+
+      GFSDK_Aftermath_EventMarkerDataOwnership_User=0;
+      GFSDK_Aftermath_EventMarkerDataOwnership_Decoder=1;
+
+      // Include basic information about the GPU crash dump.
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_BASE_INFO=$1;
+
+      // Include information about the device state
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_DEVICE_INFO=$2;
+
+      // Include information about the OS
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_OS_INFO=$4;
+
+      // Include information about the display driver
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_DISPLAY_DRIVER_INFO=$8;
+
+      // Include information about the GPU
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_GPU_INFO=$10;
+
+      // Include information about page faults (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_PAGE_FAULT_INFO=$20;
+
+      // Include information about shaders (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_SHADER_INFO=$40;
+
+      // Include information about active warps (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_WARP_STATE_INFO=$80;
+
+      // Try to map shader addresses to source or intermediate assembly lines
+      // using additional information provided through shaderDebugInfoLookupCb,
+      // shaderLookupCb and shaderInstructionsLookupCbm if provided.
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_SHADER_MAPPING_INFO=$100;
+
+      // Include Aftermath event marker data (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_EVENT_MARKER_INFO=$200;
+
+      // Include automatic event marker call stack data (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_CALL_STACK_INFO=$400;
+
+      // Include user provided GPU crash dump description values (if available)
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_DESCRIPTION_INFO=$800;
+
+      // Include all available information
+      GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO=$FFF;
+
+      // No special formatting
+      GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE=$0;
+
+      // Remove all unnecessary whitespace from formatted string
+      GFSDK_Aftermath_GpuCrashDumpFormatterFlags_CONDENSED_OUTPUT=$1;
+
+      // Use UTF8 encoding
+      GFSDK_Aftermath_GpuCrashDumpFormatterFlags_UTF8_OUTPUT=$2;
 
 type EGFSDK_Aftermath=class(Exception);
 
@@ -322,6 +400,94 @@ type EGFSDK_Aftermath=class(Exception);
 
      PGFSDK_Aftermath_GpuCrashDump_BaseInfo=^TGFSDK_Aftermath_GpuCrashDump_BaseInfo;
 
+     TGFSDK_Aftermath_GpuCrashDump_DeviceInfo=record
+      status:TGFSDK_Aftermath_Device_Status;
+      adapterReset:TpvUInt32;
+      channel3dReset:TpvUInt32;
+      channelComputeReset:TpvUInt32;
+      channelCopyReset:TpvUInt32;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_DeviceInfo=^TGFSDK_Aftermath_GpuCrashDump_DeviceInfo;
+
+     TGFSDK_Aftermath_GpuCrashDump_SystemInfo=record
+      osVersion:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+      displayDriver:record
+       major:TpvUInt32;
+       minor:TpvUInt32;
+      end;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_SystemInfo=^TGFSDK_Aftermath_GpuCrashDump_SystemInfo;
+
+     TGFSDK_Aftermath_GpuCrashDump_GpuInfo=record
+      adapterName:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+      generationName:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+      adapterLUID:TpvUInt64;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_GpuInfo=^TGFSDK_Aftermath_GpuCrashDump_GpuInfo;
+
+     TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo=record
+      faultingGpuVA:TpvUInt64;
+      bHasResourceInfo:TpvUInt32;
+      resourceInfo:record
+       gpuVa:TpvUInt64;
+       size:TpvUInt64;
+       width:TpvUInt32;
+       height:TpvUInt32;
+       depth:TpvUInt32;
+       mipLevels:TpvUInt32;
+       format:TpvUInt32; // DXGI_Format for DX, VkFormat for Vulkan
+       bIsBufferHeap:TpvUInt32;
+       bIsStaticTextureHeap:TpvUInt32;
+       bIsRenderTargetOrDepthStencilViewHeap:TpvUInt32;
+       bPlacedResource:TpvUInt32;
+       bWasDestroyed:TpvUInt32;
+       createDestroyTickCount:TpvUInt32;
+      end;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_PageFaultInfo=^TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo;
+
+     TGFSDK_Aftermath_ShaderType=TpvUInt32;
+
+     TGFSDK_Aftermath_GpuCrashDump_ShaderInfo=record
+      shaderHash:TpvUInt64;
+      shaderInstance:TpvUInt64;
+      bIsInternal:TpvUInt32;
+      shaderType:TGFSDK_Aftermath_ShaderType;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_ShaderInfo=^TGFSDK_Aftermath_GpuCrashDump_ShaderInfo;
+
+     TGFSDK_Aftermath_Context_Type=TpvUInt32;
+
+     TGFSDK_Aftermath_EventMarkerDataOwnership=TpvUInt32;
+
+     TGFSDK_Aftermath_GpuCrashDump_EventMarkerInfo=record
+      contextId:TpvUInt64;
+      contextStatus:TGFSDK_Aftermath_Context_Status;
+      contextType:TGFSDK_Aftermath_Context_Type;
+      markerData:TGFSDK_Aftermath_Pointer;
+      markerDataOwnership:TGFSDK_Aftermath_EventMarkerDataOwnership;
+      markerDataSize:TpvUInt32;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_EventMarkerInfo=^TGFSDK_Aftermath_GpuCrashDump_EventMarkerInfo;
+
+     TGFSDK_Aftermath_GpuCrashDumpDecoderFlags=TpvUInt32;
+
+     TGFSDK_Aftermath_GpuCrashDumpFormatterFlags=TpvUInt32;
+
+     TGFSDK_Aftermath_GpuCrashDump_Decoder__=record
+      ID:TpvUInt32;
+     end;
+
+     TGFSDK_Aftermath_GpuCrashDump_Decoder=^TGFSDK_Aftermath_GpuCrashDump_Decoder__;
+
+     PGFSDK_Aftermath_GpuCrashDump_Decoder=^TGFSDK_Aftermath_GpuCrashDump_Decoder;
+
      TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription=procedure(Key:TpvUInt32;Value:PAnsiChar); cdecl;
 
      TPFN_GFSDK_Aftermath_GpuCrashDumpCb=procedure(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;pUserData:Pointer); cdecl;
@@ -340,10 +506,98 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_DisableGpuCrashDumps=function:TGFSDK_Aftermath_Result; cdecl;
 
+     TPFN_GFSDK_Aftermath_SetData=function(pData:Pointer;Size:TpvInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb=function(pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier;setShaderDebugInfo:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+
+     TPFN_GFSDK_Aftermath_ShaderLookupCb=function(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+
+     TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb=function(pShaderInstructionsHash:PGFSDK_Aftermath_ShaderInstructionsHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+
+     TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb=function(pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_CreateDecoder=function(apiVersion:TGFSDK_Aftermath_Version;
+                                                          pGpuCrashDump:Pointer;
+                                                          gpuCrashDumpSize:TpvUInt32;
+                                                          pDecoder:PGFSDK_Aftermath_GpuCrashDump_Decoder):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_DestroyDecoder=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetBaseInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pBaseInfo:PGFSDK_Aftermath_GpuCrashDump_BaseInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetDescriptionSize=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;key:TpvUInt32;pValueSize:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetDescription=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;key:TpvUInt32;valueBufferSize:TpvUInt32;pValue:Pointer):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetDeviceInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pDeviceInfo:PGFSDK_Aftermath_GpuCrashDump_DeviceInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetSystemInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pSystemInfo:PGFSDK_Aftermath_GpuCrashDump_SystemInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetGpuInfoCount=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pGpuCount:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetGpuInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;gpuInfoBufferCount:TpvUInt32;pGpuInfo:PGFSDK_Aftermath_GpuCrashDump_GpuInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pPageFaultInfo:PGFSDK_Aftermath_GpuCrashDump_PageFaultInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfoCount=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pShaderCount:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;shaderInfoBufferCount:TpvUInt32;pShaderInfo:PGFSDK_Aftermath_GpuCrashDump_ShaderInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfoCount=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;markerInfoBufferCount:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;markerInfoBufferCount:TpvUInt32;pMarkerInfo:PGFSDK_Aftermath_GpuCrashDump_EventMarkerInfo):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GenerateJSON=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;decoderFlags:TpvUInt32;formatFlags:TpvUInt32;shaderDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb;shaderLookupCb:TPFN_GFSDK_Aftermath_ShaderLookupCb;shaderInstructionsLookupCb:TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb;shaderSourceDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb;pUserData:Pointer;pJsonSize:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GpuCrashDump_GetJSON=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;jsonBufferSize:TpvUInt32;pJson:PAnsiChar):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GetShaderDebugInfoIdentifier=function(apiVersion:TGFSDK_Aftermath_Version;pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GetShaderHashSpirv=function(apiVersion:TGFSDK_Aftermath_Version;pShader:PGFSDK_Aftermath_SpirvCode;pShaderHash:PGFSDK_Aftermath_ShaderHash):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GetShaderDebugNameSpirv=function(apiVersion:TGFSDK_Aftermath_Version;pShader:PGFSDK_Aftermath_SpirvCode;pStrippedShader:PGFSDK_Aftermath_SpirvCode;pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName):TGFSDK_Aftermath_Result; cdecl;
 
 var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil;
 
     GFSDK_Aftermath_DisableGpuCrashDumps:TGFSDK_Aftermath_DisableGpuCrashDumps=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_CreateDecoder:TGFSDK_Aftermath_GpuCrashDump_CreateDecoder=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_DestroyDecoder:TGFSDK_Aftermath_GpuCrashDump_DestroyDecoder=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetBaseInfo:TGFSDK_Aftermath_GpuCrashDump_GetBaseInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize:TGFSDK_Aftermath_GpuCrashDump_GetDescriptionSize=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetDescription:TGFSDK_Aftermath_GpuCrashDump_GetDescription=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetDeviceInfo:TGFSDK_Aftermath_GpuCrashDump_GetDeviceInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetSystemInfo:TGFSDK_Aftermath_GpuCrashDump_GetSystemInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetGpuInfoCount:TGFSDK_Aftermath_GpuCrashDump_GetGpuInfoCount=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetGpuInfo:TGFSDK_Aftermath_GpuCrashDump_GetGpuInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo:TGFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfoCount:TGFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfoCount=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfo:TGFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfoCount:TGFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfoCount=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo:TGFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GenerateJSON:TGFSDK_Aftermath_GpuCrashDump_GenerateJSON=nil;
+
+    GFSDK_Aftermath_GpuCrashDump_GetJSON:TGFSDK_Aftermath_GpuCrashDump_GetJSON=nil;
+
+    GFSDK_Aftermath_GetShaderDebugInfoIdentifier:TGFSDK_Aftermath_GetShaderDebugInfoIdentifier=nil;
+
+    GFSDK_Aftermath_GetShaderHashSpirv:TGFSDK_Aftermath_GetShaderHashSpirv=nil;
+
+    GFSDK_Aftermath_GetShaderDebugNameSpirv:TGFSDK_Aftermath_GetShaderDebugNameSpirv=nil;
 
     GFSDK_Aftermath_LibHandle:Pointer=nil;
 
@@ -423,6 +677,25 @@ begin
   if assigned(GFSDK_Aftermath_LibHandle) then begin
    @GFSDK_Aftermath_EnableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_EnableGpuCrashDumps');
    @GFSDK_Aftermath_DisableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_DisableGpuCrashDumps');
+   @GFSDK_Aftermath_GpuCrashDump_CreateDecoder:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_CreateDecoder');
+   @GFSDK_Aftermath_GpuCrashDump_DestroyDecoder:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_DestroyDecoder');
+   @GFSDK_Aftermath_GpuCrashDump_GetBaseInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetBaseInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize');
+   @GFSDK_Aftermath_GpuCrashDump_GetDescription:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetDescription');
+   @GFSDK_Aftermath_GpuCrashDump_GetDeviceInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetDeviceInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetSystemInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetSystemInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetGpuInfoCount:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetGpuInfoCount');
+   @GFSDK_Aftermath_GpuCrashDump_GetGpuInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetGpuInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfoCount:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfoCount');
+   @GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetActiveShadersInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfoCount:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfoCount');
+   @GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo');
+   @GFSDK_Aftermath_GpuCrashDump_GenerateJSON:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GenerateJSON');
+   @GFSDK_Aftermath_GpuCrashDump_GetJSON:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetJSON');
+   @GFSDK_Aftermath_GetShaderDebugInfoIdentifier:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderDebugInfoIdentifier');
+   @GFSDK_Aftermath_GetShaderHashSpirv:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderHashSpirv');
+   @GFSDK_Aftermath_GetShaderDebugNameSpirv:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderDebugNameSpirv');
   end;
  end;
 end;
