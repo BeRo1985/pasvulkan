@@ -85,6 +85,7 @@ begin
  Application:=self;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
+ VulkanNVIDIAAfterMath:=false;
  fMaxMSAA:=4;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
@@ -104,6 +105,9 @@ begin
   end else if (Parameter='--force-no-vsync') or
               (Parameter='/force-no-vsync') then begin
    fForceNoVSync:=true;
+  end else if (Parameter='--nvidia-aftermath') or
+              (Parameter='/nvidia-aftermath') then begin
+   VulkanNVIDIAAfterMath:=true;
   end else if (Parameter='--prefer-dgpus') or
               (Parameter='/prefer-dgpus') then begin
    VulkanPreferDedicatedGPUs:=true;

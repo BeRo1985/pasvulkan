@@ -1082,6 +1082,8 @@ type EpvApplication=class(Exception)
 
        fVulkanValidation:boolean;
 
+       fVulkanNVIDIAAfterMath:boolean;
+
        fVulkanNoUniqueObjectsValidation:boolean;
 
        fVulkanDebuggingEnabled:boolean;
@@ -1521,6 +1523,8 @@ type EpvApplication=class(Exception)
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
+
+       property VulkanNVIDIAAfterMath:boolean read fVulkanNVIDIAAfterMath write fVulkanNVIDIAAfterMath;
 
        property VulkanNoUniqueObjectsValidation:boolean read fVulkanNoUniqueObjectsValidation write fVulkanNoUniqueObjectsValidation;
 
@@ -5430,6 +5434,8 @@ begin
 
  fVulkanValidation:=false;
 
+ fVulkanNVIDIAAfterMath:=false;
+
  fVulkanNoUniqueObjectsValidation:=false;
 
  fVulkanMultiviewSupportEnabled:=false;
@@ -5799,6 +5805,7 @@ begin
   fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanDebugging and
                                                fVulkanDebuggingEnabled and
                                                fVulkanValidation and
+                                               fVulkanNVIDIAAfterMath and
                                                (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticConfigExtensionFound then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
@@ -5808,6 +5815,7 @@ begin
   fVulkanNVIDIADiagnosticCheckPointsExtensionFound:=fVulkanDebugging and
                                                     fVulkanDebuggingEnabled and
                                                     fVulkanValidation and
+                                                    fVulkanNVIDIAAfterMath and
                                                     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticCheckPointsExtensionFound then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);

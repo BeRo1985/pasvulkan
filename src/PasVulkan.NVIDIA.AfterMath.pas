@@ -291,6 +291,8 @@ procedure FinalizeNVIDIAAfterMath;
 
 implementation
 
+uses PasVulkan.Application;
+
 function _LoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {$ifdef Windows}
@@ -372,17 +374,19 @@ end;
 
 procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:UInt32;pUserData:Pointer); cdecl;
 begin
-
 end;
 
 procedure ShaderDebugInfoCallback(pShaderDebugInfo:Pointer;shaderDebugInfoSize:UInt32;pUserData:Pointer); cdecl;
 begin
-
 end;
 
 procedure CrashDumpDescriptionCallback(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
 begin
-
+ if assigned(addValue) then begin
+  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,pAnsiChar(pvApplication.Title));
+  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion,'1.0');
+  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined,'GPU crash dump');
+ end;
 end;
 
 procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
