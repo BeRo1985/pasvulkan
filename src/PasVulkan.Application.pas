@@ -90,7 +90,8 @@ uses {$if defined(Unix)}
      PasVulkan.HighResolutionTimer,
      PasVulkan.Android,
      PasVulkan.Audio,
-     PasVulkan.Resources;
+     PasVulkan.Resources,
+     PasVulkan.NVIDIA.AfterMath;
 
 const MaxSwapChainImages=3;
 
@@ -1278,6 +1279,12 @@ type EpvApplication=class(Exception)
        fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
+       fVulkanNVIDIADiagnosticConfigExtensionFound:boolean;
+
+       fVulkanNVIDIADiagnosticCheckPointsExtensionFound:boolean;
+
+       fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
+
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
 
        function GetAndroidSeparateMouseAndTouch:boolean;
@@ -1573,6 +1580,10 @@ type EpvApplication=class(Exception)
        property VulkanDepthImageFormat:TVkFormat read fVulkanDepthImageFormat;
 
        property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass;
+
+       property VulkanNVIDIADiagnosticConfigExtensionFound:boolean read fVulkanNVIDIADiagnosticConfigExtensionFound;
+
+       property VulkanNVIDIADiagnosticCheckPointsExtensionFound:boolean read fVulkanNVIDIADiagnosticCheckPointsExtensionFound;
 
        property StartScreen:TpvApplicationScreenClass read fStartScreen write fStartScreen;
 
@@ -5782,6 +5793,24 @@ begin
      fVulkanValidation and
      (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0) then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+   fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
+  end;
+
+  fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanDebugging and
+                                               fVulkanDebuggingEnabled and
+                                               fVulkanValidation and
+                                               (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0);
+  if fVulkanNVIDIADiagnosticConfigExtensionFound then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+   fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
+  end;
+
+  fVulkanNVIDIADiagnosticCheckPointsExtensionFound:=fVulkanDebugging and
+                                                    fVulkanDebuggingEnabled and
+                                                    fVulkanValidation and
+                                                    (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0);
+  if fVulkanNVIDIADiagnosticCheckPointsExtensionFound then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
   end;
 
   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
@@ -8675,6 +8704,14 @@ begin
 {$ifend}
            TpvApplication.Log(LOG_ERROR,'TpvApplication.Run',ExceptionString);
            //raise;
+           if fVulkanDevice.UseNVIDIADeviceDiagnostics then begin
+            // Device lost notification is asynchronous to the NVIDIA display
+            // driver's GPU crash handling. Give the Nsight Aftermath GPU crash dump
+            // thread some time to do its work before terminating the process.
+            Sleep(5000);
+{$ifndef Android}
+{$endif}
+           end;
           end;
          end;
 

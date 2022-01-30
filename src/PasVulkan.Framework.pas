@@ -555,6 +555,9 @@ type EpvVulkanException=class(Exception);
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fDebugMarker:TpvVulkanDeviceDebugMarker;
        fCanvasCommon:TObject;
+       fUseNVIDIADeviceDiagnostics:boolean;
+       fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
+       fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
        fPointerToPhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features;
       protected
@@ -605,6 +608,8 @@ type EpvVulkanException=class(Exception);
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property DebugMarker:TpvVulkanDeviceDebugMarker read fDebugMarker;
        property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
+       property UseNVIDIADeviceDiagnostics:boolean read fUseNVIDIADeviceDiagnostics write fUseNVIDIADeviceDiagnostics;
+       property NVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV read fNVIDIADeviceDiagnosticsFlags write fNVIDIADeviceDiagnosticsFlags;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -3175,7 +3180,9 @@ procedure VulkanDisableFloatingPointExceptions;
 
 implementation
 
-uses PasVulkan.Utils,PasVulkan.Streams;
+uses PasVulkan.Utils,
+     PasVulkan.Streams,
+     PasVulkan.NVIDIA.AfterMath;
 
 const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
@@ -7600,6 +7607,12 @@ begin
  fComputeQueues:=nil;
  fTransferQueues:=nil;
 
+ fUseNVIDIADeviceDiagnostics:=false;
+
+ fNVIDIADeviceDiagnosticsFlags:=TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV) or
+                                TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV) or
+                                TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV);
+
  if assigned(aPhysicalDevice) then begin
 
   fPhysicalDevice:=aPhysicalDevice;
@@ -8122,6 +8135,16 @@ begin
    DeviceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   DeviceCreateInfo.pEnabledFeatures:=@fEnabledFeatures;
+
+  if fUseNVIDIADeviceDiagnostics then begin
+   FillChar(fNVIDIADeviceDiagnosticsConfigCreateInfoNV,SizeOf(TVkDeviceDiagnosticsConfigCreateInfoNV),#0);
+   fNVIDIADeviceDiagnosticsConfigCreateInfoNV.sType:=VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV;
+   fNVIDIADeviceDiagnosticsConfigCreateInfoNV.pNext:=DeviceCreateInfo.pNext;
+   fNVIDIADeviceDiagnosticsConfigCreateInfoNV.flags:=fNVIDIADeviceDiagnosticsFlags;
+   DeviceCreateInfo.pNext:=@fNVIDIADeviceDiagnosticsConfigCreateInfoNV;
+   InitializeNVIDIAAfterMath;
+  end;
+
   FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
   fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
   if fInstance.APIVersion>=VK_API_VERSION_1_2 then begin
@@ -8130,8 +8153,10 @@ begin
    end else begin
     fPhysicalDeviceVulkan11Features.multiview:=VK_FALSE;
    end;
+   fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
   end;
+
   VulkanCheckResult(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
 
   GetMem(DeviceCommands,SizeOf(TVulkanCommands));

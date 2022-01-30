@@ -1877,7 +1877,7 @@ begin
 end;
 
 procedure TScreenMain.TForwardRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                          const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+                                                 const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
