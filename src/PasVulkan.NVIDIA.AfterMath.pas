@@ -240,33 +240,99 @@ const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
       // An invalid rendering call has percolated through the driver
       GFSDK_Aftermath_Device_Status_DmaFault=7;
 
+      GFSDK_Aftermath_MAX_STRING_LENGTH=127;
+
+      GFSDK_Aftermath_GraphicsApi_Unknown=0;
+      GFSDK_Aftermath_GraphicsApi_D3D_10_0=1;
+      GFSDK_Aftermath_GraphicsApi_D3D_10_1=2;
+      GFSDK_Aftermath_GraphicsApi_D3D_11_0=3;
+      GFSDK_Aftermath_GraphicsApi_D3D_11_1=4;
+      GFSDK_Aftermath_GraphicsApi_D3D_11_2=5;
+      GFSDK_Aftermath_GraphicsApi_D3D_12_0=6;
+      GFSDK_Aftermath_GraphicsApi_Vulkan=7;
+
+
 type EGFSDK_Aftermath=class(Exception);
 
-     TGFSDK_Aftermath_Version=UInt32;
+     TGFSDK_Aftermath_Version=TpvUInt32;
 
-     TGFSDK_Aftermath_GpuCrashDumpWatchedApiFlags=UInt32;
+     TGFSDK_Aftermath_GpuCrashDumpWatchedApiFlags=TpvUInt32;
 
-     TGFSDK_Aftermath_GpuCrashDumpFeatureFlags=UInt32;
+     TGFSDK_Aftermath_GpuCrashDumpFeatureFlags=TpvUInt32;
 
-     TGFSDK_Aftermath_GpuCrashDumpDescriptionKey=UInt32;
+     TGFSDK_Aftermath_GpuCrashDumpDescriptionKey=TpvUInt32;
 
-     TGFSDK_Aftermath_Result=UInt32;
+     TGFSDK_Aftermath_Result=TpvUInt32;
 
-     TGFSDK_Aftermath_Context_Status=UInt32;
+     TGFSDK_Aftermath_Context_Status=TpvUInt32;
 
-     TGFSDK_Aftermath_Device_Status=UInt32;
+     TGFSDK_Aftermath_Device_Status=TpvUInt32;
 
-     TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription=procedure(Key:UInt32;Value:PAnsiChar); cdecl;
+     TGFSDK_Aftermath_GraphicsApi=TpvUInt32;
 
-     TPFN_GFSDK_Aftermath_GpuCrashDumpCb=procedure(pGpuCrashDump:Pointer;gpuCrashDumpSize:UInt32;pUserData:Pointer); cdecl;
+     TGFSDK_Aftermath_ShaderDebugInfoIdentifier=record
+      ID:array[0..1] of TpvUInt64;
+     end;
 
-     TPFN_GFSDK_Aftermath_ShaderDebugInfoCb=procedure(pShaderDebugInfo:Pointer;shaderDebugInfoSize:UInt32;pUserData:Pointer); cdecl;
+     PGFSDK_Aftermath_ShaderDebugInfoIdentifier=^TGFSDK_Aftermath_ShaderDebugInfoIdentifier;
+
+     TGFSDK_Aftermath_ShaderHash=record
+      Hash:TpvUInt64;
+     end;
+
+     PGFSDK_Aftermath_ShaderHash=^TGFSDK_Aftermath_ShaderHash;
+
+     TGFSDK_Aftermath_ShaderInstructionsHash=record
+      Hash:UInt64;
+     end;
+
+     PGFSDK_Aftermath_ShaderInstructionsHash=^TGFSDK_Aftermath_ShaderInstructionsHash;
+
+     TGFSDK_Aftermath_ShaderDebugName=record
+      Name:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+     end;
+
+     PGFSDK_Aftermath_ShaderDebugName=^TGFSDK_Aftermath_ShaderDebugName;
+
+     TGFSDK_Aftermath_Pointer=record
+      case boolean of
+       false:(
+        UI64:UInt64;
+       );
+       true:(
+        Ptr:Pointer;
+       );
+     end;
+
+     PGFSDK_Aftermath_Pointer=^TGFSDK_Aftermath_Pointer;
+
+     TGFSDK_Aftermath_SpirvCode=record
+      pData:TGFSDK_Aftermath_Pointer;
+      Size:TpvUInt32;
+     end;
+
+     PGFSDK_Aftermath_SpirvCode=^TGFSDK_Aftermath_SpirvCode;
+
+     TGFSDK_Aftermath_GpuCrashDump_BaseInfo=record
+      ApplicationName:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+      CreationDate:array[0..GFSDK_Aftermath_MAX_STRING_LENGTH] of AnsiChar;
+      PID:TpvUInt32;
+      GraphicsApi:TGFSDK_Aftermath_GraphicsApi;
+     end;
+
+     PGFSDK_Aftermath_GpuCrashDump_BaseInfo=^TGFSDK_Aftermath_GpuCrashDump_BaseInfo;
+
+     TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription=procedure(Key:TpvUInt32;Value:PAnsiChar); cdecl;
+
+     TPFN_GFSDK_Aftermath_GpuCrashDumpCb=procedure(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;pUserData:Pointer); cdecl;
+
+     TPFN_GFSDK_Aftermath_ShaderDebugInfoCb=procedure(pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pUserData:Pointer); cdecl;
 
      TPFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb=procedure(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
 
      TGFSDK_Aftermath_EnableGpuCrashDumps=function(apiVersion:TGFSDK_Aftermath_Version;
-                                                   watchedApis:UInt32;
-                                                   flags:UInt32;
+                                                   watchedApis:TpvUInt32;
+                                                   flags:TpvUInt32;
                                                    gpuCrashDumpCb:TPFN_GFSDK_Aftermath_GpuCrashDumpCb;
                                                    shaderDebugInfoCb:TPFN_GFSDK_Aftermath_ShaderDebugInfoCb;
                                                    descriptionCb:TPFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb;
@@ -372,11 +438,11 @@ begin
  end;
 end;
 
-procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:UInt32;pUserData:Pointer); cdecl;
+procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;pUserData:Pointer); cdecl;
 begin
 end;
 
-procedure ShaderDebugInfoCallback(pShaderDebugInfo:Pointer;shaderDebugInfoSize:UInt32;pUserData:Pointer); cdecl;
+procedure ShaderDebugInfoCallback(pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pUserData:Pointer); cdecl;
 begin
 end;
 
@@ -391,7 +457,7 @@ end;
 
 procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
 begin
- if (aResult and UInt32($fff00000))=GFSDK_Aftermath_Result_Fail then begin
+ if (aResult and TpvUInt32($fff00000))=GFSDK_Aftermath_Result_Fail then begin
   case aResult of
    GFSDK_Aftermath_Result_FAIL_VersionMismatch:begin
     raise EGFSDK_Aftermath.Create('Version match');
