@@ -465,19 +465,22 @@ end;
 
 procedure InitializeNVIDIAAfterMath;
 begin
- if assigned(@GFSDK_Aftermath_EnableGpuCrashDumps) and not GFSDK_Aftermath_Active then begin
-  AFTERMATH_CHECK_ERROR(
-    GFSDK_Aftermath_EnableGpuCrashDumps(
-     GFSDK_Aftermath_Version_API,
-     GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
-     GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks, // Let the Nsight Aftermath library cache shader debug information.
-     GPUCrashDumpCallback,                                             // Register callback for GPU crash dumps.
-     ShaderDebugInfoCallback,                                          // Register callback for shader debug information.
-     CrashDumpDescriptionCallback,                                     // Register callback for GPU crash dump description.
-     nil
-    )
-  );
-  GFSDK_Aftermath_Active:=true;
+ if not GFSDK_Aftermath_Active then begin
+  LoadNVIDIAAfterMath;
+  if assigned(@GFSDK_Aftermath_EnableGpuCrashDumps) then begin
+   AFTERMATH_CHECK_ERROR(
+     GFSDK_Aftermath_EnableGpuCrashDumps(
+      GFSDK_Aftermath_Version_API,
+      GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
+      GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks, // Let the Nsight Aftermath library cache shader debug information.
+      GPUCrashDumpCallback,                                             // Register callback for GPU crash dumps.
+      ShaderDebugInfoCallback,                                          // Register callback for shader debug information.
+      CrashDumpDescriptionCallback,                                     // Register callback for GPU crash dump description.
+      nil
+     )
+   );
+   GFSDK_Aftermath_Active:=true;
+  end;
  end;
 end;
 
@@ -490,7 +493,6 @@ begin
 end;
 
 initialization
- LoadNVIDIAAfterMath;
 finalization
  FreeNVIDIAAfterMath;
 end.

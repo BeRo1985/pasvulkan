@@ -5799,7 +5799,6 @@ begin
      fVulkanValidation and
      (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0) then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-   fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
   end;
 
   fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanDebugging and
@@ -5819,6 +5818,7 @@ begin
                                                     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticCheckPointsExtensionFound then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+   fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
   end;
 
   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
