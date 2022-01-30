@@ -23,6 +23,8 @@ $compileshaderarguments = @(
   '-V brdf_ggx.frag -o brdf_ggx_frag.spv',
   '-V fullscreen.vert -o fullscreen_vert.spv',
   '-V cubemap.vert -o cubemap_vert.spv',
+  '-V cubemap_sky.comp -o cubemap_sky_comp.spv',
+  '-V cubemap_sky.comp -DFAST -o cubemap_sky_fast_comp.spv',
   '-V cubemap_sky.frag -o cubemap_sky_frag.spv',
   '-V cubemap_sky.frag -DFAST -o cubemap_sky_fast_frag.spv',
   '-V cubemap_charlie_filter.comp -o cubemap_charlie_filter_comp.spv',
@@ -47,7 +49,7 @@ $MaxThreads = (Get-CIMInstance -Class 'CIM_Processor').NumberOfLogicalProcessors
 
 $curDir = Get-Location
 
-$exepath = "$env:VULKAN_SDK/Bin32/glslangValidator.exe"
+$exepath = "$env:VULKAN_SDK/Bin/glslangValidator.exe"
 
 Write-Host "Current Working Directory: $curDir"
 Write-Host "Count of CPU logical threads: $MaxThreads"

@@ -21,16 +21,9 @@
       <Version Value="2"/>
     </PublishOptions>
     <RunParams>
-      <local>
-        <CommandLineParams Value="&quot;d:\Dropbox\GLTF\sketchyadamsart_fish\scene.glb&quot; /max-msaa 2"/>
-      </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
-        <Mode0 Name="default">
-          <local>
-            <CommandLineParams Value="&quot;d:\Dropbox\GLTF\sketchyadamsart_fish\scene.glb&quot; /max-msaa 2"/>
-          </local>
-        </Mode0>
+        <Mode0 Name="default"/>
       </Modes>
     </RunParams>
     <Units Count="1">

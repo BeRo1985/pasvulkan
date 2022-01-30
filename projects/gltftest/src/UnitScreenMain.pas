@@ -1886,22 +1886,46 @@ begin
 
  if SwapChainImageState^.Ready then begin
 
-{}fSkyBox.Draw(aSwapChainImageIndex,
+  fSkyBox.Draw(aSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
                SwapChainImageState^.CountViews,
                aCommandBuffer);//{}
 
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       fVulkanPipelineLayout.Handle,
-                                       3,
-                                       1,
-                                       @fGlobalVulkanDescriptorSets[aSwapChainImageIndex].Handle,
-                                       0,
-                                       nil);
+  if true then begin
 
-  if fParent.fUseDepthPrepass then begin
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanPipelineLayout.Handle,
+                                        3,
+                                        1,
+                                        @fGlobalVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                        0,
+                                        nil);
 
-   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+   if fParent.fUseDepthPrepass then begin
+
+    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                          aSwapChainImageIndex,
+                          0,
+                          SwapChainImageState^.FinalViewIndex,
+                          SwapChainImageState^.CountViews,
+                          aCommandBuffer,
+                          fVulkanPipelineLayout,
+                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+
+ {  if fParent.fVulkanSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
+     fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                           aSwapChainImageIndex,
+                           0,
+                           SwapChainImageState^.FinalViewIndex,
+                           SwapChainImageState^.CountViews,
+                           aCommandBuffer,
+                           fVulkanPipelineLayout,
+                           [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+    end;}
+
+   end;
+
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                          aSwapChainImageIndex,
                          0,
                          SwapChainImageState^.FinalViewIndex,
@@ -1910,49 +1934,7 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-{  if fParent.fVulkanSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
-    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                          aSwapChainImageIndex,
-                          0,
-                          SwapChainImageState^.FinalViewIndex,
-                          SwapChainImageState^.CountViews,
-                          aCommandBuffer,
-                          fVulkanPipelineLayout,
-                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
-   end;}
-
-  end;
-
-  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
-
-  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);
-
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        [TpvScene3D.TMaterial.TAlphaMode.Blend]); }
-
-{ if fParent.fUseDepthPrepass then begin
-
-   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          aSwapChainImageIndex,
                          0,
                          SwapChainImageState^.FinalViewIndex,
@@ -1961,7 +1943,29 @@ begin
                          fVulkanPipelineLayout,
                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
-  end;}
+ { fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         [TpvScene3D.TMaterial.TAlphaMode.Blend]); }
+
+ { if fParent.fUseDepthPrepass then begin
+
+    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                          aSwapChainImageIndex,
+                          0,
+                          SwapChainImageState^.FinalViewIndex,
+                          SwapChainImageState^.CountViews,
+                          aCommandBuffer,
+                          fVulkanPipelineLayout,
+                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+   end;}
+
+  end;
 
  end;
 
