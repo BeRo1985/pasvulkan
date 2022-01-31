@@ -2534,7 +2534,7 @@ begin
   Stream.Free;
  end;
 
- if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_pass2_frag.spv');
  end else begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_msaa_pass2_frag.spv');
@@ -2545,7 +2545,7 @@ begin
   Stream.Free;
  end;
 
- if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_masked_pass2_frag.spv');
  end else begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_masked_msaa_pass2_frag.spv');
