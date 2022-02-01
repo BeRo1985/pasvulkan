@@ -1886,7 +1886,7 @@ begin
 
  if SwapChainImageState^.Ready then begin
 
-  fSkyBox.Draw(aSwapChainImageIndex,
+{}fSkyBox.Draw(aSwapChainImageIndex,
                SwapChainImageState^.FinalViewIndex,
                SwapChainImageState^.CountViews,
                aCommandBuffer);//{}
