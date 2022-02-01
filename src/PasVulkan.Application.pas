@@ -5801,20 +5801,14 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
-  fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanDebugging and
-                                               fVulkanDebuggingEnabled and
-                                               fVulkanValidation and
-                                               fVulkanNVIDIAAfterMath and
+  fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanNVIDIAAfterMath and
                                                (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticConfigExtensionFound then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
    fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
   end;
 
-  fVulkanNVIDIADiagnosticCheckPointsExtensionFound:=fVulkanDebugging and
-                                                    fVulkanDebuggingEnabled and
-                                                    fVulkanValidation and
-                                                    fVulkanNVIDIAAfterMath and
+  fVulkanNVIDIADiagnosticCheckPointsExtensionFound:=fVulkanNVIDIAAfterMath and
                                                     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticCheckPointsExtensionFound then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
