@@ -96,6 +96,24 @@ layout(set = 2, binding = 1) uniform sampler2D uTextures[];
 
 // Pass descriptor set
 
+#ifdef DEPTHONLY
+#else
+layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
+
+layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
+
+#ifdef SHADOWS
+layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
+  mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
+  vec4 shadowMapSplitDepths[NUM_SHADOW_CASCADES];
+} uCascadedShadowMaps;
+
+layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
+
+#endif
+
+#endif
+
 #if defined(MBOIT)
 
 layout(std140, set = 3, binding = 4) uniform uboMBOIT {
@@ -111,24 +129,6 @@ layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInputMS 
 layout(input_attachment_index = 0, set = 3, binding = 5) uniform subpassInput uMBOITMoments0;
 layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInput uMBOITMoments1;
 #endif
-#endif
-
-#endif
-
-#ifdef DEPTHONLY
-#else
-layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
-
-layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
-
-#ifdef SHADOWS
-layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
-  mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
-  vec4 shadowMapSplitDepths[NUM_SHADOW_CASCADES];
-} uCascadedShadowMaps;
-
-layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
-
 #endif
 
 #endif
