@@ -4902,6 +4902,7 @@ end;
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
+
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 //writeln('D: ',SwapChainImageIndex,' ',aSwapChainImageIndex);
 

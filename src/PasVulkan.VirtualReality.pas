@@ -88,7 +88,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.NVIDIA.AfterMath;
 
 type EpvVirtualReality=class(Exception);
 
@@ -828,6 +829,7 @@ begin
 end;
 
 procedure TpvVirtualReality.AfterCreateSwapChain;
+const NVCheckpoint:RawByteString='TpvVirtualReality';
 var Index,
     SwapChainImageIndex:TpvSizeInt;
     Image:TpvVulkanImage;
@@ -1299,6 +1301,10 @@ begin
      try
 
       CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+
+      if pvApplication.VulkanDevice.UseNVIDIADeviceDiagnostics and assigned(pvApplication.VulkanDevice.Commands.Commands.CmdSetCheckpointNV) then begin
+       pvApplication.VulkanDevice.Commands.CmdSetCheckpointNV(CommandBuffer.Handle,PAnsiChar(NVCheckpoint));
+      end;
 
       if fVulkanSingleImages.Count>0 then begin
 
