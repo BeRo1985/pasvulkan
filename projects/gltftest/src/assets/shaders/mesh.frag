@@ -42,27 +42,14 @@ layout(location = 1) out vec4 outFragEmission;
 #endif
 #endif
 
-/* clang-format off */
-layout(std140, set = 1, binding = 0) uniform uboMaterial {
-  vec4 baseColorFactor;
-  vec4 specularFactor;
-  vec4 emissiveFactor;
-  vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
-  vec4 sheenColorFactorSheenIntensityFactor;
-  vec4 clearcoatFactorClearcoatRoughnessFactor;
-  vec4 ior;
-  uvec4 alphaCutOffFlagsTex0Tex1;
-  mat4 textureTransforms[16];
-} uMaterial;
-
-layout(set = 1, binding = 1) uniform sampler2D uTextures[];
+// Global descriptor set
 
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
 };
 
-layout(std140, set = 2, binding = 0) uniform uboViews {
+layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[512];
 } uView;
 
@@ -75,7 +62,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set = 2, binding = 1) buffer LightItemData {
+layout(std430, set = 0, binding = 1) buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -85,10 +72,29 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(std430, set = 2, binding = 2) buffer LightTreeNodeData {
+layout(std430, set = 0, binding = 2) buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 #endif
+
+// Material descriptor set
+
+/* clang-format off */
+layout(std140, set = 2, binding = 0) uniform uboMaterial {
+  vec4 baseColorFactor;
+  vec4 specularFactor;
+  vec4 emissiveFactor;
+  vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
+  vec4 sheenColorFactorSheenIntensityFactor;
+  vec4 clearcoatFactorClearcoatRoughnessFactor;
+  vec4 ior;
+  uvec4 alphaCutOffFlagsTex0Tex1;
+  mat4 textureTransforms[16];
+} uMaterial;
+
+layout(set = 2, binding = 1) uniform sampler2D uTextures[];
+
+// Pass descriptor set
 
 #if defined(MBOIT)
 

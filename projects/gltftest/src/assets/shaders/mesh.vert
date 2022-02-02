@@ -32,6 +32,17 @@ layout (push_constant) uniform PushConstants {
   uint countViews;
 } pushConstants;
 
+// Global descriptor set
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+};
+
+layout(std140, set = 0, binding = 0) uniform uboViews {
+  View views[512]; // 65536 / (64 * 2) = 512
+} uView;
+
 struct MorphTargetVertex {
    vec4 position;
    vec4 normal;
@@ -39,7 +50,9 @@ struct MorphTargetVertex {
    uvec4 metaData; // x = index, y = next
 };
 
-layout(std430, set = 0, binding = 0) buffer MorphTargetVertices {
+// Mesh descriptor set
+
+layout(std430, set = 1, binding = 0) buffer MorphTargetVertices {
   MorphTargetVertex morphTargetVertices[];
 };
 
@@ -48,26 +61,17 @@ struct JointBlock {
   vec4 weights;
 };
 
-layout(std430, set = 0, binding = 1) buffer JointBlocks {
+layout(std430, set = 1, binding = 1) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
-layout(std430, set = 0, binding = 2) buffer NodeMatrices {
+layout(std430, set = 1, binding = 2) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
 
-layout(std430, set = 0, binding = 3) buffer MorphTargetWeights {
+layout(std430, set = 1, binding = 3) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
-
-struct View {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
-};
-
-layout(std140, set = 2, binding = 0) uniform uboViews {
-  View views[512]; // 65536 / (64 * 2) = 512
-} uView;
 
 out gl_PerVertex {
 	vec4 gl_Position;
