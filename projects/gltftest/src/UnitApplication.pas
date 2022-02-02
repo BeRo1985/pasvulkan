@@ -86,7 +86,7 @@ begin
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
- fMaxMSAA:=4;
+ fMaxMSAA:=1;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
