@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# ------------------------------------------------------------------------------
+# Compile shaders with Spir-V for Vulkan.
+# Make sure you have glslangValidator and spirv-opt
+# (on Debian-based systems, just "apt install glslang-tools").
+#
+# bash script using http://redsymbol.net/articles/unofficial-bash-strict-mode/
+# ------------------------------------------------------------------------------
+
+compile_dir ()
+{
+  SUBDIR_NAME="$1"
+  cd "${SUBDIR_NAME}"
+
+  for VERT_SHADER in *.vert; do
+    glslangValidator -V ${VERT_SHADER} -o `basename ${VERT_SHADER} .vert`.spv
+  done
+  for FRAG_SHADER in *.frag; do
+    glslangValidator -V ${FRAG_SHADER} -o `basename ${FRAG_SHADER} .frag`.spv
+  done
+  for f in *.spv; do
+    spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O $f -o $f
+  done
+  mv -f *.spv ../../../../assets/shaders/"${SUBDIR_NAME}"
+
+  cd ../
+}
+
+compile_dir textoverlay
+compile_dir triangle
+compile_dir cube
+compile_dir dragon
