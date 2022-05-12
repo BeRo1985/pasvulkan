@@ -72,7 +72,7 @@ uses {$if defined(Windows)}
      PasMP,
      PasVulkan.Types;
 
-const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
+const GFSDK_Aftermath_Version_API=$000020f;  // Version 2.15
 
       // Default setting
       GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_None=$0;
@@ -103,6 +103,25 @@ const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
       // Any value >= GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined
       // will create a user-defined key-value pair.
       GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined=$00010000;
+
+      // No GPU crash has been detected by Aftermath, so far.
+      GFSDK_Aftermath_CrashDump_Status_NotStarted=0;
+
+      // A GPU crash happened, Aftermath started to collect crash dump data.
+      GFSDK_Aftermath_CrashDump_Status_CollectingData=1;
+
+      // Aftermath failed to collect crash dump data. No further callback will be invoked.
+      GFSDK_Aftermath_CrashDump_Status_CollectingDataFailed=2;
+
+      // Aftermath is invoking the gpuCrashDumpCb callback after collecting the crash dump data successfully.
+      GFSDK_Aftermath_CrashDump_Status_InvokingCallback=3;
+
+      // gpuCrashDumpCb callback returned and Aftermath finished processing the GPU crash.
+      GFSDK_Aftermath_CrashDump_Status_Finished=4;
+
+      // Unknown problem - likely using an older driver
+      //  incompatible with this Aftermath feature.
+      GFSDK_Aftermath_CrashDump_Status_Unknown=5;
 
       GFSDK_Aftermath_Result_Success=$1;
 
@@ -306,8 +325,8 @@ const GFSDK_Aftermath_Version_API=$000020b;  // Version 2.11
       GFSDK_Aftermath_GpuCrashDumpDecoderFlags_WARP_STATE_INFO=$80;
 
       // Try to map shader addresses to source or intermediate assembly lines
-      // using additional information provided through shaderDebugInfoLookupCb,
-      // shaderLookupCb and shaderInstructionsLookupCbm if provided.
+      // using additional information provided through shaderDebugInfoLookupCb
+      // and shaderLookupCb, if provided.
       GFSDK_Aftermath_GpuCrashDumpDecoderFlags_SHADER_MAPPING_INFO=$100;
 
       // Include Aftermath event marker data (if available)
@@ -341,6 +360,12 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_GpuCrashDumpDescriptionKey=TpvUInt32;
 
+     TGFSDK_Aftermath_GpuCrashDump_Status=TpvUInt32;
+
+     TGFSDK_Aftermath_CrashDump_Status=TpvUInt32;
+
+     PGFSDK_Aftermath_CrashDump_Status=^TGFSDK_Aftermath_CrashDump_Status;
+
      TGFSDK_Aftermath_Result=TpvUInt32;
 
      TGFSDK_Aftermath_Context_Status=TpvUInt32;
@@ -355,11 +380,11 @@ type EGFSDK_Aftermath=class(Exception);
 
      PGFSDK_Aftermath_ShaderDebugInfoIdentifier=^TGFSDK_Aftermath_ShaderDebugInfoIdentifier;
 
-     TGFSDK_Aftermath_ShaderHash=record
+     TGFSDK_Aftermath_ShaderBinaryHash=record
       Hash:TpvUInt64;
      end;
 
-     PGFSDK_Aftermath_ShaderHash=^TGFSDK_Aftermath_ShaderHash;
+     PGFSDK_Aftermath_ShaderBinaryHash=^TGFSDK_Aftermath_ShaderBinaryHash;
 
      TGFSDK_Aftermath_ShaderInstructionsHash=record
       Hash:UInt64;
@@ -404,9 +429,7 @@ type EGFSDK_Aftermath=class(Exception);
      TGFSDK_Aftermath_GpuCrashDump_DeviceInfo=record
       status:TGFSDK_Aftermath_Device_Status;
       adapterReset:TpvUInt32;
-      channel3dReset:TpvUInt32;
-      channelComputeReset:TpvUInt32;
-      channelCopyReset:TpvUInt32;
+      engineReset:TpvUInt32;
      end;
 
      PGFSDK_Aftermath_GpuCrashDump_DeviceInfo=^TGFSDK_Aftermath_GpuCrashDump_DeviceInfo;
@@ -497,23 +520,26 @@ type EGFSDK_Aftermath=class(Exception);
 
      TPFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb=procedure(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
 
+     TPFN_GFSDK_Aftermath_ResolveMarkerCb=procedure(pMarker,pUserData:Pointer;resolvedMarkerData:PPpvPointer;markerSize:PpvUInt32); cdecl;
+
      TGFSDK_Aftermath_EnableGpuCrashDumps=function(apiVersion:TGFSDK_Aftermath_Version;
                                                    watchedApis:TpvUInt32;
                                                    flags:TpvUInt32;
                                                    gpuCrashDumpCb:TPFN_GFSDK_Aftermath_GpuCrashDumpCb;
                                                    shaderDebugInfoCb:TPFN_GFSDK_Aftermath_ShaderDebugInfoCb;
                                                    descriptionCb:TPFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb;
+                                                   resolveMarkerCb:TPFN_GFSDK_Aftermath_ResolveMarkerCb;
                                                    pUserData:pointer):TGFSDK_Aftermath_Result; cdecl;
 
      TGFSDK_Aftermath_DisableGpuCrashDumps=function:TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_CrashDump_Status_Func=function(Status:TGFSDK_Aftermath_CrashDump_Status):TGFSDK_Aftermath_Result; cdecl;
 
      TPFN_GFSDK_Aftermath_SetData=procedure(pData:Pointer;Size:TpvInt32); cdecl;
 
      TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb=procedure(pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier;setShaderDebugInfo:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
-     TPFN_GFSDK_Aftermath_ShaderLookupCb=procedure(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
-
-     TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb=procedure(pShaderInstructionsHash:PGFSDK_Aftermath_ShaderInstructionsHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
+     TPFN_GFSDK_Aftermath_ShaderLookupCb=procedure(pShaderBinaryHash:PGFSDK_Aftermath_ShaderBinaryHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
      TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb=procedure(pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 
@@ -548,19 +574,23 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_GpuCrashDump_GetEventMarkersInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;markerInfoBufferCount:TpvUInt32;pMarkerInfo:PGFSDK_Aftermath_GpuCrashDump_EventMarkerInfo):TGFSDK_Aftermath_Result; cdecl;
 
-     TGFSDK_Aftermath_GpuCrashDump_GenerateJSON=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;decoderFlags:TpvUInt32;formatFlags:TpvUInt32;shaderDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb;shaderLookupCb:TPFN_GFSDK_Aftermath_ShaderLookupCb;shaderInstructionsLookupCb:TPFN_GFSDK_Aftermath_ShaderInstructionsLookupCb;shaderSourceDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb;pUserData:Pointer;pJsonSize:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
+     TGFSDK_Aftermath_GpuCrashDump_GenerateJSON=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;decoderFlags:TpvUInt32;formatFlags:TpvUInt32;shaderDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderDebugInfoLookupCb;shaderLookupCb:TPFN_GFSDK_Aftermath_ShaderLookupCb;shaderSourceDebugInfoLookupCb:TPFN_GFSDK_Aftermath_ShaderSourceDebugInfoLookupCb;pUserData:Pointer;pJsonSize:PpvUInt32):TGFSDK_Aftermath_Result; cdecl;
 
      TGFSDK_Aftermath_GpuCrashDump_GetJSON=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;jsonBufferSize:TpvUInt32;pJson:PAnsiChar):TGFSDK_Aftermath_Result; cdecl;
 
      TGFSDK_Aftermath_GetShaderDebugInfoIdentifier=function(apiVersion:TGFSDK_Aftermath_Version;pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pIdentifier:PGFSDK_Aftermath_ShaderDebugInfoIdentifier):TGFSDK_Aftermath_Result; cdecl;
 
-     TGFSDK_Aftermath_GetShaderHashSpirv=function(apiVersion:TGFSDK_Aftermath_Version;pShader:PGFSDK_Aftermath_SpirvCode;pShaderHash:PGFSDK_Aftermath_ShaderHash):TGFSDK_Aftermath_Result; cdecl;
+     TGFSDK_Aftermath_GetShaderHashSpirv=function(apiVersion:TGFSDK_Aftermath_Version;pShader:PGFSDK_Aftermath_SpirvCode;pShaderBinaryHash:PGFSDK_Aftermath_ShaderBinaryHash):TGFSDK_Aftermath_Result; cdecl;
 
      TGFSDK_Aftermath_GetShaderDebugNameSpirv=function(apiVersion:TGFSDK_Aftermath_Version;pShader:PGFSDK_Aftermath_SpirvCode;pStrippedShader:PGFSDK_Aftermath_SpirvCode;pShaderDebugName:PGFSDK_Aftermath_ShaderDebugName):TGFSDK_Aftermath_Result; cdecl;
+
+     TGFSDK_Aftermath_GetShaderHashForShaderInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pShaderInfo:PGFSDK_Aftermath_GpuCrashDump_ShaderInfo;pShaderHash:PGFSDK_Aftermath_ShaderBinaryHash):TGFSDK_Aftermath_Result; cdecl;
 
 var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil;
 
     GFSDK_Aftermath_DisableGpuCrashDumps:TGFSDK_Aftermath_DisableGpuCrashDumps=nil;
+
+    GFSDK_Aftermath_CrashDump_Status:TGFSDK_Aftermath_CrashDump_Status_Func=nil;
 
     GFSDK_Aftermath_GpuCrashDump_CreateDecoder:TGFSDK_Aftermath_GpuCrashDump_CreateDecoder=nil;
 
@@ -600,6 +630,8 @@ var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil
 
     GFSDK_Aftermath_GetShaderDebugNameSpirv:TGFSDK_Aftermath_GetShaderDebugNameSpirv=nil;
 
+    GFSDK_Aftermath_GetShaderHashForShaderInfo:TGFSDK_Aftermath_GetShaderHashForShaderInfo=nil;
+
     GFSDK_Aftermath_LibHandle:Pointer=nil;
 
     GFSDK_Aftermath_Active:boolean=false;
@@ -621,7 +653,7 @@ uses PasVulkan.Application,
 
 type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifier,TBytes>;
 
-     TShaderDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderHash,TBytes>;
+     TShaderDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderBinaryHash,TBytes>;
 
      TShaderSourceDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderDebugName,TBytes>;
 
@@ -769,6 +801,7 @@ begin
   if assigned(GFSDK_Aftermath_LibHandle) then begin
    @GFSDK_Aftermath_EnableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_EnableGpuCrashDumps');
    @GFSDK_Aftermath_DisableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_DisableGpuCrashDumps');
+   @GFSDK_Aftermath_CrashDump_Status:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_CrashDump_Status');
    @GFSDK_Aftermath_GpuCrashDump_CreateDecoder:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_CreateDecoder');
    @GFSDK_Aftermath_GpuCrashDump_DestroyDecoder:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_DestroyDecoder');
    @GFSDK_Aftermath_GpuCrashDump_GetBaseInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GpuCrashDump_GetBaseInfo');
@@ -788,6 +821,7 @@ begin
    @GFSDK_Aftermath_GetShaderDebugInfoIdentifier:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderDebugInfoIdentifier');
    @GFSDK_Aftermath_GetShaderHashSpirv:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderHashSpirv');
    @GFSDK_Aftermath_GetShaderDebugNameSpirv:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderDebugNameSpirv');
+   @GFSDK_Aftermath_GetShaderHashForShaderInfo:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_GetShaderHashForShaderInfo');
   end;
  end;
 end;
@@ -812,10 +846,10 @@ begin
  end;
 end;
 
-procedure ShaderLookupCallback(pShaderHash:PGFSDK_Aftermath_ShaderHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
+procedure ShaderLookupCallback(pShaderBinaryHash:PGFSDK_Aftermath_ShaderBinaryHash;setShaderBinary:TPFN_GFSDK_Aftermath_SetData;pUserData:Pointer); cdecl;
 var Data:TBytes;
 begin
- Data:=ShaderDatabase[pShaderHash^];
+ Data:=ShaderDatabase[pShaderBinaryHash^];
  if length(Data)>0 then begin
   setShaderBinary(@Data[0],length(Data));
  end;
@@ -920,7 +954,6 @@ begin
       GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
       ShaderDebugInfoLookupCallback,
       ShaderLookupCallback,
-      nil,
       ShaderSourceDebugInfoLookupCallback,
       nil,
       @jsonSize
@@ -1030,6 +1063,7 @@ begin
      GPUCrashDumpCallback,                                             // Register callback for GPU crash dumps.
      ShaderDebugInfoCallback,                                          // Register callback for shader debug information.
      CrashDumpDescriptionCallback,                                     // Register callback for GPU crash dump description.
+     nil,
      nil
     )
    );
