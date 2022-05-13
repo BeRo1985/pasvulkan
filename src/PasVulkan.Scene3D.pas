@@ -271,6 +271,7 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
+              procedure AssignFromDefault;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
              published
               property Sampler:TpvVulkanSampler read fSampler;
@@ -1185,6 +1186,7 @@ type EpvScene3D=class(Exception);
       private
        fLock:TPasMPSpinLock;
        fUploaded:TPasMPBool32;
+       fDefaultSampler:TSampler;
        fWhiteTexture:TpvVulkanTexture;
        fWhiteTextureLock:TPasMPSlimReaderWriterLock;
        fDefaultNormalMapTexture:TpvVulkanTexture;
@@ -1681,6 +1683,16 @@ begin
  result.AddressModeT:=fAddressModeT;
 end;
 
+procedure TpvScene3D.TSampler.AssignFromDefault;
+begin
+ fName:='';
+ fMinFilter:=VK_FILTER_LINEAR;
+ fMagFilter:=VK_FILTER_LINEAR;
+ fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+ fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+ fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+end;
+
 procedure TpvScene3D.TSampler.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
 begin
  fName:=aSourceSampler.Name;
@@ -1922,28 +1934,28 @@ end;
 
 function TpvScene3D.TTexture.GetDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
- if assigned(fSampler) and assigned(TSampler(fSampler.GetResource).fSampler) then begin
-  result.Sampler:=TSampler(fSampler.GetResource).fSampler.Handle;
+ if assigned(fSampler) and assigned(fSampler.fSampler) then begin
+  result.Sampler:=fSampler.fSampler.Handle;
  end else begin
   result.Sampler:=VK_NULL_HANDLE;
  end;
- if assigned(fImage) and assigned(TImage(fImage.GetResource).fTexture.ImageView) then begin
-  result.ImageView:=TImage(fImage.GetResource).fTexture.ImageView.Handle;
+ if assigned(fImage) and assigned(fImage.fTexture.ImageView) then begin
+  result.ImageView:=fImage.fTexture.ImageView.Handle;
  end else begin
   result.ImageView:=VK_NULL_HANDLE;
  end;
- result.ImageLayout:=TImage(fImage.GetResource).fTexture.ImageLayout;
+ result.ImageLayout:=fImage.fTexture.ImageLayout;
 end;
 
 function TpvScene3D.TTexture.GetHashData:THashData;
 begin
  if assigned(fImage) then begin
-  result.Image:=TImage(fImage.GetResource);
+  result.Image:=fImage;
  end else begin
   result.Image:=nil;
  end;
  if assigned(fSampler) then begin
-  result.Sampler:=TSampler(fSampler.GetResource);
+  result.Sampler:=fSampler;
  end else begin
   result.Sampler:=nil;
  end;
@@ -1951,25 +1963,29 @@ end;
 
 procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
 begin
+
  fName:=aSourceTexture.Name;
+
  if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
   fImage:=aImageMap[aSourceTexture.Source];
-  if assigned(fImage) then begin
-   fImage.IncRef;
-  end;
  end else begin
   fImage:=nil;
 //raise EPasGLTFInvalidDocument.Create('Image index out of range');
  end;
+ if assigned(fImage) then begin
+  fImage.IncRef;
+ end;
+
  if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
   fSampler:=aSamplerMap[aSourceTexture.Sampler];
-  if assigned(fSampler) then begin
-   fSampler.IncRef;
-  end;
  end else begin
-  fSampler:=nil;
+  fSampler:=SceneInstance.fDefaultSampler;
 //raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
  end;
+ if assigned(fSampler) then begin
+  fSampler.IncRef;
+ end;
+
 end;
 
 { TpvScene3D.TMaterial.TTextureReference }
@@ -2273,6 +2289,10 @@ var UniversalQueue:TpvVulkanQueue;
     ClearCoatRoughnessTextureDescriptorImageInfo,
     ClearCoatTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
+
+ if Name='Partial_Coated' then begin
+  writeln(Name);
+ end;
 
  if (fReferenceCounter>0) and not fUploaded then begin
 
@@ -6932,6 +6952,9 @@ begin
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
+ fDefaultSampler:=TSampler.Create(pvApplication.ResourceManager,self);
+ fDefaultSampler.AssignFromDefault;
+
  fWhiteTexture:=nil;
 
  fWhiteTextureLock:=TPasMPSlimReaderWriterLock.Create;
@@ -7077,6 +7100,8 @@ begin
  FreeAndNil(fWhiteTexture);
 
  FreeAndNil(fDefaultNormalMapTexture);
+
+ FreeAndNil(fDefaultSampler);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
@@ -7318,6 +7343,7 @@ begin
   try
    if not fUploaded then begin
     try
+     fDefaultSampler.Upload;
      UploadWhiteTexture;
      for Index:=0 to length(fLightBuffers)-1 do begin
       fLightBuffers[Index].Upload;
@@ -7426,6 +7452,7 @@ begin
       Image.Unload;
      end;
      FreeAndNil(fWhiteTexture);
+     fDefaultSampler.Unload;
     finally
      fUploaded:=false;
     end;
