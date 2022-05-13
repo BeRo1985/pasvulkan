@@ -354,12 +354,27 @@ type EpvVulkanException=class(Exception);
        fProperties:TVkPhysicalDeviceProperties;
        fMemoryProperties:TVkPhysicalDeviceMemoryProperties;
        fFeatures:TVkPhysicalDeviceFeatures;
+       fVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;
+       fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
+       fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
+       fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+       fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
+       fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
        fAvailableLayers:TpvVulkanAvailableLayers;
        fAvailableExtensions:TpvVulkanAvailableExtensions;
        fAvailableLayerNames:TStringList;
        fAvailableExtensionNames:TStringList;
        fPipelineStageAllShaderBits:TpvUInt32;
+       fMultiView:boolean;
+       fMultiViewTessellationShader:boolean;
+       fMultiViewGeometryShader:boolean;
+       fMaxMultiViewViewCount:TpvUInt32;
+       fMaxMultiViewInstanceIndex:TpvUInt32;
+       fFragmentShaderSampleInterlock:boolean;
+       fFragmentShaderPixelInterlock:boolean;
+       fFragmentShaderShadingRateInterlock:boolean;
       public
        constructor Create(const aInstance:TpvVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
@@ -392,6 +407,13 @@ type EpvVulkanException=class(Exception);
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
        property Features:TVkPhysicalDeviceFeatures read fFeatures;
+       property Vulkan11Features:TVkPhysicalDeviceVulkan11Features read fVulkan11Features;
+       property Vulkan11Properties:TVkPhysicalDeviceVulkan11Properties read fVulkan11Properties;
+       property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
+       property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
+       property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
+       property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
+       property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
        property Handle:TVkPhysicalDevice read fPhysicalDeviceHandle;
        property DeviceName:TpvVulkanCharString read fDeviceName;
@@ -401,6 +423,14 @@ type EpvVulkanException=class(Exception);
        property AvailableLayerNames:TStringList read fAvailableLayerNames;
        property AvailableExtensionNames:TStringList read fAvailableExtensionNames;
        property PipelineStageAllShaderBits:TpvUInt32 read fPipelineStageAllShaderBits;
+       property MultiView:boolean read fMultiView;
+       property MultiViewTessellationShader:boolean read fMultiViewTessellationShader;
+       property MultiViewGeometryShader:boolean read fMultiViewGeometryShader;
+       property MaxMultiViewViewCount:TpvUInt32 read fMaxMultiViewViewCount;
+       property MaxMultiViewInstanceIndex:TpvUInt32 read fMaxMultiViewInstanceIndex;
+       property FragmentShaderSampleInterlock:boolean read fFragmentShaderSampleInterlock;
+       property FragmentShaderPixelInterlock:boolean read fFragmentShaderPixelInterlock;
+       property FragmentShaderShadingRateInterlock:boolean read fFragmentShaderShadingRateInterlock;
      end;
 
      PpvVulkanSurfacePlatform=^TpvVulkanSurfacePlatform;
@@ -559,7 +589,7 @@ type EpvVulkanException=class(Exception);
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
-       fPointerToPhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features;
+       fPhysicalDeviceMultiviewFeatures:TVkPhysicalDeviceMultiviewFeatures;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -579,7 +609,7 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
-       property PhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features read fPointerToPhysicalDeviceVulkan11Features;
+//     property PhysicalDeviceVulkan11Features:PVkPhysicalDeviceVulkan11Features read fPointerToPhysicalDeviceVulkan11Features;
       published
        property Instance:TpvVulkanInstance read fInstance;
        property PhysicalDevice:TpvVulkanPhysicalDevice read fPhysicalDevice;
@@ -6784,6 +6814,7 @@ var Index,SubIndex:TpvInt32;
     LayerProperty:PpvVulkanAvailableLayer;
     ExtensionProperties:TVkExtensionPropertiesArray;
     ExtensionProperty:PpvVulkanAvailableExtension;
+    MultiviewSupportEnabled:boolean;
 begin
  inherited Create;
 
@@ -6881,6 +6912,99 @@ begin
   fPipelineStageAllShaderBits:=fPipelineStageAllShaderBits or
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
  end;
+
+ MultiviewSupportEnabled:=AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0;
+
+ FillChar(fFeatures2KHR,SizeOf(TVkPhysicalDeviceFeatures2KHR),#0);
+ fFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+
+ FillChar(fProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
+ fProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+
+ FillChar(fVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
+ fVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+
+ FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
+ fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+
+  fVulkan11Features.pNext:=fFeatures2KHR.pNext;
+  fFeatures2KHR.pNext:=@fVulkan11Features;
+
+ end else begin
+
+  if MultiviewSupportEnabled then begin
+   fMultiviewFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fMultiviewFeaturesKHR;
+ end;
+
+ end;
+
+ begin
+  FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
+  fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
+   fFragmentShaderInterlockFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fFragmentShaderInterlockFeaturesEXT;
+  end;
+ end;
+
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
+  fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
+ end else begin
+  fInstance.Commands.GetPhysicalDeviceFeatures2(Handle,@fFeatures2KHR);
+ end;
+
+ FillChar(fVulkan11Properties,SizeOf(TVkPhysicalDeviceVulkan11Properties),#0);
+ fVulkan11Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+
+ FillChar(fMultiviewPropertiesKHR,SizeOf(TVkPhysicalDeviceMultiviewPropertiesKHR),#0);
+ fMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+
+  fVulkan11Properties.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fVulkan11Properties;
+
+  fMultiviewFeaturesKHR.multiview:=fVulkan11Features.multiview;
+  fMultiviewFeaturesKHR.multiviewGeometryShader:=fVulkan11Features.multiviewGeometryShader;
+  fMultiviewFeaturesKHR.multiviewTessellationShader:=fVulkan11Features.multiviewTessellationShader;
+
+ end else begin
+
+  if MultiviewSupportEnabled then begin
+
+   fMultiviewPropertiesKHR.pNext:=fProperties2KHR.pNext;
+   fProperties2KHR.pNext:=@fMultiviewPropertiesKHR;
+
+  end;
+
+ end;
+
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
+  fInstance.Commands.GetPhysicalDeviceProperties2KHR(Handle,@fProperties2KHR);
+ end else begin
+  fInstance.Commands.GetPhysicalDeviceProperties2(Handle,@fProperties2KHR);
+ end;
+
+ if MultiviewSupportEnabled then begin
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+   fMultiviewPropertiesKHR.maxMultiviewViewCount:=fVulkan11Properties.maxMultiviewViewCount;
+   fMultiviewPropertiesKHR.maxMultiviewInstanceIndex:=fVulkan11Properties.maxMultiviewInstanceIndex;
+  end;
+ end;
+
+ fMultiView:=fMultiviewFeaturesKHR.multiview<>VK_FALSE;
+ fMultiViewTessellationShader:=fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
+ fMultiViewGeometryShader:=fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE;
+
+ fMaxMultiViewViewCount:=fMultiviewPropertiesKHR.maxMultiviewViewCount;
+ fMaxMultiViewInstanceIndex:=fMultiviewPropertiesKHR.maxMultiviewInstanceIndex;
+
+ fFragmentShaderSampleInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE;
+ fFragmentShaderPixelInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE;
+ fFragmentShaderShadingRateInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE;
 
 end;
 
@@ -7738,7 +7862,9 @@ begin
 
  fPointerToEnabledFeatures:=@fEnabledFeatures;
 
- fPointerToPhysicalDeviceVulkan11Features:=@fPhysicalDeviceVulkan11Features;
+{fPointerToPhysicalDeviceVulkan11Features:=@fPhysicalDeviceVulkan11Features;
+
+ fPointerToPhysicalDeviceVulkan12Features:=@fPhysicalDeviceVulkan12Features;}
 
  fMemoryManager:=TpvVulkanDeviceMemoryManager.Create(self);
 
@@ -8145,16 +8271,30 @@ begin
    InitializeNVIDIAAfterMath;
   end;
 
-  FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
-  fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-  if fInstance.APIVersion>=VK_API_VERSION_1_2 then begin
-   if fPhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
-    fPhysicalDeviceVulkan11Features.multiview:=VK_TRUE;
-   end else begin
-    fPhysicalDeviceVulkan11Features.multiview:=VK_FALSE;
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+
+   FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
+   fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+   if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+    fPhysicalDeviceVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
+    fPhysicalDeviceVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
+    fPhysicalDeviceVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+    fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
    end;
-   fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
-   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
+
+  end else begin
+
+   FillChar(fPhysicalDeviceMultiviewFeatures,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
+   fPhysicalDeviceMultiviewFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+   if fPhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
+    fPhysicalDeviceMultiviewFeatures.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
+    fPhysicalDeviceMultiviewFeatures.multiviewTessellationShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader;
+    fPhysicalDeviceMultiviewFeatures.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
+    fPhysicalDeviceMultiviewFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceMultiviewFeatures;
+   end;
+
   end;
 
   VulkanCheckResult(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
