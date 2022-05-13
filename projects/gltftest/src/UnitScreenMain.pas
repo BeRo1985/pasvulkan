@@ -3946,7 +3946,7 @@ begin
 
  fAnimationIndex:=0;
 
- fCameraMode:=TCameraMode.FirstPerson;
+ fCameraMode:=TCameraMode.Orbit;
 
  fKeyLeft:=false;
  fKeyRight:=false;
@@ -4915,6 +4915,7 @@ begin
                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
                                            Center,
                                            TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+     fCameraMatrix:=ViewMatrix.SimpleInverse;
     end;
    end;
 
@@ -5038,6 +5039,20 @@ begin
    KEYCODE_ESCAPE:begin
     pvApplication.Terminate;
    end;
+   KEYCODE_U:begin
+    fCameraSpeed:=fCameraSpeed*0.5;
+   end;
+   KEYCODE_I:begin
+    fCameraSpeed:=fCameraSpeed*2.0;
+   end;
+   KEYCODE_O:begin
+    fCameraMode:=TCameraMode.Orbit;
+    pvApplication.CatchMouse:=false;
+   end;
+   KEYCODE_P:begin
+    fCameraMode:=TCameraMode.FirstPerson;
+    pvApplication.CatchMouse:=true;
+   end;
    KEYCODE_V,KEYCODE_B:begin
     if fAnimationIndex<0 then begin
      fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
@@ -5158,7 +5173,7 @@ begin
   try
    case fCameraMode of
     TCameraMode.FirstPerson:begin
-     fCameraMatrix:=fCameraMatrix*TpvMatrix4x4.CreateTranslation((fCameraMatrix.ToMatrix3x3*-TpvVector3.ZAxis)*(aRelativeAmount.x+aRelativeAmount.y));
+     fCameraMatrix:=fCameraMatrix*TpvMatrix4x4.CreateTranslation((fCameraMatrix.ToMatrix3x3*TpvVector3.ZAxis).Normalize*(aRelativeAmount.x+aRelativeAmount.y)*fCameraSpeed*5.0);
     end;
     else begin
      fZoom:=Max(1e-4,fZoom+((aRelativeAmount.x+aRelativeAmount.y)*0.1));
