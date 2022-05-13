@@ -18,6 +18,8 @@ unit UnitScreenMain;
  {$define Windows}
 {$ifend}
 
+{$scopedenums on}
+
 {$define UseMomentBasedOrderIndependentTransparency}
 
 interface
@@ -48,7 +50,12 @@ type { TScreenMain }
         const CascadedShadowMapWidth=512;
               CascadedShadowMapHeight=512;
               CountCascadedShadowMapCascades=4;
-        type { TCascadedShadowMap }
+        type TCameraMode=(
+              Orbit,
+              FirstPerson
+             );
+             PCameraMode=^TCameraMode;
+             { TCascadedShadowMap }
              TCascadedShadowMap=record
               public
                View:TpvScene3D.TView;
@@ -431,9 +438,12 @@ type { TScreenMain }
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
        fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
        fTime:Double;
+       fCameraMode:TCameraMode;
        fCameraRotationX:TpvScalar;
        fCameraRotationY:TpvScalar;
        fZoom:TpvScalar;
+       fCameraMatrix:TpvMatrix4x4;
+       fCameraSpeed:TpvScalar;
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:TpvInt32;
@@ -443,6 +453,18 @@ type { TScreenMain }
        fZFar:TpvFloat;
        fMomentBasedOrderIndependentTransparentUniformBuffer:TMomentBasedOrderIndependentTransparentUniformBuffer;
        fMomentBasedOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
+       fKeyLeft:boolean;
+       fKeyRight:boolean;
+       fKeyForwards:boolean;
+       fKeyBackwards:boolean;
+       fKeyUp:boolean;
+       fKeyDown:boolean;
+       fKeyPitchInc:boolean;
+       fKeyPitchDec:boolean;
+       fKeyYawInc:boolean;
+       fKeyYawDec:boolean;
+       fKeyRollInc:boolean;
+       fKeyRollDec:boolean;
        procedure CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -3903,6 +3925,8 @@ constructor TScreenMain.Create;
 var GLTF:TPasGLTF.TDocument;
     AssetStream:TStream;
     SampleCounts:TVkSampleCountFlags;
+    Center,Bounds:TpvVector3;
+    CameraRotationX,CameraRotationY:TpvScalar;
 begin
  inherited Create;
 
@@ -3921,6 +3945,21 @@ begin
  end;
 
  fAnimationIndex:=0;
+
+ fCameraMode:=TCameraMode.FirstPerson;
+
+ fKeyLeft:=false;
+ fKeyRight:=false;
+ fKeyForwards:=false;
+ fKeyBackwards:=false;
+ fKeyUp:=false;
+ fKeyDown:=false;
+ fKeyPitchInc:=false;
+ fKeyPitchDec:=false;
+ fKeyYawInc:=false;
+ fKeyYawDec:=false;
+ fKeyRollInc:=false;
+ fKeyRollDec:=false;
 
  FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
 
@@ -4235,6 +4274,22 @@ begin
  fFrameGraph.Compile;
 
 // fFrameGraph.Dump;
+
+ Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+
+ Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+
+ CameraRotationX:=0.0;
+ CameraRotationY:=0.0;
+
+ fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+                                                                    sin(-CameraRotationY*PI*2.0),
+                                                                    cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
+                                                          (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
+                                           Center,
+                                           TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+
+ fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
 
 end;
 
@@ -4751,8 +4806,79 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
+var RotationSpeed,MovementSpeed:TpvDouble;
+    q,CameraPosition:TpvVector3;
+    CameraMatrix:TpvMatrix3x3;
 begin
+
+ RotationSpeed:=aDeltaTime*1.0;
+ MovementSpeed:=aDeltaTime*fCameraSpeed*10.0;
+
+ if fKeyPitchInc or fKeyPitchDec or fKeyYawInc or fKeyYawDec or fKeyRollInc or fKeyRollDec then begin
+  q.x:=0.0;
+  q.y:=0.0;
+  q.z:=0.0;
+  if fKeyPitchInc or fKeyPitchDec then begin
+   if fKeyPitchInc then begin
+    q.x:=-RotationSpeed;
+   end;
+   if fKeyPitchDec then begin
+    q.x:=RotationSpeed;
+   end;
+  end;
+  if fKeyYawInc or fKeyYawDec then begin
+   if fKeyYawInc then begin
+    q.y:=-RotationSpeed;
+   end;
+   if fKeyYawDec then begin
+    q.y:=RotationSpeed;
+   end;
+  end;
+  if fKeyRollInc or fKeyRollDec then begin
+   if fKeyRollInc then begin
+    q.z:=RotationSpeed;
+   end;
+   if fKeyRollDec then begin
+    q.z:=-RotationSpeed;
+   end;
+  end;
+//  fCameraMatrix:=fCam *TpvMatrix4x4.CreateRotate(1.0,q);
+{ CameraOrientation:=fCameraMatrix.ToQuaternion;
+  CameraOrientation:=CameraOrientation.Integrate((q*CameraOrientation),1.0).Normalize;}
+//fCameraOrientation Orientation:=QuaternionTermNormalize(QuaternionIntegrate(Project.CameraState.Orientation,Vector3TermQuaternionRotate(q,Project.CameraState.Orientation),1.0));
+ end;
+ CameraMatrix:=fCameraMatrix.ToMatrix3x3;
+// CameraPosition:=-(fCameraMatrix*TpvVector3.Origin);
+ if fKeyLeft or fKeyRight or fKeyForwards or fKeyBackwards or fKeyUp or fKeyDown then begin
+  if fKeyLeft or fKeyRight then begin
+   if fKeyLeft then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,CameraMatrix.Right.xyz*MovementSpeed);
+   end;
+   if fKeyRight then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,-(CameraMatrix.Right.xyz*MovementSpeed));
+   end;
+  end;
+  if fKeyForwards or fKeyBackwards then begin
+   if fKeyForwards then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,CameraMatrix.Forwards.xyz*MovementSpeed);
+   end;
+   if fKeyBackwards then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,-(CameraMatrix.Forwards.xyz*MovementSpeed));
+   end;
+  end;
+  if fKeyUp or fKeyDown then begin
+   if fKeyUp then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,-(CameraMatrix.Up.xyz*MovementSpeed));
+   end;
+   if fKeyDown then begin
+    fCameraMatrix:=TpvMatrix4x4.CreateTranslated(fCameraMatrix,CameraMatrix.Up.xyz*MovementSpeed);
+   end;
+  end;
+  //fCameraMatrix:=TpvMatrix4x4.CreateTranslated(TpvMatrix4x4.Create(CameraMatrix),-CameraPosition);
+ end;
+
  inherited Update(aDeltaTime);
+
  fFrameGraph.Update(pvApplication.UpdateSwapChainImageIndex,pvApplication.UpdateFrameCounter);
 end;
 
@@ -4822,13 +4948,22 @@ begin
    fScene3D.ClearViews;
 
    Center:=(fScene3D.BoundingBox.Min+fScene3D.BoundingBox.Max)*0.5;
+
    Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
-   ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                   sin(-fCameraRotationY*PI*2.0),
-                                                                   cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                         (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                         Center,
-                                         TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+
+   case fCameraMode of
+    TCameraMode.FirstPerson:begin
+     ViewMatrix:=fCameraMatrix;
+    end;
+    else begin
+     ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                     sin(-fCameraRotationY*PI*2.0),
+                                                                     cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                           (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                           Center,
+                                           TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+    end;
+   end;
 
    if assigned(UnitApplication.Application.VirtualReality) then begin
 
@@ -4943,6 +5078,8 @@ begin
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var CameraMatrix:TpvMatrix3x3;
+    View:TpvVector3;
 begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
@@ -4968,11 +5105,66 @@ begin
      fAnimationIndex:=aKeyEvent.KeyCode-(KEYCODE_0+1);
     end;
    end;
+   KEYCODE_BACKSPACE:begin
+(*   CameraMatrix:=TpvMatrix3x3.CreateFromQuaternion(fCameraOrientation);
+    View:=CameraMatrix.Forwards;
+    if abs(View.y*CameraMatrix.Up.y)<0.5 then begin
+     CameraMatrix.Up:=TpvVector3.InlineableCreate(0.0,1.0,0.0);
+    end else begin
+     CameraMatrix.Up:=CameraMatrix.Forwards.Cross(CameraMatrix.Right).Normalize;
+    end;
+{   CameraMatrix.Right:=CameraMatrix.Up.Cross(CameraMatrix.Forwards).Normalize;
+    CameraMatrix.Up:=CameraMatrix.Forwards.Cross(CameraMatrix.Right).Normalize;
+    CameraMatrix.Forwards:=CameraMatrix.Right.Cross(CameraMatrix.Up).Normalize;}
+    fCameraOrientation:=CameraMatrix.RobustOrthoNormalize.ToQuaternion;*)
+   end;
+  end;
+ end;
+ if aKeyEvent.KeyEventType in [TpvApplicationInputKeyEventType.Down,TpvApplicationInputKeyEventType.Up] then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_A:begin
+    fKeyLeft:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_RIGHT,KEYCODE_S:begin
+    fKeyRight:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_UP,KEYCODE_W:begin
+    fKeyForwards:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_DOWN,KEYCODE_D:begin
+    fKeyBackwards:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_PAGEUP,KEYCODE_R:begin
+    fKeyUp:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_PAGEDOWN,KEYCODE_F:begin
+    fKeyDown:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_T:begin
+    fKeyPitchInc:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_G:begin
+    fKeyPitchDec:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_E:begin
+    fKeyYawInc:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_Q:begin
+    fKeyYawDec:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_X:begin
+    fKeyRollInc:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_C:begin
+    fKeyRollDec:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
   end;
  end;
 end;
 
 function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Euler:TpvVector3;
+    CameraMatrix:TpvMatrix3x3;
 begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
@@ -4980,8 +5172,30 @@ begin
      (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
    fUpdateLock.Acquire;
    try
-    fCameraRotationX:=frac(fCameraRotationX+(1.0-(aPointerEvent.RelativePosition.x*(1.0/pvApplication.VulkanSwapChain.Width))));
-    fCameraRotationY:=frac(fCameraRotationY+(1.0-(aPointerEvent.RelativePosition.y*(1.0/pvApplication.VulkanSwapChain.Height))));
+    case fCameraMode of
+     TCameraMode.FirstPerson:begin
+{     Euler:=fCameraOrientation.ToEuler;
+      Euler.x:=Min(Max(Euler.x+(aPointerEvent.RelativePosition.y*(5.0/pvApplication.VulkanSwapChain.Height)),-0.5),0.5);
+      Euler.y:=Euler.y+(aPointerEvent.RelativePosition.x*(5.0/pvApplication.VulkanSwapChain.Width));
+      Euler.z:=0.0;
+      fCameraOrientation:=TpvQuaternion.CreateFromEuler(Euler); }
+{     fCameraOrientation:=(fCameraOrientation*
+                           TpvQuaternion.CreateFromEuler(0.0,
+                                                         aPointerEvent.RelativePosition.x*0.002,
+                                                         0.0
+                                                        ){*
+                           TpvQuaternion.CreateFromEuler(aPointerEvent.RelativePosition.y*0.002,
+                                                         0.0,
+                                                         0.0
+                                                        ) }
+                          //).Normalize;{}
+//      fCameraOrientation:=TpvMatrix3x3.CreateConstruct(-(fCameraOrientation*TpvVector3.ZAxis),TpvVector3.YAxis).ToQuaternion;
+     end;
+     else begin
+      fCameraRotationX:=frac(fCameraRotationX+(1.0-(aPointerEvent.RelativePosition.x*(1.0/pvApplication.VulkanSwapChain.Width))));
+      fCameraRotationY:=frac(fCameraRotationY+(1.0-(aPointerEvent.RelativePosition.y*(1.0/pvApplication.VulkanSwapChain.Height))));
+     end;
+    end;
    finally
     fUpdateLock.Release;
    end;
