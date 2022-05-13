@@ -2290,10 +2290,6 @@ var UniversalQueue:TpvVulkanQueue;
     ClearCoatTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
 
- if Name='Partial_Coated' then begin
-  writeln(Name);
- end;
-
  if (fReferenceCounter>0) and not fUploaded then begin
 
   fLock.Acquire;
