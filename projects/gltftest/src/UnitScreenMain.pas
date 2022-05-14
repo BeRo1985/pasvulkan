@@ -4540,7 +4540,7 @@ end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
 {$undef UseSphereBasedCascadedShadowMaps}
-const CascadedShadowMapSplitConstant=0.975;
+const CascadedShadowMapSplitConstant=0.9;
       FrustumCorners:array[0..7] of TpvVector3=
        (
         (x:-1.0;y:-1.0;z:0.0),
@@ -5047,11 +5047,12 @@ begin
    end;
    KEYCODE_O:begin
     fCameraMode:=TCameraMode.Orbit;
-    pvApplication.CatchMouse:=false;
    end;
    KEYCODE_P:begin
     fCameraMode:=TCameraMode.FirstPerson;
-    pvApplication.CatchMouse:=true;
+   end;
+   KEYCODE_L:begin
+    pvApplication.CatchMouse:=not pvApplication.CatchMouse;
    end;
    KEYCODE_V,KEYCODE_B:begin
     if fAnimationIndex<0 then begin
@@ -5129,12 +5130,11 @@ begin
 end;
 
 function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-var CameraMatrix:TpvMatrix3x3;
 begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
   if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Motion) and
-     (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
+     (pvApplication.CatchMouse or (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons)) then begin
    fUpdateLock.Acquire;
    try
     case fCameraMode of
