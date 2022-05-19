@@ -4565,6 +4565,7 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     Offset,Step:TpvVector2;
     LightSpaceSphere:TpvSphere;
 {$else}
+    UnitsPerTexel:TpvVector2;
     ShadowOrigin,RoundedOrigin,RoundOffset:TpvVector2;
 {$endif}
     ProjectionMatrix,
@@ -4580,41 +4581,46 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
 {$ifdef UseSphereBasedCascadedShadowMaps}
     Border,RoundedUpLightSpaceSphereRadius,
 {$endif}
-    zNear,zFar:TpvScalar;
+    zNear,zFar,RealZNear,RealZFar:TpvScalar;
     DoNeedRefitNearFarPlanes:boolean;
     ViewSpaceFrustumCornersLeft,
     ViewSpaceFrustumCornersRight:array[0..7] of TpvVector3;
     SwapChainImageState:PSwapChainImageState;
 begin
 
+ SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
+
  if IsInfinite(fZFar) then begin
   zNear:=0.1;
-  zFar:=4096.0;
+  zFar:=Max(SceneWorldSpaceBoundingBox.Radius,1.0);
+  RealZNear:=0.1;
+  RealZFar:=Max(zFar*4.0,4096.0);
   DoNeedRefitNearFarPlanes:=true;
  end else begin
   zNear:=abs(fZNear);
   zFar:=abs(fZFar);
+  RealZNear:=zNear;
+  RealZFar:=zFar;
   DoNeedRefitNearFarPlanes:=fZFar<0.0;
  end;
 
  ProjectionMatrix:=aViewLeft.ProjectionMatrix;
  if DoNeedRefitNearFarPlanes then begin
-  ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
-  ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+  ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
+  ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
  end;
  InverseProjectionMatrixLeft:=ProjectionMatrix.Inverse;
 
  ProjectionMatrix:=aViewRight.ProjectionMatrix;
  if DoNeedRefitNearFarPlanes then begin
-  ProjectionMatrix[2,2]:=zFar/(zNear-zFar);
-  ProjectionMatrix[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+  ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
+  ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
  end;
  InverseProjectionMatrixRight:=ProjectionMatrix.Inverse;
 
- SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
-
  LightForwardVector:=-TSkyCubeMap.LightDirection.xyz.Normalize;
- LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
+ LightSideVector:=LightForwardVector.Perpendicular;
+{LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
                                               -aViewLeft.ViewMatrix.RawComponents[1,2],
                                               -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;
  if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
@@ -4623,7 +4629,7 @@ begin
   end else begin
    LightSideVector:=TpvVector3.ZAxis;
   end;
- end;
+ end;}
  LightUpVector:=(LightForwardVector.Cross(LightSideVector)).Normalize;
  LightSideVector:=(LightUpVector.Cross(LightForwardVector)).Normalize;
  LightViewMatrix.RawComponents[0,0]:=LightSideVector.x;
@@ -4662,18 +4668,18 @@ begin
 
  CascadedShadowMaps:=@fSwapChainImageCascadedShadowMaps[aSwapChainImageIndex];
 
- CascadedShadowMaps^[0].SplitDepths.x:=zNear;
+ CascadedShadowMaps^[0].SplitDepths.x:=Min(zNear,RealZNear);
  Ratio:=zFar/zNear;
  LastValue:=0.0;
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
   Value:=(CascadedShadowMapSplitConstant*zNear*power(Ratio,CascadedShadowMapIndex/CountCascadedShadowMapCascades))+
          ((1.0-CascadedShadowMapSplitConstant)*(zNear+((CascadedShadowMapIndex/CountCascadedShadowMapCascades)*(zFar-zNear))));
-  FadeStartValue:=Min(Max(((Value-LastValue)*0.95)+LastValue,zNear),zFar);
+  FadeStartValue:=Min(Max(((Value-LastValue)*0.5{0.95})+LastValue,Min(zNear,RealZNear)),Max(zFar,RealZFar));
   LastValue:=Value;
-  CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,zNear),zFar);
-  CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,zNear),zFar);
+  CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,Min(zNear,RealZNear)),Max(zFar,RealZFar));
+  CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,Min(zNear,RealZNear)),Max(zFar,RealZFar));
  end;
- CascadedShadowMaps^[CountCascadedShadowMapCascades-1].SplitDepths.y:=zFar;
+ CascadedShadowMaps^[CountCascadedShadowMapCascades-1].SplitDepths.y:=Max(ZFar,RealZFar);
 
  for CascadedShadowMapIndex:=0 to CountCascadedShadowMapCascades-1 do begin
 
@@ -4685,10 +4691,10 @@ begin
   for Index:=0 to 7 do begin
    case Index of
     0..3:begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index].Lerp(ViewSpaceFrustumCornersLeft[Index+4],(MinZ-zNear)/(zFar-zNear));
+     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index].Lerp(ViewSpaceFrustumCornersLeft[Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
     end;
     else {4..7:}begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index-4].Lerp(ViewSpaceFrustumCornersLeft[Index],(MaxZ-zNear)/(zFar-zNear));
+     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index-4].Lerp(ViewSpaceFrustumCornersLeft[Index],(MaxZ-RealZNear)/(RealZFar-RealZNear));
     end;
    end;
    LightSpaceCorner:=FromViewSpaceToLightSpaceMatrixLeft*LightSpaceCorner;
@@ -4702,10 +4708,10 @@ begin
   for Index:=0 to 7 do begin
    case Index of
     0..3:begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index].Lerp(ViewSpaceFrustumCornersRight[Index+4],(MinZ-zNear)/(zFar-zNear));
+     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index].Lerp(ViewSpaceFrustumCornersRight[Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
     end;
     else {4..7:}begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index-4].Lerp(ViewSpaceFrustumCornersRight[Index],(MaxZ-zNear)/(zFar-zNear));
+     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index-4].Lerp(ViewSpaceFrustumCornersRight[Index],(MaxZ-RealZNear)/(RealZFar-RealZNear));
     end;
    end;
    LightSpaceAABB:=LightSpaceAABB.CombineVector3(FromViewSpaceToLightSpaceMatrixRight*LightSpaceCorner);
@@ -4765,6 +4771,14 @@ begin
 
 {$else}
 
+{ UnitsPerTexel:=(LightSpaceAABB.Max.xy-LightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(CascadedShadowMapWidth,CascadedShadowMapHeight);
+
+  LightSpaceAABB.Min.x:=floor(LightSpaceAABB.Min.x/UnitsPerTexel.x)*UnitsPerTexel.x;
+  LightSpaceAABB.Min.y:=floor(LightSpaceAABB.Min.y/UnitsPerTexel.y)*UnitsPerTexel.y;
+
+  LightSpaceAABB.Max.x:=ceil(LightSpaceAABB.Max.x/UnitsPerTexel.x)*UnitsPerTexel.x;
+  LightSpaceAABB.Max.y:=ceil(LightSpaceAABB.Max.y/UnitsPerTexel.y)*UnitsPerTexel.y;{}
+
   LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(LightSpaceAABB.Min.x,
                                                                       LightSpaceAABB.Max.x,
                                                                       LightSpaceAABB.Min.y,
@@ -4774,12 +4788,13 @@ begin
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
+//ShadowOrigin:=(LightViewProjectionMatrix*TpvVector4.WAxis).xy*TpvVector2.InlineableCreate(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
   ShadowOrigin:=(LightViewProjectionMatrix.MulHomogen(TpvVector3.Origin)).xy*TpvVector2.InlineableCreate(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
   RoundedOrigin.x:=round(ShadowOrigin.x);
   RoundedOrigin.y:=round(ShadowOrigin.y);
   RoundOffset:=(RoundedOrigin-ShadowOrigin)*TpvVector2.InlineableCreate(2.0/CascadedShadowMapWidth,2.0/CascadedShadowMapHeight);
   LightProjectionMatrix[3,0]:=LightProjectionMatrix[3,0]+RoundOffset.x;
-  LightProjectionMatrix[3,1]:=LightProjectionMatrix[3,1]+RoundOffset.y;
+  LightProjectionMatrix[3,1]:=LightProjectionMatrix[3,1]+RoundOffset.y;  {}
 
 {$endif}
 
