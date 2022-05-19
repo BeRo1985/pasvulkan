@@ -47,8 +47,9 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
-        const CascadedShadowMapWidth=512;
-              CascadedShadowMapHeight=512;
+        const CascadedShadowMapSize=512;
+              CascadedShadowMapWidth=CascadedShadowMapSize;
+              CascadedShadowMapHeight=CascadedShadowMapSize;
               CountCascadedShadowMapCascades=4;
         type TCameraMode=(
               Orbit,
@@ -4558,6 +4559,8 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     SceneWorldSpaceBoundingBox,
     SceneLightSpaceBoundingBox,
     LightSpaceAABB:TpvAABB;
+    SceneWorldSpaceSphere:TpvSphere;
+    SceneClipWorldSpaceSphere:TpvSphere;
     LightForwardVector,LightSideVector,
     LightUpVector,LightSpaceCorner:TpvVector3;
 {$ifdef UseSphereBasedCascadedShadowMaps}
@@ -4575,7 +4578,8 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     FromViewSpaceToLightSpaceMatrixLeft,
     FromViewSpaceToLightSpaceMatrixRight,
     InverseProjectionMatrixLeft,
-    InverseProjectionMatrixRight:TpvMatrix4x4;
+    InverseProjectionMatrixRight,
+    ViewMatrix:TpvMatrix4x4;
     MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
     Ratio,FadeStartValue,LastValue,Value,
 {$ifdef UseSphereBasedCascadedShadowMaps}
@@ -4603,6 +4607,10 @@ begin
   RealZFar:=zFar;
   DoNeedRefitNearFarPlanes:=fZFar<0.0;
  end;
+
+ SceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(SceneWorldSpaceBoundingBox);
+
+ SceneClipWorldSpaceSphere:=TpvSphere.Create(SceneWorldSpaceSphere.Center,Max(SceneWorldSpaceSphere.Radius,RealZFar*0.5));
 
  ProjectionMatrix:=aViewLeft.ProjectionMatrix;
  if DoNeedRefitNearFarPlanes then begin
@@ -4649,9 +4657,23 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
- FromViewSpaceToLightSpaceMatrixLeft:=aViewLeft.ViewMatrix.Inverse*LightViewMatrix;
-
- FromViewSpaceToLightSpaceMatrixRight:=aViewRight.ViewMatrix.Inverse*LightViewMatrix;
+ for Index:=0 to 1 do begin
+  if Index=0 then begin
+   ViewMatrix:=aViewLeft.ViewMatrix;
+  end else begin
+   ViewMatrix:=aViewRight.ViewMatrix;
+  end;
+  ViewMatrix:=ViewMatrix.SimpleInverse;
+  if not SceneClipWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
+   ViewMatrix.Translation.xyz:=SceneClipWorldSpaceSphere.Center+((ViewMatrix.Translation.xyz-SceneClipWorldSpaceSphere.Center).Normalize*SceneClipWorldSpaceSphere.Radius);
+  end;
+  ViewMatrix:=ViewMatrix*LightViewMatrix;
+  if Index=0 then begin
+   FromViewSpaceToLightSpaceMatrixLeft:=ViewMatrix;
+  end else begin
+   FromViewSpaceToLightSpaceMatrixRight:=ViewMatrix;
+  end;
+ end;
 
  SceneLightSpaceBoundingBox:=SceneWorldSpaceBoundingBox.Transform(LightViewMatrix);
 
@@ -4788,13 +4810,12 @@ begin
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
-//ShadowOrigin:=(LightViewProjectionMatrix*TpvVector4.WAxis).xy*TpvVector2.InlineableCreate(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
   ShadowOrigin:=(LightViewProjectionMatrix.MulHomogen(TpvVector3.Origin)).xy*TpvVector2.InlineableCreate(CascadedShadowMapWidth*0.5,CascadedShadowMapHeight*0.5);
   RoundedOrigin.x:=round(ShadowOrigin.x);
   RoundedOrigin.y:=round(ShadowOrigin.y);
   RoundOffset:=(RoundedOrigin-ShadowOrigin)*TpvVector2.InlineableCreate(2.0/CascadedShadowMapWidth,2.0/CascadedShadowMapHeight);
   LightProjectionMatrix[3,0]:=LightProjectionMatrix[3,0]+RoundOffset.x;
-  LightProjectionMatrix[3,1]:=LightProjectionMatrix[3,1]+RoundOffset.y;  {}
+  LightProjectionMatrix[3,1]:=LightProjectionMatrix[3,1]+RoundOffset.y;
 
 {$endif}
 
