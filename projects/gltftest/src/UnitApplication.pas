@@ -39,6 +39,8 @@ type TApplication=class(TpvApplication)
        fForceUseValidationLayers:boolean;
        fForceNoVSync:boolean;
        fMaxMSAA:TpvInt32;
+       fMaxShadowMSAA:TpvInt32;
+       fShadowMapSize:TpvInt32;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -64,6 +66,8 @@ type TApplication=class(TpvApplication)
       published
        property VirtualReality:TpvVirtualReality read fVirtualReality;
        property MaxMSAA:TpvInt32 read fMaxMSAA;
+       property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA;
+       property ShadowMapSize:TpvInt32 read fShadowMapSize;
      end;
 
 var Application:TApplication=nil;
@@ -87,6 +91,8 @@ begin
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
  fMaxMSAA:=1;
+ fMaxShadowMSAA:=8;
+ fShadowMapSize:=512;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
@@ -121,6 +127,18 @@ begin
               (Parameter='/max-msaa') then begin
    if Index<=ParamCount then begin
     fMaxMSAA:=StrToIntDef(ParamStr(Index),0);
+    inc(Index);
+   end;
+  end else if (Parameter='--max-shadow-msaa') or
+              (Parameter='/max-shadow-msaa') then begin
+   if Index<=ParamCount then begin
+    fMaxShadowMSAA:=StrToIntDef(ParamStr(Index),0);
+    inc(Index);
+   end;
+  end else if (Parameter='--shadow-map-size') or
+              (Parameter='/shadow-map-size') then begin
+   if Index<=ParamCount then begin
+    fShadowMapSize:=StrToIntDef(ParamStr(Index),0);
     inc(Index);
    end;
   end else begin

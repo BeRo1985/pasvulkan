@@ -47,10 +47,7 @@ uses SysUtils,
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
-        const CascadedShadowMapSize=512;
-              CascadedShadowMapWidth=CascadedShadowMapSize;
-              CascadedShadowMapHeight=CascadedShadowMapSize;
-              CountCascadedShadowMapCascades=4;
+        const CountCascadedShadowMapCascades=4;
         type TCameraMode=(
               Orbit,
               FirstPerson
@@ -466,6 +463,7 @@ type { TScreenMain }
        fKeyYawDec:boolean;
        fKeyRollInc:boolean;
        fKeyRollDec:boolean;
+       fCascadedShadowMapSize:TpvInt32;
        procedure CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -503,6 +501,9 @@ type { TScreenMain }
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
+      published
+       property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapSize;
+       property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapSize;
      end;
 
 implementation
@@ -530,8 +531,8 @@ inherited Create(aFrameGraph);
  Queue:=aFrameGraph.UniversalQueue;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,
-                                       CascadedShadowMapWidth,
-                                       CascadedShadowMapHeight,
+                                       fParent.CascadedShadowMapWidth,
+                                       fParent.CascadedShadowMapHeight,
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
@@ -694,8 +695,8 @@ begin
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(10,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Flags)));
 
-     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,CascadedShadowMapWidth,CascadedShadowMapHeight,0.0,1.0);
-     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,CascadedShadowMapWidth,CascadedShadowMapHeight);
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight);
 
      VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
      VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -860,8 +861,8 @@ begin
 //SeparateCommandBuffer:=true;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,
-                                       CascadedShadowMapWidth,
-                                       CascadedShadowMapHeight,
+                                       fParent.CascadedShadowMapWidth,
+                                       fParent.CascadedShadowMapHeight,
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
@@ -1018,8 +1019,8 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,CascadedShadowMapWidth,CascadedShadowMapHeight,0.0,1.0);
- fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,CascadedShadowMapWidth,CascadedShadowMapHeight);
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight);
 
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -1143,8 +1144,8 @@ begin
 //SeparateCommandBuffer:=true;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,
-                                       CascadedShadowMapWidth,
-                                       CascadedShadowMapHeight,
+                                       fParent.CascadedShadowMapWidth,
+                                       fParent.CascadedShadowMapHeight,
                                        1.0,
                                        CountCascadedShadowMapCascades);
 
@@ -1310,8 +1311,8 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,CascadedShadowMapWidth,CascadedShadowMapHeight,0.0,1.0);
- fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,CascadedShadowMapWidth,CascadedShadowMapHeight);
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fParent.CascadedShadowMapWidth,fParent.CascadedShadowMapHeight);
 
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -3931,6 +3932,8 @@ var GLTF:TPasGLTF.TDocument;
 begin
  inherited Create;
 
+ fCascadedShadowMapSize:=Max(16,UnitApplication.Application.ShadowMapSize);
+
  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.ImgTec,
   TpvVulkanVendorID.ARM,
@@ -4044,22 +4047,22 @@ begin
 
  if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
 
-{ if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0 then begin
+  if (UnitApplication.Application.MaxShadowMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
    fCountCascadedShadowMapMSAASamples:=64;
-  end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0 then begin
+  end else if (UnitApplication.Application.MaxShadowMSAA>=32) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
    fCountCascadedShadowMapMSAASamples:=32;
-  end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0 then begin
+  end else if (UnitApplication.Application.MaxShadowMSAA>=16) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
    fCountCascadedShadowMapMSAASamples:=16;
-  end else}if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0 then begin
+  end else if (UnitApplication.Application.MaxShadowMSAA>=8) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
    fCountCascadedShadowMapMSAASamples:=8;
-  end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0 then begin
+  end else if (UnitApplication.Application.MaxShadowMSAA>=4) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
    fCountCascadedShadowMapMSAASamples:=4;
-  end else if (SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0 then begin
+  end else if (UnitApplication.Application.MaxShadowMSAA>=2) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0) then begin
    fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
    fCountCascadedShadowMapMSAASamples:=2;
   end else begin
@@ -4541,9 +4544,7 @@ end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
 {$undef UseSphereBasedCascadedShadowMaps}
-const CascadedShadowMapSplitLambda=0.5;
-      CascadedShadowMapSplitOverlap=0.1;
-      FrustumCorners:array[0..7] of TpvVector3=
+const FrustumCorners:array[0..7] of TpvVector3=
        (
         (x:-1.0;y:-1.0;z:0.0),
         (x:1.0;y:-1.0;z:0.0),
@@ -4581,6 +4582,8 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     InverseProjectionMatrixLeft,
     InverseProjectionMatrixRight,
     ViewMatrix:TpvMatrix4x4;
+    CascadedShadowMapSplitLambda,
+    CascadedShadowMapSplitOverlap,
     MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
     Ratio,SplitValue,UniformSplitValue,LogSplitValue,
     FadeStartValue,LastValue,Value,
@@ -4618,7 +4621,7 @@ begin
    RealZFar:=Max(RealZFar,Value);
   end;
   zNear:=RealZNear;
-  zFar:=RealZFar;//Max(1.0,RealZFar*0.25);
+  zFar:=RealZFar;
   DoNeedRefitNearFarPlanes:=true;
  end else begin
   zNear:=abs(fZNear);
@@ -4627,6 +4630,10 @@ begin
   RealZFar:=zFar;
   DoNeedRefitNearFarPlanes:=fZFar<0.0;
  end;
+
+ CascadedShadowMapSplitLambda:=0.5;
+
+ CascadedShadowMapSplitOverlap:=0.1;
 
  SceneClipWorldSpaceSphere:=TpvSphere.Create(SceneWorldSpaceSphere.Center,Max(SceneWorldSpaceSphere.Radius,RealZFar*0.5));
 

@@ -22,14 +22,14 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="track0.glb /max-msaa 8"/>
+        <CommandLineParams Value="track0.glb /max-msaa 8 /max-shadow-msaa 8 /shadow-map-size 2048"/>
         <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="track0.glb /max-msaa 8"/>
+            <CommandLineParams Value="track0.glb /max-msaa 8 /max-shadow-msaa 8 /shadow-map-size 2048"/>
             <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
           </local>
         </Mode0>
