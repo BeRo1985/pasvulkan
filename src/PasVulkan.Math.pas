@@ -1062,8 +1062,8 @@ type PpvScalar=^TpvScalar;
        function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix3x3):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1102,7 +1102,8 @@ type PpvScalar=^TpvScalar;
        function DistanceTo(const b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const b:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
+       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
        function Extends(const WithSphere:TpvSphere):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
@@ -1430,7 +1431,7 @@ function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$end
 function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
 function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
@@ -1810,22 +1811,34 @@ begin
          (v0.y*v1.x*v2.z*v3.w)+(v0.x*v1.y*v2.z*v3.w);
 end;
 
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-var d,InverseDenominator:TpvScalar;
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
+var a2,d,InverseDenominator:TpvScalar;
 begin
  result:=false;
  d:=sqr(b)-(4.0*(a*c));
- if d>=0.0 then begin
-  InverseDenominator:=1.0/(2.0*a);
-  if abs(d)<EPSILON then begin
-   t1:=(-b)*InverseDenominator;
-   t2:=t1;
+ if d<0.0 then begin
+  exit;
+ end else begin
+  a2:=a*2.0;
+  if abs(a2)<1e-7 then begin
+   exit;
   end else begin
-   d:=sqrt(d);
-   t1:=((-b)-d)*InverseDenominator;
-   t2:=((-b)+d)*InverseDenominator;
+   InverseDenominator:=1.0/a2;
+   if abs(d)<EPSILON then begin
+    t1:=(-b)*InverseDenominator;
+    t2:=t1;
+   end else begin
+    d:=sqrt(d);
+    t1:=((-b)+d)*InverseDenominator;
+    t2:=((-b)-d)*InverseDenominator;
+    if t1>t2 then begin
+     d:=t1;
+     t1:=t2;
+     t2:=d;
+    end;
+   end;
+   result:=true;
   end;
-  result:=true;
  end;
 end;
 
@@ -13584,7 +13597,7 @@ begin
  end;
 end;
 
-function TpvAABB.RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean;
+function TpvAABB.RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean;
 const RIGHT=0;
       LEFT=1;
       MIDDLE=2;
@@ -13643,7 +13656,7 @@ begin
  end;
 end;
 
-function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean;
+function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
 var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin
@@ -14455,7 +14468,7 @@ begin
  result:=(c-Center).SquaredLength<sqr(Radius);
 end;
 
-function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3):boolean;
+function TpvSphere.FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
 var m:TpvVector3;
     p,d:TpvScalar;
 begin
@@ -14463,6 +14476,42 @@ begin
  p:=-m.Dot(Direction);
  d:=(sqr(p)-m.SquaredLength)+sqr(Radius);
  result:=(d>0.0) and ((p+sqrt(d))>0.0);
+end;
+
+function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
+var SphereCenterToRayOrigin:TpvVector3;
+    a,b,c,t1,t2:TpvScalar;
+begin
+ result:=false;
+ SphereCenterToRayOrigin:=Origin-Center;
+ a:=Direction.SquaredLength;
+ b:=2.0*SphereCenterToRayOrigin.Dot(Direction);
+ c:=SphereCenterToRayOrigin.SquaredLength-sqr(Radius);
+ if SolveQuadraticRoots(a,b,c,t1,t2) then begin
+  if t1<0.0 then begin
+   if t2<0.0 then begin
+    // sphere is behind, abort
+    exit;
+   end else begin
+    // inside sphere
+    Time:=t2;
+    result:=true;
+   end;
+  end else begin
+   if t2<0.0 then begin
+    // inside sphere
+    Time:=t1;
+   end else begin
+    // sphere is ahead, return the nearest value
+    if t1<t2 then begin
+     Time:=t1;
+    end else begin
+     Time:=t2;
+    end;
+   end;
+   result:=true;
+  end;
+ end;
 end;
 
 function TpvSphere.Extends(const WithSphere:TpvSphere):TpvSphere;

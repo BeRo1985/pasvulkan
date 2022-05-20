@@ -4541,7 +4541,8 @@ end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aSwapChainImageIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
 {$undef UseSphereBasedCascadedShadowMaps}
-const CascadedShadowMapSplitConstant=0.9;
+const CascadedShadowMapSplitLambda=0.5;
+      CascadedShadowMapSplitOverlap=0.1;
       FrustumCorners:array[0..7] of TpvVector3=
        (
         (x:-1.0;y:-1.0;z:0.0),
@@ -4559,14 +4560,14 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     SceneWorldSpaceBoundingBox,
     SceneLightSpaceBoundingBox,
     LightSpaceAABB:TpvAABB;
-    SceneWorldSpaceSphere:TpvSphere;
+    SceneWorldSpaceSphere,
+    LightSpaceSphere:TpvSphere;
     SceneClipWorldSpaceSphere:TpvSphere;
     LightForwardVector,LightSideVector,
     LightUpVector,LightSpaceCorner:TpvVector3;
 {$ifdef UseSphereBasedCascadedShadowMaps}
     {SplitCenter,SplitBounds,}SplitOffset,SplitScale:TpvVector3;
     Offset,Step:TpvVector2;
-    LightSpaceSphere:TpvSphere;
 {$else}
     UnitsPerTexel:TpvVector2;
     ShadowOrigin,RoundedOrigin,RoundOffset:TpvVector2;
@@ -4581,7 +4582,8 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     InverseProjectionMatrixRight,
     ViewMatrix:TpvMatrix4x4;
     MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
-    Ratio,FadeStartValue,LastValue,Value,
+    Ratio,SplitValue,UniformSplitValue,LogSplitValue,
+    FadeStartValue,LastValue,Value,
 {$ifdef UseSphereBasedCascadedShadowMaps}
     Border,RoundedUpLightSpaceSphereRadius,
 {$endif}
@@ -4594,11 +4596,29 @@ begin
 
  SceneWorldSpaceBoundingBox:=fScene3D.BoundingBox;
 
+ SceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(SceneWorldSpaceBoundingBox);
+
  if IsInfinite(fZFar) then begin
-  zNear:=0.1;
-  zFar:=Max(SceneWorldSpaceBoundingBox.Radius,1.0);
   RealZNear:=0.1;
-  RealZFar:=Max(zFar*4.0,4096.0);
+  RealZFar:=1.0;
+  for Index:=0 to 1 do begin
+   if Index=0 then begin
+    ViewMatrix:=aViewLeft.ViewMatrix;
+   end else begin
+    ViewMatrix:=aViewRight.ViewMatrix;
+   end;
+   ViewMatrix:=ViewMatrix.SimpleInverse;
+   if SceneWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
+    if not SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
+     Value:=SceneWorldSpaceSphere.Radius;
+    end;
+   end else begin
+    Value:=SceneWorldSpaceSphere.Center.DistanceTo(ViewMatrix.Translation.xyz)+SceneWorldSpaceSphere.Radius;
+   end;
+   RealZFar:=Max(RealZFar,Value);
+  end;
+  zNear:=RealZNear;
+  zFar:=RealZFar;//Max(1.0,RealZFar*0.25);
   DoNeedRefitNearFarPlanes:=true;
  end else begin
   zNear:=abs(fZNear);
@@ -4607,8 +4627,6 @@ begin
   RealZFar:=zFar;
   DoNeedRefitNearFarPlanes:=fZFar<0.0;
  end;
-
- SceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(SceneWorldSpaceBoundingBox);
 
  SceneClipWorldSpaceSphere:=TpvSphere.Create(SceneWorldSpaceSphere.Center,Max(SceneWorldSpaceSphere.Radius,RealZFar*0.5));
 
@@ -4694,9 +4712,11 @@ begin
  Ratio:=zFar/zNear;
  LastValue:=0.0;
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
-  Value:=(CascadedShadowMapSplitConstant*zNear*power(Ratio,CascadedShadowMapIndex/CountCascadedShadowMapCascades))+
-         ((1.0-CascadedShadowMapSplitConstant)*(zNear+((CascadedShadowMapIndex/CountCascadedShadowMapCascades)*(zFar-zNear))));
-  FadeStartValue:=Min(Max(((Value-LastValue)*0.5{0.95})+LastValue,Min(zNear,RealZNear)),Max(zFar,RealZFar));
+  SplitValue:=CascadedShadowMapIndex/CountCascadedShadowMapCascades;
+  UniformSplitValue:=((1.0-SplitValue)*zNear)+(SplitValue*zFar);
+  LogSplitValue:=zNear*power(Ratio,SplitValue);
+  Value:=((1.0-CascadedShadowMapSplitLambda)*UniformSplitValue)+(CascadedShadowMapSplitLambda*LogSplitValue);
+  FadeStartValue:=Min(Max((Value*(1.0-CascadedShadowMapSplitOverlap))+(LastValue*CascadedShadowMapSplitOverlap),Min(zNear,RealZNear)),Max(zFar,RealZFar));
   LastValue:=Value;
   CascadedShadowMaps^[CascadedShadowMapIndex].SplitDepths.x:=Min(Max(FadeStartValue,Min(zNear,RealZNear)),Max(zFar,RealZFar));
   CascadedShadowMaps^[CascadedShadowMapIndex-1].SplitDepths.y:=Min(Max(Value,Min(zNear,RealZNear)),Max(zFar,RealZFar));
@@ -4744,6 +4764,12 @@ begin
   end;
 
   //LightSpaceAABB:=SceneLightSpaceBoundingBox;
+
+//UnitsPerTexel:=(LightSpaceAABB.Max.xy-LightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(CascadedShadowMapWidth,CascadedShadowMapHeight);
+
+  LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
+  LightSpaceSphere.Radius:=ceil(LightSpaceSphere.Radius*16)/16;
+  LightSpaceAABB:=LightSpaceSphere.ToAABB;
 
 {$ifdef UseSphereBasedCascadedShadowMaps}
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
