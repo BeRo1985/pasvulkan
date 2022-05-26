@@ -242,6 +242,7 @@ type EpvScene3D=class(Exception);
               function GetHashData:THashData;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
+            TImageClass=class of TImage;
             TImages=TpvObjectGenericList<TImage>;
             { TSampler }
             TSampler=class(TBaseObject)
@@ -1161,6 +1162,7 @@ type EpvScene3D=class(Exception);
               procedure Unload; override;
               procedure Update(const aSwapChainImageIndex:TpvSizeInt);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
+              function BeginLoad(const aStream:TStream):boolean; override;
               function CreateInstance:TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
@@ -4253,7 +4255,6 @@ begin
 
    finally
     FreeAndNil(MaxJointBlocksHashMap);
-
    end;
 
   end;
@@ -5558,6 +5559,28 @@ begin
 
  CollectMaterialPrimitives;
 
+end;
+
+function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
+var GLTF:TPasGLTF.TDocument;
+begin
+ result:=false;
+ if assigned(aStream) then begin
+  try
+   GLTF:=TPasGLTF.TDocument.Create;
+   try
+    if (length(FileName)>0) and (FileExists(FileName)) then begin
+     GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+    end;
+    GLTF.LoadFromStream(aStream);
+    AssignFromGLTF(GLTF);
+   finally
+    FreeAndNil(GLTF);
+   end;
+   result:=true;
+  except
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.Update(const aSwapChainImageIndex:TpvSizeInt);
@@ -7397,7 +7420,9 @@ begin
       fGlobalVulkanDescriptorSets[Index].Flush;
      end;
      for Group in fGroups do begin
-      Group.Upload;
+      if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+       Group.Upload;
+      end;
      end;
     finally
      fUploaded:=true;
@@ -7433,7 +7458,9 @@ begin
       fLightBuffers[Index].Unload;
      end;
      for Group in fGroups do begin
-      Group.Unload;
+      if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+       Group.Unload;
+      end;
      end;
      for Material in fMaterials do begin
       Material.Unload;
@@ -7999,9 +8026,11 @@ begin
    end;
 
    for Group in fGroups do begin
-    Group.Prepare(aSwapChainImageIndex,
-                  aRenderPassIndex,
-                  Frustums);
+    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+     Group.Prepare(aSwapChainImageIndex,
+                   aRenderPassIndex,
+                   Frustums);
+    end;
    end;
 
    if aLights then begin
@@ -8086,14 +8115,16 @@ begin
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 
   for Group in fGroups do begin
-   Group.Draw(aGraphicsPipelines,
-              aSwapChainImageIndex,
-              aRenderPassIndex,
-              aCommandBuffer,
-              Pipeline,
-              aPipelineLayout,
-              aOnSetRenderPassResources,
-              aMaterialAlphaModes);
+   if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+    Group.Draw(aGraphicsPipelines,
+               aSwapChainImageIndex,
+               aRenderPassIndex,
+               aCommandBuffer,
+               Pipeline,
+               aPipelineLayout,
+               aOnSetRenderPassResources,
+               aMaterialAlphaModes);
+   end;
   end;
 
  end;
