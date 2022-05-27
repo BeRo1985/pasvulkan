@@ -4924,16 +4924,26 @@ begin
    fLock.Release;
   end;
  end;
- for Instance in fInstances do begin
-  Instance.Upload;
+ fLock.Acquire;
+ try
+  for Instance in fInstances do begin
+   Instance.Upload;
+  end;
+ finally
+  fLock.Release;
  end;
 end;
 
 procedure TpvScene3D.TGroup.Unload;
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- for Instance in fInstances do begin
-  Instance.Unload;
+ fLock.Acquire;
+ try
+  for Instance in fInstances do begin
+   Instance.Unload;
+  end;
+ finally
+  fLock.Release;
  end;
  if fUploaded then begin
   fLock.Acquire;
