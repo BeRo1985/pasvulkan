@@ -1038,6 +1038,7 @@ type EpvScene3D=class(Exception);
                           TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
                     private
                      fGroup:TGroup;
+                     fLock:TPasMPSpinLock;
                      fActive:boolean;
                      fPreviousActive:boolean;
                      fScene:TPasGLTFSizeInt;
@@ -1163,6 +1164,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aSwapChainImageIndex:TpvSizeInt);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
+              function EndLoad:boolean; override;
               function CreateInstance:TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
@@ -5583,6 +5585,16 @@ begin
  end;
 end;
 
+function TpvScene3D.TGroup.EndLoad:boolean;
+begin
+ result:=inherited EndLoad;
+ if result then begin
+  if SceneInstance.fUploaded then begin
+   Upload;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.Update(const aSwapChainImageIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
@@ -5751,6 +5763,7 @@ begin
  end else begin
   fGroup:=nil;
  end;
+ fLock:=TPasMPSpinLock.Create;
  fActive:=true;
  fPreviousActive:=false;
  fUploaded:=false;
@@ -5829,6 +5842,7 @@ begin
  fNodeMatrices:=nil;
  fMorphTargetVertexWeights:=nil;
  fGroup:=nil;
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
@@ -5914,69 +5928,82 @@ begin
  inherited Upload;
 
  if not fUploaded then begin
+
+  fLock.Acquire;
   try
 
-   SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
+   if not fUploaded then begin
 
-   SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
-
-   for Index:=0 to length(fVulkanDatas)-1 do begin
-    fVulkanDatas[Index].Upload;
-   end;
-
-   fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
-                                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                         length(fVulkanDescriptorSets));
-   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanDescriptorSets)*4);
-   fVulkanDescriptorPool.Initialize;
-
-   for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
-
-    DescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                 fSceneInstance.fMeshVulkanDescriptorSetLayout);
     try
-     DescriptorSet.WriteToDescriptorSet(0,
-                                        0,
-                                        1,
-                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                        [],
-                                        [fGroup.fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
-                                        [],
-                                        false);
-     DescriptorSet.WriteToDescriptorSet(1,
-                                        0,
-                                        1,
-                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                        [],
-                                        [fGroup.fVulkanJointBlockBuffer.DescriptorBufferInfo],
-                                        [],
-                                        false);
-     DescriptorSet.WriteToDescriptorSet(2,
-                                        0,
-                                        1,
-                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                        [],
-                                        [fVulkanDatas[Index].fNodeMatricesBuffer.DescriptorBufferInfo],
-                                        [],
-                                        false);
-     DescriptorSet.WriteToDescriptorSet(3,
-                                        0,
-                                        1,
-                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                        [],
-                                        [fVulkanDatas[Index].fMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
-                                        [],
-                                        false);
-     DescriptorSet.Flush;
+
+     SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
+
+     SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+
+     for Index:=0 to length(fVulkanDatas)-1 do begin
+      fVulkanDatas[Index].Upload;
+     end;
+
+     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                           length(fVulkanDescriptorSets));
+     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanDescriptorSets)*4);
+     fVulkanDescriptorPool.Initialize;
+
+     for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+
+      DescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                   fSceneInstance.fMeshVulkanDescriptorSetLayout);
+      try
+       DescriptorSet.WriteToDescriptorSet(0,
+                                          0,
+                                          1,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          [],
+                                          [fGroup.fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
+                                          [],
+                                          false);
+       DescriptorSet.WriteToDescriptorSet(1,
+                                          0,
+                                          1,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          [],
+                                          [fGroup.fVulkanJointBlockBuffer.DescriptorBufferInfo],
+                                          [],
+                                          false);
+       DescriptorSet.WriteToDescriptorSet(2,
+                                          0,
+                                          1,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          [],
+                                          [fVulkanDatas[Index].fNodeMatricesBuffer.DescriptorBufferInfo],
+                                          [],
+                                          false);
+       DescriptorSet.WriteToDescriptorSet(3,
+                                          0,
+                                          1,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          [],
+                                          [fVulkanDatas[Index].fMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
+                                          [],
+                                          false);
+       DescriptorSet.Flush;
+      finally
+       fVulkanDescriptorSets[Index]:=DescriptorSet;
+      end;
+
+     end;
+
     finally
-     fVulkanDescriptorSets[Index]:=DescriptorSet;
+     fUploaded:=true;
     end;
 
    end;
 
   finally
-   fUploaded:=true;
+   fLock.Release;
   end;
+
  end;
 end;
 
@@ -5984,18 +6011,25 @@ procedure TpvScene3D.TGroup.TInstance.Unload;
 var Index:TpvSizeInt;
 begin
  if fUploaded then begin
+  fLock.Acquire;
   try
-   for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
-    FreeAndNil(fVulkanDescriptorSets[Index]);
+   if fUploaded then begin
+    try
+     for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+      FreeAndNil(fVulkanDescriptorSets[Index]);
+     end;
+     FreeAndNil(fVulkanDescriptorPool);
+     for Index:=0 to length(fVulkanDatas)-1 do begin
+      fVulkanDatas[Index].Unload;
+     end;
+     fNodeMatrices:=nil;
+     fMorphTargetVertexWeights:=nil;
+    finally
+     fUploaded:=false;
+    end;
    end;
-   FreeAndNil(fVulkanDescriptorPool);
-   for Index:=0 to length(fVulkanDatas)-1 do begin
-    fVulkanDatas[Index].Unload;
-   end;
-   fNodeMatrices:=nil;
-   fMorphTargetVertexWeights:=nil;
   finally
-   fUploaded:=false;
+   fLock.Release;
   end;
  end;
 end;
