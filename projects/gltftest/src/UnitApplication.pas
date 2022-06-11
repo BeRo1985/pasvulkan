@@ -101,7 +101,7 @@ begin
  fMaxMSAA:=1;
  fMaxShadowMSAA:=8;
  fShadowMapSize:=512;
- fTransparencyMode:=TTransparencyMode.Direct;
+ fTransparencyMode:=TTransparencyMode.WBOIT;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
