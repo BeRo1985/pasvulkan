@@ -830,10 +830,11 @@ void main() {
 #endif
 
 #if defined(WBOIT)
-  //float depth = fma((log(clamp(-inViewSpacePosition.z, uWBOIT.wboitZNearZFar.x, uWBOIT.wboitZNearZFar.y)) - uWBOIT.wboitZNearZFar.z) / (uWBOIT.wboitZNearZFar.w - uWBOIT.wboitZNearZFar.z), 2.0, -1.0); 
+  float depth = fma((log(clamp(-inViewSpacePosition.z, uWBOIT.wboitZNearZFar.x, uWBOIT.wboitZNearZFar.y)) - uWBOIT.wboitZNearZFar.z) / (uWBOIT.wboitZNearZFar.w - uWBOIT.wboitZNearZFar.z), 2.0, -1.0); 
   float transmittance = clamp(1.0 - alpha, 1e-4, 1.0);
-  float weight = max(min(1.0, max(max(finalColor.x, finalColor.y), finalColor.z) * finalColor.w), finalColor.w) * clamp(0.03 / (1e-5 + pow(-inViewSpacePosition.z / 200.0, 4.0)), 1e-2, 3e3);
-  outFragWBOITAccumulation = vec4(finalColor.xyz * finalColor.w, finalColor.w) * weight; 
+  finalColor.xyz *= finalColor.w;
+  float weight = min(1.0, fma(max(max(finalColor.x, finalColor.y), max(finalColor.z, finalColor.w)), 40.0, 0.01)) * clamp(depth, 1e-2, 3e3); //clamp(0.03 / (1e-5 + pow(abs(inViewSpacePosition.z) / 200.0, 4.0)), 1e-2, 3e3);
+  outFragWBOITAccumulation = finalColor * weight; 
   outFragWBOITRevealage = vec4(finalColor.w);
 #elif defined(MBOIT)
   float depth = MBOIT_WarpDepth(clamp(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.x, uMBOIT.mboitZNearZFar.y), uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
