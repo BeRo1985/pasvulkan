@@ -34,6 +34,12 @@ const ApplicationTag='gltftest';
 
 type TApplication=class(TpvApplication)
       public
+       type TTransparencyMode=
+             (
+              Direct,
+              WBOIT,
+              MBOIT
+             );
       private
        fVirtualReality:TpvVirtualReality;
        fForceUseValidationLayers:boolean;
@@ -41,6 +47,7 @@ type TApplication=class(TpvApplication)
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
+       fTransparencyMode:TTransparencyMode;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -68,6 +75,7 @@ type TApplication=class(TpvApplication)
        property MaxMSAA:TpvInt32 read fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize;
+       property TransparencyMode:TTransparencyMode read fTransparencyMode;
      end;
 
 var Application:TApplication=nil;
@@ -93,6 +101,7 @@ begin
  fMaxMSAA:=1;
  fMaxShadowMSAA:=8;
  fShadowMapSize:=512;
+ fTransparencyMode:=TTransparencyMode.Direct;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
@@ -140,6 +149,19 @@ begin
    if Index<=ParamCount then begin
     fShadowMapSize:=StrToIntDef(ParamStr(Index),0);
     inc(Index);
+   end;
+  end else if (Parameter='--transparency-mode') or
+              (Parameter='/transparency-mode') then begin
+   if Index<=ParamCount then begin
+    Parameter:=LowerCase(trim(ParamStr(Index)));
+    inc(Index);
+    if Parameter='direct' then begin
+     fTransparencyMode:=TTransparencyMode.Direct;
+    end else if Parameter='wboit' then begin
+     fTransparencyMode:=TTransparencyMode.WBOIT;
+    end else if Parameter='mboit' then begin
+     fTransparencyMode:=TTransparencyMode.MBOIT;
+    end;
    end;
   end else begin
    GLTFFileName:=Parameter;
