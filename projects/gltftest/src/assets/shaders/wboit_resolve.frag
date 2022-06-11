@@ -23,10 +23,6 @@ layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uS
 
 /* clang-format on */
 
-void blend(inout vec4 target, const in vec4 source) {  //
-  target += (1.0 - target.a) * source;                 //
-}
-
 void main() {
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
@@ -43,9 +39,8 @@ void main() {
   if (accumulation.w >= 1.0) {
     color = vec4(opaque.xyz, 1.0);
   } else {
-    vec4 transparent = vec4(accumulation.xyz / clamp(revealage, 1e-4f, 5e4f), 1.0) * (1.0f - accumulation.w);
-    blend(color, transparent);
-    blend(color, opaque);
+    vec4 transparent = vec4(accumulation.xyz / clamp(accumulation.w, 1e-4f, 5e4f), 1.0f - revealage);
+    color = vec4(mix(opaque.xyz, transparent.xyz, transparent.w), 1.0);
   }
 
   outColor = color;
