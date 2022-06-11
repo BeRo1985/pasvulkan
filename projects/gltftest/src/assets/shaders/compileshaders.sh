@@ -16,6 +16,8 @@ compileshaderarguments=(
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -o mesh_depth_masked_frag.spv'
   '-V mboit_resolve.frag -o mboit_resolve_frag.spv'
   '-V mboit_resolve.frag -DMSAA -o mboit_resolve_msaa_frag.spv'
+  '-V wboit_resolve.frag -o wboit_resolve_frag.spv'
+  '-V wboit_resolve.frag -DMSAA -o wboit_resolve_msaa_frag.spv'
   '-V oit_resolve.frag -o oit_resolve_frag.spv'
   '-V oit_resolve.frag -DREVERSEDZ -o oit_resolve_reversedz_frag.spv'
   '-V oit_resolve.frag -DMSAA -o oit_resolve_msaa_frag.spv'
@@ -48,8 +50,6 @@ compileshaderarguments=(
 
 glslangValidatorPath=$(which glslangValidator)
 spirvOptPath=$(which spirv-opt)
-
-#exepath="%VULKAN_SDK%/Bin/glslangValidator.exe"
 
 echo "Compiling . . ."
 

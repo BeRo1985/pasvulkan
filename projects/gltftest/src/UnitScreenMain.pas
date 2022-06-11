@@ -3984,7 +3984,7 @@ begin
 
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
-  fGroup.Culling:=true; // true for GLTFs with large scenes like landscapes, cities, etc.
+  fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
   try
    if FileExists(GLTFFileName) then begin
