@@ -36,7 +36,7 @@ void main() {
 
   vec4 color = vec4(0.0);
 
-  if (accumulation.w >= 1.0) {
+  if (revealage >= 1.0) {
     color = vec4(opaque.xyz, 1.0);
   } else {
     vec4 transparent = vec4(accumulation.xyz / clamp(accumulation.w, 1e-4f, 5e4f), 1.0f - revealage);
