@@ -490,8 +490,8 @@ type { TScreenMain }
        fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
-       fMomentBasedOrderIndependentTransparentUniformBuffer:TMomentBasedOrderIndependentTransparentUniformBuffer;
-       fMomentBasedOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
+       fOrderIndependentTransparentUniformBuffer:TMomentBasedOrderIndependentTransparentUniformBuffer;
+       fOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fKeyLeft:boolean;
        fKeyRight:boolean;
        fKeyForwards:boolean;
@@ -2318,7 +2318,7 @@ begin
                                                                         1,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                         [],
-                                                                        [fParent.fMomentBasedOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                        [fParent.fOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                         [],
                                                                         false);
   fGlobalVulkanDescriptorSets[SwapChainImageIndex].Flush;
@@ -2824,7 +2824,7 @@ begin
                                                                         1,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                         [],
-                                                                        [fParent.fMomentBasedOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                        [fParent.fOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                         [],
                                                                         false);
   fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(5,
@@ -3636,7 +3636,7 @@ begin
                                                                         1,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                         [],
-                                                                        [fParent.fMomentBasedOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                        [fParent.fOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                         [],
                                                                         false);
   fGlobalVulkanDescriptorSets[SwapChainImageIndex].Flush;
@@ -4950,7 +4950,7 @@ begin
                                                                         []);
  end;
 
- fMomentBasedOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+ fOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                     SizeOf(TMomentBasedOrderIndependentTransparentUniformBuffer),
                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -4985,7 +4985,7 @@ begin
 
  fScene3D.Unload;
 
- FreeAndNil(fMomentBasedOrderIndependentTransparentUniformVulkanBuffer);
+ FreeAndNil(fOrderIndependentTransparentUniformVulkanBuffer);
 
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
@@ -5066,17 +5066,17 @@ begin
 
  end;
 
- fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.x:=abs(fZNear);
- fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.y:=IfThen(IsInfinite(fZFar),4096.0,abs(fZFar));
- fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.z:=ln(fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.x);
- fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.w:=ln(fMomentBasedOrderIndependentTransparentUniformBuffer.ZNearZFar.y);
+ fOrderIndependentTransparentUniformBuffer.ZNearZFar.x:=abs(fZNear);
+ fOrderIndependentTransparentUniformBuffer.ZNearZFar.y:=IfThen(IsInfinite(fZFar),4096.0,abs(fZFar));
+ fOrderIndependentTransparentUniformBuffer.ZNearZFar.z:=ln(fOrderIndependentTransparentUniformBuffer.ZNearZFar.x);
+ fOrderIndependentTransparentUniformBuffer.ZNearZFar.w:=ln(fOrderIndependentTransparentUniformBuffer.ZNearZFar.y);
 
- fMomentBasedOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                                                       fVulkanTransferCommandBuffer,
-                                                                       fVulkanTransferCommandBufferFence,
-                                                                       fMomentBasedOrderIndependentTransparentUniformBuffer,
-                                                                       0,
-                                                                       SizeOf(TMomentBasedOrderIndependentTransparentUniformBuffer));
+ fOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                                            fVulkanTransferCommandBuffer,
+                                                            fVulkanTransferCommandBufferFence,
+                                                            fOrderIndependentTransparentUniformBuffer,
+                                                            0,
+                                                            SizeOf(TMomentBasedOrderIndependentTransparentUniformBuffer));
  fFrameGraph.AfterCreateSwapChain;
 
  pvApplication.SkipNextDrawFrame:=true;
