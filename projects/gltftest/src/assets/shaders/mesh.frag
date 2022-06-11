@@ -22,24 +22,27 @@ layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 
 #ifdef DEPTHONLY
-#if defined(MBOIT) && defined(MBOITPASS1)
-layout(location = 0) out vec4 outFragMBOITMoments0;
-layout(location = 1) out vec4 outFragMBOITMoments1;
-#endif
+  #if defined(MBOIT) && defined(MBOITPASS1)
+    layout(location = 0) out vec4 outFragMBOITMoments0;
+    layout(location = 1) out vec4 outFragMBOITMoments1;
+  #endif
 #else
-#if defined(MBOIT)
-#if defined(MBOITPASS1)
-layout(location = 0) out vec4 outFragMBOITMoments0;
-layout(location = 1) out vec4 outFragMBOITMoments1;
-#elif defined(MBOITPASS2)
-layout(location = 0) out vec4 outFragColor;
-#endif
-#else
-layout(location = 0) out vec4 outFragColor;
-#ifdef EXTRAEMISSIONOUTPUT
-layout(location = 1) out vec4 outFragEmission;
-#endif
-#endif
+  #if defined(WBOIT)
+    layout(location = 0) out vec4 outFragWBOITAccumulation;
+    layout(location = 1) out vec4 outFragWBOITRevealage;
+  #elif defined(MBOIT)
+    #if defined(MBOITPASS1)
+      layout(location = 0) out vec4 outFragMBOITMoments0;
+      layout(location = 1) out vec4 outFragMBOITMoments1;
+    #elif defined(MBOITPASS2)
+      layout(location = 0) out vec4 outFragColor;
+    #endif
+  #else
+    layout(location = 0) out vec4 outFragColor;
+    #ifdef EXTRAEMISSIONOUTPUT
+      layout(location = 1) out vec4 outFragEmission;
+    #endif
+  #endif
 #endif
 
 // Global descriptor set
@@ -114,7 +117,13 @@ layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #endif
 
-#if defined(MBOIT)
+#if defined(WBOIT)
+
+layout(std140, set = 3, binding = 4) uniform uboWBOIT {
+  vec4 wboitZNearZFar;
+} uWBOIT;
+
+#elif defined(MBOIT)
 
 layout(std140, set = 3, binding = 4) uniform uboMBOIT {
   vec4 mboitZNearZFar;
@@ -147,7 +156,8 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
 
-#ifdef MBOIT
+#if defined(WBOIT)
+#elif defined(MBOIT)
  #include "mboit.glsl"
 #endif
 
@@ -768,7 +778,7 @@ void main() {
   }
   float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
-#if !defined(MBOIT)
+#if !(defined(WBOIT) || defined(MBOIT))
   outFragColor = finalColor;
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
@@ -778,7 +788,9 @@ void main() {
 
 #ifdef ALPHATEST
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
-#if defined(MBOIT)
+#if defined(WBOIT)
+    finalColor = vec4(alpha = 0.0);    
+#elif defined(MBOIT)
 #if defined(MBOIT) && defined(MBOITPASS1)    
     alpha = 0.0;    
 #else
@@ -787,35 +799,43 @@ void main() {
 #else 
     discard;
 #endif
-#if defined(MBOIT)
+#if defined(WBOIT) || defined(MBOIT)
   }else{
-#if defined(MBOIT) && defined(MBOITPASS1)    
+#if defined(WBOIT)
+    finalColor.w = alpha = 1.0;    
+#elif defined(MBOIT) && defined(MBOITPASS1)    
     alpha = 1.0;    
 #else
     finalColor.w = alpha = 1.0;    
 #endif
 #endif
   }
-#if !defined(MBOIT)
-#ifdef MSAA
-#if 0
-  vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
-  vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
-  vec4 alphaDXY = vec4(vec2(dFdx(alphaTextureXY)), vec2(dFdy(alphaTextureXY)));
-  alpha *= 1.0 + (max(0.0, max(dot(alphaDXY.xy, alphaDXY.xy), dot(alphaDXY.zw, alphaDXY.zw)) * 0.5) * 0.25);
-#endif
-  alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
-  if (alpha < 1e-2) {
-    alpha = 0.0;
-  }
-#ifndef DEPTHONLY  
-  outFragColor.w = finalColor.w = alpha;
-#endif
-#endif
-#endif
+  #if !(defined(WBOIT) || defined(MBOIT))
+    #ifdef MSAA
+      #if 0
+        vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
+        vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
+        vec4 alphaDXY = vec4(vec2(dFdx(alphaTextureXY)), vec2(dFdy(alphaTextureXY)));
+        alpha *= 1.0 + (max(0.0, max(dot(alphaDXY.xy, alphaDXY.xy), dot(alphaDXY.zw, alphaDXY.zw)) * 0.5) * 0.25);
+      #endif
+      alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
+      if (alpha < 1e-2) {
+        alpha = 0.0;
+      }
+      #ifndef DEPTHONLY  
+        outFragColor.w = finalColor.w = alpha;
+      #endif
+    #endif
+  #endif
 #endif
 
-#if defined(MBOIT)
+#if defined(WBOIT)
+  //float depth = fma((log(clamp(-inViewSpacePosition.z, uWBOIT.wboitZNearZFar.x, uWBOIT.wboitZNearZFar.y)) - uWBOIT.wboitZNearZFar.z) / (uWBOIT.wboitZNearZFar.w - uWBOIT.wboitZNearZFar.z), 2.0, -1.0); 
+  float transmittance = clamp(1.0 - alpha, 1e-4, 1.0);
+  float weight = max(min(1.0, max(max(finalColor.x, finalColor.y), finalColor.z) * finalColor.w), finalColor.w) * clamp(0.03 / (1e-5 + pow(-inViewSpacePosition.z / 200.0, 4.0)), 1e-2, 3e3);
+  outFragWBOITAccumulation = vec4(finalColor.xyz * finalColor.w, finalColor.w) * weight; 
+  outFragWBOITRevealage = vec4(finalColor.w);
+#elif defined(MBOIT)
   float depth = MBOIT_WarpDepth(clamp(-inViewSpacePosition.z, uMBOIT.mboitZNearZFar.x, uMBOIT.mboitZNearZFar.y), uMBOIT.mboitZNearZFar.z, uMBOIT.mboitZNearZFar.w);
   float transmittance = clamp(1.0 - alpha, 1e-4, 1.0);
 #ifdef MBOITPASS1

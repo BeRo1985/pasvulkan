@@ -6,6 +6,8 @@ compileshaderarguments=(
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -o mesh_wboit_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -DALPHATEST -o mesh_wboit_masked_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DMBOITPASS1 -DDEPTHONLY -o mesh_mboit_pass1_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DALPHATEST -DMBOITPASS1 -DDEPTHONLY -o mesh_mboit_masked_pass1_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DMBOIT -DMBOITPASS2 -o mesh_mboit_pass2_frag.spv'
