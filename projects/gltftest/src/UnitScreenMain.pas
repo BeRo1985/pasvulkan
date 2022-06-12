@@ -5954,7 +5954,7 @@ begin
         (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
       OITVariant:='interlock';
      end else}begin
-      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
+      fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
      end;
     end else begin
      fTransparencyMode:=TTransparencyMode.MBOIT;
