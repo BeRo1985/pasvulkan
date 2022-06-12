@@ -5,6 +5,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_ARB_shader_viewport_layer_array : enable
 
+layout(pixel_center_integer) in vec4 gl_FragCoord;
+
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) flat in int inFaceIndex;

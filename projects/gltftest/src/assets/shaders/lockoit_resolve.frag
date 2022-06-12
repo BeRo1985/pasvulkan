@@ -2,6 +2,8 @@
 
 #extension GL_EXT_multiview : enable
 
+layout(pixel_center_integer) in vec4 gl_FragCoord;
+
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
 
