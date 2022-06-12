@@ -967,7 +967,7 @@ void main() {
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
 #ifdef SPINLOCK
-    bool oitDone = oitStoreMask == 0;
+    bool oitDone = gl_HelperInvocation || (oitStoreMask == 0);
     while(!oitDone){
       uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
       if(oitOld == 0u){
