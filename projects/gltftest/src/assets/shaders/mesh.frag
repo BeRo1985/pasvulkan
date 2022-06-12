@@ -932,6 +932,11 @@ void main() {
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+/*#ifdef MSAA 
+  uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#else
+  const uint oitStoreMask = 1u;
+#endif*/
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
   // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
@@ -974,7 +979,11 @@ void main() {
           finalColor = vec4(0.0);
         }else{
           int oitFurthest = 0;
+#ifdef REVERSEDZ
+          uint oitMaxDepth = 0xffffffffu;
+#else
           uint oitMaxDepth = 0;
+#endid          
           for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
             uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
             if(
@@ -1017,7 +1026,7 @@ void main() {
   endInvocationInterlock();
 #endif
 
-  outFragColor = finalColor;
+  outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 
 #endif
      

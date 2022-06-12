@@ -20,8 +20,8 @@ layout(std140, set = 0, binding = 4) uniform uboOIT {
 } uOIT;
 /* clang-format on */
 
-void blend(inout vec4 target, const in vec4 source) {  //
-  target += (1.0 - target.a) * source;                 //
+void blend(inout vec4 target, const in vec4 source) {  //  
+  target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a); //                
 }
 
 #define MAX_OIT_LAYERS 8

@@ -51,7 +51,7 @@ type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
       public
         const CountCascadedShadowMapCascades=4;
-              CountOrderIndependentTransparencyLayers=4;
+              CountOrderIndependentTransparencyLayers=8;
         type TCameraMode=(
               Orbit,
               FirstPerson
