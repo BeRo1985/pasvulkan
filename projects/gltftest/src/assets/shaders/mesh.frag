@@ -35,6 +35,8 @@
   layout(early_fragment_tests) in;
 #endif
 
+layout(pixel_center_integer) in vec4 gl_FragCoord;
+
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
@@ -991,7 +993,7 @@ void main() {
           uint oitMaxDepth = 0xffffffffu;
 #else
           uint oitMaxDepth = 0;
-#endid          
+#endif          
           for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
             uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
             if(

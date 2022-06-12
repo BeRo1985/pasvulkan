@@ -95,7 +95,8 @@ echo "Compiling . . ."
 
 for index in ${!compileshaderarguments[@]}; do
    (
-     ${glslangValidatorPath} ${compileshaderarguments[$index]} >/dev/null
+     ${glslangValidatorPath} ${compileshaderarguments[$index]} 
+     #>/dev/null
    ) & 
 done
 
