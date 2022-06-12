@@ -5935,46 +5935,6 @@ begin
   end;
  end;
 
- fTransparencyMode:=UnitApplication.Application.TransparencyMode;
-
- if fTransparencyMode=TTransparencyMode.Auto then begin
-  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
-   TpvVulkanVendorID.AMD:begin
-    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-     // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
-     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
-    end else begin
-     fTransparencyMode:=TTransparencyMode.MBOIT;
-    end;
-   end;
-   TpvVulkanVendorID.NVIDIA:begin
-    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-     if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-        (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
-      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
-     end else begin
-      fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
-     end;
-    end else begin
-     fTransparencyMode:=TTransparencyMode.MBOIT;
-    end;
-   end;
-   TpvVulkanVendorID.Intel:begin
-    if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) and
-       (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-       (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
-     fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
-    end else begin
-     fTransparencyMode:=TTransparencyMode.WBOIT;
-    end;
-   end;
-   else begin
-    fTransparencyMode:=TTransparencyMode.Direct;
-   end;
-  end;
-
- end;
-
  fAnimationIndex:=0;
 
  fCameraMode:=TCameraMode.Orbit;
@@ -6145,6 +6105,63 @@ begin
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                   1
                                  );}
+
+ fTransparencyMode:=UnitApplication.Application.TransparencyMode;
+
+ if fTransparencyMode=TTransparencyMode.Auto then begin
+  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+       (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) then begin
+     // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
+     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+    end else begin
+     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+      fTransparencyMode:=TTransparencyMode.WBOIT;
+     end else begin
+      fTransparencyMode:=TTransparencyMode.MBOIT;
+     end;
+    end;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+       (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) then begin
+     if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+        (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
+      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
+     end else begin
+      fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+     end;
+    end else begin
+     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+      fTransparencyMode:=TTransparencyMode.WBOIT;
+     end else begin
+      fTransparencyMode:=TTransparencyMode.MBOIT;
+     end;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+       (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+       (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
+     fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
+    end else begin
+     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+      fTransparencyMode:=TTransparencyMode.WBOIT;
+     end else begin
+      fTransparencyMode:=TTransparencyMode.MBOIT;
+     end;
+    end;
+   end;
+   else begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fTransparencyMode:=TTransparencyMode.Direct;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.WBOIT;
+    end;
+   end;
+  end;
+ end;
 
  if assigned(UnitApplication.Application.VirtualReality) then begin
 
