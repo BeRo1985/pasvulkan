@@ -2281,11 +2281,13 @@ begin
                                    1,
                                    @ClearRanges);
 
- aCommandBuffer.CmdClearColorImage(fParent.fLockOrderIndependentTransparencySpinLockImages[aSwapChainImageIndex].VulkanImage.Handle,
-                                   VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValue,
-                                   1,
-                                   @ClearRanges);
+ if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+  aCommandBuffer.CmdClearColorImage(fParent.fLockOrderIndependentTransparencySpinLockImages[aSwapChainImageIndex].VulkanImage.Handle,
+                                    VK_IMAGE_LAYOUT_GENERAL,
+                                    @ClearValue,
+                                    1,
+                                    @ClearRanges);
+ end;
 
  MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
@@ -2396,6 +2398,7 @@ begin
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+//fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fMeshVertexShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fMeshVertexShaderModule');
  finally
   Stream.Free;
  end;
@@ -2428,6 +2431,7 @@ begin
  end;
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+//fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fMeshFragmentShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fMeshFragmentShaderModule');
  finally
   Stream.Free;
  end;
@@ -2447,6 +2451,7 @@ begin
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+//fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fMeshMaskedFragmentShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fMeshMaskedFragmentShaderModule');
  finally
   Stream.Free;
  end;
@@ -2685,9 +2690,9 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MeshVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MaterialVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -2884,6 +2889,7 @@ begin
                         SwapChainImageState^.CountViews,
                         aCommandBuffer,
                         fVulkanPipelineLayout,
+                        OnSetRenderPassResources,
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
@@ -5948,7 +5954,7 @@ begin
         (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
       OITVariant:='interlock';
      end else}begin
-     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
      end;
     end else begin
      fTransparencyMode:=TTransparencyMode.MBOIT;
