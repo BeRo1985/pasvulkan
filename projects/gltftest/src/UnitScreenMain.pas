@@ -1638,7 +1638,9 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  if fParent.fTransparencyMode=TTransparencyMode.Direct then begin
+  if fParent.fTransparencyMode in [TTransparencyMode.Direct,
+                                   TTransparencyMode.SPINLOCKOIT,
+                                   TTransparencyMode.INTERLOCKOIT] then begin
    fResourceColor:=AddImageResolveOutput('resourcetype_color',
                                          'forwardrendering_color',
                                          'forwardrendering_msaa_color',
@@ -2864,7 +2866,7 @@ begin
 end;
 
 procedure TScreenMain.TLockOrderIndependentTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                      const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+                                                                          const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 var SwapChainImageState:TScreenMain.PSwapChainImageState;
 begin
  inherited Execute(aCommandBuffer,aSwapChainImageIndex,aFrameIndex);
@@ -5351,7 +5353,9 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
- if fParent.fTransparencyMode in [TTransparencyMode.WBOIT,
+ if fParent.fTransparencyMode in [TTransparencyMode.SPINLOCKOIT,
+                                  TTransparencyMode.INTERLOCKOIT,
+                                  TTransparencyMode.WBOIT,
                                   TTransparencyMode.MBOIT] then begin
   fResourceColor:=AddImageInput('resourcetype_color',
                                 'orderindependenttransparency_final_color',
