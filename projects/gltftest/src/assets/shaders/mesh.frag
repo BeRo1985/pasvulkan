@@ -20,6 +20,7 @@
       #define beginInvocationInterlock beginInvocationInterlockARB
       #define endInvocationInterlock endInvocationInterlockARB
     #endif
+    layout(pixel_interlock_ordered) in;
   #endif
 #endif
 
