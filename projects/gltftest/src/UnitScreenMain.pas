@@ -2398,10 +2398,17 @@ begin
   Stream.Free;
  end;
 
- if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
-  OITVariant:='spinlock';
- end else begin
-  OITVariant:='interlock';
+ case fParent.fTransparencyMode of
+  TTransparencyMode.SPINLOCKOIT:begin
+   OITVariant:='spinlock';
+  end;
+  TTransparencyMode.INTERLOCKOIT:begin
+   OITVariant:='interlock';
+  end;
+  else begin
+   Assert(false);
+   OITVariant:='';
+  end;
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
@@ -2539,16 +2546,29 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
- fGlobalVulkanDescriptorSetLayout.AddBinding(7,
-                                             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
- fGlobalVulkanDescriptorSetLayout.AddBinding(8,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+ case fParent.fTransparencyMode of
+  TTransparencyMode.SPINLOCKOIT:begin
+   fGlobalVulkanDescriptorSetLayout.AddBinding(7,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               []);
+   fGlobalVulkanDescriptorSetLayout.AddBinding(8,
+                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               []);
+  end;
+  TTransparencyMode.INTERLOCKOIT:begin
+   fGlobalVulkanDescriptorSetLayout.AddBinding(7,
+                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               []);
+  end;
+  else begin
+  end;
+ end;
  fGlobalVulkanDescriptorSetLayout.Initialize;
 
  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
@@ -2626,22 +2646,38 @@ begin
                                                                         [],
                                                                         [],
                                                                         false);
-  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(7,
-                                                                        0,
-                                                                        1,
-                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                        [fParent.fLockOrderIndependentTransparencySpinLockImages[SwapChainImageIndex].DescriptorImageInfo],
-                                                                        [],
-                                                                        [],
-                                                                        false);
-  fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(8,
-                                                                        0,
-                                                                        1,
-                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                        [],
-                                                                        [fParent.fLockOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
-                                                                        [],
-                                                                        false);
+  case fParent.fTransparencyMode of
+   TTransparencyMode.SPINLOCKOIT:begin
+    fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(7,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                          [fParent.fLockOrderIndependentTransparencySpinLockImages[SwapChainImageIndex].DescriptorImageInfo],
+                                                                          [],
+                                                                          [],
+                                                                          false);
+    fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(8,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                          [],
+                                                                          [fParent.fLockOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                          [],
+                                                                          false);
+   end;
+   TTransparencyMode.INTERLOCKOIT:begin
+    fGlobalVulkanDescriptorSets[SwapChainImageIndex].WriteToDescriptorSet(7,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                          [],
+                                                                          [fParent.fLockOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                          [],
+                                                                          false);
+   end;
+   else begin
+   end;
+  end;
   fGlobalVulkanDescriptorSets[SwapChainImageIndex].Flush;
  end;
 
@@ -6609,11 +6645,13 @@ begin
                                                                                                  VK_FORMAT_R32_UINT,
                                                                                                  VK_SAMPLE_COUNT_1_BIT);
 
-    fLockOrderIndependentTransparencySpinLockImages[Index]:=TOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                      fHeight,
-                                                                                                      fCountSurfaceViews,
-                                                                                                      VK_FORMAT_R32_UINT,
-                                                                                                      VK_SAMPLE_COUNT_1_BIT);
+    if fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+     fLockOrderIndependentTransparencySpinLockImages[Index]:=TOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                       fHeight,
+                                                                                                       fCountSurfaceViews,
+                                                                                                       VK_FORMAT_R32_UINT,
+                                                                                                       VK_SAMPLE_COUNT_1_BIT);
+    end;
 
    end;
 
@@ -6660,7 +6698,9 @@ begin
    for Index:=0 to MaxSwapChainImages-1 do begin
     FreeAndNil(fLockOrderIndependentTransparencyABufferBuffers[Index]);
     FreeAndNil(fLockOrderIndependentTransparencyAuxImages[Index]);
-    FreeAndNil(fLockOrderIndependentTransparencySpinLockImages[Index]);
+    if fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+     FreeAndNil(fLockOrderIndependentTransparencySpinLockImages[Index]);
+    end;
    end;
   end;
   else begin

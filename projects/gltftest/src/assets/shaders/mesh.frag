@@ -169,11 +169,15 @@ layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInput uM
   layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
   #ifdef SPINLOCK
     layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+    layout(std140, set = 3, binding = 8) uniform uboOIT {
+      ivec4 oitViewPort;
+    } uOIT;
   #endif
-
-  layout(std140, set = 3, binding = 8) uniform uboOIT {
-    ivec4 oitViewPort;
-  } uOIT;
+  #ifdef INTERLOCK
+    layout(std140, set = 3, binding = 7) uniform uboOIT {
+      ivec4 oitViewPort;
+    } uOIT;
+  #endif
 
 #endif
 
@@ -961,13 +965,6 @@ void main() {
 
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
-#ifdef OIT_SIMPLE
-    const uint oitAuxCounter = imageAtomicAdd(uOITImgAux, oitCoord, 1u);
-    if(oitAuxCounter < oitCountLayers){
-      imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
-      finalColor = vec4(0.0);
-    }
-#else
 #ifdef SPINLOCK
     bool oitDone = oitStoreMask == 0;
     while(!oitDone){
@@ -1013,7 +1010,6 @@ void main() {
         oitDone = true;
       }
     }
-#endif
 #endif
 #endif
   } else {
