@@ -28,19 +28,13 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.VirtualReality;
+     PasVulkan.VirtualReality,
+     UnitGlobals;
 
 const ApplicationTag='gltftest';      
 
 type TApplication=class(TpvApplication)
       public
-       type TTransparencyMode=
-             (
-              Direct,
-              LOCKOIT,
-              WBOIT,
-              MBOIT
-             );
       private
        fVirtualReality:TpvVirtualReality;
        fForceUseValidationLayers:boolean;
@@ -102,7 +96,7 @@ begin
  fMaxMSAA:=1;
  fMaxShadowMSAA:=8;
  fShadowMapSize:=512;
- fTransparencyMode:=TTransparencyMode.WBOIT;
+ fTransparencyMode:=TTransparencyMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
@@ -164,6 +158,8 @@ begin
      fTransparencyMode:=TTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin
      fTransparencyMode:=TTransparencyMode.MBOIT;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.Auto;
     end;
    end;
   end else begin

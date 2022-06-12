@@ -36,6 +36,7 @@ uses SysUtils,
      PasVulkan.Resources,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     UnitGlobals,
      UnitOrderIndependentTransparencyBuffer,
      UnitOrderIndependentTransparencyImage,
      UnitSkyCubeMap,
@@ -565,6 +566,7 @@ type { TScreenMain }
        fHeight:TpvInt32;
        fSurfaceMultiviewMask:TpvUInt32;
        fCountSurfaceViews:TpvInt32;
+       fTransparencyMode:TTransparencyMode;
        fVulkanSampleCountFlagBits:TVkSampleCountFlagBits;
        fVulkanShadowMapSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:Int32;
@@ -1636,7 +1638,7 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  if UnitApplication.Application.TransparencyMode=UnitApplication.TApplication.TTransparencyMode.Direct then begin
+  if fParent.fTransparencyMode=TTransparencyMode.Direct then begin
    fResourceColor:=AddImageResolveOutput('resourcetype_color',
                                          'forwardrendering_color',
                                          'forwardrendering_msaa_color',
@@ -2181,7 +2183,7 @@ begin
                          OnSetRenderPassResources,
                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
-  if UnitApplication.Application.TransparencyMode=UnitApplication.TApplication.TTransparencyMode.Direct then begin
+  if fParent.fTransparencyMode=TTransparencyMode.Direct then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
                          aSwapChainImageIndex,
                          0,
@@ -5335,8 +5337,8 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
- if UnitApplication.Application.TransparencyMode in [UnitApplication.TApplication.TTransparencyMode.WBOIT,
-                                                     UnitApplication.TApplication.TTransparencyMode.MBOIT] then begin
+ if fParent.fTransparencyMode in [TTransparencyMode.WBOIT,
+                                  TTransparencyMode.MBOIT] then begin
   fResourceColor:=AddImageInput('resourcetype_color',
                                 'orderindependenttransparency_final_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -5909,6 +5911,12 @@ begin
   end;
  end;
 
+ fTransparencyMode:=UnitApplication.Application.TransparencyMode;
+
+ if fTransparencyMode=TTransparencyMode.Auto then begin
+  fTransparencyMode:=TTransparencyMode.Direct;
+ end;
+
  fAnimationIndex:=0;
 
  fCameraMode:=TCameraMode.Orbit;
@@ -6240,9 +6248,9 @@ begin
 
  fForwardRenderPass:=TForwardRenderPass.Create(fFrameGraph,self);
 
- case UnitApplication.Application.TransparencyMode of
+ case fTransparencyMode of
 
-  UnitApplication.TApplication.TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.LOCKOIT:begin
 
    fLockOrderIndependentTransparencyClearCustomPass:=TLockOrderIndependentTransparencyClearCustomPass.Create(fFrameGraph,self);
 
@@ -6253,7 +6261,7 @@ begin
 
   end;
 
-  UnitApplication.TApplication.TTransparencyMode.WBOIT:begin
+  TTransparencyMode.WBOIT:begin
 
    fWeightBlendedOrderIndependentTransparencyRenderPass:=TWeightBlendedOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
 
@@ -6261,7 +6269,7 @@ begin
 
   end;
 
-  UnitApplication.TApplication.TTransparencyMode.MBOIT:begin
+  TTransparencyMode.MBOIT:begin
 
    fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:=TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.Create(fFrameGraph,self);
 
@@ -6406,8 +6414,8 @@ begin
                                                                         []);
  end;
 
- case UnitApplication.Application.TransparencyMode of
-  UnitApplication.TApplication.TTransparencyMode.LOCKOIT:begin
+ case fTransparencyMode of
+  TTransparencyMode.LOCKOIT:begin
    fLockOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                SizeOf(TLockOrderIndependentTransparentUniformBuffer),
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -6422,8 +6430,8 @@ begin
                                                                                []);
 
   end;
-  UnitApplication.TApplication.TTransparencyMode.WBOIT,
-  UnitApplication.TApplication.TTransparencyMode.MBOIT:begin
+  TTransparencyMode.WBOIT,
+  TTransparencyMode.MBOIT:begin
    fApproximationOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                         SizeOf(TApproximationOrderIndependentTransparentUniformBuffer),
                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -6463,12 +6471,12 @@ begin
 
  fScene3D.Unload;
 
- case UnitApplication.Application.TransparencyMode of
-  UnitApplication.TApplication.TTransparencyMode.LOCKOIT:begin
+ case fTransparencyMode of
+  TTransparencyMode.LOCKOIT:begin
    FreeAndNil(fLockOrderIndependentTransparentUniformVulkanBuffer);
   end;
-  UnitApplication.TApplication.TTransparencyMode.WBOIT,
-  UnitApplication.TApplication.TTransparencyMode.MBOIT:begin
+  TTransparencyMode.WBOIT,
+  TTransparencyMode.MBOIT:begin
    FreeAndNil(fApproximationOrderIndependentTransparentUniformVulkanBuffer);
   end;
   else begin
@@ -6554,9 +6562,9 @@ begin
 
  end;
 
- case UnitApplication.Application.TransparencyMode of
+ case fTransparencyMode of
 
-  UnitApplication.TApplication.TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.LOCKOIT:begin
 
    fCountLockOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;
 
@@ -6594,8 +6602,8 @@ begin
 
   end;
 
-  UnitApplication.TApplication.TTransparencyMode.MBOIT,
-  UnitApplication.TApplication.TTransparencyMode.WBOIT:begin
+  TTransparencyMode.MBOIT,
+  TTransparencyMode.WBOIT:begin
 
    fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.x:=abs(fZNear);
    fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.y:=IfThen(IsInfinite(fZFar),4096.0,abs(fZFar));
@@ -6629,8 +6637,8 @@ begin
  if assigned(UnitApplication.Application.VirtualReality) then begin
   fExternalOutputImageData.VulkanImages.Clear;
  end;
- case UnitApplication.Application.TransparencyMode of
-  UnitApplication.TApplication.TTransparencyMode.LOCKOIT:begin
+ case fTransparencyMode of
+  TTransparencyMode.LOCKOIT:begin
    for Index:=0 to MaxSwapChainImages-1 do begin
     FreeAndNil(fLockOrderIndependentTransparencyABufferBuffers[Index]);
     FreeAndNil(fLockOrderIndependentTransparencyAuxImages[Index]);
