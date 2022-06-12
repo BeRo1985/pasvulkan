@@ -2414,13 +2414,13 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_frag.spv');
   end;
  end else begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_msaa_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_msaa_frag.spv');
@@ -2433,13 +2433,13 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_masked_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_masked_frag.spv');
   end;
  end else begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_masked_msaa_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_masked_msaa_frag.spv');
@@ -2797,7 +2797,7 @@ begin
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
-     if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+     if fParent.fZFar<0.0 then begin
       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
      end else begin
       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
@@ -2970,13 +2970,13 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/lockoit_resolve_reversedz_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/lockoit_resolve_frag.spv');
   end;
  end else begin
-  if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
+  if fParent.fZFar<0.0 then begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/lockoit_resolve_reversedz_msaa_frag.spv');
   end else begin
    Stream:=pvApplication.Assets.GetAssetStream('shaders/lockoit_resolve_msaa_frag.spv');
