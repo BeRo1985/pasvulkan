@@ -6124,7 +6124,7 @@ begin
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
-    if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+    if //(fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
        (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) then begin
      if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
         (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
