@@ -931,11 +931,7 @@ void main() {
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
-#ifdef MSAA 
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
-#else
-  const uint oitStoreMask = 1u;
-#endif
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
   // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
@@ -968,7 +964,8 @@ void main() {
 #ifdef SPINLOCK
     bool oitDone = oitStoreMask == 0;
     while(!oitDone){
-      if(imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u) == 0u){
+      uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
+      if(oitOld == 0u){
 #endif
         const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).r;
         imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));

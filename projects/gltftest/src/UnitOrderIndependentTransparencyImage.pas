@@ -75,7 +75,7 @@ begin
  inherited Create;
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
-                                     0,//TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
+                                     0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
                                      aFormat,
                                      aWidth,
