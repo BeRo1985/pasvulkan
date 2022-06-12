@@ -152,8 +152,10 @@ begin
     inc(Index);
     if Parameter='direct' then begin
      fTransparencyMode:=TTransparencyMode.Direct;
-    end else if Parameter='lockoit' then begin
-     fTransparencyMode:=TTransparencyMode.LOCKOIT;
+    end else if Parameter='spinlockoit' then begin
+     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+    end else if Parameter='interlockoit' then begin
+     fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
     end else if Parameter='wboit' then begin
      fTransparencyMode:=TTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin

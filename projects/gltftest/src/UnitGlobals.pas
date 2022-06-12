@@ -35,7 +35,8 @@ type TTransparencyMode=
       (
        Auto,
        Direct,
-       LOCKOIT,
+       SPINLOCKOIT,
+       INTERLOCKOIT,
        WBOIT,
        MBOIT
       );

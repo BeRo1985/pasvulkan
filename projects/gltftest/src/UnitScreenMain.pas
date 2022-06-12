@@ -2398,33 +2398,11 @@ begin
   Stream.Free;
  end;
 
- OITVariant:='spinlock';
-(*case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
-  TpvVulkanVendorID.AMD:begin
-   if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-    // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
-    OITVariant:='spinlock';
-   end else begin
-    OITVariant:='simple';
-   end;
-  end;
-  TpvVulkanVendorID.NVIDIA{,
-  TpvVulkanVendorID.Intel}:begin
-   if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
-{   if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-       (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
-     OITVariant:='interlock';
-    end else}begin
-     OITVariant:='spinlock';
-    end;
-   end else begin
-    OITVariant:='simple';
-   end;
-  end;
-  else begin
-   OITVariant:='simple';
-  end;
- end;    *)
+ if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+  OITVariant:='spinlock';
+ end else begin
+  OITVariant:='interlock';
+ end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if UnitApplication.Application.VirtualReality.ZFar<0.0 then begin
@@ -5914,7 +5892,42 @@ begin
  fTransparencyMode:=UnitApplication.Application.TransparencyMode;
 
  if fTransparencyMode=TTransparencyMode.Auto then begin
-  fTransparencyMode:=TTransparencyMode.Direct;
+  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+     // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
+     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.MBOIT;
+    end;
+   end;
+   TpvVulkanVendorID.NVIDIA{,
+   TpvVulkanVendorID.Intel}:begin
+    if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+ {   if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+        (pvApplication.VulkanFragmentShaderSampleInterlock or pvApplication.VulkanFragmentShaderPixelInterlock) then begin
+      OITVariant:='interlock';
+     end else}begin
+     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+     end;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.MBOIT;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    if (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) and
+       (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
+       (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
+     fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.WBOIT;
+    end;
+   end;
+   else begin
+    fTransparencyMode:=TTransparencyMode.Direct;
+   end;
+  end;
+
  end;
 
  fAnimationIndex:=0;
@@ -6250,7 +6263,8 @@ begin
 
  case fTransparencyMode of
 
-  TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.SPINLOCKOIT,
+  TTransparencyMode.INTERLOCKOIT:begin
 
    fLockOrderIndependentTransparencyClearCustomPass:=TLockOrderIndependentTransparencyClearCustomPass.Create(fFrameGraph,self);
 
@@ -6415,7 +6429,8 @@ begin
  end;
 
  case fTransparencyMode of
-  TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.SPINLOCKOIT,
+  TTransparencyMode.INTERLOCKOIT:begin
    fLockOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                SizeOf(TLockOrderIndependentTransparentUniformBuffer),
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -6472,7 +6487,8 @@ begin
  fScene3D.Unload;
 
  case fTransparencyMode of
-  TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.SPINLOCKOIT,
+  TTransparencyMode.INTERLOCKOIT:begin
    FreeAndNil(fLockOrderIndependentTransparentUniformVulkanBuffer);
   end;
   TTransparencyMode.WBOIT,
@@ -6564,7 +6580,8 @@ begin
 
  case fTransparencyMode of
 
-  TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.SPINLOCKOIT,
+  TTransparencyMode.INTERLOCKOIT:begin
 
    fCountLockOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;
 
@@ -6638,7 +6655,8 @@ begin
   fExternalOutputImageData.VulkanImages.Clear;
  end;
  case fTransparencyMode of
-  TTransparencyMode.LOCKOIT:begin
+  TTransparencyMode.SPINLOCKOIT,
+  TTransparencyMode.INTERLOCKOIT:begin
    for Index:=0 to MaxSwapChainImages-1 do begin
     FreeAndNil(fLockOrderIndependentTransparencyABufferBuffers[Index]);
     FreeAndNil(fLockOrderIndependentTransparencyAuxImages[Index]);
