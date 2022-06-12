@@ -9,7 +9,6 @@
 
 #if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
-  layout(post_depth_coverage) in;
   #ifdef INTERLOCK
     #ifdef NVIDIA
       #extension GL_NV_fragment_shader_interlock : enable
@@ -20,12 +19,20 @@
       #define beginInvocationInterlock beginInvocationInterlockARB
       #define endInvocationInterlock endInvocationInterlockARB
     #endif
-    layout(pixel_interlock_ordered) in;
+    #if defined(ALPHATEST)
+      layout(post_depth_coverage, pixel_interlock_ordered) in;
+    #else
+      layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
+    #endif
+  #else
+    #if defined(ALPHATEST)
+      layout(post_depth_coverage) in;
+    #else
+      layout(early_fragment_tests, post_depth_coverage) in;
+    #endif
   #endif
-#endif
-
-#ifndef ALPHATEST
-layout(early_fragment_tests) in;
+#elif !defined(ALPHATEST)
+  layout(early_fragment_tests) in;
 #endif
 
 layout(location = 0) in vec3 inWorldSpacePosition;
