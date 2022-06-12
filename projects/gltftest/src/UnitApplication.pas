@@ -37,6 +37,7 @@ type TApplication=class(TpvApplication)
        type TTransparencyMode=
              (
               Direct,
+              LOCKOIT,
               WBOIT,
               MBOIT
              );
@@ -157,6 +158,8 @@ begin
     inc(Index);
     if Parameter='direct' then begin
      fTransparencyMode:=TTransparencyMode.Direct;
+    end else if Parameter='lockoit' then begin
+     fTransparencyMode:=TTransparencyMode.LOCKOIT;
     end else if Parameter='wboit' then begin
      fTransparencyMode:=TTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin

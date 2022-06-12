@@ -45,10 +45,10 @@ compileshaderarguments=(
   '-V wboit_resolve.frag -o wboit_resolve_frag.spv'
   '-V wboit_resolve.frag -DMSAA -o wboit_resolve_msaa_frag.spv'
   
-  '-V oit_resolve.frag -o oit_resolve_frag.spv'
-  '-V oit_resolve.frag -DREVERSEDZ -o oit_resolve_reversedz_frag.spv'
-  '-V oit_resolve.frag -DMSAA -o oit_resolve_msaa_frag.spv'
-  '-V oit_resolve.frag -DMSAA -DREVERSEDZ -o oit_resolve_msaa_reversedz_frag.spv'
+  '-V lockoit_resolve.frag -o lockoit_resolve_frag.spv'
+  '-V lockoit_resolve.frag -DREVERSEDZ -o lockoit_resolve_reversedz_frag.spv'
+  '-V lockoit_resolve.frag -DMSAA -o lockoit_resolve_msaa_frag.spv'
+  '-V lockoit_resolve.frag -DMSAA -DREVERSEDZ -o lockoit_resolve_reversedz_msaa_frag.spv'
   
   '-V brdf_charlie.frag -o brdf_charlie_frag.spv'
   '-V brdf_ggx.frag -o brdf_ggx_frag.spv'
