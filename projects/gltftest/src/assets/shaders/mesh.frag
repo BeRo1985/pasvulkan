@@ -859,15 +859,15 @@ void main() {
       finalColor = vec4(alpha = 0.0);    
     #endif
   #else 
-    #if !defined(NODISCARD)  
-      discard;
-    #else
+    #if defined(NODISCARD)  
       // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
       #if defined(REVERSEDZ)
         fragDepth = -0.1;
       #else
         fragDepth = 1.1;
       #endif
+    #else
+      discard;
     #endif
   #endif
   }else{
