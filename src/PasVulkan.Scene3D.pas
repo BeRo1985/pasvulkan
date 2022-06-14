@@ -163,7 +163,7 @@ type EpvScene3D=class(Exception);
                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
                JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
                CountJointBlocks:TpvUInt32;           // + 4 = 60 (unsigned 32-bit count of joint blocks)
-               Flags:TpvUInt32;                      // + 4 = 64 (unsigned 32-bit dflags)
+               Flags:TpvUInt32;                      // + 4 = 64 (unsigned 32-bit flags)
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
