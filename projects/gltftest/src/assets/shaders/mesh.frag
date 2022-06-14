@@ -310,7 +310,7 @@ vec3 clearcoatFresnel = vec3(0.0);
 float albedoSheenScaling = 1.0;
 
 float albedoSheenScalingLUT(float NdotV, float sheenRoughnessFactor) {
-  return texture(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor)).r;  //
+  return texture(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor)).x;  //
 }
 
 void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
