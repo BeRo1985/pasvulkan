@@ -618,6 +618,7 @@ type { TScreenMain }
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:TpvInt32;
+       fUseOITAlphaTest:boolean;
        fUseDemote:boolean;
        fUseNoDiscard:boolean;
        fUseDepthPrepass:boolean;
@@ -2215,15 +2216,17 @@ begin
                          OnSetRenderPassResources,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                         aSwapChainImageIndex,
-                         0,
-                         SwapChainImageState^.FinalViewIndex,
-                         SwapChainImageState^.CountViews,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+   if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not fParent.fUseOITAlphaTest then begin
+    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                          aSwapChainImageIndex,
+                          0,
+                          SwapChainImageState^.FinalViewIndex,
+                          SwapChainImageState^.CountViews,
+                          aCommandBuffer,
+                          fVulkanPipelineLayout,
+                          OnSetRenderPassResources,
+                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+   end;
 
   if fParent.fTransparencyMode=TTransparencyMode.Direct then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Blend],
@@ -2922,15 +2925,17 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        OnSetRenderPassResources,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
+  if fParent.fUseOITAlphaTest then begin
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         OnSetRenderPassResources,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,
@@ -3714,15 +3719,17 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        OnSetRenderPassResources,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
+  if fParent.fUseOITAlphaTest then begin
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         OnSetRenderPassResources,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,
@@ -4229,15 +4236,17 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        OnSetRenderPassResources,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
+  if fParent.fUseOITAlphaTest then begin
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         OnSetRenderPassResources,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,
@@ -5031,15 +5040,17 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{ fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                        aSwapChainImageIndex,
-                        0,
-                        SwapChainImageState^.FinalViewIndex,
-                        SwapChainImageState^.CountViews,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        OnSetRenderPassResources,
-                        [TpvScene3D.TMaterial.TAlphaMode.Mask]);  }
+  if fParent.fUseOITAlphaTest then begin
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         aSwapChainImageIndex,
+                         0,
+                         SwapChainImageState^.FinalViewIndex,
+                         SwapChainImageState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         OnSetRenderPassResources,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         aSwapChainImageIndex,
@@ -5981,9 +5992,11 @@ begin
   TpvVulkanVendorID.Intel:begin
    // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
    fUseNoDiscard:=not fUseDemote;
+   fUseOITAlphaTest:=true;
   end;
   else begin
    fUseNoDiscard:=false;
+   fUseOITAlphaTest:=false;
   end;
  end;
 
