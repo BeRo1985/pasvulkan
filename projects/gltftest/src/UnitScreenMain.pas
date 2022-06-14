@@ -618,6 +618,7 @@ type { TScreenMain }
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:TpvInt32;
+       fUseDemote:boolean;
        fUseNoDiscard:boolean;
        fUseDepthPrepass:boolean;
        fFOV:TpvFloat;
@@ -769,7 +770,9 @@ begin
   Stream.Free;
  end;
 
- if fParent.fUseNoDiscard then begin
+ if fParent.fUseDemote then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_demote_frag.spv');
+ end else if fParent.fUseNoDiscard then begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_frag.spv');
  end else begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
@@ -1702,7 +1705,13 @@ begin
   Stream.Free;
  end;
 
- if fParent.fUseNoDiscard then begin
+ if fParent.fUseDemote then begin
+  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_demote_frag.spv');
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_demote_msaa_frag.spv');
+  end;
+ end else if fParent.fUseNoDiscard then begin
   if fParent.fZFar<0.0 then begin
    if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
     Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_reversedz_frag.spv');
@@ -1738,7 +1747,9 @@ begin
    Stream.Free;
   end;
 
-  if fParent.fUseNoDiscard then begin
+  if fParent.fUseDemote then begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_demote_frag.spv');
+  end else if fParent.fUseNoDiscard then begin
    if fParent.fZFar<0.0 then begin
     Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_reversedz_frag.spv');
    end else begin
@@ -5964,10 +5975,12 @@ begin
   end;
  end;
 
+ fUseDemote:=pvApplication.VulkanDevice.PhysicalDevice.ShaderDemoteToHelperInvocation;
+
  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.Intel:begin
    // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
-   fUseNoDiscard:=true;
+   fUseNoDiscard:=not fUseDemote;
   end;
   else begin
    fUseNoDiscard:=false;

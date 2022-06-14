@@ -8,7 +8,9 @@ compileshaderarguments=(
   
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv'
-  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv'  
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DUSEDEMOTE -o mesh_masked_demote_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DUSEDEMOTE -DMSAA -o mesh_masked_demote_msaa_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -o mesh_masked_nodiscard_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DMSAA -o mesh_masked_nodiscard_msaa_frag.spv'  
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_masked_nodiscard_reversedz_frag.spv'
@@ -43,6 +45,7 @@ compileshaderarguments=(
 
   '-V mesh.frag -DDEPTHONLY -o mesh_depth_frag.spv'
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -o mesh_depth_masked_frag.spv'
+  '-V mesh.frag -DDEPTHONLY -DALPHATEST -DUSEDEMOTE -o mesh_depth_masked_demote_frag.spv'  
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -o mesh_depth_masked_nodiscard_frag.spv'  
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_depth_masked_nodiscard_reversedz_frag.spv'  
 

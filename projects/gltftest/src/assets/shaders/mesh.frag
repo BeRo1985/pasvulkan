@@ -6,6 +6,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#if defined(USEDEMOTE)
+  #extension GL_EXT_demote_to_helper_invocation : enable
+#endif
 
 #if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
@@ -867,7 +870,11 @@ void main() {
         fragDepth = 1.1;
       #endif
     #else
-      discard;
+      #if defined(USEDEMOTE)
+        demote;
+      #else
+        discard;
+      #endif
     #endif
   #endif
   }else{
