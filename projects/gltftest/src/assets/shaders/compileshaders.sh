@@ -9,6 +9,10 @@ compileshaderarguments=(
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DMSAA -o mesh_masked_msaa_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -o mesh_masked_nodiscard_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DMSAA -o mesh_masked_nodiscard_msaa_frag.spv'  
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_masked_nodiscard_reversedz_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DREVERSEDZ -DMSAA -o mesh_masked_nodiscard_reversedz_msaa_frag.spv'
   
   '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -o mesh_wboit_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -DALPHATEST -o mesh_wboit_masked_frag.spv'
@@ -39,6 +43,8 @@ compileshaderarguments=(
 
   '-V mesh.frag -DDEPTHONLY -o mesh_depth_frag.spv'
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -o mesh_depth_masked_frag.spv'
+  '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -o mesh_depth_masked_nodiscard_frag.spv'  
+  '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_depth_masked_nodiscard_reversedz_frag.spv'  
 
   '-V mboit_resolve.frag -o mboit_resolve_frag.spv'
   '-V mboit_resolve.frag -DMSAA -o mboit_resolve_msaa_frag.spv'

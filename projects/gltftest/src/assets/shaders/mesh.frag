@@ -846,30 +846,48 @@ void main() {
 #endif
 
 #ifdef ALPHATEST
+  #if defined(NODISCARD)  
+    float fragDepth;
+  #endif
   if (alpha < uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) {
-#if defined(WBOIT)
+  #if defined(WBOIT) || defined(LOCKOIT)
     finalColor = vec4(alpha = 0.0);    
-#elif defined(MBOIT)
-#if defined(MBOIT) && defined(MBOITPASS1)    
-    alpha = 0.0;    
-#else
-    finalColor = vec4(alpha = 0.0);    
-#endif
-#else 
-    discard;
-#endif
-#if defined(WBOIT) || defined(MBOIT)
+  #elif defined(MBOIT)
+    #if defined(MBOIT) && defined(MBOITPASS1)    
+      alpha = 0.0;    
+    #else
+      finalColor = vec4(alpha = 0.0);    
+    #endif
+  #else 
+    #if !defined(NODISCARD)  
+      discard;
+    #else
+      // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
+      #if defined(REVERSEDZ)
+        fragDepth = -0.1;
+      #else
+        fragDepth = 1.1;
+      #endif
+    #endif
+  #endif
   }else{
-#if defined(WBOIT)
-    finalColor.w = alpha = 1.0;    
-#elif defined(MBOIT) && defined(MBOITPASS1)    
-    alpha = 1.0;    
-#else
-    finalColor.w = alpha = 1.0;    
-#endif
-#endif
+  #if defined(NODISCARD)  
+    fragDepth = gl_FragCoord.z;
+  #endif
+  #if defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT)
+    #if defined(WBOIT) || defined(LOCKOIT)
+      finalColor.w = alpha = 1.0;    
+    #elif defined(MBOIT) && defined(MBOITPASS1)    
+      alpha = 1.0;    
+    #else
+      finalColor.w = alpha = 1.0;    
+    #endif
+  #endif
   }
-  #if !(defined(WBOIT) || defined(MBOIT))
+  #if defined(NODISCARD)  
+    gl_FragDepth = fragDepth;
+  #endif
+  #if !(defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT))
     #ifdef MSAA
       #if 0
         vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
@@ -877,7 +895,9 @@ void main() {
         vec4 alphaDXY = vec4(vec2(dFdx(alphaTextureXY)), vec2(dFdy(alphaTextureXY)));
         alpha *= 1.0 + (max(0.0, max(dot(alphaDXY.xy, alphaDXY.xy), dot(alphaDXY.zw, alphaDXY.zw)) * 0.5) * 0.25);
       #endif
-      alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
+      #if 1
+        alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
+      #endif  
       if (alpha < 1e-2) {
         alpha = 0.0;
       }

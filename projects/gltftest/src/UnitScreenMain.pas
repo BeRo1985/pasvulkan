@@ -618,6 +618,7 @@ type { TScreenMain }
        fSwapChainImageStates:TSwapChainImageStates;
        fUpdateLock:TPasMPCriticalSection;
        fAnimationIndex:TpvInt32;
+       fUseNoDiscard:boolean;
        fUseDepthPrepass:boolean;
        fFOV:TpvFloat;
        fZNear:TpvFloat;
@@ -768,7 +769,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+ if fParent.fUseNoDiscard then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_frag.spv');
+ end else begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+ end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -1697,10 +1702,26 @@ begin
   Stream.Free;
  end;
 
- if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_frag.spv');
+ if fParent.fUseNoDiscard then begin
+  if fParent.fZFar<0.0 then begin
+   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_reversedz_frag.spv');
+   end else begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_reversedz_msaa_frag.spv');
+   end;
+  end else begin
+   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_frag.spv');
+   end else begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_msaa_frag.spv');
+   end;
+  end;
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_msaa_frag.spv');
+  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_frag.spv');
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_msaa_frag.spv');
+  end;
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -1717,7 +1738,15 @@ begin
    Stream.Free;
   end;
 
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+  if fParent.fUseNoDiscard then begin
+   if fParent.fZFar<0.0 then begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_reversedz_frag.spv');
+   end else begin
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_frag.spv');
+   end;
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+  end;
   try
    fMeshDepthMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
   finally
@@ -5932,6 +5961,16 @@ begin
   else begin
    // Immediate-based GPUs => Use depth prepass, as for which it can bring an advantage
    fUseDepthPrepass:=true;
+  end;
+ end;
+
+ case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+  TpvVulkanVendorID.Intel:begin
+   // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
+   fUseNoDiscard:=true;
+  end;
+  else begin
+   fUseNoDiscard:=false;
   end;
  end;
 
