@@ -1001,7 +1001,7 @@ void main() {
      (min(alpha, finalColor.w) > 0.0)
     ){
 
-#ifndef ALPHATEST
+#ifndef IGNORELOCKOIT
     const int oitViewSize = int(uOIT.oitViewPort.z);
     const int oitCountLayers = int(uOIT.oitViewPort.w & 0xffffu);
     const int oitMultiViewSize = oitViewSize * oitCountLayers;
