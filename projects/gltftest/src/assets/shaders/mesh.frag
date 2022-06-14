@@ -24,13 +24,13 @@
     #endif
     #if defined(MSAA)
       #if defined(ALPHATEST)
-        layout(post_depth_coverage, sample_interlock_ordered) in;
+        layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
       #else
         layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
       #endif
     #else
       #if defined(ALPHATEST)
-        layout(post_depth_coverage, pixel_interlock_ordered) in;
+        layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
       #else
         layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
       #endif
