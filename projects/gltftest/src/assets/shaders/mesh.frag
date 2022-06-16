@@ -566,24 +566,37 @@ void main() {
         }
       }
 
-#if 0
+#undef UseGeometryRoughness
+#ifdef UseGeometryRoughness
       const float minimumRoughness = 0.0525;
       float geometryRoughness;
       {
         vec3 dxy = max(abs(dFdx(inNormal)), abs(dFdy(inNormal)));
         geometryRoughness = max(max(dxy.x, dxy.y), dxy.z);
       }
+
+      perceptualRoughness = min(max(perceptualRoughness, minimumRoughness) + geometryRoughness, 1.0);
 #else        
-      const float minimumRoughness = 0.0;
-      float geometryRoughness;
+      // Vlachos 2015, "Advanced VR Rendering"
+      // Kaplanyan 2016, "Stable specular highlights"
+      // Tokuyoshi 2017, "Error Reduction and Simplification for Shading Anti-Aliasing"
+      // Tokuyoshi and Kaplanyan 2019, "Improved Geometric Specular Antialiasing"
+      // Tokuyoshi and Kaplanyan 2021, "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
+      // ===========================================================================================================
+      // In the original paper, this implementation is intended for deferred rendering, but here it is also used 
+      // for forward rendering (as described in Tokuyoshi and Kaplanyan 2019 and 2021). This is mainly because 
+      // the forward version requires an expensive transformation of the half-vector by the tangent frame for each
+      // light. Thus, this is an approximation based on world-space normals, but it works well enough for what is 
+      // needed and is an clearly improvement over the implementation based on Vlachos 2015.
+      float kernelRoughness;
       {
         const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
         vec3 dx = dFdx(inNormal), dy = dFdy(inNormal);
-        geometryRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+        kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+        float roughness = perceptualRoughness * perceptualRoughness;
+        perceptualRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
       }
 #endif
-
-      perceptualRoughness = min(max(perceptualRoughness, minimumRoughness) + geometryRoughness, 1.0);
 
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
@@ -645,7 +658,14 @@ void main() {
           clearcoatNormal = normalize(inNormal);
         }
         clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+#ifdef UseGeometryRoughness        
         clearcoatRoughness = min(max(clearcoatRoughness, minimumRoughness) + geometryRoughness, 1.0);
+#else
+        {
+          float roughness = clearcoatRoughness * clearcoatRoughness;
+          clearcoatRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
+        }
+#endif
       }
 
 #ifdef LIGHTS
