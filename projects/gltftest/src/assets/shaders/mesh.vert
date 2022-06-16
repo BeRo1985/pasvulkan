@@ -25,11 +25,18 @@ layout(location = 5) out vec3 outNormal;
 layout(location = 6) out vec2 outTexCoord0;
 layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
+#ifdef VELOCITY
+layout(location = 9) out vec2 outVelocity;
+#endif
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
+#ifdef VELOCITY
+  uint countNodeMatrices;
+  uint countMorphTargetWeights;
+#endif
 } pushConstants;
 
 // Global descriptor set
@@ -174,6 +181,55 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
+#ifdef VELOCITY
+  {
+
+    View previousView = uView.views[pushConstants.countViews + viewIndex];
+
+    mat4 previousNodeMatrix = nodeMatrices[pushConstants.countNodeMatrices + inNodeIndex];
+
+    mat4 previousModelNodeMatrix = nodeMatrices[pushConstants.countNodeMatrices] * previousNodeMatrix;
+
+    vec3 previousPosition = inPosition;
+  
+    if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
+      uint morphTargetVertexIndex = inMorphTargetVertexBaseIndex;
+      uint protectionCounter = 0x0ffffu;
+      while ((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)) {
+        MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
+        float weight = morphTargetWeights[morphTargetVertex.metaData.x];
+        previousPosition += morphTargetVertex.position.xyz * weight;
+        morphTargetVertexIndex = morphTargetVertex.metaData.y;
+      }
+    }
+
+    if (inCountJointBlocks > 0u) {
+      mat4 inverseNodeMatrix = inverse(previousNodeMatrix);
+      mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+      for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
+          jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
+          jointBlockBaseIndex++) {
+        JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
+        skinMatrix += ((inverseNodeMatrix * nodeMatrices[pushConstants.countNodeMatrices + jointBlock.joints.x]) * jointBlock.weights.x) +  //
+                      ((inverseNodeMatrix * nodeMatrices[pushConstants.countNodeMatrices + jointBlock.joints.y]) * jointBlock.weights.y) +  //
+                      ((inverseNodeMatrix * nodeMatrices[pushConstants.countNodeMatrices + jointBlock.joints.z]) * jointBlock.weights.z) +  //
+                      ((inverseNodeMatrix * nodeMatrices[pushConstants.countNodeMatrices + jointBlock.joints.w]) * jointBlock.weights.w);
+      }
+      previousModelNodeMatrix *= skinMatrix;
+    }
+
+    vec4 previousNDC = (previousView.projectionMatrix * (previousView.viewMatrix * previousModelNodeMatrix)) * vec4(previousPosition, 1.0);
+    previousNDC /= previousNDC.w;
+    
+    vec4 currentNDC = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+    gl_Position = currentNDC;
+    currentNDC /= currentNDC.w;
+
+    outVelocity = currentNDC.xy - previousNDC.xy;
+
+  }
+#else
   gl_Position = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+#endif
   gl_PointSize = 1.0;
 }
