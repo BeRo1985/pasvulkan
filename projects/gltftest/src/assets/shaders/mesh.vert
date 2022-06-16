@@ -26,7 +26,8 @@ layout(location = 6) out vec2 outTexCoord0;
 layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
 #ifdef VELOCITY
-layout(location = 9) out vec2 outVelocity;
+layout(location = 9) out vec4 outPreviousClipSpace;
+layout(location = 10) out vec4 outCurrentClipSpace;
 #endif
 
 /* clang-format off */
@@ -218,15 +219,10 @@ void main() {
       previousModelNodeMatrix *= skinMatrix;
     }
 
-    vec4 previousNDC = (previousView.projectionMatrix * (previousView.viewMatrix * previousModelNodeMatrix)) * vec4(previousPosition, 1.0);
-    previousNDC /= previousNDC.w;
+    outPreviousClipSpace = (previousView.projectionMatrix * (previousView.viewMatrix * previousModelNodeMatrix)) * vec4(previousPosition, 1.0);
     
-    vec4 currentNDC = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
-    gl_Position = currentNDC;
-    currentNDC /= currentNDC.w;
-
-    outVelocity = currentNDC.xy - previousNDC.xy;
-
+    gl_Position = outCurrentClipSpace = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+    
   }
 #else
   gl_Position = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);

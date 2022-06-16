@@ -55,6 +55,10 @@ layout(location = 5) in vec3 inNormal;
 layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
+#ifdef VELOCITY
+layout(location = 9) in vec4 inPreviousClipSpace;
+layout(location = 10) in vec4 inCurrentClipSpace;
+#endif
 
 #ifdef DEPTHONLY
   #if defined(MBOIT) && defined(MBOITPASS1)
@@ -76,6 +80,13 @@ layout(location = 8) in vec4 inColor0;
     layout(location = 0) out vec4 outFragColor;
     #ifdef EXTRAEMISSIONOUTPUT
       layout(location = 1) out vec4 outFragEmission;
+      #ifdef VELOCITY
+        layout(location = 2) out vec2 outVelocity;
+      #endif
+    #else
+      #ifdef VELOCITY
+        layout(location = 1) out vec2 outVelocity;
+      #endif
     #endif
   #endif
 #endif
@@ -1073,7 +1084,11 @@ void main() {
   outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 
 #endif
-     
+
+#ifdef VELOCITY
+  outVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
+#endif
+
 }
 
 /*oid main() {
