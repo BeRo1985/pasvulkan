@@ -244,7 +244,7 @@ const float PI = 3.14159265358979323846,     //
     PI2 = 6.283185307179586476925286766559,  //
     OneOverPI = 1.0 / PI;
 
-float cavity, ambientOcclusion;
+float cavity, ambientOcclusion, specularOcclusion;
 uint flags, shadingModel;
 
 vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
@@ -320,9 +320,13 @@ vec3 clearcoatFresnel = vec3(0.0);
 
 float albedoSheenScaling = 1.0;
 
-float albedoSheenScalingLUT(float NdotV, float sheenRoughnessFactor) {
+float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessFactor) {
   return texture(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor)).x;  //
 }
+
+float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
+  return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0); 
+} 
 
 void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
   vec3 halfVector = normalize(viewDirection + lightDirection);
@@ -332,7 +336,7 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
   float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
   vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
   diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
-  specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * lit;
+  specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
   if ((flags & (1u << 7u)) != 0u) {
     float sheenColorMax = max(max(sheenColorIntensityFactor.x, sheenColorIntensityFactor.y), sheenColorIntensityFactor.z);
     albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), 1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
@@ -345,7 +349,7 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
     vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
     clearcoatOutput += F_Schlick(clearcoatF0, vec3(1.0), vDotH) *  //
                        D_GGX(nDotH, clearcoatRoughness) *          //
-                       V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * lit;
+                       V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * specularOcclusion * lit;
   }
 }
 
@@ -375,7 +379,7 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0),                                                                            //
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
-      specularOcclusion = clamp((pow(NdotV + (ao * lit), roughness * roughness) - 1.0) + (ao * lit), 0.0, 1.0);
+      specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],  //
                   reflectionVector,               //
@@ -667,6 +671,8 @@ void main() {
         }
 #endif
       }
+
+      specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
 
 #ifdef LIGHTS
       uint lightTreeNodeIndex = 0;
