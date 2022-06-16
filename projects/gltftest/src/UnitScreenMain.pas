@@ -6710,7 +6710,7 @@ begin
   TTransparencyMode.SPINLOCKOIT,
   TTransparencyMode.INTERLOCKOIT:begin
 
-   fCountLockOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;
+   fCountLockOrderIndependentTransparencyLayers:=Min(Max(CountOrderIndependentTransparencyLayers,fCountSurfaceMSAASamples*2),16);
 
    fLockOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
    fLockOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;

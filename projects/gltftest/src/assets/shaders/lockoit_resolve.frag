@@ -20,11 +20,12 @@ layout(std140, set = 0, binding = 4) uniform uboOIT {
 } uOIT;
 /* clang-format on */
 
-void blend(inout vec4 target, const in vec4 source) {  //  
-  target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a); //                
+void blend(inout vec4 target, const in vec4 source) {                  //
+  target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a);  //
 }
 
-#define MAX_OIT_LAYERS 8
+#define MAX_MSAA 16
+#define MAX_OIT_LAYERS 16
 
 void sort(inout uvec4 array[MAX_OIT_LAYERS], int count) {
 #if MAX_OIT_LAYERS > 1
@@ -82,7 +83,6 @@ void main() {
   const int oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, int(imageLoad(uOITImgAux, oitCoord).r)));
 
   if (oitCountFragments > 0) {
-    
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
       oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
     }
@@ -90,12 +90,33 @@ void main() {
     sort(oitFragments, oitCountFragments);
 
 #ifdef MSAA
-    const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, 16);
+    const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
 
+#if 1
+    vec4 oitMSAAColors[MAX_MSAA];
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
+      oitMSAAColors[oitMSAASampleIndex] = vec4(0.0);                                        //
+    }
+    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
+      if (oitFragments[oitFragmentIndex].w != 0) {                                                      //
+        uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
+        vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
+        for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {          //
+          if ((fragment.w & (1u << oitMSAASampleIndex)) != 0) {                                         //
+            blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                    //
+          }
+        }
+      }
+    }
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
+      color += oitMSAAColors[oitMSAASampleIndex];                                           //
+    }
+    color /= oitMSAA;
+#else
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
       vec4 sampleColor = vec4(0.0);
       for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
-        if ((oitFragments[oitFragmentIndex].w & (1 << oitMSAASampleIndex)) != 0) {                        //
+        if ((oitFragments[oitFragmentIndex].w & (1u << oitMSAASampleIndex)) != 0) {                       //
           uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
           vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
           blend(sampleColor, fragmentColor);                                                              //
@@ -104,6 +125,7 @@ void main() {
       color += sampleColor;
     }
     color /= oitMSAA;
+#endif
 #else
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {        //
       uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
@@ -111,7 +133,6 @@ void main() {
       blend(color, fragmentColor);                                                                    //
     }
 #endif
-
   }
 
 #endif
