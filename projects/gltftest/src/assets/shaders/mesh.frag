@@ -942,8 +942,8 @@ void main() {
       #if 0
         vec2 alphaTextureSize = textureSize(uTextures[0]).xy;
         vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
-        vec4 alphaDXY = vec4(vec2(dFdx(alphaTextureXY)), vec2(dFdy(alphaTextureXY)));
-        alpha *= 1.0 + (max(0.0, max(dot(alphaDXY.xy, alphaDXY.xy), dot(alphaDXY.zw, alphaDXY.zw)) * 0.5) * 0.25);
+        vec4 alphaDUV = vec4(vec2(dFdx(alphaTextureUV)), vec2(dFdy(alphaTextureUV)));
+        alpha *= 1.0 + (max(0.0, max(dot(alphaDUV.xy, alphaDUV.xy), dot(alphaDUV.zw, alphaDUV.zw)) * 0.5) * 0.25);
       #endif
       #if 1
         alpha = clamp(((alpha - uintBitsToFloat(uMaterial.alphaCutOffFlagsTex0Tex1.x)) / max(fwidth(alpha), 1e-4)) + 0.5, 0.0, 1.0);
