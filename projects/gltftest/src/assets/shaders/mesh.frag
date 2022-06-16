@@ -566,13 +566,24 @@ void main() {
         }
       }
 
+#if 0
+      const float minimumRoughness = 0.0525;
       float geometryRoughness;
       {
         vec3 dxy = max(abs(dFdx(inNormal)), abs(dFdy(inNormal)));
         geometryRoughness = max(max(dxy.x, dxy.y), dxy.z);
       }
+#else        
+      const float minimumRoughness = 0.0;
+      float geometryRoughness;
+      {
+        const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+        vec3 dx = dFdx(inNormal), dy = dFdy(inNormal);
+        geometryRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+      }
+#endif
 
-      perceptualRoughness = min(max(perceptualRoughness, 0.0525) + geometryRoughness, 1.0);
+      perceptualRoughness = min(max(perceptualRoughness, minimumRoughness) + geometryRoughness, 1.0);
 
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
@@ -634,7 +645,7 @@ void main() {
           clearcoatNormal = normalize(inNormal);
         }
         clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
-        clearcoatRoughness = min(max(clearcoatRoughness, 0.0525) + geometryRoughness, 1.0);
+        clearcoatRoughness = min(max(clearcoatRoughness, minimumRoughness) + geometryRoughness, 1.0);
       }
 
 #ifdef LIGHTS
