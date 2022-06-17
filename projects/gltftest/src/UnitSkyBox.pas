@@ -39,7 +39,7 @@ type { TSkyBox }
        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxInFlightFrames+1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
@@ -55,7 +55,7 @@ type { TSkyBox }
 
        procedure BeforeDestroySwapChain;
 
-       procedure Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 
      end;
 
@@ -230,7 +230,7 @@ begin
  FreeAndNil(fVulkanPipeline);
 end;
 
-procedure TSkyBox.Draw(const aSwapChainImageIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
  VertexStagePushConstants.ViewBaseIndex:=aViewBaseIndex;
@@ -245,7 +245,7 @@ begin
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
-                                      @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                      @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                       0,
                                       nil);
  aCommandBuffer.CmdDraw(36,1,0,0);
