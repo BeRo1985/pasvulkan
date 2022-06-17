@@ -5949,7 +5949,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
          // Complete all graphics stages before making the memory barrier, but don't block any other previous
          // stuff from running, so set srcStageMask to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, and
-         // VK_ACCESS_MEMORY_READ_BIT as access mask, sine the presentation engine uses this access mask.
+         // VK_ACCESS_MEMORY_READ_BIT as access mask, since the presentation engine uses this access mask.
          SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
 
