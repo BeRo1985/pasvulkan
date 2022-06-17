@@ -39,7 +39,7 @@ type { TSkyBox }
        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fVulkanDescriptorSets:array[0..MaxInFlightFrames+1] of TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
