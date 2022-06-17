@@ -144,7 +144,7 @@ type EpvScene3D=class(Exception);
              Items:array[0..MaxViews-1] of TView;
             end;
             PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
-            TGlobalVulkanViewUniformBuffers=array[0..MaxSwapChainImages+1] of TpvVulkanBuffer;
+            TGlobalVulkanViewUniformBuffers=array[0..MaxInFlightFrames+1] of TpvVulkanBuffer;
             TVertexStagePushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
@@ -188,7 +188,7 @@ type EpvScene3D=class(Exception);
             TOnSetRenderPassResources=procedure(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                 const aPipelineLayout:TpvVulkanPipelineLayout;
                                                 const aRenderPassIndex:TpvSizeInt;
-                                                const aSwapChainImageIndex:TpvSizeInt) of object;
+                                                const aInFlightFrameIndex:TpvSizeInt) of object;
             { TBaseObject }
             TBaseObject=class(TpvResource)
              private
@@ -589,9 +589,9 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure Upload;
               procedure Unload;
-              procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
             end;
-            TLightBuffers=array[0..MaxSwapChainImages+1] of TLightBuffer;
+            TLightBuffers=array[0..MaxInFlightFrames+1] of TLightBuffer;
             { TLight }
             TLight=class
              private
@@ -1002,8 +1002,8 @@ type EpvScene3D=class(Exception);
                             WorkMatrix:TpvMatrix4x4;
                             VisibleBitmap:TpvUInt32;
                             Light:TpvScene3D.TLight;
-                            BoundingBoxes:array[0..MaxSwapChainImages+1] of TpvAABB;
-                            BoundingBoxFilled:array[0..MaxSwapChainImages+1] of boolean;
+                            BoundingBoxes:array[0..MaxInFlightFrames+1] of TpvAABB;
+                            BoundingBoxFilled:array[0..MaxInFlightFrames+1] of boolean;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -1030,12 +1030,12 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             procedure Upload;
                             procedure Unload;
-                            procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+                            procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property NodeMatricesBuffer:TpvVulkanBuffer read fNodeMatricesBuffer;
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
                           end;
-                          TVulkanDatas=array[0..MaxSwapChainImages+1] of TVulkanData;
+                          TVulkanDatas=array[0..MaxInFlightFrames+1] of TVulkanData;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -1060,19 +1060,19 @@ type EpvScene3D=class(Exception);
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
                      fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-                     fVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
-                     fScenes:array[0..MaxSwapChainImages+1] of TpvScene3D.TGroup.TScene;
-                     fActives:array[0..MaxSwapChainImages+1] of boolean;
+                     fVulkanDescriptorSets:array[0..MaxInFlightFrames+1] of TpvVulkanDescriptorSet;
+                     fScenes:array[0..MaxInFlightFrames+1] of TpvScene3D.TGroup.TScene;
+                     fActives:array[0..MaxInFlightFrames+1] of boolean;
                      fAABBTreeProxy:TpvSizeInt;
                      fVisibleBitmap:TPasMPUInt32;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+                     procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRenderPassIndex:TpvSizeInt;
                                        const aFrustums:TpvFrustumDynamicArray);
                      procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                    const aSwapChainImageIndex:TpvSizeInt;
+                                    const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
                                     var aPipeline:TpvVulkanPipeline;
@@ -1087,7 +1087,7 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
-                     procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+                     procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
@@ -1140,14 +1140,14 @@ type EpvScene3D=class(Exception);
               fSetGroupResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
               procedure ConstructBuffers;
               procedure CollectMaterialPrimitives;
-              procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+              procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                 const aRenderPassIndex:TpvSizeInt;
                                 const aFrustums:TpvFrustumDynamicArray);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRenderPassIndex:TpvSizeInt);
               procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                             const aSwapChainImageIndex:TpvSizeInt;
+                             const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
                              var aPipeline:TpvVulkanPipeline;
@@ -1161,7 +1161,7 @@ type EpvScene3D=class(Exception);
               procedure BeforeDestruction; override;
               procedure Upload; override;
               procedure Unload; override;
-              procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
@@ -1186,7 +1186,7 @@ type EpvScene3D=class(Exception);
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
             TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
-            TSwapChainImageBufferMemoryBarriers=array[0..MaxSwapChainImages+1] of TBufferMemoryBarriers;
+            TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames+1] of TBufferMemoryBarriers;
       private
        fLock:TPasMPSpinLock;
        fUploaded:TPasMPBool32;
@@ -1197,11 +1197,11 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
        fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fGlobalVulkanViews:array[0..MaxSwapChainImages+1] of TGlobalViewUniformBuffer;
+       fGlobalVulkanViews:array[0..MaxInFlightFrames+1] of TGlobalViewUniformBuffer;
        fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fGlobalVulkanDescriptorSets:array[0..MaxSwapChainImages+1] of TpvVulkanDescriptorSet;
+       fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames+1] of TpvVulkanDescriptorSet;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -1216,27 +1216,27 @@ type EpvScene3D=class(Exception);
        fMaterials:TMaterials;
        fMaterialHashMap:TMaterialHashMap;
        fEmptyMaterial:TpvScene3D.TMaterial;
-       fLights:array[0..MaxSwapChainImages+1] of TpvScene3D.TLights;
-       fCountLights:array[0..MaxSwapChainImages+1] of TpvSizeInt;
-       fIndirectLights:array[0..MaxSwapChainImages+1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
-       fCountIndirectLights:array[0..MaxSwapChainImages+1] of TpvSizeInt;
+       fLights:array[0..MaxInFlightFrames+1] of TpvScene3D.TLights;
+       fCountLights:array[0..MaxInFlightFrames+1] of TpvSizeInt;
+       fIndirectLights:array[0..MaxInFlightFrames+1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
+       fCountIndirectLights:array[0..MaxInFlightFrames+1] of TpvSizeInt;
        fGroupListLock:TPasMPSlimReaderWriterLock;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
        fGroupInstances:TGroup.TInstances;
        fLightAABBTree:TpvBVHDynamicAABBTree;
        fLightAABBTreeGeneration:TpvUInt32;
-       fLightAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
-       fLightAABBTreeStateGenerations:array[0..MaxSwapChainImages+1] of TpvUInt32;
+       fLightAABBTreeStates:array[0..MaxInFlightFrames+1] of TpvBVHDynamicAABBTree.TState;
+       fLightAABBTreeStateGenerations:array[0..MaxInFlightFrames+1] of TpvUInt32;
        fLightBuffers:TpvScene3D.TLightBuffers;
        fAABBTree:TpvBVHDynamicAABBTree;
-       fAABBTreeStates:array[0..MaxSwapChainImages+1] of TpvBVHDynamicAABBTree.TState;
+       fAABBTreeStates:array[0..MaxInFlightFrames+1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
-       fSwapChainImageBufferMemoryBarriers:TSwapChainImageBufferMemoryBarriers;
+       fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
        fViews:TViews;
        fVertexStagePushConstants:array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
-       procedure AddSwapChainImageBufferMemoryBarrier(const aSwapChainImageIndex:TpvSizeInt;
+       procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
        procedure UploadWhiteTexture;
        procedure UploadDefaultNormalMapTexture;
@@ -1244,7 +1244,7 @@ type EpvScene3D=class(Exception);
                                           const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                           const aRoot:TpvSizeInt;
                                           const aVisibleBit:TPasMPUInt32);
-       procedure CullLightAABBTreeWithFrustums(const aSwapChainImageIndex:TpvSizeInt;
+       procedure CullLightAABBTreeWithFrustums(const aInFlightFrameIndex:TpvSizeInt;
                                                const aFrustums:TpvFrustumDynamicArray;
                                                const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                                const aRoot:TpvSizeInt);
@@ -1255,24 +1255,24 @@ type EpvScene3D=class(Exception);
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aRenderPassIndex:TpvSizeInt;
-                                    const aSwapChainImageIndex:TpvSizeInt);
+                                    const aInFlightFrameIndex:TpvSizeInt);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
-       procedure Update(const aSwapChainImageIndex:TpvSizeInt);
+       procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure ClearViews;
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
-       procedure UpdateViews(const aSwapChainImageIndex:TpvSizeInt);
-       procedure PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
+       procedure UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
+       procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
                                const aViewPortWidth:TpvInt32;
                                const aViewPortHeight:TpvInt32;
                                const aFrustums:TpvFrustumDynamicArray);
-       procedure Prepare(const aSwapChainImageIndex:TpvSizeInt;
+       procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRenderPassIndex:TpvSizeInt;
                          const aViewBaseIndex:TpvSizeInt;
                          const aCountViews:TpvSizeInt;
@@ -1281,7 +1281,7 @@ type EpvScene3D=class(Exception);
                          const aLights:boolean=true;
                          const aFrustumCulling:boolean=true);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                      const aSwapChainImageIndex:TpvSizeInt;
+                      const aInFlightFrameIndex:TpvSizeInt;
                       const aRenderPassIndex:TpvSizeInt;
                       const aViewBaseIndex:TpvSizeInt;
                       const aCountViews:TpvSizeInt;
@@ -1424,7 +1424,7 @@ begin
   fSceneInstance:=nil;
  end;
 
- ReleaseFrameDelay:=MaxSwapChainImages+1;
+ ReleaseFrameDelay:=MaxInFlightFrames+1;
 
  fUploaded:=false;
 
@@ -3152,7 +3152,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TLightBuffer.Update(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.TLightBuffer.Update(const aInFlightFrameIndex:TpvSizeInt);
 const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TGPUSkipListNode=
        (AABBMin:(x:0.0;y:0.0;z:0.0);
         SkipCount:0;
@@ -3171,8 +3171,8 @@ begin
    end else begin
     fLightTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
    end;
-{  fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightItemsVulkanBuffer);
-   fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fLightTreeVulkanBuffer);}
+{  fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightItemsVulkanBuffer);
+   fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightTreeVulkanBuffer);}
   end;
  end;
 end;
@@ -5605,21 +5605,21 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.Update(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
-  Instance.Update(aSwapChainImageIndex);
+  Instance.Update(aInFlightFrameIndex);
  end;
 end;
 
-procedure TpvScene3D.TGroup.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aFrustums:TpvFrustumDynamicArray);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
-  Instance.Prepare(aSwapChainImageIndex,
+  Instance.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
                    aFrustums);
  end;
@@ -5638,7 +5638,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                 const aSwapChainImageIndex:TpvSizeInt;
+                                 const aInFlightFrameIndex:TpvSizeInt;
                                  const aRenderPassIndex:TpvSizeInt;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
                                  var aPipeline:TpvVulkanPipeline;
@@ -5650,7 +5650,7 @@ begin
  fSetGroupResourcesDone[aRenderPassIndex]:=false;
  for Instance in fInstances do begin
   Instance.Draw(aGraphicsPipelines,
-                aSwapChainImageIndex,
+                aInFlightFrameIndex,
                 aRenderPassIndex,
                 aCommandBuffer,
                 aPipeline,
@@ -5730,14 +5730,14 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  Upload;
  if fUploaded then begin
   fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
   fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
-{ fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fNodeMatricesBuffer);
-  fInstance.fSceneInstance.AddSwapChainImageBufferMemoryBarrier(aSwapChainImageIndex,fMorphTargetVertexWeightsBuffer);}
+{ fInstance.fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fNodeMatricesBuffer);
+  fInstance.fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fMorphTargetVertexWeightsBuffer);}
  end;
 end;
 
@@ -6054,7 +6054,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Update(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var CullFace,Blend:TPasGLTFInt32;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
@@ -6629,13 +6629,13 @@ var CullFace,Blend:TPasGLTFInt32;
  begin
   InstanceNode:=@fNodes[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
-  AABB:=@InstanceNode^.BoundingBoxes[aSwapChainImageIndex];
-  Filled:=@InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex];
+  AABB:=@InstanceNode^.BoundingBoxes[aInFlightFrameIndex];
+  Filled:=@InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex];
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessBoundingBoxNode(Node.Children[Index].Index);
    OtherInstanceNode:=@fNodes[Node.Children[Index].Index];
-   if OtherInstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] then begin
-    OtherAABB:=@OtherInstanceNode^.BoundingBoxes[aSwapChainImageIndex];
+   if OtherInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+    OtherAABB:=@OtherInstanceNode^.BoundingBoxes[aInFlightFrameIndex];
     if Filled^ then begin
      AABB^:=AABB^.Combine(OtherAABB^);
     end else begin
@@ -6653,7 +6653,7 @@ var Index:TPasGLTFSizeInt;
     AABB:TpvAABB;
 begin
 
- fActives[aSwapChainImageIndex]:=fActive;
+ fActives[aInFlightFrameIndex]:=fActive;
 
  if fActive then begin
 
@@ -6661,7 +6661,7 @@ begin
 
   if assigned(Scene) then begin
 
-   fScenes[aSwapChainImageIndex]:=Scene;
+   fScenes[aInFlightFrameIndex]:=Scene;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
 
@@ -6721,11 +6721,11 @@ begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=@fNodes[Index];
     if assigned(Node.fMesh) then begin
-     InstanceNode^.BoundingBoxes[aSwapChainImageIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
-     InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex]:=true;
+     InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
+     InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
     end else begin
-     InstanceNode^.BoundingBoxes[aSwapChainImageIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-     InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex]:=false;
+     InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+     InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=false;
     end;
    end;
 
@@ -6735,17 +6735,17 @@ begin
 
   end;
 
-  fVulkanData:=fVulkanDatas[aSwapChainImageIndex];
+  fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
   if assigned(fVulkanData) then begin
-   fVulkanData.Update(aSwapChainImageIndex);
+   fVulkanData.Update(aInFlightFrameIndex);
   end;
 
   fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
   if assigned(Scene) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
-    if InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] then begin
-     fBoundingBox:=fBoundingBox.Combine(InstanceNode^.BoundingBoxes[aSwapChainImageIndex]);
+    if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+     fBoundingBox:=fBoundingBox.Combine(InstanceNode^.BoundingBoxes[aInFlightFrameIndex]);
     end;
    end;
   end;
@@ -6784,7 +6784,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRenderPassIndex:TpvSizeInt;
                                               const aFrustums:TpvFrustumDynamicArray);
 var VisibleBit:TpvUInt32;
@@ -6798,14 +6798,14 @@ var VisibleBit:TpvUInt32;
   if aNodeIndex>=0 then begin
    InstanceNode:=@fNodes[aNodeIndex];
    Mask:=aMask;
-   if InstanceNode^.BoundingBoxFilled[aSwapChainImageIndex] then begin
+   if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
     if length(aFrustums)>0 then begin
      if length(aFrustums)=1 then begin
-      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aSwapChainImageIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
+      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
      end else begin
       OK:=false;
       for Index:=0 to length(aFrustums)-1 do begin
-       if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aSwapChainImageIndex])<>TpvFrustum.COMPLETE_OUT then begin
+       if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
         OK:=true;
         break;
        end;
@@ -6828,12 +6828,12 @@ var NodeIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
- if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   if length(aFrustums)>0 then begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
    end;
-   Scene:=fScenes[aSwapChainImageIndex];
+   Scene:=fScenes[aInFlightFrameIndex];
    if assigned(Scene) then begin
     for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
      ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
@@ -6852,7 +6852,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                           const aSwapChainImageIndex:TpvSizeInt;
+                                           const aInFlightFrameIndex:TpvSizeInt;
                                            const aRenderPassIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                            var aPipeline:TpvVulkanPipeline;
@@ -6885,12 +6885,12 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
    WasMeshFirst:=MeshFirst;
    if MeshFirst then begin
     MeshFirst:=false;
-    fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aSwapChainImageIndex);
+    fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          aPipelineLayout.Handle,
                                          1,
                                          1,
-                                         @fVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                         @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                          0,
                                          nil);
    end;
@@ -6907,7 +6907,7 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
    if WasMeshFirst then begin
     fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex);
     if assigned(aOnSetRenderPassResources) then begin
-     aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aSwapChainImageIndex);
+     aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
     end;
    end;
    aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
@@ -6915,9 +6915,9 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
   end;
  end;
 begin
- if fActives[aSwapChainImageIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   Culling:=fGroup.fCulling;
-  Scene:=fScenes[aSwapChainImageIndex];
+  Scene:=fScenes[aInFlightFrameIndex];
   if assigned(Scene) then begin
    VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
    MeshFirst:=true;
@@ -7026,7 +7026,7 @@ begin
 
  fDefaultNormalMapTextureLock:=TPasMPSlimReaderWriterLock.Create;
 
- ReleaseFrameDelay:=MaxSwapChainImages+1;
+ ReleaseFrameDelay:=MaxInFlightFrames+1;
 
  fMeshVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
 
@@ -7107,8 +7107,8 @@ begin
   fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self);
  end;
 
- for Index:=0 to length(fSwapChainImageBufferMemoryBarriers)-1 do begin
-  fSwapChainImageBufferMemoryBarriers[Index].Initialize;
+ for Index:=0 to length(fInFlightFrameBufferMemoryBarriers)-1 do begin
+  fInFlightFrameBufferMemoryBarriers[Index].Initialize;
  end;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
@@ -7138,8 +7138,8 @@ begin
   fAABBTreeStates[Index].TreeNodes:=nil;
  end;
 
- for Index:=0 to length(fSwapChainImageBufferMemoryBarriers)-1 do begin
-  fSwapChainImageBufferMemoryBarriers[Index].Finalize;
+ for Index:=0 to length(fInFlightFrameBufferMemoryBarriers)-1 do begin
+  fInFlightFrameBufferMemoryBarriers[Index].Finalize;
  end;
 
  FreeAndNil(fAABBTree);
@@ -7223,14 +7223,14 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.AddSwapChainImageBufferMemoryBarrier(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                           const aBuffer:TpvVulkanBuffer);
 var Index:TpvSizeInt;
     BufferMemoryBarrier:PVkBufferMemoryBarrier;
 begin
  if assigned(aBuffer) then begin
-  Index:=fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].AddNew;
-  BufferMemoryBarrier:=@fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].Items[Index];
+  Index:=fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].AddNew;
+  BufferMemoryBarrier:=@fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Items[Index];
   FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
   BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT);
@@ -7535,7 +7535,7 @@ begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
 end;
 
-procedure TpvScene3D.Update(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
@@ -7544,16 +7544,16 @@ var Group:TpvScene3D.TGroup;
     LightBuffer:TpvScene3D.TLightBuffer;
 begin
 
- fCountLights[aSwapChainImageIndex]:=0;
+ fCountLights[aInFlightFrameIndex]:=0;
 
  for Group in fGroups do begin
-  Group.Update(aSwapChainImageIndex);
+  Group.Update(aInFlightFrameIndex);
  end;
 
- OldGeneration:=fLightAABBTreeStateGenerations[aSwapChainImageIndex];
- if TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aSwapChainImageIndex],fLightAABBTreeGeneration,OldGeneration)=OldGeneration then begin
+ OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
+ if TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],fLightAABBTreeGeneration,OldGeneration)=OldGeneration then begin
 
-  LightAABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+  LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
 
   if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
    if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
@@ -7566,14 +7566,14 @@ begin
    LightAABBTreeState^.Root:=-1;
   end;
 
-  LightBuffer:=fLightBuffers[aSwapChainImageIndex];
+  LightBuffer:=fLightBuffers[aInFlightFrameIndex];
   CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems);
   fLightAABBTree.GetGPUSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
-  LightBuffer.Update(aSwapChainImageIndex);
+  LightBuffer.Update(aInFlightFrameIndex);
 
  end;
 
- AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
+ AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
  if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
   if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
    AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
@@ -7731,7 +7731,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.CullLightAABBTreeWithFrustums(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.CullLightAABBTreeWithFrustums(const aInFlightFrameIndex:TpvSizeInt;
                                                    const aFrustums:TpvFrustumDynamicArray;
                                                    const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                                    const aRoot:TpvSizeInt);
@@ -7761,9 +7761,9 @@ procedure TpvScene3D.CullLightAABBTreeWithFrustums(const aSwapChainImageIndex:Tp
    end;
    if OK then begin
     if TreeNode^.UserData<>0 then begin
-     if fCountIndirectLights[aSwapChainImageIndex]<MaxVisibleLights then begin
-      fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-      inc(fCountIndirectLights[aSwapChainImageIndex]);
+     if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
+      fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+      inc(fCountIndirectLights[aInFlightFrameIndex]);
      end;
     end;
     if TreeNode^.Children[0]>=0 then begin
@@ -7816,9 +7816,9 @@ begin
     end;
     if OK then begin
      if TreeNode^.UserData<>0 then begin
-      if fCountIndirectLights[aSwapChainImageIndex]<MaxVisibleLights then begin
-       fIndirectLights[aSwapChainImageIndex,fCountIndirectLights[aSwapChainImageIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-       inc(fCountIndirectLights[aSwapChainImageIndex]);
+      if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
+       fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+       inc(fCountIndirectLights[aInFlightFrameIndex]);
       end;
      end;
      if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
@@ -7969,14 +7969,14 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateViews(const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvScene3D.UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if fViews.Count>0 then begin
   Move(fViews.Items[0],
-       fGlobalVulkanViews[aSwapChainImageIndex].Items[0],
+       fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
        fViews.Count*SizeOf(TpvScene3D.TView));
-  if assigned(fGlobalVulkanViewUniformBuffers[aSwapChainImageIndex]) then begin
-   fGlobalVulkanViewUniformBuffers[aSwapChainImageIndex].UpdateData(fViews.Items[0],
+  if assigned(fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
+   fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fViews.Items[0],
                                                                     0,
                                                                     fViews.Count*SizeOf(TpvScene3D.TView),
                                                                     FlushUpdateData
@@ -7985,7 +7985,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.PrepareLights(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                    const aViewBaseIndex:TpvSizeInt;
                                    const aCountViews:TpvSizeInt;
                                    const aViewPortWidth:TpvInt32;
@@ -8006,21 +8006,21 @@ begin
  ViewPort[2]:=aViewPortWidth;
  ViewPort[3]:=aViewPortHeight;   }
 
- //Lights:=fLights[aSwapChainImageIndex];
+ //Lights:=fLights[aInFlightFrameIndex];
 
- fCountIndirectLights[aSwapChainImageIndex]:=0;
+ fCountIndirectLights[aInFlightFrameIndex]:=0;
 
- AABBTreeState:=@fLightAABBTreeStates[aSwapChainImageIndex];
+ AABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
 
- CullLightAABBTreeWithFrustums(aSwapChainImageIndex,aFrustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
+ CullLightAABBTreeWithFrustums(aInFlightFrameIndex,aFrustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
 
- if fCountIndirectLights[aSwapChainImageIndex]>0 then begin
-// IndirectIntroSort(@fIndirectLights[aSwapChainImageIndex,0],0,fCountIndirectLights[aSwapChainImageIndex],TpvScene3DCompareIndirectLights);
+ if fCountIndirectLights[aInFlightFrameIndex]>0 then begin
+// IndirectIntroSort(@fIndirectLights[aInFlightFrameIndex,0],0,fCountIndirectLights[aInFlightFrameIndex],TpvScene3DCompareIndirectLights);
  end;
 
 end;
 
-procedure TpvScene3D.Prepare(const aSwapChainImageIndex:TpvSizeInt;
+procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aViewBaseIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
@@ -8052,10 +8052,10 @@ begin
      TPasMPInterlocked.BitwiseAnd(GroupInstance.fVisibleBitmap,not VisibleBit);
     end;
 
-    AABBTreeState:=@fAABBTreeStates[aSwapChainImageIndex];
+    AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
     for Index:=0 to aCountViews-1 do begin
-     View:=@fGlobalVulkanViews[aSwapChainImageIndex].Items[aViewBaseIndex+Index];
+     View:=@fGlobalVulkanViews[aInFlightFrameIndex].Items[aViewBaseIndex+Index];
      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
     end;
 
@@ -8071,21 +8071,21 @@ begin
 
    for Group in fGroups do begin
     if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
-     Group.Prepare(aSwapChainImageIndex,
+     Group.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
                    Frustums);
     end;
    end;
 
    if aLights then begin
-    PrepareLights(aSwapChainImageIndex,
+    PrepareLights(aInFlightFrameIndex,
                   aViewBaseIndex,
                   aCountViews,
                   aViewPortWidth,
                   aViewPortHeight,
                   Frustums);
    end else begin
-    fCountIndirectLights[aSwapChainImageIndex]:=0;
+    fCountIndirectLights[aInFlightFrameIndex]:=0;
    end;
 
   finally
@@ -8099,7 +8099,7 @@ end;
 procedure TpvScene3D.SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aPipelineLayout:TpvVulkanPipelineLayout;
                                         const aRenderPassIndex:TpvSizeInt;
-                                        const aSwapChainImageIndex:TpvSizeInt);
+                                        const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fSetGlobalResourcesDone[aRenderPassIndex] then begin
   fSetGlobalResourcesDone[aRenderPassIndex]:=true;
@@ -8112,14 +8112,14 @@ begin
                                        aPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fGlobalVulkanDescriptorSets[aSwapChainImageIndex].Handle,
+                                       @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                        0,
                                        nil);
  end;
 end;
 
 procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                          const aSwapChainImageIndex:TpvSizeInt;
+                          const aInFlightFrameIndex:TpvSizeInt;
                           const aRenderPassIndex:TpvSizeInt;
                           const aViewBaseIndex:TpvSizeInt;
                           const aCountViews:TpvSizeInt;
@@ -8143,17 +8143,17 @@ begin
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
 
-  if fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].Count>0 then begin
+  if fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count>0 then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or pvApplication.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                      0,
                                      0,
                                      nil,
-                                     fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].Count,
-                                     @fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].Items[0],
+                                     fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count,
+                                     @fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Items[0],
                                      0,
                                      nil);
-   fSwapChainImageBufferMemoryBarriers[aSwapChainImageIndex].Count:=0;
+   fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count:=0;
   end;
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
@@ -8161,7 +8161,7 @@ begin
   for Group in fGroups do begin
    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
     Group.Draw(aGraphicsPipelines,
-               aSwapChainImageIndex,
+               aInFlightFrameIndex,
                aRenderPassIndex,
                aCommandBuffer,
                Pipeline,

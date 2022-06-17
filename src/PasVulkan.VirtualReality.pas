@@ -905,8 +905,8 @@ begin
   end;
 
   fVulkanUniversalQueueCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                          pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
-                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                                                pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+                                                                TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
   fCountSwapChainImages:=pvApplication.VulkanSwapChain.CountImages;
 
