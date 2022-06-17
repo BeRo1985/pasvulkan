@@ -105,7 +105,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
              AnglePhases:array[0..1] of TpvFloat;
             end;
             PScreenExampleCubeState=^TScreenExampleCubeState;
-            TScreenExampleCubeStates=array[0..MaxSwapChainImages-1] of TScreenExampleCubeState;
+            TScreenExampleCubeStates=array[0..MaxInFlightFrames-1] of TScreenExampleCubeState;
             PScreenExampleCubeStates=^TScreenExampleCubeStates;
             TVertex=record
              Position:TpvVector3;
@@ -192,14 +192,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanVertexBuffer:TpvVulkanBuffer;
        fVulkanIndexBuffer:TpvVulkanBuffer;
-       fVulkanUniformBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+       fVulkanUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanCommandPool:TpvVulkanCommandPool;
-//     fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+//     fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fUniformBuffer:TScreenExampleCubeUniformBuffer;
        fBoxAlbedoTexture:TpvVulkanTexture;
        fState:TScreenExampleCubeState;
@@ -235,7 +235,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
              AnglePhases:array[0..1] of TpvFloat;
             end;
             PScreenExampleDragonState=^TScreenExampleDragonState;
-            TScreenExampleDragonStates=array[0..MaxSwapChainImages-1] of TScreenExampleDragonState;
+            TScreenExampleDragonStates=array[0..MaxInFlightFrames-1] of TScreenExampleDragonState;
             PScreenExampleDragonStates=^TScreenExampleDragonStates;
        const Offsets:array[0..0] of TVkDeviceSize=(0);
       private
@@ -251,14 +251,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fVulkanPipelineShaderStageDragonFragment:TpvVulkanPipelineShaderStage;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanModel:TVulkanModel;
-       fVulkanUniformBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+       fVulkanUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanCommandPool:TpvVulkanCommandPool;
-//     fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+//     fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fUniformBuffer:TScreenExampleDragonUniformBuffer;
        fBoxAlbedoTexture:TpvVulkanTexture;
        fState:TScreenExampleDragonState;
@@ -307,8 +307,8 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanCanvas:TpvCanvas;
        fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
@@ -752,7 +752,7 @@ begin
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
 
@@ -829,7 +829,7 @@ begin
                                SizeOf(CubeIndices),
                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                        SizeOf(TScreenExampleCubeUniformBuffer),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -854,9 +854,9 @@ begin
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       MaxSwapChainImages);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxSwapChainImages);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
+                                                       MaxInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
@@ -872,7 +872,7 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                               fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
@@ -906,12 +906,12 @@ destructor TpvGUIVulkanCanvasCube.Destroy;
 var Index:TpvInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[Index]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanUniformBuffers[Index]);
  end;
  FreeAndNil(fVulkanIndexBuffer);
@@ -922,7 +922,7 @@ begin
  FreeAndNil(fCubeFragmentShaderModule);
  FreeAndNil(fCubeVertexShaderModule);
  FreeAndNil(fBoxAlbedoTexture);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
 // FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
@@ -1036,7 +1036,7 @@ begin
  fState.Time:=fState.Time+Instance.DeltaTime;
  fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(Instance.DeltaTime*f0));
  fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(Instance.DeltaTime*f1));
- fStates[pvApplication.UpdateSwapChainImageIndex]:=fState;
+ fStates[pvApplication.UpdateInFlightFrameIndex]:=fState;
  inherited Update;
 end;
 
@@ -1067,7 +1067,7 @@ begin
 
   ScissorRect:=aClipRect;
 
-  State:=@fStates[pvApplication.DrawSwapChainImageIndex];
+  State:=@fStates[pvApplication.DrawInFlightFrameIndex];
 
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
                TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
@@ -1077,12 +1077,12 @@ begin
   fUniformBuffer.ModelViewProjectionMatrix:=(ModelMatrix*ViewMatrix)*ProjectionMatrix;
   fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create((ModelMatrix*ViewMatrix).ToMatrix3x3.Inverse.Transpose);
 
-  p:=fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleCubeUniformBuffer));
+  p:=fVulkanUniformBuffers[pvApplication.DrawInFlightFrameIndex].Memory.MapMemory(0,SizeOf(TScreenExampleCubeUniformBuffer));
   if assigned(p) then begin
    try
     Move(fUniformBuffer,p^,SizeOf(TScreenExampleCubeUniformBuffer));
    finally
-    fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.UnmapMemory;
+    fVulkanUniformBuffers[pvApplication.DrawInFlightFrameIndex].Memory.UnmapMemory;
    end;
   end;
 
@@ -1109,7 +1109,7 @@ begin
   aVulkanCommandBuffer.CmdSetViewport(0,1,@ViewPort);
   aVulkanCommandBuffer.CmdSetScissor(0,1,@ScissorRect);
   aVulkanCommandBuffer.CmdClearAttachments(2,@ClearAttachments[0],2,@ClearRects[0]);
-  aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,0,nil);
+  aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[pvApplication.DrawInFlightFrameIndex].Handle,0,nil);
   aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
   aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
   aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
@@ -1172,7 +1172,7 @@ begin
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
 
@@ -1231,7 +1231,7 @@ begin
   Stream.Free;
  end;
 
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                        SizeOf(TScreenExampleDragonUniformBuffer),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -1256,9 +1256,9 @@ begin
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       MaxSwapChainImages);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxSwapChainImages);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
+                                                       MaxInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
@@ -1274,7 +1274,7 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                               fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
@@ -1308,12 +1308,12 @@ destructor TpvGUIVulkanCanvasDragon.Destroy;
 var Index:TpvInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[Index]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanUniformBuffers[Index]);
  end;
  FreeAndNil(fVulkanModel);
@@ -1323,7 +1323,7 @@ begin
  FreeAndNil(fDragonFragmentShaderModule);
  FreeAndNil(fDragonVertexShaderModule);
  FreeAndNil(fBoxAlbedoTexture);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
 // FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
@@ -1436,7 +1436,7 @@ begin
  fState.Time:=fState.Time+Instance.DeltaTime;
  fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(Instance.DeltaTime*f0));
  fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(Instance.DeltaTime*f1));
- fStates[pvApplication.UpdateSwapChainImageIndex]:=fState;
+ fStates[pvApplication.UpdateInFlightFrameIndex]:=fState;
  inherited Update;
 end;
 
@@ -1467,7 +1467,7 @@ begin
 
   ScissorRect:=aClipRect;
 
-  State:=@fStates[pvApplication.DrawSwapChainImageIndex];
+  State:=@fStates[pvApplication.DrawInFlightFrameIndex];
 
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
                TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
@@ -1478,12 +1478,12 @@ begin
   fUniformBuffer.ModelViewProjectionMatrix:=fUniformBuffer.ModelViewMatrix*ProjectionMatrix;
   fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create(fUniformBuffer.ModelViewMatrix.ToMatrix3x3.Inverse.Transpose);
 
-  p:=fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleDragonUniformBuffer));
+  p:=fVulkanUniformBuffers[pvApplication.DrawInFlightFrameIndex].Memory.MapMemory(0,SizeOf(TScreenExampleDragonUniformBuffer));
   if assigned(p) then begin
    try
     Move(fUniformBuffer,p^,SizeOf(TScreenExampleDragonUniformBuffer));
    finally
-    fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.UnmapMemory;
+    fVulkanUniformBuffers[pvApplication.DrawInFlightFrameIndex].Memory.UnmapMemory;
    end;
   end;
 
@@ -1510,7 +1510,7 @@ begin
   aVulkanCommandBuffer.CmdSetViewport(0,1,@ViewPort);
   aVulkanCommandBuffer.CmdSetScissor(0,1,@ScissorRect);
   aVulkanCommandBuffer.CmdClearAttachments(2,@ClearAttachments[0],2,@ClearRects[0]);
-  aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,0,nil);
+  aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[pvApplication.DrawInFlightFrameIndex].Handle,0,nil);
   aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
   fVulkanModel.Draw(aVulkanCommandBuffer);
 
@@ -1678,7 +1678,7 @@ begin
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
@@ -1687,7 +1687,7 @@ begin
 
  fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
                                  pvApplication.VulkanPipelineCache,
-                                 MaxSwapChainImages);
+                                 MaxInFlightFrames);
 
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice,fVulkanCanvas);
 
@@ -1972,7 +1972,7 @@ begin
  FreeAndNil(fGUIInstance);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
@@ -2003,7 +2003,7 @@ begin
 end;
 
 procedure TScreenExampleGUI.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvInt32;
+var Index:TpvInt32;
 begin
  inherited AfterCreateSwapChain;
 
@@ -2062,7 +2062,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanCanvas.VulkanRenderPass:=fVulkanRenderPass;
- fVulkanCanvas.CountBuffers:=pvApplication.CountSwapChainImages;
+ fVulkanCanvas.CountBuffers:=pvApplication.CountInFlightFrames;
  if pvApplication.Width<pvApplication.Height then begin
   fVulkanCanvas.Width:=(720*pvApplication.Width) div pvApplication.Height;
   fVulkanCanvas.Height:=720;
@@ -2076,13 +2076,13 @@ begin
  fVulkanCanvas.Viewport.height:=pvApplication.Height;
  fScreenToCanvasScale:=TpvVector2.Create(fVulkanCanvas.Width,fVulkanCanvas.Height)/TpvVector2.Create(pvApplication.Width,pvApplication.Height);
 
- for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
-  FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
-  fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ for Index:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
+  FreeAndNil(fVulkanRenderCommandBuffers[Index]);
+  fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
 
  fGUIInstance.VulkanRenderPass:=fVulkanRenderPass;
- fGUIInstance.CountBuffers:=pvApplication.CountSwapChainImages;
+ fGUIInstance.CountBuffers:=pvApplication.CountInFlightFrames;
  fGUIInstance.Width:=fVulkanCanvas.Width;
  fGUIInstance.Height:=fVulkanCanvas.Height;
  fGUIInstance.MousePosition:=TpvVector2.Create(fGUIInstance.Width*0.5,fGUIInstance.Height*0.5);
@@ -2228,7 +2228,7 @@ begin
 
  inherited Check(aDeltaTime);
 
- fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
+ fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateInFlightFrameIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Check;
 
@@ -2244,7 +2244,7 @@ var Index:TpvInt32;
 begin
  inherited Update(aDeltaTime);
 
- fVulkanCanvas.Start(pvApplication.UpdateSwapChainImageIndex);
+ fVulkanCanvas.Start(pvApplication.UpdateInFlightFrameIndex);
 
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
@@ -2262,7 +2262,7 @@ begin
 {$ifend}
 
  fGUIInstance.DrawWidgetBounds:=false;
- fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
+ fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateInFlightFrameIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;
  fGUIInstance.Draw;
@@ -2297,10 +2297,10 @@ begin
 
   begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex];
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
-   fGUIInstance.DrawBufferIndex:=pvApplication.DrawSwapChainImageIndex;
+   fGUIInstance.DrawBufferIndex:=pvApplication.DrawInFlightFrameIndex;
    fGUIInstance.ExecuteDraw(aWaitSemaphore);
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -2310,7 +2310,7 @@ begin
    fVulkanCanvas.ExecuteUpload(pvApplication.VulkanDevice.TransferQueue,
                                fVulkanTransferCommandBuffer,
                                fVulkanTransferCommandBufferFence,
-                               pvApplication.DrawSwapChainImageIndex);
+                               pvApplication.DrawInFlightFrameIndex);
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                      pvApplication.VulkanFrameBuffers[aSwapChainImageIndex],
@@ -2321,7 +2321,7 @@ begin
                                      VulkanSwapChain.Height);
 
    fVulkanCanvas.ExecuteDraw(VulkanCommandBuffer,
-                             pvApplication.DrawSwapChainImageIndex);
+                             pvApplication.DrawInFlightFrameIndex);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
@@ -2330,11 +2330,11 @@ begin
    VulkanCommandBuffer.Execute(pvApplication.VulkanDevice.GraphicsQueue,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                aWaitSemaphore,
-                               fVulkanRenderSemaphores[aSwapChainImageIndex],
+                               fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex],
                                aWaitFence,
                                false);
 
-   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
+   aWaitSemaphore:=fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex];
 
   end;
 

@@ -55,7 +55,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferChars=array[0..TextOverlayBufferCharSize-1] of TTextOverlayBufferChar;
 
      PTextOverlayBufferCharsBuffers=^TTextOverlayBufferCharsBuffers;
-     TTextOverlayBufferCharsBuffers=array[0..MaxSwapChainImages-1] of TTextOverlayBufferChars;
+     TTextOverlayBufferCharsBuffers=array[0..MaxInFlightFrames-1] of TTextOverlayBufferChars;
 
      PTextOverlayIndices=^TTextOverlayIndices;
      TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TpvInt32;
@@ -79,7 +79,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fBufferChars:PTextOverlayBufferChars;
        fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
        fCountBufferChars:TpvInt32;
-       fCountBufferCharsBuffers:array[0..MaxSwapChainImages-1] of TpvInt32;
+       fCountBufferCharsBuffers:array[0..MaxInFlightFrames-1] of TpvInt32;
        fIndices:TTextOverlayIndices;
        fTextOverlayVertexShaderModule:TpvVulkanShaderModule;
        fTextOverlayFragmentShaderModule:TpvVulkanShaderModule;
@@ -87,7 +87,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanPipelineShaderStageTriangleFragment:TpvVulkanPipelineShaderStage;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanRenderPass:TpvVulkanRenderPass;
-       fVulkanVertexBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+       fVulkanVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanIndexBuffer:TpvVulkanBuffer;
        fVulkanUniformBuffer:TpvVulkanBuffer;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -95,8 +95,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanDescriptorSet:TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
@@ -193,7 +193,7 @@ begin
   fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                   pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-  for Index:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to MaxInFlightFrames-1 do begin
    fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
    fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
   end;
@@ -272,7 +272,7 @@ begin
    SDFFontData:=nil;
   end;
 
-  for Index:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to MaxInFlightFrames-1 do begin
    fVulkanVertexBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                        SizeOf(TTextOverlayBufferChars),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -391,7 +391,7 @@ begin
   FreeAndNil(fVulkanDescriptorPool);
   FreeAndNil(fVulkanUniformBuffer);
   FreeAndNil(fVulkanIndexBuffer);
-  for Index:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to MaxInFlightFrames-1 do begin
    FreeAndNil(fVulkanVertexBuffers[Index]);
   end;
   FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
@@ -400,7 +400,7 @@ begin
   FreeAndNil(fTextOverlayVertexShaderModule);
   FreeAndNil(fFontTexture);
 
-  for Index:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to MaxInFlightFrames-1 do begin
    FreeAndNil(fVulkanRenderCommandBuffers[Index]);
    FreeAndNil(fVulkanRenderSemaphores[Index]);
   end;
@@ -621,7 +621,7 @@ end;
 procedure TTextOverlay.PreUpdate(const aDeltaTime:double);
 var FPS,ms:shortstring;
 begin
- fUpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
+ fUpdateBufferIndex:=pvApplication.UpdateInFlightFrameIndex;
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
@@ -648,7 +648,7 @@ var BufferIndex,Size:TpvInt32;
     p:TpvPointer;
 begin
 
- BufferIndex:=pvApplication.DrawSwapChainImageIndex;
+ BufferIndex:=pvApplication.DrawInFlightFrameIndex;
  if fCountBufferCharsBuffers[BufferIndex]=0 then begin
   fCountBufferCharsBuffers[BufferIndex]:=1;
   FillChar(fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar),#0);
@@ -656,7 +656,7 @@ begin
 
  begin
 
-  VulkanVertexBuffer:=fVulkanVertexBuffers[aSwapChainImageIndex];
+  VulkanVertexBuffer:=fVulkanVertexBuffers[pvApplication.DrawInFlightFrameIndex];
 
   Size:=SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex];
   p:=VulkanVertexBuffer.Memory.MapMemory(0,Size);
@@ -671,7 +671,7 @@ begin
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex];
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -704,11 +704,11 @@ begin
    VulkanCommandBuffer.Execute(pvApplication.VulkanDevice.GraphicsQueue,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                aWaitSemaphore,
-                               fVulkanRenderSemaphores[aSwapChainImageIndex],
+                               fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex],
                                aWaitFence,
                                false);
 
-   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
+   aWaitSemaphore:=fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex];
 
   end;
  end;

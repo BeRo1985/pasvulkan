@@ -1013,7 +1013,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
 { fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        aInFlightFrameIndex, // pvApplication.DrawSwapChainImageIndex,
+                        aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
                         InFlightFrameState^.CountViews,
@@ -7353,7 +7353,7 @@ begin
                   false,
                   true);
 
- fFrameGraph.Draw(pvApplication.DrawSwapChainImageIndex,
+ fFrameGraph.Draw(pvApplication.SwapChainImageIndex,
                   pvApplication.DrawInFlightFrameIndex,
                   pvApplication.DrawFrameCounter,
                   aWaitSemaphore,
