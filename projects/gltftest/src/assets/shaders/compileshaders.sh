@@ -20,6 +20,16 @@ compileshaderarguments=(
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_masked_nodiscard_reversedz_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -DNODISCARD -DREVERSEDZ -DMSAA -o mesh_masked_nodiscard_reversedz_msaa_frag.spv'
   
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -o mesh_blend_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -o mesh_blend_masked_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DMSAA -o mesh_blend_masked_msaa_frag.spv'  
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DUSEDEMOTE -o mesh_blend_masked_demote_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DUSEDEMOTE -DMSAA -o mesh_blend_masked_demote_msaa_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DNODISCARD -o mesh_blend_masked_nodiscard_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DNODISCARD -DMSAA -o mesh_blend_masked_nodiscard_msaa_frag.spv'  
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_blend_masked_nodiscard_reversedz_frag.spv'
+  '-V mesh.frag -DLIGHTS -DSHADOWS -DBLEND -DALPHATEST -DNODISCARD -DREVERSEDZ -DMSAA -o mesh_blend_masked_nodiscard_reversedz_msaa_frag.spv'
+  
   '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -o mesh_wboit_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DWBOIT -DALPHATEST -o mesh_wboit_masked_frag.spv'
   
@@ -62,7 +72,10 @@ compileshaderarguments=(
   '-V lockoit_resolve.frag -DREVERSEDZ -o lockoit_resolve_reversedz_frag.spv'
   '-V lockoit_resolve.frag -DMSAA -o lockoit_resolve_msaa_frag.spv'
   '-V lockoit_resolve.frag -DMSAA -DREVERSEDZ -o lockoit_resolve_reversedz_msaa_frag.spv'
-  
+
+  '-V blend_resolve.frag -o blend_resolve_frag.spv'
+  '-V blend_resolve.frag -DMSAA -o blend_resolve_msaa_frag.spv'  
+
   '-V brdf_charlie.frag -o brdf_charlie_frag.spv'
   '-V brdf_ggx.frag -o brdf_ggx_frag.spv'
   

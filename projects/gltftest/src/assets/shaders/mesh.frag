@@ -890,7 +890,9 @@ void main() {
   float alpha = color.w * inColor0.w, outputAlpha = mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u))));
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #if !(defined(WBOIT) || defined(MBOIT))
+#ifndef BLEND 
   outFragColor = finalColor;
+#endif
 #ifdef EXTRAEMISSIONOUTPUT
   outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
 #endif
@@ -1120,6 +1122,10 @@ void main() {
 
   outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 
+#endif
+
+#ifdef BLEND 
+  outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 #endif
 
 #ifdef VELOCITY
