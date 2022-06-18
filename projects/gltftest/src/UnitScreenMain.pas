@@ -6230,7 +6230,7 @@ begin
 
  if assigned(UnitApplication.Application.VirtualReality) then begin
 
- fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
+  fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
 
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                    true,

@@ -2,6 +2,10 @@
 
 compileshaderarguments=(
   
+  '-V downsample.comp -DMIPMAPLEVEL=0 -o downsample_level0_comp.spv'
+  '-V downsample.comp -DMIPMAPLEVEL=1 -o downsample_level1_comp.spv'
+  '-V downsample.comp -DMIPMAPLEVEL=2 -o downsample_level2_comp.spv'
+ 
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   
   '-V mesh.vert -o mesh_vert.spv'
@@ -72,7 +76,7 @@ compileshaderarguments=(
   '-V cubemap_charlie_filter.comp -o cubemap_charlie_filter_comp.spv'
   '-V cubemap_ggx_filter.comp -o cubemap_ggx_filter_comp.spv'
   '-V cubemap_lambertian_filter.comp -o cubemap_lambertian_filter_comp.spv'
-  
+
   '-V passthrough.vert -o passthrough_vert.spv'
   
   '-V dummy.frag -o dummy_frag.spv'
