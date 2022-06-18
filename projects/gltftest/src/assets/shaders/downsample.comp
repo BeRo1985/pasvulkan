@@ -65,14 +65,13 @@ void main() {
   ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
   if (all(greaterThanEqual(xy, ivec2(0))) && all(lessThan(xy, destinationTextureSize))) {
-    ivec2 sourceXY = xy << ivec2(1);
     vec4 color;
 #if MIPMAPLEVEL == 0
-    color = vec4(Median(Median(getNearestSource(sourceXY, ivec2(0)),      //
-                               getNearestSource(sourceXY, ivec2(-1, 0)),  //
-                               getNearestSource(sourceXY, ivec2(1, 0))),  //
-                        getNearestSource(sourceXY, ivec2(0, -1)),         //
-                        getNearestSource(sourceXY, ivec2(0, 1)))
+    color = vec4(Median(Median(getNearestSource(xy, ivec2(0)),      //
+                               getNearestSource(xy, ivec2(-1, 0)),  //
+                               getNearestSource(xy, ivec2(1, 0))),  //
+                        getNearestSource(xy, ivec2(0, -1)),         //
+                        getNearestSource(xy, ivec2(0, 1)))
                      .xyz,  //
                  1.0);
 #else
@@ -81,6 +80,7 @@ void main() {
     // 5     6     7
     //    8     9
     // 10   11    12
+    ivec2 sourceXY = xy << ivec2(1);
     vec4 lTap0 = getBilinearSource(sourceXY, ivec2(-2, -2));
     vec4 lTap1 = getBilinearSource(sourceXY, ivec2(0, -2));
     vec4 lTap2 = getBilinearSource(sourceXY, ivec2(2, -2));
