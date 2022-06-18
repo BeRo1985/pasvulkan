@@ -2458,9 +2458,9 @@ begin
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       MaxInFlightFrames*fParent.fCountSurfaceViews*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxInFlightFrames*fParent.fCountSurfaceViews*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,MaxInFlightFrames*fParent.fCountSurfaceViews*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
+                                                       MaxInFlightFrames*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxInFlightFrames*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,MaxInFlightFrames*fParent.fForwardMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
@@ -2545,7 +2545,7 @@ begin
                                                                                     0,
                                                                                     1,
                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                                    [TVkDescriptorImageInfo.Create(fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].VulkanMipMapSampler.Handle,
                                                                                                                    fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[MipMapLevelIndex-1].imageView,
                                                                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                     [],

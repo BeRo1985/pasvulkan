@@ -34,6 +34,7 @@ type { TMipmappedArray2DImage }
       private
        fVulkanImage:TpvVulkanImage;
        fVulkanSampler:TpvVulkanSampler;
+       fVulkanMipMapSampler:TpvVulkanSampler;
        fVulkanImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
@@ -53,6 +54,8 @@ type { TMipmappedArray2DImage }
        property VulkanImage:TpvVulkanImage read fVulkanImage;
 
        property VulkanSampler:TpvVulkanSampler read fVulkanSampler;
+
+       property VulkanMipMapSampler:TpvVulkanSampler read fVulkanMipMapSampler;
 
        property VulkanImageView:TpvVulkanImageView read fVulkanImageView;
 
@@ -189,9 +192,26 @@ begin
                                             false,
                                             TVkCompareOp(VK_COMPARE_OP_NEVER),
                                             0.0,
-                                            1,
+                                            fMipMapLevels,
                                             TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                             false);
+
+    fVulkanMipMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                  TVkFilter(VK_FILTER_LINEAR),
+                                                  TVkFilter(VK_FILTER_LINEAR),
+                                                  TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_NEAREST),
+                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                  0.0,
+                                                  false,
+                                                  1.0,
+                                                  false,
+                                                  TVkCompareOp(VK_COMPARE_OP_NEVER),
+                                                  0.0,
+                                                  1,
+                                                  TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
+                                                  false);
 
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,
@@ -229,7 +249,7 @@ begin
                                                                    1,
                                                                    0,
                                                                    aLayers);
-     DescriptorImageInfos[MipMapLevelIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+     DescriptorImageInfos[MipMapLevelIndex]:=TVkDescriptorImageInfo.Create(fVulkanMipMapSampler.Handle,
                                                                            VulkanImageViews[MipMapLevelIndex].Handle,
                                                                            aImageLayout);
     end;
@@ -259,6 +279,7 @@ begin
  DescriptorImageInfos:=nil;
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanSampler);
+ FreeAndNil(fVulkanMipMapSampler);
  FreeAndNil(fVulkanImage);
  inherited Destroy;
 end;
