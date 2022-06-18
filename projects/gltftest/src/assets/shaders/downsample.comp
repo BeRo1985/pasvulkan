@@ -52,9 +52,9 @@ vec4 getBilinearSource(const in ivec2 uv, const in ivec2 offset) {
          0.25;
 #else
 #ifdef MULTIVIEW
-  return textureLod(uSourceTexture, vec3((vec2(ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize, viewIndex), 0);
+  return textureLod(uSourceTexture, vec3((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize, viewIndex), 0);
 #else  
-  return textureLod(uSourceTexture, vec2((vec2(ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize), 0);
+  return textureLod(uSourceTexture, vec2((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize), 0);
 #endif
 #endif
 }
