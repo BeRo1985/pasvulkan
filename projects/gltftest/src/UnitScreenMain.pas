@@ -39,6 +39,7 @@ uses SysUtils,
      UnitGlobals,
      UnitOrderIndependentTransparencyBuffer,
      UnitOrderIndependentTransparencyImage,
+     UnitMipmappedArray2DImage,
      UnitSkyCubeMap,
      UnitGGXBRDF,
      UnitGGXEnvMapCubeMap,
@@ -593,6 +594,7 @@ type { TScreenMain }
        fCascadedShadowMapResolveRenderPass:TCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TCascadedShadowMapBlurRenderPass;
        fForwardRenderPass:TForwardRenderPass;
+       fForwardMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TMipmappedArray2DImage;
        fLockOrderIndependentTransparencyClearCustomPass:TLockOrderIndependentTransparencyClearCustomPass;
        fLockOrderIndependentTransparencyRenderPass:TLockOrderIndependentTransparencyRenderPass;
        fLockOrderIndependentTransparencyResolveRenderPass:TLockOrderIndependentTransparencyResolveRenderPass;
@@ -6705,6 +6707,10 @@ begin
 
  end;
 
+ for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT,VK_SAMPLE_COUNT_1_BIT);
+ end;
+
  case fTransparencyMode of
 
   TTransparencyMode.SPINLOCKOIT,
@@ -6782,6 +6788,9 @@ begin
  fFrameGraph.BeforeDestroySwapChain;
  if assigned(UnitApplication.Application.VirtualReality) then begin
   fExternalOutputImageData.VulkanImages.Clear;
+ end;
+ for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  FreeAndNil(fForwardMipmappedArray2DImages[Index]);
  end;
  case fTransparencyMode of
   TTransparencyMode.SPINLOCKOIT,
