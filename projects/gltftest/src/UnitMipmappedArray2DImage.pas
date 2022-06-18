@@ -212,7 +212,7 @@ begin
      for MipMapLevelIndex:=0 to length(VulkanImageViews[LayerIndex])-1 do begin
       VulkanImageViews[LayerIndex,MipMapLevelIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                                                fVulkanImage,
-                                                                               TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                               TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D),
                                                                                aFormat,
                                                                                TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                                                TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),

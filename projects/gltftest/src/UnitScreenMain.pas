@@ -693,6 +693,7 @@ type { TScreenMain }
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TCascadedShadowMapBlurRenderPass;
        fForwardRenderPass:TForwardRenderPass;
        fForwardMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TMipmappedArray2DImage;
+       fForwardRenderMipMapComputePass:TForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TDirectTransparencyRenderPass;
        fDirectTransparencyResolveRenderPass:TDirectTransparencyResolveRenderPass;
        fLockOrderIndependentTransparencyClearCustomPass:TLockOrderIndependentTransparencyClearCustomPass;
@@ -2492,7 +2493,7 @@ begin
   for ViewIndex:=0 to fParent.fCountSurfaceViews-1 do begin
    fVulkanImageViews[InFlightFrameIndex,ViewIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                                               fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                              VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                                                                              VK_IMAGE_VIEW_TYPE_2D,
                                                                               TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
                                                                               VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                               VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -2532,11 +2533,11 @@ begin
                                                                                                false
                                                                                               );
     end;
-    fVulkanDescriptorSets[InFlightFrameIndex,ViewIndex,MipMapLevelIndex].WriteToDescriptorSet(0,
+    fVulkanDescriptorSets[InFlightFrameIndex,ViewIndex,MipMapLevelIndex].WriteToDescriptorSet(1,
                                                                                               0,
-                                                                                              2,
+                                                                                              1,
                                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                              [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                                                              fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[ViewIndex,MipMapLevelIndex].imageView,
                                                                                                                              VK_IMAGE_LAYOUT_GENERAL)],
                                                                                               [],
@@ -2601,8 +2602,8 @@ begin
  ImageMemoryBarrier.subresourceRange.levelCount:=fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels;
  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
  ImageMemoryBarrier.subresourceRange.layerCount:=fParent.fCountSurfaceViews;
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+ aCommandBuffer.CmdPipelineBarrier(fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
                                    0,nil,
@@ -2628,7 +2629,7 @@ begin
    end;
 
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                        Pipeline.Handle,
+                                        fPipelineLayout.Handle,
                                         0,
                                         1,
                                         @fVulkanDescriptorSets[InFlightFrameIndex,ViewIndex,MipMapLevelIndex].Handle,
@@ -2663,7 +2664,7 @@ begin
                                       1,@ImageMemoryBarrier);
    end else begin
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                      fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                       0,
                                       0,nil,
                                       0,nil,
@@ -7594,11 +7595,14 @@ begin
 
  fForwardRenderPass:=TForwardRenderPass.Create(fFrameGraph,self);
 
+ fForwardRenderMipMapComputePass:=TForwardRenderMipMapComputePass.Create(fFrameGraph,self);
+
  case fTransparencyMode of
 
   TTransparencyMode.Direct:begin
 
    fDirectTransparencyRenderPass:=TDirectTransparencyRenderPass.Create(fFrameGraph,self);
+   fDirectTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fDirectTransparencyResolveRenderPass:=TDirectTransparencyResolveRenderPass.Create(fFrameGraph,self);
 
@@ -7611,6 +7615,7 @@ begin
 
    fLockOrderIndependentTransparencyRenderPass:=TLockOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
    fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fLockOrderIndependentTransparencyClearCustomPass);
+   fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fLockOrderIndependentTransparencyResolveRenderPass:=TLockOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
 
@@ -7619,6 +7624,7 @@ begin
   TTransparencyMode.WBOIT:begin
 
    fWeightBlendedOrderIndependentTransparencyRenderPass:=TWeightBlendedOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
+   fWeightBlendedOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fWeightBlendedOrderIndependentTransparencyResolveRenderPass:=TWeightBlendedOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
 
@@ -7627,6 +7633,7 @@ begin
   TTransparencyMode.MBOIT:begin
 
    fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:=TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.Create(fFrameGraph,self);
+   fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:=TMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Create(fFrameGraph,self);
 
