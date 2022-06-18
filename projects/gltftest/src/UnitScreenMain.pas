@@ -236,6 +236,12 @@ type { TScreenMain }
               private
                fParent:TScreenMain;
                fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
+               fDownsampleLevel0ComputeShaderModule:TpvVulkanShaderModule;
+               fDownsampleLevel1ComputeShaderModule:TpvVulkanShaderModule;
+               fDownsampleLevel2ComputeShaderModule:TpvVulkanShaderModule;
+               fVulkanPipelineShaderStageDownsampleLevel0Compute:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageDownsampleLevel1Compute:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageDownsampleLevel2Compute:TpvVulkanPipelineShaderStage;
               public
                constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
                destructor Destroy; override;
@@ -2336,21 +2342,59 @@ begin
 end;
 
 { TScreenMain.TForwardRenderMipMapComputePass }
+
 constructor TScreenMain.TForwardRenderMipMapComputePass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+var Stream:TStream;
 begin
  inherited Create(aFrameGraph);
+
  fParent:=aParent;
+
  Name:='ForwardRenderMipMapComputePass';
+
  fResourceInput:=AddImageInput('resourcetype_color',
                                'forwardrendering_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
 
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level0_comp.spv');
+ try
+  fDownsampleLevel0ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level1_comp.spv');
+ try
+  fDownsampleLevel1ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level2_comp.spv');
+ try
+  fDownsampleLevel2ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageDownsampleLevel0Compute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDownsampleLevel0ComputeShaderModule,'main');
+
+ fVulkanPipelineShaderStageDownsampleLevel1Compute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDownsampleLevel1ComputeShaderModule,'main');
+
+ fVulkanPipelineShaderStageDownsampleLevel2Compute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDownsampleLevel2ComputeShaderModule,'main');
+
 end;
 
 destructor TScreenMain.TForwardRenderMipMapComputePass.Destroy;
 begin
+ FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel2Compute);
+ FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel1Compute);
+ FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel0Compute);
+ FreeAndNil(fDownsampleLevel2ComputeShaderModule);
+ FreeAndNil(fDownsampleLevel1ComputeShaderModule);
+ FreeAndNil(fDownsampleLevel0ComputeShaderModule);
  inherited Destroy;
 end;
 
