@@ -44,7 +44,7 @@ type { TMipmappedArray2DImage }
 
        DescriptorImageInfos:array of array of TVkDescriptorImageInfo;
 
-       constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+       constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
        destructor Destroy; override;
 
@@ -68,7 +68,7 @@ implementation
 
 { TMipmappedArray2DImage }
 
-constructor TMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits);
+constructor TMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
 var LayerIndex,MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -162,7 +162,7 @@ begin
     ImageSubresourceRange.layerCount:=aLayers;
     fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                            TVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-                           TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                           aImageLayout,
                            @ImageSubresourceRange,
                            CommandBuffer,
                            Queue,
@@ -202,7 +202,7 @@ begin
 
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,
-                                                        VK_IMAGE_LAYOUT_GENERAL);
+                                                        aImageLayout);
 
     SetLength(VulkanImageViews,aLayers,fMipMapLevels);
 
@@ -225,7 +225,7 @@ begin
                                                                                1);
       DescriptorImageInfos[LayerIndex,MipMapLevelIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                        VulkanImageViews[LayerIndex,MipMapLevelIndex].Handle,
-                                                                                       VK_IMAGE_LAYOUT_GENERAL);
+                                                                                       aImageLayout);
      end;
     end;
 
