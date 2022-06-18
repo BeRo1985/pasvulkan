@@ -11,11 +11,21 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level rexture
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture; // Source mipmap level texture
+
+layout(set = 0, binding = 1) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#else
+layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level texture
 
 layout(set = 0, binding = 1) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#endif
 
 /* clang-format on */
+
+#ifdef MULTIVIEW
+int viewIndex = int(gl_GlobalInvocationID.z); 
+#endif
 
 ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
 
@@ -23,8 +33,11 @@ vec2 invSourceSize = vec2(1.0) / vec2(sourceSize);
 
 #if MIPMAPLEVEL == 0
 vec4 getNearestSource(const in ivec2 uv, const in ivec2 offset) {
-  //
-  return texelFetch(uSourceTexture, clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)), 0);
+#ifdef MULTIVIEW
+  return texelFetch(uSourceTexture, ivec3(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)), viewIndex), 0);
+#else
+  return texelFetch(uSourceTexture, ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))), 0);
+#endif
 }
 #endif
 
@@ -38,7 +51,11 @@ vec4 getBilinearSource(const in ivec2 uv, const in ivec2 offset) {
           getNearestSource(uv, offset + ivec2(0, 1))) *
          0.25;
 #else
-  return textureLod(uSourceTexture, (vec2(ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)))) + vec2(0.5)) * invSourceSize, 0);
+#ifdef MULTIVIEW
+  return textureLod(uSourceTexture, ivec3((vec2(ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)))) + vec2(0.5)) * invSourceSize, viewIndex), 0);
+#else  
+  return textureLod(uSourceTexture, ivec2((vec2(ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)))) + vec2(0.5)) * invSourceSize), 0);
+#endif
 #endif
 }
 #endif
@@ -62,9 +79,17 @@ vec4 KarisAverage(const in vec4 pColorA, const in vec4 pColorB, const in vec4 pC
 #endif
 
 void main() {
-  ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+#ifdef MULTIVIEW
+  ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
+  ivec3 destinationTextureSize = imageSize(uDestinationTexture);
+  if (all(greaterThanEqual(invocationPosition, ivec3(0))) && all(lessThan(invocationPosition, destinationTextureSize))) 
+#else
+  ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
-  if (all(greaterThanEqual(xy, ivec2(0))) && all(lessThan(xy, destinationTextureSize))) {
+  if (all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, destinationTextureSize))) 
+#endif
+  {
+    ivec2 xy = invocationPosition.xy;
     vec4 color;
 #if MIPMAPLEVEL == 0
     color = vec4(Median(Median(getNearestSource(xy, ivec2(0)),      //
@@ -108,6 +133,6 @@ void main() {
             ((lTap6 + lTap7 + lTap11 + lTap12) * (0.125 / 4.0));   //
 #endif
 #endif
-    imageStore(uDestinationTexture, xy, color);
+    imageStore(uDestinationTexture, invocationPosition, color);
   }
 }

@@ -5,6 +5,9 @@ compileshaderarguments=(
   '-V downsample.comp -DMIPMAPLEVEL=0 -o downsample_level0_comp.spv'
   '-V downsample.comp -DMIPMAPLEVEL=1 -o downsample_level1_comp.spv'
   '-V downsample.comp -DMIPMAPLEVEL=2 -o downsample_level2_comp.spv'
+  '-V downsample.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -o downsample_multiview_level0_comp.spv'
+  '-V downsample.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o downsample_multiview_level1_comp.spv'
+  '-V downsample.comp -DMIPMAPLEVEL=2 -DMULTIVIEW -o downsample_multiview_level2_comp.spv'
  
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   

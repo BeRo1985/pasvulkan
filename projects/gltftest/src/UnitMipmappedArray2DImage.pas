@@ -40,9 +40,9 @@ type { TMipmappedArray2DImage }
        fMipMapLevels:TpvInt32;
       public
 
-       VulkanImageViews:array of array of TpvVulkanImageView;
+       VulkanImageViews:array of TpvVulkanImageView;
 
-       DescriptorImageInfos:array of array of TVkDescriptorImageInfo;
+       DescriptorImageInfos:array of TVkDescriptorImageInfo;
 
        constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
@@ -69,7 +69,7 @@ implementation
 { TMipmappedArray2DImage }
 
 constructor TMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
-var LayerIndex,MipMapLevelIndex:TpvInt32;
+var MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -79,6 +79,7 @@ var LayerIndex,MipMapLevelIndex:TpvInt32;
     CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
+    ImageViewType:TVkImageViewType;
 begin
  inherited Create;
 
@@ -87,6 +88,12 @@ begin
  DescriptorImageInfos:=nil;
 
  fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight)+1));
+
+ if aLayers>1 then begin
+  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
+ end else begin
+  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+ end;
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
@@ -188,7 +195,7 @@ begin
 
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,
-                                                TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                ImageViewType,
                                                 aFormat,
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -204,31 +211,28 @@ begin
                                                         fVulkanImageView.Handle,
                                                         aImageLayout);
 
-    SetLength(VulkanImageViews,aLayers,fMipMapLevels);
+    SetLength(VulkanImageViews,fMipMapLevels);
 
-    SetLength(DescriptorImageInfos,aLayers,fMipMapLevels);
+    SetLength(DescriptorImageInfos,fMipMapLevels);
 
-    for LayerIndex:=0 to length(VulkanImageViews)-1 do begin
-     for MipMapLevelIndex:=0 to length(VulkanImageViews[LayerIndex])-1 do begin
-      VulkanImageViews[LayerIndex,MipMapLevelIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
-                                                                               fVulkanImage,
-                                                                               TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D),
-                                                                               aFormat,
-                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                               TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                               MipMapLevelIndex,
-                                                                               1,
-                                                                               LayerIndex,
-                                                                               1);
-      DescriptorImageInfos[LayerIndex,MipMapLevelIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                       VulkanImageViews[LayerIndex,MipMapLevelIndex].Handle,
-                                                                                       aImageLayout);
-     end;
+    for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
+     VulkanImageViews[MipMapLevelIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
+                                                                   fVulkanImage,
+                                                                   ImageViewType,
+                                                                   aFormat,
+                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                   MipMapLevelIndex,
+                                                                   1,
+                                                                   0,
+                                                                   aLayers);
+     DescriptorImageInfos[MipMapLevelIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                           VulkanImageViews[MipMapLevelIndex].Handle,
+                                                                           aImageLayout);
     end;
-
 
    finally
     FreeAndNil(Fence);
@@ -245,13 +249,11 @@ begin
 end;
 
 destructor TMipmappedArray2DImage.Destroy;
-var LayerIndex,MipMapLevelIndex:TpvInt32;
+var MipMapLevelIndex:TpvInt32;
 begin
  FreeAndNil(fMemoryBlock);
- for LayerIndex:=0 to length(VulkanImageViews)-1 do begin
-  for MipMapLevelIndex:=0 to length(VulkanImageViews[LayerIndex])-1 do begin
-   FreeAndNil(VulkanImageViews[LayerIndex,MipMapLevelIndex]);
-  end;
+ for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
+  FreeAndNil(VulkanImageViews[MipMapLevelIndex]);
  end;
  VulkanImageViews:=nil;
  DescriptorImageInfos:=nil;
