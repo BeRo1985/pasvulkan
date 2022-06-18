@@ -86,7 +86,7 @@ begin
 
  DescriptorImageInfos:=nil;
 
- fMipMapLevels:=Max(1,IntLog2(Min(aWidth,aHeight)+1));
+ fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight)+1));
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
