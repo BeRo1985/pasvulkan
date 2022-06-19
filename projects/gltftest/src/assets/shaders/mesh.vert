@@ -15,6 +15,7 @@ layout(location = 7) in uint inMorphTargetVertexBaseIndex;
 layout(location = 8) in uint inJointBlockBaseIndex;
 layout(location = 9) in uint inCountJointBlocks;
 layout(location = 10) in uint inFlags;
+layout(location = 11) in uint inMaterialID;
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
@@ -25,9 +26,10 @@ layout(location = 5) out vec3 outNormal;
 layout(location = 6) out vec2 outTexCoord0;
 layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
+layout(location = 9) flat out uint outMaterialID;
 #ifdef VELOCITY
-layout(location = 9) out vec4 outPreviousClipSpace;
-layout(location = 10) out vec4 outCurrentClipSpace;
+layout(location = 10) out vec4 outPreviousClipSpace;
+layout(location = 11) out vec4 outCurrentClipSpace;
 #endif
 
 /* clang-format off */
@@ -182,6 +184,7 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
+  outMaterialID = inMaterialID;
 #ifdef VELOCITY
   {
 
