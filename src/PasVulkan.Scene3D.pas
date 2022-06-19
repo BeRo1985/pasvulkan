@@ -230,11 +230,18 @@ type EpvScene3D=class(Exception);
             { TImage }
             TImage=class(TBaseObject)
              public
-              type THashData=packed record
+              type TKind=
+                    (
+                     WhiteTexture=0,
+                     DefaultNormalMapTexture=1,
+                     ResourceTexture=2
+                    );
+                   THashData=packed record
                     MessageDigest:TpvHashSHA3.TMessageDigest;
                    end;
                    PHashData=^THashData;
              private
+              fKind:TKind;
               fResourceDataStream:TMemoryStream;
               fHashData:THashData;
               fTexture:TpvVulkanTexture;
@@ -248,6 +255,8 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
+              procedure AssignFromWhiteTexture;
+              procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
             end;
             TImageClass=class of TImage;
@@ -1203,10 +1212,8 @@ type EpvScene3D=class(Exception);
        fLock:TPasMPSpinLock;
        fUploaded:TPasMPBool32;
        fDefaultSampler:TSampler;
-       fWhiteTexture:TpvVulkanTexture;
-       fWhiteTextureLock:TPasMPSlimReaderWriterLock;
-       fDefaultNormalMapTexture:TpvVulkanTexture;
-       fDefaultNormalMapTextureLock:TPasMPSlimReaderWriterLock;
+       fWhiteTextureImage:TImage;
+       fDefaultNormalMapTextureImage:TImage;
        fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
@@ -1258,8 +1265,6 @@ type EpvScene3D=class(Exception);
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
-       procedure UploadWhiteTexture;
-       procedure UploadDefaultNormalMapTexture;
        procedure CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
                                           const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                           const aRoot:TpvSizeInt;
@@ -1565,6 +1570,22 @@ begin
 end;
 
 procedure TpvScene3D.TImage.Upload;
+const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff));
+     DefaultNormalMapTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
 var GraphicsQueue:TpvVulkanQueue;
     GraphicsCommandPool:TpvVulkanCommandPool;
     GraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -1586,16 +1607,76 @@ begin
        try
         GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
         try
-         fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
-                                                    GraphicsQueue,
-                                                    GraphicsCommandBuffer,
-                                                    GraphicsFence,
-                                                    GraphicsQueue,
-                                                    GraphicsCommandBuffer,
-                                                    GraphicsFence,
-                                                    fResourceDataStream,
-                                                    true,
-                                                    false);
+         case fKind of
+          TpvScene3D.TImage.TKind.WhiteTexture:begin
+           fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                       GraphicsQueue,
+                                                       GraphicsCommandBuffer,
+                                                       GraphicsFence,
+                                                       GraphicsQueue,
+                                                       GraphicsCommandBuffer,
+                                                       GraphicsFence,
+                                                       VK_FORMAT_R8G8B8A8_UNORM,
+                                                       VK_SAMPLE_COUNT_1_BIT,
+                                                       8,
+                                                       8,
+                                                       0,
+                                                       0,
+                                                       1,
+                                                       0,
+                                                       [TpvVulkanTextureUsageFlag.General,
+                                                        TpvVulkanTextureUsageFlag.TransferDst,
+                                                        TpvVulkanTextureUsageFlag.TransferSrc,
+                                                        TpvVulkanTextureUsageFlag.Sampled],
+                                                       @WhiteTexturePixels,
+                                                       SizeOf(TpvUInt32)*64,
+                                                       false,
+                                                       false,
+                                                       0,
+                                                       true);
+           fTexture.UpdateSampler;
+          end;
+          TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
+           fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                       GraphicsQueue,
+                                                       GraphicsCommandBuffer,
+                                                       GraphicsFence,
+                                                       GraphicsQueue,
+                                                       GraphicsCommandBuffer,
+                                                       GraphicsFence,
+                                                       VK_FORMAT_R8G8B8A8_UNORM,
+                                                       VK_SAMPLE_COUNT_1_BIT,
+                                                       8,
+                                                       8,
+                                                       0,
+                                                       0,
+                                                       1,
+                                                       0,
+                                                       [TpvVulkanTextureUsageFlag.General,
+                                                        TpvVulkanTextureUsageFlag.TransferDst,
+                                                        TpvVulkanTextureUsageFlag.TransferSrc,
+                                                        TpvVulkanTextureUsageFlag.Sampled],
+                                                       @DefaultNormalMapTexturePixels,
+                                                       SizeOf(TpvUInt32)*64,
+                                                       false,
+                                                       false,
+                                                       0,
+                                                       true);
+           fTexture.UpdateSampler;
+          end;
+          else begin
+           fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                      GraphicsQueue,
+                                                      GraphicsCommandBuffer,
+                                                      GraphicsFence,
+                                                      GraphicsQueue,
+                                                      GraphicsCommandBuffer,
+                                                      GraphicsFence,
+                                                      fResourceDataStream,
+                                                      true,
+                                                      false);
+          end;
+         end;
         finally
          FreeAndNil(GraphicsFence);
         end;
@@ -1644,9 +1725,24 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TImage.AssignFromWhiteTexture;
+begin
+ fName:=#0+'WhiteTexture';
+ fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+ fResourceDataStream.Clear;
+end;
+
+procedure TpvScene3D.TImage.AssignFromDefaultNormalMapTexture;
+begin
+ fName:=#0+'DefaultNormalMapTexture';
+ fKind:=TpvScene3D.TImage.TKind.DefaultNormalMapTexture;
+ fResourceDataStream.Clear;
+end;
+
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
 begin
  fName:=aSourceImage.Name;
+ fKind:=TpvScene3D.TImage.TKind.ResourceTexture;
  fResourceDataStream.Clear;
  aSourceImage.GetResourceData(fResourceDataStream);
 end;
@@ -2360,29 +2456,28 @@ begin
 
     try
 
-     fSceneInstance.UploadWhiteTexture;
-
-     fSceneInstance.UploadDefaultNormalMapTexture;
-
      if assigned(fData.NormalTexture.Texture) then begin
       fData.NormalTexture.Texture.Upload;
       NormalTextureDescriptorImageInfo:=fData.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      NormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTexture.DescriptorImageInfo;
+      fSceneInstance.fDefaultNormalMapTextureImage.Upload;
+      NormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      if assigned(fData.OcclusionTexture.Texture) then begin
       fData.OcclusionTexture.Texture.Upload;
       OcclusionTextureDescriptorImageInfo:=fData.OcclusionTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      OcclusionTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fWhiteTextureImage.Upload;
+      OcclusionTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      if assigned(fData.EmissiveTexture.Texture) then begin
       fData.EmissiveTexture.Texture.Upload;
       EmissiveTextureDescriptorImageInfo:=fData.EmissiveTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      EmissiveTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fWhiteTextureImage.Upload;
+      EmissiveTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      case fData.ShadingModel of
@@ -2391,25 +2486,29 @@ begin
         fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
         BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
         fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.Upload;
         MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
         fData.PBRMetallicRoughness.SpecularTexture.Texture.Upload;
         SpecularFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
         fData.PBRMetallicRoughness.SpecularColorTexture.Texture.Upload;
         SpecularColorFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
       end;
       TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness:begin
@@ -2417,33 +2516,39 @@ begin
         fData.PBRSpecularGlossiness.DiffuseTexture.Texture.Upload;
         BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.DiffuseTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
        if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
         fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
         MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       fSceneInstance.fWhiteTextureImage.Upload;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
       end;
       TpvScene3D.TMaterial.TShadingModel.Unlit:begin
        if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
         fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
         BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+        fSceneInstance.fWhiteTextureImage.Upload;
+        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
        end;
-       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       fSceneInstance.fWhiteTextureImage.Upload;
+       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
       end;
       else begin
-       BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+       fSceneInstance.fWhiteTextureImage.Upload;
+       BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
+       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
       end;
      end;
 
@@ -2451,28 +2556,32 @@ begin
       fData.PBRSheen.ColorIntensityTexture.Texture.Upload;
       SheenColorIntensityTextureDescriptorImageInfo:=fData.PBRSheen.ColorIntensityTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      SheenColorIntensityTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fWhiteTextureImage.Upload;
+      SheenColorIntensityTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
       fData.PBRClearCoat.NormalTexture.Texture.Upload;
       ClearCoatNormalTextureDescriptorImageInfo:=fData.PBRClearCoat.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      ClearCoatNormalTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fDefaultNormalMapTextureImage.Upload;
+      ClearCoatNormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
       fData.PBRClearCoat.RoughnessTexture.Texture.Upload;
       ClearCoatRoughnessTextureDescriptorImageInfo:=fData.PBRClearCoat.RoughnessTexture.Texture.GetDescriptorImageInfo;
      end else begin
-      ClearCoatRoughnessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fWhiteTextureImage.Upload;
+      ClearCoatRoughnessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.Texture.Texture) then begin
       fData.PBRClearCoat.Texture.Texture.Upload;
       ClearCoatTextureDescriptorImageInfo:=fData.PBRClearCoat.Texture.Texture.GetDescriptorImageInfo;
      end else begin
-      ClearCoatTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.DescriptorImageInfo;
+      fSceneInstance.fWhiteTextureImage.Upload;
+      ClearCoatTextureDescriptorImageInfo:=fSceneInstance.fWhiteTextureImage.fTexture.DescriptorImageInfo;
      end;
 
      fShaderDataUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -7083,6 +7192,14 @@ begin
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
+ fWhiteTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,self);
+ fWhiteTextureImage.AssignFromWhiteTexture;
+ fWhiteTextureImage.IncRef;
+
+ fDefaultNormalMapTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,self);
+ fDefaultNormalMapTextureImage.AssignFromDefaultNormalMapTexture;
+ fDefaultNormalMapTextureImage.IncRef;
+
  fEmptyMaterial:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,self);
  fEmptyMaterial.AssignFromEmpty;
  fEmptyMaterial.IncRef;
@@ -7108,14 +7225,6 @@ begin
 
  fDefaultSampler:=TSampler.Create(pvApplication.ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
-
- fWhiteTexture:=nil;
-
- fWhiteTextureLock:=TPasMPSlimReaderWriterLock.Create;
-
- fDefaultNormalMapTexture:=nil;
-
- fDefaultNormalMapTextureLock:=TPasMPSlimReaderWriterLock.Create;
 
  ReleaseFrameDelay:=MaxInFlightFrames+1;
 
@@ -7251,10 +7360,6 @@ begin
 
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
- FreeAndNil(fWhiteTexture);
-
- FreeAndNil(fDefaultNormalMapTexture);
-
  FreeAndNil(fDefaultSampler);
 
  while fGroupInstances.Count>0 do begin
@@ -7311,10 +7416,6 @@ begin
 
  FreeAndNil(fTechniques);
 
- FreeAndNil(fWhiteTextureLock);
-
- FreeAndNil(fDefaultNormalMapTextureLock);
-
  fViews.Finalize;
 
  FreeAndNil(fLock);
@@ -7347,154 +7448,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UploadWhiteTexture;
-const Pixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
-                                        TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff));
-var GraphicsQueue:TpvVulkanQueue;
-    GraphicsCommandPool:TpvVulkanCommandPool;
-    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
-    GraphicsFence:TpvVulkanFence;
-begin
- if not assigned(fWhiteTexture) then begin
-  fWhiteTextureLock.Acquire;
-  try
-   if not assigned(fWhiteTexture) then begin
-    GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
-    try
-     GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                      pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-     try
-      GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
-                                                           VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-      try
-       GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-       try
-        fWhiteTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
-                                                         VK_FORMAT_R8G8B8A8_UNORM,
-                                                         VK_SAMPLE_COUNT_1_BIT,
-                                                         8,
-                                                         8,
-                                                         0,
-                                                         0,
-                                                         1,
-                                                         0,
-                                                         [TpvVulkanTextureUsageFlag.General,
-                                                          TpvVulkanTextureUsageFlag.TransferDst,
-                                                          TpvVulkanTextureUsageFlag.TransferSrc,
-                                                          TpvVulkanTextureUsageFlag.Sampled],
-                                                         @Pixels,
-                                                         SizeOf(TpvUInt32)*64,
-                                                         false,
-                                                         false,
-                                                         0,
-                                                         true);
-        fWhiteTexture.UpdateSampler;
-       finally
-        FreeAndNil(GraphicsFence);
-       end;
-      finally
-       FreeAndNil(GraphicsCommandBuffer);
-      end;
-     finally
-      FreeAndNil(GraphicsCommandPool);
-     end;
-    finally
-     GraphicsQueue:=nil;
-    end;
-   end;
-  finally
-   fWhiteTextureLock.Release;
-  end;
- end;
-end;
-
-procedure TpvScene3D.UploadDefaultNormalMapTexture;
-const Pixels:array[0..63] of TpvUInt32=(TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                        TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
-var GraphicsQueue:TpvVulkanQueue;
-    GraphicsCommandPool:TpvVulkanCommandPool;
-    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
-    GraphicsFence:TpvVulkanFence;
-begin
- if not assigned(fDefaultNormalMapTexture) then begin
-  fDefaultNormalMapTextureLock.Acquire;
-  try
-   if not assigned(fDefaultNormalMapTexture) then begin
-    GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
-    try
-     GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                      pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-     try
-      GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
-                                                           VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-      try
-       GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-       try
-        fDefaultNormalMapTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
-                                                                    GraphicsQueue,
-                                                                    GraphicsCommandBuffer,
-                                                                    GraphicsFence,
-                                                                    GraphicsQueue,
-                                                                    GraphicsCommandBuffer,
-                                                                    GraphicsFence,
-                                                                    VK_FORMAT_R8G8B8A8_UNORM,
-                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                    8,
-                                                                    8,
-                                                                    0,
-                                                                    0,
-                                                                    1,
-                                                                    0,
-                                                                    [TpvVulkanTextureUsageFlag.General,
-                                                                     TpvVulkanTextureUsageFlag.TransferDst,
-                                                                     TpvVulkanTextureUsageFlag.TransferSrc,
-                                                                     TpvVulkanTextureUsageFlag.Sampled],
-                                                                    @Pixels,
-                                                                    SizeOf(TpvUInt32)*64,
-                                                                    false,
-                                                                    false,
-                                                                    0,
-                                                                    true);
-        fDefaultNormalMapTexture.UpdateSampler;
-       finally
-        FreeAndNil(GraphicsFence);
-       end;
-      finally
-       FreeAndNil(GraphicsCommandBuffer);
-      end;
-     finally
-      FreeAndNil(GraphicsCommandPool);
-     end;
-    finally
-     GraphicsQueue:=nil;
-    end;
-   end;
-  finally
-   fDefaultNormalMapTextureLock.Release;
-  end;
- end;
-end;
-
 procedure TpvScene3D.Upload;
 var Group:TGroup;
     Index:TpvSizeInt;
@@ -7506,7 +7459,6 @@ begin
    if not fUploaded then begin
     try
      fDefaultSampler.Upload;
-     UploadWhiteTexture;
      for Index:=0 to length(fLightBuffers)-1 do begin
       fLightBuffers[Index].Upload;
      end;
@@ -7617,7 +7569,6 @@ begin
      for Image in fImages do begin
       Image.Unload;
      end;
-     FreeAndNil(fWhiteTexture);
      fDefaultSampler.Unload;
     finally
      fUploaded:=false;
