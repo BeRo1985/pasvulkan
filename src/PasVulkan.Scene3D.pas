@@ -216,6 +216,7 @@ type EpvScene3D=class(Exception);
               procedure DecRef; virtual;
              public
               property SceneInstance:TpvScene3D read fSceneInstance;
+              property ID:TID read fID;
              published
               property Name:TpvUTF8String read fName write fName;
               property Uploaded:TPasMPBool32 read fUploaded;
@@ -3499,7 +3500,8 @@ var PrimitiveIndex,
     Vertex:PVertex;
     OldVertex:TVertex;
     MorphTargetVertex:PMorphTargetVertex;
-    MorphTargetVertexIndex:TpvUInt32;
+    MorphTargetVertexIndex,
+    MaterialID:TpvUInt32;
 begin
 
  result:=fNodeMeshInstances;
@@ -3509,6 +3511,11 @@ begin
 
   for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
    Primitive:=@fPrimitives[PrimitiveIndex];
+   if assigned(Primitive^.Material) then begin
+    MaterialID:=Primitive^.Material.ID;
+   end else begin
+    MaterialID:=0;
+   end;
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive^.MorphTargetBaseIndex;
@@ -3517,6 +3524,7 @@ begin
    for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
+    Vertex^.MaterialID:=MaterialID;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -3554,6 +3562,12 @@ begin
 
    Primitive:=@fPrimitives[PrimitiveIndex];
 
+   if assigned(Primitive^.Material) then begin
+    MaterialID:=Primitive^.Material.ID;
+   end else begin
+    MaterialID:=0;
+   end;
+
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
 
@@ -3566,6 +3580,7 @@ begin
     NewVertexIndex:=fGroup.fVertices.Add(OldVertex);
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
+    Vertex^.MaterialID:=MaterialID;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
