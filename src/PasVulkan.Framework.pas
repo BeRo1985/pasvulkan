@@ -358,6 +358,7 @@ type EpvVulkanException=class(Exception);
        fVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;}
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
+       fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
@@ -413,6 +414,8 @@ type EpvVulkanException=class(Exception);
        property Vulkan11Properties:TVkPhysicalDeviceVulkan11Properties read fVulkan11Properties;}
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
+       property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
+       property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
@@ -591,6 +594,7 @@ type EpvVulkanException=class(Exception);
        fUseNVIDIADeviceDiagnostics:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
+       fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
 //     fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
        fPhysicalDeviceMultiviewFeatures:TVkPhysicalDeviceMultiviewFeatures;
@@ -6946,14 +6950,20 @@ begin
  end;
 
  begin
+  FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
+  fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>0 then begin
+   fDescriptorIndexingFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fDescriptorIndexingFeaturesEXT;
+  end;
+ end;
+
+ begin
   FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
   fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
   if AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>0 then begin
    fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
-   fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=VK_TRUE;
-  end else begin
-   fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=VK_FALSE;
   end;
  end;
 
@@ -8307,6 +8317,14 @@ begin
     fPhysicalDeviceMultiviewFeatures.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
     fPhysicalDeviceMultiviewFeatures.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fPhysicalDeviceMultiviewFeatures;
+   end;
+
+   FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
+   fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+   if assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
+    fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
+    fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
    end;
 
    FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
