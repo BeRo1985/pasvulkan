@@ -78,6 +78,7 @@ uses {$ifdef Windows}
      PasVulkan.Hash.SHA3,
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
+     PasVulkan.IDManager,
      PasVulkan.Resources,
      PasVulkan.Techniques,
      PasVulkan.Framework,
@@ -140,7 +141,9 @@ type EpvScene3D=class(Exception);
             PView=^TView;
             TViews=TpvDynamicArray<TView>;
        const MaxViews=65536 div SizeOf(TView);
-       type TGlobalViewUniformBuffer=record
+       type TID=TpvUInt32;
+            TIDManager=class(TpvGenericIDManager<TID>);
+            TGlobalViewUniformBuffer=record
              Items:array[0..MaxViews-1] of TView;
             end;
             PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
@@ -193,6 +196,7 @@ type EpvScene3D=class(Exception);
             TBaseObject=class(TpvResource)
              private
               fSceneInstance:TpvScene3D;
+              fID:TID;
               fName:TpvUTF8String;
               fReferenceCounter:Int32;
               fUploaded:TPasMPBool32;
@@ -1181,6 +1185,10 @@ type EpvScene3D=class(Exception);
               property Scene:TScene read fScene;
             end;
             TGroups=TpvObjectGenericList<TGroup>;
+            TImageIDHashMap=TpvHashMap<TID,TImage>;
+            TSamplerIDHashMap=TpvHashMap<TID,TSampler>;
+            TTextureIDHashMap=TpvHashMap<TID,TTexture>;
+            TMaterialIDHashMap=TpvHashMap<TID,TMaterial>;
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
@@ -1205,15 +1213,23 @@ type EpvScene3D=class(Exception);
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
+       fImageIDManager:TIDManager;
+       fImageIDHashMap:TImageIDHashMap;
        fImageHashMap:TImageHashMap;
        fSamplerListLock:TPasMPSlimReaderWriterLock;
        fSamplers:TSamplers;
+       fSamplerIDManager:TIDManager;
+       fSamplerIDHashMap:TSamplerIDHashMap;
        fSamplerHashMap:TSamplerHashMap;
        fTextureListLock:TPasMPSlimReaderWriterLock;
        fTextures:TTextures;
+       fTextureIDManager:TIDManager;
+       fTextureIDHashMap:TTextureIDHashMap;
        fTextureHashMap:TTextureHashMap;
        fMaterialListLock:TPasMPSlimReaderWriterLock;
        fMaterials:TMaterials;
+       fMaterialIDManager:TIDManager;
+       fMaterialIDHashMap:TMaterialIDHashMap;
        fMaterialHashMap:TMaterialHashMap;
        fEmptyMaterial:TpvScene3D.TMaterial;
        fLights:array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
@@ -1501,6 +1517,8 @@ begin
   fSceneInstance.fImageListLock.Acquire;
   try
    fSceneInstance.fImages.Add(self);
+   fID:=fSceneInstance.fImageIDManager.AllocateID;
+   fSceneInstance.fImageIDHashMap.Add(fID,self);
   finally
    fSceneInstance.fImageListLock.Release;
   end;
@@ -1524,6 +1542,13 @@ begin
     fSceneInstance.fImages.Remove(self);
     if fSceneInstance.fImageHashMap[fHashData]=self then begin
      fSceneInstance.fImageHashMap.Delete(fHashData);
+    end;
+    if fID>0 then begin
+     if fSceneInstance.fImageIDHashMap[fID]=self then begin
+      fSceneInstance.fImageIDHashMap.Delete(fID);
+     end;
+     fSceneInstance.fImageIDManager.FreeID(fID);
+     fID:=0;
     end;
    finally
     fSceneInstance.fImageListLock.Release;
@@ -1643,6 +1668,8 @@ begin
   fSceneInstance.fSamplerListLock.Acquire;
   try
    fSceneInstance.fSamplers.Add(self);
+   fID:=fSceneInstance.fSamplerIDManager.AllocateID;
+   fSceneInstance.fSamplerIDHashMap.Add(fID,self);
   finally
    fSceneInstance.fSamplerListLock.Release;
   end;
@@ -1668,6 +1695,13 @@ begin
     fSceneInstance.fSamplers.Remove(self);
     if fSceneInstance.fSamplerHashMap[HashData]=self then begin
      fSceneInstance.fSamplerHashMap.Delete(HashData);
+    end;
+    if fID>0 then begin
+     if fSceneInstance.fSamplerIDHashMap[fID]=self then begin
+      fSceneInstance.fSamplerIDHashMap.Delete(fID);
+     end;
+     fSceneInstance.fSamplerIDManager.FreeID(fID);
+     fID:=0;
     end;
    finally
     fSceneInstance.fSamplerListLock.Release;
@@ -1871,6 +1905,8 @@ begin
   fSceneInstance.fTextureListLock.Acquire;
   try
    fSceneInstance.fTextures.Add(self);
+   fID:=fSceneInstance.fTextureIDManager.AllocateID;
+   fSceneInstance.fTextureIDHashMap.Add(fID,self);
   finally
    fSceneInstance.fTextureListLock.Release;
   end;
@@ -1910,6 +1946,13 @@ begin
     fSceneInstance.fTextures.Remove(self);
     if fSceneInstance.fTextureHashMap[HashData]=self then begin
      fSceneInstance.fTextureHashMap.Delete(HashData);
+    end;
+    if fID>0 then begin
+     if fSceneInstance.fTextureIDHashMap[fID]=self then begin
+      fSceneInstance.fTextureIDHashMap.Delete(fID);
+     end;
+     fSceneInstance.fTextureIDManager.FreeID(fID);
+     fID:=0;
     end;
    finally
     fSceneInstance.fTextureListLock.Release;
@@ -2152,6 +2195,8 @@ begin
   fSceneInstance.fMaterialListLock.Acquire;
   try
    fSceneInstance.fMaterials.Add(self);
+   fID:=fSceneInstance.fMaterialIDManager.AllocateID;
+   fSceneInstance.fMaterialIDHashMap.Add(fID,self);
   finally
    fSceneInstance.fMaterialListLock.Release;
   end;
@@ -2266,6 +2311,13 @@ begin
     fSceneInstance.fMaterials.Remove(self);
     if fSceneInstance.fMaterialHashMap[fData]=self then begin
      fSceneInstance.fMaterialHashMap.Delete(fData);
+    end;
+    if fID>0 then begin
+     if fSceneInstance.fMaterialIDHashMap[fID]=self then begin
+      fSceneInstance.fMaterialIDHashMap.Delete(fID);
+     end;
+     fSceneInstance.fMaterialIDManager.FreeID(fID);
+     fID:=0;
     end;
    finally
     fSceneInstance.fMaterialListLock.Release;
@@ -6969,26 +7021,46 @@ begin
  fTechniques:=TpvTechniques.Create;
 
  fImageListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fImages:=TImages.Create;
  fImages.OwnsObjects:=false;
+
+ fImageIDManager:=TIDManager.Create;
+
+ fImageIDHashMap:=TImageIDHashMap.Create(nil);
 
  fImageHashMap:=TImageHashMap.Create(nil);
 
  fSamplerListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fSamplers:=TSamplers.Create;
  fSamplers.OwnsObjects:=false;
+
+ fSamplerIDManager:=TIDManager.Create;
+
+ fSamplerIDHashMap:=TSamplerIDHashMap.Create(nil);
 
  fSamplerHashMap:=TSamplerHashMap.Create(nil);
 
  fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
+
+ fTextureIDManager:=TIDManager.Create;
+
+ fTextureIDHashMap:=TTextureIDHashMap.Create(nil);
 
  fTextureHashMap:=TTextureHashMap.Create(nil);
 
  fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
+
+ fMaterialIDManager:=TIDManager.Create;
+
+ fMaterialIDHashMap:=TMaterialIDHashMap.Create(nil);
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
@@ -7187,6 +7259,8 @@ begin
  end;
  FreeAndNil(fMaterials);
  FreeAndNil(fMaterialHashMap);
+ FreeAndNil(fMaterialIDHashMap);
+ FreeAndNil(fMaterialIDManager);
  FreeAndNil(fMaterialListLock);
 
  while fTextures.Count>0 do begin
@@ -7194,6 +7268,8 @@ begin
  end;
  FreeAndNil(fTextures);
  FreeAndNil(fTextureHashMap);
+ FreeAndNil(fTextureIDHashMap);
+ FreeAndNil(fTextureIDManager);
  FreeAndNil(fTextureListLock);
 
  while fSamplers.Count>0 do begin
@@ -7201,6 +7277,8 @@ begin
  end;
  FreeAndNil(fSamplers);
  FreeAndNil(fSamplerHashMap);
+ FreeAndNil(fSamplerIDHashMap);
+ FreeAndNil(fSamplerIDManager);
  FreeAndNil(fSamplerListLock);
 
  while fImages.Count>0 do begin
@@ -7208,6 +7286,8 @@ begin
  end;
  FreeAndNil(fImages);
  FreeAndNil(fImageHashMap);
+ FreeAndNil(fImageIDHashMap);
+ FreeAndNil(fImageIDManager);
  FreeAndNil(fImageListLock);
 
  FreeAndNil(fTechniques);
