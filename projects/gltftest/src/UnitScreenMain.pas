@@ -92,6 +92,25 @@ type { TScreenMain }
              PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+             { TMeshComputePass }
+             TMeshComputePass=class(TpvFrameGraph.TComputePass)
+              private
+               fParent:TScreenMain;
+               fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
+               fComputeShaderModule:TpvVulkanShaderModule;
+               fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
+               fPipelineLayout:TpvVulkanPipelineLayout;
+               fPipeline:TpvVulkanComputePipeline;
+              public
+               constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+               destructor Destroy; override;
+               procedure Show; override;
+               procedure Hide; override;
+               procedure AfterCreateSwapChain; override;
+               procedure BeforeDestroySwapChain; override;
+               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+             end;
              { TCascadedShadowMapRenderPass }
              TCascadedShadowMapRenderPass=class(TpvFrameGraph.TRenderPass)
               public
@@ -688,6 +707,7 @@ type { TScreenMain }
        fPrimaryDirectionalLight:TpvScene3D.TLight;
        fFrameGraph:TpvFrameGraph;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
+       fMeshComputePass:TMeshComputePass;
        fCascadedShadowMapRenderPass:TCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TCascadedShadowMapBlurRenderPass;
@@ -796,6 +816,86 @@ implementation
 uses PasGLTF,
      UnitApplication,
      PasVulkan.Frustum;
+
+{ TScreenMain.TMeshComputePass }
+
+constructor TScreenMain.TMeshComputePass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+begin
+ inherited Create(aFrameGraph);
+ fParent:=aParent;
+ Name:='MeshComputePass';
+end;
+
+destructor TScreenMain.TMeshComputePass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenMain.TMeshComputePass.Show;
+var Stream:TStream;
+begin
+
+ inherited Show;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_comp.spv');
+ try
+  fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+end;
+
+procedure TScreenMain.TMeshComputePass.Hide;
+begin
+ FreeAndNil(fVulkanPipelineShaderStageCompute);
+ FreeAndNil(fComputeShaderModule);
+ inherited Hide;
+end;
+
+procedure TScreenMain.TMeshComputePass.AfterCreateSwapChain;
+begin
+
+ inherited AfterCreateSwapChain;
+
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MeshComputeVulkanDescriptorSetLayout);
+ fPipelineLayout.Initialize;
+
+ fPipeline:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+                                            pvApplication.VulkanPipelineCache,
+                                            0,
+                                            fVulkanPipelineShaderStageCompute,
+                                            fPipelineLayout,
+                                            nil,
+                                            0);
+
+end;
+
+procedure TScreenMain.TMeshComputePass.BeforeDestroySwapChain;
+begin
+ FreeAndNil(fPipeline);
+ FreeAndNil(fPipelineLayout);
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TScreenMain.TMeshComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+end;
+
+procedure TScreenMain.TMeshComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+begin
+ inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+ fParent.fScene3D.UpdateCachedVertices(fPipeline,
+                                       aInFlightFrameIndex,
+                                       aCommandBuffer,
+                                       fPipelineLayout);
+end;
 
 { TScreenMain.TCascadedShadowMapRenderPass }
 
@@ -7522,7 +7622,10 @@ begin
                                   1
                                  );
 
+ fMeshComputePass:=TMeshComputePass.Create(fFrameGraph,self);
+
  fCascadedShadowMapRenderPass:=TCascadedShadowMapRenderPass.Create(fFrameGraph,self);
+ fCascadedShadowMapRenderPass.AddExplicitPassDependency(fMeshComputePass);
 
  fCascadedShadowMapResolveRenderPass:=TCascadedShadowMapResolveRenderPass.Create(fFrameGraph,self);
 
@@ -7531,6 +7634,7 @@ begin
  fCascadedShadowMapBlurRenderPasses[1]:=TCascadedShadowMapBlurRenderPass.Create(fFrameGraph,self,false);
 
  fForwardRenderPass:=TForwardRenderPass.Create(fFrameGraph,self);
+ fForwardRenderPass.AddExplicitPassDependency(fMeshComputePass);
 
  fForwardRenderMipMapComputePass:=TForwardRenderMipMapComputePass.Create(fFrameGraph,self);
 
@@ -7539,6 +7643,7 @@ begin
   TTransparencyMode.Direct:begin
 
    fDirectTransparencyRenderPass:=TDirectTransparencyRenderPass.Create(fFrameGraph,self);
+   fDirectTransparencyRenderPass.AddExplicitPassDependency(fMeshComputePass);
    fDirectTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fDirectTransparencyResolveRenderPass:=TDirectTransparencyResolveRenderPass.Create(fFrameGraph,self);
@@ -7551,6 +7656,7 @@ begin
    fLockOrderIndependentTransparencyClearCustomPass:=TLockOrderIndependentTransparencyClearCustomPass.Create(fFrameGraph,self);
 
    fLockOrderIndependentTransparencyRenderPass:=TLockOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
+   fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fMeshComputePass);
    fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fLockOrderIndependentTransparencyClearCustomPass);
    fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
@@ -7561,6 +7667,7 @@ begin
   TTransparencyMode.WBOIT:begin
 
    fWeightBlendedOrderIndependentTransparencyRenderPass:=TWeightBlendedOrderIndependentTransparencyRenderPass.Create(fFrameGraph,self);
+   fWeightBlendedOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fMeshComputePass);
    fWeightBlendedOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fWeightBlendedOrderIndependentTransparencyResolveRenderPass:=TWeightBlendedOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
@@ -7570,6 +7677,7 @@ begin
   TTransparencyMode.MBOIT:begin
 
    fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:=TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.Create(fFrameGraph,self);
+   fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.AddExplicitPassDependency(fMeshComputePass);
    fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
    fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:=TMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Create(fFrameGraph,self);

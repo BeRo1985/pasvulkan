@@ -9,8 +9,8 @@
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
-  uint vertexOffset;
-  uint countVertices;
+  uint indexOffset;
+  uint countIndices;
   uint generation;
 } pushConstants;
 
@@ -41,11 +41,15 @@ layout(std430, set = 0, binding = 0) buffer InVertices {
   InPackedVertex inVertices[];
 };
 
-layout(std430, set = 0, binding = 0) buffer OutVertices {
+layout(std430, set = 0, binding = 1) buffer OutVertices {
   OutPackedVertex outVertices[];
 };
 
-layout(std430, set = 0, binding = 2) buffer MorphTargetVertices {
+layout(std430, set = 0, binding = 2) buffer InIndices {
+  uint inIndices[];
+};
+
+layout(std430, set = 0, binding = 3) buffer MorphTargetVertices {
   MorphTargetVertex morphTargetVertices[];
 };
 
@@ -54,15 +58,15 @@ struct JointBlock {
   vec4 weights;
 };
 
-layout(std430, set = 0, binding = 3) buffer JointBlocks {
+layout(std430, set = 0, binding = 4) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
-layout(std430, set = 0, binding = 4) buffer NodeMatrices {
+layout(std430, set = 0, binding = 5) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
 
-layout(std430, set = 0, binding = 5) buffer MorphTargetWeights {
+layout(std430, set = 0, binding = 6) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
@@ -79,8 +83,8 @@ vec3 octDecode(vec2 oct) {
 void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
-  if (vertexIndex < pushConstants.countVertices) {
-    vertexIndex += pushConstants.vertexOffset;
+  if (vertexIndex < pushConstants.countIndices) {
+    vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];    
     if (outVertices[vertexIndex].tangentGeneration.w != pushConstants.generation) {
       InPackedVertex inPackedVertex = inVertices[vertexIndex];
       vec3 inPosition = uintBitsToFloat(inPackedVertex.positionNodeIndex.xyz);
