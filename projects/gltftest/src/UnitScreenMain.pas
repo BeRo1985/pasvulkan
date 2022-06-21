@@ -213,6 +213,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               public
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -287,6 +288,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               private
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -369,6 +371,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               private
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -437,6 +440,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               private
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -477,6 +481,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               private
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -548,6 +553,7 @@ type { TScreenMain }
                procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                   const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                   const aInFlightFrameIndex:TpvSizeInt);
               private
                fVulkanRenderPass:TpvVulkanRenderPass;
@@ -1184,6 +1190,7 @@ begin
  if InFlightFrameState^.Ready then begin
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                        -1,
                         aInFlightFrameIndex,
                         1,
                         InFlightFrameState^.CascadedShadowMapViewIndex,
@@ -1194,6 +1201,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                        -1,
                         aInFlightFrameIndex,
                         1,
                         InFlightFrameState^.CascadedShadowMapViewIndex,
@@ -1204,6 +1212,7 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
 { fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -2326,6 +2335,7 @@ end;
 procedure TScreenMain.TForwardRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                   const aRenderPassIndex:TpvSizeInt;
+                                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                   const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
@@ -2362,6 +2372,7 @@ begin
    if fParent.fUseDepthPrepass then begin
 
     fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                          -1,
                           aInFlightFrameIndex,
                           0,
                           InFlightFrameState^.FinalViewIndex,
@@ -2386,6 +2397,7 @@ begin
    end;
 
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -2397,6 +2409,7 @@ begin
 
   if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -2410,6 +2423,7 @@ begin
  { if fParent.fUseDepthPrepass then begin
 
     fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                          -1,
                           aInFlightFrameIndex,
                           0,
                           InFlightFrameState^.FinalViewIndex,
@@ -3212,6 +3226,7 @@ end;
 procedure TScreenMain.TDirectTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                              const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                              const aRenderPassIndex:TpvSizeInt;
+                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                              const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
@@ -3251,6 +3266,7 @@ begin
   end;}
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -4169,9 +4185,10 @@ begin
 end;
 
 procedure TScreenMain.TLockOrderIndependentTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                                       const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                                       const aRenderPassIndex:TpvSizeInt;
-                                                                                       const aInFlightFrameIndex:TpvSizeInt);
+                                                                                           const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                           const aRenderPassIndex:TpvSizeInt;
+                                                                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                                           const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
@@ -4199,6 +4216,7 @@ begin
 
   if fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -4210,6 +4228,7 @@ begin
   end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -4953,6 +4972,7 @@ end;
 procedure TScreenMain.TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                                             const aRenderPassIndex:TpvSizeInt;
+                                                                                                            const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                                             const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
@@ -4981,6 +5001,7 @@ begin
 
   if fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -4992,6 +5013,7 @@ begin
   end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -5458,6 +5480,7 @@ end;
 procedure TScreenMain.TMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                                                const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                                                const aRenderPassIndex:TpvSizeInt;
+                                                                                                               const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                                                const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
@@ -5486,6 +5509,7 @@ begin
 
   if fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -5497,6 +5521,7 @@ begin
   end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -6248,9 +6273,10 @@ begin
 end;
 
 procedure TScreenMain.TWeightBlendedOrderIndependentTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                                                            const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                                                            const aRenderPassIndex:TpvSizeInt;
-                                                                                                            const aInFlightFrameIndex:TpvSizeInt);
+                                                                                                    const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                                    const aRenderPassIndex:TpvSizeInt;
+                                                                                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                                                    const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
@@ -6278,6 +6304,7 @@ begin
 
   if fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -6289,6 +6316,7 @@ begin
   end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                        -1,
                         aInFlightFrameIndex,
                         0,
                         InFlightFrameState^.FinalViewIndex,
@@ -8495,6 +8523,8 @@ begin
    end;
 
    fScene3D.Update(aInFlightFrameIndex);
+
+   fScene3D.TransferViewsToPreviousViews;
 
    fScene3D.ClearViews;
 

@@ -228,6 +228,7 @@ type EpvScene3D=class(Exception);
             TOnSetRenderPassResources=procedure(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                 const aPipelineLayout:TpvVulkanPipelineLayout;
                                                 const aRenderPassIndex:TpvSizeInt;
+                                                const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                 const aInFlightFrameIndex:TpvSizeInt) of object;
             { TBaseObject }
             TBaseObject=class(TpvResource)
@@ -1137,6 +1138,7 @@ type EpvScene3D=class(Exception);
                                                     const aCommandBuffer:TpvVulkanCommandBuffer;
                                                     const aPipelineLayout:TpvVulkanPipelineLayout);
                      procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -1215,12 +1217,14 @@ type EpvScene3D=class(Exception);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRenderPassIndex:TpvSizeInt;
+                                          const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
               procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                              const aInFlightFrameIndex:TpvSizeInt;
                                              const aCommandBuffer:TpvVulkanCommandBuffer;
                                              const aPipelineLayout:TpvVulkanPipelineLayout);
               procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                             const aPreviousInFlightFrameIndex:TpvSizeInt;
                              const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -1319,6 +1323,7 @@ type EpvScene3D=class(Exception);
        fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
        fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
+       fPreviousViews:TViews;
        fViews:TViews;
        fVertexStagePushConstants:array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
@@ -1346,6 +1351,7 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+       procedure TransferViewsToPreviousViews;
        procedure ClearViews;
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
@@ -1369,6 +1375,7 @@ type EpvScene3D=class(Exception);
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                      const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
                       const aRenderPassIndex:TpvSizeInt;
                       const aViewBaseIndex:TpvSizeInt;
@@ -6009,12 +6016,16 @@ end;
 procedure TpvScene3D.TGroup.SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aPipelineLayout:TpvVulkanPipelineLayout;
                                               const aRenderPassIndex:TpvSizeInt;
+                                              const aPreviousInFlightFrameIndex:TpvSizeInt;
                                               const aInFlightFrameIndex:TpvSizeInt);
 const Offsets:TVkDeviceSize=0;
 begin
  if not fSetGroupResourcesDone[aRenderPassIndex] then begin
   fSetGroupResourcesDone[aRenderPassIndex]:=true;
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  if aPreviousInFlightFrameIndex>=0 then begin
+   aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanCachedVertexBuffers[aPreviousInFlightFrameIndex].Handle,@Offsets);
+  end;
   aCommandBuffer.CmdBindIndexBuffer(fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  end;
 end;
@@ -6055,6 +6066,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                                 const aPreviousInFlightFrameIndex:TpvSizeInt;
                                  const aInFlightFrameIndex:TpvSizeInt;
                                  const aRenderPassIndex:TpvSizeInt;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -6067,6 +6079,7 @@ begin
  fSetGroupResourcesDone[aRenderPassIndex]:=false;
  for Instance in fInstances do begin
   Instance.Draw(aGraphicsPipelines,
+                aPreviousInFlightFrameIndex,
                 aInFlightFrameIndex,
                 aRenderPassIndex,
                 aCommandBuffer,
@@ -7387,6 +7400,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                            const aInFlightFrameIndex:TpvSizeInt;
                                            const aRenderPassIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -7440,9 +7454,9 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
                                          nil);
    end;
    if WasMeshFirst then begin
-    fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+    fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
     if assigned(aOnSetRenderPassResources) then begin
-     aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+     aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
     end;
    end;
    aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
@@ -7579,6 +7593,8 @@ begin
  for Index:=0 to length(fCountLights)-1 do begin
   fCountLights[Index]:=0;
  end;
+
+ fPreviousViews.Initialize;
 
  fViews.Initialize;
 
@@ -7808,6 +7824,8 @@ begin
  FreeAndNil(fImageListLock);
 
  FreeAndNil(fTechniques);
+
+ fPreviousViews.Finalize;
 
  fViews.Finalize;
 
@@ -8389,6 +8407,12 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TransferViewsToPreviousViews;
+begin
+ fPreviousViews.Count:=0;
+ fPreviousViews.Add(fViews);
+end;
+
 procedure TpvScene3D.ClearViews;
 begin
  fViews.Count:=0;
@@ -8418,10 +8442,16 @@ begin
   Move(fViews.Items[0],
        fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
        fViews.Count*SizeOf(TpvScene3D.TView));
+  if fPreviousViews.Count=0 then begin
+   fPreviousViews.Add(fViews);
+  end;
+  Move(fPreviousViews.Items[0],
+       fGlobalVulkanViews[aInFlightFrameIndex].Items[fViews.Count],
+       fPreviousViews.Count*SizeOf(TpvScene3D.TView));
   if assigned(fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
    fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fViews.Items[0],
                                                                     0,
-                                                                    fViews.Count*SizeOf(TpvScene3D.TView),
+                                                                    (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
                                                                     FlushUpdateData
                                                                    );
   end;
@@ -8578,6 +8608,7 @@ begin
 end;
 
 procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+                          const aPreviousInFlightFrameIndex:TpvSizeInt;
                           const aInFlightFrameIndex:TpvSizeInt;
                           const aRenderPassIndex:TpvSizeInt;
                           const aViewBaseIndex:TpvSizeInt;
@@ -8620,6 +8651,7 @@ begin
   for Group in fGroups do begin
    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
     Group.Draw(aGraphicsPipelines,
+               aPreviousInFlightFrameIndex,
                aInFlightFrameIndex,
                aRenderPassIndex,
                aCommandBuffer,
