@@ -6945,8 +6945,8 @@ var CullFace,Blend:TPasGLTFInt32;
   Node:=fGroup.fNodes[aNodeIndex];
   InstanceNode^.Processed:=true;
   Dirty:=aDirty;
-  Dirty:=true;
   if InstanceNode^.CountOverwrites>0 then begin
+   Dirty:=true;
    SkinUsed:=true;
    TranslationSum.x:=0.0;
    TranslationSum.y:=0.0;
@@ -7096,6 +7096,7 @@ var CullFace,Blend:TPasGLTFInt32;
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
+  Dirty:=Dirty or (assigned(Node.fSkin) or (length(Node.fWeights)>0));
   if assigned(Node.fLight) then begin
    if assigned(InstanceNode^.Light) then begin
     Light:=InstanceNode^.Light;
