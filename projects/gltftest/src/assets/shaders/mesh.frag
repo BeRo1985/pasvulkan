@@ -66,6 +66,8 @@ layout(location = 11) in vec4 inCurrentClipSpace;
   #if defined(MBOIT) && defined(MBOITPASS1)
     layout(location = 0) out vec4 outFragMBOITMoments0;
     layout(location = 1) out vec4 outFragMBOITMoments1;
+  #elif defined(VELOCITY)
+    layout(location = 0) out vec2 outFragVelocity;
   #endif
 #else
   #if defined(WBOIT)
@@ -1131,7 +1133,7 @@ void main() {
 #endif
 
 #ifdef VELOCITY
-  outVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
+  outFragVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
 #endif
 
 }

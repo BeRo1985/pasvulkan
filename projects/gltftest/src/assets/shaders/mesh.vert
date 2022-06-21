@@ -34,10 +34,6 @@ layout(location = 11) out vec4 outCurrentClipSpace;
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
-#ifdef VELOCITY
-  uint countNodeMatrices;
-  uint countMorphTargetWeights;
-#endif
 } pushConstants;
 
 // Global descriptor set
@@ -62,18 +58,6 @@ void main() {
 
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 
-  View view = uView.views[viewIndex];
-
-#if 1
-  // The actual standard approach
-  vec3 cameraPosition = inverse(view.viewMatrix)[3].xyz;
-#else
-  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
-#endif
-
-  vec3 position = inPosition;
- 
   mat3 tangentSpace;
   {
     vec3 tangent = inTangent.xyz;
@@ -85,6 +69,18 @@ void main() {
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
   
+  View view = uView.views[viewIndex];
+
+#if 1
+  // The actual standard approach
+  vec3 cameraPosition = inverse(view.viewMatrix)[3].xyz;
+#else
+  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
+  vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
+#endif
+
+  vec3 position = inPosition;
+
   vec4 worldSpacePosition = vec4(position, 1.0);
   worldSpacePosition.xyz /= worldSpacePosition.w;
 
@@ -102,7 +98,13 @@ void main() {
   outColor0 = inColor0;
   outMaterialID = inMaterialID;
 
+#ifdef VELOCITY
+   View previousView = uView.views[viewIndex + pushConstants.countViews];
+   outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+   gl_Position = outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+#else
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+#endif
 
   gl_PointSize = 1.0;
 }

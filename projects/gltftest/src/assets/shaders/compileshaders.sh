@@ -14,6 +14,8 @@ compileshaderarguments=(
   '-V mesh.comp -o mesh_comp.spv'
 
   '-V mesh.vert -o mesh_vert.spv'
+
+  '-V mesh.vert -DVELOCITY -o mesh_velocity_vert.spv'
   
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv'
   '-V mesh.frag -DLIGHTS -DSHADOWS -DALPHATEST -o mesh_masked_frag.spv'
@@ -67,6 +69,12 @@ compileshaderarguments=(
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -DUSEDEMOTE -o mesh_depth_masked_demote_frag.spv'  
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -o mesh_depth_masked_nodiscard_frag.spv'  
   '-V mesh.frag -DDEPTHONLY -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_depth_masked_nodiscard_reversedz_frag.spv'  
+
+  '-V mesh.frag -DDEPTHONLY -DVELOCITY -o mesh_depth_velocity_frag.spv'
+  '-V mesh.frag -DDEPTHONLY -DVELOCITY -DALPHATEST -o mesh_depth_velocity_masked_frag.spv'
+  '-V mesh.frag -DDEPTHONLY -DVELOCITY -DALPHATEST -DUSEDEMOTE -o mesh_depth_velocity_masked_demote_frag.spv'  
+  '-V mesh.frag -DDEPTHONLY -DVELOCITY -DALPHATEST -DNODISCARD -o mesh_depth_velocity_masked_nodiscard_frag.spv'  
+  '-V mesh.frag -DDEPTHONLY -DVELOCITY -DALPHATEST -DNODISCARD -DREVERSEDZ -o mesh_depth_velocity_masked_nodiscard_reversedz_frag.spv'  
 
   '-V mboit_resolve.frag -o mboit_resolve_frag.spv'
   '-V mboit_resolve.frag -DMSAA -o mboit_resolve_msaa_frag.spv'
