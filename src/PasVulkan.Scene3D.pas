@@ -1381,7 +1381,7 @@ type EpvScene3D=class(Exception);
                               const aAspectRatio:TpvScalar;
                               out aZNear:TpvScalar;
                               out aZFar:TpvScalar);
-       procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
@@ -7314,7 +7314,7 @@ var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount,
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
     Node:TpvScene3D.TGroup.TInstance.PNode;
-    MeshFirst:boolean;
+    MeshFirst,OK:boolean;
  procedure Flush;
  var MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
  begin
@@ -8671,9 +8671,12 @@ begin
 
 end;
 
-procedure TpvScene3D.InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+procedure TpvScene3D.InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
 begin
  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ if aWithPreviousPosition then begin
+  aPipeline.VertexInputState.AddVertexInputBindingDescription(1,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ end;
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.MaterialID)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
@@ -8681,6 +8684,9 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord0)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord1)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Color0)));
+ if aWithPreviousPosition then begin
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
+ end;
 end;
 
 initialization

@@ -11,6 +11,9 @@ layout(location = 3) in vec3 inTangent;
 layout(location = 4) in vec2 inTexCoord0;
 layout(location = 5) in vec2 inTexCoord1;
 layout(location = 6) in vec4 inColor0;
+#ifdef VELOCITY
+layout(location = 7) in vec3 inPreviousPosition;
+#endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
@@ -100,6 +103,6 @@ void main() {
   outMaterialID = inMaterialID;
 
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
-  
+
   gl_PointSize = 1.0;
 }
