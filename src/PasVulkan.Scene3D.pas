@@ -187,7 +187,8 @@ type EpvScene3D=class(Exception);
                TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
                Tangent:TInt16Vector4;                // + 8 = 56 (signed 16-bit Tangent)
-               Reversed:TpvVector2;                  // + 8 = 64
+               Reversed:TpvUInt32;                   // + 4 = 60
+               Generation:TpvUInt32;                 // + 4 = 64
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
@@ -1170,8 +1171,8 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-              fVulkanCachedVertexBufferGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-              fVulkanCachedVertexBufferGeneration:TpvUInt64;
+              fVulkanCachedVertexBufferGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
+              fVulkanCachedVertexBufferGeneration:TpvUInt32;
               //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
