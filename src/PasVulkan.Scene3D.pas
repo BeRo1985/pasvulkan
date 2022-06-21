@@ -7308,7 +7308,8 @@ procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVu
                                                            const aInFlightFrameIndex:TpvSizeInt;
                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aPipelineLayout:TpvVulkanPipelineLayout);
-var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount:TpvSizeInt;
+var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount,
+    InFlightFrameIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
@@ -7350,6 +7351,13 @@ begin
     if Node^.CacheVerticesDirtyCounter>0 then begin
      dec(Node^.CacheVerticesDirtyCounter);
      inc(Node^.CacheVerticesGeneration);
+     if Node^.CacheVerticesGeneration=0 then begin
+      // Handle generation value overflow
+      Node^.CacheVerticesGeneration:=1;
+      for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+       Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=0;
+      end;
+     end;
     end;
     if Node^.CacheVerticesGenerations[aInFlightFrameIndex]<>Node^.CacheVerticesGeneration then begin
      Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=Node^.CacheVerticesGeneration;
