@@ -5678,7 +5678,6 @@ var LightMap:TpvScene3D.TGroup.TLights;
     end;
    end;
   end;
-
 { if fCountNodeWeights=fMorphTargetCount then begin
   end;}
  end;
@@ -6011,6 +6010,7 @@ begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
   fGroup:=TpvScene3D.TGroup(aParent);
+  inc(fGroup.fVulkanCachedVertexBufferGeneration);
  end else begin
   fGroup:=nil;
  end;
@@ -6297,6 +6297,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var CullFace,Blend:TPasGLTFInt32;
+    HasChangedVertices:boolean;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -6675,6 +6676,7 @@ var CullFace,Blend:TPasGLTFInt32;
   InstanceNode^.Processed:=true;
   if InstanceNode^.CountOverwrites>0 then begin
    SkinUsed:=true;
+   HasChangedVertices:=true;
    TranslationSum.x:=0.0;
    TranslationSum.y:=0.0;
    TranslationSum.z:=0.0;
@@ -6896,6 +6898,8 @@ begin
 
  fActives[aInFlightFrameIndex]:=fActive;
 
+ HasChangedVertices:=false;
+
  if fActive then begin
 
   Scene:=GetScene;
@@ -6946,6 +6950,10 @@ begin
    end;
 
    ProcessSkins;
+
+   if HasChangedVertices then begin
+    inc(fGroup.fVulkanCachedVertexBufferGeneration);
+   end;
 
    fNodeMatrices[0]:=fModelMatrix;
 
