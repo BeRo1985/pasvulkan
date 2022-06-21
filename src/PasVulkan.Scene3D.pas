@@ -955,24 +955,24 @@ type EpvScene3D=class(Exception);
                    end;
                    TScene=class(TGroupObject)
                     public
-                     type { TMaterial }
+                     type TPrimitiveIndexRange=record
+                           PrimitiveTopology:TPrimitiveTopology;
+                           Index:TpvSizeInt;
+                           Count:TpvSizeInt;
+                           UniqueIndex:TpvSizeInt;
+                           UniqueCount:TpvSizeInt;
+                           Node:TpvSizeInt;
+                          end;
+                          PPrimitiveIndexRange=^TPrimitiveIndexRange;
+                          TPrimitiveIndexRanges=TpvDynamicArray<TpvScene3D.TGroup.TScene.TPrimitiveIndexRange>;
+                          PPrimitiveIndexRanges=^TPrimitiveIndexRanges;
+                          { TMaterial }
                           TMaterial=class
                            public
-                            type TPrimitiveIndexRange=record
-                                  PrimitiveTopology:TPrimitiveTopology;
-                                  Index:TpvSizeInt;
-                                  Count:TpvSizeInt;
-                                  UniqueIndex:TpvSizeInt;
-                                  UniqueCount:TpvSizeInt;
-                                  Node:TpvSizeInt;
-                                 end;
-                                 PPrimitiveIndexRange=^TPrimitiveIndexRange;
-                                 TPrimitiveIndexRanges=TpvDynamicArray<TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange>;
-                                 PPrimitiveIndexRanges=^TPrimitiveIndexRanges;
                            private
                             fMaterial:TpvScene3D.TMaterial;
-                            fPrimitiveIndexRanges:TPrimitiveIndexRanges;
-                            fCombinedPrimitiveIndexRanges:TPrimitiveIndexRanges;
+                            fPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
+                            fCombinedPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
                             fStartIndex:TpvSizeInt;
                             fCountIndices:TpvSizeInt;
                             fStartUniqueIndex:TpvSizeInt;
@@ -988,6 +988,7 @@ type EpvScene3D=class(Exception);
                      fNodes:TNodes;
                      fMaterials:TpvScene3D.TGroup.TScene.TMaterials;
                      fMaterialHashMap:TpvScene3D.TGroup.TScene.TMaterialHashMap;
+                     fCombinedPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -4878,10 +4879,12 @@ begin
  fMaterials:=TpvScene3D.TGroup.TScene.TMaterials.Create;
  fMaterials.OwnsObjects:=true;
  fMaterialHashMap:=TpvScene3D.TGroup.TScene.TMaterialHashMap.Create(nil);
+ fCombinedPrimitiveIndexRanges.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
+ fCombinedPrimitiveIndexRanges.Finalize;
  FreeAndNil(fMaterialHashMap);
  FreeAndNil(fMaterials);
  FreeAndNil(fNodes);
@@ -5311,7 +5314,7 @@ type TIndexBitmap=array of TpvUInt32;
      Material:TpvScene3D.TMaterial;
      SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
      NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
-     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.TPrimitiveIndexRange;
+     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TPrimitiveIndexRange;
  begin
   Mesh:=aNode.fMesh;
   if assigned(Mesh) then begin
@@ -5353,7 +5356,7 @@ type TIndexBitmap=array of TpvUInt32;
 var Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
-    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     Index,FoundIndex,PrimitiveIndexRangeIndex,IndexValue,IndexIndex,Count:TpvSizeInt;
     IndexBitmap:TIndexBitmap;
@@ -5405,7 +5408,7 @@ begin
          end;
          for IndexIndex:=PrimitiveIndexRange^.Index to (PrimitiveIndexRange^.Index+PrimitiveIndexRange^.Count)-1 do begin
           IndexValue:=fIndices.Items[IndexIndex];
-           IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] and not (TpvUInt32(1) shl (IndexValue and 31));
+          IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] and not (TpvUInt32(1) shl (IndexValue and 31));
          end;
         end;
         PrimitiveIndexRange^.UniqueCount:=Count;
@@ -5422,7 +5425,11 @@ begin
     end;
     SceneMaterial.fCountIndices:=fPerMaterialCondensedIndices.Count-SceneMaterial.fStartIndex;
     SceneMaterial.fCountUniqueIndices:=fPerMaterialCondensedUniqueIndices.Count-SceneMaterial.fStartUniqueIndex;
+    if SceneMaterial.fCountIndices>0 then begin
+     Scene.fCombinedPrimitiveIndexRanges.Add(SceneMaterial.fCombinedPrimitiveIndexRanges);
+    end;
    end;
+   Scene.fCombinedPrimitiveIndexRanges.Finish;
   end;
   fPerMaterialCondensedIndices.Finish;
   fPerMaterialCondensedUniqueIndices.Finish;
@@ -7327,14 +7334,11 @@ procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVu
                                                            const aInFlightFrameIndex:TpvSizeInt;
                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aPipelineLayout:TpvVulkanPipelineLayout);
-var SceneMaterialIndex,PrimitiveIndexRangeIndex,
-    IndicesStart,IndicesCount:TpvSizeInt;
-    SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
-    Material:TpvScene3D.TMaterial;
+var PrimitiveIndexRangeIndex,IndicesStart,IndicesCount:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
-    PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRanges;
-    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
-    Culling,MeshFirst:boolean;
+    PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
+    MeshFirst:boolean;
  procedure Flush;
  var MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
  begin
@@ -7364,32 +7368,24 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
  end;
 begin
  if fActives[aInFlightFrameIndex] then begin
-  Culling:=fGroup.fCulling;
   Scene:=fScenes[aInFlightFrameIndex];
   if assigned(Scene) then begin
    MeshFirst:=true;
-   for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
-    SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
-    if SceneMaterial.fCountIndices>0 then begin
-     Material:=SceneMaterial.fMaterial;
-     begin
-      PrimitiveIndexRanges:=@SceneMaterial.fCombinedPrimitiveIndexRanges;
-      IndicesStart:=0;
-      IndicesCount:=0;
-      for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
-       PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
-       if PrimitiveIndexRange^.UniqueCount>0 then begin
-        if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.UniqueIndex) then begin
-         Flush;
-         IndicesStart:=PrimitiveIndexRange^.UniqueIndex;
-        end;
-        inc(IndicesCount,PrimitiveIndexRange^.UniqueCount);
-       end;
-      end;
+   PrimitiveIndexRanges:=@Scene.fCombinedPrimitiveIndexRanges;
+   IndicesStart:=0;
+   IndicesCount:=0;
+   for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
+    PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
+    if PrimitiveIndexRange^.UniqueCount>0 then begin
+///        PrimitiveIndexRange^.Node;
+     if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.UniqueIndex) then begin
       Flush;
+      IndicesStart:=PrimitiveIndexRange^.UniqueIndex;
      end;
+     inc(IndicesCount,PrimitiveIndexRange^.UniqueCount);
     end;
    end;
+   Flush;
   end;
  end;
 end;
@@ -7407,8 +7403,8 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
     Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     Material:TpvScene3D.TMaterial;
-    PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRanges;
-    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.TMaterial.PPrimitiveIndexRange;
+    PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
+    PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
     Culling,MeshFirst,MaterialFirst:boolean;
     VisibleBit:TpvUInt32;
  procedure Flush;
