@@ -959,8 +959,6 @@ type EpvScene3D=class(Exception);
                            PrimitiveTopology:TPrimitiveTopology;
                            Index:TpvSizeInt;
                            Count:TpvSizeInt;
-                           UniqueIndex:TpvSizeInt;
-                           UniqueCount:TpvSizeInt;
                            Node:TpvSizeInt;
                           end;
                           PPrimitiveIndexRange=^TPrimitiveIndexRange;
@@ -973,6 +971,7 @@ type EpvScene3D=class(Exception);
                             fMaterial:TpvScene3D.TMaterial;
                             fPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
                             fCombinedPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
+                            fCombinedPrimitiveUniqueIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
                             fStartIndex:TpvSizeInt;
                             fCountIndices:TpvSizeInt;
                             fStartUniqueIndex:TpvSizeInt;
@@ -988,7 +987,7 @@ type EpvScene3D=class(Exception);
                      fNodes:TNodes;
                      fMaterials:TpvScene3D.TGroup.TScene.TMaterials;
                      fMaterialHashMap:TpvScene3D.TGroup.TScene.TMaterialHashMap;
-                     fCombinedPrimitiveIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
+                     fCombinedPrimitiveUniqueIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -4863,11 +4862,13 @@ begin
  inherited Create;
  fPrimitiveIndexRanges.Initialize;
  fCombinedPrimitiveIndexRanges.Initialize;
+ fCombinedPrimitiveUniqueIndexRanges.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TScene.TMaterial.Destroy;
 begin
  fPrimitiveIndexRanges.Finalize;
+ fCombinedPrimitiveUniqueIndexRanges.Finalize;
  fCombinedPrimitiveIndexRanges.Finalize;
  inherited Destroy;
 end;
@@ -4883,12 +4884,12 @@ begin
  fMaterials:=TpvScene3D.TGroup.TScene.TMaterials.Create;
  fMaterials.OwnsObjects:=true;
  fMaterialHashMap:=TpvScene3D.TGroup.TScene.TMaterialHashMap.Create(nil);
- fCombinedPrimitiveIndexRanges.Initialize;
+ fCombinedPrimitiveUniqueIndexRanges.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
- fCombinedPrimitiveIndexRanges.Finalize;
+ fCombinedPrimitiveUniqueIndexRanges.Finalize;
  FreeAndNil(fMaterialHashMap);
  FreeAndNil(fMaterials);
  FreeAndNil(fNodes);
@@ -5343,8 +5344,6 @@ type TIndexBitmap=array of TpvUInt32;
         PrimitiveIndexRange.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology(Primitive^.PrimitiveMode);
         PrimitiveIndexRange.Index:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
         PrimitiveIndexRange.Count:=Primitive^.CountIndices;
-        PrimitiveIndexRange.UniqueIndex:=0;
-        PrimitiveIndexRange.UniqueCount:=0;
         PrimitiveIndexRange.Node:=aNode.fIndex;
         SceneMaterial.fPrimitiveIndexRanges.Add(PrimitiveIndexRange);
        end;
@@ -5362,84 +5361,114 @@ var Scene:TpvScene3D.TGroup.TScene;
     SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    Index,FoundIndex,PrimitiveIndexRangeIndex,IndexValue,IndexIndex,Count:TpvSizeInt;
+    Index,FoundIndex,FoundUniqueIndex,PrimitiveIndexRangeIndex,IndexValue,IndexIndex,Count:TpvSizeInt;
     IndexBitmap:TIndexBitmap;
 begin
+
  IndexBitmap:=nil;
+
  try
+
   SetLength(IndexBitmap,(fVertices.Count+31) shr 5);
   FillChar(IndexBitmap[0],length(IndexBitmap)*SizeOf(TpvUInt32),0);
+
   for Scene in fScenes do begin
+
    for Node in Scene.fNodes do begin
     ProcessNode(Scene,Node);
    end;
+
    for SceneMaterial in Scene.fMaterials do begin
+
     SceneMaterial.fStartIndex:=fPerMaterialCondensedIndices.Count;
     SceneMaterial.fCountIndices:=0;
+
     SceneMaterial.fStartUniqueIndex:=fPerMaterialCondensedUniqueIndices.Count;
     SceneMaterial.fCountUniqueIndices:=0;
+
     SceneMaterial.fPrimitiveIndexRanges.Finish;
+
     for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+
      for PrimitiveIndexRangeIndex:=0 to SceneMaterial.fPrimitiveIndexRanges.Count-1 do begin
+
       PrimitiveIndexRange:=@SceneMaterial.fPrimitiveIndexRanges.Items[PrimitiveIndexRangeIndex];
+
       if (PrimitiveIndexRange^.Count>0) and (PrimitiveIndexRange^.PrimitiveTopology=PrimitiveTopology) then begin
-       FoundIndex:=-1;
-       for Index:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
-        if SceneMaterial.fCombinedPrimitiveIndexRanges.Items[Index].PrimitiveTopology=PrimitiveTopology then begin
-         FoundIndex:=Index;
-         break;
-        end;
-       end;
-       if FoundIndex<0 then begin
-        FoundIndex:=SceneMaterial.fCombinedPrimitiveIndexRanges.AddNew;
-        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].PrimitiveTopology:=PrimitiveTopology;
-        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fPerMaterialCondensedIndices.Count;
-        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
-        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].UniqueIndex:=fPerMaterialCondensedUniqueIndices.Count;
-        SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].UniqueCount:=0;
-       end;
-       begin
-        PrimitiveIndexRange^.UniqueIndex:=fPerMaterialCondensedUniqueIndices.Count;
+
+       if PrimitiveIndexRange^.Count>0 then begin
+        FoundUniqueIndex:=SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.AddNew;
+        SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Items[FoundUniqueIndex].PrimitiveTopology:=PrimitiveTopology;
+        SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Items[FoundUniqueIndex].Index:=fPerMaterialCondensedUniqueIndices.Count;
+        SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Items[FoundUniqueIndex].Count:=0;
+        SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Items[FoundUniqueIndex].Node:=PrimitiveIndexRange^.Node;
         Count:=0;
-        if PrimitiveIndexRange^.Count>0 then begin
-         for IndexIndex:=PrimitiveIndexRange^.Index to (PrimitiveIndexRange^.Index+PrimitiveIndexRange^.Count)-1 do begin
-          IndexValue:=fIndices.Items[IndexIndex];
-          if (IndexBitmap[IndexValue shr 5] and (TpvUInt32(1) shl (IndexValue and 31)))=0 then begin
-           IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] or (TpvUInt32(1) shl (IndexValue and 31));
-           fPerMaterialCondensedUniqueIndices.Add(fIndices.Items[IndexIndex]);
-           inc(Count);
-          end;
-         end;
-         for IndexIndex:=PrimitiveIndexRange^.Index to (PrimitiveIndexRange^.Index+PrimitiveIndexRange^.Count)-1 do begin
-          IndexValue:=fIndices.Items[IndexIndex];
-          IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] and not (TpvUInt32(1) shl (IndexValue and 31));
+        for IndexIndex:=PrimitiveIndexRange^.Index to (PrimitiveIndexRange^.Index+PrimitiveIndexRange^.Count)-1 do begin
+         IndexValue:=fIndices.Items[IndexIndex];
+         if (IndexBitmap[IndexValue shr 5] and (TpvUInt32(1) shl (IndexValue and 31)))=0 then begin
+          IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] or (TpvUInt32(1) shl (IndexValue and 31));
+          fPerMaterialCondensedUniqueIndices.Add(fIndices.Items[IndexIndex]);
+          inc(Count);
          end;
         end;
-        PrimitiveIndexRange^.UniqueCount:=Count;
-        inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].UniqueCount,Count);
+        for IndexIndex:=PrimitiveIndexRange^.Index to (PrimitiveIndexRange^.Index+PrimitiveIndexRange^.Count)-1 do begin
+         IndexValue:=fIndices.Items[IndexIndex];
+         IndexBitmap[IndexValue shr 5]:=IndexBitmap[IndexValue shr 5] and not (TpvUInt32(1) shl (IndexValue and 31));
+        end;
+        inc(SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Items[FoundUniqueIndex].Count,Count);
        end;
+
        begin
-        IndexValue:=fPerMaterialCondensedIndices.Count;
-        fPerMaterialCondensedIndices.Add(copy(fIndices.Items,PrimitiveIndexRange^.Index,PrimitiveIndexRange^.Count));
-        PrimitiveIndexRange^.Index:=IndexValue;
-        inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange^.Count);
+        FoundIndex:=-1;
+        for Index:=0 to SceneMaterial.fCombinedPrimitiveIndexRanges.Count-1 do begin
+         if (SceneMaterial.fCombinedPrimitiveIndexRanges.Items[Index].PrimitiveTopology=PrimitiveTopology) or
+            ((not fCulling) or
+             (SceneMaterial.fCombinedPrimitiveIndexRanges.Items[Index].Node=PrimitiveIndexRange^.Node)) then begin
+          FoundIndex:=Index;
+          break;
+         end;
+        end;
+        if FoundIndex<0 then begin
+         FoundIndex:=SceneMaterial.fCombinedPrimitiveIndexRanges.AddNew;
+         SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].PrimitiveTopology:=PrimitiveTopology;
+         SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Index:=fPerMaterialCondensedIndices.Count;
+         SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count:=0;
+         SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Node:=PrimitiveIndexRange^.Node;
+        end;
+        begin
+         IndexValue:=fPerMaterialCondensedIndices.Count;
+         fPerMaterialCondensedIndices.Add(copy(fIndices.Items,PrimitiveIndexRange^.Index,PrimitiveIndexRange^.Count));
+         PrimitiveIndexRange^.Index:=IndexValue;
+         inc(SceneMaterial.fCombinedPrimitiveIndexRanges.Items[FoundIndex].Count,PrimitiveIndexRange^.Count);
+        end;
        end;
+
       end;
      end;
     end;
+
     SceneMaterial.fCountIndices:=fPerMaterialCondensedIndices.Count-SceneMaterial.fStartIndex;
+
     SceneMaterial.fCountUniqueIndices:=fPerMaterialCondensedUniqueIndices.Count-SceneMaterial.fStartUniqueIndex;
-    if SceneMaterial.fCountIndices>0 then begin
-     Scene.fCombinedPrimitiveIndexRanges.Add(SceneMaterial.fCombinedPrimitiveIndexRanges);
+
+    if SceneMaterial.fCombinedPrimitiveUniqueIndexRanges.Count>0 then begin
+     Scene.fCombinedPrimitiveUniqueIndexRanges.Add(SceneMaterial.fCombinedPrimitiveUniqueIndexRanges);
     end;
+
    end;
-   Scene.fCombinedPrimitiveIndexRanges.Finish;
+
+   Scene.fCombinedPrimitiveUniqueIndexRanges.Finish;
+
   end;
+
   fPerMaterialCondensedIndices.Finish;
+
   fPerMaterialCondensedUniqueIndices.Finish;
+
  finally
   IndexBitmap:=nil;
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
@@ -5755,6 +5784,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      Node:TNode;
  begin
   fCountNodeWeights:=0;
+  fNodes.Clear;
   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
    SourceNode:=aSourceDocument.Nodes[Index];
    Node:=TNode.Create(self,Index);
@@ -7394,18 +7424,19 @@ begin
     end;
    end;
    MeshFirst:=true;
-   PrimitiveIndexRanges:=@Scene.fCombinedPrimitiveIndexRanges;
+   PrimitiveIndexRanges:=@Scene.fCombinedPrimitiveUniqueIndexRanges;
    IndicesStart:=0;
    IndicesCount:=0;
    for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
     PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
-    if PrimitiveIndexRange^.UniqueCount>0 then begin
-     if (fCacheVerticesNodeDirtyBitmap[PrimitiveIndexRange^.Node shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
-      if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.UniqueIndex) then begin
+    if PrimitiveIndexRange^.Count>0 then begin
+     NodeIndex:=PrimitiveIndexRange^.Node;
+     if (fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
+      if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.Index) then begin
        Flush;
-       IndicesStart:=PrimitiveIndexRange^.UniqueIndex;
+       IndicesStart:=PrimitiveIndexRange^.Index;
       end;
-      inc(IndicesCount,PrimitiveIndexRange^.UniqueCount);
+      inc(IndicesCount,PrimitiveIndexRange^.Count);
      end;
     end;
    end;
