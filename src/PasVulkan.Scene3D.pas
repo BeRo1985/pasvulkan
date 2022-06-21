@@ -1122,8 +1122,6 @@ type EpvScene3D=class(Exception);
                      fVulkanData:TVulkanData;
                      fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
                      fVulkanComputeDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-                     fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-                     fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                      fScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fAABBTreeProxy:TpvSizeInt;
@@ -1279,7 +1277,6 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapImage:TImage;
        fDefaultNormalMapTexture:TTexture;
        fMeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fMeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
        fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
@@ -1393,7 +1390,6 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
       published
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
-       property MeshVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshVulkanDescriptorSetLayout;
        property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
      end;
@@ -6462,56 +6458,6 @@ begin
       end;
      end;
 
-     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
-                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                           length(fVulkanDescriptorSets));
-     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanDescriptorSets)*4);
-     fVulkanDescriptorPool.Initialize;
-
-     for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
-
-      DescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                   fSceneInstance.fMeshVulkanDescriptorSetLayout);
-      try
-       DescriptorSet.WriteToDescriptorSet(0,
-                                          0,
-                                          1,
-                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                          [],
-                                          [fGroup.fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
-                                          [],
-                                          false);
-       DescriptorSet.WriteToDescriptorSet(1,
-                                          0,
-                                          1,
-                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                          [],
-                                          [fGroup.fVulkanJointBlockBuffer.DescriptorBufferInfo],
-                                          [],
-                                          false);
-       DescriptorSet.WriteToDescriptorSet(2,
-                                          0,
-                                          1,
-                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                          [],
-                                          [fVulkanDatas[Index].fNodeMatricesBuffer.DescriptorBufferInfo],
-                                          [],
-                                          false);
-       DescriptorSet.WriteToDescriptorSet(3,
-                                          0,
-                                          1,
-                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                          [],
-                                          [fVulkanDatas[Index].fMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
-                                          [],
-                                          false);
-       DescriptorSet.Flush;
-      finally
-       fVulkanDescriptorSets[Index]:=DescriptorSet;
-      end;
-
-     end;
-
     finally
      fUploaded:=true;
     end;
@@ -6537,10 +6483,6 @@ begin
       FreeAndNil(fVulkanComputeDescriptorSets[Index]);
      end;
      FreeAndNil(fVulkanComputeDescriptorPool);
-     for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
-      FreeAndNil(fVulkanDescriptorSets[Index]);
-     end;
-     FreeAndNil(fVulkanDescriptorPool);
      for Index:=0 to length(fVulkanDatas)-1 do begin
       fVulkanDatas[Index].Unload;
      end;
@@ -7481,19 +7423,19 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
    if MeshFirst then begin
     MeshFirst:=false;
     fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
-    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+{   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          aPipelineLayout.Handle,
                                          1,
                                          1,
                                          @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                          0,
-                                         nil);
+                                         nil);}
    end;
    if MaterialFirst then begin
     MaterialFirst:=false;
     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          aPipelineLayout.Handle,
-                                         2,
+                                         1,
                                          1,
                                          @Material.fVulkanDescriptorSet.Handle,
                                          0,
@@ -7705,38 +7647,6 @@ begin
 
  fMeshComputeVulkanDescriptorSetLayout.Initialize;
 
- fMeshVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
-
- // Group - Morph target vertices
- fMeshVulkanDescriptorSetLayout.AddBinding(0,
-                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                           1,
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
-                                           []);
-
- // Group - Joint blocks
- fMeshVulkanDescriptorSetLayout.AddBinding(1,
-                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                           1,
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
-                                           []);
-
- // Instance - Node matrices
- fMeshVulkanDescriptorSetLayout.AddBinding(2,
-                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                           1,
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
-                                           []);
-
- // Instance - Morph target weights
- fMeshVulkanDescriptorSetLayout.AddBinding(3,
-                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                           1,
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
-                                           []);
-
- fMeshVulkanDescriptorSetLayout.Initialize;
-
  fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fMaterialVulkanDescriptorSetLayout.AddBinding(0,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -7832,8 +7742,6 @@ begin
  FreeAndNil(fLightAABBTree);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSetLayout);
-
- FreeAndNil(fMeshVulkanDescriptorSetLayout);
 
  FreeAndNil(fMaterialVulkanDescriptorSetLayout);
 

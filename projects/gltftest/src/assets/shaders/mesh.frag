@@ -131,7 +131,7 @@ layout(std430, set = 0, binding = 2) buffer LightTreeNodeData {
 // Material descriptor set
 
 /* clang-format off */
-layout(std140, set = 2, binding = 0) uniform uboMaterial {
+layout(std140, set = 1, binding = 0) uniform uboMaterial {
   vec4 baseColorFactor;
   vec4 specularFactor;
   vec4 emissiveFactor;
@@ -143,23 +143,23 @@ layout(std140, set = 2, binding = 0) uniform uboMaterial {
   mat4 textureTransforms[16];
 } uMaterial;
 
-layout(set = 2, binding = 1) uniform sampler2D uTextures[];
+layout(set = 1, binding = 1) uniform sampler2D uTextures[];
 
 // Pass descriptor set
 
 #ifdef DEPTHONLY
 #else
-layout(set = 3, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
+layout(set = 2, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
-layout(set = 3, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
+layout(set = 2, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 #ifdef SHADOWS
-layout(std140, set = 3, binding = 2) uniform uboCascadedShadowMaps {
+layout(std140, set = 2, binding = 2) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepths[NUM_SHADOW_CASCADES];
 } uCascadedShadowMaps;
 
-layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
+layout(set = 2, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #endif
 
@@ -167,24 +167,24 @@ layout(set = 3, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #if defined(WBOIT)
 
-layout(std140, set = 3, binding = 4) uniform uboWBOIT {
+layout(std140, set = 2, binding = 4) uniform uboWBOIT {
   vec4 wboitZNearZFar;
 } uWBOIT;
 
 #elif defined(MBOIT)
 
-layout(std140, set = 3, binding = 4) uniform uboMBOIT {
+layout(std140, set = 2, binding = 4) uniform uboMBOIT {
   vec4 mboitZNearZFar;
 } uMBOIT;
 
 #if defined(MBOITPASS1)
 #elif defined(MBOITPASS2)
 #ifdef MSAA
-layout(input_attachment_index = 0, set = 3, binding = 5) uniform subpassInputMS uMBOITMoments0;
-layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInputMS uMBOITMoments1;
+layout(input_attachment_index = 0, set = 2, binding = 5) uniform subpassInputMS uMBOITMoments0;
+layout(input_attachment_index = 1, set = 2, binding = 6) uniform subpassInputMS uMBOITMoments1;
 #else
-layout(input_attachment_index = 0, set = 3, binding = 5) uniform subpassInput uMBOITMoments0;
-layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInput uMBOITMoments1;
+layout(input_attachment_index = 0, set = 2, binding = 5) uniform subpassInput uMBOITMoments0;
+layout(input_attachment_index = 1, set = 2, binding = 6) uniform subpassInput uMBOITMoments1;
 #endif
 #endif
 
@@ -193,20 +193,20 @@ layout(input_attachment_index = 1, set = 3, binding = 6) uniform subpassInput uM
 #if defined(LOCKOIT)
 
   #ifdef MSAA
-    layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInputMS uOITImgDepth;
+    layout(input_attachment_index = 0, set = 2, binding = 4) uniform subpassInputMS uOITImgDepth;
   #else
-    layout(input_attachment_index = 0, set = 3, binding = 4) uniform subpassInput uOITImgDepth;
+    layout(input_attachment_index = 0, set = 2, binding = 4) uniform subpassInput uOITImgDepth;
   #endif
-  layout(set = 3, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-  layout(set = 3, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
+  layout(set = 2, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+  layout(set = 2, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
   #ifdef SPINLOCK
-    layout(set = 3, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-    layout(std140, set = 3, binding = 8) uniform uboOIT {
+    layout(set = 2, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+    layout(std140, set = 2, binding = 8) uniform uboOIT {
       ivec4 oitViewPort;
     } uOIT;
   #endif
   #ifdef INTERLOCK
-    layout(std140, set = 3, binding = 7) uniform uboOIT {
+    layout(std140, set = 2, binding = 7) uniform uboOIT {
       ivec4 oitViewPort;
     } uOIT;
   #endif
