@@ -4,6 +4,17 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define CACHEDVERTEX
+
+#ifdef CACHEDVERTEX
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in uint inMaterialID;
+layout(location = 2) in vec4 inNormalSign;
+layout(location = 3) in vec3 inTangent;
+layout(location = 4) in vec2 inTexCoord0;
+layout(location = 5) in vec2 inTexCoord1;
+layout(location = 6) in vec4 inColor0;
+#else
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in uint inNodeIndex;
 layout(location = 2) in vec2 inNormal;
@@ -16,6 +27,7 @@ layout(location = 8) in uint inJointBlockBaseIndex;
 layout(location = 9) in uint inCountJointBlocks;
 layout(location = 10) in uint inFlags;
 layout(location = 11) in uint inMaterialID;
+#endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
@@ -53,6 +65,7 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[512]; // 65536 / (64 * 2) = 512
 } uView;
 
+#ifndef CACHEDVERTEX
 struct MorphTargetVertex {
    vec4 position;
    vec4 normal;
@@ -82,6 +95,7 @@ layout(std430, set = 1, binding = 2) buffer NodeMatrices {
 layout(std430, set = 1, binding = 3) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
+#endif
 
 out gl_PerVertex {
 	vec4 gl_Position;
@@ -112,6 +126,28 @@ void main() {
   vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
 #endif
 
+#ifdef CACHEDVERTEX
+ 
+  vec3 position = inPosition;
+ 
+  mat3 tangentSpace;
+  {
+    vec3 tangent = inTangent.xyz;
+    vec3 normal = inNormalSign.xyz;
+    tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * inNormalSign.w, normal);
+  }
+
+  tangentSpace[0] = normalize(tangentSpace[0]);
+  tangentSpace[1] = normalize(tangentSpace[1]);
+  tangentSpace[2] = normalize(tangentSpace[2]);
+  
+  vec4 worldSpacePosition = vec4(position, 1.0);
+  worldSpacePosition.xyz /= worldSpacePosition.w;
+
+  vec4 viewSpacePosition = view.viewMatrix * vec4(position, 1.0);
+  viewSpacePosition.xyz /= viewSpacePosition.w;
+
+#else
   mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
   mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
@@ -175,6 +211,8 @@ void main() {
   vec4 viewSpacePosition = modelViewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
+#endif  
+
   outWorldSpacePosition = worldSpacePosition.xyz;
   outViewSpacePosition = viewSpacePosition.xyz;
   outCameraRelativePosition = worldSpacePosition.xyz - cameraPosition;
@@ -185,7 +223,7 @@ void main() {
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
   outMaterialID = inMaterialID;
-#ifdef VELOCITY
+#if defined(VELOCITY) && !defined(CACHEDVERTEX)
   {
 
     View previousView = uView.views[pushConstants.countViews + viewIndex];
@@ -228,7 +266,11 @@ void main() {
     
   }
 #else
+#ifdef CACHEDVERTEX
+  gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+#else
   gl_Position = (view.projectionMatrix * modelViewMatrix) * vec4(position, 1.0);
+#endif
 #endif
   gl_PointSize = 1.0;
 }

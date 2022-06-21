@@ -189,10 +189,10 @@ type EpvScene3D=class(Exception);
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                MaterialID:TpvUInt32;                 // + 4 = 16 (unsigned 32-bit material ID)
                NormalSign:TInt16Vector4;             // + 8 = 24 (signed 16-bit Normal + TBN sign)
-               TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
-               Tangent:TInt16Vector4;                // + 8 = 56 (signed 16-bit Tangent)
+               Tangent:TInt16Vector4;                // + 8 = 32 (signed 16-bit Tangent + Placeholder)
+               TexCoord0:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               TexCoord1:TpvVector2;                 // + 8 = 48 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               Color0:TpvHalfFloatVector4;           // + 8 = 56 (must be at least half-float for HDR)
                Reversed:TpvUInt32;                   // + 4 = 60
                Generation:TpvUInt32;                 // + 4 = 64
               );                                     //  ==   ==
@@ -1205,7 +1205,8 @@ type EpvScene3D=class(Exception);
                                 const aFrustums:TpvFrustumDynamicArray);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
-                                          const aRenderPassIndex:TpvSizeInt);
+                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aInFlightFrameIndex:TpvSizeInt);
               procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                              const aInFlightFrameIndex:TpvSizeInt;
                                              const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -5966,12 +5967,14 @@ end;
 
 procedure TpvScene3D.TGroup.SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aPipelineLayout:TpvVulkanPipelineLayout;
-                                              const aRenderPassIndex:TpvSizeInt);
+                                              const aRenderPassIndex:TpvSizeInt;
+                                              const aInFlightFrameIndex:TpvSizeInt);
 const Offsets:TVkDeviceSize=0;
 begin
  if not fSetGroupResourcesDone[aRenderPassIndex] then begin
   fSetGroupResourcesDone[aRenderPassIndex]:=true;
-  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+//aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
   aCommandBuffer.CmdBindIndexBuffer(fVulkanMaterialIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  end;
 end;
@@ -7436,7 +7439,7 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
                                          nil);
    end;
    if WasMeshFirst then begin
-    fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex);
+    fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
     if assigned(aOnSetRenderPassResources) then begin
      aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
     end;
@@ -8703,7 +8706,15 @@ end;
 
 procedure TpvScene3D.InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
 begin
- aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.MaterialID)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Tangent)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord0)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord1)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Color0)));
+{aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Position)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.NodeIndex)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Normal)));
@@ -8715,7 +8726,7 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.JointBlockBaseIndex)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.CountJointBlocks)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.Flags)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(11,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.MaterialID)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(11,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PVertex(nil)^.MaterialID)));}
 end;
 
 initialization

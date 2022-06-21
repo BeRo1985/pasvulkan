@@ -23,9 +23,9 @@ struct InPackedVertex {
 
 struct OutPackedVertex {
   uvec4 positionMaterialID;
-  uvec4 normalSignTexCoord0;
-  uvec4 texCoord1Color0;
-  uvec4 tangentGeneration;
+  uvec4 normalSignTangent;
+  uvec4 texCoord0TexCoord1;
+  uvec4 color0Generation;
 };
 
 struct MorphTargetVertex {
@@ -84,8 +84,8 @@ void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
   if (vertexIndex < pushConstants.countIndices) {
-    vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];    
-    if (outVertices[vertexIndex].tangentGeneration.w != pushConstants.generation) {
+    vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];
+    if (outVertices[vertexIndex].color0Generation.w != pushConstants.generation) {
       InPackedVertex inPackedVertex = inVertices[vertexIndex];
       vec3 inPosition = uintBitsToFloat(inPackedVertex.positionNodeIndex.xyz);
       uint inNodeIndex = inPackedVertex.positionNodeIndex.w;
@@ -151,18 +151,24 @@ void main() {
 
       tangentSpace = normalMatrix * tangentSpace;
 
+       position = (modelNodeMatrix * vec4(position.xyz, 1.0)).xyz;
+
       {
         vec3 tangent = normalize(tangentSpace[0]);
         vec3 bitangent = normalize(tangentSpace[1]);
         vec3 normal = normalize(tangentSpace[2]);
 
         float tbnSign = (dot(normalize(cross(normal, tangent)), bitangent) < 0.0) ? -1.0 : 1.0;
-
+       
         OutPackedVertex outPackedVertex;
         outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), inMaterialID);
-        outPackedVertex.normalSignTexCoord0 = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)), inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/);
-        outPackedVertex.texCoord1Color0 = inPackedVertex.texCoord1Color0;  // uvec4(uvec2(floatBitsToUint(texCoord1.xy)), packHalf2x16(color.xy), packHalf2x16(color.zw));
-        outPackedVertex.tangentGeneration = uvec4(packSnorm2x16(tangent.xy), packSnorm2x16(vec2(tangent.z, 0.0)), 0u, pushConstants.generation);
+        outPackedVertex.normalSignTangent = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
+                                                  packSnorm2x16(tangent.xy), packSnorm2x16(vec2(tangent.z, 0.0)));
+        outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
+                                                   inPackedVertex.texCoord1Color0.xy /* uvec2(floatBitsToUint(texCoord1.xy)) */);
+        outPackedVertex.color0Generation = uvec4(inPackedVertex.texCoord1Color0.zw /*uvec2(packHalf2x16(color.xy), packHalf2x16(color.zw))*/,  //
+                                                 0u,                                                                                           //
+                                                 pushConstants.generation);                                                                    //
         outVertices[vertexIndex] = outPackedVertex;
       }
     }
