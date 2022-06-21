@@ -1168,6 +1168,8 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+              fVulkanCachedVertexBufferGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+              fVulkanCachedVertexBufferGeneration:TpvUInt64;
               //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
@@ -5042,7 +5044,10 @@ var Index:TpvSizeInt;
                                                              [],
                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                             );
+   fVulkanCachedVertexBufferGenerations[Index]:=0;
   end;
+
+  fVulkanCachedVertexBufferGeneration:=1;
 
 { fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
