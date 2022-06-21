@@ -1063,6 +1063,9 @@ type EpvScene3D=class(Exception);
                             Light:TpvScene3D.TLight;
                             BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[0..MaxInFlightFrames-1] of boolean;
+                            CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
+                            CacheVerticesGeneration:TpvUInt32;
+                            CacheVerticesDirtyCounter:TpvUInt32;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -1126,6 +1129,7 @@ type EpvScene3D=class(Exception);
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fAABBTreeProxy:TpvSizeInt;
                      fVisibleBitmap:TPasMPUInt32;
+                     fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -6194,6 +6198,11 @@ begin
   for OtherIndex:=0 to fGroup.fAnimations.Count do begin
    SetLength(InstanceNode^.Overwrites[OtherIndex].Weights,length(Node.fWeights));
   end;
+  for OtherIndex:=0 to MaxInFlightFrames-1 do begin
+   InstanceNode^.CacheVerticesGenerations[OtherIndex]:=0;
+  end;
+  InstanceNode^.CacheVerticesGeneration:=1;
+  InstanceNode^.CacheVerticesDirtyCounter:=1;
  end;
  SetLength(fAnimations,fGroup.fAnimations.Count+1);
  for Index:=0 to length(fAnimations)-1 do begin
@@ -6212,6 +6221,7 @@ begin
   fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
  end;
  fAABBTreeProxy:=-1;
+ SetLength(fCacheVerticesNodeDirtyBitmap,((length(fNodes)+31) shr 5)+1);
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
@@ -6240,6 +6250,7 @@ begin
  for Index:=0 to length(fAnimations)-1 do begin
   FreeAndNil(fAnimations[Index]);
  end;
+ fCacheVerticesNodeDirtyBitmap:=nil;
  fNodes:=nil;
  fSkins:=nil;
  fAnimations:=nil;
@@ -6527,7 +6538,6 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var CullFace,Blend:TPasGLTFInt32;
-    HasChangedVertices:boolean;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -6846,7 +6856,7 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
 
  end;
- procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4);
+ procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
  type TVector3Sum=record
        x,y,z,FactorSum:Double;
       end;
@@ -6864,7 +6874,7 @@ var CullFace,Blend:TPasGLTFInt32;
      RotationFactorSum,
      WeightsFactorSum:TpvDouble;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
-     FirstWeights,SkinUsed:boolean;
+     FirstWeights,SkinUsed,Dirty:boolean;
      Light:TpvScene3D.TLight;
   procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble);
   begin
@@ -6904,9 +6914,10 @@ var CullFace,Blend:TPasGLTFInt32;
   InstanceNode:=@fNodes[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
   InstanceNode^.Processed:=true;
+  Dirty:=aDirty;
   if InstanceNode^.CountOverwrites>0 then begin
+   Dirty:=true;
    SkinUsed:=true;
-   HasChangedVertices:=true;
    TranslationSum.x:=0.0;
    TranslationSum.y:=0.0;
    TranslationSum.z:=0.0;
@@ -7073,8 +7084,11 @@ var CullFace,Blend:TPasGLTFInt32;
     end;
    end;
   end;
+  if Dirty and (InstanceNode^.CacheVerticesDirtyCounter<2) then begin
+   InstanceNode^.CacheVerticesDirtyCounter:=2;
+  end;
   for Index:=0 to Node.Children.Count-1 do begin
-   ProcessNode(Node.Children[Index].Index,Matrix);
+   ProcessNode(Node.Children[Index].Index,Matrix,Dirty);
   end;
  end;
  procedure ProcessSkins;
@@ -7128,8 +7142,6 @@ begin
 
  fActives[aInFlightFrameIndex]:=fActive;
 
- HasChangedVertices:=false;
-
  if fActive then begin
 
   Scene:=GetScene;
@@ -7168,7 +7180,7 @@ begin
    end;
 
    for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity);
+    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,false);
    end;
 
    for Index:=0 to length(fNodes)-1 do begin
@@ -7181,9 +7193,7 @@ begin
 
    ProcessSkins;
 
-   if HasChangedVertices then begin
-    inc(fGroup.fVulkanCachedVertexBufferGeneration);
-   end;
+   inc(fGroup.fVulkanCachedVertexBufferGeneration);
 
    fNodeMatrices[0]:=fModelMatrix;
 
@@ -7334,10 +7344,11 @@ procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVu
                                                            const aInFlightFrameIndex:TpvSizeInt;
                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aPipelineLayout:TpvVulkanPipelineLayout);
-var PrimitiveIndexRangeIndex,IndicesStart,IndicesCount:TpvSizeInt;
+var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
+    Node:TpvScene3D.TGroup.TInstance.PNode;
     MeshFirst:boolean;
  procedure Flush;
  var MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
@@ -7370,6 +7381,18 @@ begin
  if fActives[aInFlightFrameIndex] then begin
   Scene:=fScenes[aInFlightFrameIndex];
   if assigned(Scene) then begin
+   FillChar(fCacheVerticesNodeDirtyBitmap[0],Length(fCacheVerticesNodeDirtyBitmap)*SizeOf(TpvUInt32),#0);
+   for NodeIndex:=0 to length(fNodes)-1 do begin
+    Node:=@fNodes[NodeIndex];
+    if Node^.CacheVerticesDirtyCounter>0 then begin
+     dec(Node^.CacheVerticesDirtyCounter);
+     inc(Node^.CacheVerticesGeneration);
+    end;
+    if Node^.CacheVerticesGenerations[aInFlightFrameIndex]<>Node^.CacheVerticesGeneration then begin
+     Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=Node^.CacheVerticesGeneration;
+     fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
+    end;
+   end;
    MeshFirst:=true;
    PrimitiveIndexRanges:=@Scene.fCombinedPrimitiveIndexRanges;
    IndicesStart:=0;
@@ -7377,12 +7400,13 @@ begin
    for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
     PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
     if PrimitiveIndexRange^.UniqueCount>0 then begin
-///        PrimitiveIndexRange^.Node;
-     if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.UniqueIndex) then begin
-      Flush;
-      IndicesStart:=PrimitiveIndexRange^.UniqueIndex;
+     if (fCacheVerticesNodeDirtyBitmap[PrimitiveIndexRange^.Node shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
+      if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.UniqueIndex) then begin
+       Flush;
+       IndicesStart:=PrimitiveIndexRange^.UniqueIndex;
+      end;
+      inc(IndicesCount,PrimitiveIndexRange^.UniqueCount);
      end;
-     inc(IndicesCount,PrimitiveIndexRange^.UniqueCount);
     end;
    end;
    Flush;
