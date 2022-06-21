@@ -163,7 +163,6 @@ type EpvScene3D=class(Exception);
             TMeshComputeStagePushConstants=record
              IndexOffset:UInt32;
              CountIndices:UInt32;
-             Generation:UInt32;
             end;
             PMeshComputeStagePushConstants=^TMeshComputeStagePushConstants;
             TVertexStagePushConstants=record
@@ -203,8 +202,8 @@ type EpvScene3D=class(Exception);
                TexCoord0:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                TexCoord1:TpvVector2;                 // + 8 = 48 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 56 (must be at least half-float for HDR)
-               Reversed:TpvUInt32;                   // + 4 = 60
-               Generation:TpvUInt32;                 // + 4 = 64
+               Reserved:TpvUInt32;                   // + 4 = 60
+               Reserved2:TpvUInt32;                  // + 4 = 64
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
@@ -1198,8 +1197,6 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-              fVulkanCachedVertexBufferGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
-              fVulkanCachedVertexBufferGeneration:TpvUInt32;
               //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialUniqueIndexBuffer:TpvVulkanBuffer;
@@ -5103,10 +5100,7 @@ var Index:TpvSizeInt;
                                                0,
                                                fVertices.Count*SizeOf(TCachedVertex),
                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-   fVulkanCachedVertexBufferGenerations[Index]:=0;
   end;
-
-  fVulkanCachedVertexBufferGeneration:=1;
 
 { fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
@@ -6193,7 +6187,6 @@ begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
   fGroup:=TpvScene3D.TGroup(aParent);
-  inc(fGroup.fVulkanCachedVertexBufferGeneration);
  end else begin
   fGroup:=nil;
  end;
@@ -7166,8 +7159,6 @@ begin
 
    ProcessSkins;
 
-   inc(fGroup.fVulkanCachedVertexBufferGeneration);
-
    fNodeMatrices[0]:=fModelMatrix;
 
    for Index:=0 to fGroup.fNodes.Count-1 do begin
@@ -7340,7 +7331,6 @@ var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount:TpvSizeInt;
    end;
    MeshComputeStagePushConstants.IndexOffset:=IndicesStart;
    MeshComputeStagePushConstants.CountIndices:=IndicesCount;
-   MeshComputeStagePushConstants.Generation:=fGroup.fVulkanCachedVertexBufferGeneration;
    aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                    0,
