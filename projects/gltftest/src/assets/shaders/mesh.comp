@@ -85,7 +85,8 @@ void main() {
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
   if (vertexIndex < pushConstants.countIndices) {
     vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];
-    if (outVertices[vertexIndex].color0Generation.w != pushConstants.generation) {
+    //if (outVertices[vertexIndex].color0Generation.w != pushConstants.generation) 
+    {
       InPackedVertex inPackedVertex = inVertices[vertexIndex];
       vec3 inPosition = uintBitsToFloat(inPackedVertex.positionNodeIndex.xyz);
       uint inNodeIndex = inPackedVertex.positionNodeIndex.w;
