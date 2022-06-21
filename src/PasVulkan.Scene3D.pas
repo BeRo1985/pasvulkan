@@ -5039,16 +5039,22 @@ var Index:TpvSizeInt;
                                  fVertices.Items[0],
                                  0,
                                  fVertices.Count*SizeOf(TVertex),
-                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 
   for Index:=0 to MaxInFlightFrames-1 do begin
    fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                              fVertices.Count*SizeOf(TCachedVertex),
-                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                              [],
                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                             );
+   fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
+                                               UniversalCommandBuffer,
+                                               UniversalFence,
+                                               0,
+                                               fVertices.Count*SizeOf(TCachedVertex),
+                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
    fVulkanCachedVertexBufferGenerations[Index]:=0;
   end;
 

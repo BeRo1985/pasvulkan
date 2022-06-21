@@ -1064,6 +1064,13 @@ type EpvVulkanException=class(Exception);
                           const aUsage:TVkBufferUsageFlags;
                           const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
        destructor Destroy; override;
+       procedure ClearData(const aTransferQueue:TpvVulkanQueue;
+                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                           const aTransferFence:TpvVulkanFence;
+                           const aDataOffset:TVkDeviceSize;
+                           const aDataSize:TVkDeviceSize;
+                           const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic;
+                           const aForceFlush:boolean=false);
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -10719,6 +10726,106 @@ end;
 procedure TpvVulkanBuffer.Bind;
 begin
  VulkanCheckResult(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+end;
+
+procedure TpvVulkanBuffer.ClearData(const aTransferQueue:TpvVulkanQueue;
+                                    const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aTransferFence:TpvVulkanFence;
+                                    const aDataOffset:TVkDeviceSize;
+                                    const aDataSize:TVkDeviceSize;
+                                    const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic;
+                                    const aForceFlush:boolean=false);
+var StagingBuffer:TpvVulkanBuffer;
+    p:TpvPointer;
+    VkBufferCopy:TVkBufferCopy;
+    DataSize,NonCoherentAtomSize:TVkDeviceSize;
+begin
+
+ if (aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Yes) or
+    ((aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic) and
+     ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
+
+  StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                        aDataSize,
+                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                        VK_SHARING_MODE_EXCLUSIVE,
+                                        [],
+                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                         TpvVulkanBufferFlag.DedicatedAllocation]);
+  try
+
+   p:=StagingBuffer.Memory.MapMemory;
+   try
+    if assigned(p) then begin
+     FillChar(p^,aDataSize,#0);
+    end else begin
+     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+    end;
+   finally
+    StagingBuffer.Memory.UnmapMemory;
+   end;
+
+   VkBufferCopy.srcOffset:=0;
+   VkBufferCopy.dstOffset:=aDataOffset;
+   VkBufferCopy.size:=aDataSize;
+
+   aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aTransferCommandBuffer.BeginRecording;
+   aTransferCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
+   aTransferCommandBuffer.EndRecording;
+   aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+  finally
+   StagingBuffer.Free;
+  end;
+
+ end else begin
+
+  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+   p:=Memory.MapMemory(aDataOffset,aDataSize);
+   try
+    if assigned(p) then begin
+     FillChar(p^,aDataSize,#0);
+     if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
+      DataSize:=aDataSize;
+      NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+      if NonCoherentAtomSize>0 then begin
+       if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
+        if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
+         inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
+         if (aDataOffset+aDataSize)>=Memory.Size then begin
+          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+         end;
+        end;
+       end else begin
+        if (DataSize mod NonCoherentAtomSize)=0 then begin
+         inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
+         if (aDataOffset+aDataSize)>=Memory.Size then begin
+          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+         end;
+        end;
+       end;
+      end;
+      Memory.FlushMappedMemoryRange(p,DataSize);
+     end;
+    end else begin
+     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+    end;
+   finally
+    Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+  end;
+
+ end;
+
 end;
 
 procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
