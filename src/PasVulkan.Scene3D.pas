@@ -177,6 +177,24 @@ type EpvScene3D=class(Exception);
             end;
             PVertex=^TVertex;
             TVertices=array of TVertex;
+            TCachedVertex=packed record              // Minimum required cached vertex structure for to be GLTF 2.0 conformant
+             case boolean of
+              false:(
+               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+               MaterialID:TpvUInt32;                 // + 4 = 16 (unsigned 32-bit material ID)
+               NormalSign:TInt16Vector4;             // + 8 = 24 (signed 16-bit Normal + TBN sign)
+               TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
+               Tangent:TInt16Vector4;                // + 8 = 56 (signed 16-bit Tangent)
+               Reversed:TpvVector2;                  // + 8 = 64
+              );                                     //  ==   ==
+              true:(                                 //  64   64 per vertex
+               Padding:array[0..63] of TpvUInt8;
+              );
+            end;
+            PCachedVertex=^TCachedVertex;
+            TCachedVertices=array of TCachedVertex;
             TJointBlock=packed record
              case boolean of
               false:(
@@ -1149,6 +1167,7 @@ type EpvScene3D=class(Exception);
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
+              fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanMaterialIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
@@ -4975,6 +4994,7 @@ var Index:TpvSizeInt;
     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
     Material:TpvScene3D.TMaterial;
  procedure ProcessPrimitives;
+ var Index:TpvSizeInt;
  begin
 
   if fVertices.Count=0 then begin
@@ -5013,6 +5033,16 @@ var Index:TpvSizeInt;
                                  0,
                                  fVertices.Count*SizeOf(TVertex),
                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+  for Index:=0 to MaxInFlightFrames-1 do begin
+   fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                             fVertices.Count*SizeOf(TCachedVertex),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                             [],
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                            );
+  end;
 
 { fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
@@ -5138,6 +5168,7 @@ end;
 
 procedure TpvScene3D.TGroup.Unload;
 var Instance:TpvScene3D.TGroup.TInstance;
+    Index:TpvSizeInt;
 begin
  fLock.Acquire;
  try
@@ -5153,6 +5184,9 @@ begin
    if fUploaded then begin
     try
      FreeAndNil(fVulkanVertexBuffer);
+     for Index:=0 to MaxInFlightFrames-1 do begin
+      FreeAndNil(fVulkanCachedVertexBuffers[Index]);
+     end;
 //   FreeAndNil(fVulkanIndexBuffer);
      FreeAndNil(fVulkanMaterialIndexBuffer);
      FreeAndNil(fVulkanMorphTargetVertexBuffer);

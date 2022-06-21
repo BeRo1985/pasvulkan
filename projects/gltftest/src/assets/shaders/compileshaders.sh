@@ -11,6 +11,8 @@ compileshaderarguments=(
  
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   
+  '-V mesh.comp -o mesh_comp.spv'
+
   '-V mesh.vert -o mesh_vert.spv'
   
   '-V mesh.frag -DLIGHTS -DSHADOWS -o mesh_frag.spv'
