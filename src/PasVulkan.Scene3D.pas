@@ -6945,8 +6945,8 @@ var CullFace,Blend:TPasGLTFInt32;
   Node:=fGroup.fNodes[aNodeIndex];
   InstanceNode^.Processed:=true;
   Dirty:=aDirty;
+  Dirty:=true;
   if InstanceNode^.CountOverwrites>0 then begin
-   Dirty:=true;
    SkinUsed:=true;
    TranslationSum.x:=0.0;
    TranslationSum.y:=0.0;
