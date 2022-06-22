@@ -1030,16 +1030,8 @@ inherited Create(aFrameGraph);
                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                    );
 
-  fResourceDepth:=AddImageOutput('resourcetype_predepth',
-                                 'forwardrendering_predepth',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-
   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'forwardrendering_depth_temporary',
+                                      'forwardrendering_depth', // _temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -1065,39 +1057,13 @@ inherited Create(aFrameGraph);
                                            [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                           );
 
-  fResourceDepth:=AddImageOutput('resourcetype_msaa_predepth',
-                                 'forwardrendering_msaa_predepth',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-
-  fResourceDepth:=AddImageResolveOutput('resourcetype_predepth',
-                                        'forwardrendering_predepth',
-                                        'forwardrendering_msaa_predepth',
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
-                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
-
   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'forwardrendering_msaa_depth_temporary',
+                                      'forwardrendering_msaa_depth', //'_temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
-
-{ fResourceDepth:=AddImageResolveOutput('resourcetype_depth',
-                                        'forwardrendering_depth2',
-                                        'forwardrendering_msaa_depth2',
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
-                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );}
 
  end;
 
@@ -1281,14 +1247,6 @@ begin
                                                                          VK_BLEND_OP_ADD,
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
-     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                                         VK_BLEND_FACTOR_ZERO,
-                                                                         VK_BLEND_FACTOR_ZERO,
-                                                                         VK_BLEND_OP_ADD,
-                                                                         VK_BLEND_FACTOR_ZERO,
-                                                                         VK_BLEND_FACTOR_ZERO,
-                                                                         VK_BLEND_OP_ADD,
-                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT));
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
@@ -1371,6 +1329,19 @@ begin
                         fVulkanPipelineLayout,
                         OnSetRenderPassResources,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+
+{ if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not fParent.fUseOITAlphaTest then begin
+   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         IfThen(aFrameIndex=0,aInFlightFrameIndex,fFrameGraph.DrawPreviousInFlightFrameIndex),
+                         aInFlightFrameIndex,
+                         0,
+                         InFlightFrameState^.FinalViewIndex,
+                         InFlightFrameState^.CountViews,
+                         aCommandBuffer,
+                         fVulkanPipelineLayout,
+                         OnSetRenderPassResources,
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+  end;}
 
  end;
 
@@ -2302,19 +2273,19 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-{fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+ fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'forwardrendering_depth',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    ); }
+                                    );{}
 
-  fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+{ fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
                                       'forwardrendering_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
+                                     ); {}
 
  end else begin
 
@@ -2335,20 +2306,19 @@ inherited Create(aFrameGraph);
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
 
-{}fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'forwardrendering_msaa_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
+
+{fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
                                       'forwardrendering_msaa_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );{}
-
-{ fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );}
-
 
  end;
 
@@ -2850,7 +2820,7 @@ begin
 
    fOnSetRenderPassResourcesDone:=false;
 
-   if fParent.fUseDepthPrepass then begin
+(* if fParent.fUseDepthPrepass then begin
 
     fParent.fScene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                           -1,
@@ -2875,7 +2845,7 @@ begin
                            [TpvScene3D.TMaterial.TAlphaMode.Mask]);
     end;}
 
-   end;
+   end;   *)
 
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                          -1,

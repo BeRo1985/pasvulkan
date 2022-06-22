@@ -68,9 +68,6 @@ layout(location = 11) in vec4 inCurrentClipSpace;
     layout(location = 1) out vec4 outFragMBOITMoments1;
   #elif defined(VELOCITY)
     layout(location = 0) out vec2 outFragVelocity;
-    #if defined(DEPTH)
-      layout(location = 1) out float outFragDepth;
-    #endif
   #endif
 #else
   #if defined(WBOIT)
@@ -1134,10 +1131,6 @@ void main() {
 
 #ifdef VELOCITY
   outFragVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
-#endif
-
-#ifdef DEPTH
-  outFragDepth = gl_FragCoord.z;
 #endif
 
 }
