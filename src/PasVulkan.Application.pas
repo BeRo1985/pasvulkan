@@ -6006,6 +6006,7 @@ begin
                                              fVulkanAPIVersion,
                                              false,
                                              nil);
+   VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
    end;

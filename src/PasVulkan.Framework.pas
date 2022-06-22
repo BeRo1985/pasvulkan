@@ -324,6 +324,7 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure InstallDebugReportCallback;
+       function GetAPIVersionString:TpvRawByteString;
        property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
       published
        property ApplicationName:TpvVulkanCharString read GetApplicationName write SetApplicationName;
@@ -6527,8 +6528,8 @@ begin
  end;
  if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_0 then begin
   fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
- end else if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>VK_API_VERSION_1_2 then begin
-  fApplicationInfo.apiVersion:=VK_API_VERSION_1_2;
+ end else if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>VK_API_VERSION_1_3 then begin
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_3;
  end;
 
  fValidation:=aValidation;
@@ -6635,6 +6636,13 @@ begin
  SetLength(fEnabledExtensionNameStrings,0);
  SetLength(fRawEnabledExtensionNameStrings,0);
  inherited Destroy;
+end;
+
+function TpvVulkanInstance.GetAPIVersionString:TpvRawByteString;
+begin
+ result:=TpvRawByteString(IntToStr((fApplicationInfo.apiVersion and $7fffffff) shr 22)+'.'+
+                          IntToStr((fApplicationInfo.apiVersion shr 12) and $3ff)+'.'+
+                          IntToStr(fApplicationInfo.apiVersion and $fff));
 end;
 
 procedure TpvVulkanInstance.SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
