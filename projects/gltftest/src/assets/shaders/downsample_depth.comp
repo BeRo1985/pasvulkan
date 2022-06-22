@@ -1,0 +1,124 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+#ifdef MSAA
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform uniform image2DMSArray uSourceTexture; // Source mipmap level texture
+
+layout(set = 0, binding = 1) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#else
+layout(set = 0, binding = 0) uniform uniform image2DMS uSourceTexture; // Source mipmap level texture
+
+layout(set = 0, binding = 1) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#endif
+#else
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform uniform image2DArray uSourceTexture; // Source mipmap level texture
+
+layout(set = 0, binding = 1) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#else
+layout(set = 0, binding = 0) uniform uniform image2D uSourceTexture; // Source mipmap level texture
+
+layout(set = 0, binding = 1) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#endif
+#endif
+
+layout(push_constant) uniform PushConstants {
+  uint countSamples;
+} pushConstants;
+
+/* clang-format on */
+
+void main() {
+#ifdef MULTIVIEW
+  ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
+  ivec2 xy = invocationPosition.xy;
+  ivec3 destinationTextureSize = imageSize(uDestinationTexture);
+  if (all(greaterThanEqual(invocationPosition, ivec3(0))) && all(lessThan(invocationPosition, destinationTextureSize)))
+#else
+  ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 xy = invocationPosition.xy;
+  ivec2 destinationTextureSize = imageSize(uDestinationTexture);
+  if (all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, destinationTextureSize)))
+#endif
+  {
+#ifdef MULTIVIEW
+    int viewIndex = int(gl_GlobalInvocationID.z);
+    ivec3 sourceSize = ivec3(imageSize(uSourceTexture).xyz);
+    ivec3 sourceSizeMask = sourceSize - ivec3(1);
+    float depth;
+#if MIPMAPLEVEL == 0
+#ifdef MSAA
+#ifdef REVERSEDZ
+    depth = 0.0;
+    for (int i, j = pushConstants.countSamples; i < j; i++) {
+      depth = max(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
+    }
+#else
+    depth = 1.0;
+    for (int i, j = pushConstants.countSamples; i < j; i++) {
+      depth = min(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
+    }
+#endif
+#else
+    depth = imageLoad(uSourceTexture, ivec3(xy, viewIndex)).x;
+#endif
+#else
+    ivec3 sourceXY = ivex2(xy.xy << ivec2(1), viewIndex);
+#ifdef REVERSEDZ
+    depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
+                max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
+#else
+    depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
+                min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
+#endif
+#endif
+#else
+    ivec2 sourceSize = ivec2(imageSize(uSourceTexture).xy);
+    ivec2 sourceSizeMask = sourceSize - ivec2(1);
+    float depth;
+#if MIPMAPLEVEL == 0
+#ifdef MSAA
+#ifdef REVERSEDZ
+    depth = 0.0;
+    for (int i, j = pushConstants.countSamples; i < j; i++) {
+      depth = max(depth, imageLoad(uSourceTexture, xy, i).x);
+    }
+#else
+    depth = 1.0;
+    for (int i, j = pushConstants.countSamples; i < j; i++) {
+      depth = min(depth, imageLoad(uSourceTexture, xy, i).x);
+    }
+#endif
+#else
+    depth = imageLoad(uSourceTexture, xy).x;
+#endif
+#else
+    ivec2 sourceXY = xy << ivec2(1);
+#ifdef REVERSEDZ
+    depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
+                max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
+#else
+    depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
+                min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
+                    imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
+#endif
+#endif
+#endif
+    imageStore(uDestinationTexture, invocationPosition, vec4(depth));
+  }
+}
