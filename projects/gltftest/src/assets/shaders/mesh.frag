@@ -490,6 +490,8 @@ const uint smPBRMetallicRoughness = 0u,  //
     smPBRSpecularGlossiness = 1u,        //
     smUnlit = 2u;                        //
 
+#if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
+
 uvec2 texCoordIndices = uMaterial.alphaCutOffFlagsTex0Tex1.zw;
 vec2 texCoords[2] = vec2[2](inTexCoord0, inTexCoord1);
 
@@ -515,6 +517,8 @@ vec4 textureFetchSRGB(const sampler2D tex, const in int textureIndex, const in v
   return texel;
 }
 
+#endif
+
 void main() {
 #ifndef DEPTHONLY
   envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
@@ -523,10 +527,8 @@ void main() {
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
 #ifdef DEPTHONLY
-#ifdef ALPHATEST 
+#if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) 
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * inColor0.w;
-#else
-  float alpha = 0.0;
 #endif
 #else
   vec4 color = vec4(0.0);
