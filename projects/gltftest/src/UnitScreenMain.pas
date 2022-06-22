@@ -101,6 +101,8 @@ type { TScreenMain }
                fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
                fPipelineLayout:TpvVulkanPipelineLayout;
                fPipeline:TpvVulkanComputePipeline;
+               fEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+               fEventReady:array[0..MaxInFlightFrames-1] of boolean;
               public
                constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
                destructor Destroy; override;
@@ -862,6 +864,7 @@ begin
 end;
 
 procedure TScreenMain.TMeshComputePass.AfterCreateSwapChain;
+var Index:TpvSizeInt;
 begin
 
  inherited AfterCreateSwapChain;
@@ -879,12 +882,21 @@ begin
                                             nil,
                                             0);
 
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fEvents[Index]:=TpvVulkanEvent.Create(pvApplication.VulkanDevice);
+  fEventReady[Index]:=false;
+ end;
+
 end;
 
 procedure TScreenMain.TMeshComputePass.BeforeDestroySwapChain;
+var Index:TpvSizeInt;
 begin
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fEvents[Index]);
+ end;
  inherited BeforeDestroySwapChain;
 end;
 
@@ -894,6 +906,8 @@ begin
 end;
 
 procedure TScreenMain.TMeshComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var PreviousInFlightFrameIndex:TpvSizeInt;
+    MemoryBarrier:TVkMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
@@ -901,6 +915,53 @@ begin
                                        aInFlightFrameIndex,
                                        aCommandBuffer,
                                        fPipelineLayout);
+ PreviousInFlightFrameIndex:=fFrameGraph.DrawPreviousInFlightFrameIndex;
+
+ if fEventReady[aInFlightFrameIndex] then begin
+  Assert(false);
+ end;
+ aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+ fEventReady[aInFlightFrameIndex]:=true;
+
+ if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fEventReady[PreviousInFlightFrameIndex] then begin
+  fEventReady[PreviousInFlightFrameIndex]:=false;
+  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdWaitEvents(1,
+                               @fEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                               1,@MemoryBarrier,
+                               0,nil,
+                               0,nil);
+  aCommandBuffer.CmdResetEvent(fEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+ end else begin
+  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    1,@MemoryBarrier,
+                                    0,nil,
+                                    0,nil);
+ end;
+
 end;
 
 { TScreenMain.TCascadedShadowMapRenderPass }

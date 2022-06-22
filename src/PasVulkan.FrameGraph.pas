@@ -1170,6 +1170,7 @@ type EpvFrameGraph=class(Exception);
        fVulkanUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
        fDrawSwapChainImageIndex:TpvSizeInt;
+       fDrawPreviousInFlightFrameIndex:TpvSizeInt;
        fDrawInFlightFrameIndex:TpvSizeInt;
        fDrawFrameIndex:TpvSizeInt;
        fDrawWaitFence:TpvVulkanFence;
@@ -1262,6 +1263,10 @@ type EpvFrameGraph=class(Exception);
        property PassByName:TPassNameHashMap read fPassNameHashMap;
        property RootPass:TPass read fRootPass write fRootPass;
        property RootPhysicalPass:TPhysicalPass read fRootPhysicalPass;
+       property DrawSwapChainImageIndex:TpvSizeInt read fDrawSwapChainImageIndex;
+       property DrawPreviousInFlightFrameIndex:TpvSizeInt read fDrawPreviousInFlightFrameIndex;
+       property DrawInFlightFrameIndex:TpvSizeInt read fDrawInFlightFrameIndex;
+       property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
      end;
 
 implementation
@@ -6904,6 +6909,10 @@ var SemaphoreIndex:TpvSizeInt;
     SubmitInfo:TVkSubmitInfo;
 begin
  fDrawSwapChainImageIndex:=aDrawSwapChainImageIndex;
+ fDrawPreviousInFlightFrameIndex:=aDrawInFlightFrameIndex-1;
+ if fDrawPreviousInFlightFrameIndex<0 then begin
+  inc(fDrawPreviousInFlightFrameIndex,fCountInFlightFrames);
+ end;
  fDrawInFlightFrameIndex:=aDrawInFlightFrameIndex;
  fDrawFrameIndex:=aDrawFrameIndex;
  fDrawWaitFence:=aWaitFence;
