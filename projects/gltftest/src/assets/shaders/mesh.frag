@@ -68,6 +68,9 @@ layout(location = 11) in vec4 inCurrentClipSpace;
     layout(location = 1) out vec4 outFragMBOITMoments1;
   #elif defined(VELOCITY)
     layout(location = 0) out vec2 outFragVelocity;
+    #if defined(DEPTH)
+      layout(location = 1) out float outFragDepth;
+    #endif
   #endif
 #else
   #if defined(WBOIT)
@@ -84,13 +87,6 @@ layout(location = 11) in vec4 inCurrentClipSpace;
     layout(location = 0) out vec4 outFragColor;
     #ifdef EXTRAEMISSIONOUTPUT
       layout(location = 1) out vec4 outFragEmission;
-      #ifdef VELOCITY
-        layout(location = 2) out vec2 outVelocity;
-      #endif
-    #else
-      #ifdef VELOCITY
-        layout(location = 1) out vec2 outVelocity;
-      #endif
     #endif
   #endif
 #endif
@@ -530,7 +526,11 @@ void main() {
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
 #ifdef DEPTHONLY
+#ifdef ALPHATEST 
   float alpha = textureFetch(uTextures[0], 0, vec4(1.0)).w * uMaterial.baseColorFactor.w * inColor0.w;
+#else
+  float alpha = 0.0;
+#endif
 #else
   vec4 color = vec4(0.0);
 #ifdef EXTRAEMISSIONOUTPUT
@@ -1134,6 +1134,10 @@ void main() {
 
 #ifdef VELOCITY
   outFragVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
+#endif
+
+#ifdef DEPTH
+  outFragDepth = gl_FragCoord.z;
 #endif
 
 }

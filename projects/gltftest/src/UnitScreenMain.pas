@@ -113,6 +113,41 @@ type { TScreenMain }
                procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
              end;
+             { TDepthVelocityRenderPass }
+             TDepthVelocityRenderPass=class(TpvFrameGraph.TRenderPass)
+              private
+               fOnSetRenderPassResourcesDone:boolean;
+               procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                  const aRenderPassIndex:TpvSizeInt;
+                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                  const aInFlightFrameIndex:TpvSizeInt);
+              public
+               fVulkanRenderPass:TpvVulkanRenderPass;
+               fParent:TScreenMain;
+               fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
+               fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
+               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+               fVulkanTransferCommandBufferFence:TpvVulkanFence;
+               fMeshVertexShaderModule:TpvVulkanShaderModule;
+               fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
+               fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
+               fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
+               fVulkanPipelineShaderStageMeshDepthMaskedFragment:TpvVulkanPipelineShaderStage;
+               fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
+               fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+               constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+               destructor Destroy; override;
+               procedure Show; override;
+               procedure Hide; override;
+               procedure AfterCreateSwapChain; override;
+               procedure BeforeDestroySwapChain; override;
+               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+             end;
              { TCascadedShadowMapRenderPass }
              TCascadedShadowMapRenderPass=class(TpvFrameGraph.TRenderPass)
               public
@@ -716,6 +751,7 @@ type { TScreenMain }
        fFrameGraph:TpvFrameGraph;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
        fMeshComputePass:TMeshComputePass;
+       fDepthVelocityRenderPass:TDepthVelocityRenderPass;
        fCascadedShadowMapRenderPass:TCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TCascadedShadowMapBlurRenderPass;
@@ -960,6 +996,382 @@ begin
                                     1,@MemoryBarrier,
                                     0,nil,
                                     0,nil);
+ end;
+
+end;
+
+{ TScreenMain.TDepthVelocityRenderPass }
+
+constructor TScreenMain.TDepthVelocityRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+begin
+inherited Create(aFrameGraph);
+
+ fParent:=aParent;
+
+ Name:='DepthVelocityRendering';
+
+ MultiviewMask:=fParent.fSurfaceMultiviewMask;
+
+ Queue:=aFrameGraph.UniversalQueue;
+
+ Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                       1.0,
+                                       1.0,
+                                       1.0,
+                                       fParent.fCountSurfaceViews);
+
+ if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+
+  fResourceVelocity:=AddImageOutput('resourcetype_velocity',
+                                    'forwardrendering_velocity',
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+
+  fResourceDepth:=AddImageOutput('resourcetype_predepth',
+                                 'forwardrendering_predepth',
+                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                              TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
+
+  fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+                                      'forwardrendering_depth_temporary',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                   TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+
+ end else begin
+
+  fResourceVelocity:=AddImageOutput('resourcetype_msaa_velocity',
+                                    'forwardrendering_msaa_velocity',
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+
+  fResourceVelocity:=AddImageResolveOutput('resourcetype_velocity',
+                                           'forwardrendering_velocity',
+                                           'forwardrendering_msaa_velocity',
+                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                           [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                          );
+
+  fResourceDepth:=AddImageOutput('resourcetype_msaa_predepth',
+                                 'forwardrendering_msaa_predepth',
+                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                              TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
+
+  fResourceDepth:=AddImageResolveOutput('resourcetype_predepth',
+                                        'forwardrendering_predepth',
+                                        'forwardrendering_msaa_predepth',
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                       );
+
+  fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+                                      'forwardrendering_msaa_depth_temporary',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                   TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+
+{ fResourceDepth:=AddImageResolveOutput('resourcetype_depth',
+                                        'forwardrendering_depth2',
+                                        'forwardrendering_msaa_depth2',
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                       );}
+
+ end;
+
+end;
+
+destructor TScreenMain.TDepthVelocityRenderPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.Show;
+var Index:TpvSizeInt;
+    Stream:TStream;
+begin
+ inherited Show;
+
+ fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_velocity_vert.spv');
+ try
+  fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_frag.spv');
+ try
+  fMeshDepthFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ if fParent.fUseDemote then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_demote_frag.spv');
+ end else if fParent.fUseNoDiscard then begin
+  if fParent.fZFar<0.0 then begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_nodiscard_reversedz_frag.spv');
+  end else begin
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_nodiscard_frag.spv');
+  end;
+ end else begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_frag.spv');
+ end;
+ try
+  fMeshDepthMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
+
+ fVulkanPipelineShaderStageMeshDepthFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthFragmentShaderModule,'main');
+
+ fVulkanPipelineShaderStageMeshDepthMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthMaskedFragmentShaderModule,'main');
+
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.Hide;
+begin
+
+ FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
+
+ FreeAndNil(fVulkanPipelineShaderStageMeshDepthFragment);
+
+ FreeAndNil(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
+
+ FreeAndNil(fMeshVertexShaderModule);
+
+ FreeAndNil(fMeshDepthFragmentShaderModule);
+
+ FreeAndNil(fMeshDepthMaskedFragmentShaderModule);
+
+ FreeAndNil(fVulkanTransferCommandBufferFence);
+ FreeAndNil(fVulkanTransferCommandBuffer);
+ FreeAndNil(fVulkanGraphicsCommandBufferFence);
+ FreeAndNil(fVulkanGraphicsCommandBuffer);
+ inherited Hide;
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.AfterCreateSwapChain;
+var InFlightFrameIndex:TpvSizeInt;
+    AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    DoubleSided:TpvScene3D.TDoubleSided;
+    VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+begin
+
+ inherited AfterCreateSwapChain;
+
+ fVulkanRenderPass:=VulkanRenderPass;
+
+ fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.MaterialVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.Initialize;
+
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+    FreeAndNil(fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]);
+   end;
+  end;
+ end;
+
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+
+    VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
+                                                             pvApplication.VulkanPipelineCache,
+                                                             0,
+                                                             [],
+                                                             fVulkanPipelineLayout,
+                                                             fVulkanRenderPass,
+                                                             VulkanRenderPassSubpassIndex,
+                                                             nil,
+                                                             0);
+
+    try
+
+     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
+     if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
+     end else begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);
+     end;
+
+     VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
+     VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+     fParent.fScene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline,true);
+
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fParent.fWidth,fParent.fHeight,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fParent.fWidth,fParent.fHeight);
+
+     VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+     if DoubleSided then begin
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+     end else begin
+      VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+     end;
+     VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
+     begin
+      VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+      VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+      VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+      VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+     end;
+
+     VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+     VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
+     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_FACTOR_ZERO,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT));
+
+     VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     if fParent.fZFar<0.0 then begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+      end else begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+     end;
+     VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+     VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+     VulkanGraphicsPipeline.Initialize;
+
+     VulkanGraphicsPipeline.FreeMemory;
+
+    finally
+     fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]:=VulkanGraphicsPipeline;
+    end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.BeforeDestroySwapChain;
+var Index:TpvSizeInt;
+    AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    DoubleSided:TpvScene3D.TDoubleSided;
+begin
+ for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+   for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
+    FreeAndNil(fVulkanGraphicsPipelines[AlphaMode,PrimitiveTopology,DoubleSided]);
+   end;
+  end;
+ end;
+ FreeAndNil(fVulkanPipelineLayout);
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                        const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                        const aRenderPassIndex:TpvSizeInt;
+                                                                        const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                        const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if not fOnSetRenderPassResourcesDone then begin
+  fOnSetRenderPassResourcesDone:=true;
+ end;
+end;
+
+procedure TScreenMain.TDepthVelocityRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                       const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var InFlightFrameState:TScreenMain.PInFlightFrameState;
+begin
+ inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ InFlightFrameState:=@fParent.fInFlightFrameStates[aInFlightFrameIndex];
+
+ if InFlightFrameState^.Ready then begin
+
+  fOnSetRenderPassResourcesDone:=false;
+
+  fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                        IfThen(aFrameIndex=0,aInFlightFrameIndex,fFrameGraph.DrawPreviousInFlightFrameIndex),
+                        aInFlightFrameIndex,
+                        0,
+                        InFlightFrameState^.FinalViewIndex,
+                        InFlightFrameState^.CountViews,
+                        aCommandBuffer,
+                        fVulkanPipelineLayout,
+                        OnSetRenderPassResources,
+                        [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+
  end;
 
 end;
@@ -1890,6 +2302,12 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
+{fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                     'forwardrendering_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    ); }
+
   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
                                       'forwardrendering_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -1908,29 +2326,31 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-{ if fParent.fTransparencyMode in [TTransparencyMode.Direct,
-                                   TTransparencyMode.SPINLOCKOIT,
-                                   TTransparencyMode.INTERLOCKOIT] then}begin
-   fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                         'forwardrendering_color',
-                                         'forwardrendering_msaa_color',
-                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
-                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                        );
-  end;
+  fResourceColor:=AddImageResolveOutput('resourcetype_color',
+                                        'forwardrendering_color',
+                                        'forwardrendering_msaa_color',
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                       );
 
-  fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+{}fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
                                       'forwardrendering_msaa_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
+                                     );{}
+
+{ fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'forwardrendering_msaa_depth',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );}
+
 
  end;
-
 
 end;
 
@@ -7602,6 +8022,26 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_predepth',
+                                  false,
+                                  VK_FORMAT_R32_SFLOAT,
+                                  fVulkanSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_velocity',
+                                  false,
+                                  VK_FORMAT_R32G32_SFLOAT,
+                                  fVulkanSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_mboit_data',
                                   false,
                                   VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -7662,6 +8102,26 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_predepth',
+                                  true,
+                                  VK_FORMAT_R32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_velocity',
+                                  true,
+                                  VK_FORMAT_R32G32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_cascadedshadowmap_msaa_data',
                                   false,
                                   VK_FORMAT_R16G16B16A16_UNORM,
@@ -7706,8 +8166,12 @@ begin
 
  fMeshComputePass:=TMeshComputePass.Create(fFrameGraph,self);
 
+ fDepthVelocityRenderPass:=TDepthVelocityRenderPass.Create(fFrameGraph,self);
+ fDepthVelocityRenderPass.AddExplicitPassDependency(fMeshComputePass);
+
  fCascadedShadowMapRenderPass:=TCascadedShadowMapRenderPass.Create(fFrameGraph,self);
  fCascadedShadowMapRenderPass.AddExplicitPassDependency(fMeshComputePass);
+ fCascadedShadowMapRenderPass.AddExplicitPassDependency(fDepthVelocityRenderPass);
 
  fCascadedShadowMapResolveRenderPass:=TCascadedShadowMapResolveRenderPass.Create(fFrameGraph,self);
 
