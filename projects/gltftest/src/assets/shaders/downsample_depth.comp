@@ -59,14 +59,14 @@ void main() {
   #if MIPMAPLEVEL == 0
     #ifdef MSAA
       #ifdef REVERSEDZ
-          depth = 0.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
-          }
-      #else
           depth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
             depth = min(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
+          }
+      #else
+          depth = 0.0;
+          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
+            depth = max(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
           }
       #endif
     #else
@@ -75,14 +75,14 @@ void main() {
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
     #ifdef REVERSEDZ
-        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
-                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
-    #else
         depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
                         imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
                     min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
+                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
+    #else
+        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
+                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
+                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
                         imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
     #endif
   #endif
@@ -93,14 +93,14 @@ void main() {
   #if MIPMAPLEVEL == 0
     #ifdef MSAA
       #ifdef REVERSEDZ
-          depth = 0.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, imageLoad(uSourceTexture, xy, i).x);
-          }
-      #else
           depth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
             depth = min(depth, imageLoad(uSourceTexture, xy, i).x);
+          }
+      #else
+          depth = 0.0;
+          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
+            depth = max(depth, imageLoad(uSourceTexture, xy, i).x);
           }
       #endif
     #else
@@ -109,14 +109,14 @@ void main() {
   #else
       ivec2 sourceXY = xy << ivec2(1);
     #ifdef REVERSEDZ
-        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
-                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
-    #else
         depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
                         imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
                     min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
+                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
+    #else
+        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
+                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
+                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
                         imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
     #endif
   #endif
