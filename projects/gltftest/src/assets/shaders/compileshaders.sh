@@ -17,6 +17,8 @@ compileshaderarguments=(
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -DMSAA -DREVERSEDZ -o downsample_depth_multiview_msaa_reversedz_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=1 -o downsample_depth_level1_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o downsample_depth_multiview_level1_comp.spv'
+  '-V downsample_depth.comp -DMIPMAPLEVEL=1 -DREVERSEDZ -o downsample_depth_reversedz_level1_comp.spv'
+  '-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o downsample_depth_multiview_reversedz_level1_comp.spv'
 
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   
