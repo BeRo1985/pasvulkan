@@ -45,7 +45,7 @@ type { TMipmappedArray2DImage }
 
        DescriptorImageInfos:array of TVkDescriptorImageInfo;
 
-       constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+       constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aBilinear:boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
        destructor Destroy; override;
 
@@ -71,7 +71,7 @@ implementation
 
 { TMipmappedArray2DImage }
 
-constructor TMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
+constructor TMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aBilinear:boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
 var MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -196,22 +196,41 @@ begin
                                             TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                             false);
 
-    fVulkanMipMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                                  TVkFilter(VK_FILTER_LINEAR),
-                                                  TVkFilter(VK_FILTER_LINEAR),
-                                                  TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_NEAREST),
-                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                                  TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                                  0.0,
-                                                  false,
-                                                  1.0,
-                                                  false,
-                                                  TVkCompareOp(VK_COMPARE_OP_NEVER),
-                                                  0.0,
-                                                  1,
-                                                  TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
-                                                  false);
+    if aBilinear then begin
+     fVulkanMipMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                   TVkFilter(VK_FILTER_LINEAR),
+                                                   TVkFilter(VK_FILTER_LINEAR),
+                                                   TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_NEAREST),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   0.0,
+                                                   false,
+                                                   1.0,
+                                                   false,
+                                                   TVkCompareOp(VK_COMPARE_OP_NEVER),
+                                                   0.0,
+                                                   1,
+                                                   TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
+                                                   false);
+    end else begin
+     fVulkanMipMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                   TVkFilter(VK_FILTER_NEAREST),
+                                                   TVkFilter(VK_FILTER_NEAREST),
+                                                   TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_NEAREST),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                   0.0,
+                                                   false,
+                                                   1.0,
+                                                   false,
+                                                   TVkCompareOp(VK_COMPARE_OP_NEVER),
+                                                   0.0,
+                                                   1,
+                                                   TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
+                                                   false);
+    end;
 
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,

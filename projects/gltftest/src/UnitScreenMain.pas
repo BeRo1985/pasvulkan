@@ -1494,9 +1494,9 @@ begin
  inherited AfterCreateSwapChain;
 
  fVulkanSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                         TVkFilter.VK_FILTER_NEAREST,
+                                         TVkFilter.VK_FILTER_NEAREST,
+                                         TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -8893,8 +8893,8 @@ begin
  end;
 
  for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-  fDepthMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fDepthMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  end;
 
  case fTransparencyMode of
