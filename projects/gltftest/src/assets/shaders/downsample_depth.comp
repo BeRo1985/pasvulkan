@@ -78,16 +78,25 @@ void main() {
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
-    #ifdef REVERSEDZ
-        depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                    min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
+    #if 1  
+      vec4 depths = textureGather(uSourceTexture, vec3(vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), sourceXY.z), 0);
+      #ifdef REVERSEDZ
+        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
+      #else
+        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
+      #endif
     #else
-        depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                    max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
+      #ifdef REVERSEDZ
+          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
+      #else
+          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
+      #endif
     #endif
   #endif
 #else
@@ -116,16 +125,25 @@ void main() {
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);
-    #ifdef REVERSEDZ
-        depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                    min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
+    #if 1  
+      vec4 depths = textureGather(uSourceTexture, vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), 0);
+      #ifdef REVERSEDZ
+        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
+      #else
+        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
+      #endif
     #else
-        depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                    max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
+      #ifdef REVERSEDZ
+          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
+      #else
+          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
+      #endif
     #endif
   #endif
 #endif
