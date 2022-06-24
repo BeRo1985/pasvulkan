@@ -156,7 +156,6 @@ type { TScreenMain }
                fDownsampleLevel0ComputeShaderModule:TpvVulkanShaderModule;
                fDownsampleLevel1ComputeShaderModule:TpvVulkanShaderModule;
                fVulkanSampler:TpvVulkanSampler;
-               fVulkanDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
                fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
                fVulkanPipelineShaderStageDownsampleLevel0Compute:TpvVulkanPipelineShaderStage;
                fVulkanPipelineShaderStageDownsampleLevel1Compute:TpvVulkanPipelineShaderStage;
@@ -1558,20 +1557,6 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  fVulkanDepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
-                                                                        fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                        ImageViewType,
-                                                                        TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
-                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                        TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
-                                                                        0,
-                                                                        1,
-                                                                        0,
-                                                                        fParent.fCountSurfaceViews
-                                                                       );
   fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                                    fResourceInput.VulkanImages[InFlightFrameIndex],
                                                                    ImageViewType,
@@ -1580,7 +1565,7 @@ begin
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
                                                                    0,
                                                                    1,
                                                                    0,
@@ -1595,7 +1580,7 @@ begin
                                                                                     1,
                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                     [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                                   fVulkanDepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                                   fVulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                                    fResourceInput.ResourceTransition.Layout)],
                                                                                     [],
                                                                                     [],
@@ -1641,7 +1626,6 @@ begin
   for MipMapLevelIndex:=0 to fParent.fDepthMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-1 do begin
    FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex]);
   end;
-  FreeAndNil(fVulkanDepthImageViews[InFlightFrameIndex]);
   FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
