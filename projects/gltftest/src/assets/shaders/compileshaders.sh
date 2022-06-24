@@ -10,9 +10,11 @@ compileshaderarguments=(
   '-V downsample.comp -DMIPMAPLEVEL=2 -DMULTIVIEW -o downsample_multiview_level2_comp.spv'
 
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -o downsample_depth_level0_comp.spv'
+  '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DREVERSEDZ -o downsample_depth_reversedz_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMSAA -o downsample_depth_msaa_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMSAA -DREVERSEDZ -o downsample_depth_msaa_reversedz_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -o downsample_depth_multiview_level0_comp.spv'
+  '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -DREVERSEDZ -o downsample_depth_multiview_reversedz_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -DMSAA -o downsample_depth_multiview_msaa_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -DMSAA -DREVERSEDZ -o downsample_depth_multiview_msaa_reversedz_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=1 -o downsample_depth_level1_comp.spv'

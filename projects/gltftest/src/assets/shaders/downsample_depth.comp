@@ -11,17 +11,17 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #ifdef MSAA
 
 #ifdef MULTIVIEW
-layout(set = 0, binding = 0, r32f) readonly uniform image2DMSArray uSourceTexture; // Source mipmap level texture
+layout(set = 0, binding = 0) uniform sampler2DMSArray uSourceTexture; // Source mipmap level texture
 #else
-layout(set = 0, binding = 0, r32f) readonly uniform image2DMS uSourceTexture; // Source mipmap level texture
+layout(set = 0, binding = 0) uniform sampler2DMS uSourceTexture; // Source mipmap level texture
 #endif
 
 #else
 
 #ifdef MULTIVIEW
-layout(set = 0, binding = 0, r32f) readonly uniform image2DArray uSourceTexture; // Source mipmap level texture
+layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture; // Source mipmap level texture
 #else
-layout(set = 0, binding = 0, r32f) readonly uniform image2D uSourceTexture; // Source mipmap level texture
+layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level texture
 #endif
 
 #endif
@@ -53,7 +53,11 @@ void main() {
   {
 #ifdef MULTIVIEW
     int viewIndex = int(gl_GlobalInvocationID.z);
-    ivec3 sourceSize = ivec3(imageSize(uSourceTexture).xyz);
+#ifdef MSAA
+    ivec3 sourceSize = ivec3(textureSize(uSourceTexture).xyz);
+#else
+    ivec3 sourceSize = ivec3(textureSize(uSourceTexture, 0).xyz);
+#endif
     ivec3 sourceSizeMask = sourceSize - ivec3(1);
     float depth;
   #if MIPMAPLEVEL == 0
@@ -61,33 +65,37 @@ void main() {
       #ifdef REVERSEDZ
           depth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = min(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
+            depth = min(depth, texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x);
           }
       #else
           depth = 0.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, imageLoad(uSourceTexture, ivec3(xy, viewIndex), i).x);
+            depth = max(depth, texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x);
           }
       #endif
     #else
-        depth = imageLoad(uSourceTexture, ivec3(xy, viewIndex)).x;
+        depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
     #ifdef REVERSEDZ
-        depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
-                    min(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
+        depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                    min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
     #else
-        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask)).x),   //
-                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask)).x));  //
+        depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                    max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
     #endif
   #endif
 #else
-    ivec2 sourceSize = ivec2(imageSize(uSourceTexture).xy);
+#ifdef MSAA
+    ivec2 sourceSize = ivec2(textureSize(uSourceTexture).xy);
+#else
+    ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
+#endif
     ivec2 sourceSizeMask = sourceSize - ivec2(1);
     float depth;
   #if MIPMAPLEVEL == 0
@@ -95,29 +103,29 @@ void main() {
       #ifdef REVERSEDZ
           depth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = min(depth, imageLoad(uSourceTexture, xy, i).x);
+            depth = min(depth, texelFetch(uSourceTexture, xy, i).x);
           }
       #else
           depth = 0.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, imageLoad(uSourceTexture, xy, i).x);
+            depth = max(depth, texelFetch(uSourceTexture, xy, i).x);
           }
       #endif
     #else
-        depth = imageLoad(uSourceTexture, xy).x;
+        depth = texelFetch(uSourceTexture, xy, 0).x;
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);
     #ifdef REVERSEDZ
-        depth = min(min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
-                    min(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
+        depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                    min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
     #else
-        depth = max(max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask)).x),   //
-                    max(imageLoad(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask)).x,    //
-                        imageLoad(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask)).x));  //
+        depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                    max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                        texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
     #endif
   #endif
 #endif
