@@ -153,8 +153,6 @@ layout(std140, set = 1, binding = 0) uniform uboMaterial {
   mat4 textureTransforms[16];
 } uMaterial;
 
-layout(set = 1, binding = 1) uniform sampler2D uMaterialTextures[];
-
 // Pass descriptor set
 
 #ifdef DEPTHONLY
@@ -507,26 +505,33 @@ const uint smPBRMetallicRoughness = 0u,  //
 
 #if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
 
-uvec2 texCoordIndices = uMaterial.alphaCutOffFlagsTex0Tex1.zw;
+uvec2 textureFlags = uMaterial.alphaCutOffFlagsTex0Tex1.zw;
 vec2 texCoords[2] = vec2[2](inTexCoord0, inTexCoord1);
 
+int getTexCoordID(const in int textureIndex){
+  return uMaterial.textures[textureIndex >> 2][textureIndex & 3]; 
+}
+
 vec2 textureUV(const in int textureIndex) {
-  uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
-  return (which < 0x2u) ? (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy : inTexCoord0;
+  int textureID = getTexCoordID(textureIndex); 
+  return (textureID >= 0) ? (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[(textureID >> 16) & 0xf], 1.0).xyzz).xy : inTexCoord0;
+}
+
+ivec2 texture2DSize(const in int textureIndex) {
+  int textureID = getTexCoordID(textureIndex); 
+  return (textureID >= 0) ? ivec2(textureSize(u2DTextures[nonuniformEXT(textureID & 0xffff)], 0).xy) : ivec2(0);
 }
 
 vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue) {
-  uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
-  int textureID = uMaterial.textures[textureIndex >> 2][textureIndex & 3]; 
-  return ((which < 0x2u) && (textureID >= 0)) ? texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy) : defaultValue;
+  int textureID = getTexCoordID(textureIndex); 
+  return (textureID >= 0) ? texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int((textureID >> 16) & 0xf)], 1.0).xyzz).xy) : defaultValue;
 }
 
 vec4 textureFetchSRGB(const in int textureIndex, const in vec4 defaultValue) {
-  uint which = (texCoordIndices[textureIndex >> 3] >> ((uint(textureIndex) & 7u) << 2u)) & 0xfu;
-  int textureID = uMaterial.textures[textureIndex >> 2][textureIndex & 3]; 
+  int textureID = getTexCoordID(textureIndex); 
   vec4 texel;
-  if ((which < 0x2u) && (textureID >= 0)) {
-    texel = texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int(which)], 1.0).xyzz).xy);
+  if (textureID >= 0) {
+    texel = texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (uMaterial.textureTransforms[textureIndex] * vec3(texCoords[int((textureID >> 16) & 0xf)], 1.0).xyzz).xy);
     texel.xyz = convertSRGBToLinearRGB(texel.xyz);
   } else {
     texel = defaultValue;
@@ -625,7 +630,7 @@ void main() {
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
       vec3 normal;
-      if ((texCoordIndices.x & 0x00000f00u) != 0x00000f00u) {
+      if ((textureFlags.x & (1 << 2)) != 0) {
         vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx);
         normal = normalize(                                                                                                                      //
             mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) *                                                            //
@@ -655,7 +660,7 @@ void main() {
       float sheenRoughness = 0.0;
       if ((flags & (1u << 7u)) != 0u) {
         sheenColorIntensityFactor = uMaterial.sheenColorFactorSheenIntensityFactor;
-        if ((texCoordIndices.x & 0x00f00000u) != 0x00f00000u) {
+        if ((textureFlags.x & (1 << 5)) != 0) {
           sheenColorIntensityFactor *= textureFetchSRGB(5, vec4(1.0));
         }
         sheenRoughness = max(perceptualRoughness, 1e-7);
@@ -669,13 +674,13 @@ void main() {
       if ((flags & (1u << 8u)) != 0u) {
         clearcoatFactor = uMaterial.clearcoatFactorClearcoatRoughnessFactor.x;
         clearcoatRoughness = uMaterial.clearcoatFactorClearcoatRoughnessFactor.y;
-        if ((texCoordIndices.x & 0x0f000000u) != 0x0f000000u) {
+        if ((textureFlags.x & (1 << 6)) != 0) {
           clearcoatFactor *= textureFetch(6, vec4(1.0)).x;
         }
-        if ((texCoordIndices.x & 0xf0000000u) != 0xf0000000u) {
+        if ((textureFlags.x & (1 << 7)) != 0) {
           clearcoatRoughness *= textureFetch(7, vec4(1.0)).y;
         }
-        if ((texCoordIndices.y & 0x0000000fu) != 0x0000000fu) {
+        if ((textureFlags.x & (1 << 8)) != 0) {
           vec4 normalTexture = textureFetch(8, vec2(0.0, 1.0).xxyx);
           clearcoatNormal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(uMaterial.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
         } else {
@@ -968,7 +973,7 @@ void main() {
   #if !(defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT))
     #ifdef MSAA
       #if 0
-        vec2 alphaTextureSize = textureSize(uMaterialTextures[0]).xy;
+        vec2 alphaTextureSize = vec2(texture2DSize(0));
         vec2 alphaTextureUV = textureUV(0) * alphaTextureSize;
         vec4 alphaDUV = vec4(vec2(dFdx(alphaTextureUV)), vec2(dFdy(alphaTextureUV)));
         alpha *= 1.0 + (max(0.0, max(dot(alphaDUV.xy, alphaDUV.xy), dot(alphaDUV.zw, alphaDUV.zw)) * 0.5) * 0.25);
