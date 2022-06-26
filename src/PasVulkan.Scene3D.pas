@@ -567,9 +567,9 @@ type EpvScene3D=class(Exception);
               fData:TData;
               fShaderData:TShaderData;
               fLock:TPasMPSpinLock;
-              fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
+{             fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
               fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-              fVulkanDescriptorSet:TpvVulkanDescriptorSet;
+              fVulkanDescriptorSet:TpvVulkanDescriptorSet;}
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -1281,7 +1281,6 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapImage:TImage;
        fDefaultNormalMapTexture:TTexture;
        fMeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fMaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
        fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -1400,7 +1399,6 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
       published
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
-       property MaterialVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMaterialVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
      end;
 
@@ -2682,65 +2680,6 @@ begin
       ClearCoatTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
      end;
 
-     fShaderDataUniformBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                           SizeOf(TShaderData),
-                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                           [],
-                                                           0,
-                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           []);
-     UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
-     try
-      UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                        pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
-                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-      try
-       UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-       try
-        UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-        try
-         FillShaderData;
-         fShaderDataUniformBlockBuffer.UploadData(UniversalQueue,
-                                                  UniversalCommandBuffer,
-                                                  UniversalFence,
-                                                  fShaderData,
-                                                  0,
-                                                  SizeOf(TShaderData),
-                                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
-        finally
-         FreeAndNil(UniversalFence);
-        end;
-       finally
-        FreeAndNil(UniversalCommandBuffer);
-       end;
-      finally
-       FreeAndNil(UniversalCommandPool);
-      end;
-     finally
-      UniversalQueue:=nil;
-     end;
-
-     fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),2);
-     fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
-     fVulkanDescriptorPool.Initialize;
-     fVulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                         fSceneInstance.fMaterialVulkanDescriptorSetLayout);
-     fVulkanDescriptorSet.WriteToDescriptorSet(0,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                               [],
-                                               [fShaderDataUniformBlockBuffer.DescriptorBufferInfo],
-                                               [],
-                                               false);
-     fVulkanDescriptorSet.Flush;
-
     finally
      fUploaded:=true;
     end;
@@ -2761,9 +2700,9 @@ begin
   try
    if fUploaded then begin
     try
-     FreeAndNil(fVulkanDescriptorSet);
+{    FreeAndNil(fVulkanDescriptorSet);
      FreeAndNil(fVulkanDescriptorPool);
-     FreeAndNil(fShaderDataUniformBlockBuffer);
+     FreeAndNil(fShaderDataUniformBlockBuffer);}
     finally
      fUploaded:=false;
     end;
@@ -7333,14 +7272,14 @@ var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount,
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
     Node:TpvScene3D.TGroup.TInstance.PNode;
-    MeshFirst,OK:boolean;
+    FirstFlush:boolean;
  procedure Flush;
  var MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
  begin
   if IndicesCount>0 then begin
    fGroup.fCachedVerticesUpdated:=true;
-   if MeshFirst then begin
-    MeshFirst:=false;
+   if FirstFlush then begin
+    FirstFlush:=false;
     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                          aPipelineLayout.Handle,
                                          0,
@@ -7383,7 +7322,7 @@ begin
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
    end;
-   MeshFirst:=true;
+   FirstFlush:=true;
    PrimitiveIndexRanges:=@Scene.fCombinedPrimitiveUniqueIndexRanges;
    IndicesStart:=0;
    IndicesCount:=0;
@@ -7421,92 +7360,147 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
     Material:TpvScene3D.TMaterial;
     PrimitiveIndexRanges:TpvScene3D.TGroup.TScene.PPrimitiveIndexRanges;
     PrimitiveIndexRange:TpvScene3D.TGroup.TScene.PPrimitiveIndexRange;
-    Culling,MeshFirst,MaterialFirst:boolean;
+    LastPrimitiveTopology,PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    LastDoubleSided,DoubleSided,First,Culling,FirstFlush:boolean;
     VisibleBit:TpvUInt32;
  procedure Flush;
  var Pipeline:TpvVulkanPipeline;
-     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-     WasMeshFirst:boolean;
+     WasFirstFlush:boolean;
  begin
+
   if IndicesCount>0 then begin
-   PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
-   Pipeline:=aGraphicsPipelines[PrimitiveTopology,Material.fData.DoubleSided];
+
+   Pipeline:=aGraphicsPipelines[LastPrimitiveTopology,DoubleSided];
    if aPipeline<>Pipeline then begin
     aPipeline:=Pipeline;
     if assigned(Pipeline) then begin
      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
     end;
    end;
-   WasMeshFirst:=MeshFirst;
-   if MeshFirst then begin
-    MeshFirst:=false;
+
+   WasFirstFlush:=FirstFlush;
+   if FirstFlush then begin
+    FirstFlush:=false;
     fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
-{   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         aPipelineLayout.Handle,
-                                         1,
-                                         1,
-                                         @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                         0,
-                                         nil);}
    end;
-   if MaterialFirst then begin
-    MaterialFirst:=false;
-    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         aPipelineLayout.Handle,
-                                         1,
-                                         1,
-                                         @Material.fVulkanDescriptorSet.Handle,
-                                         0,
-                                         nil);
-   end;
-   if WasMeshFirst then begin
+
+   if WasFirstFlush then begin
+
     fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
     if assigned(aOnSetRenderPassResources) then begin
      aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
     end;
+
    end;
+
    aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
-   IndicesCount:=0;
+
+   First:=false;
+
+   LastPrimitiveTopology:=PrimitiveTopology;
+
+   LastDoubleSided:=DoubleSided;
+
+  end else begin
+
+   if First then begin
+    First:=false;
+    LastPrimitiveTopology:=PrimitiveTopology;
+    LastDoubleSided:=DoubleSided;
+   end;
+
   end;
+
+  IndicesStart:=PrimitiveIndexRange^.Index;
+  IndicesCount:=0;
+
  end;
 begin
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+
   Culling:=fGroup.fCulling;
+
   Scene:=fScenes[aInFlightFrameIndex];
+
   if assigned(Scene) then begin
+
+   LastPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+   PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+   LastDoubleSided:=false;
+   DoubleSided:=false;
+
+   Material:=nil;
+
    VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
-   MeshFirst:=true;
+
+   First:=true;
+
+   FirstFlush:=true;
+
+   IndicesStart:=0;
+   IndicesCount:=0;
+
    for SceneMaterialIndex:=0 to Scene.fMaterials.Count-1 do begin
+
     SceneMaterial:=Scene.fMaterials[SceneMaterialIndex];
+
     if SceneMaterial.fCountIndices>0 then begin
+
      Material:=SceneMaterial.fMaterial;
+
      if Material.fData.AlphaMode in aMaterialAlphaModes then begin
-      MaterialFirst:=true;
+
+      DoubleSided:=Material.fData.DoubleSided;
+
       if Culling then begin
        PrimitiveIndexRanges:=@SceneMaterial.fPrimitiveIndexRanges;
       end else begin
        PrimitiveIndexRanges:=@SceneMaterial.fCombinedPrimitiveIndexRanges;
       end;
-      IndicesStart:=0;
-      IndicesCount:=0;
+
       for PrimitiveIndexRangeIndex:=0 to PrimitiveIndexRanges^.Count-1 do begin
+
        PrimitiveIndexRange:=@PrimitiveIndexRanges^.Items[PrimitiveIndexRangeIndex];
-       if (PrimitiveIndexRange^.Count>0) and
-          ((not Culling) or
-           ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and VisibleBit)<>0)) then begin
-        if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.Index) then begin
+
+       if ((PrimitiveIndexRange^.Count>0) and
+           ((not Culling) or
+            ((fNodes[PrimitiveIndexRange^.Node].VisibleBitmap and VisibleBit)<>0))) then begin
+
+        PrimitiveTopology:=PrimitiveIndexRange^.PrimitiveTopology;
+
+        if (LastPrimitiveTopology<>PrimitiveTopology) or
+           (LastDoubleSided<>DoubleSided) or
+           (IndicesCount=0) or
+           ((IndicesStart+IndicesCount)<>PrimitiveIndexRange^.Index) then begin
          Flush;
-         IndicesStart:=PrimitiveIndexRange^.Index;
         end;
+
         inc(IndicesCount,PrimitiveIndexRange^.Count);
+
+        if First then begin
+         First:=false;
+         LastPrimitiveTopology:=PrimitiveTopology;
+         LastDoubleSided:=DoubleSided;
+        end;
+
        end;
+
       end;
-      Flush;
+
      end;
+
     end;
+
    end;
+
+   Flush;
+
   end;
+
  end;
+
 end;
 
 { TpvScene3D }
@@ -7667,14 +7661,6 @@ begin
 
  fMeshComputeVulkanDescriptorSetLayout.Initialize;
 
- fMaterialVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
- fMaterialVulkanDescriptorSetLayout.AddBinding(0,
-                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                               1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                               []);
- fMaterialVulkanDescriptorSetLayout.Initialize;
-
  fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice,TVkDescriptorSetLayoutCreateFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT),true);
  fGlobalVulkanDescriptorSetLayout.AddBinding(0,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -7770,8 +7756,6 @@ begin
  FreeAndNil(fLightAABBTree);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSetLayout);
-
- FreeAndNil(fMaterialVulkanDescriptorSetLayout);
 
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
