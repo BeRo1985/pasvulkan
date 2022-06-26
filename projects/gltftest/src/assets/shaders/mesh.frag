@@ -104,6 +104,19 @@ struct View {
   mat4 projectionMatrix;
 };
 
+struct Material {
+  vec4 baseColorFactor;
+  vec4 specularFactor;
+  vec4 emissiveFactor;
+  vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
+  vec4 sheenColorFactorSheenIntensityFactor;
+  vec4 clearcoatFactorClearcoatRoughnessFactor;
+  vec4 ior;
+  uvec4 alphaCutOffFlagsTex0Tex1;
+  ivec4 textures[4];
+  mat4 textureTransforms[16];
+};
+
 layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[512];
 } uView;
@@ -133,9 +146,13 @@ layout(std430, set = 0, binding = 2) buffer LightTreeNodeData {
 
 #endif
 
-layout(set = 0, binding = 3) uniform sampler2D u2DTextures[];
+layout(std430, set = 0, binding = 2) buffer MaterialData {
+  Material materials[];
+};
 
-layout(set = 0, binding = 3) uniform samplerCube uCubeTextures[];
+layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
+
+layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 // Material descriptor set
 

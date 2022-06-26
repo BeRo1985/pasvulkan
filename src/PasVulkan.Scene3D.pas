@@ -457,7 +457,7 @@ type EpvScene3D=class(Exception);
                        TextureTransforms:array[0..15] of TpvMatrix4x4;
                      );
                      true:(
-                      Padding:array[0..2047] of TpvUInt8;
+                      //Padding:array[0..2047] of TpvUInt8;
                      );
                    end;
                    PShaderData=^TShaderData;
@@ -1271,6 +1271,7 @@ type EpvScene3D=class(Exception);
             TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
+            TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
       private
        fLock:TPasMPSpinLock;
        fUploaded:TPasMPBool32;
@@ -1286,6 +1287,8 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fMaterialBufferData:TMaterialBufferData;
+       fVulkanMaterialDataBuffer:TpvVulkanBuffer;
        fTechniques:TpvTechniques;
        fImageListLock:TPasMPSlimReaderWriterLock;
        fImages:TImages;
@@ -7689,6 +7692,11 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                              length(fImageInfos),
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -7869,7 +7877,12 @@ procedure TpvScene3D.Upload;
 var Group:TGroup;
     Index:TpvSizeInt;
     ViewUniformBuffer:TpvVulkanBuffer;
+    Material:TMaterial;
     Texture:TTexture;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
  if not fUploaded then begin
   fLock.Acquire;
@@ -7901,7 +7914,7 @@ begin
      end;
      fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
      fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*2);
-     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*2);
+     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
      fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
      fGlobalVulkanDescriptorPool.Initialize;
      for Group in fGroups do begin
@@ -7909,12 +7922,65 @@ begin
        Group.Upload;
       end;
      end;
+     for Index:=0 to length(TMaterialBufferData)-1 do begin
+      fMaterialBufferData[Index]:=TMaterial.DefaultShaderData;
+     end;
+     for Index:=0 to fMaterials.Count-1 do begin
+      Material:=fMaterials[Index];
+      if (Material.ID>0) and (Material.ID<length(TMaterialBufferData)) then begin
+       fMaterialBufferData[Material.ID]:=Material.fShaderData;
+      end;
+     end;
+
+     fVulkanMaterialDataBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                       SizeOf(TMaterialBufferData),
+                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                       [],
+                                                       0,
+                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       []);
+     UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
+     try
+      UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                        pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      try
+       UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+       try
+        UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+        try
+         fVulkanMaterialDataBuffer.UploadData(UniversalQueue,
+                                              UniversalCommandBuffer,
+                                              UniversalFence,
+                                              fMaterialBufferData,
+                                              0,
+                                              SizeOf(TMaterialBufferData),
+                                              TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+        finally
+         FreeAndNil(UniversalFence);
+        end;
+       finally
+        FreeAndNil(UniversalCommandBuffer);
+       end;
+      finally
+       FreeAndNil(UniversalCommandPool);
+      end;
+     finally
+      UniversalQueue:=nil;
+     end;
+
      for Index:=0 to length(fImageInfos)-1 do begin
       fImageInfos[Index]:=fWhiteTexture.GetDescriptorImageInfo;
      end;
      for Index:=0 to fTextures.Count-1 do begin
       Texture:=fTextures[Index];
-      if Texture.fUploaded and (Texture.ID>=0) and (Texture.ID<length(fImageInfos)) then begin
+      if Texture.fUploaded and (Texture.ID>0) and (Texture.ID<length(fImageInfos)) then begin
        fImageInfos[Texture.ID]:=Texture.GetDescriptorImageInfo;
       end;
      end;
@@ -7946,6 +8012,14 @@ begin
                                                               [],
                                                               false);
       fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                              0,
+                                                              1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                              [],
+                                                              [fVulkanMaterialDataBuffer.DescriptorBufferInfo],
+                                                              [],
+                                                              false);
+      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
                                                               0,
                                                               length(fImageInfos),
                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -7993,6 +8067,7 @@ begin
        Group.Unload;
       end;
      end;
+     FreeAndNil(fVulkanMaterialDataBuffer);
      for Material in fMaterials do begin
       Material.Unload;
      end;
