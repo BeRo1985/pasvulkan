@@ -7489,6 +7489,8 @@ begin
 
       end;
 
+      Flush;
+
      end;
 
     end;
