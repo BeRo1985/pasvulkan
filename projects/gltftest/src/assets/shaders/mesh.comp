@@ -150,7 +150,8 @@ void main() {
 
       tangentSpace = normalMatrix * tangentSpace;
 
-      position = (modelNodeMatrix * vec4(position.xyz, 1.0)).xyz;
+      vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
+      position = p.xyz / p.w;
 
       {
         vec3 tangent = normalize(tangentSpace[0]);
