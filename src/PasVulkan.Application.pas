@@ -8096,6 +8096,10 @@ begin
 
    fUpdateFrameCounter:=fFrameCounter;
    fDrawFrameCounter:=fFrameCounter;
+
+   fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+   fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
    Check(fUpdateDeltaTime);
    UpdateJobFunction(nil,0);
 
