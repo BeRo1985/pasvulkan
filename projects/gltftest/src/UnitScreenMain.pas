@@ -9500,6 +9500,26 @@ begin
 
    fScene3D.UpdateViews(aInFlightFrameIndex);
 
+   // Main viewport(s)
+   fScene3D.Prepare(aInFlightFrameIndex,
+                    0,
+                    InFlightFrameState^.FinalViewIndex,
+                    InFlightFrameState^.CountViews,
+                    fWidth,
+                    fHeight,
+                    true,
+                    true);
+
+   // Cascaded shadow map viewport(s)
+   fScene3D.Prepare(aInFlightFrameIndex,
+                    1,
+                    InFlightFrameState^.CascadedShadowMapViewIndex,
+                    InFlightFrameState^.CountCascadedShadowMapViews,
+                    CascadedShadowMapWidth,
+                    CascadedShadowMapHeight,
+                    false,
+                    true);
+
    TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
    fTime:=fTime+pvApplication.DeltaTime;
@@ -9524,26 +9544,6 @@ begin
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
 //DrawUpdate(InFlightFrameIndex,pvApplication.DeltaTime);
-
- // Main viewport(s)
- fScene3D.Prepare(InFlightFrameIndex,
-                  0,
-                  InFlightFrameState^.FinalViewIndex,
-                  InFlightFrameState^.CountViews,
-                  fWidth,
-                  fHeight,
-                  true,
-                  true);
-
- // Cascaded shadow map viewport(s)
- fScene3D.Prepare(InFlightFrameIndex,
-                  1,
-                  InFlightFrameState^.CascadedShadowMapViewIndex,
-                  InFlightFrameState^.CountCascadedShadowMapViews,
-                  CascadedShadowMapWidth,
-                  CascadedShadowMapHeight,
-                  false,
-                  true);
 
  fFrameGraph.Draw(pvApplication.SwapChainImageIndex,
                   pvApplication.DrawInFlightFrameIndex,
