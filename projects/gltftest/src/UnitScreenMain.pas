@@ -9457,14 +9457,14 @@ begin
 
     if fZFar>0.0 then begin
      ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
-                                                                fWidth/fHeight,
-                                                                abs(fZNear),
-                                                                IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+                                                                                   fWidth/fHeight,
+                                                                                   abs(fZNear),
+                                                                                   IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end else begin
      ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
-                                                                fWidth/fHeight,
-                                                                abs(fZNear),
-                                                                IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+                                                                                   fWidth/fHeight,
+                                                                                   abs(fZNear),
+                                                                                   IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end;
     if fZFar<0.0 then begin
      if IsInfinite(fZFar) then begin
