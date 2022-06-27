@@ -8990,7 +8990,7 @@ end;
 
 function TScreenMain.CanBeParallelProcessed:boolean;
 begin
- result:=true;
+ result:=false;
 end;
 
 procedure TScreenMain.CalculateCascadedShadowMaps(const aInFlightFrameIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
@@ -9354,7 +9354,7 @@ begin
 
  fFrameGraph.Update(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter);
 
- DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.DeltaTime);
+//DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.DeltaTime);
 
 end;
 
@@ -9543,7 +9543,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
-//DrawUpdate(InFlightFrameIndex,pvApplication.DeltaTime);
+ DrawUpdate(InFlightFrameIndex,pvApplication.DeltaTime);
 
  fFrameGraph.Draw(pvApplication.SwapChainImageIndex,
                   pvApplication.DrawInFlightFrameIndex,
