@@ -7489,7 +7489,7 @@ begin
 
       end;
 
-      Flush;
+      //Flush;
 
      end;
 
