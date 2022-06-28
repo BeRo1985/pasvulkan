@@ -719,7 +719,8 @@ type EpvVulkanException=class(Exception);
       (
        PersistentMapped,
        OwnSingleMemoryChunk,
-       DedicatedAllocation
+       DedicatedAllocation,
+       BufferDeviceAddress
       );
 
      PpvVulkanDeviceMemoryChunkFlags=^TpvVulkanDeviceMemoryChunkFlags;
@@ -893,7 +894,8 @@ type EpvVulkanException=class(Exception);
       (
        PersistentMapped,
        OwnSingleMemoryChunk,
-       DedicatedAllocation
+       DedicatedAllocation,
+       BufferDeviceAddress
       );
 
      PpvVulkanDeviceMemoryBlockFlags=^TpvVulkanDeviceMemoryBlockFlags;
@@ -1031,7 +1033,8 @@ type EpvVulkanException=class(Exception);
       (
        PersistentMapped,
        OwnSingleMemoryChunk,
-       DedicatedAllocation
+       DedicatedAllocation,
+       BufferDeviceAddress
       );
 
      PpvVulkanBufferFlags=^TpvVulkanBufferFlags;
@@ -9012,6 +9015,7 @@ constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDevi
 type TBlacklistedHeaps=array of TpvUInt32;
 var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
+    MemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
     PhysicalDevice:TpvVulkanPhysicalDevice;
     CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize:TVkDeviceSize;
     Found,OK:boolean;
@@ -9147,6 +9151,13 @@ begin
    MemoryAllocateInfo.pNext:=aMemoryDedicatedAllocateInfo;
    MemoryAllocateInfo.allocationSize:=BestWantedChunkSize;
    MemoryAllocateInfo.memoryTypeIndex:=fMemoryTypeIndex;
+
+   if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in aMemoryChunkFlags then begin
+    FillChar(MemoryAllocateFlagsInfoKHR,SizeOf(TVkMemoryAllocateFlagsInfoKHR),#0);
+    MemoryAllocateFlagsInfoKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+  	MemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
+		MemoryAllocateInfo.pNext:=@MemoryAllocateFlagsInfoKHR;
+   end;
 
    ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
 
@@ -10393,7 +10404,7 @@ function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlag
                                                           const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
-                                                          const aMemoryDedicatedAllocationDataHandle:TpvPointer=nil):TpvVulkanDeviceMemoryBlock;
+                                                          const aMemoryDedicatedAllocationDataHandle:TpvPointer):TpvVulkanDeviceMemoryBlock;
 var TryIteration:TpvInt32;
     MemoryChunk:TpvVulkanDeviceMemoryChunk;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
@@ -10419,6 +10430,10 @@ begin
 
  if TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk);
+ end;
+
+ if TpvVulkanDeviceMemoryBlockFlag.BufferDeviceAddress in aMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress);
  end;
 
  if assigned(aMemoryDedicatedAllocationDataHandle) and
@@ -10527,7 +10542,7 @@ begin
         ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags) and
         ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
         ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped])) and
+        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
         (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
        result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
@@ -10689,6 +10704,10 @@ begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
   end else begin
    Exclude(fBufferFlags,TpvVulkanBufferFlag.DedicatedAllocation);
+  end;
+
+  if (aUsage and TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR))<>0 then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.BufferDeviceAddress);
   end;
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
