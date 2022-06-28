@@ -1052,6 +1052,8 @@ type EpvVulkanException=class(Exception);
        fQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fCountQueueFamilyIndices:TpvInt32;
        fDescriptorBufferInfo:TVkDescriptorBufferInfo;
+       fDeviceAddress:TVkDeviceAddress;
+       function GetDeviceAddress:TVkDeviceAddress;
        procedure Bind;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
@@ -1108,6 +1110,7 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkBuffer read fBufferHandle;
        property Size:TVkDeviceSize read fSize;
        property Memory:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
+       property DeviceAddress:TVkDeviceAddress read fDeviceAddress;
      end;
 
      TpvVulkanBufferView=class(TpvVulkanObject)
@@ -10707,6 +10710,7 @@ begin
   end;
 
   if (aUsage and TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR))<>0 then begin
+   Include(fBufferFlags,TpvVulkanBufferFlag.BufferDeviceAddress);
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.BufferDeviceAddress);
   end;
 
@@ -10732,6 +10736,8 @@ begin
   fDescriptorBufferInfo.buffer:=fBufferHandle;
   fDescriptorBufferInfo.offset:=0;
   fDescriptorBufferInfo.range:=fSize;
+
+  fDeviceAddress:=GetDeviceAddress;
 
  except
 
@@ -10783,6 +10789,26 @@ end;
 procedure TpvVulkanBuffer.Bind;
 begin
  VulkanCheckResult(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+end;
+
+function TpvVulkanBuffer.GetDeviceAddress:TVkDeviceAddress;
+var BufferDeviceAddressInfoKHR:TVkBufferDeviceAddressInfoKHR;
+begin
+ if TpvVulkanBufferFlag.BufferDeviceAddress in fBufferFlags then begin
+  FillChar(BufferDeviceAddressInfoKHR,SizeOf(TVkBufferDeviceAddressInfoKHR),#0);
+  BufferDeviceAddressInfoKHR.sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+  BufferDeviceAddressInfoKHR.pNext:=nil;
+  BufferDeviceAddressInfoKHR.buffer:=fBufferHandle;
+  if assigned(fDevice.Commands.Commands.GetBufferDeviceAddressKHR) then begin
+   result:=fDevice.Commands.GetBufferDeviceAddressKHR(fDevice.fDeviceHandle,@BufferDeviceAddressInfoKHR);
+  end else if assigned(fDevice.Commands.Commands.GetBufferDeviceAddress) then begin
+   result:=fDevice.Commands.GetBufferDeviceAddress(fDevice.fDeviceHandle,@BufferDeviceAddressInfoKHR);
+  end else begin
+   result:=0;
+  end;
+ end else begin
+  result:=0;
+ end;
 end;
 
 procedure TpvVulkanBuffer.ClearData(const aTransferQueue:TpvVulkanQueue;
