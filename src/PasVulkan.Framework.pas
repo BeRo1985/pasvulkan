@@ -8348,7 +8348,8 @@ begin
 
    FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
    fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
-   if (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or
       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE) or
       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE) then begin
     fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
@@ -8360,7 +8361,8 @@ begin
 
    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
    fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-   if assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
+      assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
     fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
     fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
@@ -8368,7 +8370,8 @@ begin
 
    FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
    fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-   if PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE then begin
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE) then begin
     fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation;
     fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
@@ -8376,9 +8379,10 @@ begin
 
    FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
    fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-   if (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE) or
-      (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE) or
-      (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE) then begin
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>=0) and
+      ((PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE) or
+       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE) or
+       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE)) then begin
     fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock;
     fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock;
     fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
@@ -8388,9 +8392,10 @@ begin
 
    FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
    fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
-   if (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) or
-      (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE) or
-      (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice<>VK_FALSE) then begin
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0) and
+      ((PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) or
+       (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE) or
+       (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice<>VK_FALSE)) then begin
     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress;
     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay;
     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice;
