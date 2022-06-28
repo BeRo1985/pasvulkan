@@ -567,6 +567,7 @@ type EpvScene3D=class(Exception);
               fData:TData;
               fShaderData:TShaderData;
               fLock:TPasMPSpinLock;
+              fVisible:boolean;
 {             fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
               fVulkanDescriptorPool:TpvVulkanDescriptorPool;
               fVulkanDescriptorSet:TpvVulkanDescriptorSet;}
@@ -2287,6 +2288,8 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
+ fVisible:=true;
+
 end;
 
 destructor TpvScene3D.TMaterial.Destroy;
@@ -2736,6 +2739,8 @@ begin
 
  fName:=aSourceMaterial.Name;
 
+ fVisible:=true;
+
  begin
   fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
   case aSourceMaterial.AlphaMode of
@@ -2852,6 +2857,9 @@ begin
  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_unlit'];
  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
   fData.ShadingModel:=TMaterial.TShadingModel.Unlit;
+  if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
+   fVisible:=false;
+  end;
  end else begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_pbrSpecularGlossiness'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
@@ -2908,8 +2916,14 @@ begin
      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.AssignFromGLTF(fData.PBRSpecularGlossiness.SpecularGlossinessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
    end;
+   if IsZero(fData.PBRSpecularGlossiness.DiffuseFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
+    fVisible:=false;
+   end;
   end else begin
    fData.ShadingModel:=TMaterial.TShadingModel.PBRMetallicRoughness;
+   if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
+    fVisible:=false;
+   end;
   end;
  end;
 
@@ -2917,6 +2931,7 @@ begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_sheen'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
+   fVisible:=true;
    fData.PBRSheen.Active:=true;
    fData.PBRSheen.IntensityFactor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],1.0));
    JSONItem:=JSONObject.Properties['colorFactor'];
@@ -2949,6 +2964,7 @@ begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_clearcoat'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
+   fVisible:=true;
    fData.PBRClearCoat.Active:=true;
    fData.PBRClearCoat.Factor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['clearcoatFactor'],fData.PBRClearCoat.Factor));
    JSONItem:=JSONObject.Properties['clearcoatTexture'];
@@ -7451,7 +7467,7 @@ begin
 
      Material:=SceneMaterial.fMaterial;
 
-     if Material.fData.AlphaMode in aMaterialAlphaModes then begin
+     if Material.fVisible and (Material.fData.AlphaMode in aMaterialAlphaModes) then begin
 
       DoubleSided:=Material.fData.DoubleSided;
 
