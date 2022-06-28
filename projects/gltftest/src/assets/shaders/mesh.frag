@@ -10,8 +10,15 @@
   #extension GL_EXT_demote_to_helper_invocation : enable
 #endif
 #extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable 
-#extension GL_EXT_buffer_reference2 : enable 
+
+#ifndef NOBUFFERREFERENCE
+  #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
+  #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable 
+  #extension GL_EXT_buffer_reference2 : enable 
+  #ifndef USEINT64
+    #extension GL_EXT_buffer_reference_uvec2 : enable 
+  #endif
+#endif
 
 #if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
@@ -106,6 +113,7 @@ struct View {
   mat4 projectionMatrix;
 };
 
+#ifdef NOBUFFERREFERENCE
 struct Material {
   vec4 baseColorFactor;
   vec4 specularFactor;
@@ -118,6 +126,7 @@ struct Material {
   int textures[16];
   mat4 textureTransforms[16];
 };
+#endif
 
 layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[512];
@@ -148,9 +157,32 @@ layout(std430, set = 0, binding = 2) readonly buffer LightTreeNodeData {
 
 #endif
 
+#ifdef NOBUFFERREFERENCE
+
 layout(std430, set = 0, binding = 3) readonly buffer MaterialData {
   Material materials[];
 };
+
+#else
+
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
+  vec4 baseColorFactor;
+  vec4 specularFactor;
+  vec4 emissiveFactor;
+  vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
+  vec4 sheenColorFactorSheenIntensityFactor;
+  vec4 clearcoatFactorClearcoatRoughnessFactor;
+  vec4 ior;
+  uvec4 alphaCutOffFlagsTex0Tex1;
+  int textures[16];
+  mat4 textureTransforms[16];
+};
+
+layout(std430, set = 0, binding = 3) readonly buffer Materials {
+  Material materials;
+} uMaterials;
+
+#endif
 
 layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 
@@ -502,7 +534,15 @@ float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex, const in
 #endif
 #endif
 
-#define MaterialData materials[inMaterialID]
+#ifdef NOBUFFERREFERENCE
+  #define MaterialData materials[inMaterialID]
+#else
+  #ifdef USEINT64
+    Material MaterialData = uMaterials.materials[inMaterialID];
+  #else
+    Material MaterialData;
+  #endif
+#endif
 
 const uint smPBRMetallicRoughness = 0u,  //
     smPBRSpecularGlossiness = 1u,        //
@@ -547,6 +587,16 @@ vec4 textureFetchSRGB(const in int textureIndex, const in vec4 defaultValue) {
 #endif
 
 void main() {
+#if !(defined(NOBUFFERREFERENCE) || defined(USEINT64))
+  MaterialData = uMaterials.materials;
+  {
+    uvec2 MaterialDataEx = uvec2(MaterialData);  
+    uint carry;
+    MaterialDataEx.x = uaddCarry(MaterialDataEx.x, uint(inMaterialID * uint(sizeof(Material))), carry);
+    MaterialDataEx.y += carry;
+    MaterialData = Material(MaterialDataEx);
+  }
+#endif
 #if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
   textureFlags = MaterialData.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;

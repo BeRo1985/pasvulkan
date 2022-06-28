@@ -148,6 +148,7 @@ echo "Compiling . . ."
 for index in ${!compileshaderarguments[@]}; do
    (
      ${glslangValidatorPath} ${compileshaderarguments[$index]} 
+     #--target-env spirv1.5 
      #>/dev/null
    ) & 
 done
