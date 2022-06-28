@@ -10,6 +10,8 @@
   #extension GL_EXT_demote_to_helper_invocation : enable
 #endif
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable 
+#extension GL_EXT_buffer_reference2 : enable 
 
 #if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
