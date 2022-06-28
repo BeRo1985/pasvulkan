@@ -362,6 +362,7 @@ type EpvVulkanException=class(Exception);
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+       fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -418,6 +419,7 @@ type EpvVulkanException=class(Exception);
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
+       property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
@@ -598,8 +600,9 @@ type EpvVulkanException=class(Exception);
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
 //     fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
-       fPhysicalDeviceMultiviewFeatures:TVkPhysicalDeviceMultiviewFeatures;
-       fPhysicalDeviceFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+       fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
+       fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+       fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -6997,6 +7000,15 @@ begin
   end;
  end;
 
+ begin
+  FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
+  fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>0 then begin
+   fBufferDeviceAddressFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fBufferDeviceAddressFeaturesKHR;
+  end;
+ end;
+
  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
   fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
  end else begin
@@ -8328,16 +8340,16 @@ begin
 
   end else}begin
 
-   FillChar(fPhysicalDeviceMultiviewFeatures,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
-   fPhysicalDeviceMultiviewFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+   FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
+   fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
    if (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or
       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE) or
       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE) then begin
-    fPhysicalDeviceMultiviewFeatures.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
-    fPhysicalDeviceMultiviewFeatures.multiviewTessellationShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader;
-    fPhysicalDeviceMultiviewFeatures.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
-    fPhysicalDeviceMultiviewFeatures.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fPhysicalDeviceMultiviewFeatures;
+    fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
+    fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader;
+    fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
+    fMultiviewFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fMultiviewFeaturesKHR;
    end;
 
    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
@@ -8356,16 +8368,28 @@ begin
     DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
    end;
 
-   FillChar(fPhysicalDeviceFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
-   fPhysicalDeviceFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+   FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
+   fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
    if (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE) or
       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE) or
       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE) then begin
-    fPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock;
-    fPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock;
-    fPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
-    fPhysicalDeviceFragmentShaderInterlockFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock;
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock;
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
+    fFragmentShaderInterlockFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fFragmentShaderInterlockFeaturesEXT;
+   end;
+
+   FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
+   fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+   if (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) or
+      (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE) or
+      (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice<>VK_FALSE) then begin
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress;
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay;
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice;
+    fBufferDeviceAddressFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fBufferDeviceAddressFeaturesKHR;
    end;
 
   end;
