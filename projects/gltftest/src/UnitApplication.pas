@@ -266,7 +266,7 @@ begin
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
  SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
- Blocking:=false;
+//Blocking:=false;
 //DesiredCountSwapChainImages:=2;
  if fForceNoVSync or (assigned(fVirtualReality) and not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked])) then begin
   DesiredCountSwapChainImages:=2;
