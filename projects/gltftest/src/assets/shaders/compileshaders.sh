@@ -155,12 +155,12 @@ done
 
 wait 
 
-echo "Optimizing . . ."
+#echo "Optimizing . . ."
 
 #for f in *.spv; do
 #  echo $f
-#  #${spirvOptPath} --strip-debug --unify-const --flatten-decorations --eliminate-dead-const $f -o $f
-#  #${spirvOptPath} --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O $f -o $f
+# ${spirvOptPath} --strip-debug --unify-const --flatten-decorations --eliminate-dead-const $f -o $f
+# ${spirvOptPath} --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O $f -o $f
 #done
 
 echo "Copying . . ."
