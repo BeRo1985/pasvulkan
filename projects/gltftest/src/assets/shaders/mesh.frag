@@ -112,6 +112,8 @@ const int TEXTURE_BASE_INDEX = 10;
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
 
 #ifdef NOBUFFERREFERENCE
@@ -130,7 +132,7 @@ struct Material {
 #endif
 
 layout(std140, set = 0, binding = 0) uniform uboViews {
-  View views[512];
+  View views[256];
 } uView;
 
 #ifdef LIGHTS

@@ -18,10 +18,12 @@ layout(push_constant) uniform PushConstants {
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
 
 layout(std140, set = 0, binding = 0) uniform uboViews {
-   View views[512];
+   View views[256];
 } uView;
 
 /* clang-format on */

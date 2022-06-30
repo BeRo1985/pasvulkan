@@ -13,10 +13,12 @@ layout(location = 0) out vec4 oOutput;
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
 
 layout(std140, set = 0, binding = 0) uniform uboViews {
-  View views[512]; // 65536 / (64 * 2) = 512
+  View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
 #ifdef MULTIVIEW
@@ -35,7 +37,7 @@ layout (push_constant) uniform PushConstants {
 
 /* clang-format on */
 
-mat4 inverseProjectionMatrix = inverse(uView.views[int(gl_ViewIndex)].projectionMatrix);
+mat4 inverseProjectionMatrix = uView.views[int(gl_ViewIndex)].inverseProjectionMatrix;
 
 float linearizeDepth(float z) {
   vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(fma(z, 2.0, -1.0)), inverseProjectionMatrix[3].zw);

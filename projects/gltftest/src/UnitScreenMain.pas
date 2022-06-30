@@ -9364,6 +9364,8 @@ begin
 
   CascadedShadowMap.View.ViewMatrix:=LightViewMatrix;
   CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
+  CascadedShadowMap.View.InverseViewMatrix:=LightViewMatrix.Inverse;
+  CascadedShadowMap.View.InverseProjectionMatrix:=LightProjectionMatrix.Inverse;
   CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
 
   fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
@@ -9504,9 +9506,13 @@ begin
 
     ViewLeft.ViewMatrix:=ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(0);
     ViewLeft.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(0);
+    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
     ViewRight.ViewMatrix:=ViewMatrix*UnitApplication.Application.VirtualReality.GetPositionMatrix(1);
     ViewRight.ProjectionMatrix:=UnitApplication.Application.VirtualReality.GetProjectionMatrix(1);
+    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
+    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
    end else begin
 
@@ -9537,9 +9543,13 @@ begin
      end;
     end;
     ViewLeft.ProjectionMatrix:=ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
+    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
     ViewRight.ViewMatrix:=ViewLeft.ViewMatrix;
     ViewRight.ProjectionMatrix:=ViewLeft.ProjectionMatrix;
+    ViewRight.InverseViewMatrix:=ViewLeft.InverseViewMatrix;
+    ViewRight.InverseProjectionMatrix:=ViewLeft.InverseProjectionMatrix;
 
    end;
 

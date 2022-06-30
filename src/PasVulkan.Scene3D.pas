@@ -149,6 +149,8 @@ type EpvScene3D=class(Exception);
             TView=packed record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
+             InverseViewMatrix:TpvMatrix4x4;
+             InverseProjectionMatrix:TpvMatrix4x4;
             end;
             PView=^TView;
             TViews=TpvDynamicArray<TView>;

@@ -41,10 +41,12 @@ layout (push_constant) uniform PushConstants {
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
 
 layout(std140, set = 0, binding = 0) uniform uboViews {
-  View views[512]; // 65536 / (64 * 2) = 512
+  View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
 out gl_PerVertex {
@@ -93,7 +95,7 @@ void main() {
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
 #ifdef VELOCITY
-  outNormal = normalize(mat3(view.viewMatrix) * tangentSpace[2]);
+  outNormal = normalize(transpose(mat3(view.inverseViewMatrix)) * tangentSpace[2]);
 #else
   outNormal = tangentSpace[2];
 #endif
