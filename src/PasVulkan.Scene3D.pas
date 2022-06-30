@@ -534,7 +534,7 @@ type EpvScene3D=class(Exception);
                     (
                      BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      SpecularFactor:(x:1.0;y:1.0;z:1.0;w:0.0);
-                     EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:0.0);
+                     EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
@@ -2930,6 +2930,7 @@ begin
  begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_emissive_strength'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
    fData.EmissiveFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['emissiveStrength'],1.0);
   end;
  end;
@@ -3149,7 +3150,7 @@ begin
  fShaderData.EmissiveFactor[0]:=fData.EmissiveFactor[0];
  fShaderData.EmissiveFactor[1]:=fData.EmissiveFactor[1];
  fShaderData.EmissiveFactor[2]:=fData.EmissiveFactor[2];
- fShaderData.EmissiveFactor[3]:=0.0;
+ fShaderData.EmissiveFactor[3]:=fData.EmissiveFactor[3];
 
  if fData.PBRSheen.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 7);
