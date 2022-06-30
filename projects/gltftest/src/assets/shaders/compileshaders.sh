@@ -138,6 +138,9 @@ compileshaderarguments=(
   '-V msm_resolve.frag -DMSAA -o msm_resolve_msaa_frag.spv'
   '-V msm_resolve.vert -o msm_resolve_vert.spv'
 
+  '-V ssao.frag -o ssao_frag.spv'
+  '-V ssao.frag -DMULTIVIEW -o ssao_multiview_frag.spv'
+
 )
 
 glslangValidatorPath=$(which glslangValidator)
