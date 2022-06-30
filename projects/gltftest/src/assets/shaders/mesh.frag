@@ -954,7 +954,7 @@ void main() {
         clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
-      vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz;
+      vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
       color = vec2(0.0, diffuseColorAlpha.w).xxxy;
 #ifndef EXTRAEMISSIONOUTPUT
       color.xyz += emissiveOutput;

@@ -442,7 +442,7 @@ type EpvScene3D=class(Exception);
                      false:(
                       BaseColorFactor:TpvVector4;
                       SpecularFactor:TpvVector4; // actually TpvVector3, but for easier and more convenient alignment reasons a TpvVector4
-                      EmissiveFactor:TpvVector4; // actually TpvVector3, but for easier and more convenient alignment reasons a TpvVector4
+                      EmissiveFactor:TpvVector4; // w = EmissiveStrength
                       MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
                       SheenColorFactorSheenIntensityFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
@@ -470,7 +470,7 @@ type EpvScene3D=class(Exception);
                     NormalTextureScale:TpvFloat;
                     OcclusionTexture:TTextureReference;
                     OcclusionTextureStrength:TpvFloat;
-                    EmissiveFactor:TpvVector3;
+                    EmissiveFactor:TpvVector4; // w = EmissiveStrength
                     EmissiveTexture:TTextureReference;
                     PBRMetallicRoughness:TPBRMetallicRoughness;
                     PBRSpecularGlossiness:TPBRSpecularGlossiness;
@@ -491,7 +491,7 @@ type EpvScene3D=class(Exception);
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      OcclusionTextureStrength:1.0;
-                     EmissiveFactor:(x:1.0;y:1.0;z:1.0);
+                     EmissiveFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      EmissiveTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      PBRMetallicRoughness:(
                       BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
@@ -2755,7 +2755,7 @@ begin
    end;
   end;
   fData.DoubleSided:=aSourceMaterial.DoubleSided;
-  fData.EmissiveFactor:=TpvVector3.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2]);
+  fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2],1.0);
   if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
    fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index];
    if assigned(fData.EmissiveTexture.Texture) then begin
@@ -2924,6 +2924,13 @@ begin
    if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
     fVisible:=false;
    end;
+  end;
+ end;
+
+ begin
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_emissive_strength'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   fData.EmissiveFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['emissiveStrength'],1.0);
   end;
  end;
 
