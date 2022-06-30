@@ -77,6 +77,7 @@ layout(location = 11) in vec4 inCurrentClipSpace;
     layout(location = 1) out vec4 outFragMBOITMoments1;
   #elif defined(VELOCITY)
     layout(location = 0) out vec2 outFragVelocity;
+    layout(location = 1) out vec3 outFragNormal;
   #endif
 #else
   #if defined(WBOIT)
@@ -1216,6 +1217,10 @@ void main() {
 
 #ifdef VELOCITY
   outFragVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
+
+  vec3 normal = normalize(inNormal);
+  normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+  outFragNormal = normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)));
 #endif
 
 }

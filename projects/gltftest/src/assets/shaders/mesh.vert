@@ -92,7 +92,11 @@ void main() {
   outCameraRelativePosition = worldSpacePosition.xyz - cameraPosition;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
+#ifdef VELOCITY
+  outNormal = normalize(mat3(view.viewMatrix) * tangentSpace[2]);
+#else
   outNormal = tangentSpace[2];
+#endif
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
