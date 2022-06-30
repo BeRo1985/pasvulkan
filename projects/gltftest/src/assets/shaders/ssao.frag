@@ -77,8 +77,9 @@ void main() {
   vec2 texCoord = inTexCoord;
 #endif
   float depth = linearizeDepth(textureLod(uTextureDepth, texCoord, 0).x);
+#define NORMALS
 #ifdef NORMALS
-  vec3 normal = signedOctDecode(textureLod(uTextureNormals, vTexCoord, 0).xyz);
+  vec3 normal = signedOctDecode(textureLod(uTextureNormals, texCoord, 0).xyz);
 #else
   vec4 position = inverseProjectionMatrix * vec4(fma(vec3(inTexCoord, depth), vec3(2.0), vec3(-1.0)), 1.0);
   position.xyz /= position.w;
