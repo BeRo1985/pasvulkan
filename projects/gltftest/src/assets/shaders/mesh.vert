@@ -75,7 +75,7 @@ void main() {
 
 #if 1
   // The actual standard approach
-  vec3 cameraPosition = inverse(view.viewMatrix)[3].xyz;
+  vec3 cameraPosition = view.inverseViewMatrix[3].xyz;
 #else
   // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
   vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
