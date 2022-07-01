@@ -208,28 +208,30 @@ layout(set = 1, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #endif
 
+layout(set = 1, binding = 4) uniform sampler2DArray uSSAOTexture;
+
 #endif
 
 #if defined(WBOIT)
 
-layout(std140, set = 1, binding = 4) uniform uboWBOIT {
+layout(std140, set = 1, binding = 5) uniform uboWBOIT {
   vec4 wboitZNearZFar;
 } uWBOIT;
 
 #elif defined(MBOIT)
 
-layout(std140, set = 1, binding = 4) uniform uboMBOIT {
+layout(std140, set = 1, binding = 5) uniform uboMBOIT {
   vec4 mboitZNearZFar;
 } uMBOIT;
 
 #if defined(MBOITPASS1)
 #elif defined(MBOITPASS2)
 #ifdef MSAA
-layout(input_attachment_index = 0, set = 1, binding = 5) uniform subpassInputMS uMBOITMoments0;
-layout(input_attachment_index = 1, set = 1, binding = 6) uniform subpassInputMS uMBOITMoments1;
+layout(input_attachment_index = 0, set = 1, binding = 6) uniform subpassInputMS uMBOITMoments0;
+layout(input_attachment_index = 1, set = 1, binding = 7) uniform subpassInputMS uMBOITMoments1;
 #else
-layout(input_attachment_index = 0, set = 1, binding = 5) uniform subpassInput uMBOITMoments0;
-layout(input_attachment_index = 1, set = 1, binding = 6) uniform subpassInput uMBOITMoments1;
+layout(input_attachment_index = 0, set = 1, binding = 6) uniform subpassInput uMBOITMoments0;
+layout(input_attachment_index = 1, set = 1, binding = 7) uniform subpassInput uMBOITMoments1;
 #endif
 #endif
 
@@ -238,20 +240,20 @@ layout(input_attachment_index = 1, set = 1, binding = 6) uniform subpassInput uM
 #if defined(LOCKOIT)
 
   #ifdef MSAA
-    layout(input_attachment_index = 0, set = 1, binding = 4) uniform subpassInputMS uOITImgDepth;
+    layout(input_attachment_index = 0, set = 1, binding = 5) uniform subpassInputMS uOITImgDepth;
   #else
-    layout(input_attachment_index = 0, set = 1, binding = 4) uniform subpassInput uOITImgDepth;
+    layout(input_attachment_index = 0, set = 1, binding = 5) uniform subpassInput uOITImgDepth;
   #endif
-  layout(set = 1, binding = 5, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-  layout(set = 1, binding = 6, r32ui) uniform coherent uimage2DArray uOITImgAux;
+  layout(set = 1, binding = 6, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+  layout(set = 1, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgAux;
   #ifdef SPINLOCK
-    layout(set = 1, binding = 7, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-    layout(std140, set = 1, binding = 8) uniform uboOIT {
+    layout(set = 1, binding = 8, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+    layout(std140, set = 1, binding = 9) uniform uboOIT {
       ivec4 oitViewPort;
     } uOIT;
   #endif
   #ifdef INTERLOCK
-    layout(std140, set = 1, binding = 7) uniform uboOIT {
+    layout(std140, set = 1, binding = 8) uniform uboOIT {
       ivec4 oitViewPort;
     } uOIT;
   #endif
@@ -713,7 +715,11 @@ void main() {
       float transparency = 0.0;
       float refractiveAngle = 0.0;
       float shadow = 1.0;
+  #if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(BLEND)
       ambientOcclusion = 1.0;
+  #else
+      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uSSAOTexture, ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+  #endif
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
 

@@ -21,7 +21,7 @@ void main() {
   int viewIndex = int(gl_ViewIndex);
   ivec2 origin = ivec2(gl_FragCoord.xy);
   ivec2 ts = ivec2(textureSize(uTexture, 0).xy) - ivec2(1);
-  int nSamples = 3;
+  int nSamples = 4;
   float SIGMA = (float(nSamples) + 1.0) * 0.5;
   float sig2 = SIGMA * SIGMA;
   const float TWO_PI = 6.2831853071795;

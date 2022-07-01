@@ -123,7 +123,7 @@ void main() {
 #else
     normal = normalize(cross(dFdx(position), dFdy(position))); 
 #endif
-    vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, fract(float(pushConstants.frameIndex) / 65536.0))) - vec3(0.5));
+    vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, /*mod(float(pushConstants.frameIndex), 1024.0)*/ 0.0)) - vec3(0.5));
     vec3 tangent = normalize(randomVector - (normal * dot(randomVector, normal)));
     vec3 bitangent = cross(normal, tangent);
     mat3 tbn = mat3(tangent, bitangent, normal);
