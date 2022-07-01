@@ -7,7 +7,6 @@
 
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
-layout(location = 1) flat in int inFaceIndex;
 
 layout(location = 0) out vec2 oOutput;
 
