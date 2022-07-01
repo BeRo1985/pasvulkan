@@ -1136,7 +1136,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceVelocity:=AddImageOutput('resourcetype_velocity',
-                                    'forwardrendering_velocity',
+                                    'velocity_data',
                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1144,7 +1144,7 @@ inherited Create(aFrameGraph);
                                    );
 
   fResourceNormals:=AddImageOutput('resourcetype_normals',
-                                   'forwardrendering_normals',
+                                   'normals_data',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1152,7 +1152,7 @@ inherited Create(aFrameGraph);
                                   );
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'forwardrendering_depth', // _temporary',
+                                      'depth_data', // _temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -1170,7 +1170,7 @@ inherited Create(aFrameGraph);
                                    );
 
   fResourceVelocity:=AddImageResolveOutput('resourcetype_velocity',
-                                           'forwardrendering_velocity',
+                                           'velocity_data',
                                            'forwardrendering_msaa_velocity',
                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
@@ -1179,7 +1179,7 @@ inherited Create(aFrameGraph);
                                           );
 
   fResourceNormals:=AddImageOutput('resourcetype_msaa_normals',
-                                   'forwardrendering_msaa_normals',
+                                   'normals_data_msaa',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1187,8 +1187,8 @@ inherited Create(aFrameGraph);
                                   );
 
   fResourceNormals:=AddImageResolveOutput('resourcetype_normals',
-                                          'forwardrendering_normals',
-                                          'forwardrendering_msaa_normals',
+                                          'normals_data',
+                                          'normals_data_msaa',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1196,7 +1196,7 @@ inherited Create(aFrameGraph);
                                          );
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'forwardrendering_msaa_depth', //'_temporary',
+                                      'depth_data_msaa', //'_temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -1508,7 +1508,7 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceInput:=AddImageInput('resourcetype_depth',
-                                'forwardrendering_depth',
+                                'depth_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
@@ -1516,7 +1516,7 @@ begin
  end else begin
 
   fResourceInput:=AddImageInput('resourcetype_msaa_depth',
-                                'forwardrendering_msaa_depth',
+                                'depth_data_msaa',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
@@ -2777,13 +2777,13 @@ begin
                                        fParent.fCountSurfaceViews);
 
  fResourceNormals:=AddImageInput('resourcetype_normals',
-                                 'forwardrendering_normals',
+                                 'normals_data',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
  fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                 'forwardrendering_ssao',
+                                 'ssao_data_temporary',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3085,13 +3085,13 @@ begin
  if aHorziontal then begin
 
   fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'forwardrendering_ssao',
+                                'ssao_data_temporary',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                  'forwardrendering_ssao_temporary_blurred',
+                                  'ssao_data_temporary_blurred',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3102,13 +3102,13 @@ begin
  end else begin
 
   fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'forwardrendering_ssao_temporary_blurred',
+                                'ssao_data_temporary_blurred',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
-  fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                  'forwardrendering_ssao_final',
+  fResourceOutput:=AddImageOutput('resourcetype_ssao_final',
+                                  'ssao_data_final',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3362,8 +3362,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -3379,13 +3379,13 @@ inherited Create(aFrameGraph);
                                 );
 
  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );{}
 
 { fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'forwardrendering_depth',
+                                      'depth_data',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -3412,13 +3412,13 @@ inherited Create(aFrameGraph);
                                        );
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
 {fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'forwardrendering_msaa_depth',
+                                      'depth_data_msaa',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -4396,8 +4396,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -4405,7 +4405,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -4421,7 +4421,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -5301,8 +5301,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -5310,7 +5310,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -5326,7 +5326,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6251,8 +6251,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -6260,7 +6260,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6268,7 +6268,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6760,8 +6760,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -6781,7 +6781,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6796,7 +6796,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -7632,8 +7632,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao',
-                              'forwardrendering_ssao_final',
+ fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                              'ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -7641,7 +7641,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'forwardrendering_depth',
+                                     'depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -7649,7 +7649,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'forwardrendering_msaa_depth',
+                                     'depth_data_msaa',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -9448,6 +9448,16 @@ begin
  fFrameGraph.AddImageResourceType('resourcetype_ssao',
                                   true,
                                   VK_FORMAT_R32G32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_ssao_final',
+                                  true,
+                                  VK_FORMAT_R32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
