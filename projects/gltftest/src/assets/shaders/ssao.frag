@@ -8,7 +8,7 @@
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
 
-layout(location = 0) out vec4 oOutput;
+layout(location = 0) out vec2 oFragOcclusionDepth;
 
 struct View {
   mat4 viewMatrix;
@@ -23,10 +23,8 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
 
 #ifdef MULTIVIEW
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
-layout(set = 0, binding = 2) uniform sampler2DArray uTextureNormals;
 #else
 layout(set = 0, binding = 1) uniform sampler2D uTextureDepth;
-layout(set = 0, binding = 2) uniform sampler2D uTextureNormals;
 #endif
 
 layout (push_constant) uniform PushConstants {
@@ -37,17 +35,26 @@ layout (push_constant) uniform PushConstants {
 
 /* clang-format on */
 
-mat4 inverseProjectionMatrix = uView.views[int(gl_ViewIndex)].inverseProjectionMatrix;
+float viewIndex = float(int(gl_ViewIndex));
 
-float linearizeDepth(float z) {
-  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(fma(z, 2.0, -1.0)), inverseProjectionMatrix[3].zw);
-  return v.x / v.y;
+mat4 inverseProjectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].inverseProjectionMatrix;
+
+vec3 fetchPosition(vec2 texCoord) {
+#ifdef MULTIVIEW
+  vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, vec3(texCoord, viewIndex), 0).x), 1.0);
+#else
+  vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, texCoord, 0).x), 1.0);
+#endif
+  return position.xyz / position.w;
 }
 
-vec3 signedOctDecode(vec3 normal) {
-  vec2 outNormal;
-  outNormal = vec2(normal.xx + vec2(-normal.y, normal.y - 1.0));
-  return normalize(vec3(outNormal, fma(normal.z, 2.0, -1.0) * (1.0 - (abs(outNormal.x) + abs(outNormal.y)))));
+float linearizeDepth(float z) {
+#if 0
+  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
 }
 
 const int countKernelSamples = 16;
@@ -61,8 +68,8 @@ const vec3 kernelSamples[16] = vec3[](                               //
     vec3(0.7119, -0.0154, -0.0918), vec3(-0.0533, 0.0596, -0.5411),  //
     vec3(0.0352, -0.0631, 0.5460), vec3(-0.4776, 0.2847, -0.0271)    //
 );
-const float radius = 2e-4;
-const float area = 0.0075;
+const float radius = 2.0;
+const float area = 0.75;
 const float fallOff = 1e-6;
 
 vec3 hash33(vec3 p) {
@@ -72,35 +79,65 @@ vec3 hash33(vec3 p) {
 }
 
 void main() {
-  vec2 texelSize = vec2(1.0) / vec2(textureSize(uTextureDepth, 0).xy);
 #ifdef MULTIVIEW
-  vec3 texCoord = vec3(inTexCoord, float(int(gl_ViewIndex)));
+  vec3 texCoord = vec3(inTexCoord, viewIndex);
 #else
   vec2 texCoord = inTexCoord;
 #endif
-  float depth = linearizeDepth(textureLod(uTextureDepth, texCoord, 0).x);
-#define NORMALS
-#ifdef NORMALS
-  vec3 normal = signedOctDecode(textureLod(uTextureNormals, texCoord, 0).xyz);
-#else
-  vec4 position = inverseProjectionMatrix * vec4(fma(vec3(inTexCoord, depth), vec3(2.0), vec3(-1.0)), 1.0);
-  position.xyz /= position.w;
-  vec3 normal = normalize(cross(dFdx(position.xyz), dFdy(position.xyz)));
-#endif
-  vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, fract(float(pushConstants.frameIndex) / 65536.0))) - vec3(0.5));
-  vec3 tangent = normalize(randomVector - (normal * dot(randomVector, normal)));
-  vec3 bitangent = cross(normal, tangent);
-  mat3 tbn = mat3(tangent, bitangent, normal);
+  vec3 position = fetchPosition(texCoord.xy);
+  float depth = position.z;
   float occlusion = 0.0;
-  float radius_depth = radius / depth;
-  for (int i = 0; i < countKernelSamples; i++) {
+  if (isinf(depth) || (abs(depth) < 1e-7)) {
+    occlusion = 1.0;
+  } else {
+    vec3 normal;
+#if 0
+    {
+      vec2 texelSize = vec2(1.0) / vec2(textureSize(uTextureDepth, 0).xy); // vec2(dFdx(texCoord.x), dFdy(texCoord.y));
 #ifdef MULTIVIEW
-    vec3 offset = vec3(vec3((tbn * kernelSamples[i]) * radius_depth).xy, 0.0);
+      vec3 offsetH = vec3(texelSize.x, 0.0, 0.0);
+      vec3 offsetV = vec3(0.0, texelSize.y, 0.0);
 #else
-    vec2 offset = vec3((tbn * kernelSamples[i]) * radius_depth).xy;
+      vec2 offsetH = vec2(texelSize.x, 0.0);
+      vec2 offsetV = vec2(0.0, texelSize.y);
 #endif
-    float depthDifference = depth - linearizeDepth(textureLod(uTextureDepth, texCoord + offset, 0).x);
-    occlusion += step(fallOff, depthDifference) * (1.0 - smoothstep(fallOff, area, depthDifference));
+      vec3 pl = fetchPosition(texCoord.xy - (offsetH.xy * 1.0));
+      vec3 pr = fetchPosition(texCoord.xy + (offsetH.xy * 1.0));
+      vec3 pu = fetchPosition(texCoord.xy - (offsetV.xy * 1.0));
+      vec3 pd = fetchPosition(texCoord.xy + (offsetV.xy * 1.0));
+      vec4 H = vec4(                                                                   //
+          pl.z,  //
+          pr.z,  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetH * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetH * 2.0), 0).x)   //
+      );
+      vec4 V = vec4(                                                                   //
+          pu.z,  //
+          pd.z,  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetV * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetV * 2.0), 0).x)   //
+      );
+      vec4 hve = abs((vec4(H.xy * H.zw, V.xy * V.zw) / fma(vec4(H.zw, V.zw), vec4(2.0), -vec4(H.xy, V.xy))) - vec4(depth));
+      normal = normalize(cross((hve.x < hve.y) ? (position - pl) : (pr - position), (hve.z < hve.w) ? (position - pu) : (pd - position)));
+    }
+#else
+    normal = normalize(cross(dFdx(position), dFdy(position))); 
+#endif
+    vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, fract(float(pushConstants.frameIndex) / 65536.0))) - vec3(0.5));
+    vec3 tangent = normalize(randomVector - (normal * dot(randomVector, normal)));
+    vec3 bitangent = cross(normal, tangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
+    float radius_depth = max(1e-6, radius / abs(depth));
+    for (int i = 0; i < countKernelSamples; i++) {
+#ifdef MULTIVIEW
+      vec3 offset = vec3(vec3((tbn * kernelSamples[i]) * radius_depth).xy, 0.0);
+#else
+      vec2 offset = vec3((tbn * kernelSamples[i]) * radius_depth).xy;
+#endif
+      float depthDifference = linearizeDepth(textureLod(uTextureDepth, texCoord + offset, 0).x) - depth;
+      occlusion += step(fallOff, depthDifference) * (1.0 - smoothstep(fallOff, area, depthDifference));
+    }
+    occlusion = clamp(1.0 - (1.0 * (occlusion / float(countKernelSamples))), 0.0, 1.0);
   }
-  oOutput = vec2(clamp(1.0 - (1.0 * (occlusion / float(countKernelSamples))), 0.0, 1.0), depth).xyyy;
+  oFragOcclusionDepth = vec2(occlusion, depth);
 }
