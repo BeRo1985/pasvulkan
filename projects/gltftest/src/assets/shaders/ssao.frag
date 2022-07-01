@@ -37,6 +37,7 @@ layout (push_constant) uniform PushConstants {
 
 float viewIndex = float(int(gl_ViewIndex));
 
+mat4 projectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].projectionMatrix;
 mat4 inverseProjectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].inverseProjectionMatrix;
 
 vec3 fetchPosition(vec2 texCoord) {
@@ -68,9 +69,9 @@ const vec3 kernelSamples[16] = vec3[](                               //
     vec3(0.7119, -0.0154, -0.0918), vec3(-0.0533, 0.0596, -0.5411),  //
     vec3(0.0352, -0.0631, 0.5460), vec3(-0.4776, 0.2847, -0.0271)    //
 );
-const float radius = 2.0;
-const float area = 0.75;
-const float fallOff = 1e-6;
+
+const float radius = 1.0;
+const float bias = 0.1;
 
 vec3 hash33(vec3 p) {
   vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
@@ -127,17 +128,18 @@ void main() {
     vec3 tangent = normalize(randomVector - (normal * dot(randomVector, normal)));
     vec3 bitangent = cross(normal, tangent);
     mat3 tbn = mat3(tangent, bitangent, normal);
-    float radius_depth = max(1e-6, radius / abs(depth));
     for (int i = 0; i < countKernelSamples; i++) {
+      vec4 p = projectionMatrix * vec4(position.xyz + ((tbn * kernelSamples[i]) * radius), 1.0); 
+      p.xyz /= p.w;
+      p.xy = fma(p.xy, vec2(0.5), vec2(0.5));
 #ifdef MULTIVIEW
-      vec3 offset = vec3(vec3((tbn * kernelSamples[i]) * radius_depth).xy, 0.0);
+      float sampleDepth = linearizeDepth(textureLod(uTextureDepth, vec3(p.xy, viewIndex), 0).x);
 #else
-      vec2 offset = vec3((tbn * kernelSamples[i]) * radius_depth).xy;
+      float sampleDepth = linearizeDepth(textureLod(uTextureDepth, p.xy, 0).x);
 #endif
-      float depthDifference = linearizeDepth(textureLod(uTextureDepth, texCoord + offset, 0).x) - depth;
-      occlusion += step(fallOff, depthDifference) * (1.0 - smoothstep(fallOff, area, depthDifference));
+      occlusion += (sampleDepth >= (depth + bias)) ? smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth)) : 0.0;
     }
-    occlusion = clamp(1.0 - (1.0 * (occlusion / float(countKernelSamples))), 0.0, 1.0);
+    occlusion = clamp(1.0 - (occlusion / float(countKernelSamples)), 0.0, 1.0);
   }
   oFragOcclusionDepth = vec2(occlusion, depth);
 }
