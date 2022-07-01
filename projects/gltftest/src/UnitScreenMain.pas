@@ -9457,7 +9457,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_ssao_final',
                                   true,
-                                  VK_FORMAT_R32_SFLOAT,
+                                  VK_FORMAT_R8_UNORM,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),

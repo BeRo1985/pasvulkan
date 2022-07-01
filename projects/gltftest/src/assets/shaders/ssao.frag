@@ -139,7 +139,7 @@ const vec3 kernelSamples[64] = vec3[](                                     //
 #endif
 
 const float radius = 0.5;
-const float bias = 0.01;
+const float bias = 0.025;
 const float strength = 1.0;
 
 vec3 hash33(vec3 p) {
