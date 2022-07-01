@@ -27,6 +27,8 @@ layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 layout(set = 0, binding = 1) uniform sampler2D uTextureDepth;
 #endif
 
+layout(set = 0, binding = 2) uniform sampler2DArray uTextureNormals;
+
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
@@ -58,6 +60,12 @@ float linearizeDepth(float z) {
   return v.x / v.y;
 }
 
+vec3 signedOctDecode(vec3 normal) {
+  vec2 outNormal;
+  outNormal = vec2(normal.xx + vec2(-normal.y, normal.y - 1.0));
+  return normalize(vec3(outNormal, fma(normal.z, 2.0, -1.0) * (1.0 - (abs(outNormal.x) + abs(outNormal.y)))));
+}
+
 const int countKernelSamples = 16;
 const vec3 kernelSamples[16] = vec3[](                               //
     vec3(0.5381, 0.1856, -0.4319), vec3(0.1379, 0.2486, 0.4430),     //
@@ -70,8 +78,9 @@ const vec3 kernelSamples[16] = vec3[](                               //
     vec3(0.0352, -0.0631, 0.5460), vec3(-0.4776, 0.2847, -0.0271)    //
 );
 
-const float radius = 1.0;
-const float bias = 0.1;
+const float radius = 0.5;
+const float bias = 0.01;
+const float strength = 0.5;
 
 vec3 hash33(vec3 p) {
   vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
@@ -92,7 +101,11 @@ void main() {
     occlusion = 1.0;
   } else {
     vec3 normal;
-#if 0
+#if 1
+    {
+      normal = signedOctDecode(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz);
+    } 
+#elif 0
     {
       vec2 texelSize = vec2(1.0) / vec2(textureSize(uTextureDepth, 0).xy); // vec2(dFdx(texCoord.x), dFdy(texCoord.y));
 #ifdef MULTIVIEW
@@ -139,7 +152,7 @@ void main() {
 #endif
       occlusion += (sampleDepth >= (depth + bias)) ? smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth)) : 0.0;
     }
-    occlusion = clamp(1.0 - (occlusion / float(countKernelSamples)), 0.0, 1.0);
+    occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
   }
   oFragOcclusionDepth = vec2(occlusion, depth);
 }
