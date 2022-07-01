@@ -22,7 +22,7 @@ void main() {
   ivec2 origin = ivec2(gl_FragCoord.xy);
   ivec2 ts = ivec2(textureSize(uTexture, 0).xy) - ivec2(1);
   int nSamples = 3;
-  float SIGMA = (float(nSamples) + 1.0) * 0.5; 
+  float SIGMA = (float(nSamples) + 1.0) * 0.5;
   float sig2 = SIGMA * SIGMA;
   const float TWO_PI = 6.2831853071795;
   const float E = 2.7182818284590;
@@ -36,15 +36,23 @@ void main() {
   // accumulate results:
   float sum = gaussInc.x;
   vec2 center = texelFetch(uTexture, ivec3(origin, viewIndex), 0).xy;
-  float result = center.x * sum;
-  for (int i = 1; i < nSamples; ++i) {
-    gaussInc.xy *= gaussInc.yz;
-    ivec2 offset = i * ivec2(pushConstants.direction) * 2;
-    for (int j = -1; j <= 1; j += 2) {
-      vec2 t = texelFetch(uTexture, ivec3(clamp(origin + (offset * int(j)), ivec2(0), ts), viewIndex), 0).xy;
-      float weight = gaussInc.x * (1.0 / (1.0 + (abs(center.y - t.y) * 2000.0)));
-      result += t.x * weight;
-      sum += weight;
+  float result;
+  if (isinf(center.y)) {
+    result = center.x;
+    sum = 1.0;
+  } else {
+    result = center.x * sum;
+    for (int i = 1; i < nSamples; ++i) {
+      gaussInc.xy *= gaussInc.yz;
+      ivec2 offset = i * ivec2(pushConstants.direction) * 2;
+      for (int j = -1; j <= 1; j += 2) {
+        vec2 t = texelFetch(uTexture, ivec3(clamp(origin + (offset * int(j)), ivec2(0), ts), viewIndex), 0).xy;
+        if (!isinf(center.y)) {
+          float weight = gaussInc.x * (1.0 / (1.0 + (abs(center.y - t.y) * 2000.0)));
+          result += t.x * weight;
+          sum += weight;
+        }
+      }
     }
   }
   oOutput = vec2(result / sum, center.y);
