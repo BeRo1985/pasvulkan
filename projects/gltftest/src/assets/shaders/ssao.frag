@@ -140,7 +140,7 @@ const vec3 kernelSamples[64] = vec3[](                                     //
 
 const float radius = 0.5;
 const float bias = 0.025;
-const float strength = 1.0;
+const float strength = 0.5;
 
 vec3 hash33(vec3 p) {
   vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
