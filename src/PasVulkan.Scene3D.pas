@@ -439,6 +439,15 @@ type EpvScene3D=class(Exception);
                     Dummy:TpvInt32;
                    end;
                    PUnlit=^TUnlit;
+                   TIridescence=record
+                    Active:boolean;
+                    Factor:TpvFloat;
+                    Texture:TTextureReference;
+                    Ior:TpvFloat;
+                    ThicknessMinimum:TpvFloat;
+                    ThicknessMaximum:TpvFloat;
+                    ThicknessTexture:TTextureReference;
+                   end;
                    TShaderData=packed record // 2048 bytes
                     case boolean of
                      false:(
@@ -448,7 +457,8 @@ type EpvScene3D=class(Exception);
                       MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
                       SheenColorFactorSheenIntensityFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
-                      IOR:TpvVector4;
+                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:TpvVector4;
+                      IridescenceThicknessMaximum:TpvVector4;
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -480,6 +490,7 @@ type EpvScene3D=class(Exception);
                     PBRClearCoat:TPBRClearCoat;
                     Unlit:TUnlit;
                     IOR:TpvFloat;
+                    Iridescence:TIridescence;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -531,6 +542,15 @@ type EpvScene3D=class(Exception);
                       Dummy:0;
                      );
                      IOR:1.5;
+                     Iridescence:(
+                      Active:false;
+                      Factor:0.0;
+                      Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      Ior:1.3;
+                      ThicknessMinimum:100.0;
+                      ThicknessMaximum:400.0;
+                      ThicknessTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                     );
                     );
                    DefaultShaderData:TShaderData=
                     (
@@ -540,7 +560,8 @@ type EpvScene3D=class(Exception);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
-                     ior:(x:1.5;y:0.0;z:0.0;w:0.0);
+                     IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
+                     IridescenceThicknessMaximum:(x:400.0;y:0.0;z:0.0;w:0.0);
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -2387,6 +2408,20 @@ begin
    fData.PBRClearCoat.NormalTexture.Texture:=nil;
   end;
  end;
+ if assigned(fData.Iridescence.Texture.Texture) then begin
+  try
+   fData.Iridescence.Texture.Texture.DecRef;
+  finally
+   fData.Iridescence.Texture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+  try
+   fData.Iridescence.ThicknessTexture.Texture.DecRef;
+  finally
+   fData.Iridescence.ThicknessTexture.Texture:=nil;
+  end;
+ end;
  FreeAndNil(fLock);
  inherited Destroy;
 end;
@@ -2509,6 +2544,20 @@ begin
      fData.PBRClearCoat.NormalTexture.Texture:=nil;
     end;
    end;
+   if assigned(fData.Iridescence.Texture.Texture) then begin
+    try
+     fData.Iridescence.Texture.Texture.DecRef;
+    finally
+     fData.Iridescence.Texture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+    try
+     fData.Iridescence.ThicknessTexture.Texture.DecRef;
+    finally
+     fData.Iridescence.ThicknessTexture.Texture:=nil;
+    end;
+   end;
    fSceneInstance.fMaterialListLock.Acquire;
    try
     fSceneInstance.fMaterials.Remove(self);
@@ -2536,17 +2585,6 @@ var UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
-    NormalTextureDescriptorImageInfo,
-    OcclusionTextureDescriptorImageInfo,
-    EmissiveTextureDescriptorImageInfo,
-    BaseColorOrDiffuseTextureDescriptorImageInfo,
-    MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo,
-    SpecularFactorTextureDescriptorImageInfo,
-    SpecularColorFactorTextureDescriptorImageInfo,
-    SheenColorIntensityTextureDescriptorImageInfo,
-    ClearCoatNormalTextureDescriptorImageInfo,
-    ClearCoatRoughnessTextureDescriptorImageInfo,
-    ClearCoatTextureDescriptorImageInfo:TVkDescriptorImageInfo;
 begin
 
  if (fReferenceCounter>0) and not fUploaded then begin
@@ -2560,130 +2598,105 @@ begin
 
      if assigned(fData.NormalTexture.Texture) then begin
       fData.NormalTexture.Texture.Upload;
-      NormalTextureDescriptorImageInfo:=fData.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fDefaultNormalMapTexture.Upload;
-      NormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTexture.GetDescriptorImageInfo;
      end;
 
      if assigned(fData.OcclusionTexture.Texture) then begin
       fData.OcclusionTexture.Texture.Upload;
-      OcclusionTextureDescriptorImageInfo:=fData.OcclusionTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
-      OcclusionTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
      end;
 
      if assigned(fData.EmissiveTexture.Texture) then begin
       fData.EmissiveTexture.Texture.Upload;
-      EmissiveTextureDescriptorImageInfo:=fData.EmissiveTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
-      EmissiveTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
      end;
 
      case fData.ShadingModel of
       TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness:begin
        if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
         fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
         fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.Upload;
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
         fData.PBRMetallicRoughness.SpecularTexture.Texture.Upload;
-        SpecularFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
         fData.PBRMetallicRoughness.SpecularColorTexture.Texture.Upload;
-        SpecularColorFactorTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.SpecularColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
       end;
       TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness:begin
        if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
         fData.PBRSpecularGlossiness.DiffuseTexture.Texture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.DiffuseTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
         fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.Upload;
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        fSceneInstance.fWhiteTexture.Upload;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
       end;
       TpvScene3D.TMaterial.TShadingModel.Unlit:begin
        if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
         fData.PBRMetallicRoughness.BaseColorTexture.Texture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fData.PBRMetallicRoughness.BaseColorTexture.Texture.GetDescriptorImageInfo;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
-        BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
        end;
        fSceneInstance.fWhiteTexture.Upload;
-       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
       end;
       else begin
        fSceneInstance.fWhiteTexture.Upload;
-       BaseColorOrDiffuseTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       MetallicRoughnessOrSpecularGlossinessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       SpecularFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
-       SpecularColorFactorTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
       end;
      end;
 
      if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
       fData.PBRSheen.ColorIntensityTexture.Texture.Upload;
-      SheenColorIntensityTextureDescriptorImageInfo:=fData.PBRSheen.ColorIntensityTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
-      SheenColorIntensityTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
       fData.PBRClearCoat.NormalTexture.Texture.Upload;
-      ClearCoatNormalTextureDescriptorImageInfo:=fData.PBRClearCoat.NormalTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fDefaultNormalMapTexture.Upload;
-      ClearCoatNormalTextureDescriptorImageInfo:=fSceneInstance.fDefaultNormalMapTexture.GetDescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
       fData.PBRClearCoat.RoughnessTexture.Texture.Upload;
-      ClearCoatRoughnessTextureDescriptorImageInfo:=fData.PBRClearCoat.RoughnessTexture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
-      ClearCoatRoughnessTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
      end;
 
      if assigned(fData.PBRClearCoat.Texture.Texture) then begin
       fData.PBRClearCoat.Texture.Texture.Upload;
-      ClearCoatTextureDescriptorImageInfo:=fData.PBRClearCoat.Texture.Texture.GetDescriptorImageInfo;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
-      ClearCoatTextureDescriptorImageInfo:=fSceneInstance.fWhiteTexture.GetDescriptorImageInfo;
+     end;
+
+     if assigned(fData.Iridescence.Texture.Texture) then begin
+      fData.Iridescence.Texture.Texture.Upload;
+     end else begin
+      fSceneInstance.fWhiteTexture.Upload;
+     end;
+
+     if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+      fData.Iridescence.ThicknessTexture.Texture.Upload;
+     end else begin
+      fSceneInstance.fWhiteTexture.Upload;
      end;
 
     finally
@@ -3030,6 +3043,46 @@ begin
   end;
  end;
 
+ begin
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_iridescence'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
+   fData.Iridescence.Active:=true;
+   fData.Iridescence.Factor:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceFactor'],0.0);
+   JSONItem:=JSONObject.Properties['iridescenceTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.Iridescence.Texture.Texture:=aTextureMap[Index];
+     if assigned(fData.Iridescence.Texture.Texture) then begin
+      fData.Iridescence.Texture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Iridescence.Texture.Texture:=nil;
+    end;
+    fData.Iridescence.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.Iridescence.Texture.Transform.AssignFromGLTF(fData.Iridescence.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+   fData.Iridescence.Ior:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceIor'],1.3);
+   fData.Iridescence.ThicknessMinimum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMinimum'],100.0);
+   fData.Iridescence.ThicknessMaximum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMaximum'],400.0);
+   JSONItem:=JSONObject.Properties['iridescenceThicknessTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.Iridescence.ThicknessTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+      fData.Iridescence.ThicknessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Iridescence.ThicknessTexture.Texture:=nil;
+    end;
+    fData.Iridescence.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.Iridescence.ThicknessTexture.Transform.AssignFromGLTF(fData.Iridescence.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+  end;
+ end;
+
  FillShaderData;
 
 end;
@@ -3116,11 +3169,8 @@ begin
    fShaderData.SpecularFactor[1]:=fData.PBRSpecularGlossiness.SpecularFactor[1];
    fShaderData.SpecularFactor[2]:=fData.PBRSpecularGlossiness.SpecularFactor[2];
    fShaderData.SpecularFactor[3]:=0.0;
-   fShaderData.IOR[0]:=fData.IOR;
-   fShaderData.IOR[1]:=0.0;
-   fShaderData.IOR[2]:=0.0;
-   fShaderData.IOR[3]:=0.0;
-  end;
+   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[0]:=fData.IOR;
+   end;
   TMaterial.TShadingModel.Unlit:begin
    fShaderData.Flags:=fShaderData.Flags or ((2 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
@@ -3185,6 +3235,24 @@ begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 8);
    fShaderData.Textures[8]:=(fData.PBRClearCoat.NormalTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.NormalTexture.TexCoord and $f) shl 16);
    fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.NormalTexture.Transform.ToMatrix4x4;
+  end;
+ end;
+
+ if fData.Iridescence.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 10);
+  fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[1]:=fData.Iridescence.Factor;
+  fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[2]:=fData.Iridescence.Ior;
+  fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[3]:=fData.Iridescence.ThicknessMinimum;
+  fShaderData.IridescenceThicknessMaximum[0]:=fData.Iridescence.ThicknessMaximum;
+  if assigned(fData.Iridescence.Texture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
+   fShaderData.Textures[11]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[11]:=fData.Iridescence.Texture.Transform.ToMatrix4x4;
+  end;
+  if assigned(fData.Iridescence.Texture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 12);
+   fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToMatrix4x4;
   end;
  end;
 

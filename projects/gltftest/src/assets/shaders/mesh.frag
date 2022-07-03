@@ -124,7 +124,8 @@ struct Material {
   vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
-  vec4 ior;
+  vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
+  vec4 iridescenceThicknessMaximum;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -175,7 +176,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
   vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
-  vec4 ior;
+  vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
+  vec4 iridescenceThicknessMaximum;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -629,7 +631,7 @@ void main() {
     case smPBRSpecularGlossiness: {
       vec4 diffuseColorAlpha = vec4(1.0);
       vec3 specularColorFactor = vec3(1.0);
-      float ior = material.ior.x;
+      float ior = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.x;
       vec3 F0 = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
       float specularFactor = 1.0;
