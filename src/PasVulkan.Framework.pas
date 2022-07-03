@@ -7015,7 +7015,8 @@ begin
   end;
  end;
 
- if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
+ if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
+    assigned(fInstance.Commands.Commands.GetPhysicalDeviceFeatures2KHR) then begin
   fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
  end else begin
   fInstance.Commands.GetPhysicalDeviceFeatures2(Handle,@fFeatures2KHR);
@@ -7047,7 +7048,8 @@ begin
 
  end;
 
- if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
+ if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
+    assigned(fInstance.Commands.Commands.GetPhysicalDeviceProperties2KHR) then begin
   fInstance.Commands.GetPhysicalDeviceProperties2KHR(Handle,@fProperties2KHR);
  end else begin
   fInstance.Commands.GetPhysicalDeviceProperties2(Handle,@fProperties2KHR);
