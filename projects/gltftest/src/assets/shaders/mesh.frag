@@ -65,7 +65,7 @@ layout(location = 5) in vec3 inNormal;
 layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
-layout(location = 9) out vec3 inModelScale;
+layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
 #ifdef VELOCITY
 layout(location = 11) in vec4 inPreviousClipSpace;
@@ -212,7 +212,7 @@ layout(set = 1, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #endif
 
-layout(set = 1, binding = 4) uniform sampler2DArray uSSAOTexture;
+layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO, 1 = Opaque frame buffer
 
 #endif
 
@@ -918,7 +918,7 @@ void main() {
   #if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(BLEND)
       ambientOcclusion = 1.0;
   #else
-      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uSSAOTexture, ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
   #endif
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
