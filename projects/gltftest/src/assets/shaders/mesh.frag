@@ -126,7 +126,7 @@ struct Material {
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
-  vec4 iridescenceThicknessMaximum;
+  vec4 iridescenceThicknessMaximumTransmissionFactor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -178,7 +178,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
-  vec4 iridescenceThicknessMaximum;
+  vec4 iridescenceThicknessMaximumTransmissionFactor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -929,9 +929,9 @@ void main() {
         iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0)).x : 1.0);
         iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
         if ((textureFlags.x & (1 << 12)) != 0){
-          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximum.x, textureFetch(12, vec4(1.0)).y);  
+          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactor.x, textureFetch(12, vec4(1.0)).y);  
         }else{
-          iridescenceThickness = material.iridescenceThicknessMaximum.x;  
+          iridescenceThickness = material.iridescenceThicknessMaximumTransmissionFactor.x;  
         }
         if(iridescenceThickness == 0.0){
           iridescenceFactor = 0.0;

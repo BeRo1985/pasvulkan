@@ -449,6 +449,11 @@ type EpvScene3D=class(Exception);
                     ThicknessMaximum:TpvFloat;
                     ThicknessTexture:TTextureReference;
                    end;
+                   TTransmission=record
+                    Active:boolean;
+                    Factor:TpvFloat;
+                    Texture:TTextureReference;
+                   end;
                    TShaderData=packed record // 2048 bytes
                     case boolean of
                      false:(
@@ -459,7 +464,7 @@ type EpvScene3D=class(Exception);
                       SheenColorFactorSheenIntensityFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
                       IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:TpvVector4;
-                      IridescenceThicknessMaximum:TpvVector4;
+                      IridescenceThicknessMaximumTransmissionFactor:TpvVector4;
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -492,6 +497,7 @@ type EpvScene3D=class(Exception);
                     Unlit:TUnlit;
                     IOR:TpvFloat;
                     Iridescence:TIridescence;
+                    Transmission:TTransmission;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -552,6 +558,11 @@ type EpvScene3D=class(Exception);
                       ThicknessMaximum:400.0;
                       ThicknessTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
+                     Transmission:(
+                      Active:false;
+                      Factor:0.0;
+                      Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                     );
                     );
                    DefaultShaderData:TShaderData=
                     (
@@ -562,7 +573,7 @@ type EpvScene3D=class(Exception);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
-                     IridescenceThicknessMaximum:(x:400.0;y:0.0;z:0.0;w:0.0);
+                     IridescenceThicknessMaximumTransmissionFactor:(x:400.0;y:0.0;z:0.0;w:0.0);
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -2423,6 +2434,13 @@ begin
    fData.Iridescence.ThicknessTexture.Texture:=nil;
   end;
  end;
+ if assigned(fData.Transmission.Texture.Texture) then begin
+  try
+   fData.Transmission.Texture.Texture.DecRef;
+  finally
+   fData.Transmission.Texture.Texture:=nil;
+  end;
+ end;
  FreeAndNil(fLock);
  inherited Destroy;
 end;
@@ -2557,6 +2575,13 @@ begin
      fData.Iridescence.ThicknessTexture.Texture.DecRef;
     finally
      fData.Iridescence.ThicknessTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.Transmission.Texture.Texture) then begin
+    try
+     fData.Transmission.Texture.Texture.DecRef;
+    finally
+     fData.Transmission.Texture.Texture:=nil;
     end;
    end;
    fSceneInstance.fMaterialListLock.Acquire;
@@ -2696,6 +2721,12 @@ begin
 
      if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
       fData.Iridescence.ThicknessTexture.Texture.Upload;
+     end else begin
+      fSceneInstance.fWhiteTexture.Upload;
+     end;
+
+     if assigned(fData.Transmission.Texture.Texture) then begin
+      fData.Transmission.Texture.Texture.Upload;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
      end;
@@ -3084,6 +3115,29 @@ begin
   end;
  end;
 
+ begin
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_transmission'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
+   fData.Transmission.Active:=true;
+   fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
+   JSONItem:=JSONObject.Properties['transmissionTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.Transmission.Texture.Texture:=aTextureMap[Index];
+     if assigned(fData.Transmission.Texture.Texture) then begin
+      fData.Transmission.Texture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Transmission.Texture.Texture:=nil;
+    end;
+    fData.Transmission.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.Transmission.Texture.Transform.AssignFromGLTF(fData.Transmission.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+  end;
+ end;
+
  FillShaderData;
 
 end;
@@ -3245,7 +3299,7 @@ begin
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[1]:=fData.Iridescence.Factor;
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[2]:=fData.Iridescence.Ior;
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[3]:=fData.Iridescence.ThicknessMinimum;
-  fShaderData.IridescenceThicknessMaximum[0]:=fData.Iridescence.ThicknessMaximum;
+  fShaderData.IridescenceThicknessMaximumTransmissionFactor[0]:=fData.Iridescence.ThicknessMaximum;
   if assigned(fData.Iridescence.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
    fShaderData.Textures[11]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
@@ -3255,6 +3309,16 @@ begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 12);
    fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
    fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToMatrix4x4;
+  end;
+ end;
+
+ if fData.Transmission.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 11);
+  fShaderData.IridescenceThicknessMaximumTransmissionFactor[1]:=fData.Transmission.Factor;
+  if assigned(fData.Transmission.Texture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
+   fShaderData.Textures[13]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[13]:=fData.Transmission.Texture.Transform.ToMatrix4x4;
   end;
  end;
 
@@ -8825,7 +8889,7 @@ procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines
                           const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aPipelineLayout:TpvVulkanPipelineLayout;
                           const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     Group:TpvScene3D.TGroup;
     VisibleBit:TPasMPUInt32;
