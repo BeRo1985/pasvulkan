@@ -322,6 +322,14 @@ float iridescenceFactor = 0.0;
 float iridescenceIor = 1.3;
 float iridescenceThickness = 400.0;
 
+#if defined(BLEND) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT)
+  #define TRANSMISSION
+#endif
+
+#if defined(TRANSMISSION)
+float transmissionFactor = 0.0;
+#endif
+
 float applyIorToRoughness(float roughness, float ior) {
   // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and an IOR of 1.5 results in the default amount of microfacet refraction.
   return roughness * clamp(fma(ior, 2.0, -2.0), 0.0, 1.0);
@@ -565,6 +573,9 @@ vec3 specularOutput = vec3(0.0);
 vec3 sheenOutput = vec3(0.0);
 vec3 clearcoatOutput = vec3(0.0);
 vec3 clearcoatFresnel = vec3(0.0);
+#if defined(TRANSMISSION)
+vec3 transmissionOutput = vec3(0.0);
+#endif
 
 float albedoSheenScaling = 1.0;
 
@@ -943,6 +954,12 @@ void main() {
         }
       }
 
+#if defined(TRANSMISSION)
+      if ((flags & (1u << 11u)) != 0u) {
+        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactor.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0)).x : 1.0);  
+      }
+#endif
+
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 
       vec4 sheenColorIntensityFactor = vec4(1.0);
@@ -1182,12 +1199,21 @@ void main() {
         clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
+#if defined(TRANSMISSION)
+      if (((flags & (1u << 11u)) != 0u) && (transmissionFactor != 0.0)) {
+
+      }
+#endif
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
       color = vec2(0.0, diffuseColorAlpha.w).xxxy;
 #ifndef EXTRAEMISSIONOUTPUT
       color.xyz += emissiveOutput;
 #endif
+#if defined(TRANSMISSION)
+      color.xyz += mix(diffuseOutput, transmissionOutput, transmissionFactor);
+#else
       color.xyz += diffuseOutput;
+#endif
       color.xyz += specularOutput;
       color.xyz = fma(color.xyz, vec3(albedoSheenScaling), sheenOutput);
       color.xyz = fma(color.xyz, vec3(1.0 - (clearcoatFactor * clearcoatFresnel)), clearcoatOutput);
