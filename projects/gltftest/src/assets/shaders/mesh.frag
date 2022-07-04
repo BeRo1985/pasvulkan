@@ -785,22 +785,20 @@ void main() {
     case smPBRMetallicRoughness:
     case smPBRSpecularGlossiness: {
       vec4 diffuseColorAlpha = vec4(1.0);
-      vec3 specularColorFactor = vec3(1.0);
       float ior = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.x;
       vec3 F0 = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
-      float specularFactor = 1.0;
       float perceptualRoughness = 1.0;
       float specularWeight = 1.0;
       switch (shadingModel) {
         case smPBRMetallicRoughness: {
-          specularFactor = material.specularFactor.w;
-          specularColorFactor = material.specularFactor.xyz;
+          vec3 specularColorFactor = material.specularFactor.xyz;
+          specularWeight = material.specularFactor.w;
           if ((flags & (1u << 9u)) != 0u) {
-            specularFactor *= textureFetch(9, vec4(1.0)).x;
+            specularWeight *= textureFetch(9, vec4(1.0)).w;
             specularColorFactor *= textureFetchSRGB(10, vec4(1.0)).xyz;
           }
-          vec3 dielectricSpecularF0 = clamp(F0 * specularColorFactor * specularFactor, vec3(0.0), vec3(1.0));
+          vec3 dielectricSpecularF0 = clamp(F0 * specularColorFactor, vec3(0.0), vec3(1.0));
           vec4 baseColor = textureFetchSRGB(0, vec4(1.0)) * material.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(1, vec4(1.0)).zy * material.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (1.0 - metallicRoughness.x)), baseColor.w);

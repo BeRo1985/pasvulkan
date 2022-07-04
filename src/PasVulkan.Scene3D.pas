@@ -555,7 +555,7 @@ type EpvScene3D=class(Exception);
                    DefaultShaderData:TShaderData=
                     (
                      BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
-                     SpecularFactor:(x:1.0;y:1.0;z:1.0;w:0.0);
+                     SpecularFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
@@ -3169,8 +3169,7 @@ begin
    fShaderData.SpecularFactor[1]:=fData.PBRSpecularGlossiness.SpecularFactor[1];
    fShaderData.SpecularFactor[2]:=fData.PBRSpecularGlossiness.SpecularFactor[2];
    fShaderData.SpecularFactor[3]:=0.0;
-   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[0]:=fData.IOR;
-   end;
+  end;
   TMaterial.TShadingModel.Unlit:begin
    fShaderData.Flags:=fShaderData.Flags or ((2 and $f) shl 0);
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
@@ -3237,6 +3236,8 @@ begin
    fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.NormalTexture.Transform.ToMatrix4x4;
   end;
  end;
+
+ fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[0]:=fData.IOR;
 
  if fData.Iridescence.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 10);
