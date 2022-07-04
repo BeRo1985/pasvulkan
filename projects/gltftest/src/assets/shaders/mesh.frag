@@ -265,6 +265,22 @@ layout(input_attachment_index = 1, set = 1, binding = 7) uniform subpassInput uM
 
 /* clang-format on */
 
+float sq(float t){
+  return t * t; //
+}
+
+vec2 sq(vec2 t){
+  return t * t; //
+}
+
+vec3 sq(vec3 t){
+  return t * t; //
+}
+
+vec4 sq(vec4 t){
+  return t * t; //
+}
+
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
 }
@@ -299,6 +315,12 @@ const float PI = 3.14159265358979323846,     //
 float cavity, ambientOcclusion, specularOcclusion;
 uint flags, shadingModel;
 
+vec3 iridescenceFresnel = vec3(0.0);
+vec3 iridescenceF0 = vec3(0.0);
+float iridescenceFactor = 0.0;
+float iridescenceIor = 1.3;
+float iridescenceThickness = 400.0;
+
 vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
   const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
   const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
@@ -310,6 +332,40 @@ vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
 vec3 F_Schlick(vec3 f0, vec3 f90, float VdotH) {
   return mix(f0, f90, pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0));  //
 }
+
+float F_Schlick(float f0, float f90, float VdotH) {
+  float x = clamp(1.0 - VdotH, 0.0, 1.0);
+  float x2 = x * x;
+  return mix(f0, f90, x * x2 * x2);  
+}
+
+float F_Schlick(float f0, float VdotH) {
+  return F_Schlick(f0, 1.0, VdotH);
+}
+
+vec3 F_Schlick(vec3 f0, float VdotH) {
+  return F_Schlick(f0, vec3(1.0), VdotH);
+}
+
+vec3 Schlick_to_F0(vec3 f, vec3 f90, float VdotH) {
+  float x = clamp(1.0 - VdotH, 0.0, 1.0);
+  float x2 = x * x;
+  float x5 = clamp(x * x2 * x2, 0.0, 0.9999);
+
+  return (f - f90 * x5) / (1.0 - x5);
+}
+
+float Schlick_to_F0(float f, float f90, float VdotH) {
+  float x = clamp(1.0 - VdotH, 0.0, 1.0);
+  float x2 = x * x;
+  float x5 = clamp(x * x2 * x2, 0.0, 0.9999);
+
+  return (f - f90 * x5) / (1.0 - x5);
+}
+
+vec3 Schlick_to_F0(vec3 f, float VdotH) { return Schlick_to_F0(f, vec3(1.0), VdotH); }
+
+float Schlick_to_F0(float f, float VdotH) { return Schlick_to_F0(f, 1.0, VdotH); }
 
 float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
   float alphaRoughnessSq = alphaRoughness * alphaRoughness;
@@ -353,16 +409,112 @@ float D_Charlie(float sheenRoughness, float NdotH) {
 }
 
 vec3 BRDF_lambertian(vec3 f0, vec3 f90, vec3 diffuseColor, float specularWeight, float VdotH) {
-  return (1.0 - (specularWeight * F_Schlick(f0, f90, VdotH))) * (diffuseColor * OneOverPI);  //
+  return (1.0 - (specularWeight * mix(F_Schlick(f0, f90, VdotH), vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor))) * (diffuseColor * OneOverPI);  //
 }
 
 vec3 BRDF_specularGGX(vec3 f0, vec3 f90, float alphaRoughness, float specularWeight, float VdotH, float NdotL, float NdotV, float NdotH) {
-  return specularWeight * F_Schlick(f0, f90, VdotH) * V_GGX(NdotL, NdotV, alphaRoughness) * D_GGX(NdotH, alphaRoughness);  //
+  return specularWeight * mix(F_Schlick(f0, f90, VdotH), iridescenceFresnel, iridescenceFactor) * V_GGX(NdotL, NdotV, alphaRoughness) * D_GGX(NdotH, alphaRoughness);  //
 }
 
 vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH) {
   return sheenColor * D_Charlie(sheenRoughness, NdotH) * V_Sheen(NdotL, NdotV, sheenRoughness);  //
 }
+
+/////////////////////////////
+
+// XYZ to sRGB color space
+const mat3 XYZ_TO_REC709 = mat3(3.2404542, -0.9692660, 0.0556434, -1.5371385, 1.8760108, -0.2040259, -0.4985314, 0.0415560, 1.0572252);
+
+// Assume air interface for top
+// Note: We don't handle the case fresnel0 == 1
+vec3 Fresnel0ToIor(vec3 fresnel0) {
+  vec3 sqrtF0 = sqrt(fresnel0);
+  return (vec3(1.0) + sqrtF0) / (vec3(1.0) - sqrtF0);
+}
+
+// Conversion FO/IOR
+vec3 IorToFresnel0(vec3 transmittedIor, float incidentIor) { return sq((transmittedIor - vec3(incidentIor)) / (transmittedIor + vec3(incidentIor))); }
+
+// ior is a value between 1.0 and 3.0. 1.0 is air interface
+float IorToFresnel0(float transmittedIor, float incidentIor) { return sq((transmittedIor - incidentIor) / (transmittedIor + incidentIor)); }
+
+// Fresnel equations for dielectric/dielectric interfaces.
+// Ref: https://belcour.github.io/blog/research/2017/05/01/brdf-thin-film.html
+// Evaluation XYZ sensitivity curves in Fourier space
+vec3 evalSensitivity(float OPD, vec3 shift) {
+  float phase = 2.0 * PI * OPD * 1.0e-9;
+  vec3 val = vec3(5.4856e-13, 4.4201e-13, 5.2481e-13);
+  vec3 pos = vec3(1.6810e+06, 1.7953e+06, 2.2084e+06);
+  vec3 var = vec3(4.3278e+09, 9.3046e+09, 6.6121e+09);
+
+  vec3 xyz = val * sqrt(2.0 * PI * var) * cos(pos * phase + shift) * exp(-sq(phase) * var);
+  xyz.x += 9.7470e-14 * sqrt(2.0 * PI * 4.5282e+09) * cos(2.2399e+06 * phase + shift[0]) * exp(-4.5282e+09 * sq(phase));
+  xyz /= 1.0685e-7;
+
+  vec3 srgb = XYZ_TO_REC709 * xyz;
+  return srgb;
+}
+
+vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFilmThickness, vec3 baseF0) {
+  vec3 I;
+
+  // Force iridescenceIor -> outsideIOR when thinFilmThickness -> 0.0
+  float iridescenceIor = mix(outsideIOR, eta2, smoothstep(0.0, 0.03, thinFilmThickness));
+  // Evaluate the cosTheta on the base layer (Snell law)
+  float sinTheta2Sq = sq(outsideIOR / iridescenceIor) * (1.0 - sq(cosTheta1));
+
+  // Handle TIR:
+  float cosTheta2Sq = 1.0 - sinTheta2Sq;
+  if (cosTheta2Sq < 0.0) {
+    return vec3(1.0);
+  }
+
+  float cosTheta2 = sqrt(cosTheta2Sq);
+
+  // First interface
+  float R0 = IorToFresnel0(iridescenceIor, outsideIOR);
+  float R12 = F_Schlick(R0, cosTheta1);
+  float R21 = R12;
+  float T121 = 1.0 - R12;
+  float phi12 = 0.0;
+  if (iridescenceIor < outsideIOR) phi12 = PI;
+  float phi21 = PI - phi12;
+
+  // Second interface
+  vec3 baseIOR = Fresnel0ToIor(clamp(baseF0, 0.0, 0.9999));  // guard against 1.0
+  vec3 R1 = IorToFresnel0(baseIOR, iridescenceIor);
+  vec3 R23 = F_Schlick(R1, cosTheta2);
+  vec3 phi23 = vec3(0.0);
+  if (baseIOR[0] < iridescenceIor) phi23[0] = PI;
+  if (baseIOR[1] < iridescenceIor) phi23[1] = PI;
+  if (baseIOR[2] < iridescenceIor) phi23[2] = PI;
+
+  // Phase shift
+  float OPD = 2.0 * iridescenceIor * thinFilmThickness * cosTheta2;
+  vec3 phi = vec3(phi21) + phi23;
+
+  // Compound terms
+  vec3 R123 = clamp(R12 * R23, 1e-5, 0.9999);
+  vec3 r123 = sqrt(R123);
+  vec3 Rs = sq(T121) * R23 / (vec3(1.0) - R123);
+
+  // Reflectance term for m = 0 (DC term amplitude)
+  vec3 C0 = R12 + Rs;
+  I = C0;
+
+  // Reflectance term for m > 0 (pairs of diracs)
+  vec3 Cm = Rs - T121;
+  for (int m = 1; m <= 2; ++m) {
+    Cm *= r123;
+    vec3 Sm = 2.0 * evalSensitivity(float(m) * OPD, float(m) * phi);
+    I += Cm * Sm;
+  }
+
+  // Since out of gamut colors might be produced, negative color values are clamped to 0.
+  return max(I, vec3(0.0));
+}
+
+////////////////////////////
 
 vec3 diffuseOutput = vec3(0.0);
 vec3 specularOutput = vec3(0.0);
@@ -416,11 +568,12 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
   vec2 f_ab = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).rg;
   vec3 irradiance = texture(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
-  vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
-  vec3 k_S = F0 + (Fr * pow(1.0 - NdotV, 5.0));
+  vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
+  vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
+  vec3 k_S = mixedF0 + (Fr * pow(1.0 - NdotV, 5.0));
   vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
   float Ems = 1.0 - (f_ab.x + f_ab.y);
-  vec3 F_avg = specularWeight * (F0 + ((1.0 - F0) / 21.0));
+  vec3 F_avg = specularWeight * (mixedF0 + ((1.0 - mixedF0) / 21.0));
   vec3 FmsEms = (Ems * FssEss * F_avg) / (vec3(1.0) - (F_avg * Ems));
   vec3 k_D = (diffuseColor * ((1.0 - FssEss) + FmsEms) * ao);
   return (FmsEms + k_D) * irradiance;
@@ -436,12 +589,14 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
   return (texture(uImageBasedLightingEnvMaps[0],  //
                   reflectionVector,               //
                   roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
-              .xyz *                                                                 //
-          fma(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
-              brdf.xxx,                                                              //
-              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *       //
-          specularWeight *                                                           //
-          specularOcclusion *                                                        //
+              .xyz *                                                                     //
+          fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
+                  iridescenceFresnel,                                                    //
+                  iridescenceFactor),                                                    //
+              brdf.xxx,                                                                  //
+              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *           //
+          specularWeight *                                                               //
+          specularOcclusion *                                                            //
           1.0);
 }
 
@@ -725,6 +880,26 @@ void main() {
   #endif
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
+
+      if ((flags & (1u << 10u)) != 0u) {
+        iridescenceFresnel = F0;
+        iridescenceF0 = F0;
+        iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0)).x : 1.0);
+        iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
+        if ((textureFlags.x & (1 << 12)) != 0){
+          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximum.x, textureFetch(12, vec4(1.0)).y);  
+        }else{
+          iridescenceThickness = material.iridescenceThicknessMaximum.x;  
+        }
+        if(iridescenceThickness == 0.0){
+          iridescenceFactor = 0.0;
+        }  
+        if(iridescenceFactor > 0.0){
+          float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+          iridescenceFresnel = evalIridescence(1.0, iridescenceIor, NdotV, iridescenceThickness, F0);
+          iridescenceF0 = Schlick_to_F0(iridescenceFresnel, NdotV);          
+        }
+      }
 
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 
