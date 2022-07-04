@@ -3656,13 +3656,13 @@ begin
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             1,
+                                             2,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.Initialize;
 
  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
- fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,8*length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.Initialize;
 
@@ -3709,11 +3709,15 @@ begin
                                                                        false);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                        0,
-                                                                       1,
+                                                                       2,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                                                      fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                        // Duplicate as dummy really non-used opaque texture
+                                                                        TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
+                                                                                                      fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                      fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                                                                        [],
                                                                        [],
                                                                        false);
