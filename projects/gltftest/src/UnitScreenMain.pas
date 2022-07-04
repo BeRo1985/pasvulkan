@@ -4687,7 +4687,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -5641,7 +5641,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -6506,7 +6506,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -7045,7 +7045,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -7888,7 +7888,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fVulkanSSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                        fParent.fForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);

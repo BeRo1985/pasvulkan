@@ -107,7 +107,7 @@ void main() {
   outColor0 = inColor0;
   outModelScale = inModelScale;
   outMaterialID = inMaterialID;
-  outViewIndex = viewIndex + pushConstants.countViews; 
+  outViewIndex = int(viewIndex); 
 
 #ifdef VELOCITY
    View previousView = uView.views[viewIndex + pushConstants.countViews];
