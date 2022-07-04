@@ -464,7 +464,7 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 
 // Compute attenuated light as it travels through a volume.
 vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
-  if (attenuationDistance == 0.0) {
+  if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
     // Attenuation distance is +∞ (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
     return radiance;
   } else {

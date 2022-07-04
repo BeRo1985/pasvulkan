@@ -590,7 +590,7 @@ type EpvScene3D=class(Exception);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
                      IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:(x:400.0;y:0.0;z:0.0;w:Infinity);
-                     VolumeAttenuationColor:(x:1.0;y:1.0;z:1.0;w:0.0);
+                     VolumeAttenuationColor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
