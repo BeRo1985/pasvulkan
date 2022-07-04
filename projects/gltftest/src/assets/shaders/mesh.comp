@@ -160,7 +160,7 @@ void main() {
 
         float tbnSign = (dot(normalize(cross(normal, tangent)), bitangent) < 0.0) ? -1.0 : 1.0;
 
-        vec3 modelScale = vec3(length(normalMatrix[0].xyz), length(normalMatrix[1].xyz), length(normalMatrix[2].xyz));
+        vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
 
         OutPackedVertex outPackedVertex;
         outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), inMaterialID);
