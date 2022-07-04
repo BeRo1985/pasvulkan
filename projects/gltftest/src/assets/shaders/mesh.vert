@@ -11,8 +11,9 @@ layout(location = 3) in vec3 inTangent;
 layout(location = 4) in vec2 inTexCoord0;
 layout(location = 5) in vec2 inTexCoord1;
 layout(location = 6) in vec4 inColor0;
+layout(location = 7) in vec3 inModelScale;
 #ifdef VELOCITY
-layout(location = 7) in vec3 inPreviousPosition;
+layout(location = 8) in vec3 inPreviousPosition;
 #endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
@@ -24,10 +25,11 @@ layout(location = 5) out vec3 outNormal;
 layout(location = 6) out vec2 outTexCoord0;
 layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
-layout(location = 9) flat out uint outMaterialID;
+layout(location = 9) out vec3 outModelScale;
+layout(location = 10) flat out uint outMaterialID;
 #ifdef VELOCITY
-layout(location = 10) out vec4 outPreviousClipSpace;
-layout(location = 11) out vec4 outCurrentClipSpace;
+layout(location = 11) out vec4 outPreviousClipSpace;
+layout(location = 12) out vec4 outCurrentClipSpace;
 #endif
 
 /* clang-format off */
@@ -102,6 +104,7 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
+  outModelScale = inModelScale;
   outMaterialID = inMaterialID;
 
 #ifdef VELOCITY

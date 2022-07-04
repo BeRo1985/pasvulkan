@@ -65,10 +65,11 @@ layout(location = 5) in vec3 inNormal;
 layout(location = 6) in vec2 inTexCoord0;
 layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
-layout(location = 9) flat in uint inMaterialID;
+layout(location = 9) out vec3 inModelScale;
+layout(location = 10) flat in uint inMaterialID;
 #ifdef VELOCITY
-layout(location = 10) in vec4 inPreviousClipSpace;
-layout(location = 11) in vec4 inCurrentClipSpace;
+layout(location = 11) in vec4 inPreviousClipSpace;
+layout(location = 12) in vec4 inCurrentClipSpace;
 #endif
 
 #ifdef DEPTHONLY
