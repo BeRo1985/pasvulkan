@@ -2460,6 +2460,13 @@ begin
    fData.Transmission.Texture.Texture:=nil;
   end;
  end;
+ if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+  try
+   fData.Volume.ThicknessTexture.Texture.DecRef;
+  finally
+   fData.Volume.ThicknessTexture.Texture:=nil;
+  end;
+ end;
  FreeAndNil(fLock);
  inherited Destroy;
 end;
@@ -2601,6 +2608,13 @@ begin
      fData.Transmission.Texture.Texture.DecRef;
     finally
      fData.Transmission.Texture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+    try
+     fData.Volume.ThicknessTexture.Texture.DecRef;
+    finally
+     fData.Volume.ThicknessTexture.Texture:=nil;
     end;
    end;
    fSceneInstance.fMaterialListLock.Acquire;
@@ -2746,6 +2760,12 @@ begin
 
      if assigned(fData.Transmission.Texture.Texture) then begin
       fData.Transmission.Texture.Texture.Upload;
+     end else begin
+      fSceneInstance.fWhiteTexture.Upload;
+     end;
+
+     if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+      fData.Volume.ThicknessTexture.Texture.Upload;
      end else begin
       fSceneInstance.fWhiteTexture.Upload;
      end;
@@ -3162,6 +3182,36 @@ begin
   end;
  end;
 
+ begin
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_volume'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
+   fData.Volume.Active:=true;
+   fData.Volume.ThicknessFactor:=TPasJSON.GetNumber(JSONObject.Properties['thicknessFactor'],0.0);
+   JSONItem:=JSONObject.Properties['thicknessTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.Volume.ThicknessTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+      fData.Volume.ThicknessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Volume.ThicknessTexture.Texture:=nil;
+    end;
+    fData.Volume.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.Volume.ThicknessTexture.Transform.AssignFromGLTF(fData.Volume.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+   fData.Volume.AttenuationDistance:=TPasJSON.GetNumber(JSONObject.Properties['attenuationDistance'],Infinity);
+   JSONItem:=JSONObject.Properties['attenuationColor'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+    fData.Volume.AttenuationColor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],1.0);
+    fData.Volume.AttenuationColor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
+    fData.Volume.AttenuationColor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
+   end;
+  end;
+ end;
+
  FillShaderData;
 
 end;
@@ -3343,6 +3393,20 @@ begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
    fShaderData.Textures[13]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
    fShaderData.TextureTransforms[13]:=fData.Transmission.Texture.Transform.ToMatrix4x4;
+  end;
+ end;
+
+ if fData.Volume.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 12);
+  fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[2]:=fData.Volume.ThicknessFactor;
+  fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[3]:=fData.Volume.AttenuationDistance;
+  fShaderData.VolumeAttenuationColor[0]:=fData.Volume.AttenuationColor[0];
+  fShaderData.VolumeAttenuationColor[1]:=fData.Volume.AttenuationColor[1];
+  fShaderData.VolumeAttenuationColor[2]:=fData.Volume.AttenuationColor[2];
+  if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 14);
+   fShaderData.Textures[14]:=(fData.Volume.ThicknessTexture.Texture.ID and $ffff) or ((fData.Volume.ThicknessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[14]:=fData.Volume.ThicknessTexture.Transform.ToMatrix4x4;
   end;
  end;
 
