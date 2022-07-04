@@ -1059,7 +1059,8 @@ void main() {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
             float lightAttenuation = 1.0;
             vec3 lightDirection;
-            vec3 lightVector = light.positionRange.xyz - inWorldSpacePosition.xyz;
+            vec3 lightPosition = light.positionRange.xyz; 
+            vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u)) {
@@ -1118,6 +1119,8 @@ void main() {
               }
 #endif
             }
+
+            float lightAttenuationEx = lightAttenuation;
 #endif
             switch (light.metaData.x) {
               case 1u: {  // Directional
@@ -1185,6 +1188,53 @@ void main() {
                             clearcoatF0,                                        //
                             clearcoatRoughness,                                 //
                             specularWeight);                                    //
+#ifdef TRANSMISSION
+              if ((flags & (1u << 11u)) != 0u) {
+                // If the light ray travels through the geometry, use the point it exits the geometry again.
+                // That will change the angle to the light source, if the material refracts the light ray.
+                vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, ior);
+                vec3 pointToLight = ((light.metaData.x == 0) ? lightDirection : lightVector) - transmissionRay;
+                vec3 normalizedLightVector = normalize(pointToLight);
+                float lightAttenuation = lightAttenuationEx;
+                switch (light.metaData.x) {
+                  case 3u: {  // Spot
+    #if 1
+                    float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+    #else
+                    // Just for as reference
+                    float innerConeCosinus = uintBitsToFloat(light.metaData.z);
+                    float outerConeCosinus = uintBitsToFloat(light.metaData.w);
+                    float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
+                    float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
+    #endif
+                    lightAttenuation *= angularAttenuation * angularAttenuation;
+                    lightDirection = normalizedLightVector;
+                    break;
+                  }
+                }
+                switch (light.metaData.x) {
+                  case 2u:    // Point
+                  case 3u: {  // Spot
+                    if (light.positionRange.w >= 0.0) {
+                      float currentDistance = length(pointToLight);
+                      if (currentDistance > 0.0) {
+                        lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+                        if (light.positionRange.w > 0.0) {
+                          float distanceByRange = currentDistance / light.positionRange.w;
+                          lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+                        }
+                      }
+                    }
+                    break;
+                  }
+                }
+                vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, normalizedLightVector, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, ior);
+                if ((flags & (1u << 12u)) != 0u) {
+                  transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
+                }
+                transmissionOutput += transmittedLight;
+              }
+#endif
             }
           }
           lightTreeNodeIndex++;
