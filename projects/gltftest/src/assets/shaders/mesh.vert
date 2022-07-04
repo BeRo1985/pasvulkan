@@ -27,9 +27,10 @@ layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
 layout(location = 9) out vec3 outModelScale;
 layout(location = 10) flat out uint outMaterialID;
+layout(location = 11) flat out int outViewIndex;
 #ifdef VELOCITY
-layout(location = 11) out vec4 outPreviousClipSpace;
-layout(location = 12) out vec4 outCurrentClipSpace;
+layout(location = 12) out vec4 outPreviousClipSpace;
+layout(location = 13) out vec4 outCurrentClipSpace;
 #endif
 
 /* clang-format off */
@@ -106,6 +107,7 @@ void main() {
   outColor0 = inColor0;
   outModelScale = inModelScale;
   outMaterialID = inMaterialID;
+  outViewIndex = viewIndex + pushConstants.countViews; 
 
 #ifdef VELOCITY
    View previousView = uView.views[viewIndex + pushConstants.countViews];

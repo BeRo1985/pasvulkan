@@ -67,9 +67,10 @@ layout(location = 7) in vec2 inTexCoord1;
 layout(location = 8) in vec4 inColor0;
 layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
+layout(location = 12) flat in int inViewIndex;
 #ifdef VELOCITY
-layout(location = 11) in vec4 inPreviousClipSpace;
-layout(location = 12) in vec4 inCurrentClipSpace;
+layout(location = 13) in vec4 inPreviousClipSpace;
+layout(location = 14) in vec4 inCurrentClipSpace;
 #endif
 
 #ifdef DEPTHONLY
@@ -126,7 +127,8 @@ struct Material {
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
-  vec4 iridescenceThicknessMaximumTransmissionFactor;
+  vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
+  vec4 volumeAttenuationColor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -178,7 +180,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
   vec4 sheenColorFactorSheenIntensityFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
-  vec4 iridescenceThicknessMaximumTransmissionFactor;
+  vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
+  vec4 volumeAttenuationColor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
   mat4 textureTransforms[16];
@@ -328,6 +331,10 @@ float iridescenceThickness = 400.0;
 
 #if defined(TRANSMISSION)
 float transmissionFactor = 0.0;
+
+float VolumeThickness = 0.0;
+vec3 VolumeAttenuationColor = vec3(1.0); 
+float VolumeAttenuationDistance = 1.0 / 0.0; // +INF
 #endif
 
 float applyIorToRoughness(float roughness, float ior) {
@@ -668,6 +675,36 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
          ao;
 }
 
+#ifdef TRANSMISSION
+vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
+  float framebufferLod = log2(float(textureSize(uPassTextures[1], 0).x)) * applyIorToRoughness(roughness, ior);
+  vec3 transmittedLight = textureLod(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
+  return transmittedLight;
+}
+
+vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 f0, vec3 f90, vec3 position, float ior, float thickness, vec3 attenuationColor, float attenuationDistance) {
+  vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior);
+  vec3 refractedRayExit = position + transmissionRay;
+
+  // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
+  vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
+  vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
+  
+  // Sample framebuffer to get pixel the refracted ray hits.
+  vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+
+  vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
+
+  // Sample GGX LUT to get the specular component.
+  float NdotV = clamp(dot(n, v), 0.0, 1.0);
+  vec2 brdfSamplePoint = clamp(vec2(NdotV, perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
+  vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).xy;
+  vec3 specularColor = (f0 * brdf.x) + (f90 * brdf.y);
+
+  return (1.0 - specularColor) * attenuatedColor * baseColor;
+}
+#endif
+
 #ifdef SHADOWS
 
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
@@ -940,9 +977,9 @@ void main() {
         iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0)).x : 1.0);
         iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
         if ((textureFlags.x & (1 << 12)) != 0){
-          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactor.x, textureFetch(12, vec4(1.0)).y);  
+          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x, textureFetch(12, vec4(1.0)).y);  
         }else{
-          iridescenceThickness = material.iridescenceThicknessMaximumTransmissionFactor.x;  
+          iridescenceThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x;  
         }
         if(iridescenceThickness == 0.0){
           iridescenceFactor = 0.0;
@@ -956,7 +993,7 @@ void main() {
 
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
-        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactor.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0)).x : 1.0);  
+        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0)).x : 1.0);  
       }
 #endif
 
@@ -1200,8 +1237,15 @@ void main() {
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
 #if defined(TRANSMISSION)
-      if (((flags & (1u << 11u)) != 0u) && (transmissionFactor != 0.0)) {
-
+      if ((flags & (1u << 11u)) != 0u) {
+        transmissionOutput += getIBLVolumeRefraction(normal.xyz, viewDirection,
+                                                     perceptualRoughness,
+                                                     diffuseColorAlpha.xyz, F0, F90,
+                                                     inWorldSpacePosition,
+                                                     ior, 
+                                                     VolumeThickness, 
+                                                     VolumeAttenuationColor, 
+                                                     VolumeAttenuationDistance);        
       }
 #endif
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;

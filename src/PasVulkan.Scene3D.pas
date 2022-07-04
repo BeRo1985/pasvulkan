@@ -454,6 +454,13 @@ type EpvScene3D=class(Exception);
                     Factor:TpvFloat;
                     Texture:TTextureReference;
                    end;
+                   TVolume=record
+                    Active:boolean;
+                    ThicknessFactor:TpvFloat;
+                    ThicknessTexture:TTextureReference;
+                    AttenuationColor:TpvVector3;
+                    AttenuationDistance:TpvFloat;
+                   end;
                    TShaderData=packed record // 2048 bytes
                     case boolean of
                      false:(
@@ -464,7 +471,8 @@ type EpvScene3D=class(Exception);
                       SheenColorFactorSheenIntensityFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
                       IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:TpvVector4;
-                      IridescenceThicknessMaximumTransmissionFactor:TpvVector4;
+                      IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:TpvVector4;
+                      VolumeAttenuationColor:TpvVector4;
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -498,6 +506,7 @@ type EpvScene3D=class(Exception);
                     IOR:TpvFloat;
                     Iridescence:TIridescence;
                     Transmission:TTransmission;
+                    Volume:TVolume;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -563,6 +572,13 @@ type EpvScene3D=class(Exception);
                       Factor:0.0;
                       Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
+                     Volume:(
+                      Active:false;
+                      ThicknessFactor:0.0;
+                      ThicknessTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      AttenuationColor:(x:1.0;y:1.0;z:1.0);
+                      AttenuationDistance:Infinity;
+                     );
                     );
                    DefaultShaderData:TShaderData=
                     (
@@ -573,7 +589,8 @@ type EpvScene3D=class(Exception);
                      SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
-                     IridescenceThicknessMaximumTransmissionFactor:(x:400.0;y:0.0;z:0.0;w:0.0);
+                     IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:(x:400.0;y:0.0;z:0.0;w:Infinity);
+                     VolumeAttenuationColor:(x:1.0;y:1.0;z:1.0;w:0.0);
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -3306,7 +3323,7 @@ begin
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[1]:=fData.Iridescence.Factor;
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[2]:=fData.Iridescence.Ior;
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[3]:=fData.Iridescence.ThicknessMinimum;
-  fShaderData.IridescenceThicknessMaximumTransmissionFactor[0]:=fData.Iridescence.ThicknessMaximum;
+  fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[0]:=fData.Iridescence.ThicknessMaximum;
   if assigned(fData.Iridescence.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
    fShaderData.Textures[11]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
@@ -3321,7 +3338,7 @@ begin
 
  if fData.Transmission.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 11);
-  fShaderData.IridescenceThicknessMaximumTransmissionFactor[1]:=fData.Transmission.Factor;
+  fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[1]:=fData.Transmission.Factor;
   if assigned(fData.Transmission.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
    fShaderData.Textures[13]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
