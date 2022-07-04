@@ -3120,6 +3120,10 @@ begin
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
    fData.Transmission.Active:=true;
+   if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
+    fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
+    fData.AlphaCutOff:=0.99999;
+   end;
    fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
    JSONItem:=JSONObject.Properties['transmissionTexture'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
