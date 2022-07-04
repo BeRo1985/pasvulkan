@@ -322,6 +322,11 @@ float iridescenceFactor = 0.0;
 float iridescenceIor = 1.3;
 float iridescenceThickness = 400.0;
 
+float applyIorToRoughness(float roughness, float ior) {
+  // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and an IOR of 1.5 results in the default amount of microfacet refraction.
+  return roughness * clamp(fma(ior, 2.0, -2.0), 0.0, 1.0);
+}
+
 vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
   const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
   const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
@@ -419,6 +424,44 @@ vec3 BRDF_specularGGX(vec3 f0, vec3 f90, float alphaRoughness, float specularWei
 
 vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH) {
   return sheenColor * D_Charlie(sheenRoughness, NdotH) * V_Sheen(NdotL, NdotV, sheenRoughness);  //
+}
+
+/////////////////////////////
+
+vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness, vec3 f0, vec3 f90, vec3 baseColor, float ior) {
+  float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
+
+  vec3 n = normalize(normal);  // Outward direction of surface point
+  vec3 v = normalize(view);    // Direction from surface point to view
+  vec3 l = normalize(pointToLight);
+  vec3 l_mirror = normalize(l + (2.0 * n * dot(-l, n)));  // Mirror light reflection vector on surface
+  vec3 h = normalize(l_mirror + v);                       // Halfway vector between transmission light vector and v
+
+  float D = D_GGX(clamp(dot(n, h), 0.0, 1.0), transmissionRougness);
+  vec3 F = F_Schlick(f0, f90, clamp(dot(v, h), 0.0, 1.0));
+  float Vis = V_GGX(clamp(dot(n, l_mirror), 0.0, 1.0), clamp(dot(n, v), 0.0, 1.0), transmissionRougness);
+
+  // Transmission BTDF
+  return (1.0 - F) * baseColor * D * Vis;
+}
+
+/////////////////////////////
+
+// Compute attenuated light as it travels through a volume.
+vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
+  if (attenuationDistance == 0.0) {
+    // Attenuation distance is +∞ (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
+    return radiance;
+  } else {
+    // Compute light attenuation using Beer's law.
+    vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
+    vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance);  // Beer's law
+    return transmittance * radiance;
+  }
+}
+
+vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior) {
+  return normalize(refract(-v, normalize(n), 1.0 / ior)) * thickness * inModelScale;
 }
 
 /////////////////////////////
