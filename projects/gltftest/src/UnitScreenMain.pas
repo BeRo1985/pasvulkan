@@ -9119,6 +9119,10 @@ begin
 
  fGroupInstance:=fGroup.CreateInstance;
 
+ if fScene3D.HasTransmission then begin
+  fUseOITAlphaTest:=true;
+ end;
+
  fFrameGraph:=TpvFrameGraph.Create(pvApplication.VulkanDevice);
 
  fFrameGraph.SurfaceIsSwapchain:=true;

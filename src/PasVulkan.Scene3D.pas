@@ -1368,6 +1368,7 @@ type EpvScene3D=class(Exception);
        fViews:TViews;
        fVertexStagePushConstants:array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
+       fHasTransmission:boolean;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
@@ -1437,6 +1438,7 @@ type EpvScene3D=class(Exception);
       published
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
+       property HasTransmission:boolean read fHasTransmission;
      end;
 
 implementation
@@ -3119,6 +3121,7 @@ begin
   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_transmission'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
+   fSceneInstance.fHasTransmission:=true;
    fData.Transmission.Active:=true;
    if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
@@ -7681,6 +7684,8 @@ begin
  fLock:=TPasMPSpinLock.Create;
 
  fUploaded:=false;
+
+ fHasTransmission:=false;
 
  fTechniques:=TpvTechniques.Create;
 
