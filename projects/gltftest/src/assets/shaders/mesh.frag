@@ -676,9 +676,57 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
 }
 
 #ifdef TRANSMISSION
+vec4 cubic(float v) {
+  vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
+  n *= n * n;
+  vec3 t = vec3(n.x, fma(n.xy, vec2(-4.0), n.yz)) + vec2(0.0, 6.0 * n.x).xxy;
+  return vec4(t, ((6.0 - t.x) - t.y) - t.z) * (1.0 / 6.0);
+}
+
+vec4 textureBicubicEx(const in sampler2DArray tex, vec3 uvw, int lod) {
+  vec2 textureResolution = textureSize(tex, lod).xy,  //
+      uv = fma(uvw.xy, textureResolution, vec2(-0.5)),            //
+      fuv = fract(uv);
+  uv -= fuv;
+  vec4 xcubic = cubic(fuv.x),                                                             //
+      ycubic = cubic(fuv.y),                                                              //
+      c = uv.xxyy + vec2(-0.5, 1.5).xyxy,                                                 //
+      s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw),                             //
+      o = (c + (vec4(xcubic.yw, ycubic.yw) / s)) * (vec2(1.0) / textureResolution).xxyy;  //
+  s.xy = s.xz / (s.xz + s.yw);
+  return mix(mix(textureLod(tex, vec3(o.yw, uvw.z), float(lod)), textureLod(tex, vec3(o.xw, uvw.t), float(lod)), s.x),  //
+             mix(textureLod(tex, vec3(o.yz, uvw.z), float(lod)), textureLod(tex, vec3(o.xz, uvw.z), float(lod)), s.x), s.y);
+}
+
+vec4 textureBicubic(const in sampler2DArray tex, vec3 uvw, float lod, int maxLod) {
+  int ilod = int(floor(lod));
+  lod -= float(ilod); 
+  return (lod < float(maxLod)) ? mix(textureBicubicEx(tex, uvw, ilod), textureBicubicEx(tex, uvw, ilod + 1), lod) : textureBicubicEx(tex, uvw, maxLod);
+}
+
+vec4 betterTextureEx(const in sampler2DArray tex, vec3 uvw, int lod) {
+  vec2 textureResolution = textureSize(uPassTextures[1], lod).xy;
+  vec2 uv = fma(uvw.xy, textureResolution, vec2(0.5));
+  vec2 fuv = fract(uv);
+  return textureLod(tex, vec3((floor(uv) + ((fuv * fuv) * fma(fuv, vec2(-2.0), vec2(3.0))) - vec2(0.5)) / textureResolution, uvw.z), float(lod));
+}
+
+vec4 betterTexture(const in sampler2DArray tex, vec3 uvw, float lod, int maxLod) {
+  int ilod = int(floor(lod));
+  lod -= float(ilod); 
+  return (lod < float(maxLod)) ? mix(betterTextureEx(tex, uvw, ilod), betterTextureEx(tex, uvw, ilod + 1), lod) : betterTextureEx(tex, uvw, maxLod);
+}
+
 vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
-  float framebufferLod = log2(float(textureSize(uPassTextures[1], 0).x)) * applyIorToRoughness(roughness, ior);
-  vec3 transmittedLight = textureLod(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
+  int maxLod = int(textureQueryLevels(uPassTextures[1]));
+  float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, ior);
+#if 1
+  vec3 transmittedLight = (framebufferLod < 1e-4) ? //
+                           betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
+                           textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
+#else
+  vec3 transmittedLight = texture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
+#endif
   return transmittedLight;
 }
 
