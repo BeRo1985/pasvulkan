@@ -3370,7 +3370,7 @@ inherited Create(aFrameGraph);
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceColor:=AddImageOutput('resourcetype_color',
+  fResourceColor:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                  'forwardrendering_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -3394,7 +3394,7 @@ inherited Create(aFrameGraph);
 
  end else begin
 
-  fResourceColor:=AddImageOutput('resourcetype_msaa_color',
+  fResourceColor:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
                                  'forwardrendering_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -3402,7 +3402,7 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  fResourceColor:=AddImageResolveOutput('resourcetype_color',
+  fResourceColor:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                         'forwardrendering_color',
                                         'forwardrendering_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -4044,7 +4044,7 @@ begin
 
  Name:='ForwardRenderMipMapComputePass';
 
- fResourceInput:=AddImageInput('resourcetype_color',
+ fResourceInput:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                'forwardrendering_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -4938,7 +4938,7 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
- fResourceOpaque:=AddImageInput('resourcetype_color',
+ fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -4950,7 +4950,7 @@ begin
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
- fResourceSurface:=AddImageOutput('resourcetype_color',
+ fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                   'combinedopaquetransparency_final_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -5941,7 +5941,7 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
- fResourceOpaque:=AddImageInput('resourcetype_color',
+ fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -5953,7 +5953,7 @@ begin
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
- fResourceSurface:=AddImageOutput('resourcetype_color',
+ fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                   'combinedopaquetransparency_final_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -7316,7 +7316,7 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceOpaque:=AddImageInput('resourcetype_color',
+  fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                  'forwardrendering_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -7352,7 +7352,7 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceSurface:=AddImageOutput('resourcetype_color',
+  fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                    'combinedopaquetransparency_final_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -7362,7 +7362,7 @@ begin
 
  end else begin
 
-  fResourceSurface:=AddImageOutput('resourcetype_msaa_color',
+  fResourceSurface:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
                                    'combinedopaquetransparency_final_msaa_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -7370,7 +7370,7 @@ begin
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
-  fResourceSurface:=AddImageResolveOutput('resourcetype_color',
+  fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                           'combinedopaquetransparency_final_color',
                                           'combinedopaquetransparency_final_msaa_color',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -8150,7 +8150,7 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceOpaque:=AddImageInput('resourcetype_color',
+  fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                  'forwardrendering_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -8180,7 +8180,7 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  fResourceSurface:=AddImageOutput('resourcetype_color',
+  fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                    'combinedopaquetransparency_final_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -8190,7 +8190,7 @@ begin
 
  end else begin
 
-  fResourceSurface:=AddImageOutput('resourcetype_msaa_color',
+  fResourceSurface:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
                                    'combinedopaquetransparency_final_msaa_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -8198,7 +8198,7 @@ begin
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
-  fResourceSurface:=AddImageResolveOutput('resourcetype_color',
+  fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                           'combinedopaquetransparency_final_color',
                                           'combinedopaquetransparency_final_msaa_color',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -8472,20 +8472,20 @@ begin
                                   TTransparencyMode.INTERLOCKOIT,
                                   TTransparencyMode.WBOIT,
                                   TTransparencyMode.MBOIT] then begin
-  fResourceColor:=AddImageInput('resourcetype_color',
+  fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'combinedopaquetransparency_final_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end else begin
-  fResourceColor:=AddImageInput('resourcetype_color',
+  fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end;
 
- fResourceSurface:=AddImageOutput('resourcetype_color',
+ fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                   'tonemapping_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -8716,13 +8716,13 @@ begin
                                        fParent.fCountSurfaceViews);
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  fResourceColor:=AddImageInput('resourcetype_color',
+  fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'tonemapping_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []
                                );
  end else begin
-  fResourceColor:=AddImageInput('resourcetype_color',
+  fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
                                 'tonemapping_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -9328,6 +9328,16 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_color_optimized_non_alpha',
+                                  false,
+                                  VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                                  fVulkanSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_msaa_depth',
                                   false,
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
@@ -9392,6 +9402,16 @@ begin
                                   false,
                                   VK_FORMAT_R32_SFLOAT,
                                   fVulkanSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_color_optimized_non_alpha',
+                                  true,
+                                  VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
@@ -9892,7 +9912,7 @@ begin
 
  for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   fDepthMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_B10G11R11_UFLOAT_PACK32{VK_FORMAT_R16G16B16A16_SFLOAT},true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  end;
 
  case fTransparencyMode of
