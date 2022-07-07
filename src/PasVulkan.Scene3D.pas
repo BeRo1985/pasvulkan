@@ -1765,6 +1765,7 @@ begin
                                                        false,
                                                        false,
                                                        0,
+                                                       true,
                                                        true);
           end;
           TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
@@ -1792,7 +1793,8 @@ begin
                                                        false,
                                                        false,
                                                        0,
-                                                       true);
+                                                       true,
+                                                       false);
           end;
           else begin
            fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
@@ -1804,7 +1806,8 @@ begin
                                                       GraphicsFence,
                                                       fResourceDataStream,
                                                       true,
-                                                      false);
+                                                      false,
+                                                      true);
           end;
          end;
         finally

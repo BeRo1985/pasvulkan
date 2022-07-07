@@ -2955,6 +2955,8 @@ type EpvVulkanException=class(Exception);
        fImageLayout:TVkImageLayout;
        fImage:TpvVulkanImage;
        fImageView:TpvVulkanImageView;
+       fSRGBImage:TpvVulkanImage;
+       fSRGBImageView:TpvVulkanImageView;
        fImageViewType:TVkImageViewType;
        fSampler:TpvVulkanSampler;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
@@ -3000,7 +3002,8 @@ type EpvVulkanException=class(Exception);
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
                                     const aSwapEndiannessTexels:TpvInt32;
-                                    const aDDSStructure:boolean=true);
+                                    const aDDSStructure:boolean=true;
+                                    const aAdditionalSRGB:boolean=false);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3021,7 +3024,8 @@ type EpvVulkanException=class(Exception);
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
                                     const aSwapEndiannessTexels:TpvInt32;
-                                    const aDDSStructure:boolean=true);
+                                    const aDDSStructure:boolean=true;
+                                    const aAdditionalSRGB:boolean=false);
        constructor CreateFromKTX(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3029,7 +3033,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferQueue:TpvVulkanQueue;
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
-                                 const aStream:TStream);
+                                 const aStream:TStream;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromKTX2(const aDevice:TpvVulkanDevice;
                                   const aGraphicsQueue:TpvVulkanQueue;
                                   const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3037,7 +3042,8 @@ type EpvVulkanException=class(Exception);
                                   const aTransferQueue:TpvVulkanQueue;
                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                   const aTransferFence:TpvVulkanFence;
-                                  const aStream:TStream);
+                                  const aStream:TStream;
+                                  const aAdditionalSRGB:boolean=false);
        constructor CreateFromDDS(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3045,7 +3051,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferQueue:TpvVulkanQueue;
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
-                                 const aStream:TStream);
+                                 const aStream:TStream;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromHDR(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3055,7 +3062,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
-                                 const aSRGB:boolean);
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromTGA(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3065,7 +3073,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
-                                 const aSRGB:boolean);
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromPNG(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3075,7 +3084,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
-                                 const aSRGB:boolean);
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromJPEG(const aDevice:TpvVulkanDevice;
                                   const aGraphicsQueue:TpvVulkanQueue;
                                   const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3085,7 +3095,8 @@ type EpvVulkanException=class(Exception);
                                   const aTransferFence:TpvVulkanFence;
                                   const aStream:TStream;
                                   const aMipMaps:boolean;
-                                  const aSRGB:boolean);
+                                  const aSRGB:boolean;
+                                  const aAdditionalSRGB:boolean=false);
        constructor CreateFromBMP(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3095,7 +3106,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
-                                 const aSRGB:boolean);
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
        constructor CreateFromImage(const aDevice:TpvVulkanDevice;
                                    const aGraphicsQueue:TpvVulkanQueue;
                                    const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3105,7 +3117,8 @@ type EpvVulkanException=class(Exception);
                                    const aTransferFence:TpvVulkanFence;
                                    const aStream:TStream;
                                    const aMipMaps:boolean;
-                                   const aSRGB:boolean);
+                                   const aSRGB:boolean;
+                                   const aAdditionalSRGB:boolean=false);
        constructor CreateDefault(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3121,7 +3134,8 @@ type EpvVulkanException=class(Exception);
                                  const aCountFaces:TpvInt32;
                                  const aMipmaps:boolean;
                                  const aBorder:boolean;
-                                 const aSRGB:boolean);
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
        destructor Destroy; override;
        class procedure GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean); static;
        class procedure SwapEndianness(const aData:TpvPointer;
@@ -3158,6 +3172,8 @@ type EpvVulkanException=class(Exception);
        property ImageLayout:TVkImageLayout read fImageLayout;
        property Image:TpvVulkanImage read fImage;
        property ImageView:TpvVulkanImageView read fImageView;
+       property SRGBImage:TpvVulkanImage read fSRGBImage;
+       property SRGBImageView:TpvVulkanImageView read fSRGBImageView;
        property ImageViewType:TVkImageViewType read fImageViewType;
        property Sampler:TpvVulkanSampler read fSampler;
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
@@ -18792,17 +18808,22 @@ constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
                                               const aMipMapSizeStored:boolean;
                                               const aSwapEndianness:boolean;
                                               const aSwapEndiannessTexels:TpvInt32;
-                                              const aDDSStructure:boolean=true);
+                                              const aDDSStructure:boolean;
+                                              const aAdditionalSRGB:boolean);
 var MaxDimension,MaxMipMapLevels:TpvInt32;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
     ImageCreateFlags:TVkImageCreateFlags;
     ImageType:TVkImageType;
-    MemoryRequirements:TVkMemoryRequirements;
+    MemoryRequirements,SRGBMemoryRequirements:TVkMemoryRequirements;
     ImageBlit:TVkImageBlit;
     RequiresDedicatedAllocation,
-    PrefersDedicatedAllocation:boolean;
+    PrefersDedicatedAllocation,
+    SRGBRequiresDedicatedAllocation,
+    SRGBPrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    AdditionalSRGB:boolean;
+    SRGBFormat:TVkFormat;
 begin
 
  inherited Create;
@@ -18872,6 +18893,147 @@ begin
  end;
 
  FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(aFormat);
+
+ if aAdditionalSRGB then begin
+  case aFormat of
+   VK_FORMAT_R8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_R8_SRGB;
+   end;
+   VK_FORMAT_R8G8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_R8G8_SRGB;
+   end;
+   VK_FORMAT_R8G8B8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_R8G8B8_SRGB;
+   end;
+   VK_FORMAT_B8G8R8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_B8G8R8_SRGB;
+   end;
+   VK_FORMAT_R8G8B8A8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_R8G8B8A8_SRGB;
+   end;
+   VK_FORMAT_B8G8R8A8_UNORM:begin
+    SRGBFormat:=VK_FORMAT_B8G8R8A8_SRGB;
+   end;
+   VK_FORMAT_A8B8G8R8_UNORM_PACK32:begin
+    SRGBFormat:=VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+   end;
+   VK_FORMAT_BC1_RGB_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+   end;
+   VK_FORMAT_BC1_RGBA_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+   end;
+   VK_FORMAT_BC2_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_BC2_SRGB_BLOCK;
+   end;
+   VK_FORMAT_BC3_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_BC3_SRGB_BLOCK;
+   end;
+   VK_FORMAT_BC7_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_BC7_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_4x4_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_5x4_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_5x5_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_6x5_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_6x6_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_8x5_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_8x6_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_8x8_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_10x5_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_10x6_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_10x8_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_10x10_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_12x10_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
+   end;
+   VK_FORMAT_ASTC_12x12_UNORM_BLOCK:begin
+    SRGBFormat:=VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
+   end;
+   VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG:begin
+    SRGBFormat:=VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG;
+   end;
+   VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG:begin
+    SRGBFormat:=VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG;
+   end;
+   VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG:begin
+    SRGBFormat:=VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG;
+   end;
+   VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG:begin
+    SRGBFormat:=VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG;
+   end;
+   VK_FORMAT_ASTC_3x3x3_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_3x3x3_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_4x3x3_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_4x3x3_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_4x4x3_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_4x4x3_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_4x4x4_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_4x4x4_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_5x4x4_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_5x4x4_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_5x5x4_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_5x5x4_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_5x5x5_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_5x5x5_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_6x5x5_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_6x5x5_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_6x6x5_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_6x6x5_SRGB_BLOCK_EXT;
+   end;
+   VK_FORMAT_ASTC_6x6x6_UNORM_BLOCK_EXT:begin
+    SRGBFormat:=VK_FORMAT_ASTC_6x6x6_SRGB_BLOCK_EXT;
+   end;
+   else begin
+    SRGBFormat:=VK_FORMAT_UNDEFINED;
+   end;
+  end;
+  AdditionalSRGB:=SRGBFormat<>VK_FORMAT_UNDEFINED;
+ end else begin
+  SRGBFormat:=VK_FORMAT_UNDEFINED;
+  AdditionalSRGB:=false;
+ end;
 
  if (TpvVulkanTextureUsageFlag.Sampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
   raise EpvVulkanTextureException.Create('Texture format '+IntToStr(TpvInt32(aFormat))+' can''t be sampled');
@@ -18966,6 +19128,43 @@ begin
                                                                        RequiresDedicatedAllocation,
                                                                        PrefersDedicatedAllocation);
 
+ if SRGBFormat<>VK_FORMAT_UNDEFINED then begin
+  fSRGBImage:=TpvVulkanImage.Create(fDevice,
+                                    ImageCreateFlags,
+                                    ImageType,
+                                    SRGBFormat,
+                                    Max(1,fWidth),
+                                    Max(1,fHeight),
+                                    Max(1,fDepth),
+                                    Max(1,fCountStorageLevels),
+                                    Max(1,fTotalCountArrayLayers),
+                                    fSampleCount,
+                                    VK_IMAGE_TILING_OPTIMAL,
+                                    Usage,
+                                    VK_SHARING_MODE_EXCLUSIVE,
+                                    0,
+                                    nil,
+                                    VK_IMAGE_LAYOUT_UNDEFINED
+                                   );
+  SRGBMemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fSRGBImage.fImageHandle,
+                                                                            SRGBRequiresDedicatedAllocation,
+                                                                            SRGBPrefersDedicatedAllocation);
+
+  if (MemoryRequirements.alignment<>SRGBMemoryRequirements.alignment) or
+     (MemoryRequirements.memoryTypeBits<>SRGBMemoryRequirements.memoryTypeBits) or
+     (MemoryRequirements.size<>SRGBMemoryRequirements.size) then begin
+   raise EpvVulkanMemoryAllocationException.Create('Memory requirement differs for additional SRGB texture image');
+  end;
+
+  RequiresDedicatedAllocation:=RequiresDedicatedAllocation or SRGBRequiresDedicatedAllocation;
+  PrefersDedicatedAllocation:=PrefersDedicatedAllocation or SRGBPrefersDedicatedAllocation;
+
+ end else begin
+
+  fSRGBImage:=nil;
+
+ end;
+
  MemoryBlockFlags:=[];
 
  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
@@ -18994,6 +19193,13 @@ begin
                                                          fImage.fImageHandle,
                                                          fMemoryBlock.fMemoryChunk.fMemoryHandle,
                                                          fMemoryBlock.fOffset));
+
+ if assigned(fSRGBImage) then begin
+  VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
+                                                          fSRGBImage.fImageHandle,
+                                                          fMemoryBlock.fMemoryChunk.fMemoryHandle,
+                                                          fMemoryBlock.fOffset));
+ end;
 
  Upload(aGraphicsQueue,
         aGraphicsCommandBuffer,
@@ -19045,6 +19251,23 @@ begin
                                        0,
                                        Max(1,fTotalCountArrayLayers));
 
+ if assigned(fSRGBImage) then begin
+  fSRGBImageView:=TpvVulkanImageView.Create(fDevice,
+                                            fSRGBImage,
+                                            fImageViewType,
+                                            SRGBFormat,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                            0,
+                                            Max(1,fCountStorageLevels),
+                                            0,
+                                            Max(1,fTotalCountArrayLayers));
+ end;
+
+
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
  end else begin
@@ -19079,7 +19302,8 @@ constructor TpvVulkanTexture.CreateFromStream(const aDevice:TpvVulkanDevice;
                                               const aMipMapSizeStored:boolean;
                                               const aSwapEndianness:boolean;
                                               const aSwapEndiannessTexels:TpvInt32;
-                                              const aDDSStructure:boolean=true);
+                                              const aDDSStructure:boolean;
+                                              const aAdditionalSRGB:boolean);
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -19110,7 +19334,8 @@ begin
                    aMipMapSizeStored,
                    aSwapEndianness,
                    aSwapEndiannessTexels,
-                   aDDSStructure);
+                   aDDSStructure,
+                   aAdditionalSRGB);
  finally
   FreeMem(Data);
  end;
@@ -19123,7 +19348,8 @@ constructor TpvVulkanTexture.CreateFromKTX(const aDevice:TpvVulkanDevice;
                                            const aTransferQueue:TpvVulkanQueue;
                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                            const aTransferFence:TpvVulkanFence;
-                                           const aStream:TStream);
+                                           const aStream:TStream;
+                                           const aAdditionalSRGB:boolean);
 type PKTXIdentifier=^TKTXIdentifier;
      TKTXIdentifier=array[0..11] of TpvUInt8;
      PKTXHeader=^TKTXHeader;
@@ -19254,7 +19480,8 @@ begin
                    true,
                    MustSwap,
                    KTXHeader.GLTypeSize,
-                   false);
+                   false,
+                   aAdditionalSRGB);
  finally
   FreeMem(Data);
  end;
@@ -19268,7 +19495,8 @@ constructor TpvVulkanTexture.CreateFromKTX2(const aDevice:TpvVulkanDevice;
                                             const aTransferQueue:TpvVulkanQueue;
                                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                             const aTransferFence:TpvVulkanFence;
-                                            const aStream:TStream);
+                                            const aStream:TStream;
+                                            const aAdditionalSRGB:boolean);
 const	SUPERCOMPRESSION_NONE=0;
       SUPERCOMPRESSION_CRN=1;
       SUPERCOMPRESSION_ZLIB=2;
@@ -19500,7 +19728,8 @@ constructor TpvVulkanTexture.CreateFromDDS(const aDevice:TpvVulkanDevice;
                                            const aTransferQueue:TpvVulkanQueue;
                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                            const aTransferFence:TpvVulkanFence;
-                                           const aStream:TStream);
+                                           const aStream:TStream;
+                                           const aAdditionalSRGB:boolean);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_HEIGHT=$00000002;
@@ -20289,7 +20518,8 @@ begin
                    false,
                    false,
                    1,
-                   true);
+                   true,
+                   aAdditionalSRGB);
  finally
   FreeMem(Data);
  end;     
@@ -20304,7 +20534,8 @@ constructor TpvVulkanTexture.CreateFromHDR(const aDevice:TpvVulkanDevice;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
-                                           const aSRGB:boolean);
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
 const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
@@ -20589,7 +20820,8 @@ begin
                     false,
                     false,
                     1,
-                    true);
+                    true,
+                    aAdditionalSRGB);
   end else begin
    raise EpvVulkanTextureException.Create('Invalid HDR stream');
   end;
@@ -20609,7 +20841,8 @@ constructor TpvVulkanTexture.CreateFromTGA(const aDevice:TpvVulkanDevice;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
-                                           const aSRGB:boolean);
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -20645,7 +20878,8 @@ begin
                      false,
                      false,
                      1,
-                     true);
+                     true,
+                     aAdditionalSRGB);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid TGA stream');
    end;
@@ -20668,7 +20902,8 @@ constructor TpvVulkanTexture.CreateFromPNG(const aDevice:TpvVulkanDevice;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
-                                           const aSRGB:boolean);
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y,Index:TpvInt32;
     PNGPixelFormat:TpvPNGPixelFormat;
@@ -20745,7 +20980,8 @@ begin
                      false,
                      false,
                      1,
-                     true);
+                     true,
+                     aAdditionalSRGB);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid PNG stream');
    end;
@@ -20768,7 +21004,8 @@ constructor TpvVulkanTexture.CreateFromJPEG(const aDevice:TpvVulkanDevice;
                                             const aTransferFence:TpvVulkanFence;
                                             const aStream:TStream;
                                             const aMipMaps:boolean;
-                                            const aSRGB:boolean);
+                                            const aSRGB:boolean;
+                                            const aAdditionalSRGB:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -20804,7 +21041,8 @@ begin
                      false,
                      false,
                      1,
-                     true);
+                     true,
+                     aAdditionalSRGB);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid JPEG stream');
    end;
@@ -20827,7 +21065,8 @@ constructor TpvVulkanTexture.CreateFromBMP(const aDevice:TpvVulkanDevice;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
-                                           const aSRGB:boolean);
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -20863,7 +21102,8 @@ begin
                      false,
                      false,
                      1,
-                     true);
+                     true,
+                     aAdditionalSRGB);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid BMP stream');
    end;
@@ -20886,7 +21126,8 @@ constructor TpvVulkanTexture.CreateFromImage(const aDevice:TpvVulkanDevice;
                                              const aTransferFence:TpvVulkanFence;
                                              const aStream:TStream;
                                              const aMipMaps:boolean;
-                                             const aSRGB:boolean);
+                                             const aSRGB:boolean;
+                                             const aAdditionalSRGB:boolean);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_PIXELFORMAT=$00001000;
@@ -20928,7 +21169,8 @@ begin
                 aTransferQueue,
                 aTransferCommandBuffer,
                 aTransferFence,
-                aStream);
+                aStream,
+                aAdditionalSRGB);
  end else if (FirstBytes[0]=$ab) and
              (FirstBytes[1]=$4b) and
              (FirstBytes[2]=$54) and
@@ -20948,7 +21190,8 @@ begin
                  aTransferQueue,
                  aTransferCommandBuffer,
                  aTransferFence,
-                 aStream);
+                 aStream,
+                 aAdditionalSRGB);
  end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
   CreateFromPNG(aDevice,
                 aGraphicsQueue,
@@ -20959,7 +21202,8 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps,
-                aSRGB);
+                aSRGB,
+                aAdditionalSRGB);
  end else if ((PDDSHeader(TpvPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(TpvPointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
   CreateFromDDS(aDevice,
                 aGraphicsQueue,
@@ -20968,7 +21212,8 @@ begin
                 aTransferQueue,
                 aTransferCommandBuffer,
                 aTransferFence,
-                aStream);
+                aStream,
+                aAdditionalSRGB);
  end else if (FirstBytes[0]=TpvUInt8(AnsiChar('B'))) and (FirstBytes[1]=TpvUInt8(AnsiChar('M'))) then begin
   CreateFromBMP(aDevice,
                 aGraphicsQueue,
@@ -20979,7 +21224,8 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps,
-                aSRGB);
+                aSRGB,
+                aAdditionalSRGB);
  end else if (FirstBytes[0]=TpvUInt8(AnsiChar('#'))) and (FirstBytes[1]=TpvUInt8(AnsiChar('?'))) then begin
   CreateFromHDR(aDevice,
                 aGraphicsQueue,
@@ -20990,7 +21236,8 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps,
-                aSRGB);
+                aSRGB,
+                aAdditionalSRGB);
  end else if ((FirstBytes[0] xor $ff) or (FirstBytes[1] xor $d8))=0 then begin
   CreateFromJPEG(aDevice,
                  aGraphicsQueue,
@@ -21001,7 +21248,8 @@ begin
                  aTransferFence,
                  aStream,
                  aMipMaps,
-                 aSRGB);
+                 aSRGB,
+                 aAdditionalSRGB);
  end else begin
   CreateFromTGA(aDevice,
                 aGraphicsQueue,
@@ -21012,7 +21260,8 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps,
-                aSRGB);
+                aSRGB,
+                aAdditionalSRGB);
  end;
 end;
 
@@ -21031,7 +21280,8 @@ constructor TpvVulkanTexture.CreateDefault(const aDevice:TpvVulkanDevice;
                                            const aCountFaces:TpvInt32;
                                            const aMipmaps:boolean;
                                            const aBorder:boolean;
-                                           const aSRGB:boolean);
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
 const TexelSize=4;
       BlockShift=5;
       BlockSize=1 shl BlockShift;
@@ -21211,7 +21461,8 @@ begin
                    false,
                    false,
                    1,
-                   false);
+                   false,
+                   aAdditionalSRGB);
 
  finally
   SetLength(Data,0);
@@ -21222,12 +21473,14 @@ end;
 destructor TpvVulkanTexture.Destroy;
 begin
  FreeAndNil(fSampler);
+ FreeAndNil(fSRGBImageView);
  FreeAndNil(fImageView);
  if assigned(fMemoryBlock) then begin
   fMemoryBlock.fAssociatedObject:=nil;
   fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
   fMemoryBlock:=nil;
  end;
+ FreeAndNil(fSRGBImage);
  FreeAndNil(fImage);
  inherited Destroy;
 end;
