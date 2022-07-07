@@ -2,12 +2,19 @@
 
 compileshaderarguments=(
   
-  '-V downsample.comp -DMIPMAPLEVEL=0 -o downsample_level0_comp.spv'
-  '-V downsample.comp -DMIPMAPLEVEL=1 -o downsample_level1_comp.spv'
-  '-V downsample.comp -DMIPMAPLEVEL=2 -o downsample_level2_comp.spv'
-  '-V downsample.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -o downsample_multiview_level0_comp.spv'
-  '-V downsample.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o downsample_multiview_level1_comp.spv'
-  '-V downsample.comp -DMIPMAPLEVEL=2 -DMULTIVIEW -o downsample_multiview_level2_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=0 -o downsample_r11g11b10f_level0_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=1 -o downsample_r11g11b10f_level1_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=2 -o downsample_r11g11b10f_level2_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=0 -DMULTIVIEW -o downsample_r11g11b10f_multiview_level0_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=1 -DMULTIVIEW -o downsample_r11g11b10f_multiview_level1_comp.spv'
+  '-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=2 -DMULTIVIEW -o downsample_r11g11b10f_multiview_level2_comp.spv'
+
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=0 -o downsample_rgba16f_level0_comp.spv'
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=1 -o downsample_rgba16f_level1_comp.spv'
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=2 -o downsample_rgba16f_level2_comp.spv'
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=0 -DMULTIVIEW -o downsample_rgba16f_multiview_level0_comp.spv'
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=1 -DMULTIVIEW -o downsample_rgba16f_multiview_level1_comp.spv'
+  '-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=2 -DMULTIVIEW -o downsample_rgba16f_multiview_level2_comp.spv'
 
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -o downsample_depth_level0_comp.spv'
   '-V downsample_depth.comp -DMIPMAPLEVEL=0 -DREVERSEDZ -o downsample_depth_reversedz_level0_comp.spv'

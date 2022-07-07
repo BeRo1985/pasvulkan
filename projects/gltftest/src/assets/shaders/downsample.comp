@@ -14,11 +14,23 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #ifdef MULTIVIEW
 layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture; // Source mipmap level texture
 
+#if defined(RGBA16F)
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#elif defined(R11G11B10F)
 layout(set = 0, binding = 1, r11f_g11f_b10f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#else
+ #error "RGBA16F or R11G11B10F needed!"
+#endif
 #else
 layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level texture
 
+#if defined(RGBA16F)
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#elif defined(R11G11B10F)
 layout(set = 0, binding = 1, r11f_g11f_b10f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#else
+ #error "RGBA16F or R11G11B10F needed!"
+#endif
 #endif
 
 /* clang-format on */

@@ -926,6 +926,7 @@ type { TScreenMain }
        fKeyRollInc:boolean;
        fKeyRollDec:boolean;
        fCascadedShadowMapSize:TpvInt32;
+       fOptimizedNonAlphaFormat:TVkFormat;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -1545,9 +1546,9 @@ begin
    end;
   end else begin
    if fParent.fCountSurfaceViews>1 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_multiview_level0_comp.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_level0_comp.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level0_comp.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_level0_comp.spv');
    end;
   end;
  end else begin
@@ -4059,14 +4060,28 @@ end;
 
 procedure TScreenMain.TForwardRenderMipMapComputePass.Show;
 var Stream:TStream;
+    Format:string;
 begin
 
  inherited Show;
 
+ case fParent.fOptimizedNonAlphaFormat of
+  VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+   Format:='r11g11b10f';
+  end;
+  VK_FORMAT_R16G16B16A16_SFLOAT:begin
+   Format:='rgba16f';
+  end;
+  else begin
+   Assert(false);
+   Format:='';
+  end;
+ end;
+
  if fParent.fCountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_multiview_level0_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level0_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level0_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level0_comp.spv');
  end;
  try
   fDownsampleLevel0ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -4075,9 +4090,9 @@ begin
  end;
 
  if fParent.fCountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_multiview_level1_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level1_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level1_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level1_comp.spv');
  end;
  try
   fDownsampleLevel1ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -4086,9 +4101,9 @@ begin
  end;
 
  if fParent.fCountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_multiview_level2_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level2_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level2_comp.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level2_comp.spv');
  end;
  try
   fDownsampleLevel2ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -9025,10 +9040,29 @@ var GLTF:TPasGLTF.TDocument;
     SampleCounts:TVkSampleCountFlags;
     Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
+    FormatProperties:TVkFormatProperties;
 begin
  inherited Create;
 
  fCascadedShadowMapSize:=Max(16,UnitApplication.Application.ShadowMapSize);
+
+ FormatProperties:=pvApplication.VulkanDevice.PhysicalDevice.GetFormatProperties(VK_FORMAT_B10G11R11_UFLOAT_PACK32);
+ if ((FormatProperties.linearTilingFeatures and (TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)))=(TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                                                                                   TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                                                                                   TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))) and
+    ((FormatProperties.optimalTilingFeatures and (TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)))=(TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                                                                                   TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                                                                                   TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                                                                                   TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) then begin
+  fOptimizedNonAlphaFormat:=VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+ end else begin
+  fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+ end;
 
  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.ImgTec,
@@ -9330,7 +9364,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color_optimized_non_alpha',
                                   false,
-                                  VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                                  fOptimizedNonAlphaFormat,
                                   fVulkanSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
@@ -9410,7 +9444,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_color_optimized_non_alpha',
                                   true,
-                                  VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                                  fOptimizedNonAlphaFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
@@ -9912,7 +9946,7 @@ begin
 
  for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   fDepthMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_B10G11R11_UFLOAT_PACK32{VK_FORMAT_R16G16B16A16_SFLOAT},true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fForwardMipmappedArray2DImages[Index]:=TMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,fOptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  end;
 
  case fTransparencyMode of
