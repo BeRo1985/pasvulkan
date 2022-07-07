@@ -7630,7 +7630,7 @@ var SceneMaterialIndex,PrimitiveIndexRangeIndex,
 
   if IndicesCount>0 then begin
 
-   Pipeline:=aGraphicsPipelines[LastPrimitiveTopology,DoubleSided];
+   Pipeline:=aGraphicsPipelines[LastPrimitiveTopology,LastDoubleSided];
    if aPipeline<>Pipeline then begin
     aPipeline:=Pipeline;
     if assigned(Pipeline) then begin

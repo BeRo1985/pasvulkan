@@ -1249,6 +1249,7 @@ type EpvVulkanException=class(Exception);
        procedure CmdSetLineWidth(lineWidth:TpvFloat);
        procedure CmdSetDepthBias(depthBiasConstantFactor:TpvFloat;depthBiasClamp:TpvFloat;depthBiasSlopeFactor:TpvFloat);
        procedure CmdSetBlendConstants(const blendConstants:TpvFloat);
+       procedure CmdSetCullMode(const cullMode:TVkCullModeFlags);
        procedure CmdSetDepthBounds(minDepthBounds:TpvFloat;maxDepthBounds:TpvFloat);
        procedure CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TpvUInt32);
        procedure CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TpvUInt32);
@@ -11658,6 +11659,15 @@ end;
 procedure TpvVulkanCommandBuffer.CmdSetBlendConstants(const blendConstants:TpvFloat);
 begin
  fDevice.fDeviceVulkan.CmdSetBlendConstants(fCommandBufferHandle,blendConstants);
+end;
+
+procedure TpvVulkanCommandBuffer.CmdSetCullMode(const cullMode:TVkCullModeFlags);
+begin
+ if assigned(fDevice.fDeviceVulkan.Commands.CmdSetCullMode) then begin
+  fDevice.fDeviceVulkan.Commands.CmdSetCullMode(fCommandBufferHandle,cullMode);
+ end else begin
+  fDevice.fDeviceVulkan.Commands.CmdSetCullModeExt(fCommandBufferHandle,cullMode);
+ end;
 end;
 
 procedure TpvVulkanCommandBuffer.CmdSetDepthBounds(minDepthBounds:TpvFloat;maxDepthBounds:TpvFloat);
