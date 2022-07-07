@@ -285,6 +285,7 @@ vec4 sq(vec4 t){
   return t * t; //
 }
 
+#if 0
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
 }
@@ -300,6 +301,7 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
 vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
 }
+#endif
 
 #if defined(WBOIT)
 #elif defined(MBOIT)
@@ -869,38 +871,21 @@ vec2 textureUV(const in int textureIndex) {
 
 ivec2 texture2DSize(const in int textureIndex) {
   int textureID = getTexCoordID(textureIndex); 
-  return (textureID >= 0) ? ivec2(textureSize(u2DTextures[nonuniformEXT(textureID & 0xffff)], 0).xy) : ivec2(0);
+  return (textureID >= 0) ? ivec2(textureSize(u2DTextures[nonuniformEXT(textureID & 0x3fff)], 0).xy) : ivec2(0);
 }
 
-vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue) {
+vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const bool sRGB) {
   int textureID = getTexCoordID(textureIndex);
   if(textureID >= 0){
     int texCoordIndex = int((textureID >> 16) & 0xf); 
     mat3x2 m = material.textureTransforms[textureIndex];
-    return textureGrad(u2DTextures[nonuniformEXT(textureID & 0xffff)], //
+    return textureGrad(u2DTextures[nonuniformEXT(((textureID & 0x3fff) << 1) | (int(sRGB) & 1))], //
                         (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
                         (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
                         (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
  }else{
    return defaultValue;
  } 
-}
-
-vec4 textureFetchSRGB(const in int textureIndex, const in vec4 defaultValue) {
-  int textureID = getTexCoordID(textureIndex); 
-  vec4 texel;
-  if (textureID >= 0) {
-    int texCoordIndex = int((textureID >> 16) & 0xf); 
-    mat3x2 m = material.textureTransforms[textureIndex];
-    texel = textureGrad(u2DTextures[nonuniformEXT(textureID & 0xffff)], //
-                        (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
-                        (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
-                        (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
-    texel.xyz = convertSRGBToLinearRGB(texel.xyz);
-  } else {
-    texel = defaultValue;
-  }
-  return texel;
 }
 
 #endif
@@ -933,7 +918,7 @@ void main() {
 #endif
 #ifdef DEPTHONLY
 #if defined(ALPHATEST) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) 
-  float alpha = textureFetch(0, vec4(1.0)).w * material.baseColorFactor.w * inColor0.w;
+  float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #endif
 #else
   vec4 color = vec4(0.0);
@@ -955,20 +940,20 @@ void main() {
           vec3 specularColorFactor = material.specularFactor.xyz;
           specularWeight = material.specularFactor.w;
           if ((flags & (1u << 9u)) != 0u) {
-            specularWeight *= textureFetch(9, vec4(1.0)).w;
-            specularColorFactor *= textureFetchSRGB(10, vec4(1.0)).xyz;
+            specularWeight *= textureFetch(9, vec4(1.0), false).w;
+            specularColorFactor *= textureFetch(10, vec4(1.0), true).xyz;
           }
           vec3 dielectricSpecularF0 = clamp(F0 * specularColorFactor, vec3(0.0), vec3(1.0));
-          vec4 baseColor = textureFetchSRGB(0, vec4(1.0)) * material.baseColorFactor;
-          vec2 metallicRoughness = clamp(textureFetch(1, vec4(1.0)).zy * material.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
+          vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+          vec2 metallicRoughness = clamp(textureFetch(1, vec4(1.0), false).zy * material.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (1.0 - metallicRoughness.x)), baseColor.w);
           F0 = mix(dielectricSpecularF0, baseColor.xyz, metallicRoughness.x);
           perceptualRoughness = metallicRoughness.y;
           break;
         }
         case smPBRSpecularGlossiness: {
-          vec4 specularGlossiness = textureFetchSRGB(1, vec4(1.0)) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
-          diffuseColorAlpha = textureFetchSRGB(0, vec4(1.0)) * material.baseColorFactor;
+          vec4 specularGlossiness = textureFetch(1, vec4(1.0), true) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
+          diffuseColorAlpha = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
           F0 = specularGlossiness.xyz;
           diffuseColorAlpha.xyz *= max(0.0, 1.0 - max(max(F0.x, F0.y), F0.z));
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
@@ -1012,7 +997,7 @@ void main() {
 
       vec3 normal;
       if ((textureFlags.x & (1 << 2)) != 0) {
-        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx);
+        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
         normal = normalize(                                                                                                                      //
             mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) *                                                            //
             normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
@@ -1022,11 +1007,11 @@ void main() {
       }
       normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
-      vec4 occlusionTexture = textureFetch(3, vec4(1.0));
+      vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
 
       cavity = clamp(mix(1.0, occlusionTexture.x, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
 
-      vec4 emissiveTexture = textureFetchSRGB(4, vec4(1.0));
+      vec4 emissiveTexture = textureFetch(4, vec4(1.0), true);
 
       float transparency = 0.0;
       float refractiveAngle = 0.0;
@@ -1042,10 +1027,10 @@ void main() {
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFresnel = F0;
         iridescenceF0 = F0;
-        iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0)).x : 1.0);
+        iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0), false).x : 1.0);
         iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
         if ((textureFlags.x & (1 << 12)) != 0){
-          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x, textureFetch(12, vec4(1.0)).y);  
+          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x, textureFetch(12, vec4(1.0), false).y);  
         }else{
           iridescenceThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x;  
         }
@@ -1061,10 +1046,10 @@ void main() {
 
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
-        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0)).x : 1.0);  
+        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0), false).x : 1.0);  
       }
       if ((flags & (1u << 12u)) != 0u) {
-        volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0)).y : 1.0);  
+        volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).y : 1.0);  
         volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
         volumeAttenuationColor = material.volumeAttenuationColor.xyz;        
       }
@@ -1077,7 +1062,7 @@ void main() {
       if ((flags & (1u << 7u)) != 0u) {
         sheenColorIntensityFactor = material.sheenColorFactorSheenIntensityFactor;
         if ((textureFlags.x & (1 << 5)) != 0) {
-          sheenColorIntensityFactor *= textureFetchSRGB(5, vec4(1.0));
+          sheenColorIntensityFactor *= textureFetch(5, vec4(1.0), true);
         }
         sheenRoughness = max(perceptualRoughness, 1e-7);
       }
@@ -1091,13 +1076,13 @@ void main() {
         clearcoatFactor = material.clearcoatFactorClearcoatRoughnessFactor.x;
         clearcoatRoughness = material.clearcoatFactorClearcoatRoughnessFactor.y;
         if ((textureFlags.x & (1 << 6)) != 0) {
-          clearcoatFactor *= textureFetch(6, vec4(1.0)).x;
+          clearcoatFactor *= textureFetch(6, vec4(1.0), false).x;
         }
         if ((textureFlags.x & (1 << 7)) != 0) {
-          clearcoatRoughness *= textureFetch(7, vec4(1.0)).y;
+          clearcoatRoughness *= textureFetch(7, vec4(1.0), false).y;
         }
         if ((textureFlags.x & (1 << 8)) != 0) {
-          vec4 normalTexture = textureFetch(8, vec2(0.0, 1.0).xxyx);
+          vec4 normalTexture = textureFetch(8, vec2(0.0, 1.0).xxyx, false);
           clearcoatNormal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
         } else {
           clearcoatNormal = normalize(inNormal);
@@ -1390,7 +1375,7 @@ void main() {
       break;
     }
     case smUnlit: {
-      color = textureFetchSRGB(0, vec4(1.0)) * material.baseColorFactor * vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
+      color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor * vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
       break;
     }
   }

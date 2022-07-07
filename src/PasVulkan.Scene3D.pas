@@ -356,7 +356,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromWhiteTexture;
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
-              function GetDescriptorImageInfo:TVkDescriptorImageInfo;
+              function GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
              published
               property Image:TImage read fImage write fImage;
               property Sampler:TSampler read fSampler write fSampler;
@@ -2217,14 +2217,16 @@ begin
  fUploaded:=false;
 end;
 
-function TpvScene3D.TTexture.GetDescriptorImageInfo:TVkDescriptorImageInfo;
+function TpvScene3D.TTexture.GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
 begin
  if assigned(fSampler) and assigned(fSampler.fSampler) then begin
   result.Sampler:=fSampler.fSampler.Handle;
  end else begin
   result.Sampler:=VK_NULL_HANDLE;
  end;
- if assigned(fImage) and assigned(fImage.fTexture.ImageView) then begin
+ if ASRGB and assigned(fImage) and assigned(fImage.fTexture.SRGBImageView) then begin
+  result.ImageView:=fImage.fTexture.SRGBImageView.Handle;
+ end else if assigned(fImage) and assigned(fImage.fTexture.ImageView) then begin
   result.ImageView:=fImage.fTexture.ImageView.Handle;
  end else begin
   result.ImageView:=VK_NULL_HANDLE;
@@ -8250,14 +8252,14 @@ begin
       UniversalQueue:=nil;
      end;
 
-
      for Index:=0 to length(fImageInfos)-1 do begin
-      fImageInfos[Index]:=fWhiteTexture.GetDescriptorImageInfo;
+      fImageInfos[Index]:=fWhiteTexture.GetDescriptorImageInfo(false);
      end;
      for Index:=0 to fTextures.Count-1 do begin
       Texture:=fTextures[Index];
-      if Texture.fUploaded and (Texture.ID>0) and (Texture.ID<length(fImageInfos)) then begin
-       fImageInfos[Texture.ID]:=Texture.GetDescriptorImageInfo;
+      if Texture.fUploaded and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+       fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
+       fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
       end;
      end;
      for Index:=0 to length(fGlobalVulkanDescriptorSets)-1 do begin
