@@ -4001,7 +4001,7 @@ begin
                          OnSetRenderPassResources,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-  if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not fParent.fUseOITAlphaTest then begin
+  if ((fParent.fTransparencyMode=TTransparencyMode.Direct) and not fParent.fScene3D.HasTransmission) or not fParent.fUseOITAlphaTest then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -4901,8 +4901,9 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{ if fParent.fUseOITAlphaTest then begin
+  if fParent.fScene3D.HasTransmission {or fParent.fUseOITAlphaTest} then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         -1,
                          aInFlightFrameIndex,
                          0,
                          InFlightFrameState^.FinalViewIndex,
@@ -4911,7 +4912,7 @@ begin
                          fVulkanPipelineLayout,
                          OnSetRenderPassResources,
                          [TpvScene3D.TMaterial.TAlphaMode.Mask]);
-  end;}
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                         -1,
