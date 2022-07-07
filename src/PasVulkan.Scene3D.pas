@@ -379,6 +379,7 @@ type EpvScene3D=class(Exception);
                      Unlit=2
                     );
                    PShadingModel=^TShadingModel;
+                   TAlignedMatrix3x2=array[0..2] of TpvVector2;
                    { TTextureReference }
                    TTextureReference=record
                     public
@@ -392,6 +393,7 @@ type EpvScene3D=class(Exception);
                            public
                             procedure AssignFromGLTF(var aTextureReference:TTextureReference;const aExtensionsItem:TPasJSONItem);
                             function ToMatrix4x4:TpvMatrix4x4;
+                            function ToAlignedMatrix3x2:TAlignedMatrix3x2;
                           end;
                           PTransform=^TTransform;
                     public
@@ -480,7 +482,7 @@ type EpvScene3D=class(Exception);
                        Textures1:TPasGLTFUInt32;
                        // uvec4 uAlphaCutOffFlags end
                        Textures:array[0..15] of TpvInt32;
-                       TextureTransforms:array[0..15] of TpvMatrix4x4;
+                       TextureTransforms:array[0..15] of TAlignedMatrix3x2;
                      );
                      true:(
                       //Padding:array[0..2047] of TpvUInt8;
@@ -597,22 +599,22 @@ type EpvScene3D=class(Exception);
                      Textures1:0;
                      Textures:(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1);
                      TextureTransforms:(
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0))),
-                      (RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0)))
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0)),
+                      ((x:1.0;y:0.0),(x:0.0;y:1.0),(x:0.0;y:0.0))
                      );
                     );
              private
@@ -2332,6 +2334,15 @@ begin
  end;
 end;
 
+function TpvScene3D.TMaterial.TTextureReference.TTransform.ToAlignedMatrix3x2:TAlignedMatrix3x2;
+var Temporary:TpvMatrix4x4;
+begin
+ Temporary:=ToMatrix4x4;
+ result[0]:=PpvVector2(pointer(@Temporary.RawComponents[0,0]))^;
+ result[1]:=PpvVector2(pointer(@Temporary.RawComponents[1,0]))^;
+ result[2]:=PpvVector2(pointer(@Temporary.RawComponents[3,0]))^;
+end;
+
 { TpvScene3D.TMaterial }
 
 constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -3249,12 +3260,12 @@ begin
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 0);
     fShaderData.Textures[0]:=(fData.PBRMetallicRoughness.BaseColorTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[0]:=fData.PBRMetallicRoughness.BaseColorTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[0]:=fData.PBRMetallicRoughness.BaseColorTexture.Transform.ToAlignedMatrix3x2;
    end;
    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 1);
     fShaderData.Textures[1]:=(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[1]:=fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[1]:=fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.ToAlignedMatrix3x2;
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=fData.PBRMetallicRoughness.MetallicFactor;
@@ -3269,12 +3280,12 @@ begin
    if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 9);
     fShaderData.Textures[9]:=(fData.PBRMetallicRoughness.SpecularTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[9]:=fData.PBRMetallicRoughness.SpecularTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[9]:=fData.PBRMetallicRoughness.SpecularTexture.Transform.ToAlignedMatrix3x2;
    end;
    if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 10);
     fShaderData.Textures[10]:=(fData.PBRMetallicRoughness.SpecularColorTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[10]:=fData.PBRMetallicRoughness.SpecularColorTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[10]:=fData.PBRMetallicRoughness.SpecularColorTexture.Transform.ToAlignedMatrix3x2;
    end;
   end;
   TMaterial.TShadingModel.PBRSpecularGlossiness:begin
@@ -3282,12 +3293,12 @@ begin
    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 0);
     fShaderData.Textures[0]:=(fData.PBRSpecularGlossiness.DiffuseTexture.Texture.ID and $ffff) or ((fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[0]:=fData.PBRSpecularGlossiness.DiffuseTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[0]:=fData.PBRSpecularGlossiness.DiffuseTexture.Transform.ToAlignedMatrix3x2;
    end;
    if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 1);
     fShaderData.Textures[1]:=(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.ID and $ffff) or ((fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[1]:=fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[1]:=fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.ToAlignedMatrix3x2;
    end;
    fShaderData.BaseColorFactor:=fData.PBRSpecularGlossiness.DiffuseFactor;
    fShaderData.MetallicRoughnessNormalScaleOcclusionStrengthFactor[0]:=1.0;
@@ -3304,7 +3315,7 @@ begin
    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
     fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 1);
     fShaderData.Textures[0]:=(fData.PBRMetallicRoughness.BaseColorTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.BaseColorTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[0]:=fData.PBRMetallicRoughness.BaseColorTexture.Transform.ToMatrix4x4;
+    fShaderData.TextureTransforms[0]:=fData.PBRMetallicRoughness.BaseColorTexture.Transform.ToAlignedMatrix3x2;
    end;
    fShaderData.BaseColorFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.BaseColorFactor[0],fData.PBRMetallicRoughness.BaseColorFactor[1],fData.PBRMetallicRoughness.BaseColorFactor[2],fData.PBRMetallicRoughness.BaseColorFactor[3]);
   end;
@@ -3315,17 +3326,17 @@ begin
  if assigned(fData.NormalTexture.Texture) then begin
   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 2);
   fShaderData.Textures[2]:=(fData.NormalTexture.Texture.ID and $ffff) or ((fData.NormalTexture.TexCoord and $f) shl 16);
-  fShaderData.TextureTransforms[2]:=fData.NormalTexture.Transform.ToMatrix4x4;
+  fShaderData.TextureTransforms[2]:=fData.NormalTexture.Transform.ToAlignedMatrix3x2;
  end;
  if assigned(fData.OcclusionTexture.Texture) then begin
   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 3);
   fShaderData.Textures[3]:=(fData.OcclusionTexture.Texture.ID and $ffff) or ((fData.OcclusionTexture.TexCoord and $f) shl 16);
-  fShaderData.TextureTransforms[3]:=fData.OcclusionTexture.Transform.ToMatrix4x4;
+  fShaderData.TextureTransforms[3]:=fData.OcclusionTexture.Transform.ToAlignedMatrix3x2;
  end;
  if assigned(fData.EmissiveTexture.Texture) then begin
   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 4);
   fShaderData.Textures[4]:=(fData.EmissiveTexture.Texture.ID and $ffff) or ((fData.EmissiveTexture.TexCoord and $f) shl 16);
-  fShaderData.TextureTransforms[4]:=fData.EmissiveTexture.Transform.ToMatrix4x4;
+  fShaderData.TextureTransforms[4]:=fData.EmissiveTexture.Transform.ToAlignedMatrix3x2;
  end;
  fShaderData.EmissiveFactor[0]:=fData.EmissiveFactor[0];
  fShaderData.EmissiveFactor[1]:=fData.EmissiveFactor[1];
@@ -3341,7 +3352,7 @@ begin
   if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 5);
    fShaderData.Textures[5]:=(fData.PBRSheen.ColorIntensityTexture.Texture.ID and $ffff) or ((fData.PBRSheen.ColorIntensityTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[5]:=fData.PBRSheen.ColorIntensityTexture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[5]:=fData.PBRSheen.ColorIntensityTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -3352,17 +3363,17 @@ begin
   if assigned(fData.PBRClearCoat.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 6);
    fShaderData.Textures[6]:=(fData.PBRClearCoat.Texture.Texture.ID and $ffff) or ((fData.PBRClearCoat.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[6]:=fData.PBRClearCoat.Texture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[6]:=fData.PBRClearCoat.Texture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 7);
    fShaderData.Textures[7]:=(fData.PBRClearCoat.RoughnessTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.RoughnessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[7]:=fData.PBRClearCoat.RoughnessTexture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[7]:=fData.PBRClearCoat.RoughnessTexture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 8);
    fShaderData.Textures[8]:=(fData.PBRClearCoat.NormalTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.NormalTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.NormalTexture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.NormalTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -3377,12 +3388,12 @@ begin
   if assigned(fData.Iridescence.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
    fShaderData.Textures[11]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[11]:=fData.Iridescence.Texture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[11]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.Iridescence.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 12);
    fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -3392,7 +3403,7 @@ begin
   if assigned(fData.Transmission.Texture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
    fShaderData.Textures[13]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[13]:=fData.Transmission.Texture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[13]:=fData.Transmission.Texture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -3406,7 +3417,7 @@ begin
   if assigned(fData.Volume.ThicknessTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 14);
    fShaderData.Textures[14]:=(fData.Volume.ThicknessTexture.Texture.ID and $ffff) or ((fData.Volume.ThicknessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[14]:=fData.Volume.ThicknessTexture.Transform.ToMatrix4x4;
+   fShaderData.TextureTransforms[14]:=fData.Volume.ThicknessTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 

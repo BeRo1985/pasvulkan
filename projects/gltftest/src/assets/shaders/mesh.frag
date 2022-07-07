@@ -131,7 +131,7 @@ struct Material {
   vec4 volumeAttenuationColor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
-  mat4 textureTransforms[16];
+  mat3x2 textureTransforms[16];
 };
 #endif
 
@@ -184,7 +184,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
   vec4 volumeAttenuationColor;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[16];
-  mat4 textureTransforms[16];
+  mat3x2 textureTransforms[16];
 };
 
 layout(std140, set = 0, binding = 3) uniform Materials {
@@ -855,6 +855,8 @@ const uint smPBRMetallicRoughness = 0u,  //
 
 uvec2 textureFlags;
 vec2 texCoords[2];
+vec2 texCoords_dFdx[2];
+vec2 texCoords_dFdy[2];
 
 int getTexCoordID(const in int textureIndex){
   return material.textures[textureIndex]; 
@@ -862,7 +864,7 @@ int getTexCoordID(const in int textureIndex){
 
 vec2 textureUV(const in int textureIndex) {
   int textureID = getTexCoordID(textureIndex); 
-  return (textureID >= 0) ? (material.textureTransforms[textureIndex] * vec3(texCoords[(textureID >> 16) & 0xf], 1.0).xyzz).xy : inTexCoord0;
+  return (textureID >= 0) ? (material.textureTransforms[textureIndex] * vec3(texCoords[(textureID >> 16) & 0xf], 1.0)).xy : inTexCoord0;
 }
 
 ivec2 texture2DSize(const in int textureIndex) {
@@ -871,15 +873,29 @@ ivec2 texture2DSize(const in int textureIndex) {
 }
 
 vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue) {
-  int textureID = getTexCoordID(textureIndex); 
-  return (textureID >= 0) ? texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (material.textureTransforms[textureIndex] * vec3(texCoords[int((textureID >> 16) & 0xf)], 1.0).xyzz).xy) : defaultValue;
+  int textureID = getTexCoordID(textureIndex);
+  if(textureID >= 0){
+    int texCoordIndex = int((textureID >> 16) & 0xf); 
+    mat3x2 m = material.textureTransforms[textureIndex];
+    return textureGrad(u2DTextures[nonuniformEXT(textureID & 0xffff)], //
+                        (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
+                        (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
+                        (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
+ }else{
+   return defaultValue;
+ } 
 }
 
 vec4 textureFetchSRGB(const in int textureIndex, const in vec4 defaultValue) {
   int textureID = getTexCoordID(textureIndex); 
   vec4 texel;
   if (textureID >= 0) {
-    texel = texture(u2DTextures[nonuniformEXT(textureID & 0xffff)], (material.textureTransforms[textureIndex] * vec3(texCoords[int((textureID >> 16) & 0xf)], 1.0).xyzz).xy);
+    int texCoordIndex = int((textureID >> 16) & 0xf); 
+    mat3x2 m = material.textureTransforms[textureIndex];
+    texel = textureGrad(u2DTextures[nonuniformEXT(textureID & 0xffff)], //
+                        (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
+                        (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
+                        (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
     texel.xyz = convertSRGBToLinearRGB(texel.xyz);
   } else {
     texel = defaultValue;
@@ -904,6 +920,10 @@ void main() {
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;
   texCoords[1] = inTexCoord1;
+  texCoords_dFdx[0] = dFdx(inTexCoord0);
+  texCoords_dFdx[1] = dFdx(inTexCoord1);
+  texCoords_dFdy[0] = dFdy(inTexCoord0);
+  texCoords_dFdy[1] = dFdy(inTexCoord1);
 #endif
 #ifndef DEPTHONLY
   envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
