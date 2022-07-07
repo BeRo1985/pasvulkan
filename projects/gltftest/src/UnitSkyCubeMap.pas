@@ -34,7 +34,6 @@ type { TSkyCubeMap }
       public
        const Width=512;
              Height=512;
-             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
              LightDirection:TpvVector4=(x:0.333333333333;y:-0.666666666666;z:-0.666666666666;w:0.0);
       private
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -46,7 +45,7 @@ type { TSkyCubeMap }
        fDescriptorImageInfo:TVkDescriptorImageInfo;
       public
 
-       constructor Create;
+       constructor Create(const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT));
 
        destructor Destroy; override;
 
@@ -68,7 +67,7 @@ implementation
 
 { TSkyCubeMap }
 
-constructor TSkyCubeMap.Create;
+constructor TSkyCubeMap.Create(const aImageFormat:TVkFormat);
 var Index,FaceIndex,MipMaps:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -120,7 +119,7 @@ begin
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
-                                     ImageFormat,
+                                     aImageFormat,
                                      Width,
                                      Height,
                                      1,
@@ -234,7 +233,7 @@ begin
        fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                    fVulkanImage,
                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                   ImageFormat,
+                                                   aImageFormat,
                                                    TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                    TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                    TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -252,7 +251,7 @@ begin
        ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                             fVulkanImage,
                                             TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                            ImageFormat,
+                                            aImageFormat,
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
