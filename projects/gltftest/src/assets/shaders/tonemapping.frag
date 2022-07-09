@@ -84,12 +84,7 @@ vec3 doToneMapping(vec3 color){
 void main(){
 #if 1
   vec4 c = subpassLoad(uSubpassInput);  
-#ifdef OUTPUT_MANUALLY_ENCODED_SRGB
-  c.xyz = doToneMapping(c.xyz);
-  outColor = vec4(mix((pow(c.xyz, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c.xyz * vec3(12.92), lessThan(c.xyz, vec3(3.1308e-3))), c.w);
-#else
   outColor = vec4(doToneMapping(c.xyz), c.w);
-#endif
 #else
   outColor = vec4(1.0);
 #endif    

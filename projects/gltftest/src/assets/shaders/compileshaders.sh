@@ -134,8 +134,7 @@ compileshaderarguments=(
   
   '-V skybox_realtime.frag -o skybox_realtime_frag.spv'
   
-  '-V tonemapping.frag -o tonemapping_linear_output_frag.spv'
-  '-V tonemapping.frag -DOUTPUT_MANUALLY_ENCODED_SRGB -o tonemapping_srgb_output_frag.spv'  
+  '-V tonemapping.frag -o tonemapping_frag.spv'
   
   '-V antialiasing.frag -o antialiasing_frag.spv'
   

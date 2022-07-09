@@ -8564,11 +8564,7 @@ begin
   Stream.Free;
  end;
 
- if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/tonemapping_srgb_output_frag.spv');
- end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/tonemapping_linear_output_frag.spv');
- end;
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/tonemapping_frag.spv');
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -8936,7 +8932,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                   [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                 fResourceColor.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceColor.VulkanAdditionalFormatImageViews[InFlightFrameIndex].Handle,
                                                                                                  fResourceColor.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                   [],
                                                                   [],
@@ -9783,12 +9779,15 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_color_tonemapping',
                                   true,
-                                  fOptimizedNonAlphaFormat, // VK_FORMAT_R16G16B16A16_SFLOAT,
+                                  TVkFormat(TpvInt32(IfThen(fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),TpvInt32(VK_FORMAT_R8G8B8A8_SRGB),TpvInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
-                                  1
+                                  1,
+                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_FORMAT_R8G8B8A8_UNORM
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_color',
