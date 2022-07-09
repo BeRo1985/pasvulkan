@@ -126,6 +126,8 @@ compileshaderarguments=(
   '-V passthrough.vert -o passthrough_vert.spv'
   
   '-V dummy.frag -o dummy_frag.spv'
+
+  '-V dithering.frag -o dithering_frag.spv'
   
   '-V skybox.vert -o skybox_vert.spv'
   '-V skybox.frag -o skybox_frag.spv'

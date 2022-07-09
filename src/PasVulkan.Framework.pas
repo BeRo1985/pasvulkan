@@ -2955,7 +2955,6 @@ type EpvVulkanException=class(Exception);
        fImageLayout:TVkImageLayout;
        fImage:TpvVulkanImage;
        fImageView:TpvVulkanImageView;
-       fSRGBImage:TpvVulkanImage;
        fSRGBImageView:TpvVulkanImageView;
        fImageViewType:TVkImageViewType;
        fSampler:TpvVulkanSampler;
@@ -3172,7 +3171,6 @@ type EpvVulkanException=class(Exception);
        property ImageLayout:TVkImageLayout read fImageLayout;
        property Image:TpvVulkanImage read fImage;
        property ImageView:TpvVulkanImageView read fImageView;
-       property SRGBImage:TpvVulkanImage read fSRGBImage;
        property SRGBImageView:TpvVulkanImageView read fSRGBImageView;
        property ImageViewType:TVkImageViewType read fImageViewType;
        property Sampler:TpvVulkanSampler read fSampler;
@@ -19099,6 +19097,9 @@ begin
  if aCountFaces=6 then begin
   ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
  end;
+ if AdditionalSRGB then begin
+  ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
+ end;
 
  if aDepth>0 then begin
   ImageType:=VK_IMAGE_TYPE_3D;
@@ -19128,7 +19129,7 @@ begin
                                                                        RequiresDedicatedAllocation,
                                                                        PrefersDedicatedAllocation);
 
- if SRGBFormat<>VK_FORMAT_UNDEFINED then begin
+{if SRGBFormat<>VK_FORMAT_UNDEFINED then begin
   fSRGBImage:=TpvVulkanImage.Create(fDevice,
                                     ImageCreateFlags,
                                     ImageType,
@@ -19163,7 +19164,7 @@ begin
 
   fSRGBImage:=nil;
 
- end;
+ end;}
 
  MemoryBlockFlags:=[];
 
@@ -19194,12 +19195,12 @@ begin
                                                          fMemoryBlock.fMemoryChunk.fMemoryHandle,
                                                          fMemoryBlock.fOffset));
 
- if assigned(fSRGBImage) then begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
+(*if assigned(fSRGBImage) then begin
+{ VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
                                                           fSRGBImage.fImageHandle,
                                                           fMemoryBlock.fMemoryChunk.fMemoryHandle,
-                                                          fMemoryBlock.fOffset));
- end;
+                                                          fMemoryBlock.fOffset));}
+ end;*)
 
  Upload(aGraphicsQueue,
         aGraphicsCommandBuffer,
@@ -19251,9 +19252,9 @@ begin
                                        0,
                                        Max(1,fTotalCountArrayLayers));
 
- if assigned(fSRGBImage) then begin
+ if AdditionalSRGB then begin
   fSRGBImageView:=TpvVulkanImageView.Create(fDevice,
-                                            fSRGBImage,
+                                            fImage,
                                             fImageViewType,
                                             SRGBFormat,
                                             VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -21480,7 +21481,6 @@ begin
   fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
   fMemoryBlock:=nil;
  end;
- FreeAndNil(fSRGBImage);
  FreeAndNil(fImage);
  inherited Destroy;
 end;
