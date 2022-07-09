@@ -50,8 +50,7 @@ layout(set = 0, binding = 2) uniform sampler2D uSearchTexture;
 
 layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
-}
-pushConstants;
+} pushConstants;
 
 vec4 SMAA_RT_METRICS = pushConstants.metrics;
 

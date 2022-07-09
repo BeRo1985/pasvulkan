@@ -141,6 +141,7 @@ compileshaderarguments=(
   '-V antialiasing_none.frag -o antialiasing_none_frag.spv'
   
   '-V antialiasing_smaa_blend.vert -o antialiasing_smaa_blend_vert.spv'
+  '-V antialiasing_smaa_blend.frag -o antialiasing_smaa_blend_frag.spv'
   
   '-V antialiasing_smaa_color_edges.vert -o antialiasing_smaa_color_edges_vert.spv'
   '-V antialiasing_smaa_color_edges.frag -o antialiasing_smaa_color_edges_frag.spv'
