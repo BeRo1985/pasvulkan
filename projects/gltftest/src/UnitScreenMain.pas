@@ -46,7 +46,8 @@ uses SysUtils,
      UnitCharlieBRDF,
      UnitCharlieEnvMapCubeMap,
      UnitLambertianEnvMapCubeMap,
-     UnitSkyBox;
+     UnitSkyBox,
+     UnitSMAAData;
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
