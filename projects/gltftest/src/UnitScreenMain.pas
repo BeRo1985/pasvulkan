@@ -897,6 +897,7 @@ type { TScreenMain }
        fSurfaceMultiviewMask:TpvUInt32;
        fCountSurfaceViews:TpvInt32;
        fTransparencyMode:TTransparencyMode;
+       fAntialiasingMode:TAntialiasingMode;
        fVulkanSampleCountFlagBits:TVkSampleCountFlagBits;
        fVulkanShadowMapSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:Int32;
@@ -9600,6 +9601,7 @@ var GLTF:TPasGLTF.TDocument;
     Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
     FormatProperties:TVkFormatProperties;
+    MaxShadowMSAA,MaxMSAA:TpvInt32;
 begin
  inherited Create;
 
@@ -9756,71 +9758,116 @@ begin
 
  end;
 
+ fAntialiasingMode:=UnitApplication.Application.AntialiasingMode;
+
+ if fAntialiasingMode=TAntialiasingMode.Auto then begin
+  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.MSAA;
+    end;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.MSAA;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
+    end;
+   end;
+   else begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fAntialiasingMode:=TAntialiasingMode.None;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
+    end;
+   end;
+  end;
+ end;
+
  SampleCounts:=pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferDepthSampleCounts and
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferStencilSampleCounts;
 
- if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
-
-  if (UnitApplication.Application.MaxShadowMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
-   fCountCascadedShadowMapMSAASamples:=64;
-  end else if (UnitApplication.Application.MaxShadowMSAA>=32) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
-   fCountCascadedShadowMapMSAASamples:=32;
-  end else if (UnitApplication.Application.MaxShadowMSAA>=16) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
-   fCountCascadedShadowMapMSAASamples:=16;
-  end else if (UnitApplication.Application.MaxShadowMSAA>=8) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
-   fCountCascadedShadowMapMSAASamples:=8;
-  end else if (UnitApplication.Application.MaxShadowMSAA>=4) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
-   fCountCascadedShadowMapMSAASamples:=4;
-  end else if (UnitApplication.Application.MaxShadowMSAA>=2) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0) then begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
-   fCountCascadedShadowMapMSAASamples:=2;
+ if UnitApplication.Application.MaxShadowMSAA=0 then begin
+  if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
+   MaxShadowMSAA:=8;
   end else begin
-   fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
-   fCountCascadedShadowMapMSAASamples:=1;
+   MaxShadowMSAA:=1;
   end;
+ end else begin
+  MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
+ end;
 
-  if (UnitApplication.Application.MaxMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
+ if UnitApplication.Application.MaxMSAA=0 then begin
+  if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
+   MaxMSAA:=8;
+  end else begin
+   MaxMSAA:=2;
+  end;
+ end else begin
+  MaxMSAA:=UnitApplication.Application.MaxMSAA;
+ end;
+
+ if (MaxShadowMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
+  fCountCascadedShadowMapMSAASamples:=64;
+ end else if (MaxShadowMSAA>=32) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
+  fCountCascadedShadowMapMSAASamples:=32;
+ end else if (MaxShadowMSAA>=16) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
+  fCountCascadedShadowMapMSAASamples:=16;
+ end else if (MaxShadowMSAA>=8) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
+  fCountCascadedShadowMapMSAASamples:=8;
+ end else if (MaxShadowMSAA>=4) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
+  fCountCascadedShadowMapMSAASamples:=4;
+ end else if (MaxShadowMSAA>=2) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0) then begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
+  fCountCascadedShadowMapMSAASamples:=2;
+ end else begin
+  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+  fCountCascadedShadowMapMSAASamples:=1;
+ end;
+
+ if fAntialiasingMode=TAntialiasingMode.MSAA then begin
+  if (MaxMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
    fCountSurfaceMSAASamples:=64;
-  end else if (UnitApplication.Application.MaxMSAA>=32) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0) then begin
+  end else if (MaxMSAA>=32) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_32_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_32_BIT);
    fCountSurfaceMSAASamples:=32;
-  end else if (UnitApplication.Application.MaxMSAA>=16) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0) then begin
+  end else if (MaxMSAA>=16) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_16_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT);
    fCountSurfaceMSAASamples:=16;
-  end else if (UnitApplication.Application.MaxMSAA>=8) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0) then begin
+  end else if (MaxMSAA>=8) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_8_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT);
    fCountSurfaceMSAASamples:=8;
-  end else if (UnitApplication.Application.MaxMSAA>=4) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0) then begin
+  end else if (MaxMSAA>=4) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_4_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT);
    fCountSurfaceMSAASamples:=4;
-  end else if (UnitApplication.Application.MaxMSAA>=2) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0) then begin
+  end else if (MaxMSAA>=2) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_2_BIT))<>0) then begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT);
    fCountSurfaceMSAASamples:=2;
   end else begin
    fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
    fCountSurfaceMSAASamples:=1;
+   fAntialiasingMode:=TAntialiasingMode.FXAA;
   end;
-
  end else begin
-
   fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
-  fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
   fCountSurfaceMSAASamples:=1;
-  fCountCascadedShadowMapMSAASamples:=1;
-
  end;
-
-{fVulkanSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
- fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
- fCountSurfaceMSAASamples:=1;
- fCountCascadedShadowMapMSAASamples:=1;//}
 
  //fVulkanShadowMapSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
@@ -10246,9 +10293,15 @@ begin
 
  fTonemappingRenderPass:=TTonemappingRenderPass.Create(fFrameGraph,self);
 
- //fAntialiasingNoneRenderPass:=TAntialiasingNoneRenderPass.Create(fFrameGraph,self);
-
- fAntialiasingFXAARenderPass:=TAntialiasingFXAARenderPass.Create(fFrameGraph,self);
+ case fAntialiasingMode of
+  TAntialiasingMode.FXAA,
+  TAntialiasingMode.SMAA:begin
+   fAntialiasingFXAARenderPass:=TAntialiasingFXAARenderPass.Create(fFrameGraph,self);
+  end;
+  else begin
+   fAntialiasingNoneRenderPass:=TAntialiasingNoneRenderPass.Create(fFrameGraph,self);
+  end;
+ end;
 
  fDitheringRenderPass:=TDitheringRenderPass.Create(fFrameGraph,self);
 

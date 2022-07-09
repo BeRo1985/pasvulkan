@@ -41,6 +41,14 @@ type TTransparencyMode=
        MBOIT
       );
 
+     TAntialiasingMode=
+      (
+       Auto,
+       None,
+       FXAA,
+       SMAA,
+       MSAA
+      );
 implementation
 
 end.

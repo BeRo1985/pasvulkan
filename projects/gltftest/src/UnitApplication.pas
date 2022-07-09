@@ -43,6 +43,7 @@ type TApplication=class(TpvApplication)
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
        fTransparencyMode:TTransparencyMode;
+       fAntialiasingMode:TAntialiasingMode;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -71,6 +72,7 @@ type TApplication=class(TpvApplication)
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize;
        property TransparencyMode:TTransparencyMode read fTransparencyMode;
+       property AntialiasingMode:TAntialiasingMode read fAntialiasingMode;
      end;
 
 var Application:TApplication=nil;
@@ -93,10 +95,11 @@ begin
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
- fMaxMSAA:=1;
- fMaxShadowMSAA:=8;
+ fMaxMSAA:=0;
+ fMaxShadowMSAA:=0;
  fShadowMapSize:=512;
  fTransparencyMode:=TTransparencyMode.Auto;
+ fAntialiasingMode:=TAntialiasingMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
@@ -160,6 +163,23 @@ begin
      fTransparencyMode:=TTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin
      fTransparencyMode:=TTransparencyMode.MBOIT;
+    end else begin
+     fTransparencyMode:=TTransparencyMode.Auto;
+    end;
+   end;
+  end else if (Parameter='--antialiasing-mode') or
+              (Parameter='/antialiasing-mode') then begin
+   if Index<=ParamCount then begin
+    Parameter:=LowerCase(trim(ParamStr(Index)));
+    inc(Index);
+    if Parameter='none' then begin
+     fAntialiasingMode:=TAntialiasingMode.None;
+    end else if Parameter='fxaa' then begin
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
+    end else if Parameter='smaa' then begin
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
+    end else if Parameter='msaa' then begin
+     fAntialiasingMode:=TAntialiasingMode.MSAA;
     end else begin
      fTransparencyMode:=TTransparencyMode.Auto;
     end;
