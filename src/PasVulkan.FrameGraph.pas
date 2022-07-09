@@ -322,6 +322,7 @@ type EpvFrameGraph=class(Exception);
               fComponents:TVkComponentMapping;
               fInitialLayout:TVkImageLayout;
               fFinalLayout:TVkImageLayout;
+              fAdditionalFormat:TVkFormat;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -334,7 +335,8 @@ type EpvFrameGraph=class(Exception);
                                  const aCountMipMapLevels:TVkUInt32;
                                  const aComponents:TVkComponentMapping;
                                  const aInitialLayout:TVkImageLayout;
-                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
+                                 const aFinalLayout:TVkImageLayout;
+                                 const aAdditionalFormat:TVkFormat); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -345,7 +347,8 @@ type EpvFrameGraph=class(Exception);
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aCountMipMapLevels:TVkUInt32;
                                  const aInitialLayout:TVkImageLayout;
-                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
+                                 const aFinalLayout:TVkImageLayout;
+                                 const aAdditionalFormat:TVkFormat); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageType:TImageType read fImageType;
@@ -358,6 +361,7 @@ type EpvFrameGraph=class(Exception);
               property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
               property InitialLayout:TVkImageLayout read fInitialLayout;
               property FinalLayout:TVkImageLayout read fFinalLayout;
+              property AdditionalFormat:TVkFormat read fAdditionalFormat;
             end;
             TBufferResourceType=class(TResourceType)
              private
@@ -427,6 +431,7 @@ type EpvFrameGraph=class(Exception);
               fImageUsageFlags:TVkImageUsageFlags;
               fRequestedFormat:TVkFormat;
               fFormat:TVkFormat;
+              fAdditionalFormat:TVkFormat;
               fExtent:TVkExtent3D;
               fCountMipMaps:TpvSizeInt;
               fCountArrayLayers:TpvSizeInt;
@@ -443,11 +448,13 @@ type EpvFrameGraph=class(Exception);
               fComponents:TVkComponentMapping;
               fVulkanImages:array[0..MaxInFlightFrames-1] of TpvVulkanImage;
               fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+              fVulkanAdditionalFormatImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
               fVulkanMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
               fVulkanSurfaceImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
               fVulkanSurfaceImageViews:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
               function GetVulkanImage(const aIndex:TpvSizeInt):TpvVulkanImage; inline;
               function GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
+              function GetVulkanAdditionalFormatImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
               function GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock; inline;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
@@ -459,6 +466,7 @@ type EpvFrameGraph=class(Exception);
              public
               property VulkanImages[const aIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
               property VulkanImageViews[const aIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+              property VulkanAdditionalFormatImageViews[const aIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanAdditionalFormatImageView;
               property VulkanMemoryBlocks[const aIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
              published
             end;
@@ -930,6 +938,7 @@ type EpvFrameGraph=class(Exception);
                     private
                      function GetVulkanImage(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImage;
                      function GetVulkanImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
+                     function GetVulkanAdditionalFormatImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
                      function GetVulkanMemoryBlock(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
                      function GetWidth:TpvSizeInt;
                      function GetHeight:TpvSizeInt;
@@ -939,6 +948,7 @@ type EpvFrameGraph=class(Exception);
                     public
                      property VulkanImages[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
                      property VulkanImageViews[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+                     property VulkanAdditionalFormatImageViews[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanAdditionalFormatImageView;
                      property VulkanMemoryBlocks[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
                      property Width:TpvSizeInt read GetWidth;
                      property Height:TpvSizeInt read GetHeight;
@@ -1192,7 +1202,8 @@ type EpvFrameGraph=class(Exception);
                                      const aCountMipMapLevels:TVkUInt32;
                                      const aComponents:TVkComponentMapping;
                                      const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
                                      const aPersientent:boolean;
                                      const aFormat:TVkFormat;
@@ -1202,7 +1213,8 @@ type EpvFrameGraph=class(Exception);
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
                                      const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddBufferResourceType(const aName:TpvRawByteString;
                                       const aPersientent:boolean;
                                       const aSize:TVkDeviceSize;
@@ -1669,7 +1681,8 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aCountMipMapLevels:TVkUInt32;
                                                     const aComponents:TVkComponentMapping;
                                                     const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout);
+                                                    const aFinalLayout:TVkImageLayout;
+                                                    const aAdditionalFormat:TVkFormat);
 begin
  Create(aFrameGraph,
         aName,
@@ -1683,6 +1696,7 @@ begin
  fComponents:=aComponents;
  fInitialLayout:=aInitialLayout;
  fFinalLayout:=aFinalLayout;
+ fAdditionalFormat:=aAdditionalFormat;
 end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1695,7 +1709,8 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageUsage:TVkImageUsageFlags;
                                                     const aCountMipMapLevels:TVkUInt32;
                                                     const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout);
+                                                    const aFinalLayout:TVkImageLayout;
+                                                    const aAdditionalFormat:TVkFormat);
 begin
  Create(aFrameGraph,
         aName,
@@ -1711,7 +1726,8 @@ begin
                                    VK_COMPONENT_SWIZZLE_B,
                                    VK_COMPONENT_SWIZZLE_A),
         aInitialLayout,
-        aFinalLayout);
+        aFinalLayout,
+        aAdditionalFormat);
 end;
 
 
@@ -1817,7 +1833,13 @@ var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) or fIsSurface then begin
   for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-   FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+   if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+   end else begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+   end;
    fVulkanImages[InFlightFrameIndex]:=nil;
    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
   end;
@@ -1833,9 +1855,16 @@ begin
       (InFlightFrameIndex>0) then begin
     fVulkanImages[InFlightFrameIndex]:=nil;
     fVulkanImageViews[InFlightFrameIndex]:=nil;
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
     fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+    end else begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    end;
     FreeAndNil(fVulkanImages[InFlightFrameIndex]);
     fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[InFlightFrameIndex]);
     fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
@@ -1853,6 +1882,11 @@ end;
 function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView;
 begin
  result:=fVulkanImageViews[aIndex];
+end;
+
+function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanAdditionalFormatImageView(const aIndex:TpvSizeInt):TpvVulkanImageView;
+begin
+ result:=fVulkanAdditionalFormatImageViews[aIndex];
 end;
 
 function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
@@ -1935,7 +1969,7 @@ begin
                                                                     fCountMipMaps,
                                                                     0,
                                                                     fCountArrayLayers);
-
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
   end;
 
  end else if fIsSurface then begin
@@ -1963,6 +1997,7 @@ begin
    fVulkanImages[InFlightFrameIndex]:=nil;
    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    fVulkanImageViews[InFlightFrameIndex]:=nil;
+   fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
   end;
 
  end else begin
@@ -1989,26 +2024,28 @@ begin
 
     fVulkanImages[InFlightFrameIndex]:=fVulkanImages[0];
     fVulkanImageViews[InFlightFrameIndex]:=fVulkanImageViews[0];
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[0];
     fVulkanMemoryBlocks[InFlightFrameIndex]:=fVulkanMemoryBlocks[0];
 
    end else begin
 
     fVulkanImages[InFlightFrameIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
-                                                              0,
-                                                              fImageType,
-                                                              fFormat,
-                                                              fExtent.width,
-                                                              fExtent.height,
-                                                              fExtent.depth,
-                                                              fCountMipMaps,
-                                                              fCountArrayLayers,
-                                                              fSamples,
-                                                              fTiling,
-                                                              fImageUsageFlags, // or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
-                                                              fSharingMode,
-                                                              fFrameGraph.fQueueFamilyIndices.Count,
-                                                              @fFrameGraph.fQueueFamilyIndices.Items[0],
-                                                              VK_IMAGE_LAYOUT_UNDEFINED);
+                                                             TVkImageCreateFlags(TpvInt32(IfThen((fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat),TpvInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),TpvInt32(0)))),
+                                                             fImageType,
+                                                             fFormat,
+                                                             fExtent.width,
+                                                             fExtent.height,
+                                                             fExtent.depth,
+                                                             fCountMipMaps,
+                                                             fCountArrayLayers,
+                                                             fSamples,
+                                                             fTiling,
+                                                             fImageUsageFlags, // or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                                             fSharingMode,
+                                                             fFrameGraph.fQueueFamilyIndices.Count,
+                                                             @fFrameGraph.fQueueFamilyIndices.Items[0],
+                                                             VK_IMAGE_LAYOUT_UNDEFINED,
+                                                             fAdditionalFormat);
 
     MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImages[InFlightFrameIndex].Handle,
                                                                                            RequiresDedicatedAllocation,
@@ -2066,6 +2103,24 @@ begin
                                                                       fCountMipMaps,
                                                                       0,
                                                                       fCountArrayLayers);
+
+    if (fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat) then begin
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                                      fVulkanImages[InFlightFrameIndex],
+                                                                                      fImageViewType,
+                                                                                      fAdditionalFormat,
+                                                                                      fComponents.r,
+                                                                                      fComponents.g,
+                                                                                      fComponents.b,
+                                                                                      fComponents.a,
+                                                                                      fImageSubresourceRange.aspectMask,
+                                                                                      0,
+                                                                                      fCountMipMaps,
+                                                                                      0,
+                                                                                      fCountArrayLayers);
+    end else begin
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
+    end;
 
     if fFirstInitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
 {    fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
@@ -2155,7 +2210,13 @@ var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) or fIsSurface then begin
   for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-   FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+   if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+   end else begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+   end;
    fVulkanImages[InFlightFrameIndex]:=nil;
    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
   end;
@@ -2171,9 +2232,16 @@ begin
       (InFlightFrameIndex>0) then begin
     fVulkanImages[InFlightFrameIndex]:=nil;
     fVulkanImageViews[InFlightFrameIndex]:=nil;
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
     fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+    end else begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    end;
     FreeAndNil(fVulkanImages[InFlightFrameIndex]);
     fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[InFlightFrameIndex]);
     fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
@@ -2491,6 +2559,12 @@ function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImageView(const aInFlig
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
  result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImageViews[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanAdditionalFormatImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanAdditionalFormatImageViews[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
 end;
 
 function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
@@ -4209,8 +4283,9 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
                                             const aComponents:TVkComponentMapping;
-                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
+                                            const aInitialLayout:TVkImageLayout;
+                                            const aFinalLayout:TVkImageLayout;
+                                            const aAdditionalFormat:TVkFormat):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -4223,7 +4298,8 @@ begin
                                    aCountMipMapLevels,
                                    aComponents,
                                    aInitialLayout,
-                                   aFinalLayout);
+                                   aFinalLayout,
+                                   aAdditionalFormat);
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
@@ -4234,8 +4310,9 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
-                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
+                                            const aInitialLayout:TVkImageLayout;
+                                            const aFinalLayout:TVkImageLayout;
+                                            const aAdditionalFormat:TVkFormat):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -4247,7 +4324,8 @@ begin
                                    aImageUsage,
                                    aCountMipMapLevels,
                                    aInitialLayout,
-                                   aFinalLayout);
+                                   aFinalLayout,
+                                   aAdditionalFormat);
 end;
 
 function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
@@ -5124,6 +5202,7 @@ type TEventBeforeAfter=(Event,Before,After);
      end;
      ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fFormat:=ImageResourceType.fFormat;
+     ResourcePhysicalImageData.fAdditionalFormat:=ImageResourceType.fAdditionalFormat;
      ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
      ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
      ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
