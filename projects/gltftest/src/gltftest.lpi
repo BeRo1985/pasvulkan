@@ -22,13 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="test4.glb"/>
+        <CommandLineParams Value="test4.glb /antialiasing-mode smaa"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="test4.glb"/>
+            <CommandLineParams Value="test4.glb /antialiasing-mode smaa"/>
           </local>
         </Mode0>
       </Modes>

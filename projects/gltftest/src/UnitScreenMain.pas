@@ -10782,10 +10782,6 @@ begin
  end;
 
  case fAntialiasingMode of
-  TAntialiasingMode.DSAA:begin
-  end;
-  TAntialiasingMode.FXAA:begin
-  end;
   TAntialiasingMode.SMAA:begin
    GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
    try
@@ -10903,10 +10899,6 @@ begin
  end;
 
  case fAntialiasingMode of
-  TAntialiasingMode.DSAA:begin
-  end;
-  TAntialiasingMode.FXAA:begin
-  end;
   TAntialiasingMode.SMAA:begin
    FreeAndNil(fSMAAAreaTexture);
    FreeAndNil(fSMAASearchTexture);
