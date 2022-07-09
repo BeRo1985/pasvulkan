@@ -951,6 +951,8 @@ type { TScreenMain }
        fPrimaryDirectionalLight:TpvScene3D.TLight;
        fFrameGraph:TpvFrameGraph;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
+       fSMAAAreaTexture:TpvVulkanTexture;
+       fSMAASearchTexture:TpvVulkanTexture;
        fMeshComputePass:TMeshComputePass;
        fDepthVelocityNormalsRenderPass:TDepthVelocityNormalsRenderPass;
        fDepthMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TMipmappedArray2DImage;
@@ -10598,7 +10600,9 @@ begin
   TAntialiasingMode.DSAA:begin
    fAntialiasingDSAARenderPass:=TAntialiasingDSAARenderPass.Create(fFrameGraph,self);
   end;
-  TAntialiasingMode.FXAA,
+  TAntialiasingMode.FXAA:begin
+   fAntialiasingFXAARenderPass:=TAntialiasingFXAARenderPass.Create(fFrameGraph,self);
+  end;
   TAntialiasingMode.SMAA:begin
    fAntialiasingFXAARenderPass:=TAntialiasingFXAARenderPass.Create(fFrameGraph,self);
   end;
@@ -10643,6 +10647,8 @@ begin
  for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[Index]);
  end;
+ FreeAndNil(fSMAAAreaTexture);
+ FreeAndNil(fSMAASearchTexture);
  FreeAndNil(fFrameGraph);
  FreeAndNil(fGroupInstance);
  FreeAndNil(fGroup);
@@ -10655,6 +10661,10 @@ end;
 procedure TScreenMain.Show;
 var Index:TpvSizeInt;
     Stream:TStream;
+    GraphicsQueue:TpvVulkanQueue;
+    GraphicsCommandPool:TpvVulkanCommandPool;
+    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
+    GraphicsFence:TpvVulkanFence;
 begin
 
  inherited Show;
@@ -10771,6 +10781,92 @@ begin
   end;
  end;
 
+ case fAntialiasingMode of
+  TAntialiasingMode.DSAA:begin
+  end;
+  TAntialiasingMode.FXAA:begin
+  end;
+  TAntialiasingMode.SMAA:begin
+   GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
+   try
+    GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                     pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                     TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+    try
+     GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
+                                                          VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     try
+      GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+      try
+       fSMAAAreaTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                           GraphicsQueue,
+                                                           GraphicsCommandBuffer,
+                                                           GraphicsFence,
+                                                           GraphicsQueue,
+                                                           GraphicsCommandBuffer,
+                                                           GraphicsFence,
+                                                           VK_FORMAT_R8G8_UNORM,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           UnitSMAAData.AREATEX_WIDTH,
+                                                           UnitSMAAData.AREATEX_HEIGHT,
+                                                           0,
+                                                           0,
+                                                           1,
+                                                           0,
+                                                           [TpvVulkanTextureUsageFlag.General,
+                                                            TpvVulkanTextureUsageFlag.TransferDst,
+                                                            TpvVulkanTextureUsageFlag.TransferSrc,
+                                                            TpvVulkanTextureUsageFlag.Sampled],
+                                                           @UnitSMAAData.AreaTexBytes[0],
+                                                           UnitSMAAData.AREATEX_SIZE,
+                                                           false,
+                                                           false,
+                                                           0,
+                                                           true,
+                                                           false);
+       fSMAASearchTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                             GraphicsQueue,
+                                                             GraphicsCommandBuffer,
+                                                             GraphicsFence,
+                                                             GraphicsQueue,
+                                                             GraphicsCommandBuffer,
+                                                             GraphicsFence,
+                                                             VK_FORMAT_R8_UNORM,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             UnitSMAAData.SEARCHTEX_WIDTH,
+                                                             UnitSMAAData.SEARCHTEX_HEIGHT,
+                                                             0,
+                                                             0,
+                                                             1,
+                                                             0,
+                                                             [TpvVulkanTextureUsageFlag.General,
+                                                              TpvVulkanTextureUsageFlag.TransferDst,
+                                                              TpvVulkanTextureUsageFlag.TransferSrc,
+                                                              TpvVulkanTextureUsageFlag.Sampled],
+                                                             @UnitSMAAData.SearchTexBytes[0],
+                                                             UnitSMAAData.SEARCHTEX_SIZE,
+                                                             false,
+                                                             false,
+                                                             0,
+                                                             true,
+                                                             false);
+      finally
+       FreeAndNil(GraphicsFence);
+      end;
+     finally
+      FreeAndNil(GraphicsCommandBuffer);
+     end;
+    finally
+     FreeAndNil(GraphicsCommandPool);
+    end;
+   finally
+    GraphicsQueue:=nil;
+   end;
+  end;
+  else begin
+  end;
+ end;
+
  fFrameGraph.Show;
 
  pvApplication.SkipNextDrawFrame:=true;
@@ -10805,6 +10901,20 @@ begin
   else begin
   end;
  end;
+
+ case fAntialiasingMode of
+  TAntialiasingMode.DSAA:begin
+  end;
+  TAntialiasingMode.FXAA:begin
+  end;
+  TAntialiasingMode.SMAA:begin
+   FreeAndNil(fSMAAAreaTexture);
+   FreeAndNil(fSMAASearchTexture);
+  end;
+  else begin
+  end;
+ end;
+
 
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
