@@ -1168,7 +1168,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceVelocity:=AddImageOutput('resourcetype_velocity',
-                                    'velocity_data',
+                                    'resource_velocity_data',
                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1176,7 +1176,7 @@ inherited Create(aFrameGraph);
                                    );
 
   fResourceNormals:=AddImageOutput('resourcetype_normals',
-                                   'normals_data',
+                                   'resource_normals_data',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1184,7 +1184,7 @@ inherited Create(aFrameGraph);
                                   );
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'depth_data', // _temporary',
+                                      'resource_depth_data', // _temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -1194,7 +1194,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceVelocity:=AddImageOutput('resourcetype_msaa_velocity',
-                                    'forwardrendering_msaa_velocity',
+                                    'resource_forwardrendering_msaa_velocity',
                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1202,8 +1202,8 @@ inherited Create(aFrameGraph);
                                    );
 
   fResourceVelocity:=AddImageResolveOutput('resourcetype_velocity',
-                                           'velocity_data',
-                                           'forwardrendering_msaa_velocity',
+                                           'resource_velocity_data',
+                                           'resource_forwardrendering_msaa_velocity',
                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                         TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1211,7 +1211,7 @@ inherited Create(aFrameGraph);
                                           );
 
   fResourceNormals:=AddImageOutput('resourcetype_msaa_normals',
-                                   'normals_data_msaa',
+                                   'resource_normals_data_msaa',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1219,8 +1219,8 @@ inherited Create(aFrameGraph);
                                   );
 
   fResourceNormals:=AddImageResolveOutput('resourcetype_normals',
-                                          'normals_data',
-                                          'normals_data_msaa',
+                                          'resource_normals_data',
+                                          'resource_normals_data_msaa',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -1228,7 +1228,7 @@ inherited Create(aFrameGraph);
                                          );
 
   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'depth_data_msaa', //'_temporary',
+                                      'resource_msaa_depth_data', //'_temporary',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -1540,7 +1540,7 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceInput:=AddImageInput('resourcetype_depth',
-                                'depth_data',
+                                'resource_depth_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
@@ -1548,7 +1548,7 @@ begin
  end else begin
 
   fResourceInput:=AddImageInput('resourcetype_msaa_depth',
-                                'depth_data_msaa',
+                                'resource_msaa_depth_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
@@ -1920,7 +1920,7 @@ inherited Create(aFrameGraph);
 
  if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
-                                      'cascadedshadowmap_single_depth',
+                                      'resource_cascadedshadowmap_single_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -1928,7 +1928,7 @@ inherited Create(aFrameGraph);
                                      );
  end else begin
   fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
-                                      'cascadedshadowmap_msaa_depth',
+                                      'resource_cascadedshadowmap_msaa_depth',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -2246,20 +2246,20 @@ begin
 
  if fParent.fVulkanShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_depth',
-                                'cascadedshadowmap_single_depth',
+                                'resource_cascadedshadowmap_single_depth',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end else begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_msaa_depth',
-                                'cascadedshadowmap_msaa_depth',
+                                'resource_cascadedshadowmap_msaa_depth',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end;
 
  fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',
-                                 'cascadedshadowmap_data',
+                                 'resource_cascadedshadowmap_data',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -2530,13 +2530,13 @@ begin
  if aHorziontal then begin
 
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                'cascadedshadowmap_data',
+                                'resource_cascadedshadowmap_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',
-                                  'cascadedshadowmap_data_temporary_blurred',
+                                  'resource_cascadedshadowmap_data_temporary_blurred',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -2547,13 +2547,13 @@ begin
  end else begin
 
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                'cascadedshadowmap_data_temporary_blurred',
+                                'resource_cascadedshadowmap_data_temporary_blurred',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',
-                                  'cascadedshadowmap_data_final',
+                                  'resource_cascadedshadowmap_data_final',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -2809,13 +2809,13 @@ begin
                                        fParent.fCountSurfaceViews);
 
  fResourceNormals:=AddImageInput('resourcetype_normals',
-                                 'normals_data',
+                                 'resource_normals_data',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
  fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                 'ssao_data_temporary',
+                                 'resource_ssao_data_temporary',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3117,13 +3117,13 @@ begin
  if aHorziontal then begin
 
   fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'ssao_data_temporary',
+                                'resource_ssao_data_temporary',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                  'ssao_data_temporary_blurred',
+                                  'resource_ssao_data_temporary_blurred',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3134,13 +3134,13 @@ begin
  end else begin
 
   fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'ssao_data_temporary_blurred',
+                                'resource_ssao_data_temporary_blurred',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_ssao_final',
-                                  'ssao_data_final',
+                                  'resource_ssao_data_final',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -3389,13 +3389,13 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -3403,7 +3403,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceColor:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                 'forwardrendering_color',
+                                 'resource_forwardrendering_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -3411,13 +3411,13 @@ inherited Create(aFrameGraph);
                                 );
 
  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );{}
+                                    'resource_depth_data',
+                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );{}
 
 { fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'depth_data',
+                                      'resource_depth_data',
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                    TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
@@ -3427,7 +3427,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
-                                 'forwardrendering_msaa_color',
+                                 'resource_forwardrendering_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -3435,8 +3435,8 @@ inherited Create(aFrameGraph);
                                 );
 
   fResourceColor:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
-                                        'forwardrendering_color',
-                                        'forwardrendering_msaa_color',
+                                        'resource_forwardrendering_color',
+                                        'resource_forwardrendering_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -3444,18 +3444,18 @@ inherited Create(aFrameGraph);
                                        );
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
 {fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'depth_data_msaa',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );{}
+                                     'resource_msaa_depth_data',
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                  TpvVector4.InlineableCreate(IfThen(fParent.fZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );{}
 
  end;
 
@@ -4077,7 +4077,7 @@ begin
  Name:='ForwardRenderMipMapComputePass';
 
  fResourceInput:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                               'forwardrendering_color',
+                               'resource_forwardrendering_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
@@ -4441,13 +4441,13 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -4455,13 +4455,13 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
+                                     'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_color',
-                                 'orderindependenttransparency_tailblending_color',
+                                 'resource_orderindependenttransparency_tailblending_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -4471,13 +4471,13 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
-                                 'orderindependenttransparency_tailblending_msaa_color',
+                                 'resource_orderindependenttransparency_tailblending_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -4485,8 +4485,8 @@ inherited Create(aFrameGraph);
                                 );
 
   fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                        'orderindependenttransparency_tailblending_color',
-                                        'orderindependenttransparency_tailblending_msaa_color',
+                                        'resource_orderindependenttransparency_tailblending_color',
+                                        'resource_orderindependenttransparency_tailblending_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -4986,19 +4986,19 @@ begin
                                        fParent.fCountSurfaceViews);
 
  fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                'forwardrendering_color',
+                                'resource_forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
  fResourceTransparent:=AddImageInput('resourcetype_color',
-                                     'orderindependenttransparency_tailblending_color',
+                                     'resource_orderindependenttransparency_tailblending_color',
                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
  fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                  'combinedopaquetransparency_final_color',
+                                  'resource_combinedopaquetransparency_final_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -5348,13 +5348,13 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -5362,13 +5362,13 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
+                                     'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_color',
-                                 'orderindependenttransparency_tailblending_color',
+                                 'resource_orderindependenttransparency_tailblending_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -5378,13 +5378,13 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
-                                 'orderindependenttransparency_tailblending_msaa_color',
+                                 'resource_orderindependenttransparency_tailblending_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -5392,8 +5392,8 @@ inherited Create(aFrameGraph);
                                 );
 
   fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                        'orderindependenttransparency_tailblending_color',
-                                        'orderindependenttransparency_tailblending_msaa_color',
+                                        'resource_orderindependenttransparency_tailblending_color',
+                                        'resource_orderindependenttransparency_tailblending_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -5989,19 +5989,19 @@ begin
                                        fParent.fCountSurfaceViews);
 
  fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                'forwardrendering_color',
+                                'resource_forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
  fResourceTransparent:=AddImageInput('resourcetype_color',
-                                     'orderindependenttransparency_tailblending_color',
+                                     'resource_orderindependenttransparency_tailblending_color',
                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
  fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                  'combinedopaquetransparency_final_color',
+                                  'resource_combinedopaquetransparency_final_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -6299,13 +6299,13 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -6313,7 +6313,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
+                                     'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6321,7 +6321,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -6329,7 +6329,7 @@ inherited Create(aFrameGraph);
  end;
 
  fResourceMoments0:=AddImageOutput('resourcetype_mboit_data',
-                                   'momentbasedorderindependenttransparency_moments0',
+                                   'resource_momentbasedorderindependenttransparency_moments0',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -6337,7 +6337,7 @@ inherited Create(aFrameGraph);
                                   );
 
  fResourceMoments1:=AddImageOutput('resourcetype_mboit_data',
-                                   'momentbasedorderindependenttransparency_moments1',
+                                   'resource_momentbasedorderindependenttransparency_moments1',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -6809,39 +6809,39 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
 
  fResourceMoments0:=AddImageInput('resourcetype_mboit_data',
-                                   'momentbasedorderindependenttransparency_moments0',
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                  );
+                                  'resource_momentbasedorderindependenttransparency_moments0',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
 
  fResourceMoments1:=AddImageInput('resourcetype_mboit_data',
-                                   'momentbasedorderindependenttransparency_moments1',
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                  );
+                                  'resource_momentbasedorderindependenttransparency_moments1',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
+                                     'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_color',
-                                 'momentbasedorderindependenttransparency_transmittance',
+                                 'resource_momentbasedorderindependenttransparency_transmittance',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -6850,13 +6850,13 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
-                                 'momentbasedorderindependenttransparency_msaa_transmittance',
+                                 'resource_momentbasedorderindependenttransparency_msaa_transmittance',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -7364,13 +7364,13 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'forwardrendering_color',
+                                 'resource_forwardrendering_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
   fResourceTransparent:=AddImageInput('resourcetype_color',
-                                      'momentbasedorderindependenttransparency_transmittance',
+                                      'resource_momentbasedorderindependenttransparency_transmittance',
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
@@ -7378,13 +7378,13 @@ begin
  end else begin
 
   fResourceOpaque:=AddImageInput('resourcetype_msaa_color',
-                                 'forwardrendering_msaa_color',
+                                 'resource_forwardrendering_msaa_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
   fResourceTransparent:=AddImageInput('resourcetype_msaa_color',
-                                      'momentbasedorderindependenttransparency_msaa_transmittance',
+                                      'resource_momentbasedorderindependenttransparency_msaa_transmittance',
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
@@ -7392,7 +7392,7 @@ begin
  end;
 
  fResourceMoments0:=AddImageInput('resourcetype_mboit_data',
-                                  'momentbasedorderindependenttransparency_moments0',
+                                  'resource_momentbasedorderindependenttransparency_moments0',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                  );
@@ -7400,7 +7400,7 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                   'combinedopaquetransparency_final_color',
+                                   'resource_combinedopaquetransparency_final_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -7410,7 +7410,7 @@ begin
  end else begin
 
   fResourceSurface:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
-                                   'combinedopaquetransparency_final_msaa_color',
+                                   'resource_combinedopaquetransparency_final_msaa_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -7418,8 +7418,8 @@ begin
                                   );
 
   fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
-                                          'combinedopaquetransparency_final_color',
-                                          'combinedopaquetransparency_final_msaa_color',
+                                          'resource_combinedopaquetransparency_final_color',
+                                          'resource_combinedopaquetransparency_final_msaa_color',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -7682,13 +7682,13 @@ inherited Create(aFrameGraph);
                                        fParent.fCountSurfaceViews);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
-                                           'cascadedshadowmap_data_final',
+                                           'resource_cascadedshadowmap_data_final',
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
 
  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'ssao_data_final',
+                              'resource_ssao_data_final',
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                               []
                              );
@@ -7696,7 +7696,7 @@ inherited Create(aFrameGraph);
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'depth_data',
+                                     'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -7704,7 +7704,7 @@ inherited Create(aFrameGraph);
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'depth_data_msaa',
+                                     'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
@@ -7712,7 +7712,7 @@ inherited Create(aFrameGraph);
  end;
 
  fResourceAccumulation:=AddImageOutput('resourcetype_wboit_accumulation',
-                                       'weightblendedorderindependenttransparency_accumulation',
+                                       'resource_weightblendedorderindependenttransparency_accumulation',
                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -7720,7 +7720,7 @@ inherited Create(aFrameGraph);
                                       );
 
  fResourceRevealage:=AddImageOutput('resourcetype_wboit_revealage',
-                                    'weightblendedorderindependenttransparency_revealage',
+                                    'resource_weightblendedorderindependenttransparency_revealage',
                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                  TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -8198,7 +8198,7 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'forwardrendering_color',
+                                 'resource_forwardrendering_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
@@ -8206,7 +8206,7 @@ begin
  end else begin
 
   fResourceOpaque:=AddImageInput('resourcetype_msaa_color',
-                                 'forwardrendering_msaa_color',
+                                 'resource_forwardrendering_msaa_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
@@ -8214,13 +8214,13 @@ begin
  end;
 
  fResourceAccumlation:=AddImageInput('resourcetype_wboit_accumulation',
-                                   'weightblendedorderindependenttransparency_accumulation',
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                  );
+                                     'resource_weightblendedorderindependenttransparency_accumulation',
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
 
  fResourceRevealage:=AddImageInput('resourcetype_wboit_revealage',
-                                   'weightblendedorderindependenttransparency_revealage',
+                                   'resource_weightblendedorderindependenttransparency_revealage',
                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
@@ -8228,7 +8228,7 @@ begin
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceSurface:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                   'combinedopaquetransparency_final_color',
+                                   'resource_combinedopaquetransparency_final_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -8238,7 +8238,7 @@ begin
  end else begin
 
   fResourceSurface:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
-                                   'combinedopaquetransparency_final_msaa_color',
+                                   'resource_combinedopaquetransparency_final_msaa_color',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -8246,8 +8246,8 @@ begin
                                   );
 
   fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
-                                          'combinedopaquetransparency_final_color',
-                                          'combinedopaquetransparency_final_msaa_color',
+                                          'resource_combinedopaquetransparency_final_color',
+                                          'resource_combinedopaquetransparency_final_msaa_color',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -8520,20 +8520,20 @@ begin
                                   TTransparencyMode.WBOIT,
                                   TTransparencyMode.MBOIT] then begin
   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                'combinedopaquetransparency_final_color',
+                                'resource_combinedopaquetransparency_final_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end else begin
   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                'forwardrendering_color',
+                                'resource_forwardrendering_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end;
 
  fResourceSurface:=AddImageOutput('resourcetype_color_tonemapping',
-                                  'tonemapping_color',
+                                  'resource_tonemapping_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -8764,20 +8764,20 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   fResourceColor:=AddImageInput('resourcetype_color_tonemapping',
-                                'tonemapping_color',
+                                'resource_tonemapping_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []
                                );
  end else begin
   fResourceColor:=AddImageInput('resourcetype_color_tonemapping',
-                                'tonemapping_color',
+                                'resource_tonemapping_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
  end;
 
- fResourceSurface:=AddImageOutput('resourcetype_srgb_color',
-                                  'antialiasing_color',
+ fResourceSurface:=AddImageOutput('resourcetype_color_antialiasing',
+                                  'resource_antialiasing_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -9089,8 +9089,8 @@ begin
                                        1.0,
                                        fParent.fCountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_srgb_color',
-                               'antialiasing_color',
+ fResourceColor:=AddImageInput('resourcetype_color_antialiasing',
+                               'resource_antialiasing_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
@@ -9800,7 +9800,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_srgb_color',
+ fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
                                   true,
                                   VK_FORMAT_R8G8B8A8_SRGB,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
