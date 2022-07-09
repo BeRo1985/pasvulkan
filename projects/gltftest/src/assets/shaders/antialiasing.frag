@@ -10,7 +10,24 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
+vec3 convertLinearRGBToSRGB(vec3 c) {
+  return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
+}
+
+vec4 convertLinearRGBToSRGB(vec4 c) {
+  return vec4(convertLinearRGBToSRGB(c.xyz), c.w);  //
+}
+
+vec3 convertSRGBToLinearRGB(vec3 c) {
+  return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), c / vec3(12.92), lessThan(c, vec3(4.045e-2)));  //
+}
+
+vec4 convertSRGBToLinearRGB(vec4 c) {
+  return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
+}
+
 void main(){
+#if 1
   vec2 fragCoordInvScale = vec2(1.0) / vec2(textureSize(uTexture, 0).xy);
   vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
   const float FXAA_SPAN_MAX = 8.0,
@@ -36,5 +53,8 @@ void main(){
   vec4 rgbA = (1.0 / 2.0) * (textureLod(uTexture, vec3(p.xy + (dir * ((1.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw + textureLod(uTexture, vec3(p.xy + (dir * ((2.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw),
        rgbB = (rgbA * (1.0 / 2.0)) + ((1.0 / 4.0) * (textureLod(uTexture, vec3(p.xy + (dir * ((0.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw + textureLod(uTexture, vec3(p.xy + (dir * ((3.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw));
   float lumaB = dot(rgbB.xyz, luma);
-  outFragColor = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
+  outFragColor = convertSRGBToLinearRGB(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB);
+#else  
+  outFragColor = textureLod(uTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);
+#endif
 }
