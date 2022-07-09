@@ -13,8 +13,8 @@ layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 void main() {
   vec2 fragCoordInvScale = vec2(1.0) / vec2(textureSize(uTexture, 0).xy),  //
       w = fragCoordInvScale * 1.75;
-  vec4 f = vec4(0.212, 0.716, 0.072, 0.0),                             //
-      d = vec3(-1.0, 0.0, 1.0).xyzy,                                   //
+  vec4 f = vec4(0.299, 0.587, 0.114, 0.0),                                                           // vec4(0.212, 0.716, 0.072, 0.0),
+      d = vec3(-1.0, 0.0, 1.0).xyzy,                                                                 //
       t = vec4(dot(textureLod(uTexture, vec3(inTexCoord + (d.yx * w), float(gl_ViewIndex)), 0), f),  //
                dot(textureLod(uTexture, vec3(inTexCoord + (d.xy * w), float(gl_ViewIndex)), 0), f),  //
                dot(textureLod(uTexture, vec3(inTexCoord + (d.zy * w), float(gl_ViewIndex)), 0), f),  //
@@ -23,8 +23,8 @@ void main() {
   float nl = length(n);
   vec4 outColor = textureLod(uTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0);
   if (nl >= 0.0625) {
-    n *= fragCoordInvScale / nl;                                         //
-    outColor = (outColor +                                               //
+    n *= fragCoordInvScale / nl;                                                                       //
+    outColor = (outColor +                                                                             //
                 ((textureLod(uTexture, vec3(inTexCoord + (n * 0.5), float(gl_ViewIndex)), 0) * 0.9) +  //
                  (textureLod(uTexture, vec3(inTexCoord - (n * 0.5), float(gl_ViewIndex)), 0) * 0.9) +  //
                  (textureLod(uTexture, vec3(inTexCoord + n, float(gl_ViewIndex)), 0) * 0.75) +         //

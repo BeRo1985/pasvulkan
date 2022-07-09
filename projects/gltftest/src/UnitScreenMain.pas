@@ -10078,16 +10078,16 @@ begin
    end;
    TpvVulkanVendorID.Intel:begin
     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fAntialiasingMode:=TAntialiasingMode.DSAA;
-    end else begin
      fAntialiasingMode:=TAntialiasingMode.FXAA;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
     end;
    end;
    else begin
     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fAntialiasingMode:=TAntialiasingMode.None;
-    end else begin
      fAntialiasingMode:=TAntialiasingMode.DSAA;
+    end else begin
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
     end;
    end;
   end;

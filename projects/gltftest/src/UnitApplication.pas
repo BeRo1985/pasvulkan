@@ -174,6 +174,8 @@ begin
     inc(Index);
     if Parameter='none' then begin
      fAntialiasingMode:=TAntialiasingMode.None;
+    end else if Parameter='dsaa' then begin
+     fAntialiasingMode:=TAntialiasingMode.DSAA;
     end else if Parameter='fxaa' then begin
      fAntialiasingMode:=TAntialiasingMode.FXAA;
     end else if Parameter='smaa' then begin
