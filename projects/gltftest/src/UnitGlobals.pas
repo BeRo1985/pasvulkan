@@ -45,6 +45,7 @@ type TTransparencyMode=
       (
        Auto,
        None,
+       DSAA,
        FXAA,
        SMAA,
        MSAA
