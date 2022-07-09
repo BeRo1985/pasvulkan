@@ -594,6 +594,7 @@ type EpvVulkanException=class(Exception);
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fDebugMarker:TpvVulkanDeviceDebugMarker;
        fCanvasCommon:TObject;
+       fImageFormatList:boolean;
        fUseNVIDIADeviceDiagnostics:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
@@ -650,6 +651,7 @@ type EpvVulkanException=class(Exception);
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property DebugMarker:TpvVulkanDeviceDebugMarker read fDebugMarker;
        property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
+       property ImageFormatList:boolean read fImageFormatList;
        property UseNVIDIADeviceDiagnostics:boolean read fUseNVIDIADeviceDiagnostics write fUseNVIDIADeviceDiagnostics;
        property NVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV read fNVIDIADeviceDiagnosticsFlags write fNVIDIADeviceDiagnosticsFlags;
      end;
@@ -1471,7 +1473,8 @@ type EpvVulkanException=class(Exception);
                           const aSharingMode:TVkSharingMode;
                           const aQueueFamilyIndexCount:TpvUInt32;
                           const aQueueFamilyIndices:PpvUInt32;
-                          const aInitialLayout:TVkImageLayout); reintroduce; overload;
+                          const aInitialLayout:TVkImageLayout;
+                          const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aFlags:TVkImageCreateFlags;
                           const aImageType:TVkImageType;
@@ -1486,7 +1489,8 @@ type EpvVulkanException=class(Exception);
                           const aUsage:TVkImageUsageFlags;
                           const aSharingMode:TVkSharingMode;
                           const aQueueFamilyIndices:array of TpvUInt32;
-                          const aInitialLayout:TVkImageLayout); reintroduce; overload;
+                          const aInitialLayout:TVkImageLayout;
+                          const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce; overload;
        destructor Destroy; override;
        procedure SetLayout(const aAspectMask:TVkImageAspectFlags;
                            const aOldImageLayout:TVkImageLayout;
@@ -7815,6 +7819,8 @@ begin
  fComputeQueues:=nil;
  fTransferQueues:=nil;
 
+ fImageFormatList:=false;
+
  fUseNVIDIADeviceDiagnostics:=false;
 
  fNVIDIADeviceDiagnosticsFlags:=TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV) or
@@ -8521,6 +8527,9 @@ begin
   fMemoryManager.Initialize;
 
   fDebugMarker.Initialize;
+
+  fImageFormatList:=((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) or
+                    (fEnabledExtensionNames.IndexOf(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME)>=0);
 
  end;
 
@@ -12600,8 +12609,11 @@ constructor TpvVulkanImage.Create(const aDevice:TpvVulkanDevice;
                                   const aSharingMode:TVkSharingMode;
                                   const aQueueFamilyIndexCount:TpvUInt32;
                                   const aQueueFamilyIndices:PpvUInt32;
-                                  const aInitialLayout:TVkImageLayout);
+                                  const aInitialLayout:TVkImageLayout;
+                                  const aAdditionalFormat:TVkFormat);
 var ImageCreateInfo:TVkImageCreateInfo;
+    ImageFormatListCreateInfoKHR:TVkImageFormatListCreateInfoKHR;
+    Formats:array[0..1] of TVkFormat;
 begin
 
  inherited Create;
@@ -12633,6 +12645,17 @@ begin
  ImageCreateInfo.pQueueFamilyIndices:=TpvPointer(aQueueFamilyIndices);
  ImageCreateInfo.initialLayout:=aInitialLayout;
 
+ if fDevice.fImageFormatList and (aAdditionalFormat<>VK_FORMAT_UNDEFINED) then begin
+  FillChar(ImageFormatListCreateInfoKHR,SizeOf(TVkImageFormatListCreateInfoKHR),#0);
+  ImageFormatListCreateInfoKHR.sType:=VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
+  ImageFormatListCreateInfoKHR.pNext:=nil;
+  ImageCreateInfo.pNext:=@ImageFormatListCreateInfoKHR;
+  ImageFormatListCreateInfoKHR.pViewFormats:=@Formats[0];
+  ImageFormatListCreateInfoKHR.viewFormatCount:=2;
+  Formats[0]:=aFormat;
+  Formats[1]:=aAdditionalFormat;
+ end;
+
  VulkanCheckResult(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
@@ -12651,8 +12674,11 @@ constructor TpvVulkanImage.Create(const aDevice:TpvVulkanDevice;
                                   const aUsage:TVkImageUsageFlags;
                                   const aSharingMode:TVkSharingMode;
                                   const aQueueFamilyIndices:array of TpvUInt32;
-                                  const aInitialLayout:TVkImageLayout);
+                                  const aInitialLayout:TVkImageLayout;
+                                  const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED);
 var ImageCreateInfo:TVkImageCreateInfo;
+    ImageFormatListCreateInfoKHR:TVkImageFormatListCreateInfoKHR;
+    Formats:array[0..1] of TVkFormat;
 begin
 
  inherited Create;
@@ -12687,6 +12713,17 @@ begin
   ImageCreateInfo.pQueueFamilyIndices:=nil;
  end;
  ImageCreateInfo.initialLayout:=aInitialLayout;
+
+ if fDevice.fImageFormatList and (aAdditionalFormat<>VK_FORMAT_UNDEFINED) then begin
+  FillChar(ImageFormatListCreateInfoKHR,SizeOf(TVkImageFormatListCreateInfoKHR),#0);
+  ImageFormatListCreateInfoKHR.sType:=VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
+  ImageFormatListCreateInfoKHR.pNext:=nil;
+  ImageCreateInfo.pNext:=@ImageFormatListCreateInfoKHR;
+  ImageFormatListCreateInfoKHR.pViewFormats:=@Formats[0];
+  ImageFormatListCreateInfoKHR.viewFormatCount:=2;
+  Formats[0]:=aFormat;
+  Formats[1]:=aAdditionalFormat;
+ end;
 
  VulkanCheckResult(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
@@ -19122,7 +19159,8 @@ begin
                                VK_SHARING_MODE_EXCLUSIVE,
                                0,
                                nil,
-                               VK_IMAGE_LAYOUT_UNDEFINED
+                               VK_IMAGE_LAYOUT_UNDEFINED,
+                               SRGBFormat
                               );
 
  MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fImage.fImageHandle,
