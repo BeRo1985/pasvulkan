@@ -136,7 +136,8 @@ compileshaderarguments=(
   
   '-V tonemapping.frag -o tonemapping_frag.spv'
   
-  '-V antialiasing.frag -o antialiasing_frag.spv'
+  '-V antialiasing_fxaa.frag -o antialiasing_fxaa_frag.spv'
+  '-V antialiasing_none.frag -o antialiasing_none_frag.spv'
   
   '-V blit.frag -o blit_frag.spv'
   

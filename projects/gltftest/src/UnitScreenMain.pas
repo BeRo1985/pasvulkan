@@ -8829,9 +8829,9 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/antialiasing_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/antialiasing_fxaa_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/blit_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/antialiasing_none_frag.spv');
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
