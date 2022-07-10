@@ -143,8 +143,9 @@ compileshaderarguments=(
   '-V antialiasing_smaa_blend.vert -o antialiasing_smaa_blend_vert.spv'
   '-V antialiasing_smaa_blend.frag -o antialiasing_smaa_blend_frag.spv'
   
-  '-V antialiasing_smaa_color_edges.vert -o antialiasing_smaa_color_edges_vert.spv'
-  '-V antialiasing_smaa_color_edges.frag -o antialiasing_smaa_color_edges_frag.spv'
+  '-V antialiasing_smaa_edges.vert -o antialiasing_smaa_edges_vert.spv'
+  '-V antialiasing_smaa_edges.frag -o antialiasing_smaa_edges_color_frag.spv'
+  '-V antialiasing_smaa_edges.frag -DLUMA -o antialiasing_smaa_edges_luma_frag.spv'
   
   '-V antialiasing_smaa_weights.vert -o antialiasing_smaa_weights_vert.spv'
   '-V antialiasing_smaa_weights.frag -o antialiasing_smaa_weights_frag.spv'
