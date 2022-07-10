@@ -8,7 +8,7 @@
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec4 inOffset;
 
-layout(location = 0) out vec4 outFragOutput;
+layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uColorTexture;
 layout(set = 0, binding = 1) uniform sampler2DArray uBlendTexture;
@@ -30,17 +30,17 @@ void SMAAMovc(bvec4 cond, inout vec4 variable, vec4 value) {
 }
 
 void main() {
-  vec4 color;
+  vec4 outColor;
 
   // Fetch the blending weights for current pixel:
   vec4 a;
-  a.x = textureLod(uBlendTexture, vec3(inOffset.xy, float(gl_ViewIndex)), 0).a;   // Right
-  a.y = textureLod(uBlendTexture, vec3(inOffset.zw, float(gl_ViewIndex)), 0).g;   // Top
+  a.x = textureLod(uBlendTexture, vec3(inOffset.xy, float(gl_ViewIndex)), 0).w;   // Right
+  a.y = textureLod(uBlendTexture, vec3(inOffset.zw, float(gl_ViewIndex)), 0).y;   // Top
   a.wz = textureLod(uBlendTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0).xz;  // Bottom / Left
 
   // Is there any blending weight with a value greater than 0.0?
   if (dot(a, vec4(1.0, 1.0, 1.0, 1.0)) <= 1e-5) {
-    color = textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0);  // LinearSampler
+    outColor = textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0);  // LinearSampler
   } else {
     bool h = max(a.x, a.z) > max(a.y, a.w);  // max(horizontal) > max(vertical)
 
@@ -49,15 +49,15 @@ void main() {
     vec2 blendingWeight = a.yw;
     SMAAMovc(bvec4(h, h, h, h), blendingOffset, vec4(a.x, 0.0, a.z, 0.0));
     SMAAMovc(bvec2(h, h), blendingWeight, a.xz);
-    blendingWeight /= dot(blendingWeight, vec2(1.0, 1.0));
+    blendingWeight /= dot(blendingWeight, vec2(1.0));
 
     // Calculate the texture coordinates:
     vec4 blendingCoord = fma(blendingOffset, vec4(SMAA_RT_METRICS.xy, -SMAA_RT_METRICS.xy), inTexCoord.xyxy);
 
     // We exploit bilinear filtering to mix current pixel with the chosen
     // neighbor:
-    color = blendingWeight.x * textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0);   // LinearSampler
-    color += blendingWeight.y * textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0);  // LinearSampler
+    outColor = (blendingWeight.x * textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0)) +  // LinearSampler
+               (blendingWeight.y * textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0));   // LinearSampler
   }
-  outFragOutput = color;
+  outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
 }
