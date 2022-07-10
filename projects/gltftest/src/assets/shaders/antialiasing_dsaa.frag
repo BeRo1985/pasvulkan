@@ -13,7 +13,7 @@ layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 void main() {
   vec2 fragCoordInvScale = vec2(1.0) / vec2(textureSize(uTexture, 0).xy),  //
       w = fragCoordInvScale * 1.75;
-  vec4 f = vec4(0.299, 0.587, 0.114, 0.0),                                                           // vec4(0.212, 0.716, 0.072, 0.0),
+  vec4 f = vec4(0.299, 0.587, 0.114, 0.0),                                                           // vec4(0.2126, 0.7152, 0.0722, 0.0),
       d = vec3(-1.0, 0.0, 1.0).xyzy,                                                                 //
       t = vec4(dot(textureLod(uTexture, vec3(inTexCoord + (d.yx * w), float(gl_ViewIndex)), 0), f),  //
                dot(textureLod(uTexture, vec3(inTexCoord + (d.xy * w), float(gl_ViewIndex)), 0), f),  //

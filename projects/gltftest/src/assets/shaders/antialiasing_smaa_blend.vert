@@ -18,5 +18,5 @@ void main() {
   ivec2 uv = ivec2(ivec2(int(gl_VertexIndex)) << ivec2(0, 1)) & ivec2(2);
   outTexCoord = vec2(uv);
   gl_Position = vec4(vec2(ivec2((uv << ivec2(1)) - ivec2(1))), 0.0, 1.0);
-  outOffset = fma(SMAA_RT_METRICS.xyxy, vec4(1.0, 0.0, 0.0,  1.0), outTexCoord.xyxy);
+  outOffset = fma(SMAA_RT_METRICS.xyxy, vec4(1.0, 0.0, 0.0, 1.0), outTexCoord.xyxy);
 }

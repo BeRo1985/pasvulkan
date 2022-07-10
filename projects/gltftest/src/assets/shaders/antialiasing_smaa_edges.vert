@@ -23,6 +23,6 @@ void main() {
   outTexCoord = vec2(uv);
   gl_Position = vec4(vec2(ivec2((uv << ivec2(1)) - ivec2(1))), 0.0, 1.0);
   outOffset0 = fma(SMAA_RT_METRICS.xyxy, vec4(-1.0, 0.0, 0.0, -1.0), outTexCoord.xyxy);
-  outOffset1 = fma(SMAA_RT_METRICS.xyxy, vec4( 1.0, 0.0, 0.0,  1.0), outTexCoord.xyxy);
+  outOffset1 = fma(SMAA_RT_METRICS.xyxy, vec4( 1.0, 0.0, 0.0, 1.0), outTexCoord.xyxy);
   outOffset2 = fma(SMAA_RT_METRICS.xyxy, vec4(-2.0, 0.0, 0.0, -2.0), outTexCoord.xyxy);
 }
