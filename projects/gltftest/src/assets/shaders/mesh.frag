@@ -26,7 +26,7 @@
     #extension GL_ARB_fragment_shader_interlock : enable
     #define beginInvocationInterlock beginInvocationInterlockARB
     #define endInvocationInterlock endInvocationInterlockARB
-    layout(early_fragment_tests, post_depth_coverage, pixel_interlock_unordered) in;
+    layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
   #else
     #if defined(ALPHATEST)
       layout(post_depth_coverage) in;
