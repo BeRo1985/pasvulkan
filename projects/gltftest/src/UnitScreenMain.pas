@@ -11173,7 +11173,7 @@ begin
     if pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
      if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
         (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-        (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
+        pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock then begin
       fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
      end else begin
       fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
@@ -11189,7 +11189,7 @@ begin
    TpvVulkanVendorID.Intel:begin
     if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
        (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-       (pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderSampleInterlock or pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock) then begin
+       pvApplication.VulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock then begin
      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
     end else begin
      if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
