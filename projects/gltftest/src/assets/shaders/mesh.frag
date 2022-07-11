@@ -23,28 +23,10 @@
 #if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
   #ifdef INTERLOCK
-    #ifdef NVIDIA
-      #extension GL_NV_fragment_shader_interlock : enable
-      #define beginInvocationInterlock beginInvocationInterlockNV
-      #define endInvocationInterlock endInvocationInterlockNV
-    #else
-      #extension GL_ARB_fragment_shader_interlock : enable
-      #define beginInvocationInterlock beginInvocationInterlockARB
-      #define endInvocationInterlock endInvocationInterlockARB
-    #endif
-    #if defined(MSAA)
-      #if defined(ALPHATEST)
-        layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
-      #else
-        layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
-      #endif
-    #else
-      #if defined(ALPHATEST)
-        layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
-      #else
-        layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
-      #endif
-    #endif
+    #extension GL_ARB_fragment_shader_interlock : enable
+    #define beginInvocationInterlock beginInvocationInterlockARB
+    #define endInvocationInterlock endInvocationInterlockARB
+    layout(early_fragment_tests, post_depth_coverage, pixel_interlock_unordered) in;
   #else
     #if defined(ALPHATEST)
       layout(post_depth_coverage) in;
@@ -1511,18 +1493,13 @@ void main() {
 
 #elif defined(LOCKOIT)
 
-#ifdef INTERLOCK
-  beginInvocationInterlock();
-#endif
-
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
-/*#ifdef MSAA 
-  uint oitStoreMask = uint(gl_SampleMaskIn[0]);
-#else
-  const uint oitStoreMask = 1u;
-#endif*/
+
+#ifdef INTERLOCK
+  beginInvocationInterlock();
+#endif
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
   // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
@@ -1553,12 +1530,12 @@ void main() {
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
 #ifdef SPINLOCK
-    bool oitDone = gl_HelperInvocation || (oitStoreMask == 0);
+    bool oitDone = /*gl_HelperInvocation ||*/ (oitStoreMask == 0);
     while(!oitDone){
       uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
       if(oitOld == 0u){
 #endif
-        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).r;
+        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).x;
         imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
         if(oitAuxCounter < oitCountLayers){
           imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
@@ -1614,10 +1591,10 @@ void main() {
 
   outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 
-#endif
+#elif defined(BLEND)
 
-#ifdef BLEND 
   outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
+
 #endif
 
 #ifdef VELOCITY
