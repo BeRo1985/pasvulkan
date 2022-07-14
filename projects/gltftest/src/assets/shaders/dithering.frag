@@ -42,7 +42,7 @@ vec4 whiteNoise(ivec4 p){
   v.x += v.y; v.w ^= v.x; v.w = (v.w << 8u) | (v.w >> 24u);
   v.z += v.w; v.y ^= v.z; v.y = (v.y << 7u) | (v.y >> 25u); 
     
-  return vec4(intBitsToFloat(ivec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
+  return vec4(uintBitsToFloat(uvec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
    
 }      
    
@@ -65,12 +65,12 @@ void main() {
 #if 1
   outFragColor = subpassLoad(uSubpassInput) + vec4((pseudoBlueNoise(ivec4(gl_FragCoord.xy, pushConstants.frameCounter, 0)).xyz - vec3(0.5)) * (0.375 / 255.0), 0.0);
 #elif 0
-  uvec3 x = uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameCounter));
+  uvec3 v = uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameCounter));
   const uint k = 1103515245u;
-  x = ((x >> 8u) ^ x.yzx) * k;
-  x = ((x >> 8u) ^ x.yzx) * k;
-  x = ((x >> 8u) ^ x.yzx) * k;
-  outFragColor = subpassLoad(uSubpassInput) + vec4(((vec3(x) * (1.0 / float(0xffffffffu))) - vec3(0.5)) * (0.375 / 255.0), 0.0);
+  v = ((v >> 8u) ^ v.yzx) * k;
+  v = ((v >> 8u) ^ v.yzx) * k;
+  v = ((v >> 8u) ^ v.yzx) * k;
+  outFragColor = subpassLoad(uSubpassInput) + vec4(((vec3(uintBitsToFloat(uvec3(uvec3(((v >> 9u) & uvec3(0x007fffffu)) | uvec3(0x3f800000u))))) - vec3(1.0)) - vec3(0.5)) * (0.375 / 255.0), 0.0);
 #else
   outFragColor = subpassLoad(uSubpassInput) + vec4(vec3(((fract((vec3(dot(vec2(171.0, 231.0), vec2(gl_FragCoord.xy) + vec2(ivec2(int(pushConstants.frameCounter & 0xff)))))) / vec3(103.0, 71.0, 97.0)) - vec3(0.5)) / vec3(255.0)) * 0.375), 0.0);
 #endif
