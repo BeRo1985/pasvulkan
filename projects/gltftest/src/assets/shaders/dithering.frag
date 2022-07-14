@@ -62,9 +62,9 @@ vec4 pseudoBlueNoise(ivec4 p) {
 }
 
 void main() {
-#if 0
+#if 1
   outFragColor = subpassLoad(uSubpassInput) + vec4((pseudoBlueNoise(ivec4(gl_FragCoord.xy, pushConstants.frameCounter, 0)).xyz - vec3(0.5)) * (0.375 / 255.0), 0.0);
-#elif 1
+#elif 0
   uvec3 x = uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameCounter));
   const uint k = 1103515245u;
   x = ((x >> 8u) ^ x.yzx) * k;
