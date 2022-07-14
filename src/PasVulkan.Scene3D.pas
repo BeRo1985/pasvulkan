@@ -206,7 +206,7 @@ type EpvScene3D=class(Exception);
                TexCoord1:TpvVector2;                 // + 8 = 48 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 56 (must be at least half-float for HDR)
                ModelScale:TpvHalfFloatVector3;       // + 6 = 62 (half-float)
-               Reserved:TpvUInt16;                   // + 2 = 62
+               Reserved:TpvUInt16;                   // + 2 = 64
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
