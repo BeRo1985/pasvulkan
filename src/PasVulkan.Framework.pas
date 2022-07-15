@@ -19180,43 +19180,6 @@ begin
                                                                        RequiresDedicatedAllocation,
                                                                        PrefersDedicatedAllocation);
 
-{if SRGBFormat<>VK_FORMAT_UNDEFINED then begin
-  fSRGBImage:=TpvVulkanImage.Create(fDevice,
-                                    ImageCreateFlags,
-                                    ImageType,
-                                    SRGBFormat,
-                                    Max(1,fWidth),
-                                    Max(1,fHeight),
-                                    Max(1,fDepth),
-                                    Max(1,fCountStorageLevels),
-                                    Max(1,fTotalCountArrayLayers),
-                                    fSampleCount,
-                                    VK_IMAGE_TILING_OPTIMAL,
-                                    Usage,
-                                    VK_SHARING_MODE_EXCLUSIVE,
-                                    0,
-                                    nil,
-                                    VK_IMAGE_LAYOUT_UNDEFINED
-                                   );
-  SRGBMemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fSRGBImage.fImageHandle,
-                                                                            SRGBRequiresDedicatedAllocation,
-                                                                            SRGBPrefersDedicatedAllocation);
-
-  if (MemoryRequirements.alignment<>SRGBMemoryRequirements.alignment) or
-     (MemoryRequirements.memoryTypeBits<>SRGBMemoryRequirements.memoryTypeBits) or
-     (MemoryRequirements.size<>SRGBMemoryRequirements.size) then begin
-   raise EpvVulkanMemoryAllocationException.Create('Memory requirement differs for additional SRGB texture image');
-  end;
-
-  RequiresDedicatedAllocation:=RequiresDedicatedAllocation or SRGBRequiresDedicatedAllocation;
-  PrefersDedicatedAllocation:=PrefersDedicatedAllocation or SRGBPrefersDedicatedAllocation;
-
- end else begin
-
-  fSRGBImage:=nil;
-
- end;}
-
  MemoryBlockFlags:=[];
 
  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
