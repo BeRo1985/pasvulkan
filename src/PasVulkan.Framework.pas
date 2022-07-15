@@ -84,15 +84,17 @@ uses {$if defined(Windows)}
      PasVulkan.Image.PNG,
      PasVulkan.Image.TGA;
 
-var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
+var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 bytes memory chunk size as alignment
 
-    VulkanSmallMaximumHeapSize:TVkDeviceSize=TVkDeviceSize(1) shl 31; // 2048 MB small maximum heap size as threshold
+    VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
+
+    VulkanSmallMaximumHeapSize:TVkDeviceSize=TVkDeviceSize(1) shl 30; // 1024 MB small maximum heap size as threshold
 
     VulkanDefaultAndroidHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB memory chunk size at heaps on Android-devices
 
     VulkanDefaultSmallHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at small-sized heaps
 
-    VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 27; // 128 MB memory chunk size at large-sized heaps
+    VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 28; // 256 MB memory chunk size at large-sized heaps
 
 const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
@@ -963,6 +965,7 @@ type EpvVulkanException=class(Exception);
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDedicatedAllocationSupport:TDedicatedAllocationSupport;
        fLazilyAllocationSupport:boolean;
+       fCountAllocations:TpvSizeInt;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
@@ -9111,10 +9114,14 @@ begin
       end;
 {$else}
       if CurrentSize<=VulkanSmallMaximumHeapSize then begin
-       if aSize<VulkanDefaultSmallHeapChunkSize then begin
-        CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
+       if CurrentSize>=VulkanDefaultSmallHeapChunkSize then begin
+        CurrentWantedChunkSize:=MinUInt64(MaxUInt64(VulkanDeviceSizeAlignUp(CurrentSize shr 3,VulkanDefaultHeapAlignChunkSize),aSize),CurrentSize);
        end else begin
-        CurrentWantedChunkSize:=aSize;
+        if aSize<VulkanDefaultSmallHeapChunkSize then begin
+         CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
+        end else begin
+         CurrentWantedChunkSize:=aSize;
+        end;
        end;
       end else begin
        if aSize<VulkanDefaultLargeHeapChunkSize then begin
@@ -9209,6 +9216,7 @@ begin
     end;
     else begin
      VulkanCheckResult(ResultCode);
+     inc(fMemoryManager.fCountAllocations);
      break;
     end;
    end;
@@ -9297,6 +9305,7 @@ begin
    fMemory:=nil;
   end;
   fMemoryManager.fDevice.Commands.FreeMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMemoryManager.fDevice.fAllocationCallbacks);
+  dec(fMemoryManager.fCountAllocations);
  end;
 
  fOffsetRedBlackTree.Free;
@@ -10267,6 +10276,8 @@ begin
 
  fLazilyAllocationSupport:=false;
 
+ fCountAllocations:=0;
+
 end;
 
 destructor TpvVulkanDeviceMemoryManager.Destroy;
@@ -10471,7 +10482,9 @@ begin
  end;
 
  if assigned(aMemoryDedicatedAllocationDataHandle) and
-    (TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) and
+    ((TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) or
+     ((aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1)) and
+      (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2)))) and
     (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
     (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
                                TpvVulkanDeviceMemoryAllocationType.ImageLinear,
