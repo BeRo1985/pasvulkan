@@ -6178,22 +6178,55 @@ begin
 end;
 
 procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var MemoryBarrier:TVkMemoryBarrier;
+var BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    0,
+                                                    0,
+                                                    fParent.fLockOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,fParent.fCountSurfaceViews);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                      0,
+                                                      0,
+                                                      fParent.fLockOrderIndependentTransparencyAuxImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                      ImageSubresourceRange);
+
+ if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                       TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                       0,
+                                                       0,
+                                                       fParent.fLockOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                       ImageSubresourceRange);
+  CountImageMemoryBarriers:=2;
+ end else begin
+  CountImageMemoryBarriers:=1;
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   1,
-                                   @MemoryBarrier,
                                    0,
                                    nil,
-                                   0,
-                                   nil);
+                                   1,
+                                   @BufferMemoryBarrier,
+                                   CountImageMemoryBarriers,
+                                   @ImageMemoryBarriers[0]);
 
 end;
 
