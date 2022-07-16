@@ -19209,13 +19209,6 @@ begin
                                                          fMemoryBlock.fMemoryChunk.fMemoryHandle,
                                                          fMemoryBlock.fOffset));
 
-(*if assigned(fSRGBImage) then begin
-{ VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
-                                                          fSRGBImage.fImageHandle,
-                                                          fMemoryBlock.fMemoryChunk.fMemoryHandle,
-                                                          fMemoryBlock.fOffset));}
- end;*)
-
  Upload(aGraphicsQueue,
         aGraphicsCommandBuffer,
         aGraphicsFence,
