@@ -5456,8 +5456,10 @@ end;
 
 procedure TScreenMain.TLockOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var ClearValue:TVkClearColorValue;
-    ClearRanges:TVkImageSubresourceRange;
-    MemoryBarrier:TVkMemoryBarrier;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -5466,39 +5468,62 @@ begin
  ClearValue.uint32[2]:=0;
  ClearValue.uint32[3]:=0;
 
-//FillChar(ClearRanges,SizeOf(TVkImageSubresourceRange),#0);
- ClearRanges.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
- ClearRanges.baseArrayLayer:=0;
- ClearRanges.baseMipLevel:=0;
- ClearRanges.layerCount:=fParent.fCountSurfaceViews;
- ClearRanges.levelCount:=1;
+ ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,fParent.fCountSurfaceViews);
 
  aCommandBuffer.CmdClearColorImage(fParent.fLockOrderIndependentTransparencyAuxImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
                                    @ClearValue,
                                    1,
-                                   @ClearRanges);
+                                   @ImageSubresourceRange);
 
  if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
   aCommandBuffer.CmdClearColorImage(fParent.fLockOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
                                     VK_IMAGE_LAYOUT_GENERAL,
                                     @ClearValue,
                                     1,
-                                    @ClearRanges);
+                                    @ImageSubresourceRange);
  end;
 
- MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    0,
+                                                    0,
+                                                    fParent.fLockOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                      0,
+                                                      0,
+                                                      fParent.fLockOrderIndependentTransparencyAuxImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                      ImageSubresourceRange);
+
+ if fParent.fTransparencyMode=TTransparencyMode.SPINLOCKOIT then begin
+  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                       TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                       0,
+                                                       0,
+                                                       fParent.fLockOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                       ImageSubresourceRange);
+  CountImageMemoryBarriers:=2;
+ end else begin
+  CountImageMemoryBarriers:=1;
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   1,
-                                   @MemoryBarrier,
                                    0,
                                    nil,
-                                   0,
-                                   nil);
+                                   1,
+                                   @BufferMemoryBarrier,
+                                   CountImageMemoryBarriers,
+                                   @ImageMemoryBarriers[0]);
 
 end;
 
