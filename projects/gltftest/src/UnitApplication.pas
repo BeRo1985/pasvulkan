@@ -297,7 +297,7 @@ begin
   DesiredCountSwapChainImages:=2;
   PresentMode:=TpvApplicationPresentMode.Mailbox;
  end else begin
-  PresentMode:=TpvApplicationPresentMode.VSync;
+  PresentMode:=TpvApplicationPresentMode.FIFORelaxed;
  end;
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
  VulkanAPIVersion:=0;//VK_API_VERSION_1_0;

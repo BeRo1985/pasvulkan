@@ -11167,16 +11167,16 @@ begin
   case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
    TpvVulkanVendorID.AMD:begin
     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fAntialiasingMode:=TAntialiasingMode.SMAA;
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
     end else begin
-     fAntialiasingMode:=TAntialiasingMode.MSAA;
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
     if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fAntialiasingMode:=TAntialiasingMode.SMAA;
+     fAntialiasingMode:=TAntialiasingMode.FXAA;
     end else begin
-     fAntialiasingMode:=TAntialiasingMode.MSAA;
+     fAntialiasingMode:=TAntialiasingMode.SMAA;
     end;
    end;
    TpvVulkanVendorID.Intel:begin
