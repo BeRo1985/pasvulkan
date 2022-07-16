@@ -545,6 +545,20 @@ type { TScreenMain }
                procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
              end;
+             { TLockOrderIndependentTransparencyBarrierCustomPass }
+             TLockOrderIndependentTransparencyBarrierCustomPass=class(TpvFrameGraph.TCustomPass)
+              private
+               fParent:TScreenMain;
+              public
+               constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain); reintroduce;
+               destructor Destroy; override;
+               procedure Show; override;
+               procedure Hide; override;
+               procedure AfterCreateSwapChain; override;
+               procedure BeforeDestroySwapChain; override;
+               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+             end;
              { TLockOrderIndependentTransparencyResolveRenderPass }
              TLockOrderIndependentTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
                private
@@ -1060,6 +1074,7 @@ type { TScreenMain }
        fDirectTransparencyResolveRenderPass:TDirectTransparencyResolveRenderPass;
        fLockOrderIndependentTransparencyClearCustomPass:TLockOrderIndependentTransparencyClearCustomPass;
        fLockOrderIndependentTransparencyRenderPass:TLockOrderIndependentTransparencyRenderPass;
+       fLockOrderIndependentTransparencyBarrierCustomPass:TLockOrderIndependentTransparencyBarrierCustomPass;
        fLockOrderIndependentTransparencyResolveRenderPass:TLockOrderIndependentTransparencyResolveRenderPass;
        fWeightBlendedOrderIndependentTransparencyRenderPass:TWeightBlendedOrderIndependentTransparencyRenderPass;
        fWeightBlendedOrderIndependentTransparencyResolveRenderPass:TWeightBlendedOrderIndependentTransparencyResolveRenderPass;
@@ -6120,6 +6135,65 @@ begin
                         [TpvScene3D.TMaterial.TAlphaMode.Blend]);
 
  end;
+
+end;
+
+{ TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass }
+
+constructor TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TScreenMain);
+begin
+ inherited Create(aFrameGraph);
+ fParent:=aParent;
+ Name:='LockOrderIndependentTransparencyBarrierCustomPass';
+end;
+
+destructor TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Show;
+begin
+ inherited Show;
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Hide;
+begin
+ inherited Hide;
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.AfterCreateSwapChain;
+begin
+ inherited AfterCreateSwapChain;
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.BeforeDestroySwapChain;
+begin
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+end;
+
+procedure TScreenMain.TLockOrderIndependentTransparencyBarrierCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var MemoryBarrier:TVkMemoryBarrier;
+begin
+ inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ MemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                   1,
+                                   @MemoryBarrier,
+                                   0,
+                                   nil,
+                                   0,
+                                   nil);
 
 end;
 
@@ -11549,7 +11623,11 @@ begin
    fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fDepthMipMapComputePass);
    fLockOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
 
+   fLockOrderIndependentTransparencyBarrierCustomPass:=TLockOrderIndependentTransparencyBarrierCustomPass.Create(fFrameGraph,self);
+   fLockOrderIndependentTransparencyBarrierCustomPass.AddExplicitPassDependency(fLockOrderIndependentTransparencyRenderPass);
+
    fLockOrderIndependentTransparencyResolveRenderPass:=TLockOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+   fLockOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fLockOrderIndependentTransparencyBarrierCustomPass);
 
   end;
 
