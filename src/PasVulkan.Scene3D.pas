@@ -869,7 +869,7 @@ type EpvScene3D=class(Exception);
                             Target:TTarget;
                             TargetPointer:TpvUTF8String;
                             TargetIndex:TpvSizeInt;
-                            TargetTexture:TpvSizeInt;
+                            TargetSubIndex:TpvSizeInt;
                             Interpolation:TInterpolation;
                             InputTimeArray:TpvDoubleDynamicArray;
                             OutputScalarArray:TpvFloatDynamicArray;
@@ -884,6 +884,7 @@ type EpvScene3D=class(Exception);
                            public
                             Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget;
                             TargetIndex:TpvSizeInt;
+                            TargetSubIndex:TpvSizeInt;
                           end;
                           PDefaultChannel=^TDefaultChannel;
                           TDefaultChannels=array of TDefaultChannel;
@@ -3799,6 +3800,8 @@ begin
 
   DestinationAnimationChannel^.TargetIndex:=-1;
 
+  DestinationAnimationChannel^.TargetSubIndex:=-1;
+
   if SourceAnimationChannel.Target.Path='translation' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Translation;
    DestinationAnimationChannel^.TargetIndex:=SourceAnimationChannel.Target.Node;
@@ -6103,7 +6106,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
       for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
        Channel:=@Animation.fChannels[ChannelIndex];
        if Channel^.TargetIndex>=0 then begin
-        CompactCode:=(TpvUInt64(TpvUInt64(Channel^.TargetIndex) and TpvUInt64($ffffffff)) shl 32) or (TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffffffff));
+        CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
+                     (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
+                     (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
         TargetIndex:=TargetHashMap[CompactCode];
         if TargetIndex<0 then begin
          TargetHashMap[CompactCode]:=TargetArrayList.Add(CompactCode);
@@ -6124,7 +6129,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
        for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
         Channel:=@Animation.fChannels[ChannelIndex];
         if Channel^.TargetIndex>=0 then begin
-         CompactCode:=(TpvUInt64(TpvUInt64(Channel^.TargetIndex) and TpvUInt64($ffffffff)) shl 32) or (TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffffffff));
+         CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
+                      (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
+                      (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
          TargetIndex:=TargetHashMap[CompactCode];
          if (TargetIndex>=0) and (TargetIndex<TargetArrayList.Count) then begin
           TargetUsedBitmap[TargetIndex shr 5]:=TargetUsedBitmap[TargetIndex shr 5] or (TpvUInt32(1) shl (TargetIndex and 31));
@@ -6145,8 +6152,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
           DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
           inc(CountDefaultChannels);
           CompactCode:=TargetArrayList[TargetIndex];
-          DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 32)));
-          DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(CompactCode) and TpvUInt64($ffffffff)));
+          DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 48)));
+          DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 16) and TpvUInt64($ffffffff)))-1;
+          DefaultChannel^.TargetSubIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 0) and TpvUInt64($ffff)))-1;
          end;
         end;
        end;
