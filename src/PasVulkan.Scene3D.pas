@@ -812,11 +812,11 @@ type EpvScene3D=class(Exception);
                                    Scale,
                                    Weights,
                                    Pointer_,
-                                   PointerMeshWeights,
                                    PointerNodeRotation,
                                    PointerNodeScale,
                                    PointerNodeTranslation,
                                    PointerNodeWeights,
+                                   PointerMeshWeights,
                                    PointerCameraOrthographicXMag,
                                    PointerCameraOrthographicYMag,
                                    PointerCameraOrthographicZFar,
@@ -975,12 +975,14 @@ type EpvScene3D=class(Exception);
                           end;
                           PPrimitive=^TPrimitive;
                           TPrimitives=array of TPrimitive;
+                          TReferencedByNodes=TpvDynamicArray<TPasGLTFSizeInt>;
                     private
                      fIndex:TpvSizeInt;
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvFloatDynamicArray;
                      fNodeMeshInstances:TpvSizeInt;
+                     fReferencedByNodes:TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
@@ -4061,6 +4063,7 @@ begin
  fIndex:=aIndex;
  fPrimitives:=nil;
  fNodeMeshInstances:=0;
+ fReferencedByNodes.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.Destroy;
@@ -4082,6 +4085,7 @@ begin
   end;
  end;
  fPrimitives:=nil;
+ fReferencedByNodes.Finalize;
  inherited Destroy;
 end;
 
@@ -4107,6 +4111,8 @@ begin
 
  result:=fNodeMeshInstances;
  inc(fNodeMeshInstances);
+
+ fReferencedByNodes.Add(aNodeIndex);
 
  if result=0 then begin
 
@@ -6957,6 +6963,8 @@ var CullFace,Blend:TPasGLTFInt32;
      InputTimeArrayIndex,
      WeightIndex,
      CountWeights,
+     ReferenceNodeIndex,
+     NodeIndex,
      ElementIndex,
      l,r,m:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
@@ -6973,6 +6981,7 @@ var CullFace,Blend:TPasGLTFInt32;
      Vector4s:array[0..1] of PpvVector4;
      TimeIndices:array[0..1] of TpvSizeInt;
      NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+     Mesh:TpvScene3D.TGroup.TMesh;
  begin
 
   Animation:=fGroup.fAnimations[aAnimationIndex];
@@ -7218,6 +7227,96 @@ var CullFace,Blend:TPasGLTFInt32;
          else begin
          end;
         end;
+       end;
+
+      end;
+
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMeshWeights:begin
+
+       if (AnimationChannel^.TargetIndex>=0) and (AnimationChannel^.TargetIndex<fGroup.fMeshes.Count) then begin
+
+        Mesh:=fGroup.fMeshes[AnimationChannel^.TargetIndex];
+
+        for ReferenceNodeIndex:=0 to Mesh.fReferencedByNodes.Count-1 do begin
+
+         NodeIndex:=Mesh.fReferencedByNodes.Items[ReferenceNodeIndex];
+
+         if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+
+          Node:=@fNodes[NodeIndex];
+
+          NodeOverwrite:=nil;
+
+          if aFactor>=-0.5 then begin
+           InstanceAnimationChannel:=nil;
+           for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+            if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
+               (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+             InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+             break;
+            end;
+           end;
+           if assigned(InstanceAnimationChannel) then begin
+            if assigned(Node) then begin
+             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+            end else begin
+             NodeOverwrite:=nil;
+            end;
+           end else if assigned(Node) and
+                       (Node.CountOverwrites<length(Node.Overwrites)) and
+                       (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+            InstanceChannelIndex:=CountInstanceChannels;
+            inc(CountInstanceChannels);
+            InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+            InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
+            InstanceAnimationChannel.fNode:=Node;
+            InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+            inc(Node.CountOverwrites);
+            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+            NodeOverwrite^.Flags:=[];
+            NodeOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            NodeOverwrite:=nil;
+           end;
+          end;
+
+          if assigned(NodeOverwrite) then begin
+
+           CountWeights:=length(Node^.WorkWeights);
+           Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
+           case AnimationChannel^.Interpolation of
+            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+             for WeightIndex:=0 to CountWeights-1 do begin
+              NodeOverwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
+                                                   (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
+             end;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+             for WeightIndex:=0 to CountWeights-1 do begin
+              NodeOverwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
+             end;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+             SqrFactor:=sqr(Factor);
+             CubeFactor:=SqrFactor*Factor;
+             for WeightIndex:=0 to CountWeights-1 do begin
+              NodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
+                                                    (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
+                                                    (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
+                                                    ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
+             end;
+            end;
+            else begin
+             Assert(false);
+            end;
+           end;
+
+          end;
+
+         end;
+
+        end;
+
        end;
 
       end;
