@@ -650,6 +650,36 @@ type EpvScene3D=class(Exception);
               procedure FillShaderData;
             end;
             TMaterials=TpvObjectGenericList<TMaterial>;
+            TCameraData=record
+             public
+              type TType=
+                    (
+                     None=0,
+                     Orthographic=1,
+                     Perspective=2
+                    );
+                   TOrthographic=record
+                    XMag:TpvFloat;
+                    YMag:TpvFloat;
+                    ZNear:TpvFloat;
+                    ZFar:TpvFloat;
+                   end;
+                   TPerspective=record
+                    AspectRatio:TpvFloat;
+                    YFoV:TpvFloat;
+                    ZNear:TpvFloat;
+                    ZFar:TpvFloat;
+                   end;
+             public
+              case Type_:TCameraData.TType of
+               TCameraData.TType.Orthographic:(
+                Orthographic:TOrthographic;
+               );
+               TCameraData.TType.Perspective:(
+                Perspective:TPerspective;
+               );
+            end;
+            PCameraData=^TCameraData;
             TLightData=record
              public
               type TType=
@@ -920,34 +950,15 @@ type EpvScene3D=class(Exception);
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    TCamera=class(TGroupObject)
-                    public
-                     type TType=
-                           (
-                            None=0,
-                            Orthographic=1,
-                            Perspective=2
-                           );
-                          TOrthographic=record
-                           XMag:TpvFloat;
-                           YMag:TpvFloat;
-                           ZNear:TpvFloat;
-                           ZFar:TpvFloat;
-                          end;
-                          TPerspective=record
-                           AspectRatio:TpvFloat;
-                           YFoV:TpvFloat;
-                           ZNear:TpvFloat;
-                           ZFar:TpvFloat;
-                          end;
                     private
                      fIndex:TpvSizeInt;
-                     fType:TType;
-                     fOrthographic:TOrthographic;
-                     fPerspective:TPerspective;
+                     fCameraData:TpvScene3D.TCameraData;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
+                    public
+                     property CameraData:TpvScene3D.TCameraData read fCameraData write fCameraData;
                     published
                      property Index:TpvSizeInt read fIndex;
                    end;
@@ -4266,21 +4277,21 @@ begin
 
  case aSourceCamera.Type_ of
   TPasGLTF.TCamera.TType.None:begin
-   fType:=TType.None;
+   fCameraData.Type_:=TpvScene3D.TCameraData.TType.None;
   end;
   TPasGLTF.TCamera.TType.Orthographic:begin
-   fType:=TType.Orthographic;
-   fOrthographic.XMag:=aSourceCamera.Orthographic.XMag;
-   fOrthographic.YMag:=aSourceCamera.Orthographic.YMag;
-   fOrthographic.ZNear:=aSourceCamera.Orthographic.ZNear;
-   fOrthographic.ZFar:=aSourceCamera.Orthographic.ZFar;
+   fCameraData.Type_:=TpvScene3D.TCameraData.TType.Orthographic;
+   fCameraData.Orthographic.XMag:=aSourceCamera.Orthographic.XMag;
+   fCameraData.Orthographic.YMag:=aSourceCamera.Orthographic.YMag;
+   fCameraData.Orthographic.ZNear:=aSourceCamera.Orthographic.ZNear;
+   fCameraData.Orthographic.ZFar:=aSourceCamera.Orthographic.ZFar;
   end;
   TPasGLTF.TCamera.TType.Perspective:begin
-   fType:=TType.Perspective;
-   fPerspective.AspectRatio:=aSourceCamera.Perspective.AspectRatio;
-   fPerspective.YFoV:=aSourceCamera.Perspective.YFoV;
-   fPerspective.ZNear:=aSourceCamera.Perspective.ZNear;
-   fPerspective.ZFar:=aSourceCamera.Perspective.ZFar;
+   fCameraData.Type_:=TpvScene3D.TCameraData.TType.Perspective;
+   fCameraData.Perspective.AspectRatio:=aSourceCamera.Perspective.AspectRatio;
+   fCameraData.Perspective.YFoV:=aSourceCamera.Perspective.YFoV;
+   fCameraData.Perspective.ZNear:=aSourceCamera.Perspective.ZNear;
+   fCameraData.Perspective.ZFar:=aSourceCamera.Perspective.ZFar;
   end;
   else begin
    Assert(false);
