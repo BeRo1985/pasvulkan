@@ -155,6 +155,18 @@ type EpvScene3D=class(Exception);
             end;
             PView=^TView;
             TViews=TpvDynamicArray<TView>;
+            TScalarSum=record
+             x,FactorSum:Double;
+            end;
+            TVector2Sum=record
+             x,y,FactorSum:Double;
+            end;
+            TVector3Sum=record
+             x,y,z,FactorSum:Double;
+            end;
+            TVector4Sum=record
+             x,y,z,w,FactorSum:Double;
+            end;
        const MaxViews=65536 div SizeOf(TView);
        type TID=TpvUInt32;
             TIDManager=class(TpvGenericIDManager<TID>);
@@ -669,6 +681,7 @@ type EpvScene3D=class(Exception);
               property Visible:boolean read fVisible write fVisible;
               property Always:boolean read fAlways write fAlways;
             end;
+            PLightData=^TLightData;
             TLightItem=packed record
              // uvec4 MetaData; begin
               Type_:TpvUInt32;
@@ -709,6 +722,8 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fVisible:boolean;
               fData:TpvScene3D.TLightData;
+              fWorkData:TpvScene3D.TLightData;
+              fInstanceLight:pointer;
               fShadowMapIndex:TpvInt32;
               fPosition:TpvVector3;
               fDirection:TpvVector3;
@@ -719,6 +734,7 @@ type EpvScene3D=class(Exception);
               fScissorRect:TpvFloatClipRect;
               fAABBTreeProxy:TpvSizeInt;
               fLightItemIndex:TpvSizeInt;
+              procedure ApplyOverwrites(const aInstanceLight:pointer);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -726,6 +742,7 @@ type EpvScene3D=class(Exception);
               procedure Update;
              public
               property Data:TpvScene3D.TLightData read fData write fData;
+              property WorkData:TpvScene3D.TLightData read fWorkData write fWorkData;
               property Type_:TpvScene3D.TLightData.TType read fData.fType_ write fData.fType_;
               property Intensity:TpvFloat read fData.fIntensity write fData.fIntensity;
               property Range:TpvFloat read fData.fRange write fData.fRange;
@@ -3536,6 +3553,7 @@ begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
  fAABBTreeProxy:=-1;
+ fInstanceLight:=nil;
 end;
 
 destructor TpvScene3D.TLight.Destroy;
@@ -3560,6 +3578,146 @@ begin
  fData:=aFrom;
 end;
 
+procedure TpvScene3D.TLight.ApplyOverwrites(const aInstanceLight:pointer);
+var InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+    Index:TpvSizeInt;
+    Factor:TpvDouble;
+    Overwrite:TpvScene3D.TGroup.TInstance.TLight.POverwrite;
+    Update:boolean;
+    ColorSum:TpvScene3D.TVector3Sum;
+    IntensitySum:TpvScene3D.TScalarSum;
+    RangeSum:TpvScene3D.TScalarSum;
+    SpotInnerConeAngleSum:TpvScene3D.TScalarSum;
+    SpotOuterConeAngleSum:TpvScene3D.TScalarSum;
+begin
+ Update:=(fInstanceLight<>aInstanceLight) or assigned(fInstanceLight);
+ if fInstanceLight<>aInstanceLight then begin
+  fInstanceLight:=aInstanceLight;
+ end;
+ if assigned(fInstanceLight) then begin
+  InstanceLight:=fInstanceLight;
+  if InstanceLight.fCountOverwrites>0 then begin
+   ColorSum.x:=0;
+   ColorSum.y:=0;
+   ColorSum.z:=0;
+   ColorSum.FactorSum:=0;
+   IntensitySum.x:=0;
+   IntensitySum.FactorSum:=0;
+   RangeSum.x:=0;
+   RangeSum.FactorSum:=0;
+   SpotInnerConeAngleSum.x:=0;
+   SpotInnerConeAngleSum.FactorSum:=0;
+   SpotOuterConeAngleSum.x:=0;
+   SpotOuterConeAngleSum.FactorSum:=0;
+   for Index:=0 to InstanceLight.fCountOverwrites-1 do begin
+    Overwrite:=@InstanceLight.fOverwrites[Index];
+    Factor:=Overwrite.Factor;
+    if not IsZero(Factor) then begin
+     if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
+      ColorSum.x:=ColorSum.x+(fData.Color.x*Factor);
+      ColorSum.y:=ColorSum.y+(fData.Color.y*Factor);
+      ColorSum.z:=ColorSum.z+(fData.Color.z*Factor);
+      ColorSum.FactorSum:=ColorSum.FactorSum+Factor;
+      IntensitySum.x:=IntensitySum.x+(fData.fIntensity*Factor);
+      IntensitySum.FactorSum:=IntensitySum.FactorSum+Factor;
+      RangeSum.x:=RangeSum.x+(fData.fRange*Factor);
+      RangeSum.FactorSum:=RangeSum.FactorSum+Factor;
+      SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(fData.fInnerConeAngle*Factor);
+      SpotInnerConeAngleSum.FactorSum:=SpotInnerConeAngleSum.FactorSum+Factor;
+      SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(fData.fOuterConeAngle*Factor);
+      SpotOuterConeAngleSum.FactorSum:=SpotOuterConeAngleSum.FactorSum+Factor;
+     end else begin
+      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Color in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultColor in Overwrite^.Flags then begin
+        ColorSum.x:=ColorSum.x+(fData.Color.x*Factor);
+        ColorSum.y:=ColorSum.y+(fData.Color.y*Factor);
+        ColorSum.z:=ColorSum.z+(fData.Color.z*Factor);
+       end else begin
+        ColorSum.x:=ColorSum.x+(Overwrite^.Color.x*Factor);
+        ColorSum.y:=ColorSum.y+(Overwrite^.Color.y*Factor);
+        ColorSum.z:=ColorSum.z+(Overwrite^.Color.z*Factor);
+       end;
+       ColorSum.FactorSum:=ColorSum.FactorSum+Factor;
+      end;
+      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Intensity in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultIntensity in Overwrite^.Flags then begin
+        IntensitySum.x:=IntensitySum.x+(fData.Intensity*Factor);
+       end else begin
+        IntensitySum.x:=IntensitySum.x+(Overwrite^.Intensity*Factor);
+       end;
+       IntensitySum.FactorSum:=IntensitySum.FactorSum+Factor;
+      end;
+      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Range in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultRange in Overwrite^.Flags then begin
+        RangeSum.x:=RangeSum.x+(fData.Range*Factor);
+       end else begin
+        RangeSum.x:=RangeSum.x+(Overwrite^.Range*Factor);
+       end;
+       RangeSum.FactorSum:=RangeSum.FactorSum+Factor;
+      end;
+      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotInnerConeAngle in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotInnerConeAngle in Overwrite^.Flags then begin
+        SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(fData.InnerConeAngle*Factor);
+       end else begin
+        SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(Overwrite^.SpotInnerConeAngle*Factor);
+       end;
+       SpotInnerConeAngleSum.FactorSum:=SpotInnerConeAngleSum.FactorSum+Factor;
+      end;
+      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotOuterConeAngle in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotOuterConeAngle in Overwrite^.Flags then begin
+        SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(fData.OuterConeAngle*Factor);
+       end else begin
+        SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(Overwrite^.SpotOuterConeAngle*Factor);
+       end;
+       SpotOuterConeAngleSum.FactorSum:=SpotOuterConeAngleSum.FactorSum+Factor;
+      end;
+     end;
+    end;
+   end;
+   if ColorSum.FactorSum>0.0 then begin
+    Factor:=1.0/ColorSum.FactorSum;
+    fWorkData.Color[0]:=ColorSum.x*Factor;
+    fWorkData.Color[1]:=ColorSum.y*Factor;
+    fWorkData.Color[2]:=ColorSum.z*Factor;
+   end else begin
+    fWorkData.Color:=fData.Color;
+   end;
+   if IntensitySum.FactorSum>0.0 then begin
+    fWorkData.Intensity:=IntensitySum.x/IntensitySum.FactorSum;
+   end else begin
+    fWorkData.Intensity:=fData.Intensity;
+   end;
+   if RangeSum.FactorSum>0.0 then begin
+    fWorkData.Range:=RangeSum.x/RangeSum.FactorSum;
+   end else begin
+    fWorkData.Range:=fData.Range;
+   end;
+   if SpotInnerConeAngleSum.FactorSum>0.0 then begin
+    fWorkData.InnerConeAngle:=SpotInnerConeAngleSum.x/SpotInnerConeAngleSum.FactorSum;
+   end else begin
+    fWorkData.InnerConeAngle:=fData.InnerConeAngle;
+   end;
+   if SpotOuterConeAngleSum.FactorSum>0.0 then begin
+    fWorkData.OuterConeAngle:=SpotOuterConeAngleSum.x/SpotOuterConeAngleSum.FactorSum;
+   end else begin
+    fWorkData.OuterConeAngle:=fData.OuterConeAngle;
+   end;
+  end else begin
+   fWorkData.Color:=fData.Color;
+   fWorkData.Intensity:=fData.Intensity;
+   fWorkData.Range:=fData.Range;
+   fWorkData.InnerConeAngle:=fData.InnerConeAngle;
+   fWorkData.OuterConeAngle:=fData.OuterConeAngle;
+  end;
+ end else if Update then begin
+  fWorkData.Color:=fData.Color;
+  fWorkData.Intensity:=fData.Intensity;
+  fWorkData.Range:=fData.Range;
+  fWorkData.InnerConeAngle:=fData.InnerConeAngle;
+  fWorkData.OuterConeAngle:=fData.OuterConeAngle;
+ end;
+end;
+
 procedure TpvScene3D.TLight.Update;
 const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
       LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
@@ -3572,22 +3730,28 @@ var Position,Direction:TpvVector3;
     OBB:TpvOBB;
     AABB:TpvAABB;
     Radius,Luminance,OppositeLength:TpvScalar;
+    Data:TpvScene3D.PLightData;
 begin
- if fData.fVisible then begin
+ if assigned(fInstanceLight) then begin
+  Data:=@fWorkData;
+ end else begin
+  Data:=@fData;
+ end;
+ if Data^.fVisible then begin
   Position:=(fMatrix*TpvVector3.Origin).xyz;
   Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
   fPosition:=Position;
   fDirection:=Direction;
-  case fData.Type_ of
+  case Data^.Type_ of
    TpvScene3D.TLightData.TType.Point,
    TpvScene3D.TLightData.TType.Spot:begin
-    if fData.fRange>1e-7 then begin
+    if Data^.fRange>1e-7 then begin
      // float distanceByRange = currentDistance / light.positionRange.w;
      // lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0) / (currentDistance * currentDistance);
-     Radius:=fData.fRange;
+     Radius:=Data^.fRange;
     end else begin
      // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-     Luminance:=fData.Color.Dot(LinearRGBLuminance);
+     Luminance:=Data^.Color.Dot(LinearRGBLuminance);
      if Luminance>1e-7 then begin
       Radius:=Threshold/Luminance;
       if Radius>1e-7 then begin
@@ -3604,7 +3768,7 @@ begin
     Radius:=Infinity;
    end;
   end;
-  case fData.Type_ of
+  case Data^.Type_ of
    TpvScene3D.TLightData.TType.Directional,
    TpvScene3D.TLightData.TType.PrimaryDirectional:begin
     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
@@ -3615,7 +3779,7 @@ begin
     AABB.Max:=Position+TpvVector3.InlineableCreate(Radius,Radius,Radius);
    end;
    TpvScene3D.TLightData.TType.Spot:begin
-    OppositeLength:=Tan(fData.fOuterConeAngle{*0.5})*Radius;
+    OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
     OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5);
     OBB.Extents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
     OBB.Matrix:=fMatrix.ToMatrix3x3;
@@ -7060,16 +7224,27 @@ var CullFace,Blend:TPasGLTFInt32;
  end;
  procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
  var Index:TPasGLTFSizeInt;
+     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-     Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+     LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.POverwrite;
+     NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
  begin
   if aFactor>=-0.5 then begin
+   for Index:=0 to fLights.Count-1 do begin
+    InstanceLight:=fLights[Index];
+    if InstanceLight.fCountOverwrites<length(InstanceLight.fOverwrites) then begin
+     LightOverwrite:=@InstanceLight.fOverwrites[InstanceLight.fCountOverwrites];
+     LightOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Defaults];
+     LightOverwrite^.Factor:=Max(aFactor,0.0);
+     inc(InstanceLight.fCountOverwrites);
+    end;
+   end;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Index];
     if InstanceNode^.CountOverwrites<length(InstanceNode^.Overwrites) then begin
-     Overwrite:=@InstanceNode^.Overwrites[InstanceNode^.CountOverwrites];
-     Overwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults];
-     Overwrite^.Factor:=Max(aFactor,0.0);
+     NodeOverwrite:=@InstanceNode^.Overwrites[InstanceNode^.CountOverwrites];
+     NodeOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults];
+     NodeOverwrite^.Factor:=Max(aFactor,0.0);
      inc(InstanceNode^.CountOverwrites);
     end;
    end;
@@ -7745,12 +7920,6 @@ var CullFace,Blend:TPasGLTFInt32;
 
  end;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
- type TVector3Sum=record
-       x,y,z,FactorSum:Double;
-      end;
-      TVector4Sum=record
-       x,y,z,w,FactorSum:Double;
-      end;
  var Index,OtherIndex,RotationCounter:TpvSizeInt;
      Matrix:TpvMatrix4x4;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -7764,6 +7933,7 @@ var CullFace,Blend:TPasGLTFInt32;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
      FirstWeights,SkinUsed,Dirty:boolean;
      Light:TpvScene3D.TLight;
+     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
   procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble);
   begin
    if not IsZero(aFactor) then begin
@@ -7956,17 +8126,28 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
   Dirty:=Dirty or (assigned(Node.fSkin) or (length(Node.fWeights)>0));
   if assigned(Node.fLight) then begin
+   if (Node.fLight.fIndex>=0) and (Node.fLight.fIndex<fLights.Count) then begin
+    InstanceLight:=fLights[Node.fLight.fIndex];
+    if InstanceLight.fCountOverwrites=0 then begin
+     InstanceLight:=nil;
+    end;
+   end else begin
+    InstanceLight:=nil;
+   end;
    if assigned(InstanceNode^.Light) then begin
     Light:=InstanceNode^.Light;
-    if Light.fMatrix<>Matrix then begin
+    if ((Light.fMatrix<>Matrix) or (Light.fInstanceLight<>InstanceLight)) or assigned(InstanceLight) then begin
      Light.fMatrix:=Matrix;
+     Light.ApplyOverwrites(InstanceLight);
      Light.Update;
     end;
    end else begin
     Light:=TpvScene3D.TLight.Create(fSceneInstance);
     try
      Light.fData:=Node.fLight.fData;
+     Light.fWorkData:=Node.fLight.fData;
      Light.fMatrix:=Matrix;
+     Light.ApplyOverwrites(InstanceLight);
      Light.Update;
     finally
      InstanceNode^.Light:=Light;
