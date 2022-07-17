@@ -1119,12 +1119,13 @@ type EpvScene3D=class(Exception);
                                    type TType=
                                          (
                                           None,
-                                          Node
+                                          Node,
+                                          Light
                                          );
                                   private
                                    fType:TType;
-                                   fNode:Pointer;
-                                   fNodeOverwrite:TpvSizeInt;
+                                   fTarget:Pointer;
+                                   fOverwrite:TpvSizeInt;
                                  end;
                                  TChannels=TpvObjectGenericList<TChannel>;
                            private
@@ -1198,6 +1199,45 @@ type EpvScene3D=class(Exception);
                           TOnNodeMatrix=procedure(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4) of object;
                           TNodeMatrices=array of TpvMatrix4x4;
                           TMorphTargetVertexWeights=array of TpvFloat;
+                          TLight=class
+                           public
+                            type TOverwriteFlag=
+                                         (
+                                          Defaults,
+                                          DefaultColor,
+                                          DefaultIntensity,
+                                          DefaultRange,
+                                          DefaultSpotInnerConeAngle,
+                                          DefaultSpotOuterConeAngle,
+                                          Color,
+                                          Intensity,
+                                          Range,
+                                          SpotInnerConeAngle,
+                                          SpotOuterConeAngle
+                                         );
+                                        TOverwriteFlags=set of TOverwriteFlag;
+                                        TOverwrite=record
+                                         public
+                                          Flags:TOverwriteFlags;
+                                          Factor:TpvFloat;
+                                          Color:TpvVector3;
+                                          Intensity:TpvFloat;
+                                          Range:TpvFloat;
+                                          SpotInnerConeAngle:TpvFloat;
+                                          SpotOuterConeAngle:TpvFloat;
+                                        end;
+                                        POverwrite=^TOverwrite;
+                                        TOverwrites=array of TOverwrite;
+                           private
+                            fInstance:TInstance;
+                            fLight:TpvScene3D.TGroup.TLight;
+                            fOverwrites:TOverwrites;
+                            fCountOverwrites:TpvSizeInt;
+                           public
+                            constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aLight:TpvScene3D.TGroup.TLight);
+                            destructor Destroy; override;
+                          end;
+                          TLights=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TLight>;
                           { TVulkanData }
                           TVulkanData=class
                            private
@@ -1225,6 +1265,7 @@ type EpvScene3D=class(Exception);
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
+                     fLights:TpvScene3D.TGroup.TInstance.TLights;
                      fLightNodes:TNodeIndices;
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
@@ -3934,7 +3975,8 @@ begin
     TAnimation.TChannel.TTarget.Scale,
     TAnimation.TChannel.TTarget.PointerNodeTranslation,
     TAnimation.TChannel.TTarget.PointerNodeScale,
-    TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
+    TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
+    TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
      OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
      try
       SetLength(DestinationAnimationChannel^.OutputVector3Array,length(OutputVector3Array));
@@ -3976,7 +4018,11 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
     TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
     TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
-    TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
+    TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
+    TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
+    TAnimation.TChannel.TTarget.PointerPunctualLightRange,
+    TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
+    TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
      OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
      try
       SetLength(DestinationAnimationChannel^.OutputScalarArray,length(OutputScalarArray));
@@ -6527,6 +6573,23 @@ begin
  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
 end;
 
+{ TpvScene3D.TGroup.TInstance.TLight }
+
+constructor TpvScene3D.TGroup.TInstance.TLight.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aLight:TpvScene3D.TGroup.TLight);
+begin
+ inherited Create;
+ fInstance:=aInstance;
+ fLight:=aLight;
+ fOverwrites:=nil;
+ fCountOverwrites:=0;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TLight.Destroy;
+begin
+ fOverwrites:=nil;
+ inherited Destroy;
+end;
+
 { TpvScene3D.TGroup.TInstance.TVulkanData }
 
 constructor TpvScene3D.TGroup.TInstance.TVulkanData.Create(const aInstance:TGroup.TInstance);
@@ -6628,6 +6691,7 @@ var Index,OtherIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
     Animation:TpvScene3D.TGroup.TAnimation;
+    Light:TpvScene3D.TGroup.TInstance.TLight;
 begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
@@ -6646,6 +6710,18 @@ begin
  fAnimations:=nil;
  SetLength(fNodes,fGroup.fNodes.Count);
  SetLength(fSkins,fGroup.fSkins.Count);
+ begin
+  fLights:=TpvScene3D.TGroup.TInstance.TLights.Create;
+  fLights.OwnsObjects:=true;
+  for Index:=0 to fGroup.fLights.Count-1 do begin
+   Light:=TpvScene3D.TGroup.TInstance.TLight.Create(self,fGroup.fLights[Index]);
+   try
+    SetLength(Light.fOverwrites,fGroup.fAnimations.Count+1);
+   finally
+    fLights.Add(Light);
+   end;
+  end;
+ end;
 {SetLength(fLightNodes,fGroup.fLights.Count);
  SetLength(fLightShadowMapMatrices,fParent.fLights.Count);
  SetLength(fLightShadowMapZFarValues,fParent.fLights.Count);
@@ -6703,6 +6779,7 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+ FreeAndNil(fLights);
  for Index:=0 to length(fNodes)-1 do begin
   if assigned(fNodes[Index].Light) then begin
    FreeAndNil(fNodes[Index].Light);
@@ -6948,6 +7025,15 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var CullFace,Blend:TPasGLTFInt32;
+ procedure ResetLights;
+ var Index:TPasGLTFSizeInt;
+     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+ begin
+  for Index:=0 to fLights.Count-1 do begin
+   InstanceLight:=fLights[Index];
+   InstanceLight.fCountOverwrites:=0;
+  end;
+ end;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -7155,12 +7241,15 @@ var CullFace,Blend:TPasGLTFInt32;
      InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
      //Node:TpvScene3D.TGroup.TNode;
      Node:TpvScene3D.TGroup.TInstance.PNode;
-     Time,Factor,Scalar,Value,KeyDelta,v0,v1,a,b:TpvDouble;
+     Time,Factor,Value,KeyDelta,v0,v1,a,b:TpvDouble;
+     Scalar:TpvFloat;
      Vector3:TpvVector3;
      Vector4:TpvVector4;
      TimeIndices:array[0..1] of TpvSizeInt;
      NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
      Mesh:TpvScene3D.TGroup.TMesh;
+     Light:TpvScene3D.TGroup.TInstance.TLight;
+     LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.POverwrite;
  begin
 
   Animation:=fGroup.fAnimations[aAnimationIndex];
@@ -7175,8 +7264,8 @@ var CullFace,Blend:TPasGLTFInt32;
   for InstanceChannelIndex:=0 to CountInstanceChannels-1 do begin
    InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
    InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.None;
-   InstanceAnimationChannel.fNode:=nil;
-   InstanceAnimationChannel.fNodeOverwrite:=-1;
+   InstanceAnimationChannel.fTarget:=nil;
+   InstanceAnimationChannel.fOverwrite:=-1;
   end;
 
   CountInstanceChannels:=0;
@@ -7263,17 +7352,18 @@ var CullFace,Blend:TPasGLTFInt32;
        NodeOverwrite:=nil;
 
        if aFactor>=-0.5 then begin
+
         InstanceAnimationChannel:=nil;
         for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
          if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
           InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
           break;
          end;
         end;
         if assigned(InstanceAnimationChannel) then begin
          if assigned(Node) then begin
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
           NodeOverwrite:=nil;
          end;
@@ -7284,59 +7374,60 @@ var CullFace,Blend:TPasGLTFInt32;
          inc(CountInstanceChannels);
          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-         InstanceAnimationChannel.fNode:=Node;
-         InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+         InstanceAnimationChannel.fTarget:=Node;
+         InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
          inc(Node.CountOverwrites);
-         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
          NodeOverwrite^.Flags:=[];
          NodeOverwrite^.Factor:=Max(aFactor,0.0);
         end else begin
          NodeOverwrite:=nil;
         end;
-       end;
 
-       if assigned(NodeOverwrite) then begin
-        case AnimationChannel^.Target of
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
-          ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-          case AnimationChannel^.Target of
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
-            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
-            NodeOverwrite^.Translation:=Vector3;
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
-            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
-            NodeOverwrite^.Scale:=Vector3;
-           end;
-           else begin
-           end;
-          end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
-          ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,true);
-          case AnimationChannel^.Target of
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
-            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
-            NodeOverwrite^.Rotation.Vector:=Vector4;
-           end;
-           else begin
+        if assigned(NodeOverwrite) then begin
+         case AnimationChannel^.Target of
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+           ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           case AnimationChannel^.Target of
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
+             Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
+             NodeOverwrite^.Translation:=Vector3;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+             Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
+             NodeOverwrite^.Scale:=Vector3;
+            end;
+            else begin
+            end;
            end;
           end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-          ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-         end;
-         else begin
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+           ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,true);
+           case AnimationChannel^.Target of
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+             Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
+             NodeOverwrite^.Rotation.Vector:=Vector4;
+            end;
+            else begin
+            end;
+           end;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+           ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+          end;
+          else begin
+          end;
          end;
         end;
+
        end;
 
       end;
@@ -7358,17 +7449,18 @@ var CullFace,Blend:TPasGLTFInt32;
           NodeOverwrite:=nil;
 
           if aFactor>=-0.5 then begin
+
            InstanceAnimationChannel:=nil;
            for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
             if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-               (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+               (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
              InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
              break;
             end;
            end;
            if assigned(InstanceAnimationChannel) then begin
             if assigned(Node) then begin
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
             end else begin
              NodeOverwrite:=nil;
             end;
@@ -7379,23 +7471,102 @@ var CullFace,Blend:TPasGLTFInt32;
             inc(CountInstanceChannels);
             InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
             InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-            InstanceAnimationChannel.fNode:=Node;
-            InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+            InstanceAnimationChannel.fTarget:=Node;
+            InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
             inc(Node.CountOverwrites);
-            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
             NodeOverwrite^.Flags:=[];
             NodeOverwrite^.Factor:=Max(aFactor,0.0);
            end else begin
             NodeOverwrite:=nil;
            end;
-          end;
 
-          if assigned(NodeOverwrite) then begin
-           ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           if assigned(NodeOverwrite) then begin
+            ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           end;
+
           end;
 
          end;
 
+        end;
+
+       end;
+
+      end;
+
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+
+       Light:=fLights[AnimationChannel^.TargetIndex];
+
+       LightOverwrite:=nil;
+
+       if aFactor>=-0.5 then begin
+        InstanceAnimationChannel:=nil;
+        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light) and
+            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Light) then begin
+          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+          break;
+         end;
+        end;
+        if assigned(InstanceAnimationChannel) then begin
+         if assigned(Light) then begin
+          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+         end else begin
+          LightOverwrite:=nil;
+         end;
+        end else if assigned(Light) and
+                    (Light.fCountOverwrites<length(Light.fOverwrites)) and
+                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+         InstanceChannelIndex:=CountInstanceChannels;
+         inc(CountInstanceChannels);
+         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
+         InstanceAnimationChannel.fTarget:=Light;
+         InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
+         inc(Light.fCountOverwrites);
+         LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+         LightOverwrite^.Flags:=[];
+         LightOverwrite^.Factor:=Max(aFactor,0.0);
+        end else begin
+         LightOverwrite:=nil;
+        end;
+
+        if assigned(LightOverwrite) then begin
+         case AnimationChannel^.Target of
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
+           ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Color);
+           LightOverwrite^.Color:=Vector3;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
+           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Intensity);
+           LightOverwrite^.Intensity:=Scalar;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
+           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Range);
+           LightOverwrite^.Range:=Scalar;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
+           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotInnerConeAngle);
+           LightOverwrite^.SpotInnerConeAngle:=Scalar;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotOuterConeAngle);
+           LightOverwrite^.SpotOuterConeAngle:=Scalar;
+          end;
+          else begin
+          end;
+         end;
         end;
 
        end;
@@ -7414,9 +7585,13 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
 
   if InstanceAnimation.Complete then begin
+
    for ChannelIndex:=0 to length(Animation.fDefaultChannels)-1 do begin
+
     AnimationDefaultChannel:=@Animation.fDefaultChannels[ChannelIndex];
+
     case AnimationDefaultChannel^.Target of
+
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
@@ -7431,23 +7606,23 @@ var CullFace,Blend:TPasGLTFInt32;
        InstanceAnimationChannel:=nil;
        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-           (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
          break;
         end;
        end;
        if assigned(InstanceAnimationChannel) then begin
-        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
        end else if (Node.CountOverwrites<length(Node.Overwrites)) and
                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
         InstanceChannelIndex:=CountInstanceChannels;
         inc(CountInstanceChannels);
         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-        InstanceAnimationChannel.fNode:=Node;
-        InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+        InstanceAnimationChannel.fTarget:=Node;
+        InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
         inc(Node.CountOverwrites);
-        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
         NodeOverwrite^.Flags:=[];
         NodeOverwrite^.Factor:=Max(aFactor,0.0);
        end;
@@ -7479,10 +7654,81 @@ var CullFace,Blend:TPasGLTFInt32;
        end;
       end;
      end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+      Light:=fLights[AnimationChannel^.TargetIndex];
+      LightOverwrite:=nil;
+      if aFactor>=-0.5 then begin
+       InstanceAnimationChannel:=nil;
+       for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+        if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light) and
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Light) then begin
+         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+         break;
+        end;
+       end;
+       if assigned(InstanceAnimationChannel) then begin
+        if assigned(Light) then begin
+         LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+        end else begin
+         LightOverwrite:=nil;
+        end;
+       end else if assigned(Light) and
+                   (Light.fCountOverwrites<length(Light.fOverwrites)) and
+                   (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+        InstanceChannelIndex:=CountInstanceChannels;
+        inc(CountInstanceChannels);
+        InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+        InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
+        InstanceAnimationChannel.fTarget:=Light;
+        InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
+        inc(Light.fCountOverwrites);
+        LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+        LightOverwrite^.Flags:=[];
+        LightOverwrite^.Factor:=Max(aFactor,0.0);
+       end else begin
+        LightOverwrite:=nil;
+       end;
+       if assigned(LightOverwrite) then begin
+        case AnimationDefaultChannel^.Target of
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
+          LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultColor,
+                                                        TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Color];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
+          LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultIntensity,
+                                                        TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Intensity];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
+          LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultRange,
+                                                        TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Range];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
+          LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotInnerConeAngle,
+                                                        TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotInnerConeAngle];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+          LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotOuterConeAngle,
+                                                        TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotOuterConeAngle];
+         end;
+         else begin
+         end;
+        end;
+       end;
+      end;
+     end;
+
      else begin
      end;
+
     end;
+
    end;
+
   end;
 
  end;
@@ -7786,6 +8032,8 @@ begin
    for Index:=0 to length(fLightNodes)-1 do begin
     fLightNodes[Index]:=-1;
    end;
+
+   ResetLights;
 
    for Index:=0 to Scene.Nodes.Count-1 do begin
     ResetNode(Scene.Nodes[Index].Index);
