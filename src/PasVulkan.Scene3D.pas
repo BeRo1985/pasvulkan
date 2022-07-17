@@ -876,6 +876,7 @@ type EpvScene3D=class(Exception);
                             Interpolation:TInterpolation;
                             InputTimeArray:TpvDoubleDynamicArray;
                             OutputScalarArray:TpvFloatDynamicArray;
+                            OutputVector2Array:TpvVector2Array;
                             OutputVector3Array:TpvVector3Array;
                             OutputVector4Array:TpvVector4Array;
                             Last:TPasGLTFSizeInt;
@@ -3736,6 +3737,7 @@ var Index,ChannelIndex,ValueIndex,StringPosition,StartStringPosition:TPasGLTFSiz
     SourceAnimationChannel:TPasGLTF.TAnimation.TChannel;
     SourceAnimationSampler:TPasGLTF.TAnimation.TSampler;
     DestinationAnimationChannel:TAnimation.PChannel;
+    OutputVector2Array:TPasGLTF.TVector2DynamicArray;
     OutputVector3Array:TPasGLTF.TVector3DynamicArray;
     OutputVector4Array:TPasGLTF.TVector4DynamicArray;
     OutputScalarArray:TPasGLTFFloatDynamicArray;
@@ -6957,12 +6959,172 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
  end;
  procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
+  procedure ProcessScalar(out aScalar:TpvFloat;
+                          const aAnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+                          const aTimeIndex0:TpvSizeInt;
+                          const aTimeIndex1:TpvSizeInt;
+                          const aKeyDelta:TpvDouble;
+                          const aFactor:TpvDouble);
+  var SqrFactor,CubeFactor:TpvDouble;
+  begin
+   case aAnimationChannel^.Interpolation of
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+     aScalar:=(aAnimationChannel^.OutputScalarArray[aTimeIndex0]*(1.0-aFactor))+
+              (aAnimationChannel^.OutputScalarArray[aTimeIndex1]*aFactor);
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+     aScalar:=aAnimationChannel^.OutputScalarArray[aTimeIndex0];
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+     SqrFactor:=sqr(aFactor);
+     CubeFactor:=SqrFactor*aFactor;
+     aScalar:=(((aAnimationChannel^.OutputScalarArray[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+               (aAnimationChannel^.OutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                (aAnimationChannel^.OutputScalarArray[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                 (aAnimationChannel^.OutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
+  procedure ProcessVector2(out aVector2:TpvVector2;
+                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+                           const aTimeIndex0:TpvSizeInt;
+                           const aTimeIndex1:TpvSizeInt;
+                           const aKeyDelta:TpvDouble;
+                           const aFactor:TpvDouble);
+  var SqrFactor,CubeFactor:TpvDouble;
+  begin
+   case aAnimationChannel^.Interpolation of
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+     aVector2:=(aAnimationChannel^.OutputVector2Array[aTimeIndex0]*(1.0-aFactor))+
+               (aAnimationChannel^.OutputVector2Array[aTimeIndex1]*aFactor);
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+     aVector2:=aAnimationChannel^.OutputVector2Array[aTimeIndex0];
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+     SqrFactor:=sqr(aFactor);
+     CubeFactor:=SqrFactor*aFactor;
+     aVector2:=(((aAnimationChannel^.OutputVector2Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                (aAnimationChannel^.OutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                 (aAnimationChannel^.OutputVector2Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                  (aAnimationChannel^.OutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
+  procedure ProcessVector3(out aVector3:TpvVector3;
+                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+                           const aTimeIndex0:TpvSizeInt;
+                           const aTimeIndex1:TpvSizeInt;
+                           const aKeyDelta:TpvDouble;
+                           const aFactor:TpvDouble);
+  var SqrFactor,CubeFactor:TpvDouble;
+  begin
+   case aAnimationChannel^.Interpolation of
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+     aVector3:=(aAnimationChannel^.OutputVector3Array[aTimeIndex0]*(1.0-aFactor))+
+               (aAnimationChannel^.OutputVector3Array[aTimeIndex1]*aFactor);
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+     aVector3:=aAnimationChannel^.OutputVector3Array[aTimeIndex0];
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+     SqrFactor:=sqr(aFactor);
+     CubeFactor:=SqrFactor*aFactor;
+     aVector3:=(((aAnimationChannel^.OutputVector3Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                (aAnimationChannel^.OutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                 (aAnimationChannel^.OutputVector3Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                  (aAnimationChannel^.OutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
+  procedure ProcessVector4(out aVector4:TpvVector4;
+                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+                           const aTimeIndex0:TpvSizeInt;
+                           const aTimeIndex1:TpvSizeInt;
+                           const aKeyDelta:TpvDouble;
+                           const aFactor:TpvDouble;
+                           const aRotation:boolean);
+  var SqrFactor,CubeFactor:TpvDouble;
+  begin
+   case aAnimationChannel^.Interpolation of
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+     if aRotation then begin
+//    aVector4:=aAnimationChannel^.OutputVector4Array[aTimeIndex0].Slerp(aAnimationChannel^.OutputVector4Array[aTimeIndex1],aFactor);
+      aVector4:=TpvQuaternion.Create(aAnimationChannel^.OutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel^.OutputVector4Array[aTimeIndex1]),aFactor).Vector;
+     end else begin
+      aVector4:=(aAnimationChannel^.OutputVector4Array[aTimeIndex0]*(1.0-aFactor))+
+                (aAnimationChannel^.OutputVector4Array[aTimeIndex1]*aFactor);
+     end;
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+     aVector4:=aAnimationChannel^.OutputVector4Array[aTimeIndex0];
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+     SqrFactor:=sqr(aFactor);
+     CubeFactor:=SqrFactor*aFactor;
+     aVector4:=(((aAnimationChannel^.OutputVector4Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                 (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                  (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
+  procedure ProcessWeights(const aNode:TpvScene3D.TGroup.TInstance.PNode;
+                           const aNodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+                           const aTimeIndex0:TpvSizeInt;
+                           const aTimeIndex1:TpvSizeInt;
+                           const aKeyDelta:TpvDouble;
+                           const aFactor:TpvDouble);
+  var CountWeights,WeightIndex:TpvSizeInt;
+      InvFactor,SqrFactor,CubeFactor:TpvDouble;
+  begin
+   CountWeights:=length(aNode^.WorkWeights);
+   Include(aNodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
+   case aAnimationChannel^.Interpolation of
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+     InvFactor:=1.0-aFactor;
+     for WeightIndex:=0 to CountWeights-1 do begin
+      aNodeOverwrite^.Weights[WeightIndex]:=(aAnimationChannel^.OutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex]*InvFactor)+
+                                            (aAnimationChannel^.OutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex]*aFactor);
+     end;
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+     for WeightIndex:=0 to CountWeights-1 do begin
+      aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel^.OutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex];
+     end;
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+     SqrFactor:=sqr(aFactor);
+     CubeFactor:=SqrFactor*aFactor;
+     for WeightIndex:=0 to CountWeights-1 do begin
+      aNodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*aAnimationChannel^.OutputScalarArray[(((aTimeIndex0*3)+1)*CountWeights)+WeightIndex])+
+                                             (((CubeFactor-(2.0*SqrFactor))+aFactor)*aKeyDelta*aAnimationChannel^.OutputScalarArray[(((aTimeIndex0*3)+2)*CountWeights)+WeightIndex])+
+                                             (((3.0*SqrFactor)-(2.0*CubeFactor))*aAnimationChannel^.OutputScalarArray[(((aTimeIndex1*3)+1)*CountWeights)+WeightIndex])+
+                                             ((CubeFactor-SqrFactor)*aKeyDelta*aAnimationChannel^.OutputScalarArray[(((aTimeIndex1*3)+0)*CountWeights)+WeightIndex]);
+     end;
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
  var ChannelIndex,
      InstanceChannelIndex,
      CountInstanceChannels,
      InputTimeArrayIndex,
-     WeightIndex,
-     CountWeights,
      ReferenceNodeIndex,
      NodeIndex,
      ElementIndex,
@@ -6974,11 +7136,9 @@ var CullFace,Blend:TPasGLTFInt32;
      InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
      //Node:TpvScene3D.TGroup.TNode;
      Node:TpvScene3D.TGroup.TInstance.PNode;
-     Time,Factor,Scalar,Value,SqrFactor,CubeFactor,KeyDelta,v0,v1,a,b:TpvDouble;
+     Time,Factor,Scalar,Value,KeyDelta,v0,v1,a,b:TpvDouble;
      Vector3:TpvVector3;
      Vector4:TpvVector4;
-     Vector3s:array[0..1] of PpvVector3;
-     Vector4s:array[0..1] of PpvVector4;
      TimeIndices:array[0..1] of TpvSizeInt;
      NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
      Mesh:TpvScene3D.TGroup.TMesh;
@@ -7121,31 +7281,8 @@ var CullFace,Blend:TPasGLTFInt32;
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
-          case AnimationChannel^.Interpolation of
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-            Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-            Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
-            Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
-            Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
-            Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-            Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-            SqrFactor:=sqr(Factor);
-            CubeFactor:=SqrFactor*Factor;
-            Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                      (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                       (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                        (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
-           end;
-           else begin
-            Assert(false);
-           end;
-          end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+          ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
           case AnimationChannel^.Target of
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
@@ -7162,27 +7299,8 @@ var CullFace,Blend:TPasGLTFInt32;
           end;
          end;
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
-          case AnimationChannel^.Interpolation of
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-            Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-            Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-            SqrFactor:=sqr(Factor);
-            CubeFactor:=SqrFactor*Factor;
-            Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                       (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                        (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                         (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
-           end;
-           else begin
-            Assert(false);
-           end;
-          end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+          ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,true);
           case AnimationChannel^.Target of
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
@@ -7195,34 +7313,7 @@ var CullFace,Blend:TPasGLTFInt32;
          end;
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-          CountWeights:=length(Node^.WorkWeights);
-          Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
-          case AnimationChannel^.Interpolation of
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-            for WeightIndex:=0 to CountWeights-1 do begin
-             NodeOverwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
-                                                  (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
-            end;
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-            for WeightIndex:=0 to CountWeights-1 do begin
-             NodeOverwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
-            end;
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-            SqrFactor:=sqr(Factor);
-            CubeFactor:=SqrFactor*Factor;
-            for WeightIndex:=0 to CountWeights-1 do begin
-             NodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
-                                                   (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
-                                                   (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
-                                                   ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
-            end;
-           end;
-           else begin
-            Assert(false);
-           end;
-          end;
+          ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
          end;
          else begin
          end;
@@ -7281,36 +7372,7 @@ var CullFace,Blend:TPasGLTFInt32;
           end;
 
           if assigned(NodeOverwrite) then begin
-
-           CountWeights:=length(Node^.WorkWeights);
-           Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
-           case AnimationChannel^.Interpolation of
-            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-             for WeightIndex:=0 to CountWeights-1 do begin
-              NodeOverwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
-                                                   (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
-             end;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-             for WeightIndex:=0 to CountWeights-1 do begin
-              NodeOverwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
-             end;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-             SqrFactor:=sqr(Factor);
-             CubeFactor:=SqrFactor*Factor;
-             for WeightIndex:=0 to CountWeights-1 do begin
-              NodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
-                                                    (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
-                                                    (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
-                                                    ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
-             end;
-            end;
-            else begin
-             Assert(false);
-            end;
-           end;
-
+           ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
           end;
 
          end;
