@@ -807,6 +807,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TTarget=
                                   (
+                                   None=0,
                                    Translation,
                                    Rotation,
                                    Scale,
@@ -857,9 +858,6 @@ type EpvScene3D=class(Exception);
                                    PointerTextureRotation,
                                    PointerTextureScale
                                   );
-                                 TTargetTexture=(
-                                  Base
-                                 );
                                  TInterpolation=
                                   (
                                    Linear,
@@ -868,11 +866,10 @@ type EpvScene3D=class(Exception);
                                   );
                            public
                             Name:TpvUTF8String;
-                            Node:TpvSizeInt;
                             Target:TTarget;
                             TargetPointer:TpvUTF8String;
                             TargetIndex:TpvSizeInt;
-                            TargetTexture:TTargetTexture;
+                            TargetTexture:TpvSizeInt;
                             Interpolation:TInterpolation;
                             InputTimeArray:TpvDoubleDynamicArray;
                             OutputScalarArray:TpvFloatDynamicArray;
@@ -885,8 +882,8 @@ type EpvScene3D=class(Exception);
                           TChannels=array of TChannel;
                           TDefaultChannel=record
                            public
-                            Node:TpvSizeInt;
                             Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget;
+                            TargetIndex:TpvSizeInt;
                           end;
                           PDefaultChannel=^TDefaultChannel;
                           TDefaultChannels=array of TDefaultChannel;
@@ -3800,16 +3797,20 @@ begin
 
   DestinationAnimationChannel^.Last:=-1;
 
-  DestinationAnimationChannel^.Node:=SourceAnimationChannel.Target.Node;
+  DestinationAnimationChannel^.TargetIndex:=-1;
 
   if SourceAnimationChannel.Target.Path='translation' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Translation;
+   DestinationAnimationChannel^.TargetIndex:=SourceAnimationChannel.Target.Node;
   end else if SourceAnimationChannel.Target.Path='rotation' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Rotation;
+   DestinationAnimationChannel^.TargetIndex:=SourceAnimationChannel.Target.Node;
   end else if SourceAnimationChannel.Target.Path='scale' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Scale;
+   DestinationAnimationChannel^.TargetIndex:=SourceAnimationChannel.Target.Node;
   end else if SourceAnimationChannel.Target.Path='weights' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Weights;
+   DestinationAnimationChannel^.TargetIndex:=SourceAnimationChannel.Target.Node;
   end else if SourceAnimationChannel.Target.Path='pointer' then begin
    DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.Pointer_;
    if assigned(SourceAnimationChannel.Target.Extensions) then begin
@@ -3837,7 +3838,6 @@ begin
        if TargetPointerStrings[0]='nodes' then begin
         if length(TargetPointerStrings)>2 then begin
          DestinationAnimationChannel^.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
-         DestinationAnimationChannel^.Node:=DestinationAnimationChannel^.TargetIndex;
          if TargetPointerStrings[2]='rotation' then begin
           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerNodeRotation;
          end else if TargetPointerStrings[2]='scale' then begin
@@ -6078,22 +6078,22 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessAnimations;
- type TNodeTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
-      TNodeTargetArrayList=TpvDynamicArrayList<TpvUInt64>;
-      TNodeTargetUsedBitmap=array of TpvUInt32;
- var Index,ChannelIndex,NodeTargetIndex,CountDefaultChannels:TpvSizeInt;
+ type TTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
+      TTargetArrayList=TpvDynamicArrayList<TpvUInt64>;
+      TTargetUsedBitmap=array of TpvUInt32;
+ var Index,ChannelIndex,TargetIndex,CountDefaultChannels:TpvSizeInt;
      SourceAnimation:TPasGLTF.TAnimation;
      Animation:TpvScene3D.TGroup.TAnimation;
      Channel:TpvScene3D.TGroup.TAnimation.PChannel;
      DefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
-     NodeTargetHashMap:TNodeTargetHashMap;
-     NodeTargetArrayList:TNodeTargetArrayList;
-     NodeTargetUsedBitmap:TNodeTargetUsedBitmap;
+     TargetHashMap:TTargetHashMap;
+     TargetArrayList:TTargetArrayList;
+     TargetUsedBitmap:TTargetUsedBitmap;
      CompactCode:TpvUInt64;
  begin
-  NodeTargetHashMap:=TNodeTargetHashMap.Create(-1);
+  TargetHashMap:=TTargetHashMap.Create(-1);
   try
-   NodeTargetArrayList:=TNodeTargetArrayList.Create;
+   TargetArrayList:=TTargetArrayList.Create;
    try
     for Index:=0 to aSourceDocument.Animations.Count-1 do begin
      SourceAnimation:=aSourceDocument.Animations[Index];
@@ -6102,60 +6102,64 @@ var LightMap:TpvScene3D.TGroup.TLights;
       Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
       for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
        Channel:=@Animation.fChannels[ChannelIndex];
-       CompactCode:=TpvUInt64(TpvUInt64(Channel^.Node) and TpvUInt64($ffffffff)) or (TpvUInt64(TpvInt32(Channel^.Target)) shl 32);
-       NodeTargetIndex:=NodeTargetHashMap[CompactCode];
-       if NodeTargetIndex<0 then begin
-        NodeTargetHashMap[CompactCode]:=NodeTargetArrayList.Add(CompactCode);
+       if Channel^.TargetIndex>=0 then begin
+        CompactCode:=(TpvUInt64(TpvUInt64(Channel^.TargetIndex) and TpvUInt64($ffffffff)) shl 32) or (TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffffffff));
+        TargetIndex:=TargetHashMap[CompactCode];
+        if TargetIndex<0 then begin
+         TargetHashMap[CompactCode]:=TargetArrayList.Add(CompactCode);
+        end;
        end;
       end;
      finally
       fAnimations.Add(Animation);
      end;
     end;
-    if NodeTargetArrayList.Count>0 then begin
-     NodeTargetUsedBitmap:=nil;
+    if TargetArrayList.Count>0 then begin
+     TargetUsedBitmap:=nil;
      try
-      SetLength(NodeTargetUsedBitmap,(NodeTargetArrayList.Count+31) shr 5);
+      SetLength(TargetUsedBitmap,(TargetArrayList.Count+31) shr 5);
       for Index:=0 to fAnimations.Count-1 do begin
        Animation:=fAnimations[Index];
-       FillChar(NodeTargetUsedBitmap[0],length(NodeTargetUsedBitmap)*SizeOf(TpvUInt32),#0);
+       FillChar(TargetUsedBitmap[0],length(TargetUsedBitmap)*SizeOf(TpvUInt32),#0);
        for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
         Channel:=@Animation.fChannels[ChannelIndex];
-        CompactCode:=TpvUInt64(TpvUInt64(Channel^.Node) and TpvUInt64($ffffffff)) or (TpvUInt64(TpvInt32(Channel^.Target)) shl 32);
-        NodeTargetIndex:=NodeTargetHashMap[CompactCode];
-        if (NodeTargetIndex>=0) and (NodeTargetIndex<NodeTargetArrayList.Count) then begin
-         NodeTargetUsedBitmap[NodeTargetIndex shr 5]:=NodeTargetUsedBitmap[NodeTargetIndex shr 5] or (TpvUInt32(1) shl (NodeTargetIndex and 31));
+        if Channel^.TargetIndex>=0 then begin
+         CompactCode:=(TpvUInt64(TpvUInt64(Channel^.TargetIndex) and TpvUInt64($ffffffff)) shl 32) or (TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffffffff));
+         TargetIndex:=TargetHashMap[CompactCode];
+         if (TargetIndex>=0) and (TargetIndex<TargetArrayList.Count) then begin
+          TargetUsedBitmap[TargetIndex shr 5]:=TargetUsedBitmap[TargetIndex shr 5] or (TpvUInt32(1) shl (TargetIndex and 31));
+         end;
         end;
        end;
        CountDefaultChannels:=0;
-       for NodeTargetIndex:=0 to NodeTargetArrayList.Count-1 do begin
-        if (NodeTargetUsedBitmap[NodeTargetIndex shr 5] and (TpvUInt32(1) shl (NodeTargetIndex and 31)))=0 then begin
+       for TargetIndex:=0 to TargetArrayList.Count-1 do begin
+        if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
          inc(CountDefaultChannels);
         end;
        end;
        if CountDefaultChannels>0 then begin
         SetLength(Animation.fDefaultChannels,CountDefaultChannels);
         CountDefaultChannels:=0;
-        for NodeTargetIndex:=0 to NodeTargetArrayList.Count-1 do begin
-         if (NodeTargetUsedBitmap[NodeTargetIndex shr 5] and (TpvUInt32(1) shl (NodeTargetIndex and 31)))=0 then begin
+        for TargetIndex:=0 to TargetArrayList.Count-1 do begin
+         if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
           DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
           inc(CountDefaultChannels);
-          CompactCode:=NodeTargetArrayList[NodeTargetIndex];
-          DefaultChannel^.Node:=TpvSizeInt(TpvUInt64(TpvUInt64(CompactCode) and TpvUInt64($ffffffff)));
+          CompactCode:=TargetArrayList[TargetIndex];
           DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 32)));
+          DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(CompactCode) and TpvUInt64($ffffffff)));
          end;
         end;
        end;
       end;
      finally
-      NodeTargetUsedBitmap:=nil;
+      TargetUsedBitmap:=nil;
      end;
     end;
    finally
-    FreeAndNil(NodeTargetArrayList);
+    FreeAndNil(TargetArrayList);
    end;
   finally
-   FreeAndNil(NodeTargetHashMap);
+   FreeAndNil(TargetHashMap);
   end;
  end;
  procedure ProcessCameras;
@@ -7274,7 +7278,7 @@ var CullFace,Blend:TPasGLTFInt32;
 
    AnimationChannel:=@Animation.fChannels[ChannelIndex];
 
-   if (AnimationChannel.Node>=0) and (length(AnimationChannel.InputTimeArray)>0) then begin
+   if (AnimationChannel.TargetIndex>=0) and (length(AnimationChannel.InputTimeArray)>0) then begin
 
     TimeIndices[1]:=length(AnimationChannel^.InputTimeArray)-1;
 
@@ -7347,7 +7351,7 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
 
-       Node:=@fNodes[AnimationChannel^.Node];
+       Node:=@fNodes[AnimationChannel^.TargetIndex];
 
        NodeOverwrite:=nil;
 
@@ -7600,7 +7604,7 @@ var CullFace,Blend:TPasGLTFInt32;
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-      Node:=@fNodes[AnimationDefaultChannel^.Node];
+      Node:=@fNodes[AnimationDefaultChannel^.TargetIndex];
       NodeOverwrite:=nil;
       if aFactor>=-0.5 then begin
        InstanceAnimationChannel:=nil;
@@ -7660,7 +7664,7 @@ var CullFace,Blend:TPasGLTFInt32;
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-      Light:=fLights[AnimationChannel^.TargetIndex];
+      Light:=fLights[AnimationDefaultChannel^.TargetIndex];
       LightOverwrite:=nil;
       if aFactor>=-0.5 then begin
        InstanceAnimationChannel:=nil;
