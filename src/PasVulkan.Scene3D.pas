@@ -811,8 +811,51 @@ type EpvScene3D=class(Exception);
                                    Rotation,
                                    Scale,
                                    Weights,
-                                   Pointer_
+                                   Pointer_,
+                                   PointerMeshWeights,
+                                   PointerNodeRotation,
+                                   PointerNodeScale,
+                                   PointerNodeTranslation,
+                                   PointerNodeWeights,
+                                   PointerCameraOrthographicXMag,
+                                   PointerCameraOrthographicYMag,
+                                   PointerCameraOrthographicZFar,
+                                   PointerCameraOrthographicZNear,
+                                   PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+                                   PointerMaterialPBRMetallicRoughnessMetallicFactor,
+                                   PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+                                   PointerMaterialAlphaCutOff,
+                                   PointerMaterialEmissiveFactor,
+                                   PointerMaterialNormalTextureScale,
+                                   PointerMaterialOcclusionTextureStrength,
+                                   PointerPunctualLightColor,
+                                   PointerPunctualLightIntensity,
+                                   PointerPunctualLightRange,
+                                   PointerPunctualLightSpotInnerConeAngle,
+                                   PointerPunctualLightSpotOuterConeAngle,
+                                   PointerMaterialPBRClearCoatFactor,
+                                   PointerMaterialPBRClearCoatRoughnessFactor,
+                                   PointerMaterialEmissiveStrength,
+                                   PointerMaterialIOR,
+                                   PointerMaterialPBRIridescenceFactor,
+                                   PointerMaterialPBRIridescenceIor,
+                                   PointerMaterialPBRIridescenceMinimum,
+                                   PointerMaterialPBRIridescenceMaximum,
+                                   PointerMaterialPBRSheenColorFactor,
+                                   PointerMaterialPBRSheenRoughnessFactor,
+                                   PointerMaterialPBRSpecularFactor,
+                                   PointerMaterialPBRSpecularColorFactor,
+                                   PointerMaterialPBRTransmissionFactor,
+                                   PointerMaterialPBRVolumeThicknessFactor,
+                                   PointerMaterialPBRVolumeAttenuationDistance,
+                                   PointerMaterialPBRVolumeAttenuationColor,
+                                   PointerTextureOffset,
+                                   PointerTextureRotation,
+                                   PointerTextureScale
                                   );
+                                 TTargetTexture=(
+                                  Base
+                                 );
                                  TInterpolation=
                                   (
                                    Linear,
@@ -824,6 +867,8 @@ type EpvScene3D=class(Exception);
                             Node:TpvSizeInt;
                             Target:TTarget;
                             TargetPointer:TpvUTF8String;
+                            TargetIndex:TpvSizeInt;
+                            TargetTexture:TTargetTexture;
                             Interpolation:TInterpolation;
                             InputTimeArray:TpvDoubleDynamicArray;
                             OutputScalarArray:TpvFloatDynamicArray;
