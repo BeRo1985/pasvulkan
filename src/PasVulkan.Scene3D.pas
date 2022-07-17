@@ -821,6 +821,10 @@ type EpvScene3D=class(Exception);
                                    PointerCameraOrthographicYMag,
                                    PointerCameraOrthographicZFar,
                                    PointerCameraOrthographicZNear,
+                                   PointerCameraPerspectiveAspectRatio,
+                                   PointerCameraPerspectiveYFov,
+                                   PointerCameraPerspectiveZFar,
+                                   PointerCameraPerspectiveZNear,
                                    PointerMaterialPBRMetallicRoughnessBaseColorFactor,
                                    PointerMaterialPBRMetallicRoughnessMetallicFactor,
                                    PointerMaterialPBRMetallicRoughnessRoughnessFactor,
@@ -1108,9 +1112,16 @@ type EpvScene3D=class(Exception);
                           TAnimation=class
                            public
                             type TChannel=class
+                                  public
+                                   type TType=
+                                         (
+                                          None,
+                                          Node
+                                         );
                                   private
+                                   fType:TType;
                                    fNode:Pointer;
-                                   fOverwrite:TpvSizeInt;
+                                   fNodeOverwrite:TpvSizeInt;
                                  end;
                                  TChannels=TpvObjectGenericList<TChannel>;
                            private
@@ -3719,7 +3730,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
-var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
+var Index,ChannelIndex,ValueIndex,StringPosition,StartStringPosition:TPasGLTFSizeInt;
     SourceAnimationChannel:TPasGLTF.TAnimation.TChannel;
     SourceAnimationSampler:TPasGLTF.TAnimation.TSampler;
     DestinationAnimationChannel:TAnimation.PChannel;
@@ -3728,6 +3739,8 @@ var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
     OutputScalarArray:TPasGLTFFloatDynamicArray;
     OutputScalar64Array:TPasGLTFDoubleDynamicArray;
     JSONItem:TPasJSONItem;
+    TargetPointerString,TargetPointerSubString:TpvUTF8String;
+    TargetPointerStrings:array of TpvUTF8String;
 begin
 
  fName:=aSourceAnimation.Name;
@@ -3758,6 +3771,108 @@ begin
     JSONItem:=SourceAnimationChannel.Target.Extensions.Properties['KHR_animation_pointer'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      DestinationAnimationChannel^.TargetPointer:=TPasJSON.GetString(TPasJSONItemObject(JSONItem).Properties['pointer'],'');
+     TargetPointerString:=DestinationAnimationChannel^.TargetPointer;
+     TargetPointerStrings:=nil;
+     try
+      StringPosition:=1;
+      while StringPosition<=length(TargetPointerString) do begin
+       while (StringPosition<=length(TargetPointerString)) and (TargetPointerString[StringPosition]='/') do begin
+        inc(StringPosition);
+       end;
+       StartStringPosition:=StringPosition;
+       while (StringPosition<=length(TargetPointerString)) and (TargetPointerString[StringPosition]<>'/') do begin
+        inc(StringPosition);
+       end;
+       if StartStringPosition<StringPosition then begin
+        TargetPointerSubString:=copy(TargetPointerString,StartStringPosition,StringPosition-StartStringPosition);
+        TargetPointerStrings:=TargetPointerStrings+[TargetPointerSubString];
+       end;
+      end;
+      if length(TargetPointerStrings)>0 then begin
+       if TargetPointerStrings[0]='nodes' then begin
+        if length(TargetPointerStrings)>2 then begin
+         DestinationAnimationChannel^.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
+         DestinationAnimationChannel^.Node:=DestinationAnimationChannel^.TargetIndex;
+         if TargetPointerStrings[2]='rotation' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerNodeRotation;
+         end else if TargetPointerStrings[2]='scale' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerNodeScale;
+         end else if TargetPointerStrings[2]='translation' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerNodeTranslation;
+         end else if TargetPointerStrings[2]='weights' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerNodeWeights;
+         end;
+        end;
+       end else if TargetPointerStrings[0]='meshes' then begin
+        if length(TargetPointerStrings)>2 then begin
+         DestinationAnimationChannel^.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
+         if TargetPointerStrings[2]='weights' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMeshWeights;
+         end;
+        end;
+       end else if TargetPointerStrings[0]='cameras' then begin
+        if length(TargetPointerStrings)>3 then begin
+         DestinationAnimationChannel^.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
+         if TargetPointerStrings[2]='orthographic' then begin
+          if TargetPointerStrings[3]='xmag' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag;
+          end else if TargetPointerStrings[3]='ymag' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag;
+          end else if TargetPointerStrings[3]='zfar' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar;
+          end else if TargetPointerStrings[3]='znear' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear;
+          end;
+         end else if TargetPointerStrings[2]='perspective' then begin
+          if TargetPointerStrings[3]='aspectRatio' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio;
+          end else if TargetPointerStrings[3]='yfov' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov;
+          end else if TargetPointerStrings[3]='zfar' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar;
+          end else if TargetPointerStrings[3]='znear' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear;
+          end;
+         end;
+        end;
+       end else if TargetPointerStrings[0]='materials' then begin
+        if length(TargetPointerStrings)>2 then begin
+         DestinationAnimationChannel.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
+         if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
+          if length(TargetPointerStrings)>3 then begin
+           if TargetPointerStrings[3]='baseColorFactor' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor;
+           end else if TargetPointerStrings[3]='metallicFactor' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor;
+           end else if TargetPointerStrings[3]='roughnessFactor' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor;
+           end else if TargetPointerStrings[3]='znear' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear;
+           end;
+          end;
+         end else if TargetPointerStrings[2]='alphaCutoff' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff;
+         end else if TargetPointerStrings[2]='emissiveFactor' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength;
+         end else if TargetPointerStrings[2]='normalTexture' then begin
+          if length(TargetPointerStrings)>3 then begin
+           if TargetPointerStrings[3]='scale' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale;
+           end;
+          end;
+         end else if TargetPointerStrings[2]='occlusionTexture' then begin
+          if length(TargetPointerStrings)>3 then begin
+           if TargetPointerStrings[3]='scale' then begin
+            DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength;
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     finally
+      TargetPointerStrings:=nil;
+     end;
     end;
    end;
   end else begin
@@ -3793,7 +3908,10 @@ begin
    end;
    case DestinationAnimationChannel^.Target of
     TAnimation.TChannel.TTarget.Translation,
-    TAnimation.TChannel.TTarget.Scale:begin
+    TAnimation.TChannel.TTarget.Scale,
+    TAnimation.TChannel.TTarget.PointerNodeTranslation,
+    TAnimation.TChannel.TTarget.PointerNodeScale,
+    TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
      OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
      try
       SetLength(DestinationAnimationChannel^.OutputVector3Array,length(OutputVector3Array));
@@ -3804,7 +3922,9 @@ begin
       OutputVector3Array:=nil;
      end;
     end;
-    TAnimation.TChannel.TTarget.Rotation:begin
+    TAnimation.TChannel.TTarget.Rotation,
+    TAnimation.TChannel.TTarget.PointerNodeRotation,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
      OutputVector4Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector4Array(false);
      try
       for ValueIndex:=0 to length(DestinationAnimationChannel^.OutputVector4Array)-1 do begin
@@ -3818,7 +3938,22 @@ begin
       OutputVector4Array:=nil;
      end;
     end;
-    TAnimation.TChannel.TTarget.Weights:begin
+    TAnimation.TChannel.TTarget.Weights,
+    TAnimation.TChannel.TTarget.PointerNodeWeights,
+    TAnimation.TChannel.TTarget.PointerMeshWeights,
+    TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag,
+    TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag,
+    TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar,
+    TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear,
+    TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio,
+    TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
+    TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
+    TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
+    TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
+    TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
      OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
      try
       SetLength(DestinationAnimationChannel^.OutputScalarArray,length(OutputScalarArray));
@@ -3829,8 +3964,8 @@ begin
       OutputScalarArray:=nil;
      end;
     end;
-    TAnimation.TChannel.TTarget.Pointer_:begin
-     // TODO
+    else {TAnimation.TChannel.TTarget.Pointer_:}begin
+     // Ignore
     end;
    end;
   end else begin
@@ -6837,7 +6972,7 @@ var CullFace,Blend:TPasGLTFInt32;
      Vector3s:array[0..1] of PpvVector3;
      Vector4s:array[0..1] of PpvVector4;
      TimeIndices:array[0..1] of TpvSizeInt;
-     Overwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
+     NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
  begin
 
   Animation:=fGroup.fAnimations[aAnimationIndex];
@@ -6851,8 +6986,9 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
   for InstanceChannelIndex:=0 to CountInstanceChannels-1 do begin
    InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+   InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.None;
    InstanceAnimationChannel.fNode:=nil;
-   InstanceAnimationChannel.fOverwrite:=-1;
+   InstanceAnimationChannel.fNodeOverwrite:=-1;
   end;
 
   CountInstanceChannels:=0;
@@ -6924,129 +7060,171 @@ var CullFace,Blend:TPasGLTFInt32;
       end;
      end;
 
-     Node:=@fNodes[AnimationChannel^.Node];
+     case AnimationChannel^.Target of
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
 
-     Overwrite:=nil;
+       Node:=@fNodes[AnimationChannel^.Node];
 
-     if aFactor>=-0.5 then begin
-      InstanceAnimationChannel:=nil;
-      for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-       if InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node then begin
-        InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        break;
-       end;
-      end;
-      if assigned(InstanceAnimationChannel) then begin
-       Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-      end else if (Node.CountOverwrites<length(Node.Overwrites)) and
-                  (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-       InstanceChannelIndex:=CountInstanceChannels;
-       inc(CountInstanceChannels);
-       InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-       InstanceAnimationChannel.fNode:=Node;
-       InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
-       inc(Node.CountOverwrites);
-       Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-       Overwrite^.Flags:=[];
-       Overwrite^.Factor:=Max(aFactor,0.0);
-      end;
-     end;
+       NodeOverwrite:=nil;
 
-     if assigned(Overwrite) then begin
-      case AnimationChannel^.Target of
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-        case AnimationChannel^.Interpolation of
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-          Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-          Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
-          Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
-          Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
-          Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-          Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-          SqrFactor:=sqr(Factor);
-          CubeFactor:=SqrFactor*Factor;
-          Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                    (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                     (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                      (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
-         end;
-         else begin
-          Assert(false);
+       if aFactor>=-0.5 then begin
+        InstanceAnimationChannel:=nil;
+        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
+            (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+          break;
          end;
         end;
+        if assigned(InstanceAnimationChannel) then begin
+         if assigned(Node) then begin
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+         end else begin
+          NodeOverwrite:=nil;
+         end;
+        end else if assigned(Node) and
+                    (Node.CountOverwrites<length(Node.Overwrites)) and
+                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+         InstanceChannelIndex:=CountInstanceChannels;
+         inc(CountInstanceChannels);
+         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
+         InstanceAnimationChannel.fNode:=Node;
+         InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+         inc(Node.CountOverwrites);
+         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+         NodeOverwrite^.Flags:=[];
+         NodeOverwrite^.Factor:=Max(aFactor,0.0);
+        end else begin
+         NodeOverwrite:=nil;
+        end;
+       end;
+
+       if assigned(NodeOverwrite) then begin
         case AnimationChannel^.Target of
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
-          Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
-          Overwrite^.Translation:=Vector3;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
+          case AnimationChannel^.Interpolation of
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+            Vector3s[0]:=@AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+            Vector3s[1]:=@AnimationChannel^.OutputVector3Array[TimeIndices[1]];
+            Vector3[0]:=(Vector3s[0]^[0]*(1.0-Factor))+(Vector3s[1]^[0]*Factor);
+            Vector3[1]:=(Vector3s[0]^[1]*(1.0-Factor))+(Vector3s[1]^[1]*Factor);
+            Vector3[2]:=(Vector3s[0]^[2]*(1.0-Factor))+(Vector3s[1]^[2]*Factor);
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+            Vector3:=AnimationChannel^.OutputVector3Array[TimeIndices[0]];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+            SqrFactor:=sqr(Factor);
+            CubeFactor:=SqrFactor*Factor;
+            Vector3:=(((AnimationChannel^.OutputVector3Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                      (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                       (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                        (AnimationChannel^.OutputVector3Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)));
+           end;
+           else begin
+            Assert(false);
+           end;
+          end;
+          case AnimationChannel^.Target of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
+            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation);
+            NodeOverwrite^.Translation:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
+            NodeOverwrite^.Scale:=Vector3;
+           end;
+           else begin
+           end;
+          end;
          end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-          Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale);
-          Overwrite^.Scale:=Vector3;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
+          case AnimationChannel^.Interpolation of
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+            Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+            Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+            SqrFactor:=sqr(Factor);
+            CubeFactor:=SqrFactor*Factor;
+            Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+                       (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
+                        (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                         (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
+           end;
+           else begin
+            Assert(false);
+           end;
+          end;
+          case AnimationChannel^.Target of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+            Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
+            NodeOverwrite^.Rotation.Vector:=Vector4;
+           end;
+           else begin
+           end;
+          end;
          end;
-        end;
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
-        case AnimationChannel^.Interpolation of
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-          Vector4:=TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[0]]).Slerp(TpvQuaternion.Create(AnimationChannel^.OutputVector4Array[TimeIndices[1]]),Factor).Vector;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-          Vector4:=AnimationChannel^.OutputVector4Array[TimeIndices[0]];
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-          SqrFactor:=sqr(Factor);
-          CubeFactor:=SqrFactor*Factor;
-          Vector4:=((((AnimationChannel^.OutputVector4Array[(TimeIndices[0]*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                     (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*((CubeFactor-(2.0*SqrFactor))+Factor))))+
-                      (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                       (AnimationChannel^.OutputVector4Array[(TimeIndices[1]*3)+0]*(KeyDelta*(CubeFactor-SqrFactor)))).Normalize;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+          CountWeights:=length(Node^.WorkWeights);
+          Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
+          case AnimationChannel^.Interpolation of
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+            for WeightIndex:=0 to CountWeights-1 do begin
+             NodeOverwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
+                                                  (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
+            end;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+            for WeightIndex:=0 to CountWeights-1 do begin
+             NodeOverwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
+            end;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+            SqrFactor:=sqr(Factor);
+            CubeFactor:=SqrFactor*Factor;
+            for WeightIndex:=0 to CountWeights-1 do begin
+             NodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
+                                                   (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
+                                                   (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
+                                                   ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
+            end;
+           end;
+           else begin
+            Assert(false);
+           end;
+          end;
          end;
          else begin
-          Assert(false);
-         end;
-        end;
-        Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation);
-        Overwrite^.Rotation.Vector:=Vector4;
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
-        CountWeights:=length(Node^.WorkWeights);
-        Include(Overwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights);
-        case AnimationChannel^.Interpolation of
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Overwrite^.Weights[WeightIndex]:=(AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex]*(1.0-Factor))+
-                                            (AnimationChannel^.OutputScalarArray[(TimeIndices[1]*CountWeights)+WeightIndex]*Factor);
-          end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Overwrite^.Weights[WeightIndex]:=AnimationChannel^.OutputScalarArray[(TimeIndices[0]*CountWeights)+WeightIndex];
-          end;
-         end;
-         TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-          SqrFactor:=sqr(Factor);
-          CubeFactor:=SqrFactor*Factor;
-          for WeightIndex:=0 to CountWeights-1 do begin
-           Overwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+1)*CountWeights)+WeightIndex])+
-                                            (((CubeFactor-(2.0*SqrFactor))+Factor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[0]*3)+2)*CountWeights)+WeightIndex])+
-                                            (((3.0*SqrFactor)-(2.0*CubeFactor))*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+1)*CountWeights)+WeightIndex])+
-                                            ((CubeFactor-SqrFactor)*KeyDelta*AnimationChannel^.OutputScalarArray[(((TimeIndices[1]*3)+0)*CountWeights)+WeightIndex]);
-          end;
-         end;
-         else begin
-          Assert(false);
          end;
         end;
        end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Pointer_:begin
-        // TODO
-       end;
+
       end;
+
+      else begin
+      end;
+
      end;
 
     end;
@@ -7058,53 +7236,70 @@ var CullFace,Blend:TPasGLTFInt32;
   if InstanceAnimation.Complete then begin
    for ChannelIndex:=0 to length(Animation.fDefaultChannels)-1 do begin
     AnimationDefaultChannel:=@Animation.fDefaultChannels[ChannelIndex];
-    Node:=@fNodes[AnimationDefaultChannel^.Node];
-    Overwrite:=nil;
-    if aFactor>=-0.5 then begin
-     InstanceAnimationChannel:=nil;
-     for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-      if InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node then begin
-       InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-       break;
+    case AnimationDefaultChannel^.Target of
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+      Node:=@fNodes[AnimationDefaultChannel^.Node];
+      NodeOverwrite:=nil;
+      if aFactor>=-0.5 then begin
+       InstanceAnimationChannel:=nil;
+       for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+        if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fNode=Node) then begin
+         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+         break;
+        end;
+       end;
+       if assigned(InstanceAnimationChannel) then begin
+        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+       end else if (Node.CountOverwrites<length(Node.Overwrites)) and
+                   (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+        InstanceChannelIndex:=CountInstanceChannels;
+        inc(CountInstanceChannels);
+        InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+        InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
+        InstanceAnimationChannel.fNode:=Node;
+        InstanceAnimationChannel.fNodeOverwrite:=Node.CountOverwrites;
+        inc(Node.CountOverwrites);
+        NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fNodeOverwrite];
+        NodeOverwrite^.Flags:=[];
+        NodeOverwrite^.Factor:=Max(aFactor,0.0);
+       end;
+       if assigned(NodeOverwrite) then begin
+        case AnimationDefaultChannel^.Target of
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
+          NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
+                                                      TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+          NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
+                                                      TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+          NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
+                                                      TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+          NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
+                                                      TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
+         end;
+         else begin
+         end;
+        end;
+       end;
       end;
      end;
-     if assigned(InstanceAnimationChannel) then begin
-      Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-     end else if (Node.CountOverwrites<length(Node.Overwrites)) and
-                 (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-      InstanceChannelIndex:=CountInstanceChannels;
-      inc(CountInstanceChannels);
-      InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-      InstanceAnimationChannel.fNode:=Node;
-      InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
-      inc(Node.CountOverwrites);
-      Overwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-      Overwrite^.Flags:=[];
-      Overwrite^.Factor:=Max(aFactor,0.0);
-     end;
-     if assigned(Overwrite) then begin
-      case AnimationDefaultChannel^.Target of
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation:begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation,
-                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation];
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale:begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale,
-                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale];
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation:begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation,
-                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation];
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights:begin
-        Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
-                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];
-       end;
-       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Pointer_:begin
-{       Overwrite^.Flags:=Overwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultWeights,
-                                            TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Weights];}
-       end;
-      end;
+     else begin
      end;
     end;
    end;
