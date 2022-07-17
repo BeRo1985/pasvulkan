@@ -3872,6 +3872,25 @@ begin
           end;
          end;
         end;
+       end else if TargetPointerStrings[0]='extensions' then begin
+        if (length(TargetPointerStrings)>4) and
+           (TargetPointerStrings[1]='KHR_lights_punctual') and
+           (TargetPointerStrings[2]='lights') then begin
+         DestinationAnimationChannel.TargetIndex:=StrToIntDef(TargetPointerStrings[3],0);
+         if TargetPointerStrings[4]='color' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerPunctualLightColor;
+         end else if TargetPointerStrings[4]='intensity' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerPunctualLightIntensity;
+         end else if TargetPointerStrings[4]='range' then begin
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerPunctualLightRange;
+         end else if (TargetPointerStrings[4]='spot') and (length(TargetPointerStrings)>5) then begin
+          if TargetPointerStrings[5]='innerConeAngle' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle;
+          end else if TargetPointerStrings[5]='outerConeAngle' then begin
+           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle;
+          end;
+         end;
+        end;
        end;
       end;
      finally
