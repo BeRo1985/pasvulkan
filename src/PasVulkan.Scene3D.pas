@@ -753,6 +753,7 @@ type EpvScene3D=class(Exception);
               fVisible:boolean;
               fData:TpvScene3D.TLightData;
               fWorkData:TpvScene3D.TLightData;
+              fEffectiveData:TpvScene3D.PLightData;
               fInstanceLight:pointer;
               fShadowMapIndex:TpvInt32;
               fPosition:TpvVector3;
@@ -773,6 +774,7 @@ type EpvScene3D=class(Exception);
              public
               property Data:TpvScene3D.TLightData read fData write fData;
               property WorkData:TpvScene3D.TLightData read fWorkData write fWorkData;
+              property EffectiveData:TpvScene3D.PLightData read fEffectiveData;
               property Type_:TpvScene3D.TLightData.TType read fData.fType_ write fData.fType_;
               property Intensity:TpvFloat read fData.fIntensity write fData.fIntensity;
               property Range:TpvFloat read fData.fRange write fData.fRange;
@@ -3615,6 +3617,7 @@ begin
  fSceneInstance:=aSceneInstance;
  fAABBTreeProxy:=-1;
  fInstanceLight:=nil;
+ fEffectiveData:=@fData;
 end;
 
 destructor TpvScene3D.TLight.Destroy;
@@ -3798,6 +3801,7 @@ begin
  end else begin
   Data:=@fData;
  end;
+ fEffectiveData:=Data;
  if Data^.fVisible then begin
   Position:=(fMatrix*TpvVector3.Origin).xyz;
   Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
