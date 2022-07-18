@@ -1264,6 +1264,51 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                           end;
                           TLights=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TLight>;
+                          TCamera=class
+                           public
+                            type TOverwriteFlag=
+                                         (
+                                          Defaults,
+                                          DefaultOrthographicXMag,
+                                          DefaultOrthographicYMag,
+                                          DefaultOrthographicZFar,
+                                          DefaultOrthographicZNear,
+                                          DefaultPerspectiveAspectRatio,
+                                          DefaultPerspectiveYFov,
+                                          DefaultPerspectiveZFar,
+                                          DefaultPerspectiveZNear,
+                                          OrthographicXMag,
+                                          OrthographicYMag,
+                                          OrthographicZFar,
+                                          OrthographicZNear,
+                                          PerspectiveAspectRatio,
+                                          PerspectiveYFov,
+                                          PerspectiveZFar,
+                                          PerspectiveZNear
+                                         );
+                                        TOverwriteFlags=set of TOverwriteFlag;
+                                        TOverwrite=record
+                                         public
+                                          Flags:TOverwriteFlags;
+                                          Factor:TpvFloat;
+                                          Color:TpvVector3;
+                                          Intensity:TpvFloat;
+                                          Range:TpvFloat;
+                                          SpotInnerConeAngle:TpvFloat;
+                                          SpotOuterConeAngle:TpvFloat;
+                                        end;
+                                        POverwrite=^TOverwrite;
+                                        TOverwrites=array of TOverwrite;
+                           private
+                            fInstance:TInstance;
+                            fCamera:TpvScene3D.TGroup.TCamera;
+                            fOverwrites:TOverwrites;
+                            fCountOverwrites:TpvSizeInt;
+                           public
+                            constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aCamera:TpvScene3D.TGroup.TCamera);
+                            destructor Destroy; override;
+                          end;
+                          TCameras=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TCamera>;
                           { TVulkanData }
                           TVulkanData=class
                            private
@@ -1291,6 +1336,7 @@ type EpvScene3D=class(Exception);
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
+                     fCameras:TpvScene3D.TGroup.TInstance.TCameras;
                      fLights:TpvScene3D.TGroup.TInstance.TLights;
                      fLightNodes:TNodeIndices;
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
@@ -6777,6 +6823,23 @@ begin
  inherited Destroy;
 end;
 
+{ TpvScene3D.TGroup.TInstance.TCamera }
+
+constructor TpvScene3D.TGroup.TInstance.TCamera.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aCamera:TpvScene3D.TGroup.TCamera);
+begin
+ inherited Create;
+ fInstance:=aInstance;
+ fCamera:=aCamera;
+ fOverwrites:=nil;
+ fCountOverwrites:=0;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TCamera.Destroy;
+begin
+ fOverwrites:=nil;
+ inherited Destroy;
+end;
+
 { TpvScene3D.TGroup.TInstance.TVulkanData }
 
 constructor TpvScene3D.TGroup.TInstance.TVulkanData.Create(const aInstance:TGroup.TInstance);
@@ -6879,6 +6942,7 @@ var Index,OtherIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
+    Camera:TpvScene3D.TGroup.TInstance.TCamera;
 begin
  inherited Create(aResourceManager,aParent);
  if aParent is TGroup then begin
@@ -6906,6 +6970,18 @@ begin
     SetLength(Light.fOverwrites,fGroup.fAnimations.Count+1);
    finally
     fLights.Add(Light);
+   end;
+  end;
+ end;
+ begin
+  fCameras:=TpvScene3D.TGroup.TInstance.TCameras.Create;
+  fCameras.OwnsObjects:=true;
+  for Index:=0 to fGroup.fCameras.Count-1 do begin
+   Camera:=TpvScene3D.TGroup.TInstance.TCamera.Create(self,fGroup.fCameras[Index]);
+   try
+    SetLength(Camera.fOverwrites,fGroup.fAnimations.Count+1);
+   finally
+    fCameras.Add(Camera);
    end;
   end;
  end;
@@ -6966,6 +7042,7 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+ FreeAndNil(fCameras);
  FreeAndNil(fLights);
  for Index:=0 to length(fNodes)-1 do begin
   if assigned(fNodes[Index].Light) then begin
@@ -7221,6 +7298,15 @@ var CullFace,Blend:TPasGLTFInt32;
    InstanceLight.fCountOverwrites:=0;
   end;
  end;
+ procedure ResetCameras;
+ var Index:TPasGLTFSizeInt;
+     InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
+ begin
+  for Index:=0 to fLights.Count-1 do begin
+   InstanceCamera:=fCameras[Index];
+   InstanceCamera.fCountOverwrites:=0;
+  end;
+ end;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -7236,8 +7322,10 @@ var CullFace,Blend:TPasGLTFInt32;
  procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
  var Index:TPasGLTFSizeInt;
      InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+     InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.POverwrite;
+     CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.POverwrite;
      NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.POverwrite;
  begin
   if aFactor>=-0.5 then begin
@@ -7248,6 +7336,15 @@ var CullFace,Blend:TPasGLTFInt32;
      LightOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Defaults];
      LightOverwrite^.Factor:=Max(aFactor,0.0);
      inc(InstanceLight.fCountOverwrites);
+    end;
+   end;
+   for Index:=0 to fCameras.Count-1 do begin
+    InstanceCamera:=fCameras[Index];
+    if InstanceCamera.fCountOverwrites<length(InstanceCamera.fOverwrites) then begin
+     CameraOverwrite:=@InstanceCamera.fOverwrites[InstanceCamera.fCountOverwrites];
+     CameraOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.Defaults];
+     CameraOverwrite^.Factor:=Max(aFactor,0.0);
+     inc(InstanceCamera.fCountOverwrites);
     end;
    end;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
