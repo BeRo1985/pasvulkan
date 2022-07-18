@@ -11292,7 +11292,7 @@ begin
     if (fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
        (pvApplication.VulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) then begin
      // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
-     fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
+     fTransparencyMode:=TTransparencyMode.MBOIT;
     end else begin
      if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
       fTransparencyMode:=TTransparencyMode.WBOIT;
