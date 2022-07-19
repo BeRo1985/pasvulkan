@@ -11211,20 +11211,46 @@ begin
                pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.framebufferStencilSampleCounts;
 
  if UnitApplication.Application.MaxShadowMSAA=0 then begin
-  if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
-   MaxShadowMSAA:=8;
-  end else begin
-   MaxShadowMSAA:=1;
+  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    MaxShadowMSAA:=1;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
+     MaxShadowMSAA:=8;
+    end else begin
+     MaxShadowMSAA:=1;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    MaxShadowMSAA:=1;
+   end;
+   else begin
+    MaxShadowMSAA:=1;
+   end;
   end;
  end else begin
   MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  end;
 
  if UnitApplication.Application.MaxMSAA=0 then begin
-  if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
-   MaxMSAA:=8;
-  end else begin
-   MaxMSAA:=2;
+  case TpvVulkanVendorID(pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    MaxMSAA:=2;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU then begin
+     MaxMSAA:=8;
+    end else begin
+     MaxMSAA:=2;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    MaxMSAA:=2;
+   end;
+   else begin
+    MaxMSAA:=2;
+   end;
   end;
  end else begin
   MaxMSAA:=UnitApplication.Application.MaxMSAA;
