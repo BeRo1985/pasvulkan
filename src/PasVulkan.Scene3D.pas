@@ -156,16 +156,52 @@ type EpvScene3D=class(Exception);
             PView=^TView;
             TViews=TpvDynamicArray<TView>;
             TScalarSum=record
-             x,FactorSum:Double;
+             public
+              x:TpvDouble;
+              FactorSum:TpvDouble;
+             public
+              procedure Clear;
+              procedure Add(const aX,aFactor:TpvDouble);
+              function Get(const aDefaultX:TpvDouble=0.0):TpvDouble;
             end;
             TVector2Sum=record
-             x,y,FactorSum:Double;
+             public
+              x:TpvDouble;
+              y:TpvDouble;
+              FactorSum:TpvDouble;
+             public
+              procedure Clear;
+              procedure Add(const aX,aY,aFactor:TpvDouble); overload;
+              procedure Add(const aVector:TpvVector2;const aFactor:TpvDouble); overload;
+              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0):TpvVector2; overload;
+              function Get(const aDefault:TpvVector2):TpvVector2; overload;
             end;
             TVector3Sum=record
-             x,y,z,FactorSum:Double;
+             public
+              x:TpvDouble;
+              y:TpvDouble;
+              z:TpvDouble;
+              FactorSum:TpvDouble;
+             public
+              procedure Clear;
+              procedure Add(const aX,aY,aZ,aFactor:TpvDouble); overload;
+              procedure Add(const aVector:TpvVector3;const aFactor:TpvDouble); overload;
+              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0):TpvVector3; overload;
+              function Get(const aDefault:TpvVector3):TpvVector3; overload;
             end;
             TVector4Sum=record
-             x,y,z,w,FactorSum:Double;
+             public
+              x:TpvDouble;
+              y:TpvDouble;
+              z:TpvDouble;
+              w:TpvDouble;
+              FactorSum:TpvDouble;
+             public
+              procedure Clear;
+              procedure Add(const aX,aY,aZ,aW,aFactor:TpvDouble); overload;
+              procedure Add(const aVector:TpvVector4;const aFactor:TpvDouble); overload;
+              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0;const aDefaultW:TpvDouble=0.0):TpvVector4; overload;
+              function Get(const aDefault:TpvVector4):TpvVector4; overload;
             end;
        const MaxViews=65536 div SizeOf(TView);
        type TID=TpvUInt32;
@@ -1760,6 +1796,191 @@ begin
   BestDot:=Dot;
  end;
 
+end;
+
+{ TpvScene3D.TScalarSum }
+
+procedure TpvScene3D.TScalarSum.Clear;
+begin
+ x:=0.0;
+ FactorSum:=0.0;
+end;
+
+procedure TpvScene3D.TScalarSum.Add(const aX,aFactor:TpvDouble);
+begin
+ x:=x+(aX*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+function TpvScene3D.TScalarSum.Get(const aDefaultX:TpvDouble):TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result:=aDefaultX;
+ end else begin
+  result:=x/FactorSum;
+ end;
+end;
+
+{ TpvScene3D.TVector2Sum }
+
+procedure TpvScene3D.TVector2Sum.Clear;
+begin
+ x:=0.0;
+ y:=0.0;
+ FactorSum:=0.0;
+end;
+
+procedure TpvScene3D.TVector2Sum.Add(const aX,aY,aFactor:TpvDouble);
+begin
+ x:=x+(aX*aFactor);
+ y:=y+(aY*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+procedure TpvScene3D.TVector2Sum.Add(const aVector:TpvVector2;const aFactor:TpvDouble);
+begin
+ x:=x+(aVector.x*aFactor);
+ y:=y+(aVector.y*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+function TpvScene3D.TVector2Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble):TpvVector2;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result.x:=aDefaultX;
+  result.y:=aDefaultY;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+ end;
+end;
+
+function TpvScene3D.TVector2Sum.Get(const aDefault:TpvVector2):TpvVector2;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result:=aDefault;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+ end;
+end;
+
+{ TpvScene3D.TVector3Sum }
+
+procedure TpvScene3D.TVector3Sum.Clear;
+begin
+ x:=0.0;
+ y:=0.0;
+ z:=0.0;
+ FactorSum:=0.0;
+end;
+
+procedure TpvScene3D.TVector3Sum.Add(const aX,aY,aZ,aFactor:TpvDouble);
+begin
+ x:=x+(aX*aFactor);
+ y:=y+(aY*aFactor);
+ z:=z+(aZ*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+procedure TpvScene3D.TVector3Sum.Add(const aVector:TpvVector3;const aFactor:TpvDouble);
+begin
+ x:=x+(aVector.x*aFactor);
+ y:=y+(aVector.y*aFactor);
+ z:=z+(aVector.z*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+function TpvScene3D.TVector3Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble;const aDefaultZ:TpvDouble):TpvVector3;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result.x:=aDefaultX;
+  result.y:=aDefaultY;
+  result.z:=aDefaultZ;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+ end;
+end;
+
+function TpvScene3D.TVector3Sum.Get(const aDefault:TpvVector3):TpvVector3;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result:=aDefault;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+ end;
+end;
+
+{ TpvScene3D.TVector4Sum }
+
+procedure TpvScene3D.TVector4Sum.Clear;
+begin
+ x:=0.0;
+ y:=0.0;
+ z:=0.0;
+ w:=0.0;
+ FactorSum:=0.0;
+end;
+
+procedure TpvScene3D.TVector4Sum.Add(const aX,aY,aZ,aW,aFactor:TpvDouble);
+begin
+ x:=x+(aX*aFactor);
+ y:=y+(aY*aFactor);
+ z:=z+(aZ*aFactor);
+ w:=w+(aW*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+procedure TpvScene3D.TVector4Sum.Add(const aVector:TpvVector4;const aFactor:TpvDouble);
+begin
+ x:=x+(aVector.x*aFactor);
+ y:=y+(aVector.y*aFactor);
+ z:=z+(aVector.z*aFactor);
+ w:=w+(aVector.w*aFactor);
+ FactorSum:=FactorSum+aFactor;
+end;
+
+function TpvScene3D.TVector4Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble;const aDefaultZ:TpvDouble;const aDefaultW:TpvDouble):TpvVector4;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result.x:=aDefaultX;
+  result.y:=aDefaultY;
+  result.z:=aDefaultZ;
+  result.w:=aDefaultW;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+  result.w:=w*Factor;
+ end;
+end;
+
+function TpvScene3D.TVector4Sum.Get(const aDefault:TpvVector4):TpvVector4;
+var Factor:TpvDouble;
+begin
+ if IsZero(FactorSum) then begin
+  result:=aDefault;
+ end else begin
+  Factor:=1.0/FactorSum;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+  result.w:=w*Factor;
+ end;
 end;
 
 { TpvScene3D.TBaseObject }
@@ -6855,6 +7076,17 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.TCamera.Update;
+var Index:TpvSizeInt;
+    Factor:TpvDouble;
+    Overwrite:TpvScene3D.TGroup.TInstance.TCamera.POverwrite;
+    OrthographicXMagSum:TpvScene3D.TScalarSum;
+    OrthographicYMagSum:TpvScene3D.TScalarSum;
+    OrthographicZFarSum:TpvScene3D.TScalarSum;
+    OrthographicZNearSum:TpvScene3D.TScalarSum;
+    PerspectiveAspectRatioSum:TpvScene3D.TScalarSum;
+    PerspectiveYFovSum:TpvScene3D.TScalarSum;
+    PerspectiveZFarSum:TpvScene3D.TScalarSum;
+    PerspectiveZNearSum:TpvScene3D.TScalarSum;
 begin
  if fCountOverwrites=0 then begin
   if fEffectiveData=@fWorkData then begin
@@ -6863,6 +7095,119 @@ begin
   fEffectiveData:=@fData;
  end else begin
   fEffectiveData:=@fWorkData;
+  OrthographicXMagSum.Clear;
+  OrthographicYMagSum.Clear;
+  OrthographicZFarSum.Clear;
+  OrthographicZNearSum.Clear;
+  PerspectiveAspectRatioSum.Clear;
+  PerspectiveYFovSum.Clear;
+  PerspectiveZFarSum.Clear;
+  PerspectiveZNearSum.Clear;
+  for Index:=0 to fCountOverwrites-1 do begin
+   Overwrite:=@fOverwrites[Index];
+   Factor:=Overwrite.Factor;
+   if not IsZero(Factor) then begin
+    if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
+     case fData.Type_ of
+      TpvScene3D.TCameraData.TType.Orthographic:begin
+       OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor);
+       OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor);
+       OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor);
+       OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor);
+      end;
+      TpvScene3D.TCameraData.TType.Perspective:begin
+       PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor);
+       PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor);
+       PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor);
+       PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor);
+      end;
+      else begin
+      end;
+     end;
+    end else begin
+     case fData.Type_ of
+      TpvScene3D.TCameraData.TType.Orthographic:begin
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.OrthographicXMag in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultOrthographicXMag in Overwrite^.Flags then begin
+         OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor);
+        end else begin
+         OrthographicXMagSum.Add(Overwrite^.OrthographicXMag,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.OrthographicYMag in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultOrthographicYMag in Overwrite^.Flags then begin
+         OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor);
+        end else begin
+         OrthographicYMagSum.Add(Overwrite^.OrthographicYMag,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.OrthographicZFar in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultOrthographicZFar in Overwrite^.Flags then begin
+         OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor);
+        end else begin
+         OrthographicZFarSum.Add(Overwrite^.OrthographicZFar,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.OrthographicZNear in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultOrthographicZNear in Overwrite^.Flags then begin
+         OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor);
+        end else begin
+         OrthographicZNearSum.Add(Overwrite^.OrthographicZNear,Factor);
+        end;
+       end;
+      end;
+      TpvScene3D.TCameraData.TType.Perspective:begin
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.PerspectiveAspectRatio in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultPerspectiveAspectRatio in Overwrite^.Flags then begin
+         PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor);
+        end else begin
+         PerspectiveAspectRatioSum.Add(Overwrite^.PerspectiveAspectRatio,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.PerspectiveYFov in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultPerspectiveYFov in Overwrite^.Flags then begin
+         PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor);
+        end else begin
+         PerspectiveYFovSum.Add(Overwrite^.PerspectiveYFov,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.PerspectiveZFar in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultPerspectiveZFar in Overwrite^.Flags then begin
+         PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor);
+        end else begin
+         PerspectiveZFarSum.Add(Overwrite^.PerspectiveZFar,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.PerspectiveZNear in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultPerspectiveZNear in Overwrite^.Flags then begin
+         PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor);
+        end else begin
+         PerspectiveZNearSum.Add(Overwrite^.PerspectiveZNear,Factor);
+        end;
+       end;
+      end;
+      else begin
+      end;
+     end;
+    end;
+   end;
+  end;
+  case fData.Type_ of
+   TpvScene3D.TCameraData.TType.Orthographic:begin
+    fWorkData.Orthographic.XMag:=OrthographicXMagSum.Get(fData.Orthographic.XMag);
+    fWorkData.Orthographic.YMag:=OrthographicYMagSum.Get(fData.Orthographic.YMag);
+    fWorkData.Orthographic.ZFar:=OrthographicZFarSum.Get(fData.Orthographic.ZFar);
+    fWorkData.Orthographic.ZNear:=OrthographicZNearSum.Get(fData.Orthographic.ZNear);
+   end;
+   TpvScene3D.TCameraData.TType.Perspective:begin
+    fWorkData.Perspective.AspectRatio:=PerspectiveAspectRatioSum.Get(fData.Perspective.AspectRatio);
+    fWorkData.Perspective.YFoV:=PerspectiveYFovSum.Get(fData.Perspective.YFov);
+    fWorkData.Perspective.ZFar:=PerspectiveZFarSum.Get(fData.Perspective.ZFar);
+    fWorkData.Perspective.ZNear:=PerspectiveZNearSum.Get(fData.Perspective.ZNear);
+   end;
+   else begin
+   end;
+  end;
  end;
 end;
 
