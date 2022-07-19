@@ -2,6 +2,12 @@
 
 #define NUM_SHADOW_CASCADES 4
 
+#ifdef USE_MATERIAL_BUFFER_REFERENCE
+  #undef NOBUFFERREFERENCE
+#elif defined(USE_MATERIAL_SSBO)
+  #define NOBUFFERREFERENCE
+#endif
+
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable

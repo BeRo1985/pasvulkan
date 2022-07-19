@@ -1624,6 +1624,7 @@ type EpvScene3D=class(Exception);
        fViews:TViews;
        fVertexStagePushConstants:array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
+       fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -1645,7 +1646,7 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aUseBufferDeviceAddress:boolean=true); reintroduce;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
@@ -1695,6 +1696,7 @@ type EpvScene3D=class(Exception);
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property HasTransmission:boolean read fHasTransmission;
+       property UseBufferDeviceAddress:boolean read fUseBufferDeviceAddress write fUseBufferDeviceAddress;
      end;
 
 implementation
@@ -9237,13 +9239,15 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aUseBufferDeviceAddress:boolean);
 var Index:TpvSizeInt;
 begin
 
  inherited Create(aResourceManager,aParent);
 
  fLock:=TPasMPSpinLock.Create;
+
+ fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
  fUploaded:=false;
 
@@ -9411,11 +9415,19 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
- fGlobalVulkanDescriptorSetLayout.AddBinding(3,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+ if fUseBufferDeviceAddress then begin
+  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+ end else begin
+  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+ end;
  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                              length(fImageInfos),
@@ -9633,7 +9645,7 @@ begin
      end;
      fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
      fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
-     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
+     fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*4);
      fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
      fGlobalVulkanDescriptorPool.Initialize;
      for Group in fGroups do begin
@@ -9686,27 +9698,35 @@ begin
                                                        SizeOf(TMaterialBufferData),
                                                        TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 
-          DeviceAddress:=fVulkanMaterialDataBuffers[Index].DeviceAddress;
+          if fUseBufferDeviceAddress then begin
 
-          fVulkanMaterialUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                       SizeOf(TVkDeviceAddress),
-                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                       [],
-                                                                       0,
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                       0,
-                                                                       0,
-                                                                       0,
-                                                                       0,
-                                                                       []);
-          fVulkanMaterialUniformBuffers[Index].UploadData(UniversalQueue,
-                                                          UniversalCommandBuffer,
-                                                          UniversalFence,
-                                                          DeviceAddress,
-                                                          0,
-                                                          SizeOf(TVkDeviceAddress),
-                                                          TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+           DeviceAddress:=fVulkanMaterialDataBuffers[Index].DeviceAddress;
+
+           fVulkanMaterialUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                        SizeOf(TVkDeviceAddress),
+                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                        [],
+                                                                        0,
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        []);
+           fVulkanMaterialUniformBuffers[Index].UploadData(UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           DeviceAddress,
+                                                           0,
+                                                           SizeOf(TVkDeviceAddress),
+                                                           TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+
+          end else begin
+
+           fVulkanMaterialUniformBuffers[Index]:=nil;
+
+          end;
 
          end;
 
@@ -9760,14 +9780,25 @@ begin
                                                               [fLightBuffers[Index].fLightTreeVulkanBuffer.DescriptorBufferInfo],
                                                               [],
                                                               false);
-      fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
-                                                              0,
-                                                              1,
-                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                              [],
-                                                              [fVulkanMaterialUniformBuffers[Index].DescriptorBufferInfo],
-                                                              [],
-                                                              false);
+      if fUseBufferDeviceAddress then begin
+       fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                               [],
+                                                               [fVulkanMaterialUniformBuffers[Index].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+      end else begin
+       fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                               [],
+                                                               [fVulkanMaterialDataBuffers[Index].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+      end;
       fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
                                                               0,
                                                               length(fImageInfos),

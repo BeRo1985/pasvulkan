@@ -1030,6 +1030,8 @@ type { TScreenMain }
       private
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fBufferDeviceAddress:boolean;
+       fMeshFragTypeName:TpvUTF8String;
        fSurfaceMultiviewMask:TpvUInt32;
        fCountSurfaceViews:TpvInt32;
        fTransparencyMode:TTransparencyMode;
@@ -1440,7 +1442,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_velocity_frag.spv');
  try
   fMeshDepthFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -1448,15 +1450,15 @@ begin
  end;
 
  if fParent.fUseDemote then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_demote_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_velocity_masked_demote_frag.spv');
  end else if fParent.fUseNoDiscard then begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_nodiscard_reversedz_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_velocity_masked_nodiscard_reversedz_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_nodiscard_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_velocity_masked_nodiscard_frag.spv');
   end;
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_velocity_masked_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_velocity_masked_frag.spv');
  end;
  try
   fMeshDepthMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -2139,7 +2141,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -2147,11 +2149,11 @@ begin
  end;
 
  if fParent.fUseDemote then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_demote_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_demote_frag.spv');
  end else if fParent.fUseNoDiscard then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_nodiscard_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -3662,7 +3664,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -3671,29 +3673,29 @@ begin
 
  if fParent.fUseDemote then begin
   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_demote_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_demote_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_demote_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_demote_msaa_frag.spv');
   end;
  end else if fParent.fUseNoDiscard then begin
   if fParent.fZFar<0.0 then begin
    if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_reversedz_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_nodiscard_reversedz_frag.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_reversedz_msaa_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_nodiscard_reversedz_msaa_frag.spv');
    end;
   end else begin
    if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_nodiscard_frag.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_nodiscard_msaa_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_nodiscard_msaa_frag.spv');
    end;
   end;
  end else begin
   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_masked_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_masked_msaa_frag.spv');
   end;
  end;
  try
@@ -3704,7 +3706,7 @@ begin
 
  if fParent.fUseDepthPrepass then begin
 
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_frag.spv');
   try
    fMeshDepthFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
   finally
@@ -3712,15 +3714,15 @@ begin
   end;
 
   if fParent.fUseDemote then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_demote_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_demote_frag.spv');
   end else if fParent.fUseNoDiscard then begin
    if fParent.fZFar<0.0 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_reversedz_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_nodiscard_reversedz_frag.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_nodiscard_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_nodiscard_frag.spv');
    end;
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_depth_masked_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_depth_masked_frag.spv');
   end;
   try
    fMeshDepthMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -4699,7 +4701,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -4708,29 +4710,29 @@ begin
 
  if fParent.fUseDemote then begin
   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_demote_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_demote_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_demote_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_demote_msaa_frag.spv');
   end;
  end else if fParent.fUseNoDiscard then begin
   if fParent.fZFar<0.0 then begin
    if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_nodiscard_reversedz_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_nodiscard_reversedz_frag.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_nodiscard_reversedz_msaa_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_nodiscard_reversedz_msaa_frag.spv');
    end;
   end else begin
    if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_nodiscard_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_nodiscard_frag.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_nodiscard_msaa_frag.spv');
+    Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_nodiscard_msaa_frag.spv');
    end;
   end;
  end else begin
   if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_blend_masked_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_blend_masked_msaa_frag.spv');
   end;
  end;
  try
@@ -5647,15 +5649,15 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_reversedz_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_frag.spv');
   end;
  end else begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_reversedz_msaa_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_msaa_frag.spv');
   end;
  end;
  try
@@ -5667,15 +5669,15 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_masked_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_reversedz_masked_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_masked_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_masked_frag.spv');
   end;
  end else begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_reversedz_masked_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_reversedz_masked_msaa_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_lockoit_'+OITVariant+'_masked_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_lockoit_'+OITVariant+'_masked_msaa_frag.spv');
   end;
  end;
  try
@@ -6665,14 +6667,14 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_pass1_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_pass1_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_masked_pass1_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_masked_pass1_frag.spv');
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -7186,9 +7188,9 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_pass2_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_pass2_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_msaa_pass2_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_msaa_pass2_frag.spv');
  end;
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -7197,9 +7199,9 @@ begin
  end;
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_masked_pass2_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_masked_pass2_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_mboit_masked_msaa_pass2_frag.spv');
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_mboit_masked_msaa_pass2_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -8048,14 +8050,14 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_wboit_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_wboit_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_wboit_masked_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_wboit_masked_frag.spv');
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -11009,6 +11011,14 @@ begin
 
  fCascadedShadowMapSize:=Max(16,UnitApplication.Application.ShadowMapSize);
 
+ fBufferDeviceAddress:=(pvApplication.VulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) and
+                       (pvApplication.VulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE);
+ if fBufferDeviceAddress then begin
+  fMeshFragTypeName:='matbufref';
+ end else begin
+  fMeshFragTypeName:='matssbo';
+ end;
+
  FormatProperties:=pvApplication.VulkanDevice.PhysicalDevice.GetFormatProperties(VK_FORMAT_B10G11R11_UFLOAT_PACK32);
  if //(pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) and
     ((FormatProperties.linearTilingFeatures and (TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
@@ -11085,7 +11095,7 @@ begin
 
  fUpdateLock:=TPasMPCriticalSection.Create;
 
- fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager);
+ fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,fBufferDeviceAddress);
 
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
  fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
