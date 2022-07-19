@@ -160,7 +160,7 @@ layout(std430, set = 0, binding = 3) readonly buffer Materials {
 
 #else
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer Material {
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Material {
   vec4 baseColorFactor;
   vec4 specularFactor;
   vec4 emissiveFactor;
