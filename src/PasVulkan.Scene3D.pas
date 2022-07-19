@@ -6947,111 +6947,65 @@ begin
   fEffectiveData:=@fData;
  end else begin
   fEffectiveData:=@fWorkData;
-  ColorSum.x:=0;
-  ColorSum.y:=0;
-  ColorSum.z:=0;
-  ColorSum.FactorSum:=0;
-  IntensitySum.x:=0;
-  IntensitySum.FactorSum:=0;
-  RangeSum.x:=0;
-  RangeSum.FactorSum:=0;
-  SpotInnerConeAngleSum.x:=0;
-  SpotInnerConeAngleSum.FactorSum:=0;
-  SpotOuterConeAngleSum.x:=0;
-  SpotOuterConeAngleSum.FactorSum:=0;
+  ColorSum.Clear;
+  IntensitySum.Clear;
+  RangeSum.Clear;
+  SpotInnerConeAngleSum.Clear;
+  SpotOuterConeAngleSum.Clear;
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
    if not IsZero(Factor) then begin
     if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
-     ColorSum.x:=ColorSum.x+(fData.Color.x*Factor);
-     ColorSum.y:=ColorSum.y+(fData.Color.y*Factor);
-     ColorSum.z:=ColorSum.z+(fData.Color.z*Factor);
-     ColorSum.FactorSum:=ColorSum.FactorSum+Factor;
-     IntensitySum.x:=IntensitySum.x+(fData.fIntensity*Factor);
-     IntensitySum.FactorSum:=IntensitySum.FactorSum+Factor;
-     RangeSum.x:=RangeSum.x+(fData.fRange*Factor);
-     RangeSum.FactorSum:=RangeSum.FactorSum+Factor;
-     SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(fData.fInnerConeAngle*Factor);
-     SpotInnerConeAngleSum.FactorSum:=SpotInnerConeAngleSum.FactorSum+Factor;
-     SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(fData.fOuterConeAngle*Factor);
-     SpotOuterConeAngleSum.FactorSum:=SpotOuterConeAngleSum.FactorSum+Factor;
+     ColorSum.Add(fData.fColor,Factor);
+     IntensitySum.Add(fData.fIntensity,Factor);
+     RangeSum.Add(fData.fRange,Factor);
+     SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor);
+     SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor);
     end else begin
      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Color in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultColor in Overwrite^.Flags then begin
-       ColorSum.x:=ColorSum.x+(fData.Color.x*Factor);
-       ColorSum.y:=ColorSum.y+(fData.Color.y*Factor);
-       ColorSum.z:=ColorSum.z+(fData.Color.z*Factor);
+       ColorSum.Add(fData.fColor,Factor);
       end else begin
-       ColorSum.x:=ColorSum.x+(Overwrite^.Color.x*Factor);
-       ColorSum.y:=ColorSum.y+(Overwrite^.Color.y*Factor);
-       ColorSum.z:=ColorSum.z+(Overwrite^.Color.z*Factor);
+       ColorSum.Add(Overwrite^.Color,Factor);
       end;
-      ColorSum.FactorSum:=ColorSum.FactorSum+Factor;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Intensity in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultIntensity in Overwrite^.Flags then begin
-       IntensitySum.x:=IntensitySum.x+(fData.Intensity*Factor);
+       IntensitySum.Add(fData.fIntensity,Factor);
       end else begin
-       IntensitySum.x:=IntensitySum.x+(Overwrite^.Intensity*Factor);
+       IntensitySum.Add(Overwrite^.Intensity,Factor);
       end;
-      IntensitySum.FactorSum:=IntensitySum.FactorSum+Factor;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.Range in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultRange in Overwrite^.Flags then begin
-       RangeSum.x:=RangeSum.x+(fData.Range*Factor);
+       RangeSum.Add(fData.fRange,Factor);
       end else begin
-       RangeSum.x:=RangeSum.x+(Overwrite^.Range*Factor);
+       RangeSum.Add(Overwrite^.Range,Factor);
       end;
-      RangeSum.FactorSum:=RangeSum.FactorSum+Factor;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotInnerConeAngle in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotInnerConeAngle in Overwrite^.Flags then begin
-       SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(fData.InnerConeAngle*Factor);
+       SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor);
       end else begin
-       SpotInnerConeAngleSum.x:=SpotInnerConeAngleSum.x+(Overwrite^.SpotInnerConeAngle*Factor);
+       SpotInnerConeAngleSum.Add(Overwrite^.SpotInnerConeAngle,Factor);
       end;
-      SpotInnerConeAngleSum.FactorSum:=SpotInnerConeAngleSum.FactorSum+Factor;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.SpotOuterConeAngle in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultSpotOuterConeAngle in Overwrite^.Flags then begin
-       SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(fData.OuterConeAngle*Factor);
+       SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor);
       end else begin
-       SpotOuterConeAngleSum.x:=SpotOuterConeAngleSum.x+(Overwrite^.SpotOuterConeAngle*Factor);
+       SpotOuterConeAngleSum.Add(Overwrite^.SpotOuterConeAngle,Factor);
       end;
-      SpotOuterConeAngleSum.FactorSum:=SpotOuterConeAngleSum.FactorSum+Factor;
      end;
     end;
    end;
   end;
-  if ColorSum.FactorSum>0.0 then begin
-   Factor:=1.0/ColorSum.FactorSum;
-   fWorkData.Color[0]:=ColorSum.x*Factor;
-   fWorkData.Color[1]:=ColorSum.y*Factor;
-   fWorkData.Color[2]:=ColorSum.z*Factor;
-  end else begin
-   fWorkData.Color:=fData.Color;
-  end;
-  if IntensitySum.FactorSum>0.0 then begin
-   fWorkData.Intensity:=IntensitySum.x/IntensitySum.FactorSum;
-  end else begin
-   fWorkData.Intensity:=fData.Intensity;
-  end;
-  if RangeSum.FactorSum>0.0 then begin
-   fWorkData.Range:=RangeSum.x/RangeSum.FactorSum;
-  end else begin
-   fWorkData.Range:=fData.Range;
-  end;
-  if SpotInnerConeAngleSum.FactorSum>0.0 then begin
-   fWorkData.InnerConeAngle:=SpotInnerConeAngleSum.x/SpotInnerConeAngleSum.FactorSum;
-  end else begin
-   fWorkData.InnerConeAngle:=fData.InnerConeAngle;
-  end;
-  if SpotOuterConeAngleSum.FactorSum>0.0 then begin
-   fWorkData.OuterConeAngle:=SpotOuterConeAngleSum.x/SpotOuterConeAngleSum.FactorSum;
-  end else begin
-   fWorkData.OuterConeAngle:=fData.OuterConeAngle;
-  end;
+  fWorkData.fColor:=ColorSum.Get(fData.fColor);
+  fWorkData.fIntensity:=IntensitySum.Get(fData.fIntensity);
+  fWorkData.fRange:=RangeSum.Get(fData.fRange);
+  fWorkData.fInnerConeAngle:=SpotInnerConeAngleSum.Get(fData.fInnerConeAngle);
+  fWorkData.fOuterConeAngle:=SpotOuterConeAngleSum.Get(fData.fOuterConeAngle);
  end;
 end;
 
