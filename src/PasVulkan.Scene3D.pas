@@ -8590,14 +8590,8 @@ var CullFace,Blend:TPasGLTFInt32;
   if InstanceNode^.CountOverwrites>0 then begin
    Dirty:=true;
    SkinUsed:=true;
-   TranslationSum.x:=0.0;
-   TranslationSum.y:=0.0;
-   TranslationSum.z:=0.0;
-   TranslationSum.FactorSum:=0.0;
-   ScaleSum.x:=0.0;
-   ScaleSum.y:=0.0;
-   ScaleSum.z:=0.0;
-   ScaleSum.FactorSum:=0.0;
+   TranslationSum.Clear;
+   ScaleSum.Clear;
    RotationFactorSum:=0.0;
    WeightsFactorSum:=0.0;
    FirstWeights:=true;
@@ -8608,14 +8602,8 @@ var CullFace,Blend:TPasGLTFInt32;
     Factor:=Overwrite^.Factor;
     if not IsZero(Factor) then begin
      if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
-      TranslationSum.x:=TranslationSum.x+(Node.fTranslation.x*Factor);
-      TranslationSum.y:=TranslationSum.y+(Node.fTranslation.y*Factor);
-      TranslationSum.z:=TranslationSum.z+(Node.fTranslation.z*Factor);
-      TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
-      ScaleSum.x:=ScaleSum.x+(Node.fScale.x*Factor);
-      ScaleSum.y:=ScaleSum.y+(Node.fScale.y*Factor);
-      ScaleSum.z:=ScaleSum.z+(Node.fScale.z*Factor);
-      ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
+      TranslationSum.Add(Node.fTranslation,Factor);
+      ScaleSum.Add(Node.fScale,Factor);
       AddRotation(Node.fRotation,Factor);
       if length(Node.fWeights)>0 then begin
        if FirstWeights then begin
@@ -8632,27 +8620,17 @@ var CullFace,Blend:TPasGLTFInt32;
      end else begin
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Translation in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
-        TranslationSum.x:=TranslationSum.x+(Node.fTranslation.x*Factor);
-        TranslationSum.y:=TranslationSum.y+(Node.fTranslation.y*Factor);
-        TranslationSum.z:=TranslationSum.z+(Node.fTranslation.z*Factor);
+        TranslationSum.Add(Node.fTranslation,Factor);
        end else begin
-        TranslationSum.x:=TranslationSum.x+(Overwrite^.Translation.x*Factor);
-        TranslationSum.y:=TranslationSum.y+(Overwrite^.Translation.y*Factor);
-        TranslationSum.z:=TranslationSum.z+(Overwrite^.Translation.z*Factor);
+        TranslationSum.Add(Overwrite^.Translation,Factor);
        end;
-       TranslationSum.FactorSum:=TranslationSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Scale in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
-        ScaleSum.x:=ScaleSum.x+(Node.fScale.x*Factor);
-        ScaleSum.y:=ScaleSum.y+(Node.fScale.y*Factor);
-        ScaleSum.z:=ScaleSum.z+(Node.fScale.z*Factor);
+        ScaleSum.Add(Node.fScale,Factor);
        end else begin
-        ScaleSum.x:=ScaleSum.x+(Overwrite^.Scale.x*Factor);
-        ScaleSum.y:=ScaleSum.y+(Overwrite^.Scale.y*Factor);
-        ScaleSum.z:=ScaleSum.z+(Overwrite^.Scale.z*Factor);
+        ScaleSum.Add(Overwrite^.Scale,Factor);
        end;
-       ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Rotation in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
@@ -8682,22 +8660,8 @@ var CullFace,Blend:TPasGLTFInt32;
      end;
     end;
    end;
-   if TranslationSum.FactorSum>0.0 then begin
-    Factor:=1.0/TranslationSum.FactorSum;
-    Translation.x:=TranslationSum.x*Factor;
-    Translation.y:=TranslationSum.y*Factor;
-    Translation.z:=TranslationSum.z*Factor;
-   end else begin
-    Translation:=Node.fTranslation;
-   end;
-   if ScaleSum.FactorSum>0.0 then begin
-    Factor:=1.0/ScaleSum.FactorSum;
-    Scale.x:=ScaleSum.x*Factor;
-    Scale.y:=ScaleSum.y*Factor;
-    Scale.z:=ScaleSum.z*Factor;
-   end else begin
-    Scale:=Node.fScale;
-   end;
+   Translation:=TranslationSum.Get(Node.fTranslation);
+   Scale:=ScaleSum.Get(Node.fScale);
    if RotationFactorSum>0.0 then begin
     Rotation:=Rotation.Normalize;
    end else begin
