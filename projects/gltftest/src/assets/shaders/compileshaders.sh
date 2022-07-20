@@ -199,6 +199,11 @@ compileshaderarguments=(
   '-V lockoit_resolve.frag -DMSAA -o lockoit_resolve_msaa_frag.spv'
   '-V lockoit_resolve.frag -DMSAA -DREVERSEDZ -o lockoit_resolve_reversedz_msaa_frag.spv'
 
+  '-V loopoit_resolve.frag -o loopoit_resolve_frag.spv'
+  '-V loopoit_resolve.frag -DREVERSEDZ -o loopoit_resolve_reversedz_frag.spv'
+  '-V loopoit_resolve.frag -DMSAA -o loopoit_resolve_msaa_frag.spv'
+  '-V loopoit_resolve.frag -DMSAA -DREVERSEDZ -o loopoit_resolve_reversedz_msaa_frag.spv'
+
   '-V blend_resolve.frag -o blend_resolve_frag.spv'
   '-V blend_resolve.frag -DMSAA -o blend_resolve_msaa_frag.spv'  
 
