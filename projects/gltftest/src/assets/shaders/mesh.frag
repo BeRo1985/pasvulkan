@@ -309,13 +309,6 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
 }
 #endif
 
-#if defined(LOOPOIT)
-vec4 convertLinearToRGBE(const in vec3 c) {
-  float exponent = clamp(ceil(log2(max(max(c.x, c.y), c.z))), -128.0, 127.0);
-  return vec4(c.xyz / exp2(exponent), (exponent + 128.0) / 255.0);
-}
-#endif
-
 #if defined(WBOIT)
 #elif defined(MBOIT)
  #include "mboit.glsl"
@@ -1726,10 +1719,7 @@ void main() {
 
         imageStore(uOITImgABuffer,
                    oitBufferBaseIndex + oitStart, 
-                   uvec3(packUnorm4x8(convertLinearToRGBE(finalColor.xyz)), 
-                         ((oitStoreMask & 0xfffffu) << 12) | (uint(round(clamp(finalColor.w, 0.0, 1.0) * 4095.0)) & 0xfffu), 
-                         0u                             
-                        ).xyzz
+                   uvec3(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), 0u).xyzz
                   );
 
      #ifndef DEPTHONLY    

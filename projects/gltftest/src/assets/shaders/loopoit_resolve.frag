@@ -23,10 +23,6 @@ layout(set = 0, binding = 4, r32ui) uniform readonly uimageBuffer uOITImgSBuffer
 
 /* clang-format on */
 
-vec3 convertRGBEToLinear(in vec4 value) {                //
-  return value.xyz * exp2(fma(value.w, 255.0, -128.0));  //
-}
-
 void blend(inout vec4 target, const in vec4 source) {                  //
   target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a);  //
 }
@@ -86,7 +82,7 @@ void main() {
     }
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
       uvec3 fragment = oitFragments[oitFragmentIndex];                                                                        //
-      vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+      vec4 fragmentColor = vec4(unpackHalf2x16(fragment.x), unpackHalf2x16(fragment.y));                                      //
       for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {                                  //
         if ((fragment.z & (1u << oitMSAASampleIndex)) != 0) {                                                                 //
           blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                                            //
@@ -103,7 +99,7 @@ void main() {
       for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                  //
         if ((oitFragments[oitFragmentIndex].y & (1u << oitMSAASampleIndex)) != 0) {                                               //
           uvec2 fragment = oitFragments[oitFragmentIndex].xy;                                                                     //
-          vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+          vec4 fragmentColor = vec4(unpackHalf2x16(fragment.x), unpackHalf2x16(fragment.y));                                      //
           blend(sampleColor, fragmentColor);                                                                                      //
         }
       }
@@ -114,7 +110,7 @@ void main() {
 #else
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
       uvec2 fragment = oitFragments[oitFragmentIndex].xy;                                                                     //
-      vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+      vec4 fragmentColor = vec4(unpackHalf2x16(fragment.x), unpackHalf2x16(fragment.y));                                      //
       blend(color, fragmentColor);                                                                                            //
     }
 #endif
