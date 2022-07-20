@@ -6970,9 +6970,9 @@ begin
   end;
  end else begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_masked_msaa_reversedz_pass1_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_msaa_masked_reversedz_pass1_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_masked_msaa_pass1_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_msaa_masked_pass1_frag.spv');
   end;
  end;
  try
@@ -7261,13 +7261,13 @@ begin
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
      VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanSampleCountFlagBits;
-     if (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
+{    if (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask) and (VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) then begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=true;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
       VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=true;
       VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
-     end else begin
+     end else}begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
       VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -7600,9 +7600,9 @@ begin
   end;
  end else begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_masked_msaa_reversedz_pass2_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_msaa_masked_reversedz_pass2_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_masked_msaa_pass2_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fParent.fMeshFragTypeName+'_loopoit_msaa_masked_pass2_frag.spv');
   end;
  end;
  try
