@@ -1640,7 +1640,7 @@ void main() {
  #else
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
  #endif 
-/*if(
+ if(
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
 #else
@@ -1653,7 +1653,7 @@ void main() {
 #else
      true    
 #endif
-    )*/{
+    ){
 
     const int oitViewSize = int(uOIT.oitViewPort.z);
     const int oitCountLayers = int(uOIT.oitViewPort.w & 0xffffu);
