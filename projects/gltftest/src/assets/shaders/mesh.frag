@@ -1563,43 +1563,58 @@ void main() {
       uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
       if(oitOld == 0u){
 #endif
-        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).x;
-        imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
-        if(oitAuxCounter < oitCountLayers){
-          imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
-          finalColor = vec4(0.0);
-        }else{
-          int oitFurthest = 0;
-#ifdef REVERSEDZ
-          uint oitMaxDepth = 0xffffffffu;
-#else
-          uint oitMaxDepth = 0;
-#endif          
-          for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
-            uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
-            if(
-#ifdef REVERSEDZ
-                (oitTestDepth < oitMaxDepth)
-#else
-                (oitTestDepth > oitMaxDepth)
-#endif
-              ){
-              oitMaxDepth = oitTestDepth;
-              oitFurthest = oitIndex;
-            }
+       const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).x;
+#if defined(MSAA)
+        bool mustInsert = true;
+        for(int oitIndex = 0; oitIndex < oitAuxCounter; oitIndex++){
+          uvec4 oitFragment = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize));
+          if((oitFragment.w != 0u) && (oitFragment.z == oitStoreValue.z)){
+            mustInsert = false;
+            oitFragment.w |= oitStoreMask;
+            imageStore(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize), oitFragment);
+            break;
           }
+        }
+        if(mustInsert)
+#endif
+        {
+          imageStore(uOITImgAux, oitCoord, uvec4(oitAuxCounter + 1, 0, 0, 0));
+          if(oitAuxCounter < oitCountLayers){
+            imageStore(uOITImgABuffer, oitABufferBaseIndex + (int(oitAuxCounter) * oitViewSize), oitStoreValue);
+            finalColor = vec4(0.0);
+          }else{
+            int oitFurthest = 0;
+  #ifdef REVERSEDZ
+            uint oitMaxDepth = 0xffffffffu;
+  #else
+            uint oitMaxDepth = 0;
+  #endif          
+            for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
+              uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
+              if(
+  #ifdef REVERSEDZ
+                  (oitTestDepth < oitMaxDepth)
+  #else
+                  (oitTestDepth > oitMaxDepth)
+  #endif
+                ){
+                oitMaxDepth = oitTestDepth;
+                oitFurthest = oitIndex;
+              }
+            }
 
-          if(
-#ifdef REVERSEDZ
-             (oitMaxDepth < oitStoreValue.z)
-#else
-             (oitMaxDepth > oitStoreValue.z)
-#endif          
-            ){
-            int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
-            uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
-            finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(unpackHalf2x16(oitOldValue.y)));
-            imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
+            if(
+  #ifdef REVERSEDZ
+              (oitMaxDepth < oitStoreValue.z)
+  #else
+              (oitMaxDepth > oitStoreValue.z)
+  #endif          
+              ){
+              int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
+              uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
+              finalColor = vec4(vec2(unpackHalf2x16(oitOldValue.x)), vec2(unpackHalf2x16(oitOldValue.y)));
+              imageStore(uOITImgABuffer, oitIndex, oitStoreValue);
+            }
           }
         }
 #ifdef SPINLOCK
