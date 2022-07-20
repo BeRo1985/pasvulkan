@@ -1244,6 +1244,12 @@ type { TScreenMain }
        fLockOrderIndependentTransparencyRenderPass:TLockOrderIndependentTransparencyRenderPass;
        fLockOrderIndependentTransparencyBarrierCustomPass:TLockOrderIndependentTransparencyBarrierCustomPass;
        fLockOrderIndependentTransparencyResolveRenderPass:TLockOrderIndependentTransparencyResolveRenderPass;
+       fLoopOrderIndependentTransparencyClearCustomPass:TLoopOrderIndependentTransparencyClearCustomPass;
+       fLoopOrderIndependentTransparencyPass1RenderPass:TLoopOrderIndependentTransparencyPass1RenderPass;
+       fLoopOrderIndependentTransparencyPass1BarrierCustomPass:TLoopOrderIndependentTransparencyPass1BarrierCustomPass;
+       fLoopOrderIndependentTransparencyPass2RenderPass:TLoopOrderIndependentTransparencyPass2RenderPass;
+       fLoopOrderIndependentTransparencyPass2BarrierCustomPass:TLoopOrderIndependentTransparencyPass2BarrierCustomPass;
+       fLoopOrderIndependentTransparencyResolveRenderPass:TLoopOrderIndependentTransparencyResolveRenderPass;
        fWeightBlendedOrderIndependentTransparencyRenderPass:TWeightBlendedOrderIndependentTransparencyRenderPass;
        fWeightBlendedOrderIndependentTransparencyResolveRenderPass:TWeightBlendedOrderIndependentTransparencyResolveRenderPass;
        fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:TMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass;
@@ -7728,13 +7734,18 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(8,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
  fGlobalVulkanDescriptorSetLayout.Initialize;
 
  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2*length(fGlobalVulkanDescriptorSets));
- fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,1*length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,2*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -7814,6 +7825,14 @@ begin
                                                                        [],
                                                                        [],
                                                                        [fParent.fLoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                       false);
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+                                                                       0,
+                                                                       1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+                                                                       [],
+                                                                       [],
+                                                                       [fParent.fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
@@ -13542,6 +13561,30 @@ begin
 
    fLockOrderIndependentTransparencyResolveRenderPass:=TLockOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
    fLockOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fLockOrderIndependentTransparencyBarrierCustomPass);
+
+  end;
+
+  TTransparencyMode.LOOPOIT:begin
+
+   fLoopOrderIndependentTransparencyClearCustomPass:=TLoopOrderIndependentTransparencyClearCustomPass.Create(fFrameGraph,self);
+
+   fLoopOrderIndependentTransparencyPass1RenderPass:=TLoopOrderIndependentTransparencyPass1RenderPass.Create(fFrameGraph,self);
+   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fMeshComputePass);
+   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyClearCustomPass);
+   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fDepthMipMapComputePass);
+   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fForwardRenderMipMapComputePass);
+
+   fLoopOrderIndependentTransparencyPass1BarrierCustomPass:=TLoopOrderIndependentTransparencyPass1BarrierCustomPass.Create(fFrameGraph,self);
+   fLoopOrderIndependentTransparencyPass1BarrierCustomPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass1RenderPass);
+
+   fLoopOrderIndependentTransparencyPass2RenderPass:=TLoopOrderIndependentTransparencyPass2RenderPass.Create(fFrameGraph,self);
+   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass1BarrierCustomPass);
+
+   fLoopOrderIndependentTransparencyPass2BarrierCustomPass:=TLoopOrderIndependentTransparencyPass2BarrierCustomPass.Create(fFrameGraph,self);
+   fLoopOrderIndependentTransparencyPass2BarrierCustomPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass2RenderPass);
+
+   fLoopOrderIndependentTransparencyResolveRenderPass:=TLoopOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+   fLoopOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass2BarrierCustomPass);
 
   end;
 
