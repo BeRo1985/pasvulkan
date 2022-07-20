@@ -1296,6 +1296,7 @@ type { TScreenMain }
        fLoopOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fLoopOrderIndependentTransparencyABufferBuffers:array[0..MaxInFlightFrames-1] of TOrderIndependentTransparencyBuffer;
        fLoopOrderIndependentTransparencyZBufferBuffers:array[0..MaxInFlightFrames-1] of TOrderIndependentTransparencyBuffer;
+       fLoopOrderIndependentTransparencySBufferBuffers:array[0..MaxInFlightFrames-1] of TOrderIndependentTransparencyBuffer;
        fApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer;
        fApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
        fKeyLeft:boolean;
@@ -6789,7 +6790,8 @@ begin
 end;
 
 procedure TScreenMain.TLoopOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+var BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
+    CountBufferMemoryBarriers:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -6810,6 +6812,13 @@ begin
                                $ffffffff);
  end;
 
+ if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  aCommandBuffer.CmdFillBuffer(fParent.fLoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                               0,
+                               VK_WHOLE_SIZE,
+                               0);
+ end;
+
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         0,
@@ -6826,12 +6835,25 @@ begin
                                                         0,
                                                         VK_WHOLE_SIZE);
 
+ if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         0,
+                                                         fParent.fLoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  CountBufferMemoryBarriers:=3;
+ end else begin
+  CountBufferMemoryBarriers:=2;
+ end;
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
                                    0,
                                    nil,
-                                   2,
+                                   CountBufferMemoryBarriers,
                                    @BufferMemoryBarriers[0],
                                    0,
                                    nil);
@@ -7739,13 +7761,20 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
+ if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fGlobalVulkanDescriptorSetLayout.AddBinding(9,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+ end;
  fGlobalVulkanDescriptorSetLayout.Initialize;
 
  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2*length(fGlobalVulkanDescriptorSets));
- fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,2*length(fGlobalVulkanDescriptorSets));
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,3*length(fGlobalVulkanDescriptorSets));
  fGlobalVulkanDescriptorPool.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -7834,6 +7863,16 @@ begin
                                                                        [],
                                                                        [fParent.fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
+  if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+                                                                        [],
+                                                                        [],
+                                                                        [fParent.fLoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                        false);
+  end;
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
@@ -8087,25 +8126,40 @@ begin
 end;
 
 procedure TScreenMain.TLoopOrderIndependentTransparencyPass2BarrierCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var BufferMemoryBarrier:TVkBufferMemoryBarrier;
+var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    CountBufferMemoryBarriers:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                    0,
-                                                    0,
-                                                    fParent.fLoopOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
-                                                    0,
-                                                    VK_WHOLE_SIZE);
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        0,
+                                                        fParent.fLoopOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         0,
+                                                         fParent.fLoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  CountBufferMemoryBarriers:=2;
+ end else begin
+  CountBufferMemoryBarriers:=1;
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
                                    0,
                                    nil,
-                                   1,
-                                   @BufferMemoryBarrier,
+                                   CountBufferMemoryBarriers,
+                                   @BufferMemoryBarriers[0],
                                    0,
                                    nil);
 
@@ -8182,15 +8236,15 @@ begin
 
  if fParent.fVulkanSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/Loopoit_resolve_reversedz_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_reversedz_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/Loopoit_resolve_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_frag.spv');
   end;
  end else begin
   if fParent.fZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/Loopoit_resolve_reversedz_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_reversedz_msaa_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/Loopoit_resolve_msaa_frag.spv');
+   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_msaa_frag.spv');
   end;
  end;
  try
@@ -8229,7 +8283,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        MaxInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,2*MaxInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,1*MaxInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,2*MaxInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*MaxInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
@@ -8245,15 +8299,22 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(2,
-                                       VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
- fVulkanDescriptorSetLayout.AddBinding(3,
                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
+ fVulkanDescriptorSetLayout.AddBinding(3,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fVulkanDescriptorSetLayout.AddBinding(4,
+                                        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -8284,21 +8345,32 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                  0,
                                                                  1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
-                                                                 [],
-                                                                 [],
-                                                                 [fParent.fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
-                                                                 false
-                                                                );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
-                                                                 0,
-                                                                 1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                  [],
                                                                  [fParent.fLoopOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+                                                                 [],
+                                                                 [],
+                                                                 [fParent.fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                 false
+                                                                );
+  if fParent.fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+                                                                  [],
+                                                                  [],
+                                                                  [fParent.fLoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                  false
+                                                                 );
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
@@ -14105,6 +14177,14 @@ begin
                                                                                                        VK_FORMAT_R32_UINT,
                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 
+    if fVulkanSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+     fLoopOrderIndependentTransparencySBufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
+                                                                                                        VK_FORMAT_R32_UINT,
+                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+    end else begin
+     fLoopOrderIndependentTransparencySBufferBuffers[Index]:=nil;
+    end;
+
    end;
 
   end;
@@ -14163,6 +14243,7 @@ begin
    for Index:=0 to MaxInFlightFrames-1 do begin
     FreeAndNil(fLoopOrderIndependentTransparencyABufferBuffers[Index]);
     FreeAndNil(fLoopOrderIndependentTransparencyZBufferBuffers[Index]);
+    FreeAndNil(fLoopOrderIndependentTransparencySBufferBuffers[Index]);
    end;
   end;
   else begin

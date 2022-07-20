@@ -266,6 +266,9 @@ layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO
   #else
     layout(set = 1, binding = 7, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
     layout(set = 1, binding = 8, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
+    #ifdef MSAA    
+      layout(set = 1, binding = 9, r32ui) uniform coherent uimageBuffer uOITImgSBuffer;
+    #endif
   #endif 
 
 #endif
@@ -1644,7 +1647,7 @@ void main() {
  #else
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
  #endif 
-  if(
+/*if(
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
 #else
@@ -1657,7 +1660,7 @@ void main() {
 #else
      true    
 #endif
-    ){
+    )*/{
 
     const int oitViewSize = int(uOIT.oitViewPort.z);
     const int oitCountLayers = int(uOIT.oitViewPort.w & 0xffffu);
@@ -1668,20 +1671,20 @@ void main() {
 
       for(int oitLayerIndex = 0; oitLayerIndex < oitCountLayers; oitLayerIndex++){
 #ifdef REVERSEDZ
-        const uint oitDepth = imageAtomicMax(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
+        uint oitDepth = imageAtomicMax(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
         if((oitDepth == 0x00000000u) || (oitDepth == oitCurrentDepth)){
           break;
         }
         oitCurrentDepth = min(oitCurrentDepth, oitDepth);
 #else
-        const uint oitDepth = imageAtomicMin(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
+        uint oitDepth = imageAtomicMin(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
         if((oitDepth == 0xFFFFFFFFu) || (oitDepth == oitCurrentDepth)){
           break;
         }
         oitCurrentDepth = max(oitCurrentDepth, oitDepth);
 #endif
       }
-    
+
 #ifndef DEPTHONLY    
       outFragColor = vec4(0.0);
 #endif
@@ -1701,10 +1704,9 @@ void main() {
       }else{
         int oitStart = 0;
         int oitEnd = oitCountLayers - 1;
-        uint oitDepth;
         while(oitStart < oitEnd){
           int oitMid = (oitStart + oitEnd) >> 1;
-          oitDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + oitMid).x;
+          uint oitDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + oitMid).x;
           if(oitDepth
 #ifdef REVERSEDZ
              > 
@@ -1718,6 +1720,10 @@ void main() {
           }
         }    
 
+#ifdef MSAA
+        imageAtomicOr(uOITImgSBuffer, oitBufferBaseIndex + oitStart, oitStoreMask);
+#endif
+
         imageStore(uOITImgABuffer,
                    oitBufferBaseIndex + oitStart, 
                    uvec3(packUnorm4x8(convertLinearToRGBE(finalColor.xyz)), 
@@ -1726,7 +1732,7 @@ void main() {
                         ).xyzz
                   );
 
-#ifndef DEPTHONLY    
+     #ifndef DEPTHONLY    
         outFragColor = vec4(0.0);
 #endif
 
