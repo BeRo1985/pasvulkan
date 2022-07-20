@@ -6879,7 +6879,7 @@ inherited Create(aFrameGraph);
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_color',
-                                 'resource_orderindependenttransparency_tailblending_color',
+                                 'resource_orderindependenttransparency_dummy_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -6895,7 +6895,7 @@ inherited Create(aFrameGraph);
                                     );
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
-                                 'resource_orderindependenttransparency_tailblending_msaa_color',
+                                 'resource_orderindependenttransparency_dummy_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -6903,8 +6903,8 @@ inherited Create(aFrameGraph);
                                 );
 
   fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                        'resource_orderindependenttransparency_tailblending_color',
-                                        'resource_orderindependenttransparency_tailblending_msaa_color',
+                                        'resource_orderindependenttransparency_dummy_color',
+                                        'resource_orderindependenttransparency_dummy_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
@@ -10650,6 +10650,7 @@ begin
  if fParent.fTransparencyMode in [TTransparencyMode.DIRECT,
                                   TTransparencyMode.SPINLOCKOIT,
                                   TTransparencyMode.INTERLOCKOIT,
+                                  TTransparencyMode.LOOPOIT,
                                   TTransparencyMode.WBOIT,
                                   TTransparencyMode.MBOIT] then begin
   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
@@ -13578,7 +13579,7 @@ begin
    fLoopOrderIndependentTransparencyPass1BarrierCustomPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass1RenderPass);
 
    fLoopOrderIndependentTransparencyPass2RenderPass:=TLoopOrderIndependentTransparencyPass2RenderPass.Create(fFrameGraph,self);
-   fLoopOrderIndependentTransparencyPass1RenderPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass1BarrierCustomPass);
+   fLoopOrderIndependentTransparencyPass2RenderPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass1BarrierCustomPass);
 
    fLoopOrderIndependentTransparencyPass2BarrierCustomPass:=TLoopOrderIndependentTransparencyPass2BarrierCustomPass.Create(fFrameGraph,self);
    fLoopOrderIndependentTransparencyPass2BarrierCustomPass.AddExplicitPassDependency(fLoopOrderIndependentTransparencyPass2RenderPass);
@@ -14098,11 +14099,11 @@ begin
 
     fLoopOrderIndependentTransparencyABufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*2),
                                                                                                        VK_FORMAT_R32G32_UINT,
-                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
+                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 
     fLoopOrderIndependentTransparencyZBufferBuffers[Index]:=TOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
                                                                                                        VK_FORMAT_R32_UINT,
-                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
+                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 
    end;
 

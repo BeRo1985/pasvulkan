@@ -1682,7 +1682,9 @@ void main() {
 #endif
       }
     
-      //outFragColor = vec4(0.0);
+#ifndef DEPTHONLY    
+      outFragColor = vec4(0.0);
+#endif
 
     #elif defined(LOOPOIT_PASS2)
 
@@ -1693,7 +1695,9 @@ void main() {
          <
 #endif
          oitCurrentDepth){
+#ifndef DEPTHONLY    
         outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
+#endif
       }else{
         int oitStart = 0;
         int oitEnd = oitCountLayers - 1;
@@ -1722,7 +1726,9 @@ void main() {
                         ).xyzz
                   );
 
+#ifndef DEPTHONLY    
         outFragColor = vec4(0.0);
+#endif
 
       }  
 
