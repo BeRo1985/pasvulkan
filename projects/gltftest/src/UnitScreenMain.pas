@@ -628,7 +628,7 @@ type { TScreenMain }
                fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-               fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+//             fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
                fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
                fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
@@ -6878,14 +6878,14 @@ inherited Create(aFrameGraph);
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
-  fResourceColor:=AddImageOutput('resourcetype_color',
+{ fResourceColor:=AddImageOutput('resourcetype_color',
                                  'resource_orderindependenttransparency_dummy_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
-
+ }
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
@@ -6894,7 +6894,7 @@ inherited Create(aFrameGraph);
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
-  fResourceColor:=AddImageOutput('resourcetype_msaa_color',
+{ fResourceColor:=AddImageOutput('resourcetype_msaa_color',
                                  'resource_orderindependenttransparency_dummy_msaa_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -6910,7 +6910,7 @@ inherited Create(aFrameGraph);
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
-
+ }
  end;
 
 end;
@@ -7281,7 +7281,7 @@ begin
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+{    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                          VK_BLEND_FACTOR_ONE,
                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                          VK_BLEND_OP_ADD,
@@ -7291,7 +7291,7 @@ begin
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT)); }
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
