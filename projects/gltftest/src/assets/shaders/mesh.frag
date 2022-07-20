@@ -1627,7 +1627,11 @@ void main() {
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
+#ifdef MSAA
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#else
+  uint oitStoreMask = 0x00000001u;
+#endif  
 
   // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
   // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth 
@@ -1713,7 +1717,7 @@ void main() {
         imageStore(uOITImgABuffer,
                    oitBufferBaseIndex + oitStart, 
                    uvec3(packUnorm4x8(convertLinearToRGBE(finalColor.xyz)), 
-                         0x80000000u | ((oitStoreMask & 0x7ffffu) << 12) | (uint(round(clamp(finalColor.w, 0.0, 1.0) * 4095.0)) & 0xfffu), 
+                         ((oitStoreMask & 0xfffffu) << 12) | (uint(round(clamp(finalColor.w, 0.0, 1.0) * 4095.0)) & 0xfffu), 
                          0u                             
                         ).xyzz
                   );
