@@ -11,14 +11,16 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
 
-layout(set = 0, binding = 2, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-
-layout(set = 0, binding = 3, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
+layout(set = 0, binding = 2, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
 
 layout(std140, set = 0, binding = 4) uniform uboOIT {
   uvec4 oitViewPort;  //
 } uOIT;
 /* clang-format on */
+
+vec3 convertRGBEToLinear(in vec4 value) {                //
+  return value.xyz * exp2(fma(value.w, 255.0, -128.0));  //
+}
 
 void blend(inout vec4 target, const in vec4 source) {                  //
   target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a);  //
@@ -31,7 +33,7 @@ void main() {
   vec4 color = vec4(0.0);
 
 #if 1
-  uvec4 oitFragments[MAX_OIT_LAYERS];
+  uvec2 oitFragments[MAX_OIT_LAYERS];
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
@@ -43,23 +45,15 @@ void main() {
 
   int oitCountFragments = 0;
   while(oitCountFragments < oitCountLayers){
-    if( 
-#ifdef REVERSEDZ
-      imageLoad(uOITImgZBuffer, oitBufferBaseIndex + oitCountFragments).x != 0x00000000u
-#else
-      imageLoad(uOITImgZBuffer, oitBufferBaseIndex + oitCountFragments).x != 0xffffffffu
-#endif    
-      ){
-     break; 
+    uvec2 oitFragment = uvec2(imageLoad(uOITImgABuffer, oitBufferBaseIndex + oitCountFragments).xy);
+    if((oitFragment.y & 0x80000000u) != 0x00000000u){
+      oitFragments[oitCountFragments++] = oitFragment;
     }else{
-      oitCountFragments++;
+     break; 
     }
   }
 
   if (oitCountFragments > 0) {
-    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {            //
-      oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitBufferBaseIndex + oitFragmentIndex);  //
-    }
 
 #ifdef MSAA
     const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
@@ -69,13 +63,14 @@ void main() {
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
       oitMSAAColors[oitMSAASampleIndex] = vec4(0.0);                                        //
     }
-    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
-      if (oitFragments[oitFragmentIndex].w != 0) {                                                      //
-        uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
-        vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
-        for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {          //
-          if ((fragment.w & (1u << oitMSAASampleIndex)) != 0) {                                         //
-            blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                    //
+    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                  //
+      if (((oitFragments[oitFragmentIndex].y >> 12) & 0x7ffffu) != 0) {                                                         //
+        uvec2 fragment = oitFragments[oitFragmentIndex];                                                                        //
+        vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+        fragment.y = (fragment.y >> 12) & 0x7ffffu;                                                                             //
+        for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {                                  //
+          if ((fragment.y & (1u << oitMSAASampleIndex)) != 0) {                                                                 //
+            blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                                            //
           }
         }
       }
@@ -87,11 +82,11 @@ void main() {
 #else
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
       vec4 sampleColor = vec4(0.0);
-      for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {          //
-        if ((oitFragments[oitFragmentIndex].w & (1u << oitMSAASampleIndex)) != 0) {                       //
-          uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
-          vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
-          blend(sampleColor, fragmentColor);                                                              //
+      for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                  //
+        if (((oitFragments[oitFragmentIndex].y >> 12) & (1u << oitMSAASampleIndex)) != 0) {                                       //
+          uvec2 fragment = oitFragments[oitFragmentIndex];                                                                        //
+          vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+          blend(sampleColor, fragmentColor);                                                                                      //
         }
       }
       color += sampleColor;
@@ -99,10 +94,10 @@ void main() {
     color /= oitMSAA;
 #endif
 #else
-    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {        //
-      uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
-      vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
-      blend(color, fragmentColor);                                                                    //
+    for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
+      uvec2 fragment = oitFragments[oitFragmentIndex];                                                                        //
+      vec4 fragmentColor = vec4(convertRGBEToLinear(unpackUnorm4x8(fragment.x)), float(uint(fragment.y & 0xfffu)) / 4095.0);  //
+      blend(color, fragmentColor);                                                                                            //
     }
 #endif
   }

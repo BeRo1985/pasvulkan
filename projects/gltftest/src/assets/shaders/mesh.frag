@@ -265,7 +265,7 @@ layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO
     layout(set = 1, binding = 7, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
   #else
     layout(set = 1, binding = 7, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
-    layout(set = 1, binding = 8, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+    layout(set = 1, binding = 8, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
   #endif 
 
 #endif
@@ -303,6 +303,13 @@ vec3 convertSRGBToLinearRGB(vec3 c) {
 
 vec4 convertSRGBToLinearRGB(vec4 c) {
   return vec4(convertSRGBToLinearRGB(c.xyz), c.w);  //
+}
+#endif
+
+#if defined(LOOPOIT)
+vec4 convertLinearToRGBE(const in vec3 c) {
+  float exponent = clamp(ceil(log2(max(max(c.x, c.y), c.z))), -128.0, 127.0);
+  return vec4(c.xyz / exp2(exponent), (exponent + 128.0) / 255.0);
 }
 #endif
 
@@ -1703,8 +1710,13 @@ void main() {
           }
         }    
 
-        uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
-        imageStore(uOITImgABuffer, oitBufferBaseIndex + oitStart, oitStoreValue);
+        imageStore(uOITImgABuffer,
+                   oitBufferBaseIndex + oitStart, 
+                   uvec3(packUnorm4x8(convertLinearToRGBE(finalColor.xyz)), 
+                         0x80000000u | ((oitStoreMask & 0x7ffffu) << 12) | (uint(round(clamp(finalColor.w, 0.0, 1.0) * 4095.0)) & 0xfffu), 
+                         0u                             
+                        ).xyzz
+                  );
 
         outFragColor = vec4(0.0);
 
