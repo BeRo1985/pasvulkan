@@ -13,7 +13,7 @@ layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uS
 
 layout(set = 0, binding = 2, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
 
-layout(std140, set = 0, binding = 4) uniform uboOIT {
+layout(std140, set = 0, binding = 3) uniform uboOIT {
   uvec4 oitViewPort;  //
 } uOIT;
 /* clang-format on */

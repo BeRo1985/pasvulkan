@@ -37,6 +37,7 @@ type TTransparencyMode=
        Direct,
        SPINLOCKOIT,
        INTERLOCKOIT,
+       LOOPOIT,
        WBOIT,
        MBOIT
       );

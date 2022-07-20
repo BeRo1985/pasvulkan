@@ -259,7 +259,7 @@ layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO
   #ifdef MSAA
     layout(input_attachment_index = 0, set = 1, binding = 6) uniform subpassInputMS uOITImgDepth;
   #else
-    layout(input_attachment_index = 0, set = 1, binding = 7) uniform subpassInput uOITImgDepth;
+    layout(input_attachment_index = 0, set = 1, binding = 6) uniform subpassInput uOITImgDepth;
   #endif
   #if defined(LOOPOIT_PASS1)
     layout(set = 1, binding = 7, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;

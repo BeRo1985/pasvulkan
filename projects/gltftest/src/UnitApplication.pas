@@ -159,6 +159,8 @@ begin
      fTransparencyMode:=TTransparencyMode.SPINLOCKOIT;
     end else if Parameter='interlockoit' then begin
      fTransparencyMode:=TTransparencyMode.INTERLOCKOIT;
+    end else if Parameter='loopoit' then begin
+     fTransparencyMode:=TTransparencyMode.LOOPOIT;
     end else if Parameter='wboit' then begin
      fTransparencyMode:=TTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin
