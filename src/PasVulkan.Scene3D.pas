@@ -7629,7 +7629,7 @@ var CullFace,Blend:TPasGLTFInt32;
  var Index:TPasGLTFSizeInt;
      InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
  begin
-  for Index:=0 to fLights.Count-1 do begin
+  for Index:=0 to fCameras.Count-1 do begin
    InstanceCamera:=fCameras[Index];
    InstanceCamera.fCountOverwrites:=0;
   end;
