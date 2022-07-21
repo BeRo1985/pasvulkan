@@ -26,7 +26,7 @@
   #endif
 #endif
 
-#if defined(LOCKOIT) || defined(LOOPOIT)
+#if defined(LOCKOIT)
   #extension GL_ARB_post_depth_coverage : enable
   #ifdef INTERLOCK
     #extension GL_ARB_fragment_shader_interlock : enable
