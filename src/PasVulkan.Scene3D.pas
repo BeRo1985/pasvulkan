@@ -10208,16 +10208,16 @@ procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAA
   if aLightItemArray.Count<MaxVisibleLights then begin
    aLight.fLightItemIndex:=aLightItemArray.AddNew;
    LightItem:=@aLightItemArray.Items[aLight.fLightItemIndex];
-   LightItem^.Type_:=TpvUInt32(aLight.fData.Type_);
+   LightItem^.Type_:=TpvUInt32(aLight.fDataPointer^.Type_);
    LightItem^.ShadowMapIndex:=0;
-   InnerConeAngleCosinus:=cos(aLight.fData.InnerConeAngle);
-   OuterConeAngleCosinus:=cos(aLight.fData.OuterConeAngle);
+   InnerConeAngleCosinus:=cos(aLight.fDataPointer^.InnerConeAngle);
+   OuterConeAngleCosinus:=cos(aLight.fDataPointer^.OuterConeAngle);
   {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
    LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
    LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
    LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-   LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fData.fColor,aLight.fData.fIntensity);
-   LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fData.fRange);
+   LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fDataPointer^.fColor,aLight.fDataPointer^.fIntensity);
+   LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fDataPointer^.fRange);
    LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
    LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
   end else begin
