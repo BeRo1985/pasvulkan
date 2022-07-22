@@ -1691,7 +1691,9 @@ type EpvScene3D=class(Exception);
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
-       procedure Flush;
+       function NeedFlush(const aInFlightFrameIndex:TpvSizeInt):boolean;
+       function Flush(const aInFlightFrameIndex:TpvSizeInt;
+                      const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
@@ -10916,14 +10918,20 @@ begin
  end;
 end;
 
-procedure TpvScene3D.Flush;
+function TpvScene3D.NeedFlush(const aInFlightFrameIndex:TpvSizeInt):boolean;
 begin
- if fVulkanBufferCopyBatchItemArray.Count>0 then begin
+ result:=fVulkanBufferCopyBatchItemArray.Count>0;
+end;
+
+function TpvScene3D.Flush(const aInFlightFrameIndex:TpvSizeInt;
+                          const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
+begin
+ result:=fVulkanBufferCopyBatchItemArray.Count>0;
+ if result then begin
   try
-   TpvVulkanBuffer.ProcessCopyBatch(fVulkanStagingQueue,
-                                    fVulkanStagingCommandBuffer,
-                                    fVulkanStagingFence,
-                                    fVulkanBufferCopyBatchItemArray);
+   TpvVulkanBuffer.ProcessCopyBatch(aCommandBuffer,
+                                    fVulkanBufferCopyBatchItemArray,
+                                    true);
   finally
    fVulkanBufferCopyBatchItemArray.Count:=0;
   end;
@@ -10947,8 +10955,6 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
-
-  Flush;
 
   Pipeline:=nil;
 

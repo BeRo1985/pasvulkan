@@ -1212,6 +1212,11 @@ type { TScreenMain }
        fVulkanTransferCommandPool:TpvVulkanCommandPool;
        fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
+       fVulkanFlushQueue:TpvVulkanQueue;
+       fVulkanFlushCommandPool:TpvVulkanCommandPool;
+       fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
+       fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fSkyCubeMap:TSkyCubeMap;
        fGGXBRDF:TGGXBRDF;
@@ -13823,8 +13828,22 @@ begin
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
+ fVulkanFlushQueue:=pvApplication.VulkanDevice.UniversalQueue;
+
+ fVulkanFlushCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                      pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
  for Index:=0 to MaxInFlightFrames-1 do begin
+
+  fVulkanFlushCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanFlushCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  fVulkanFlushCommandBufferFences[Index]:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+  fVulkanFlushSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
+
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
+
  end;
 
  for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
@@ -13988,8 +14007,18 @@ begin
  fFrameGraph.Hide;
 
  for Index:=0 to MaxInFlightFrames-1 do begin
+
   FreeAndNil(fVulkanRenderSemaphores[Index]);
+
+  FreeAndNil(fVulkanFlushCommandBuffers[Index]);
+
+  FreeAndNil(fVulkanFlushCommandBufferFences[Index]);
+
+  FreeAndNil(fVulkanFlushSemaphores[Index]);
+
  end;
+
+ FreeAndNil(fVulkanFlushCommandPool);
 
  for Index:=0 to length(fCascadedShadowMapVulkanUniformBuffers)-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[Index]);
@@ -14793,8 +14822,6 @@ begin
                     false,
                     true);
 
-   fScene3D.Flush;
-
    TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
    fTime:=fTime+pvApplication.DeltaTime;
@@ -14819,6 +14846,20 @@ begin
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
  DrawUpdate(InFlightFrameIndex,pvApplication.DeltaTime);
+
+ if fScene3D.NeedFlush(pvApplication.DrawInFlightFrameIndex) then begin
+  fVulkanFlushCommandBuffers[InFlightFrameIndex].Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  fVulkanFlushCommandBuffers[InFlightFrameIndex].BeginRecording;
+  fScene3D.Flush(InFlightFrameIndex,fVulkanFlushCommandBuffers[InFlightFrameIndex]);
+  fVulkanFlushCommandBuffers[InFlightFrameIndex].EndRecording;
+  fVulkanFlushCommandBuffers[InFlightFrameIndex].Execute(fVulkanFlushQueue,
+                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or pvApplication.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                                         aWaitSemaphore,
+                                                         fVulkanFlushSemaphores[InFlightFrameIndex],
+                                                         nil,
+                                                         false);
+  aWaitSemaphore:=fVulkanFlushSemaphores[InFlightFrameIndex];
+ end;
 
  fFrameGraph.Draw(pvApplication.SwapChainImageIndex,
                   pvApplication.DrawInFlightFrameIndex,

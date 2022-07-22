@@ -1057,6 +1057,8 @@ type EpvVulkanException=class(Exception);
      TpvVulkanBufferCopyBatchItemArray=TpvDynamicArray<TpvVulkanBufferCopyBatchItem>;
      PpvVulkanBufferCopyBatchItemArray=^TpvVulkanBufferCopyBatchItemArray;
 
+     TpvVulkanSemaphore=class;
+
      TpvVulkanBuffer=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1109,10 +1111,16 @@ type EpvVulkanException=class(Exception);
                           const aSourceOffset:TVkDeviceSize;
                           const aDestinationOffset:TVkDeviceSize;
                           const aDataSize:TVkDeviceSize); overload;
+       class procedure ProcessCopyBatch(const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                                        const aBarriers:boolean=false); static; overload;
        class procedure ProcessCopyBatch(const aTransferQueue:TpvVulkanQueue;
                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                         const aTransferFence:TpvVulkanFence;
-                                        const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray); static;
+                                        const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                                        const aBarriers:boolean=false;
+                                        const aWaitSemaphore:TpvVulkanSemaphore=nil;
+                                        const aSignalSemaphore:TpvVulkanSemaphore=nil); static; overload;
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -11030,17 +11038,17 @@ begin
  CopyBatchItem^.Size:=aDataSize;
 end;
 
-class procedure TpvVulkanBuffer.ProcessCopyBatch(const aTransferQueue:TpvVulkanQueue;
-                                                 const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                                 const aTransferFence:TpvVulkanFence;
-                                                 const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray);
+class procedure TpvVulkanBuffer.ProcessCopyBatch(const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                                                 const aBarriers:boolean=false);
 var Index:TpvSizeInt;
     CopyBatchItem:PpvVulkanBufferCopyBatchItem;
     VkBufferCopy:TVkBufferCopy;
+    BufferMemoryBarriers:array of TVkBufferMemoryBarrier;
+    BufferMemoryBarrier:PVkBufferMemoryBarrier;
+//  MemoryBarrier:PVkMemoryBarrier;
 begin
  if aCopyBatchItemArray.Count>0 then begin
-  aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  aTransferCommandBuffer.BeginRecording;
   for Index:=0 to aCopyBatchItemArray.Count-1 do begin
    CopyBatchItem:=@aCopyBatchItemArray.Items[Index];
    VkBufferCopy.srcOffset:=CopyBatchItem^.SourceOffset;
@@ -11048,8 +11056,56 @@ begin
    VkBufferCopy.size:=CopyBatchItem^.Size;
    aTransferCommandBuffer.CmdCopyBuffer(CopyBatchItem^.SourceBuffer,CopyBatchItem^.DestinationBuffer,1,@VkBufferCopy);
   end;
+  if aBarriers then begin
+   BufferMemoryBarriers:=nil;
+   try
+    SetLength(BufferMemoryBarriers,aCopyBatchItemArray.Count);
+    FillChar(BufferMemoryBarriers[0],length(BufferMemoryBarriers)*SizeOf(TVkBufferMemoryBarrier),#0);
+    for Index:=0 to length(BufferMemoryBarriers)-1 do begin
+     BufferMemoryBarrier:=@BufferMemoryBarriers[Index];
+     BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+     BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+     BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarrier^.buffer:=CopyBatchItem^.DestinationBuffer;
+     BufferMemoryBarrier^.offset:=CopyBatchItem^.DestinationOffset;
+     BufferMemoryBarrier^.size:=CopyBatchItem^.Size;
+    end;
+    aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or aTransferCommandBuffer.Device.PhysicalDevice.PipelineStageAllShaderBits,
+                                              0,
+                                              0,nil,
+                                              length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
+                                              0,nil
+                                             );
+   finally
+    BufferMemoryBarriers:=nil;
+   end;
+  end;
+ end;
+end;
+
+class procedure TpvVulkanBuffer.ProcessCopyBatch(const aTransferQueue:TpvVulkanQueue;
+                                                 const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aTransferFence:TpvVulkanFence;
+                                                 const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                                                 const aBarriers:boolean=false;
+                                                 const aWaitSemaphore:TpvVulkanSemaphore=nil;
+                                                 const aSignalSemaphore:TpvVulkanSemaphore=nil);
+begin
+ if aCopyBatchItemArray.Count>0 then begin
+  aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aTransferCommandBuffer.BeginRecording;
+  TpvVulkanBuffer.ProcessCopyBatch(aTransferCommandBuffer,aCopyBatchItemArray,aBarriers);
   aTransferCommandBuffer.EndRecording;
-  aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+  aTransferCommandBuffer.Execute(aTransferQueue,0,aWaitSemaphore,aSignalSemaphore,aTransferFence,true);
  end;
 end;
 
