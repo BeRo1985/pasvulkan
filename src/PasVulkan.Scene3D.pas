@@ -9498,7 +9498,7 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
- fBufferStreamingMode:=TBufferStreamingMode.Staging;
+ fBufferStreamingMode:=TBufferStreamingMode.Direct;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
