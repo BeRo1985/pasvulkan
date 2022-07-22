@@ -1579,6 +1579,7 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fMaterialBufferData:TMaterialBufferData;
+       fVulkanMaterialDataStagingBuffer:TpvVulkanBuffer;
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fTechniques:TpvTechniques;
@@ -9675,6 +9676,28 @@ begin
         UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
         try
 
+         fVulkanMaterialDataStagingBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                  SizeOf(TMaterialBufferData),
+                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                  [],
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  []);
+
+         fVulkanMaterialDataStagingBuffer.UploadData(UniversalQueue,
+                                                     UniversalCommandBuffer,
+                                                     UniversalFence,
+                                                     fMaterialBufferData,
+                                                     0,
+                                                     SizeOf(TMaterialBufferData),
+                                                     TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+
          for Index:=0 to length(fVulkanMaterialDataBuffers)-1 do begin
 
           fVulkanMaterialDataBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -9692,13 +9715,13 @@ begin
                                                                     0,
                                                                     []);
 
-          fVulkanMaterialDataBuffers[Index].UploadData(UniversalQueue,
-                                                       UniversalCommandBuffer,
-                                                       UniversalFence,
-                                                       fMaterialBufferData,
-                                                       0,
-                                                       SizeOf(TMaterialBufferData),
-                                                       TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+          fVulkanMaterialDataBuffers[Index].CopyFrom(UniversalQueue,
+                                                     UniversalCommandBuffer,
+                                                     UniversalFence,
+                                                     fVulkanMaterialDataStagingBuffer,
+                                                     0,
+                                                     0,
+                                                     SizeOf(TMaterialBufferData));
 
           if fUseBufferDeviceAddress then begin
 
@@ -9855,6 +9878,7 @@ begin
      for Index:=0 to length(fVulkanMaterialDataBuffers)-1 do begin
       FreeAndNil(fVulkanMaterialDataBuffers[Index]);
      end;
+     FreeAndNil(fVulkanMaterialDataStagingBuffer);
      for Material in fMaterials do begin
       Material.Unload;
      end;
