@@ -1045,6 +1045,18 @@ type EpvVulkanException=class(Exception);
      PpvVulkanBufferFlags=^TpvVulkanBufferFlags;
      TpvVulkanBufferFlags=set of TpvVulkanBufferFlag;
 
+     TpvVulkanBufferCopyBatchItem=record
+      SourceBuffer:TVkBuffer;
+      DestinationBuffer:TVkBuffer;
+      SourceOffset:TVkDeviceSize;
+      DestinationOffset:TVkDeviceSize;
+      Size:TVkDeviceSize;
+     end;
+     PpvVulkanBufferCopyBatchItem=^TpvVulkanBufferCopyBatchItem;
+
+     TpvVulkanBufferCopyBatchItemArray=TpvDynamicArray<PpvVulkanBufferCopyBatchItem>;
+     PpvVulkanBufferCopyBatchItemArray=^TpvVulkanBufferCopyBatchItemArray;
+
      TpvVulkanBuffer=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1091,7 +1103,16 @@ type EpvVulkanException=class(Exception);
                           const aSourceBuffer:TpvVulkanBuffer;
                           const aSourceOffset:TVkDeviceSize;
                           const aDestinationOffset:TVkDeviceSize;
-                          const aDataSize:TVkDeviceSize);
+                          const aDataSize:TVkDeviceSize); overload;
+       procedure CopyFrom(var aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                          const aSourceBuffer:TpvVulkanBuffer;
+                          const aSourceOffset:TVkDeviceSize;
+                          const aDestinationOffset:TVkDeviceSize;
+                          const aDataSize:TVkDeviceSize); overload;
+       class procedure ProcessCopyBatch(const aTransferQueue:TpvVulkanQueue;
+                                        const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aTransferFence:TpvVulkanFence;
+                                        const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray); static;
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -10990,6 +11011,46 @@ begin
  aTransferCommandBuffer.EndRecording;
  aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
+end;
+
+procedure TpvVulkanBuffer.CopyFrom(var aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
+                                   const aSourceBuffer:TpvVulkanBuffer;
+                                   const aSourceOffset:TVkDeviceSize;
+                                   const aDestinationOffset:TVkDeviceSize;
+                                   const aDataSize:TVkDeviceSize);
+var Index:TpvSizeInt;
+    CopyBatchItem:PpvVulkanBufferCopyBatchItem;
+begin
+ Index:=aCopyBatchItemArray.AddNew;
+ CopyBatchItem:=@aCopyBatchItemArray.Items[Index];
+ CopyBatchItem^.DestinationBuffer:=Handle;
+ CopyBatchItem^.SourceBuffer:=aSourceBuffer.Handle;
+ CopyBatchItem^.SourceOffset:=aSourceOffset;
+ CopyBatchItem^.DestinationOffset:=aDestinationOffset;
+ CopyBatchItem^.Size:=aDataSize;
+end;
+
+class procedure TpvVulkanBuffer.ProcessCopyBatch(const aTransferQueue:TpvVulkanQueue;
+                                                 const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aTransferFence:TpvVulkanFence;
+                                                 const aCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray);
+var Index:TpvSizeInt;
+    CopyBatchItem:PpvVulkanBufferCopyBatchItem;
+    VkBufferCopy:TVkBufferCopy;
+begin
+ if aCopyBatchItemArray.Count>0 then begin
+  aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aTransferCommandBuffer.BeginRecording;
+  for Index:=0 to aCopyBatchItemArray.Count-1 do begin
+   CopyBatchItem:=@aCopyBatchItemArray.Items[Index];
+   VkBufferCopy.srcOffset:=CopyBatchItem^.SourceOffset;
+   VkBufferCopy.dstOffset:=CopyBatchItem^.DestinationOffset;
+   VkBufferCopy.size:=CopyBatchItem^.Size;
+   aTransferCommandBuffer.CmdCopyBuffer(CopyBatchItem^.SourceBuffer,CopyBatchItem^.DestinationBuffer,1,@VkBufferCopy);
+  end;
+  aTransferCommandBuffer.EndRecording;
+  aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+ end;
 end;
 
 procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
