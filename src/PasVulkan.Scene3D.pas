@@ -1642,6 +1642,7 @@ type EpvScene3D=class(Exception);
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
        fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
+       fVulkanBufferCopyBatchItemArray:TpvVulkanBufferCopyBatchItemArray;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
@@ -1690,6 +1691,7 @@ type EpvScene3D=class(Exception);
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
+       procedure Flush;
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
@@ -4136,9 +4138,7 @@ begin
     TBufferStreamingMode.Staging:begin
      if fLightItems.Count>0 then begin
       fSceneInstance.fVulkanLightItemsStagingBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),FlushUpdateData);
-      fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanStagingQueue,
-                                       fSceneInstance.fVulkanStagingCommandBuffer,
-                                       fSceneInstance.fVulkanStagingFence,
+      fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArray,
                                        fSceneInstance.fVulkanLightItemsStagingBuffer,
                                        0,
                                        0,
@@ -4146,18 +4146,14 @@ begin
      end;
      if fLightTree.Count>0 then begin
       fSceneInstance.fVulkanLightTreeStagingBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
-      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanStagingQueue,
-                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                      fSceneInstance.fVulkanStagingFence,
+      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArray,
                                       fSceneInstance.fVulkanLightTreeStagingBuffer,
                                       0,
                                       0,
                                       Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode));
      end else begin
       fSceneInstance.fVulkanLightTreeStagingBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
-      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanStagingQueue,
-                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                      fSceneInstance.fVulkanStagingFence,
+      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArray,
                                       fSceneInstance.fVulkanLightTreeStagingBuffer,
                                       0,
                                       0,
@@ -7457,9 +7453,7 @@ begin
 
     fInstance.fGroup.fVulkanNodeMatricesStagingBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
 
-    fNodeMatricesBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
-                                 fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                                 fInstance.fSceneInstance.fVulkanStagingFence,
+    fNodeMatricesBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanBufferCopyBatchItemArray,
                                  fInstance.fGroup.fVulkanNodeMatricesStagingBuffer,
                                  0,
                                  0,
@@ -7468,9 +7462,7 @@ begin
 
     fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
 
-    fMorphTargetVertexWeightsBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
-                                             fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                                             fInstance.fSceneInstance.fVulkanStagingFence,
+    fMorphTargetVertexWeightsBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanBufferCopyBatchItemArray,
                                              fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer,
                                              0,
                                              0,
@@ -9494,13 +9486,15 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
- fBufferStreamingMode:=TBufferStreamingMode.Direct;
+ fBufferStreamingMode:=TBufferStreamingMode.Staging;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
  fUploaded:=false;
 
  fHasTransmission:=false;
+
+ fVulkanBufferCopyBatchItemArray.Initialize;
 
  fTechniques:=TpvTechniques.Create;
 
@@ -9823,6 +9817,8 @@ begin
  fPreviousViews.Finalize;
 
  fViews.Finalize;
+
+ fVulkanBufferCopyBatchItemArray.Finalize;
 
  FreeAndNil(fLock);
 
@@ -10757,9 +10753,7 @@ begin
                                                       (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
                                                       FlushUpdateData
                                                      );
-     fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].CopyFrom(fVulkanStagingQueue,
-                                                                   fVulkanStagingCommandBuffer,
-                                                                   fVulkanStagingFence,
+     fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].CopyFrom(fVulkanBufferCopyBatchItemArray,
                                                                    fGlobalVulkanViewUniformStagingBuffer,
                                                                    0,
                                                                    0,
@@ -10922,6 +10916,20 @@ begin
  end;
 end;
 
+procedure TpvScene3D.Flush;
+begin
+ if fVulkanBufferCopyBatchItemArray.Count>0 then begin
+  try
+   TpvVulkanBuffer.ProcessCopyBatch(fVulkanStagingQueue,
+                                    fVulkanStagingCommandBuffer,
+                                    fVulkanStagingFence,
+                                    fVulkanBufferCopyBatchItemArray);
+  finally
+   fVulkanBufferCopyBatchItemArray.Count:=0;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                           const aInFlightFrameIndex:TpvSizeInt;
@@ -10939,6 +10947,8 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
+
+  Flush;
 
   Pipeline:=nil;
 

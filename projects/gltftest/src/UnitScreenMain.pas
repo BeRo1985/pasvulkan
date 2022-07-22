@@ -14793,6 +14793,8 @@ begin
                     false,
                     true);
 
+   fScene3D.Flush;
+
    TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
    fTime:=fTime+pvApplication.DeltaTime;

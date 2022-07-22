@@ -1054,7 +1054,7 @@ type EpvVulkanException=class(Exception);
      end;
      PpvVulkanBufferCopyBatchItem=^TpvVulkanBufferCopyBatchItem;
 
-     TpvVulkanBufferCopyBatchItemArray=TpvDynamicArray<PpvVulkanBufferCopyBatchItem>;
+     TpvVulkanBufferCopyBatchItemArray=TpvDynamicArray<TpvVulkanBufferCopyBatchItem>;
      PpvVulkanBufferCopyBatchItemArray=^TpvVulkanBufferCopyBatchItemArray;
 
      TpvVulkanBuffer=class(TpvVulkanObject)
@@ -11023,8 +11023,8 @@ var Index:TpvSizeInt;
 begin
  Index:=aCopyBatchItemArray.AddNew;
  CopyBatchItem:=@aCopyBatchItemArray.Items[Index];
- CopyBatchItem^.DestinationBuffer:=Handle;
  CopyBatchItem^.SourceBuffer:=aSourceBuffer.Handle;
+ CopyBatchItem^.DestinationBuffer:=Handle;
  CopyBatchItem^.SourceOffset:=aSourceOffset;
  CopyBatchItem^.DestinationOffset:=aDestinationOffset;
  CopyBatchItem^.Size:=aDataSize;
