@@ -1085,6 +1085,13 @@ type EpvVulkanException=class(Exception);
                            const aDataSize:TVkDeviceSize;
                            const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic;
                            const aForceFlush:boolean=false);
+       procedure CopyFrom(const aTransferQueue:TpvVulkanQueue;
+                          const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                          const aTransferFence:TpvVulkanFence;
+                          const aSourceBuffer:TpvVulkanBuffer;
+                          const aSourceOffset:TVkDeviceSize;
+                          const aDestinationOffset:TVkDeviceSize;
+                          const aDataSize:TVkDeviceSize);
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -10868,9 +10875,17 @@ var StagingBuffer:TpvVulkanBuffer;
     DataSize,NonCoherentAtomSize:TVkDeviceSize;
 begin
 
- if (aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Yes) or
-    ((aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic) and
-     ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
+ if assigned(aTransferCommandBuffer) and (aDataSize>0) and (((aDataSize and 3)=0) or (aDataSize=VK_WHOLE_SIZE)) and ((aDataOffset and 3)=0) then begin
+
+  aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aTransferCommandBuffer.BeginRecording;
+  aTransferCommandBuffer.CmdFillBuffer(Handle,aDataOffset,aDataSize,0);
+  aTransferCommandBuffer.EndRecording;
+  aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+ end else if (aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Yes) or
+             ((aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic) and
+              ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
 
   StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
                                         aDataSize,
@@ -10952,6 +10967,28 @@ begin
   end;
 
  end;
+
+end;
+
+procedure TpvVulkanBuffer.CopyFrom(const aTransferQueue:TpvVulkanQueue;
+                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aTransferFence:TpvVulkanFence;
+                                   const aSourceBuffer:TpvVulkanBuffer;
+                                   const aSourceOffset:TVkDeviceSize;
+                                   const aDestinationOffset:TVkDeviceSize;
+                                   const aDataSize:TVkDeviceSize);
+var VkBufferCopy:TVkBufferCopy;
+begin
+
+ VkBufferCopy.srcOffset:=aSourceOffset;
+ VkBufferCopy.dstOffset:=aDestinationOffset;
+ VkBufferCopy.size:=aDataSize;
+
+ aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ aTransferCommandBuffer.BeginRecording;
+ aTransferCommandBuffer.CmdCopyBuffer(aSourceBuffer.Handle,Handle,1,@VkBufferCopy);
+ aTransferCommandBuffer.EndRecording;
+ aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
 end;
 
