@@ -1318,6 +1318,8 @@ type { TScreenMain }
        fKeyRollDec:boolean;
        fCascadedShadowMapSize:TpvInt32;
        fOptimizedNonAlphaFormat:TVkFormat;
+       fOldFPS:TpvInt32;
+       fFPSTimeAccumulator:TpvDouble;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -12926,6 +12928,10 @@ var GLTF:TPasGLTF.TDocument;
 begin
  inherited Create;
 
+ fOldFPS:=-1;
+
+ fFPSTimeAccumulator:=0;
+
  fCascadedShadowMapSize:=Max(16,UnitApplication.Application.ShadowMapSize);
 
  fBufferDeviceAddress:=(pvApplication.VulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) and
@@ -14626,6 +14632,8 @@ const Directions:array[boolean,boolean] of TpvScalar=
         (-1,0)
        );
 var RotationSpeed,MovementSpeed:TpvDouble;
+    FPS:TpvInt32;
+    FPSString:string;
 begin
 
  RotationSpeed:=aDeltaTime*1.0;
@@ -14647,6 +14655,18 @@ begin
  inherited Update(aDeltaTime);
 
  fFrameGraph.Update(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter);
+
+ FPS:=round(pvApplication.FramesPerSecond*100.0);
+ fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
+ if fFPSTimeAccumulator>=0.25 then begin
+  fFPSTimeAccumulator:=frac(fFPSTimeAccumulator*4)*0.25;
+  fOldFPS:=Low(Int32);
+ end;
+ if abs(fOldFPS-FPS)>=100 then begin
+  fOldFPS:=FPS;
+  str((FPS*0.01):4:2,FPSString);
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS]';
+ end;
 
 //DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.DeltaTime);
 

@@ -932,6 +932,8 @@ type EpvApplication=class(Exception)
        SRGB=1
       );
 
+     { TpvApplication }
+
      TpvApplication=class
       private
        type TAcquireVulkanBackBufferState=
@@ -958,6 +960,8 @@ type EpvApplication=class(Exception)
 
        fTitle:TpvUTF8String;
        fVersion:TpvUInt32;
+
+       fWindowTitle:TpvUTF8String;
 
        fPathName:TpvUTF8String;
 
@@ -1273,6 +1277,10 @@ type EpvApplication=class(Exception)
 
        fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
 
+       procedure SetTitle(const aTitle:TpvUTF8String);
+
+       procedure SetWindowTitle(const aWindowTitle:TpvUTF8String);
+
        procedure SetDesiredCountInFlightFrames(const aDesiredCountInFlightFrames:TpvInt32);
 
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
@@ -1441,8 +1449,10 @@ type EpvApplication=class(Exception)
 
        property ResourceManager:TpvResourceManager read fResourceManager;
 
-       property Title:TpvUTF8String read fTitle write fTitle;
+       property Title:TpvUTF8String read fTitle write SetTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
+
+       property WindowTitle:TpvUTF8String read fWindowTitle write SetWindowTitle;
 
        property PathName:TpvUTF8String read fPathName write fPathName;
 
@@ -5312,6 +5322,8 @@ begin
  fTitle:='PasVulkan Application';
  fVersion:=$0100;
 
+ fWindowTitle:=fTitle;
+
  fPathName:='PasVulkanApplication';
 
  fCacheStoragePath:='';
@@ -5628,6 +5640,24 @@ begin
   end;
  end;
 {$ifend}
+end;
+
+procedure TpvApplication.SetTitle(const aTitle:TpvUTF8String);
+begin
+ if fTitle<>aTitle then begin
+  fTitle:=aTitle;
+  SetWindowTitle(fTitle);
+ end;
+end;
+
+procedure TpvApplication.SetWindowTitle(const aWindowTitle:TpvUTF8String);
+begin
+ if fWindowTitle<>aWindowTitle then begin
+  fWindowTitle:=aWindowTitle;
+{$if defined(PasVulkanUseSDL2)}
+  SDL_SetWindowTitle(fSurfaceWindow,PAnsiChar(TpvApplicationRawByteString(fWindowTitle)));
+{$ifend}
+ end;
 end;
 
 procedure TpvApplication.SetDesiredCountInFlightFrames(const aDesiredCountInFlightFrames:TpvInt32);
@@ -5999,7 +6029,7 @@ begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
      (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then begin
-   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
                                              Version,
                                              'PasVulkanApplication',
                                              $0100,
@@ -8531,7 +8561,7 @@ begin
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
   repeat
 {$ifend}
-   fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
+   fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fWindowTitle)),
 {$ifdef Android}
                                     SDL_WINDOWPOS_CENTERED_MASK,
                                     SDL_WINDOWPOS_CENTERED_MASK,
