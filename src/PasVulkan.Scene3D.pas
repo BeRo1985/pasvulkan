@@ -6099,33 +6099,53 @@ var Index:TpvSizeInt;
                                      fJointBlocks.Count*SizeOf(TJointBlock),
                                      TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
-  fVulkanNodeMatricesStagingBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                           (fNodes.Count+fCountJointNodeMatrices+1)*SizeOf(TpvMatrix4x4),
-                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                           [],
-                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           [TpvVulkanBufferFlag.PersistentMapped]
-                                                          );
+  case fSceneInstance.fBufferStreamingMode of
 
-  fVulkanMorphTargetVertexWeightsStagingBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                       (Max(Max(fMorphTargetCount,fCountNodeWeights),1))*SizeOf(TpvFloat),
-                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                       [],
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                       0,
-                                                                       0,
-                                                                       0,
-                                                                       0,
-                                                                       [TpvVulkanBufferFlag.PersistentMapped]
-                                                                      );
+   TBufferStreamingMode.Direct:begin
+
+    fVulkanNodeMatricesStagingBuffer:=nil;
+
+    fVulkanMorphTargetVertexWeightsStagingBuffer:=nil;
+
+   end;
+
+   TBufferStreamingMode.Staging:begin
+
+    fVulkanNodeMatricesStagingBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                             (fNodes.Count+fCountJointNodeMatrices+1)*SizeOf(TpvMatrix4x4),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                             [],
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                                            );
+
+    fVulkanMorphTargetVertexWeightsStagingBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                         (Max(Max(fMorphTargetCount,fCountNodeWeights),1))*SizeOf(TpvFloat),
+                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                         [],
+                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         [TpvVulkanBufferFlag.PersistentMapped]
+                                                                        );
+
+   end;
+
+   else begin
+    Assert(false);
+   end;
+
+  end;
 
  end;
 var Instance:TpvScene3D.TGroup.TInstance;
@@ -7324,34 +7344,82 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.TVulkanData.Upload;
 begin
+
  if not fUploaded then begin
+
   try
-   fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                               length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
-                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                               [],
-                                               0,//TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),//or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                               0,
-                                               0,
-                                               0,
-                                               0,
-                                               []//[TpvVulkanBufferFlag.PersistentMapped]
-                                              );
-   fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                           length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
-                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                           [],
-                                                           0,//TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),//or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           0,
-                                                           []//[TpvVulkanBufferFlag.PersistentMapped]
-                                                          );
+
+   case fInstance.fSceneInstance.fBufferStreamingMode of
+
+    TBufferStreamingMode.Direct:begin
+
+     fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                 length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                 [],
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 [TpvVulkanBufferFlag.PersistentMapped]
+                                                );
+
+     fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                             length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                             [],
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                                            );
+
+    end;
+
+    TBufferStreamingMode.Staging:begin
+
+     fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                 length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                 [],
+                                                 0,
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 []
+                                                );
+
+     fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                             length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                             [],
+                                                             0,
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             []
+                                                            );
+
+    end;
+
+    else begin
+     Assert(false);
+    end;
+
+   end;
   finally
    fUploaded:=true;
   end;
@@ -7375,31 +7443,50 @@ begin
  Upload;
  if fUploaded then begin
 
-  fInstance.fGroup.fVulkanNodeMatricesStagingBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
+  case fInstance.fSceneInstance.fBufferStreamingMode of
 
-  fNodeMatricesBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
-                               fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                               fInstance.fSceneInstance.fVulkanStagingFence,
-                               fInstance.fGroup.fVulkanNodeMatricesStagingBuffer,
-                               0,
-                               0,
-                               length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
+   TBufferStreamingMode.Direct:begin
+
+    fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
+
+    fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
+
+   end;
+
+   TBufferStreamingMode.Staging:begin
+
+    fInstance.fGroup.fVulkanNodeMatricesStagingBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
+
+    fNodeMatricesBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                 fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                 fInstance.fSceneInstance.fVulkanStagingFence,
+                                 fInstance.fGroup.fVulkanNodeMatricesStagingBuffer,
+                                 0,
+                                 0,
+                                 length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
 
 
-  fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
+    fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
 
-  fMorphTargetVertexWeightsBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
-                                           fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                                           fInstance.fSceneInstance.fVulkanStagingFence,
-                                           fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer,
-                                           0,
-                                           0,
-                                           length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+    fMorphTargetVertexWeightsBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                             fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fInstance.fSceneInstance.fVulkanStagingFence,
+                                             fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffer,
+                                             0,
+                                             0,
+                                             length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
 
-{ fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
-  fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);}
+   end;
+
+   else begin
+    Assert(false);
+   end;
+
+  end;
+
 { fInstance.fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fNodeMatricesBuffer);
   fInstance.fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fMorphTargetVertexWeightsBuffer);}
+
  end;
 end;
 
