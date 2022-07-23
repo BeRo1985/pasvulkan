@@ -913,6 +913,11 @@ type EpvScene3D=class(Exception);
                                    PointerCameraPerspectiveYFov,
                                    PointerCameraPerspectiveZFar,
                                    PointerCameraPerspectiveZNear,
+                                   PointerPunctualLightColor,
+                                   PointerPunctualLightIntensity,
+                                   PointerPunctualLightRange,
+                                   PointerPunctualLightSpotInnerConeAngle,
+                                   PointerPunctualLightSpotOuterConeAngle,
                                    PointerMaterialPBRMetallicRoughnessBaseColorFactor,
                                    PointerMaterialPBRMetallicRoughnessMetallicFactor,
                                    PointerMaterialPBRMetallicRoughnessRoughnessFactor,
@@ -920,11 +925,6 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialEmissiveFactor,
                                    PointerMaterialNormalTextureScale,
                                    PointerMaterialOcclusionTextureStrength,
-                                   PointerPunctualLightColor,
-                                   PointerPunctualLightIntensity,
-                                   PointerPunctualLightRange,
-                                   PointerPunctualLightSpotInnerConeAngle,
-                                   PointerPunctualLightSpotOuterConeAngle,
                                    PointerMaterialPBRClearCoatFactor,
                                    PointerMaterialPBRClearCoatRoughnessFactor,
                                    PointerMaterialEmissiveStrength,
@@ -945,12 +945,42 @@ type EpvScene3D=class(Exception);
                                    PointerTextureRotation,
                                    PointerTextureScale
                                   );
+                                 TTargetSet=set of TTarget;
                                  TInterpolation=
                                   (
                                    Linear,
                                    Step,
                                    CubicSpline
                                   );
+                            const MaterialTargets:TTargetSet=
+                                   [
+                                    TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+                                    TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
+                                    TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+                                    TTarget.PointerMaterialAlphaCutOff,
+                                    TTarget.PointerMaterialEmissiveFactor,
+                                    TTarget.PointerMaterialNormalTextureScale,
+                                    TTarget.PointerMaterialOcclusionTextureStrength,
+                                    TTarget.PointerMaterialPBRClearCoatFactor,
+                                    TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
+                                    TTarget.PointerMaterialEmissiveStrength,
+                                    TTarget.PointerMaterialIOR,
+                                    TTarget.PointerMaterialPBRIridescenceFactor,
+                                    TTarget.PointerMaterialPBRIridescenceIor,
+                                    TTarget.PointerMaterialPBRIridescenceMinimum,
+                                    TTarget.PointerMaterialPBRIridescenceMaximum,
+                                    TTarget.PointerMaterialPBRSheenColorFactor,
+                                    TTarget.PointerMaterialPBRSheenRoughnessFactor,
+                                    TTarget.PointerMaterialPBRSpecularFactor,
+                                    TTarget.PointerMaterialPBRSpecularColorFactor,
+                                    TTarget.PointerMaterialPBRTransmissionFactor,
+                                    TTarget.PointerMaterialPBRVolumeThicknessFactor,
+                                    TTarget.PointerMaterialPBRVolumeAttenuationDistance,
+                                    TTarget.PointerMaterialPBRVolumeAttenuationColor,
+                                    TTarget.PointerTextureOffset,
+                                    TTarget.PointerTextureRotation,
+                                    TTarget.PointerTextureScale
+                                   ];
                            public
                             Name:TpvUTF8String;
                             Target:TTarget;
@@ -1472,9 +1502,11 @@ type EpvScene3D=class(Exception);
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
+                   TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
              private
               fCulling:boolean;
               fObjects:TBaseObjects;
+              fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCameras:TpvScene3D.TGroup.TCameras;
               fMeshes:TpvScene3D.TGroup.TMeshes;
@@ -5835,6 +5867,9 @@ begin
  fObjects:=TBaseObjects.Create;
  fObjects.OwnsObjects:=false;
 
+ fMaterialsToDuplicate:=TpvScene3D.TGroup.TMaterialsToDuplicate.Create;
+ fMaterialsToDuplicate.OwnsObjects:=false;
+
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
 
@@ -5907,6 +5942,8 @@ begin
  FreeAndNil(fAnimations);
 
  FreeAndNil(fObjects);
+
+ FreeAndNil(fMaterialsToDuplicate);
 
  fPerMaterialCondensedIndices.Finalize;
 
@@ -6574,93 +6611,124 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessAnimations;
- type TTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
+ type TMaterialHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
+      TMaterialArrayList=TpvDynamicArrayList<TpvSizeInt>;
+      TTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
       TTargetArrayList=TpvDynamicArrayList<TpvUInt64>;
       TTargetUsedBitmap=array of TpvUInt32;
- var Index,ChannelIndex,TargetIndex,CountDefaultChannels:TpvSizeInt;
+ var Index,ChannelIndex,TargetIndex,CountDefaultChannels,
+     MaterialArrayIndex:TpvSizeInt;
      SourceAnimation:TPasGLTF.TAnimation;
      Animation:TpvScene3D.TGroup.TAnimation;
      Channel:TpvScene3D.TGroup.TAnimation.PChannel;
      DefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
+     MaterialHashMap:TMaterialHashMap;
+     MaterialArrayList:TMaterialArrayList;
      TargetHashMap:TTargetHashMap;
      TargetArrayList:TTargetArrayList;
      TargetUsedBitmap:TTargetUsedBitmap;
      CompactCode:TpvUInt64;
+     Material:TpvScene3D.TMaterial;
  begin
-  TargetHashMap:=TTargetHashMap.Create(-1);
+  MaterialHashMap:=TMaterialHashMap.Create(-1);
   try
-   TargetArrayList:=TTargetArrayList.Create;
+   MaterialArrayList:=TMaterialArrayList.Create;
    try
-    for Index:=0 to aSourceDocument.Animations.Count-1 do begin
-     SourceAnimation:=aSourceDocument.Animations[Index];
-     Animation:=TAnimation.Create(self,Index);
+    TargetHashMap:=TTargetHashMap.Create(-1);
+    try
+     TargetArrayList:=TTargetArrayList.Create;
      try
-      Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
-      for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
-       Channel:=@Animation.fChannels[ChannelIndex];
-       if Channel^.TargetIndex>=0 then begin
-        CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
-                     (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
-                     (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
-        TargetIndex:=TargetHashMap[CompactCode];
-        if TargetIndex<0 then begin
-         TargetHashMap[CompactCode]:=TargetArrayList.Add(CompactCode);
+      for Index:=0 to aSourceDocument.Animations.Count-1 do begin
+       SourceAnimation:=aSourceDocument.Animations[Index];
+       Animation:=TAnimation.Create(self,Index);
+       try
+        Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+        for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+         Channel:=@Animation.fChannels[ChannelIndex];
+         if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets) and
+            (Channel^.TargetIndex>=0) and
+            (Channel^.TargetIndex<MaterialMap.Count) then begin
+          Material:=MaterialMap[Channel^.TargetIndex];
+          Channel^.TargetIndex:=MaterialMap[Channel^.TargetIndex].fID;
+          MaterialArrayIndex:=MaterialHashMap[Channel^.TargetIndex];
+          if MaterialArrayIndex<0 then begin
+           MaterialArrayIndex:=MaterialArrayList.Add(Channel^.TargetIndex);
+           MaterialHashMap.Add(Channel^.TargetIndex,MaterialArrayIndex);
+           fMaterialsToDuplicate.Add(Material);
+          end;
+         end;
         end;
+        for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+         Channel:=@Animation.fChannels[ChannelIndex];
+         if Channel^.TargetIndex>=0 then begin
+          CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
+                       (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
+                       (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
+          TargetIndex:=TargetHashMap[CompactCode];
+          if TargetIndex<0 then begin
+           TargetHashMap[CompactCode]:=TargetArrayList.Add(CompactCode);
+          end;
+         end;
+        end;
+       finally
+        fAnimations.Add(Animation);
+       end;
+      end;
+      if TargetArrayList.Count>0 then begin
+       TargetUsedBitmap:=nil;
+       try
+        SetLength(TargetUsedBitmap,(TargetArrayList.Count+31) shr 5);
+        for Index:=0 to fAnimations.Count-1 do begin
+         Animation:=fAnimations[Index];
+         FillChar(TargetUsedBitmap[0],length(TargetUsedBitmap)*SizeOf(TpvUInt32),#0);
+         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+          Channel:=@Animation.fChannels[ChannelIndex];
+          if Channel^.TargetIndex>=0 then begin
+           CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
+                        (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
+                        (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
+           TargetIndex:=TargetHashMap[CompactCode];
+           if (TargetIndex>=0) and (TargetIndex<TargetArrayList.Count) then begin
+            TargetUsedBitmap[TargetIndex shr 5]:=TargetUsedBitmap[TargetIndex shr 5] or (TpvUInt32(1) shl (TargetIndex and 31));
+           end;
+          end;
+         end;
+         CountDefaultChannels:=0;
+         for TargetIndex:=0 to TargetArrayList.Count-1 do begin
+          if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
+           inc(CountDefaultChannels);
+          end;
+         end;
+         if CountDefaultChannels>0 then begin
+          SetLength(Animation.fDefaultChannels,CountDefaultChannels);
+          CountDefaultChannels:=0;
+          for TargetIndex:=0 to TargetArrayList.Count-1 do begin
+           if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
+            DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
+            inc(CountDefaultChannels);
+            CompactCode:=TargetArrayList[TargetIndex];
+            DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 48)));
+            DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 16) and TpvUInt64($ffffffff)))-1;
+            DefaultChannel^.TargetSubIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 0) and TpvUInt64($ffff)))-1;
+           end;
+          end;
+         end;
+        end;
+       finally
+        TargetUsedBitmap:=nil;
        end;
       end;
      finally
-      fAnimations.Add(Animation);
+      FreeAndNil(TargetArrayList);
      end;
-    end;
-    if TargetArrayList.Count>0 then begin
-     TargetUsedBitmap:=nil;
-     try
-      SetLength(TargetUsedBitmap,(TargetArrayList.Count+31) shr 5);
-      for Index:=0 to fAnimations.Count-1 do begin
-       Animation:=fAnimations[Index];
-       FillChar(TargetUsedBitmap[0],length(TargetUsedBitmap)*SizeOf(TpvUInt32),#0);
-       for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
-        Channel:=@Animation.fChannels[ChannelIndex];
-        if Channel^.TargetIndex>=0 then begin
-         CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(Channel^.Target)) and TpvUInt64($ffff)) shl 48) or
-                      (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
-                      (TpvUInt64(TpvUInt64(TpvInt64(Channel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
-         TargetIndex:=TargetHashMap[CompactCode];
-         if (TargetIndex>=0) and (TargetIndex<TargetArrayList.Count) then begin
-          TargetUsedBitmap[TargetIndex shr 5]:=TargetUsedBitmap[TargetIndex shr 5] or (TpvUInt32(1) shl (TargetIndex and 31));
-         end;
-        end;
-       end;
-       CountDefaultChannels:=0;
-       for TargetIndex:=0 to TargetArrayList.Count-1 do begin
-        if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
-         inc(CountDefaultChannels);
-        end;
-       end;
-       if CountDefaultChannels>0 then begin
-        SetLength(Animation.fDefaultChannels,CountDefaultChannels);
-        CountDefaultChannels:=0;
-        for TargetIndex:=0 to TargetArrayList.Count-1 do begin
-         if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
-          DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
-          inc(CountDefaultChannels);
-          CompactCode:=TargetArrayList[TargetIndex];
-          DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 48)));
-          DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 16) and TpvUInt64($ffffffff)))-1;
-          DefaultChannel^.TargetSubIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 0) and TpvUInt64($ffff)))-1;
-         end;
-        end;
-       end;
-      end;
-     finally
-      TargetUsedBitmap:=nil;
-     end;
+    finally
+     FreeAndNil(TargetHashMap);
     end;
    finally
-    FreeAndNil(TargetArrayList);
+    FreeAndNil(MaterialArrayList);
    end;
   finally
-   FreeAndNil(TargetHashMap);
+   FreeAndNil(MaterialHashMap);
   end;
  end;
  procedure ProcessCameras;
