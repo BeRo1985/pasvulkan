@@ -379,7 +379,9 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
   case aKeyEvent.KeyCode of
    KEYCODE_F9:begin
-    VirtualReality.ResetOrientation;
+    if assigned(VirtualReality) then begin
+     VirtualReality.ResetOrientation;
+    end;
    end;
    KEYCODE_F11:begin
    end;
