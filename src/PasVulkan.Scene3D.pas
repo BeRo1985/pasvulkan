@@ -994,7 +994,6 @@ type EpvScene3D=class(Exception);
                             OutputVector2Array:TpvVector2Array;
                             OutputVector3Array:TpvVector3Array;
                             OutputVector4Array:TpvVector4Array;
-                            Last:TPasGLTFSizeInt;
                           end;
                           PChannel=^TChannel;
                           TChannels=array of TChannel;
@@ -1238,9 +1237,11 @@ type EpvScene3D=class(Exception);
                                    fOverwrite:TpvSizeInt;
                                  end;
                                  TChannels=TpvObjectGenericList<TChannel>;
+                                 TLastIndices=array of TpvSizeInt;
                            private
                             fFactor:TpvFloat;
                             fTime:TpvDouble;
+                            fLastIndices:TLastIndices;
                             fShadowTime:TpvDouble;
                             fComplete:LongBool;
                             fChannels:TChannels;
@@ -4279,8 +4280,6 @@ begin
   SourceAnimationChannel:=aSourceAnimation.Channels[ChannelIndex];
 
   DestinationAnimationChannel:=@fChannels[ChannelIndex];
-
-  DestinationAnimationChannel^.Last:=-1;
 
   DestinationAnimationChannel^.TargetIndex:=-1;
 
@@ -7798,12 +7797,14 @@ begin
  fChannels:=TChannels.Create;
  fChannels.OwnsObjects:=true;
  fTime:=0.0;
+ fLastIndices:=nil;
  fShadowTime:=0.0;
  fComplete:=false;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TAnimation.Destroy;
 begin
+ fLastIndices:=nil;
  FreeAndNil(fChannels);
  inherited Destroy;
 end;
@@ -7886,6 +7887,10 @@ begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
   if Index>0 then begin
    Animation:=fGroup.fAnimations[Index-1];
+   SetLength(fAnimations[Index].fLastIndices,length(Animation.fChannels));
+   for OtherIndex:=0 to length(fAnimations[Index].fLastIndices)-1 do begin
+    fAnimations[Index].fLastIndices[OtherIndex]:=0;
+   end;
    for OtherIndex:=0 to (length(Animation.fChannels)+length(Animation.fDefaultChannels))-1 do begin
     fAnimations[Index].fChannels.Add(TpvScene3D.TGroup.TInstance.TAnimation.TChannel.Create);
    end;
@@ -8402,7 +8407,11 @@ var CullFace,Blend:TPasGLTFInt32;
      ReferenceNodeIndex,
      NodeIndex,
      ElementIndex,
-     l,r,m:TpvSizeInt;
+     CountTimeIndices,
+     LastIndex,
+     LowIndex,
+     HighIndex,
+     MidIndex:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
      AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
@@ -8447,53 +8456,142 @@ var CullFace,Blend:TPasGLTFInt32;
 
    if (AnimationChannel.TargetIndex>=0) and (length(AnimationChannel.InputTimeArray)>0) then begin
 
-    TimeIndices[1]:=length(AnimationChannel^.InputTimeArray)-1;
+    LastIndex:=InstanceAnimation.fLastIndices[ChannelIndex];
 
-    Time:=Min(Max(aAnimationTime,AnimationChannel^.InputTimeArray[0]),AnimationChannel^.InputTimeArray[TimeIndices[1]]);
+    CountTimeIndices:=length(AnimationChannel^.InputTimeArray);
 
-    if (AnimationChannel^.Last<=0) or (Time<AnimationChannel^.InputTimeArray[AnimationChannel.Last-1]) then begin
-     l:=0;
-    end else begin
-     l:=AnimationChannel^.Last-1;
-    end;
+    Time:=Min(Max(aAnimationTime,AnimationChannel^.InputTimeArray[0]),AnimationChannel^.InputTimeArray[CountTimeIndices-1]);
 
-    for InputTimeArrayIndex:=Min(Max(l,0),length(AnimationChannel^.InputTimeArray)-1) to Min(Max(l+3,0),length(AnimationChannel^.InputTimeArray)-1) do begin
-     if AnimationChannel^.InputTimeArray[InputTimeArrayIndex]>Time then begin
-      l:=InputTimeArrayIndex-1;
-      break;
-     end;
-    end;
+    TimeIndices[1]:=-1;
 
-    r:=length(AnimationChannel^.InputTimeArray);
-    if ((l+1)<r) and (Time<AnimationChannel^.InputTimeArray[l+1]) then begin
-     inc(l);
-    end else begin
-     while l<r do begin
-      m:=l+((r-l) shr 1);
-      Value:=AnimationChannel^.InputTimeArray[m];
-      if Value<=Time then begin
-       l:=m+1;
-       if Time<AnimationChannel^.InputTimeArray[l] then begin
-        break;
-       end;
-      end else begin
-       r:=m;
+    if (LastIndex>0) and
+       (LastIndex<CountTimeIndices) and
+       (AnimationChannel^.InputTimeArray[LastIndex-1]<=Time) then begin
+     for InputTimeArrayIndex:=LastIndex to Min(LastIndex+3,CountTimeIndices-1) do begin
+      if (AnimationChannel^.InputTimeArray[InputTimeArrayIndex-1]<=Time) and
+         (Time<AnimationChannel^.InputTimeArray[InputTimeArrayIndex]) then begin
+       TimeIndices[1]:=InputTimeArrayIndex;
+       break;
       end;
      end;
     end;
 
-    for InputTimeArrayIndex:=Min(Max(l,0),length(AnimationChannel^.InputTimeArray)-1) to length(AnimationChannel^.InputTimeArray)-1 do begin
-     if AnimationChannel^.InputTimeArray[InputTimeArrayIndex]>Time then begin
-      TimeIndices[1]:=InputTimeArrayIndex;
-      break;
+    if TimeIndices[1]<0 then begin
+     if (CountTimeIndices>=2) and (Time<AnimationChannel^.InputTimeArray[1]) then begin
+      TimeIndices[1]:=1;
+     end else if Time<AnimationChannel^.InputTimeArray[0] then begin
+      TimeIndices[1]:=0;
+     end else if Time>=AnimationChannel^.InputTimeArray[CountTimeIndices-1] then begin
+      TimeIndices[1]:=CountTimeIndices-1;
+     end else begin
+      TimeIndices[1]:=-1;
+      LowIndex:=0;
+      HighIndex:=CountTimeIndices-1;
+      while LowIndex<=HighIndex do begin
+       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+       case Sign(AnimationChannel^.InputTimeArray[MidIndex]-Time) of
+        -1:begin
+         LowIndex:=MidIndex+1;
+        end;
+        1:begin
+         HighIndex:=MidIndex-1;
+        end;
+        else begin
+         TimeIndices[1]:=MidIndex+1;
+         break;
+        end;
+       end;
+      end;
+      if TimeIndices[1]<0 then begin
+       if HighIndex<0 then begin
+        TimeIndices[1]:=1;
+       end else if LowIndex>=CountTimeIndices then begin
+        TimeIndices[1]:=CountTimeIndices-1;
+       end else begin
+        if LowIndex<HighIndex then begin
+         TimeIndices[1]:=LowIndex+1;
+        end else begin
+         TimeIndices[1]:=HighIndex+1;
+        end;
+        if TimeIndices[1]<1 then begin
+         TimeIndices[1]:=1;
+        end;
+       end;
+      end;
+      if TimeIndices[1]>=CountTimeIndices then begin
+       TimeIndices[1]:=CountTimeIndices-1;
+      end;
      end;
     end;
 
-    AnimationChannel^.Last:=TimeIndices[1];
+    if (
+        (TimeIndices[1]<1) or
+        (TimeIndices[1]>=CountTimeIndices)
+       ) or
+       (
+        (AnimationChannel^.InputTimeArray[TimeIndices[1]-1]>Time) or
+        (
+         (
+          ((TimeIndices[1]+1)<CountTimeIndices) and
+          (Time>=AnimationChannel^.InputTimeArray[TimeIndices[1]])
+         ) or
+         (
+          ((TimeIndices[1]+1)=CountTimeIndices) and
+          (Time>AnimationChannel^.InputTimeArray[TimeIndices[1]])
+         )
+        )
+       ) then begin
+     if TimeIndices[1]<1 then begin
+      TimeIndices[1]:=1;
+     end;
+     if CountTimeIndices<2 then begin
+      TimeIndices[1]:=1;
+     end else begin
+      if TimeIndices[1]>=CountTimeIndices then begin
+       TimeIndices[1]:=CountTimeIndices-1;
+      end;
+      if (AnimationChannel^.InputTimeArray[TimeIndices[1]-1]>Time) or
+         (Time>=AnimationChannel^.InputTimeArray[TimeIndices[1]]) then begin
+       while (TimeIndices[1]>1) and
+             (AnimationChannel^.InputTimeArray[TimeIndices[1]-1]>Time) do begin
+        dec(TimeIndices[1]);
+       end;
+       while ((TimeIndices[1]+1)<CountTimeIndices) and
+             (Time>=AnimationChannel^.InputTimeArray[TimeIndices[1]]) do begin
+        inc(TimeIndices[1]);
+       end;
+       if TimeIndices[1]<1 then begin
+        TimeIndices[1]:=1;
+       end else if TimeIndices[1]>=CountTimeIndices then begin
+        TimeIndices[1]:=CountTimeIndices-1;
+       end;
+      end;
+     end;
+    end;
+
+    if TimeIndices[1]<0 then begin
+     TimeIndices[1]:=0;
+     for InputTimeArrayIndex:=1 to CountTimeIndices-1 do begin
+      if (AnimationChannel^.InputTimeArray[InputTimeArrayIndex-1]<=Time) and
+         (AnimationChannel^.InputTimeArray[InputTimeArrayIndex]>=Time) then begin
+       TimeIndices[1]:=InputTimeArrayIndex;
+       break;
+      end;
+     end;
+    end;
+
+    InstanceAnimation.fLastIndices[ChannelIndex]:=TimeIndices[1];
 
     if TimeIndices[1]>=0 then begin
 
-     TimeIndices[0]:=Max(0,TimeIndices[1]-1);
+     if TimeIndices[1]>=CountTimeIndices then begin
+      TimeIndices[1]:=CountTimeIndices-1;
+     end;
+
+     TimeIndices[0]:=TimeIndices[1]-1;
+     if TimeIndices[0]<0 then begin
+      TimeIndices[0]:=0;
+     end;
 
      KeyDelta:=AnimationChannel^.InputTimeArray[TimeIndices[1]]-AnimationChannel^.InputTimeArray[TimeIndices[0]];
 
