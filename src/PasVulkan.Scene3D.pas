@@ -9546,12 +9546,12 @@ procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVu
                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aPipelineLayout:TpvVulkanPipelineLayout);
 var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
-    DrawChoreographyBatchItemIndex,
-    CountDrawChoreographyBatchItems:TpvSizeInt;
+    DrawChoreographyBatchUniqueItemIndex,
+    CountDrawChoreographyBatchUniqueItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TInstance.PNode;
     FirstFlush:boolean;
-    DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
+    DrawChoreographyBatchUniqueItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
 begin
 
@@ -9597,32 +9597,32 @@ begin
    IndicesStart:=0;
    IndicesCount:=0;
 
-   DrawChoreographyBatchItemIndex:=0;
-   CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchUniqueItems.Count;
+   DrawChoreographyBatchUniqueItemIndex:=0;
+   CountDrawChoreographyBatchUniqueItems:=Scene.fDrawChoreographyBatchUniqueItems.Count;
 
-   while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+   while DrawChoreographyBatchUniqueItemIndex<CountDrawChoreographyBatchUniqueItems do begin
 
-    DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchItemIndex];
-    inc(DrawChoreographyBatchItemIndex);
+    DrawChoreographyBatchUniqueItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchUniqueItemIndex];
+    inc(DrawChoreographyBatchUniqueItemIndex);
 
-    NodeIndex:=DrawChoreographyBatchItem.Node.fIndex;
+    NodeIndex:=DrawChoreographyBatchUniqueItem.Node.fIndex;
 
     if (fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
 
-     IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-     IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
+     IndicesStart:=DrawChoreographyBatchUniqueItem.fStartIndex;
+     IndicesCount:=DrawChoreographyBatchUniqueItem.fCountIndices;
 
-     while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+     while DrawChoreographyBatchUniqueItemIndex<CountDrawChoreographyBatchUniqueItems do begin
 
-      DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchItemIndex];
+      DrawChoreographyBatchUniqueItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchUniqueItemIndex];
 
-      NodeIndex:=DrawChoreographyBatchItem.Node.fIndex;
+      NodeIndex:=DrawChoreographyBatchUniqueItem.Node.fIndex;
 
       if ((fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0) and
-         ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+         ((IndicesStart+IndicesCount)=DrawChoreographyBatchUniqueItem.fStartIndex) then begin
 
-       inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-       inc(DrawChoreographyBatchItemIndex);
+       inc(IndicesCount,DrawChoreographyBatchUniqueItem.fCountIndices);
+       inc(DrawChoreographyBatchUniqueItemIndex);
 
       end else begin
        break;
@@ -9659,8 +9659,6 @@ begin
 
       aCommandBuffer.CmdDispatch((IndicesCount+127) shr 7,1,1);
 
-      IndicesCount:=0;
-
      end;
 
     end;
@@ -9682,67 +9680,15 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aOnSetRenderPassResources:TOnSetRenderPassResources;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var SceneMaterialIndex,PrimitiveIndexRangeIndex,
-    IndicesStart,IndicesCount:TpvSizeInt;
+var IndicesStart,IndicesCount,
+    DrawChoreographyBatchItemIndex,
+    CountDrawChoreographyBatchItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
-    Material:TpvScene3D.TMaterial;
-    LastPrimitiveTopology,PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    LastDoubleSided,DoubleSided,First,Culling,FirstFlush:boolean;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    DoubleSided,Culling,FirstFlush:boolean;
     VisibleBit:TpvUInt32;
     DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
- procedure Flush;
- var Pipeline:TpvVulkanPipeline;
-     WasFirstFlush:boolean;
- begin
-
-  if IndicesCount>0 then begin
-
-   Pipeline:=aGraphicsPipelines[LastPrimitiveTopology,LastDoubleSided];
-   if aPipeline<>Pipeline then begin
-    aPipeline:=Pipeline;
-    if assigned(Pipeline) then begin
-     aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-    end;
-   end;
-
-   WasFirstFlush:=FirstFlush;
-   if FirstFlush then begin
-    FirstFlush:=false;
-    fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
-   end;
-
-   if WasFirstFlush then begin
-
-    fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-    if assigned(aOnSetRenderPassResources) then begin
-     aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-    end;
-
-   end;
-
-   aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
-
-   First:=false;
-
-   LastPrimitiveTopology:=PrimitiveTopology;
-
-   LastDoubleSided:=DoubleSided;
-
-  end else begin
-
-   if First then begin
-    First:=false;
-    LastPrimitiveTopology:=PrimitiveTopology;
-    LastDoubleSided:=DoubleSided;
-   end;
-
-  end;
-
-  IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-  IndicesCount:=0;
-
- end;
+    Pipeline:TpvVulkanPipeline;
 begin
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
 
@@ -9752,51 +9698,82 @@ begin
 
   if assigned(Scene) then begin
 
-   LastPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-   PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-   LastDoubleSided:=false;
-   DoubleSided:=false;
-
-   Material:=nil;
-
    VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
-
-   First:=true;
 
    FirstFlush:=true;
 
    IndicesStart:=0;
    IndicesCount:=0;
 
-   for DrawChoreographyBatchItem in Scene.fDrawChoreographyBatchItems do begin
+   DrawChoreographyBatchItemIndex:=0;
+   CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchItems.Count;
 
-    if (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+   while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+
+    DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+    inc(DrawChoreographyBatchItemIndex);
+
+    if DrawChoreographyBatchItem.fMaterial.fVisible and
+       (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
        (DrawChoreographyBatchItem.fCountIndices>0) and
        ((not Culling) or
         ((fNodes[DrawChoreographyBatchItem.Node.fIndex].VisibleBitmap and VisibleBit)<>0)) then begin
 
-     Material:=DrawChoreographyBatchItem.fMaterial;
+     IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+     IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
 
-     if Material.fVisible then begin
+     PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
 
-      PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
+     DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
 
-      DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
+     while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
-      if (LastPrimitiveTopology<>PrimitiveTopology) or
-         (LastDoubleSided<>DoubleSided) or
-         (IndicesCount=0) or
-         ((IndicesStart+IndicesCount)<>DrawChoreographyBatchItem.StartIndex) then begin
-       Flush;
+      DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+
+      if DrawChoreographyBatchItem.fMaterial.fVisible and
+         (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+         (DrawChoreographyBatchItem.fCountIndices>0) and
+         ((not Culling) or
+          ((fNodes[DrawChoreographyBatchItem.Node.fIndex].VisibleBitmap and VisibleBit)<>0)) and
+         (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
+         (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
+         ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+
+       inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+       inc(DrawChoreographyBatchItemIndex);
+
+      end else begin
+       break;
       end;
 
-      inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+     end;
 
-      if First then begin
-       First:=false;
-       LastPrimitiveTopology:=PrimitiveTopology;
-       LastDoubleSided:=DoubleSided;
+     if IndicesCount>0 then begin
+
+      Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSided];
+      if aPipeline<>Pipeline then begin
+       aPipeline:=Pipeline;
+       if assigned(Pipeline) then begin
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+       end;
+      end;
+
+      if FirstFlush then begin
+
+       FirstFlush:=false;
+
+       fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+
+       fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+       if assigned(aOnSetRenderPassResources) then begin
+        aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+       end;
+
+      end;
+
+      if assigned(aPipeline) then begin
+       aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
       end;
 
      end;
@@ -9804,8 +9781,6 @@ begin
     end;
 
    end;
-
-   Flush;
 
   end;
 
