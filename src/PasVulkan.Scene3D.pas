@@ -9545,79 +9545,132 @@ procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVu
                                                            const aInFlightFrameIndex:TpvSizeInt;
                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aPipelineLayout:TpvVulkanPipelineLayout);
-var NodeIndex,PrimitiveIndexRangeIndex,IndicesStart,IndicesCount,
-    InFlightFrameIndex:TpvSizeInt;
+var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
+    DrawChoreographyBatchItemIndex,
+    CountDrawChoreographyBatchItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TInstance.PNode;
     FirstFlush:boolean;
- procedure Flush;
- var MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
- begin
-  if IndicesCount>0 then begin
-   fGroup.fCachedVerticesUpdated:=true;
-   if FirstFlush then begin
-    FirstFlush:=false;
-    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                         aPipelineLayout.Handle,
-                                         0,
-                                         1,
-                                         @fVulkanComputeDescriptorSets[aInFlightFrameIndex].Handle,
-                                         0,
-                                         nil);
-   end;
-   MeshComputeStagePushConstants.IndexOffset:=IndicesStart;
-   MeshComputeStagePushConstants.CountIndices:=IndicesCount;
-   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
-                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                   0,
-                                   SizeOf(TpvScene3D.TMeshComputeStagePushConstants),
-                                   @MeshComputeStagePushConstants);
-   aCommandBuffer.CmdDispatch((IndicesCount+127) shr 7,1,1);
-   IndicesCount:=0;
-  end;
- end;
-var DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
+    DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
+    MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
 begin
+
  if fActives[aInFlightFrameIndex] then begin
+
   Scene:=fScenes[aInFlightFrameIndex];
+
   if assigned(Scene) then begin
+
    FillChar(fCacheVerticesNodeDirtyBitmap[0],Length(fCacheVerticesNodeDirtyBitmap)*SizeOf(TpvUInt32),#0);
+
    for NodeIndex:=0 to length(fNodes)-1 do begin
     Node:=@fNodes[NodeIndex];
+
     if Node^.CacheVerticesDirtyCounter>0 then begin
+
      dec(Node^.CacheVerticesDirtyCounter);
+
      inc(Node^.CacheVerticesGeneration);
+
      if Node^.CacheVerticesGeneration=0 then begin
+
       // Handle generation value overflow
       Node^.CacheVerticesGeneration:=1;
+
       for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
        Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=0;
       end;
+
      end;
+
     end;
+
     if Node^.CacheVerticesGenerations[aInFlightFrameIndex]<>Node^.CacheVerticesGeneration then begin
      Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=Node^.CacheVerticesGeneration;
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
+
    end;
+
    FirstFlush:=true;
+
    IndicesStart:=0;
    IndicesCount:=0;
-   for DrawChoreographyBatchItem in Scene.fDrawChoreographyBatchUniqueItems do begin
-    if DrawChoreographyBatchItem.fCountIndices>0 then begin
-     NodeIndex:=DrawChoreographyBatchItem.Node.fIndex;
-     if (fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
-      if (IndicesCount=0) or ((IndicesStart+IndicesCount)<>DrawChoreographyBatchItem.fStartIndex) then begin
-       Flush;
-       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+
+   DrawChoreographyBatchItemIndex:=0;
+   CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchUniqueItems.Count;
+
+   while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+
+    DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchItemIndex];
+    inc(DrawChoreographyBatchItemIndex);
+
+    NodeIndex:=DrawChoreographyBatchItem.Node.fIndex;
+
+    if (fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0 then begin
+
+     IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+     IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
+
+     while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+
+      DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchUniqueItems[DrawChoreographyBatchItemIndex];
+
+      NodeIndex:=DrawChoreographyBatchItem.Node.fIndex;
+
+      if ((fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] and (TpvUInt32(1) shl (NodeIndex and 31)))<>0) and
+         ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+
+       inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+       inc(DrawChoreographyBatchItemIndex);
+
+      end else begin
+       break;
       end;
-      inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+
      end;
+
+     if IndicesCount>0 then begin
+
+      fGroup.fCachedVerticesUpdated:=true;
+
+      if FirstFlush then begin
+
+       FirstFlush:=false;
+
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            aPipelineLayout.Handle,
+                                            0,
+                                            1,
+                                            @fVulkanComputeDescriptorSets[aInFlightFrameIndex].Handle,
+                                            0,
+                                            nil);
+
+      end;
+
+      MeshComputeStagePushConstants.IndexOffset:=IndicesStart;
+      MeshComputeStagePushConstants.CountIndices:=IndicesCount;
+
+      aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
+                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TpvScene3D.TMeshComputeStagePushConstants),
+                                      @MeshComputeStagePushConstants);
+
+      aCommandBuffer.CmdDispatch((IndicesCount+127) shr 7,1,1);
+
+      IndicesCount:=0;
+
+     end;
+
     end;
+
    end;
-   Flush;
+
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
@@ -9718,13 +9771,14 @@ begin
 
    for DrawChoreographyBatchItem in Scene.fDrawChoreographyBatchItems do begin
 
-    if (DrawChoreographyBatchItem.fCountIndices>0) and
+    if (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+       (DrawChoreographyBatchItem.fCountIndices>0) and
        ((not Culling) or
         ((fNodes[DrawChoreographyBatchItem.Node.fIndex].VisibleBitmap and VisibleBit)<>0)) then begin
 
      Material:=DrawChoreographyBatchItem.fMaterial;
 
-     if Material.fVisible and (Material.fData.AlphaMode in aMaterialAlphaModes) then begin
+     if Material.fVisible then begin
 
       PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
 
