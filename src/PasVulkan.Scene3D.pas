@@ -833,6 +833,7 @@ type EpvScene3D=class(Exception);
              public
               type TNode=class;
                    TMesh=class;
+                   TScene=class;
                    TGroupVertices=TpvDynamicArray<TVertex>;
                    TGroupIndices=TpvDynamicArray<TVkUInt32>;
                    TGroupJointBlocks=TpvDynamicArray<TJointBlock>;
@@ -1130,8 +1131,10 @@ type EpvScene3D=class(Exception);
                    TNode=class(TGroupObject)
                     public
                      type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
+                          TUsedByScenesList=TpvObjectGenericList<TpvScene3D.TGroup.TScene>;
                     private
                      fIndex:TpvSizeInt;
+                     fUsedByScenesList:TUsedByScenesList;
                      fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
                      fMesh:TMesh;
@@ -1161,6 +1164,39 @@ type EpvScene3D=class(Exception);
                      property NodeMeshInstanceIndex:TPasGLTFSizeInt read fNodeMeshInstanceIndex;
                      property Skin:TSkin read fSkin;
                    end;
+                   { TDrawChoreographyBatchItem }
+                   TDrawChoreographyBatchItem=class
+                    private
+                     fAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                     fPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+                     fDoubleSided:boolean;
+                     fMaterial:TpvScene3D.TMaterial;
+                     fNode:TpvScene3D.TGroup.TNode;
+                     fMesh:TpvScene3D.TGroup.TMesh;
+                     fMeshPrimitive:TpvSizeInt;
+                     fStartIndex:TpvSizeInt;
+                     fCountIndices:TpvSizeInt;
+                    public
+                     function CompareTo(const aOther:TpvScene3D.TGroup.TDrawChoreographyBatchItem):TpvInt32;
+                    published
+                     property AlphaMode:TpvScene3D.TMaterial.TAlphaMode read fAlphaMode write fAlphaMode;
+                     property PrimitiveTopology:TpvScene3D.TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
+                     property DoubleSided:boolean read fDoubleSided write fDoubleSided;
+                     property Material:TpvScene3D.TMaterial read fMaterial write fMaterial;
+                     property Node:TpvScene3D.TGroup.TNode read fNode write fNode;
+                     property Mesh:TpvScene3D.TGroup.TMesh read fMesh write fMesh;
+                     property MeshPrimitive:TpvSizeInt read fMeshPrimitive write fMeshPrimitive;
+                     property StartIndex:TpvSizeInt read fStartIndex write fStartIndex;
+                     property CountIndices:TpvSizeInt read fCountIndices write fCountIndices;
+                   end;
+                   { TDrawChoreographyBatchItems }
+                   TDrawChoreographyBatchItems=class(TpvObjectGenericList<TDrawChoreographyBatchItem>)
+                    public
+                     procedure Sort;
+                   end;
+                   { TUsedVisibleDrawNodes }
+                   TUsedVisibleDrawNodes=TpvObjectGenericList<TpvScene3D.TGroup.TNode>;
+                   { TScene }
                    TScene=class(TGroupObject)
                     public
                      type TPrimitiveIndexRange=record
@@ -1196,6 +1232,8 @@ type EpvScene3D=class(Exception);
                      fMaterials:TpvScene3D.TGroup.TScene.TMaterials;
                      fMaterialHashMap:TpvScene3D.TGroup.TScene.TMaterialHashMap;
                      fCombinedPrimitiveUniqueIndexRanges:TpvScene3D.TGroup.TScene.TPrimitiveIndexRanges;
+                     fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
+                     fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -1517,6 +1555,8 @@ type EpvScene3D=class(Exception);
               fScene:TpvScene3D.TGroup.TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
+              fDrawChoreographyBatchCondensedIndices:TGroupIndices;
+              fDrawChoreographyBatchCondensedUniqueIndices:TGroupIndices;
               fPerMaterialCondensedIndices:TGroupIndices;
               fPerMaterialCondensedUniqueIndices:TGroupIndices;
               fJointBlocks:TGroupJointBlocks;
@@ -1542,7 +1582,13 @@ type EpvScene3D=class(Exception);
               fBoundingBox:TpvAABB;
               fSetGroupResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
               fCachedVerticesUpdated:boolean;
+              fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
+              fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
+              fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
               procedure ConstructBuffers;
+              procedure CollectUsedVisibleDrawNodes;
+              procedure CollectMaterials;
+              procedure ConstructDrawChoreographyBatchItems;
               procedure CollectMaterialPrimitives;
               procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                 const aRenderPassIndex:TpvSizeInt;
@@ -5665,6 +5711,9 @@ begin
  fChildren:=TNodes.Create;
  fChildren.OwnsObjects:=false;
 
+ fUsedByScenesList:=TUsedByScenesList.Create;
+ fUsedByScenesList.OwnsObjects:=false;
+
  fMesh:=nil;
 
  fNodeMeshInstanceIndex:=-1;
@@ -5687,6 +5736,8 @@ begin
  fSkin:=nil;
 
  fLight:=nil;
+
+ FreeAndNil(fUsedByScenesList);
 
  FreeAndNil(fChildren);
 
@@ -5800,6 +5851,164 @@ begin
  end;
 end;
 
+{ TpvScene3D.TGroup.TDrawChoreographyBatchItem }
+
+function TpvScene3D.TGroup.TDrawChoreographyBatchItem.CompareTo(const aOther:TpvScene3D.TGroup.TDrawChoreographyBatchItem):TpvInt32;
+begin
+ result:=Sign(TpvInt32(fAlphaMode)-TpvInt32(aOther.fAlphaMode));
+ if result=0 then begin
+  result:=Sign(TpvInt32(fPrimitiveTopology)-TpvInt32(aOther.fPrimitiveTopology));
+  if result=0 then begin
+   result:=Sign(TpvInt32(ord(fDoubleSided) and 1)-TpvInt32(ord(aOther.fDoubleSided) and 1));
+   if result=0 then begin
+    result:=Sign(TpvPtrInt(fMaterial)-TpvPtrInt(aOther.fMaterial));
+    if result=0 then begin
+     result:=Sign(TpvPtrInt(fNode)-TpvPtrInt(aOther.fNode));
+     if result=0 then begin
+      result:=Sign(TpvPtrInt(fMesh)-TpvPtrInt(aOther.fMesh));
+      if result=0 then begin
+       result:=Sign(MeshPrimitive-aOther.MeshPrimitive);
+       if result=0 then begin
+        result:=Sign(fStartIndex-aOther.fStartIndex);
+        if result=0 then begin
+         result:=Sign(fCountIndices-aOther.fCountIndices);
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+{ TpvScene3D.TGroup.TDrawChoreographyBatchItems }
+
+procedure TpvScene3D.TGroup.TDrawChoreographyBatchItems.Sort;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Left,Right,Depth:TpvSizeInt;
+     end;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
+    StackItem:PStackItem;
+    Stack:array[0..31] of TStackItem;
+begin
+ if fCount>1 then begin
+  StackItem:=@Stack[0];
+  StackItem^.Left:=0;
+  StackItem^.Right:=fCount-1;
+  StackItem^.Depth:=IntLog2(fCount) shl 1;
+  inc(StackItem);
+  while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
+   dec(StackItem);
+   Left:=StackItem^.Left;
+   Right:=StackItem^.Right;
+   Depth:=StackItem^.Depth;
+   Size:=(Right-Left)+1;
+   if Size<16 then begin
+    // Insertion sort
+    iA:=Left;
+    iB:=iA+1;
+    while iB<=Right do begin
+     iC:=iB;
+     while (iA>=Left) and
+           (iC>=Left) and
+           (Items[iA].CompareTo(Items[iC])>0) do begin
+      Exchange(iA,iC);
+      dec(iA);
+      dec(iC);
+     end;
+     iA:=iB;
+     inc(iB);
+    end;
+   end else begin
+    if (Depth=0) or (TpvPtrUInt(TpvPointer(StackItem))>=TpvPtrUInt(TpvPointer(@Stack[high(Stack)-1]))) then begin
+     // Heap sort
+     i:=Size div 2;
+     repeat
+      if i>0 then begin
+       dec(i);
+      end else begin
+       dec(Size);
+       if Size>0 then begin
+        Exchange(Left+Size,Left);
+       end else begin
+        break;
+       end;
+      end;
+      Parent:=i;
+      repeat
+       Child:=(Parent*2)+1;
+       if Child<Size then begin
+        if (Child<(Size-1)) and (Items[Left+Child].CompareTo(Items[Left+Child+1])<0) then begin
+         inc(Child);
+        end;
+        if Items[Left+Parent].CompareTo(Items[Left+Child])<0 then begin
+         Exchange(Left+Parent,Left+Child);
+         Parent:=Child;
+         continue;
+        end;
+       end;
+       break;
+      until false;
+     until false;
+    end else begin
+     // Quick sort width median-of-three optimization
+     Middle:=Left+((Right-Left) shr 1);
+     if (Right-Left)>3 then begin
+      if Items[Left].CompareTo(Items[Middle])>0 then begin
+       Exchange(Left,Middle);
+      end;
+      if Items[Left].CompareTo(Items[Right])>0 then begin
+       Exchange(Left,Right);
+      end;
+      if Items[Middle].CompareTo(Items[Right])>0 then begin
+       Exchange(Middle,Right);
+      end;
+     end;
+     Pivot:=Middle;
+     i:=Left;
+     j:=Right;
+     repeat
+      while (i<Right) and (Items[i].CompareTo(Items[Pivot])<0) do begin
+       inc(i);
+      end;
+      while (j>=i) and (Items[j].CompareTo(Items[Pivot])>0) do begin
+       dec(j);
+      end;
+      if i>j then begin
+       break;
+      end else begin
+       if i<>j then begin
+        Exchange(i,j);
+        if Pivot=i then begin
+         Pivot:=j;
+        end else if Pivot=j then begin
+         Pivot:=i;
+        end;
+       end;
+       inc(i);
+       dec(j);
+      end;
+     until false;
+     if i<Right then begin
+      StackItem^.Left:=i;
+      StackItem^.Right:=Right;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+     if Left<j then begin
+      StackItem^.Left:=Left;
+      StackItem^.Right:=j;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 { TpvScene3D.TGroup.TMaterial }
 
 constructor TpvScene3D.TGroup.TScene.TMaterial.Create;
@@ -5826,6 +6035,10 @@ begin
  fIndex:=aIndex;
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
+ fDrawChoreographyBatchItems:=TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchItems.OwnsObjects:=false;
+ fDrawChoreographyBatchUniqueItems:=TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchUniqueItems.OwnsObjects:=false;
  fMaterials:=TpvScene3D.TGroup.TScene.TMaterials.Create;
  fMaterials.OwnsObjects:=true;
  fMaterialHashMap:=TpvScene3D.TGroup.TScene.TMaterialHashMap.Create(nil);
@@ -5834,6 +6047,8 @@ end;
 
 destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
+ FreeAndNil(fDrawChoreographyBatchItems);
+ FreeAndNil(fDrawChoreographyBatchUniqueItems);
  fCombinedPrimitiveUniqueIndexRanges.Finalize;
  FreeAndNil(fMaterialHashMap);
  FreeAndNil(fMaterials);
@@ -5895,6 +6110,10 @@ begin
 
  fIndices.Initialize;
 
+ fDrawChoreographyBatchCondensedIndices.Initialize;
+
+ fDrawChoreographyBatchCondensedUniqueIndices.Initialize;
+
  fPerMaterialCondensedIndices.Initialize;
 
  fPerMaterialCondensedUniqueIndices.Initialize;
@@ -5911,6 +6130,15 @@ begin
 
  fCulling:=false;
 
+ fUsedVisibleDrawNodes:=TUsedVisibleDrawNodes.Create;
+ fUsedVisibleDrawNodes.OwnsObjects:=false;
+
+ fDrawChoreographyBatchItems:=TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchItems.OwnsObjects:=true;
+
+ fDrawChoreographyBatchUniqueItems:=TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchUniqueItems.OwnsObjects:=true;
+
  fInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 
  fInstances:=TInstances.Create;
@@ -5926,6 +6154,12 @@ begin
  end;
  FreeAndNil(fInstances);
  FreeAndNil(fInstanceListLock);
+
+ FreeAndNil(fUsedVisibleDrawNodes);
+
+ FreeAndNil(fDrawChoreographyBatchItems);
+
+ FreeAndNil(fDrawChoreographyBatchUniqueItems);
 
  FreeAndNil(fScenes);
 
@@ -5944,6 +6178,10 @@ begin
  FreeAndNil(fObjects);
 
  FreeAndNil(fMaterialsToDuplicate);
+
+ fDrawChoreographyBatchCondensedIndices.Finalize;
+
+ fDrawChoreographyBatchCondensedUniqueIndices.Finalize;
 
  fPerMaterialCondensedIndices.Finalize;
 
@@ -6314,6 +6552,223 @@ procedure TpvScene3D.TGroup.ConstructBuffers;
  end;
 begin
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
+end;
+
+procedure TpvScene3D.TGroup.CollectUsedVisibleDrawNodes;
+type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
+     TNodeHashMap=TpvHashMap<TpvScene3D.TGroup.TNode,boolean>;
+var NodeIndex,PrimitiveIndex:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    NodeStack:TNodeStack;
+    Node:TpvScene3D.TGroup.TNode;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    NodeHashMap:TNodeHashMap;
+    SceneNodeHashMap:TNodeHashMap;
+begin
+ for Node in fNodes do begin
+  Node.fUsedByScenesList.Clear;
+ end;
+ NodeHashMap:=TNodeHashMap.Create(false);
+ try
+  NodeStack.Initialize;
+  try
+   for Scene in fScenes do begin
+    SceneNodeHashMap:=TNodeHashMap.Create(false);
+    try
+     for NodeIndex:=Scene.fNodes.Count-1 downto 0 do begin
+      NodeStack.Push(Scene.fNodes[NodeIndex]);
+     end;
+     while NodeStack.Pop(Node) do begin
+      if not SceneNodeHashMap[Node] then begin
+       SceneNodeHashMap[Node]:=true;
+       Node.fUsedByScenesList.Add(Scene);
+      end;
+      Mesh:=Node.fMesh;
+      if (not NodeHashMap[Node]) and assigned(Mesh) and (Node.fNodeMeshInstanceIndex>=0) then begin
+       for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+        Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+        if (Primitive^.CountIndices>0) and
+           assigned(Primitive^.Material) and
+           (Node.fNodeMeshInstanceIndex<Primitive^.NodeMeshPrimitiveInstances.Count) then begin
+         NodeHashMap[Node]:=true;
+         fUsedVisibleDrawNodes.Add(Node);
+         break;
+        end;
+       end;
+      end;
+      for NodeIndex:=Node.Children.Count-1 downto 0 do begin
+       NodeStack.Push(Node.Children[NodeIndex]);
+      end;
+     end;
+    finally
+     FreeAndNil(SceneNodeHashMap);
+    end;
+   end;
+  finally
+   NodeStack.Finalize;
+  end;
+ finally
+  FreeAndNil(NodeHashMap);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.CollectMaterials;
+var PrimitiveIndex:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    Material:TpvScene3D.TMaterial;
+    Scene:TpvScene3D.TGroup.TScene;
+    SceneMaterial:TpvScene3D.TGroup.TScene.TMaterial;
+begin
+ for Node in fUsedVisibleDrawNodes do begin
+  Mesh:=Node.fMesh;
+  if assigned(Mesh) and (Node.fNodeMeshInstanceIndex>=0) then begin
+   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+    if assigned(Primitive) then begin
+     Material:=Primitive^.Material;
+     if assigned(Material) and (Node.fNodeMeshInstanceIndex<Primitive^.NodeMeshPrimitiveInstances.Count) then begin
+      for Scene in Node.fUsedByScenesList do begin
+       SceneMaterial:=Scene.fMaterialHashMap[Material];
+       if not assigned(SceneMaterial) then begin
+        SceneMaterial:=TpvScene3D.TGroup.TScene.TMaterial.Create;
+        try
+         SceneMaterial.fMaterial:=Material;
+         Scene.fMaterialHashMap[Material]:=SceneMaterial;
+        finally
+         Scene.fMaterials.Add(SceneMaterial);
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.ConstructDrawChoreographyBatchItems;
+type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
+     TIndexBitmap=array of TpvUInt32;
+var NodeIndex,PrimitiveIndex,StartIndex,DrawChoreographyBatchItemIndex,
+    IndexIndex,VertexIndex,CountIndices:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    NodeStack:TNodeStack;
+    Node:TpvScene3D.TGroup.TNode;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+    Material:TpvScene3D.TMaterial;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.PNodeMeshPrimitiveInstance;
+    DrawChoreographyBatchItem,OtherDrawChoreographyBatchItem:TDrawChoreographyBatchItem;
+    IndexBitmap:TIndexBitmap;
+begin
+
+ fDrawChoreographyBatchItems.Clear;
+
+ for Node in fUsedVisibleDrawNodes do begin
+  Mesh:=Node.fMesh;
+  if assigned(Mesh) and (Node.fNodeMeshInstanceIndex>=0) then begin
+   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+    if assigned(Primitive) then begin
+     Material:=Primitive^.Material;
+     if assigned(Material) and (Node.fNodeMeshInstanceIndex<Primitive^.NodeMeshPrimitiveInstances.Count) then begin
+      NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[Node.fNodeMeshInstanceIndex];
+      if Primitive^.CountIndices>0 then begin
+       DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
+       try
+        DrawChoreographyBatchItem.fAlphaMode:=Material.fData.AlphaMode;
+        DrawChoreographyBatchItem.fDoubleSided:=Material.fData.DoubleSided;
+        DrawChoreographyBatchItem.fMaterial:=Material;
+        DrawChoreographyBatchItem.fNode:=Node;
+        DrawChoreographyBatchItem.fMesh:=Mesh;
+        DrawChoreographyBatchItem.fMeshPrimitive:=PrimitiveIndex;
+        DrawChoreographyBatchItem.fStartIndex:=NodeMeshPrimitiveInstance^.StartBufferIndexOffset;
+        DrawChoreographyBatchItem.fCountIndices:=Primitive^.CountIndices;
+       finally
+        fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+
+ fDrawChoreographyBatchItems.Sort;
+
+ fDrawChoreographyBatchCondensedIndices.Clear;
+ for DrawChoreographyBatchItem in fDrawChoreographyBatchItems do begin
+  StartIndex:=DrawChoreographyBatchItem.fStartIndex;
+  DrawChoreographyBatchItem.fStartIndex:=fDrawChoreographyBatchCondensedIndices.Count;
+  fDrawChoreographyBatchCondensedIndices.Add(copy(fIndices.Items,StartIndex,DrawChoreographyBatchItem.fCountIndices));
+ end;
+ fDrawChoreographyBatchCondensedIndices.Finish;
+
+ IndexBitmap:=nil;
+ try
+
+  SetLength(IndexBitmap,(fVertices.Count+31) shr 5);
+  FillChar(IndexBitmap[0],length(IndexBitmap)*SizeOf(TpvUInt32),0);
+
+  fDrawChoreographyBatchCondensedUniqueIndices.Clear;
+
+  for DrawChoreographyBatchItem in fDrawChoreographyBatchItems do begin
+
+   Node:=DrawChoreographyBatchItem.fNode;
+
+   StartIndex:=fDrawChoreographyBatchCondensedUniqueIndices.Count;
+   for IndexIndex:=DrawChoreographyBatchItem.fStartIndex to (DrawChoreographyBatchItem.fStartIndex+DrawChoreographyBatchItem.fCountIndices)-1 do begin
+    VertexIndex:=fDrawChoreographyBatchCondensedIndices.Items[IndexIndex];
+    if (IndexBitmap[VertexIndex shr 5] and (TpvUInt32(1) shl (VertexIndex and 31)))=0 then begin
+     IndexBitmap[VertexIndex shr 5]:=IndexBitmap[VertexIndex shr 5] or (TpvUInt32(1) shl (VertexIndex and 31));
+     fDrawChoreographyBatchCondensedUniqueIndices.Add(VertexIndex);
+    end;
+   end;
+
+   if false then begin
+    // Not really needed, because every mesh primitive instance in a node gets a own clone instance.
+    for IndexIndex:=DrawChoreographyBatchItem.fStartIndex to (DrawChoreographyBatchItem.fStartIndex+DrawChoreographyBatchItem.fCountIndices)-1 do begin
+     VertexIndex:=fDrawChoreographyBatchCondensedIndices.Items[IndexIndex];
+     IndexBitmap[VertexIndex shr 5]:=IndexBitmap[VertexIndex shr 5] and not (TpvUInt32(1) shl (VertexIndex and 31));
+    end;
+   end;
+
+   CountIndices:=fDrawChoreographyBatchCondensedUniqueIndices.Count-StartIndex;
+   if CountIndices>0 then begin
+    OtherDrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
+    try
+     OtherDrawChoreographyBatchItem.fAlphaMode:=DrawChoreographyBatchItem.fAlphaMode;
+     OtherDrawChoreographyBatchItem.fDoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
+     OtherDrawChoreographyBatchItem.fMaterial:=DrawChoreographyBatchItem.fMaterial;
+     OtherDrawChoreographyBatchItem.fNode:=DrawChoreographyBatchItem.fNode;
+     OtherDrawChoreographyBatchItem.fMesh:=DrawChoreographyBatchItem.fMesh;
+     OtherDrawChoreographyBatchItem.fMeshPrimitive:=DrawChoreographyBatchItem.fMeshPrimitive;
+     OtherDrawChoreographyBatchItem.fStartIndex:=StartIndex;
+     OtherDrawChoreographyBatchItem.fCountIndices:=CountIndices;
+    finally
+     fDrawChoreographyBatchUniqueItems.Add(OtherDrawChoreographyBatchItem);
+    end;
+   end else begin
+    OtherDrawChoreographyBatchItem:=nil;
+   end;
+
+   for Scene in Node.fUsedByScenesList do begin
+    Scene.fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
+    if assigned(OtherDrawChoreographyBatchItem) then begin
+     Scene.fDrawChoreographyBatchUniqueItems.Add(OtherDrawChoreographyBatchItem);
+    end;
+   end;
+
+  end;
+  fDrawChoreographyBatchCondensedUniqueIndices.Finish;
+
+ finally
+  IndexBitmap:=nil;
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.CollectMaterialPrimitives;
@@ -7006,6 +7461,12 @@ begin
  end;
 
  ConstructBuffers;
+
+ CollectUsedVisibleDrawNodes;
+
+ CollectMaterials;
+
+ ConstructDrawChoreographyBatchItems;
 
  CollectMaterialPrimitives;
 
