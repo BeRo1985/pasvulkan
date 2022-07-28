@@ -98,6 +98,7 @@ const MaxSwapChainImages=3;
       MaxInFlightFrames=3;
 
       FrameTimesHistorySize=1 shl 10;
+      FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
       LOG_NONE=0;
       LOG_INFO=1;
@@ -1178,8 +1179,9 @@ type EpvApplication=class(Exception)
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
-       fFrameTimesHistoryReadIndex:TPasMPInt32;
-       fFrameTimesHistoryWriteIndex:TPasMPInt32;
+       fFrameTimesHistoryIndex:TpvSizeInt;
+       fFrameTimesHistoryCount:TpvSizeInt;
+       fFrameTimesHistorySum:TpvDouble;
 
        fFramesPerSecond:TpvDouble;
 
@@ -7518,41 +7520,38 @@ end;
 {$ifend}
 
 procedure TpvApplication.UpdateFrameTimesHistory;
-var Index,Count:TpvInt32;
-    SumOfFrameTimes:TpvDouble;
+var Index:TpvSizeInt;
 begin
 
  if fFloatDeltaTime>0.0 then begin
 
-  fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryWriteIndex]:=fFloatDeltaTime;
-  fFrameTimesHistoryTimePoints[fFrameTimesHistoryWriteIndex]:=fNowTime;
-  inc(fFrameTimesHistoryWriteIndex);
-  if fFrameTimesHistoryWriteIndex>=FrameTimesHistorySize then begin
-   fFrameTimesHistoryWriteIndex:=0;
-  end;
-
-  while (fFrameTimesHistoryReadIndex<>fFrameTimesHistoryWriteIndex) and
-        ((fNowTime-fFrameTimesHistoryTimePoints[fFrameTimesHistoryReadIndex])>=fHighResolutionTimer.SecondInterval) do begin
-   inc(fFrameTimesHistoryReadIndex);
-   if fFrameTimesHistoryReadIndex>=FrameTimesHistorySize then begin
-    fFrameTimesHistoryReadIndex:=0;
+  while fFrameTimesHistoryCount>0 do begin
+   Index:=((fFrameTimesHistoryIndex+FrameTimesHistorySize)-fFrameTimesHistoryCount) and FrameTimesHistoryMask;
+   if abs(fNowTime-fFrameTimesHistoryTimePoints[Index])>=fHighResolutionTimer.SecondInterval then begin
+    fFrameTimesHistorySum:=fFrameTimesHistorySum-fFrameTimesHistoryDeltaTimes[Index];
+    fFrameTimesHistoryDeltaTimes[Index]:=0.0;
+    fFrameTimesHistoryTimePoints[Index]:=0;
+    dec(fFrameTimesHistoryCount);
+   end else begin
+    break;
    end;
   end;
+
+  if fFrameTimesHistoryCount<FrameTimesHistorySize then begin
+   inc(fFrameTimesHistoryCount);
+  end else begin
+   fFrameTimesHistorySum:=fFrameTimesHistorySum-fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryIndex];
+  end;
+  fFrameTimesHistorySum:=fFrameTimesHistorySum+fFloatDeltaTime;
+  fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryIndex]:=fFloatDeltaTime;
+  fFrameTimesHistoryTimePoints[fFrameTimesHistoryIndex]:=fNowTime;
+
+  fFrameTimesHistoryIndex:=(fFrameTimesHistoryIndex+1) and FrameTimesHistoryMask;
+
  end;
 
- SumOfFrameTimes:=0.0;
- Count:=0;
- Index:=fFrameTimesHistoryReadIndex;
- while Index<>fFrameTimesHistoryWriteIndex do begin
-  SumOfFrameTimes:=SumOfFrameTimes+fFrameTimesHistoryDeltaTimes[Index];
-  inc(Count);
-  inc(Index);
-  if Index>FrameTimesHistorySize then begin
-   Index:=0;
-  end;
- end;
- if (Count>0) and (SumOfFrameTimes>0.0) then begin
-  fFramesPerSecond:=Count/SumOfFrameTimes;
+ if (fFrameTimesHistoryCount>0) and (fFrameTimesHistorySum>0.0) then begin
+  fFramesPerSecond:=fFrameTimesHistoryCount/fFrameTimesHistorySum;
  end else if fFloatDeltaTime>0.0 then begin
   fFramesPerSecond:=1.0/fFloatDeltaTime;
  end else begin
@@ -8614,8 +8613,9 @@ begin
 
   FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
   FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
-  fFrameTimesHistoryReadIndex:=0;
-  fFrameTimesHistoryWriteIndex:=0;
+  fFrameTimesHistoryIndex:=0;
+  fFrameTimesHistoryCount:=0;
+  fFrameTimesHistorySum:=0.0;
 
   fFramesPerSecond:=0.0;
 
