@@ -9236,13 +9236,16 @@ function TpvVulkanDeviceMemoryChunk.TryCreate(const aMemoryChunkFlags:TpvVulkanD
                                               const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR;
                                               const aRaiseExceptions:boolean):boolean;
 type TBlacklistedHeaps=array of TpvUInt32;
-var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
+var Index,HeapIndex,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
+    CurrentCost,BestCost:TpvUInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     MemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
     PhysicalDevice:TpvVulkanPhysicalDevice;
     CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize:TVkDeviceSize;
     Found,OK:boolean;
     ResultCode,LastResultCode:TVkResult;
+    PropertyFlags:TVkMemoryPropertyFlags;
+    HeapFlags:TVkMemoryHeapFlags;
     BlacklistedHeaps:TBlacklistedHeaps;
 begin
 
@@ -9277,76 +9280,74 @@ begin
    fMemoryHeapIndex:=0;
    PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
    BestSize:=0;
-   BestScore:=-1;
+   BestCost:=High(TpvUInt32);
    BestWantedChunkSize:=aSize;
    Found:=false;
    for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
-    if ((aMemoryTypeBits and (TpvUInt32(1) shl Index))<>0) and
-       ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags) and
-       ((aMemoryAvoidPropertyFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
-     HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
-     CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
-     if aSizeIsMinimumSize then begin
+    if (aMemoryTypeBits and (TpvUInt32(1) shl Index))<>0 then begin
+     PropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags;
+     if ((aMemoryRequiredPropertyFlags=0) or ((PropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
+        ((aMemoryAvoidPropertyFlags=0) or ((PropertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
+      HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+      CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
+      if aSizeIsMinimumSize then begin
 {$ifdef Android}
-      if aSize<VulkanDefaultAndroidHeapChunkSize then begin
-       CurrentWantedChunkSize:=VulkanDefaultAndroidHeapChunkSize;
-      end else begin
-       CurrentWantedChunkSize:=aSize;
-      end;
-{$else}
-      if CurrentSize<=VulkanSmallMaximumHeapSize then begin
-       if CurrentSize>=VulkanDefaultSmallHeapChunkSize then begin
-        CurrentWantedChunkSize:=MinUInt64(MaxUInt64(VulkanDeviceSizeAlignUp(CurrentSize shr 3,VulkanDefaultHeapAlignChunkSize),aSize),CurrentSize);
+       if aSize<VulkanDefaultAndroidHeapChunkSize then begin
+        CurrentWantedChunkSize:=VulkanDefaultAndroidHeapChunkSize;
        end else begin
-        if aSize<VulkanDefaultSmallHeapChunkSize then begin
-         CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
+        CurrentWantedChunkSize:=aSize;
+       end;
+{$else}
+       if CurrentSize<=VulkanSmallMaximumHeapSize then begin
+        if CurrentSize>=VulkanDefaultSmallHeapChunkSize then begin
+         CurrentWantedChunkSize:=MinUInt64(MaxUInt64(VulkanDeviceSizeAlignUp(CurrentSize shr 3,VulkanDefaultHeapAlignChunkSize),aSize),CurrentSize);
+        end else begin
+         if aSize<VulkanDefaultSmallHeapChunkSize then begin
+          CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
+         end else begin
+          CurrentWantedChunkSize:=aSize;
+         end;
+        end;
+       end else begin
+        if aSize<VulkanDefaultLargeHeapChunkSize then begin
+         CurrentWantedChunkSize:=VulkanDefaultLargeHeapChunkSize;
         end else begin
          CurrentWantedChunkSize:=aSize;
         end;
        end;
-      end else begin
-       if aSize<VulkanDefaultLargeHeapChunkSize then begin
-        CurrentWantedChunkSize:=VulkanDefaultLargeHeapChunkSize;
-       end else begin
-        CurrentWantedChunkSize:=aSize;
-       end;
-      end;
 {$endif}
-     end else begin
-      CurrentWantedChunkSize:=aSize;
-     end;
-     if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags) and
-        ((aMemoryAvoidHeapFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
-        (CurrentWantedChunkSize<=CurrentSize) and (BestSize<CurrentSize) then begin
-      CurrentScore:=0;
-      if (aMemoryPreferredPropertyFlags<>0) and ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPreferredPropertyFlags)=aMemoryPreferredPropertyFlags) then begin
-       CurrentScore:=CurrentScore or 8;
+      end else begin
+       CurrentWantedChunkSize:=aSize;
       end;
-      if (aMemoryPreferredNotPropertyFlags<>0) and ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPreferredNotPropertyFlags)=0) then begin
-       CurrentScore:=CurrentScore or 4;
-      end;
-      if (aMemoryPreferredHeapFlags<>0) and ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryPreferredHeapFlags)=aMemoryPreferredHeapFlags) then begin
-       CurrentScore:=CurrentScore or 2;
-      end;
-      if (aMemoryPreferredNotHeapFlags<>0) and ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryPreferredNotHeapFlags)=0) then begin
-       CurrentScore:=CurrentScore or 1;
-      end;
-      if BestScore<CurrentScore then begin
-       OK:=true;
-       for BlacklistedHeapIndex:=0 to CountBlacklistedHeaps-1 do begin
-        if BlacklistedHeaps[BlacklistedHeapIndex]=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex then begin
-         OK:=false;
-         break;
+      if (CurrentWantedChunkSize<=CurrentSize) and (BestSize<CurrentSize) then begin
+       HeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags;
+       if ((aMemoryRequiredHeapFlags=0) or ((HeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
+          ((aMemoryAvoidHeapFlags=0) or ((HeapFlags and aMemoryAvoidHeapFlags)=0)) then begin
+        CurrentCost:=TPasMPMath.PopulationCount(aMemoryPreferredPropertyFlags and not PropertyFlags)+
+                     TPasMPMath.PopulationCount(PropertyFlags and aMemoryPreferredNotPropertyFlags)+
+                     TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not HeapFlags)+
+                     TPasMPMath.PopulationCount(HeapFlags and aMemoryPreferredNotHeapFlags);
+        if CurrentCost<BestCost then begin
+         OK:=true;
+         for BlacklistedHeapIndex:=0 to CountBlacklistedHeaps-1 do begin
+          if BlacklistedHeaps[BlacklistedHeapIndex]=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex then begin
+           OK:=false;
+           break;
+          end;
+         end;
+         if OK then begin
+          BestCost:=CurrentCost;
+          BestSize:=CurrentSize;
+          BestWantedChunkSize:=CurrentWantedChunkSize;
+          fMemoryTypeIndex:=Index;
+          fMemoryTypeBits:=TpvUInt32(1) shl Index;
+          fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+          Found:=true;
+          if BestCost=0 then begin
+           break;
+          end;
+         end;
         end;
-       end;
-       if OK then begin
-        BestScore:=CurrentScore;
-        BestSize:=CurrentSize;
-        BestWantedChunkSize:=CurrentWantedChunkSize;
-        fMemoryTypeIndex:=Index;
-        fMemoryTypeBits:=TpvUInt32(1) shl Index;
-        fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
-        Found:=true;
        end;
       end;
      end;
