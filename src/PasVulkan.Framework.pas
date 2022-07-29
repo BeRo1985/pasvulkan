@@ -826,6 +826,8 @@ type EpvVulkanException=class(Exception);
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock write fMemoryBlock;
      end;
 
+     PpvVulkanDeviceMemoryChunkBlock=^TpvVulkanDeviceMemoryChunkBlock;
+
      TpvVulkanDeviceMemoryChunkBlockArray=array of TpvVulkanDeviceMemoryChunkBlock;
 
      PpvVulkanDeviceMemoryManagerChunkList=^TpvVulkanDeviceMemoryManagerChunkList;
@@ -890,7 +892,8 @@ type EpvVulkanException=class(Exception);
                           const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR;
                           const aRaiseExceptions:boolean=true;
                           const aCostThreshold:PpvUInt32=nil):boolean;
-       function AllocateMemory(out aChunkBlock:TpvVulkanDeviceMemoryChunkBlock;out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean;
+       function AllocateMemory(aChunkBlock:PpvVulkanDeviceMemoryChunkBlock;aOffset:PVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean; overload;
+       function AllocateMemory(out aChunkBlock:TpvVulkanDeviceMemoryChunkBlock;out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean; overload;
        function ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
        function FreeMemory(const aOffset:TVkDeviceSize):boolean;
        function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
@@ -9475,7 +9478,7 @@ begin
 
 end;
 
-function TpvVulkanDeviceMemoryChunk.AllocateMemory(out aChunkBlock:TpvVulkanDeviceMemoryChunkBlock;out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean;
+function TpvVulkanDeviceMemoryChunk.AllocateMemory(aChunkBlock:PpvVulkanDeviceMemoryChunkBlock;aOffset:PVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean;
 var Node,OtherNode,LastNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Alignment,Offset,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
@@ -9486,7 +9489,9 @@ begin
 
  result:=false;
 
- aChunkBlock:=nil;
+ if assigned(aChunkBlock) then begin
+  aChunkBlock^:=nil;
+ end;
 
  if aSize>0 then begin
 
@@ -9630,37 +9635,43 @@ begin
 
    if assigned(Node) and (Node.fKey>=aSize) then begin
 
-    MemoryChunkBlock:=Node.fValue;
+    if assigned(aChunkBlock) then begin
 
-    MemoryChunkBlockBeginOffset:=MemoryChunkBlock.Offset;
+     MemoryChunkBlock:=Node.fValue;
 
-    MemoryChunkBlockEndOffset:=MemoryChunkBlockBeginOffset+MemoryChunkBlock.Size;
+     MemoryChunkBlockBeginOffset:=MemoryChunkBlock.Offset;
 
-    PayloadBeginOffset:=MemoryChunkBlockBeginOffset;
-    if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
-     inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
-    end;
+     MemoryChunkBlockEndOffset:=MemoryChunkBlockBeginOffset+MemoryChunkBlock.Size;
 
-    PayloadEndOffset:=PayloadBeginOffset+aSize;
-
-    if (PayloadBeginOffset<PayloadEndOffset) and
-       (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
-
-     MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,Alignment,aAllocationType);
-
-     aChunkBlock:=MemoryChunkBlock;
-
-     if MemoryChunkBlockBeginOffset<PayloadBeginOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
+     PayloadBeginOffset:=MemoryChunkBlockBeginOffset;
+     if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+      inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
      end;
 
-     if PayloadEndOffset<MemoryChunkBlockEndOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
+     PayloadEndOffset:=PayloadBeginOffset+aSize;
+
+     if (PayloadBeginOffset<PayloadEndOffset) and
+        (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
+
+      MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,Alignment,aAllocationType);
+
+      aChunkBlock^:=MemoryChunkBlock;
+
+      if MemoryChunkBlockBeginOffset<PayloadBeginOffset then begin
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
+      end;
+
+      if PayloadEndOffset<MemoryChunkBlockEndOffset then begin
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
+      end;
+
+      if assigned(aOffset) then begin
+       aOffset^:=PayloadBeginOffset;
+      end;
+
+      inc(fUsed,PayloadEndOffset-PayloadBeginOffset);
+
      end;
-
-     aOffset:=PayloadBeginOffset;
-
-     inc(fUsed,PayloadEndOffset-PayloadBeginOffset);
 
      result:=true;
 
@@ -9674,6 +9685,11 @@ begin
 
  end;
 
+end;
+
+function TpvVulkanDeviceMemoryChunk.AllocateMemory(out aChunkBlock:TpvVulkanDeviceMemoryChunkBlock;out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TpvVulkanDeviceMemoryAllocationType):boolean;
+begin
+ result:=AllocateMemory(@aChunkBlock,@aOffset,aSize,aAlignment,aAllocationType);
 end;
 
 function TpvVulkanDeviceMemoryChunk.ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
@@ -10739,7 +10755,8 @@ begin
                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryPropertyFlags and aMemoryPreferredNotPropertyFlags)+
                    TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not MemoryChunk.fMemoryHeapFlags)+
                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags);
-      if CurrentCost<BestCost then begin
+      if (CurrentCost<BestCost) and
+         MemoryChunk.AllocateMemory(nil,nil,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin // <= Test dry-run memory allocation
        BestCost:=CurrentCost;
        BestMemoryChunk:=MemoryChunk;
        if BestCost=0 then begin
