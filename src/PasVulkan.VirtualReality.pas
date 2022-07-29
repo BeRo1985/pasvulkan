@@ -871,6 +871,8 @@ var Index,
                                                                             0,
                                                                             0,
                                                                             0,
+                                                                            0,
+                                                                            0,
                                                                             MemoryAllocationType,
                                                                             @Image.Handle);
   if not assigned(MemoryBlock) then begin

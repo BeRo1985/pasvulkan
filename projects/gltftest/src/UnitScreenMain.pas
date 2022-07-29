@@ -13867,6 +13867,8 @@ begin
                                                                         0,
                                                                         0,
                                                                         0,
+                                                                        0,
+                                                                        0,
                                                                         []);
  end;
 
@@ -13880,6 +13882,8 @@ begin
                                                                                [],
                                                                                0,
                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                               0,
+                                                                               0,
                                                                                0,
                                                                                0,
                                                                                0,
@@ -13899,6 +13903,8 @@ begin
                                                                                0,
                                                                                0,
                                                                                0,
+                                                                               0,
+                                                                               0,
                                                                                []);
 
   end;
@@ -13911,6 +13917,8 @@ begin
                                                                                         [],
                                                                                         0,
                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                        0,
+                                                                                        0,
                                                                                         0,
                                                                                         0,
                                                                                         0,

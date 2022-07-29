@@ -370,9 +370,11 @@ type EpvFrameGraph=class(Exception);
               fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -383,9 +385,11 @@ type EpvFrameGraph=class(Exception);
                                  const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                  const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                  const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                 const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                  const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
               destructor Destroy; override;
              published
@@ -477,9 +481,11 @@ type EpvFrameGraph=class(Exception);
               fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
               fVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               function GetVulkanBuffer(const aIndex:TpvSizeInt):TpvVulkanBuffer; inline;
@@ -1222,9 +1228,11 @@ type EpvFrameGraph=class(Exception);
                                       const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                       const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                       const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                      const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                       const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                       const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                       const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                      const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                       const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType; overload;
       public
        procedure Show; virtual;
@@ -1743,23 +1751,27 @@ constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameG
                                                      const aPersientent:boolean;
                                                      const aSize:TVkDeviceSize;
                                                      const aUsage:TVkBufferUsageFlags;
-                                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-                                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aBufferFlags:TpvVulkanBufferFlags=[]);
+                                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
+                                                     const aBufferFlags:TpvVulkanBufferFlags);
 begin
  inherited Create(aFrameGraph,aName,aPersientent);
  fSize:=aSize;
  fUsage:=fUsage;
  fMemoryRequiredPropertyFlags:=aMemoryRequiredPropertyFlags;
  fMemoryPreferredPropertyFlags:=aMemoryPreferredPropertyFlags;
- fMemoryAvoidPropertyFlags:=fMemoryAvoidPropertyFlags;
+ fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
+ fMemoryPreferredNotPropertyFlags:=aMemoryPreferredNotPropertyFlags;
  fMemoryRequiredHeapFlags:=aMemoryRequiredHeapFlags;
  fMemoryPreferredHeapFlags:=aMemoryPreferredHeapFlags;
  fMemoryAvoidHeapFlags:=aMemoryAvoidHeapFlags;
+ fMemoryPreferredNotHeapFlags:=aMemoryPreferredNotHeapFlags;
  fBufferFlags:=aBufferFlags;
 end;
 
@@ -2079,6 +2091,8 @@ begin
                                                                                                          0,
                                                                                                          0,
                                                                                                          0,
+                                                                                                         0,
+                                                                                                         0,
                                                                                                          MemoryAllocationType,
                                                                                                          @fVulkanImages[InFlightFrameIndex].Handle);
     if not assigned(fVulkanMemoryBlocks[InFlightFrameIndex]) then begin
@@ -2319,9 +2333,11 @@ begin
                                                                 fMemoryRequiredPropertyFlags,
                                                                 fMemoryPreferredPropertyFlags,
                                                                 fMemoryAvoidPropertyFlags,
+                                                                fMemoryPreferredNotPropertyFlags,
                                                                 fMemoryRequiredHeapFlags,
                                                                 fMemoryPreferredHeapFlags,
                                                                 fMemoryAvoidHeapFlags,
+                                                                fMemoryPreferredNotHeapFlags,
                                                                 fBufferFlags);
    end;
   end;
@@ -4335,9 +4351,11 @@ function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
                                              const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                              const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                              const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                             const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                              const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                              const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                              const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                             const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                              const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType;
 begin
  result:=TBufferResourceType.Create(self,
@@ -4348,9 +4366,11 @@ begin
                                     aMemoryRequiredPropertyFlags,
                                     aMemoryPreferredPropertyFlags,
                                     aMemoryAvoidPropertyFlags,
+                                    aMemoryPreferredNotPropertyFlags,
                                     aMemoryRequiredHeapFlags,
                                     aMemoryPreferredHeapFlags,
                                     aMemoryAvoidHeapFlags,
+                                    aMemoryPreferredNotHeapFlags,
                                     aBufferFlags);
 end;
 
@@ -5262,9 +5282,11 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourcePhysicalBufferData.fMemoryRequiredPropertyFlags:=BufferResourceType.fMemoryRequiredPropertyFlags;
      ResourcePhysicalBufferData.fMemoryPreferredPropertyFlags:=BufferResourceType.fMemoryPreferredPropertyFlags;
      ResourcePhysicalBufferData.fMemoryAvoidPropertyFlags:=BufferResourceType.fMemoryAvoidPropertyFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredNotPropertyFlags:=BufferResourceType.fMemoryPreferredNotPropertyFlags;
      ResourcePhysicalBufferData.fMemoryRequiredHeapFlags:=BufferResourceType.fMemoryRequiredHeapFlags;
      ResourcePhysicalBufferData.fMemoryPreferredHeapFlags:=BufferResourceType.fMemoryPreferredHeapFlags;
      ResourcePhysicalBufferData.fMemoryAvoidHeapFlags:=BufferResourceType.fMemoryAvoidHeapFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredNotHeapFlags:=BufferResourceType.fMemoryPreferredNotHeapFlags;
      ResourcePhysicalBufferData.fBufferFlags:=BufferResourceType.fBufferFlags;
     end else begin
      raise EpvFrameGraph.Create('Invalid resource type');

@@ -145,6 +145,8 @@ begin
                                                                             0,
                                                                             0,
                                                                             0,
+                                                                            0,
+                                                                            0,
                                                                             TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                             @fVulkanImage.Handle);
  if not assigned(fMemoryBlock) then begin

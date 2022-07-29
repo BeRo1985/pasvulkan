@@ -230,6 +230,8 @@ begin
                                                        0,
                                                        0,
                                                        0,
+                                                       0,
+                                                       0,
                                                        [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
   fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,

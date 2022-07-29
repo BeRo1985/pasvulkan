@@ -284,6 +284,8 @@ begin
                                                        0,
                                                        0,
                                                        0,
+                                                       0,
+                                                       0,
                                                        [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
    fVulkanVertexBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,

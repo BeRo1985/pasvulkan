@@ -4228,6 +4228,8 @@ begin
                                            0,
                                            0,
                                            0,
+                                           0,
+                                           0,
                                            [TpvVulkanBufferFlag.PersistentMapped]
                                           );
       CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
@@ -4252,6 +4254,8 @@ begin
                                            [],
                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                           0,
+                                           0,
                                            0,
                                            0,
                                            0,

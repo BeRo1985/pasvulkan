@@ -68,6 +68,8 @@ begin
                                        0,
                                        0,
                                        0,
+                                       0,
+                                       0,
                                        []);
 
  if (aBufferUsage and (TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or

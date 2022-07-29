@@ -4089,6 +4089,8 @@ begin
                                                      0,
                                                      0,
                                                      0,
+                                                     0,
+                                                     0,
                                                      [TpvVulkanBufferFlag.PersistentMapped]
                                                     );
      fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -4098,6 +4100,8 @@ begin
                                                     [],
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                    0,
+                                                    0,
                                                     0,
                                                     0,
                                                     0,
@@ -4119,6 +4123,8 @@ begin
                                                      0,
                                                      0,
                                                      0,
+                                                     0,
+                                                     0,
                                                      []
                                                     );
      fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -4128,6 +4134,8 @@ begin
                                                     [],
                                                     0,
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
                                                     0,
                                                     0,
                                                     0,
@@ -6342,6 +6350,8 @@ var Index:TpvSizeInt;
                                                                       0,
                                                                       0,
                                                                       0,
+                                                                      0,
+                                                                      0,
                                                                       [TpvVulkanBufferFlag.PersistentMapped]
                                                                      );
 
@@ -6352,6 +6362,8 @@ var Index:TpvSizeInt;
                                                                                   [],
                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                  0,
+                                                                                  0,
                                                                                   0,
                                                                                   0,
                                                                                   0,
@@ -7669,6 +7681,8 @@ begin
                                                  0,
                                                  0,
                                                  0,
+                                                 0,
+                                                 0,
                                                  [TpvVulkanBufferFlag.PersistentMapped]
                                                 );
 
@@ -7679,6 +7693,8 @@ begin
                                                              [],
                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                             0,
+                                                             0,
                                                              0,
                                                              0,
                                                              0,
@@ -7701,6 +7717,8 @@ begin
                                                  0,
                                                  0,
                                                  0,
+                                                 0,
+                                                 0,
                                                  []
                                                 );
 
@@ -7711,6 +7729,8 @@ begin
                                                              [],
                                                              0,
                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                             0,
+                                                             0,
                                                              0,
                                                              0,
                                                              0,
@@ -10330,6 +10350,8 @@ begin
                                                                        0,
                                                                        0,
                                                                        0,
+                                                                       0,
+                                                                       0,
                                                                        [TpvVulkanBufferFlag.PersistentMapped]);
        end;
 
@@ -10351,6 +10373,8 @@ begin
                                                                        0,
                                                                        0,
                                                                        0,
+                                                                       0,
+                                                                       0,
                                                                        [TpvVulkanBufferFlag.PersistentMapped]
                                                                       );
 
@@ -10362,6 +10386,8 @@ begin
                                                                       [],
                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                      0,
+                                                                      0,
                                                                       0,
                                                                       0,
                                                                       0,
@@ -10380,6 +10406,8 @@ begin
                                                                               0,
                                                                               0,
                                                                               0,
+                                                                              0,
+                                                                              0,
                                                                               [TpvVulkanBufferFlag.PersistentMapped]);
 
        end;
@@ -10392,6 +10420,8 @@ begin
                                                                        [],
                                                                        0,
                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                       0,
+                                                                       0,
                                                                        0,
                                                                        0,
                                                                        0,
@@ -10479,6 +10509,8 @@ begin
                                                                              0,
                                                                              0,
                                                                              0,
+                                                                             0,
+                                                                             0,
                                                                              []);
 
             fVulkanMaterialDataStagingBuffers[Index].UploadData(UniversalQueue,
@@ -10518,6 +10550,8 @@ begin
                                                                       0,
                                                                       0,
                                                                       0,
+                                                                      0,
+                                                                      0,
                                                                       [TpvVulkanBufferFlag.PersistentMapped]);
 
             fVulkanMaterialDataBuffers[Index].UploadData(UniversalQueue,
@@ -10541,6 +10575,8 @@ begin
                                                                       [],
                                                                       0,
                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                      0,
+                                                                      0,
                                                                       0,
                                                                       0,
                                                                       0,
@@ -10572,6 +10608,8 @@ begin
                                                                         [],
                                                                         0,
                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                        0,
+                                                                        0,
                                                                         0,
                                                                         0,
                                                                         0,

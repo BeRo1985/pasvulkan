@@ -1232,6 +1232,8 @@ begin
                                                        0,
                                                        0,
                                                        0,
+                                                       0,
+                                                       0,
                                                        [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
   fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
@@ -2306,6 +2308,8 @@ begin
                                                pvApplication.VulkanDevice.QueueFamilyIndices.ItemArray,
                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                               0,
+                                               0,
                                                0,
                                                0,
                                                0,
