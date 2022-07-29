@@ -9219,7 +9219,7 @@ begin
     if LastResultCode<>VK_SUCCESS then begin
      VulkanCheckResult(LastResultCode);
     end;
-    raise EpvVulkanException.Create('No suitable device memory heap available');
+    raise EpvVulkanMemoryAllocationException.Create('No suitable device memory heap available');
    end;
 
    fMemoryPropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[fMemoryTypeIndex].propertyFlags;
@@ -9299,14 +9299,14 @@ begin
   try
    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
     if assigned(fMemory) then begin
-     raise EpvVulkanException.Create('Memory is already mapped');
+     raise EpvVulkanMemoryAllocationException.Create('Memory is already mapped');
     end else begin
      fMappedOffset:=0;
      fMappedSize:=BestWantedChunkSize;
      VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory));
     end;
    end else begin
-    raise EpvVulkanException.Create('Memory can''t mapped');
+    raise EpvVulkanMemoryAllocationException.Create('Memory can''t mapped');
    end;
   finally
    fLock.Release;
