@@ -102,12 +102,12 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),length(fVulkanDescriptorSets));
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fVulkanDescriptorSets));
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fVulkanDescriptorSets));
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fScene3D.CountInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fScene3D.CountInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fScene3D.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
- for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+ for Index:=0 to fScene3D.CountInFlightFrames-1 do begin
   fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                               fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
@@ -140,7 +140,7 @@ destructor TSkyBox.Destroy;
 var Index:TpvSizeInt;
 begin
  FreeAndNil(fVulkanPipelineLayout);
- for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
+ for Index:=0 to fScene3D.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[Index]);
  end;
  FreeAndNil(fVulkanDescriptorPool);

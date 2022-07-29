@@ -295,6 +295,7 @@ begin
  SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 //Blocking:=false;
 //DesiredCountSwapChainImages:=2;
+ DesiredCountInFlightFrames:=2;
  if fForceNoVSync or (assigned(fVirtualReality) and not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked])) then begin
   DesiredCountSwapChainImages:=2;
   PresentMode:=TpvApplicationPresentMode.Mailbox;
