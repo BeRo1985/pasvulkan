@@ -10753,8 +10753,7 @@ begin
     if (BestCost<High(TpvUInt32)) and assigned(BestMemoryChunk) then begin
 
      // Then in a case of a positive best-found, compare it to a fresh new allocation
-     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                         @fMemoryChunkList);
+     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
      try
       try
        if MemoryChunk.TryCreate(MemoryChunkFlags,
@@ -10787,8 +10786,8 @@ begin
       end;
      end;
 
-     // When a new fresh allocation would have higher costs or did failed, then try to allocate a block in the
-     // best found memory chunk with the lowest overall cost.
+     // When a new fresh allocation would have higher costs or it even did failed, then try to
+     // allocate a block in the best found memory chunk with the lowest overall cost.
      if assigned(BestMemoryChunk) and not assigned(result) then begin
       MemoryChunk:=BestMemoryChunk;
       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
