@@ -10507,8 +10507,8 @@ var TryIteration:TpvInt32;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
-    PropertyFlags:TVkMemoryPropertyFlags;
-    HeapFlags:TVkMemoryHeapFlags;
+    PropertyFlags,AvoidPropertyFlags:TVkMemoryPropertyFlags;
+    HeapFlags,AvoidHeapFlags:TVkMemoryHeapFlags;
     MemoryDedicatedAllocateInfoKHR:TVkMemoryDedicatedAllocateInfoKHR;
     MemoryDedicatedAllocateInfoKHRPointer:TpvPointer;
 begin
@@ -10613,10 +10613,10 @@ begin
   try
 
    // Try first to allocate a block inside already existent chunks
-   for TryIteration:=0 to 3 do begin
+   for TryIteration:=15 downto 0 do begin
 
     PropertyFlags:=aMemoryRequiredPropertyFlags;
-    if TryIteration in [0,1] then begin
+    if (TryIteration and 8)=0 then begin
      if aMemoryPreferredPropertyFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10625,8 +10625,18 @@ begin
      end;
     end;
 
+    AvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
+    if (TryIteration and 4)=0 then begin
+     if aMemoryPreferredNotPropertyFlags=0 then begin
+      // For avoid unnecessary multiplicate fMemoryChunkList traversals
+      continue;
+     end else begin
+      AvoidPropertyFlags:=AvoidPropertyFlags or aMemoryPreferredNotPropertyFlags;
+     end;
+    end;
+
     HeapFlags:=aMemoryRequiredHeapFlags;
-    if TryIteration in [0,2] then begin
+    if (TryIteration and 2)=0 then begin
      if aMemoryPreferredHeapFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10635,13 +10645,23 @@ begin
      end;
     end;
 
+    AvoidHeapFlags:=aMemoryAvoidHeapFlags;
+    if (TryIteration and 1)=0 then begin
+     if aMemoryPreferredNotHeapFlags=0 then begin
+      // For avoid unnecessary multiplicate fMemoryChunkList traversals
+      continue;
+     end else begin
+      AvoidHeapFlags:=AvoidHeapFlags or aMemoryPreferredNotHeapFlags;
+     end;
+    end;
+
     MemoryChunk:=fMemoryChunkList.First;
     while assigned(MemoryChunk) do begin
      if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-        ((MemoryChunk.fMemoryPropertyFlags and PropertyFlags)=PropertyFlags) and
-        ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
-        ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags) and
-        ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
+        ((PropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and PropertyFlags)=PropertyFlags)) and
+        ((AvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and AvoidPropertyFlags)=0)) and
+        ((HeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags)) and
+        ((AvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and AvoidHeapFlags)=0)) and
         ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
         ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
         (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
