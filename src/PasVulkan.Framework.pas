@@ -10719,7 +10719,7 @@ begin
    for TryIteration:=15 downto 0 do begin
 
     PropertyFlags:=aMemoryRequiredPropertyFlags;
-    if (TryIteration and 8)=0 then begin
+    if (TryIteration and 8)<>0 then begin
      if aMemoryPreferredPropertyFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10729,7 +10729,7 @@ begin
     end;
 
     AvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
-    if (TryIteration and 4)=0 then begin
+    if (TryIteration and 4)<>0 then begin
      if aMemoryPreferredNotPropertyFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10739,7 +10739,7 @@ begin
     end;
 
     HeapFlags:=aMemoryRequiredHeapFlags;
-    if (TryIteration and 2)=0 then begin
+    if (TryIteration and 2)<>0 then begin
      if aMemoryPreferredHeapFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10749,7 +10749,7 @@ begin
     end;
 
     AvoidHeapFlags:=aMemoryAvoidHeapFlags;
-    if (TryIteration and 1)=0 then begin
+    if (TryIteration and 1)<>0 then begin
      if aMemoryPreferredNotHeapFlags=0 then begin
       // For avoid unnecessary multiplicate fMemoryChunkList traversals
       continue;
@@ -10789,11 +10789,11 @@ begin
                                 aMemoryTypeBits,
                                 PropertyFlags,
                                 0,
-                                0,
+                                AvoidPropertyFlags,
                                 0,
                                 HeapFlags,
                                 0,
-                                0,
+                                AvoidHeapFlags,
                                 0,
                                 nil) then begin
         if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
