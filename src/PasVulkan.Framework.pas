@@ -9331,7 +9331,7 @@ begin
       end else begin
        CurrentWantedChunkSize:=aSize;
       end;
-      if (CurrentWantedChunkSize<=CurrentSize) and (BestSize<=CurrentSize) then begin
+      if CurrentWantedChunkSize<=CurrentSize then begin
        HeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags;
        if ((aMemoryRequiredHeapFlags=0) or ((HeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
           ((aMemoryAvoidHeapFlags=0) or ((HeapFlags and aMemoryAvoidHeapFlags)=0)) then begin
@@ -9339,7 +9339,17 @@ begin
                      TPasMPMath.PopulationCount(PropertyFlags and aMemoryPreferredNotPropertyFlags)+
                      TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not HeapFlags)+
                      TPasMPMath.PopulationCount(HeapFlags and aMemoryPreferredNotHeapFlags);
-        if (CurrentCost<BestCost) and ((not assigned(aCostThreshold)) or (CurrentCost<aCostThreshold^)) then begin
+        if (
+            (CurrentCost<BestCost) or
+            (
+             (CurrentCost=BestCost) and
+             (BestSize<CurrentSize)
+            )
+           ) and
+           (
+            (not assigned(aCostThreshold)) or
+            (CurrentCost<aCostThreshold^)
+           ) then begin
          OK:=true;
          for BlacklistedHeapIndex:=0 to CountBlacklistedHeaps-1 do begin
           if BlacklistedHeaps[BlacklistedHeapIndex]=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex then begin
@@ -10631,14 +10641,11 @@ function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlag
                                                           const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
                                                           const aMemoryDedicatedAllocationDataHandle:TpvPointer):TpvVulkanDeviceMemoryBlock;
-var TryIteration:TpvInt32;
-    CurrentCost,BestCost:TpvUInt32;
+var CurrentCost,BestCost:TpvUInt32;
     MemoryChunk,BestMemoryChunk:TpvVulkanDeviceMemoryChunk;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
-    PropertyFlags,AvoidPropertyFlags:TVkMemoryPropertyFlags;
-    HeapFlags,AvoidHeapFlags:TVkMemoryHeapFlags;
     MemoryDedicatedAllocateInfoKHR:TVkMemoryDedicatedAllocateInfoKHR;
     MemoryDedicatedAllocateInfoKHRPointer:TpvPointer;
 begin
@@ -10742,256 +10749,59 @@ begin
   fLock.Acquire;
   try
 
-   // Try first to find the best already existent overall suitable memory chunk with all flags as mandatory
-   PropertyFlags:=aMemoryRequiredPropertyFlags or aMemoryPreferredPropertyFlags;
-   AvoidPropertyFlags:=aMemoryAvoidPropertyFlags or aMemoryPreferredNotPropertyFlags;
-   HeapFlags:=aMemoryRequiredHeapFlags or aMemoryPreferredHeapFlags;
-   AvoidHeapFlags:=aMemoryAvoidHeapFlags or aMemoryPreferredNotHeapFlags;
-   MemoryChunk:=fMemoryChunkList.First;
-   while assigned(MemoryChunk) do begin
-    if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-       ((PropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and PropertyFlags)=PropertyFlags)) and
-       ((AvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and AvoidPropertyFlags)=0)) and
-       ((HeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags)) and
-       ((AvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and AvoidHeapFlags)=0)) and
-       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-       ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
-       (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
-     if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-      result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-      break;
-     end;
-    end;
-    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
-   end;
+   // Try first to find the best already existent overall suitable memory chunk
+   if assigned(fMemoryChunkList.First) then begin
 
-   if not assigned(result) then begin
+    BestCost:=High(TpvUInt32);
 
-    // Otherwise try to allocate a block inside a new chunk, but with all optional flags as "required"
-    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
-    try
-     try
-      if MemoryChunk.TryCreate(MemoryChunkFlags,
-                               VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
-                               true,
-                               aMemoryTypeBits,
-                               aMemoryRequiredPropertyFlags or aMemoryPreferredPropertyFlags,
-                               0,
-                               aMemoryAvoidPropertyFlags or aMemoryPreferredNotPropertyFlags,
-                               0,
-                               aMemoryRequiredHeapFlags or aMemoryPreferredHeapFlags,
-                               0,
-                               aMemoryAvoidHeapFlags or aMemoryPreferredNotHeapFlags,
-                               0,
-                               nil,
-                               false,
-                               nil) then begin
-       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-        result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-       end;
-      end;
-     except
-      on E:EpvVulkanMemoryAllocationException do begin
-       result:=nil;
-      end;
-     end;
-    finally
-     if not assigned(result) then begin
-      FreeAndNil(MemoryChunk);
-     end;
-    end;
+    BestMemoryChunk:=nil;
 
-    if (not assigned(result)) and assigned(fMemoryChunkList.First) then begin
+    MemoryChunk:=fMemoryChunkList.First;
 
-     // Try first to find the best already existent overall suitable memory chunk
-     BestCost:=High(TpvUInt32);
-     BestMemoryChunk:=nil;
-     MemoryChunk:=fMemoryChunkList.First;
-     while assigned(MemoryChunk) do begin
-      if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-         ((aMemoryRequiredPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
-         ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
-         ((aMemoryRequiredHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
-         ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
-         ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-         ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
-         (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
-       CurrentCost:=TPasMPMath.PopulationCount(aMemoryPreferredPropertyFlags and not MemoryChunk.fMemoryPropertyFlags)+
-                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryPropertyFlags and aMemoryPreferredNotPropertyFlags)+
-                    TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not MemoryChunk.fMemoryHeapFlags)+
-                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags);
-       if CurrentCost<BestCost then begin
-        if MemoryChunk.AllocateMemory(nil,nil,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin // <= Test dry-run memory allocation
-         BestCost:=CurrentCost;
-         BestMemoryChunk:=MemoryChunk;
-         if BestCost=0 then begin
-          break;
-         end;
-        end;
-       end;
-      end;
-      MemoryChunk:=MemoryChunk.fNextMemoryChunk;
-     end;
+    while assigned(MemoryChunk) do begin
 
-     if (BestCost<High(TpvUInt32)) and assigned(BestMemoryChunk) then begin
+     if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
+        ((aMemoryRequiredPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
+        ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
+        ((aMemoryRequiredHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
+        ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
+        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
+        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
+        (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
 
-      // Then in a case of a positive best-found, compare it to a fresh new allocation
-      MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
-      try
-       try
-        if MemoryChunk.TryCreate(MemoryChunkFlags,
-                                 VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
-                                 true,
-                                 aMemoryTypeBits,
-                                 aMemoryRequiredPropertyFlags,
-                                 aMemoryPreferredPropertyFlags,
-                                 aMemoryAvoidPropertyFlags,
-                                 aMemoryPreferredNotPropertyFlags,
-                                 aMemoryRequiredHeapFlags,
-                                 aMemoryPreferredHeapFlags,
-                                 aMemoryAvoidHeapFlags,
-                                 aMemoryPreferredNotHeapFlags,
-                                 nil,
-                                 false,
-                                 @BestCost) then begin
-         if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-          result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-         end;
-        end;
-       except
-        on E:EpvVulkanMemoryAllocationException do begin
-         result:=nil;
-        end;
-       end;
-      finally
-       if not assigned(result) then begin
-        FreeAndNil(MemoryChunk);
-       end;
-      end;
+      CurrentCost:=TPasMPMath.PopulationCount(aMemoryPreferredPropertyFlags and not MemoryChunk.fMemoryPropertyFlags)+
+                   TPasMPMath.PopulationCount(MemoryChunk.fMemoryPropertyFlags and aMemoryPreferredNotPropertyFlags)+
+                   TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not MemoryChunk.fMemoryHeapFlags)+
+                   TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags);
 
-      // When a new fresh allocation would have higher costs or it even did failed, then try to
-      // allocate a block in the best found memory chunk with the lowest overall cost.
-      if assigned(BestMemoryChunk) and not assigned(result) then begin
-       MemoryChunk:=BestMemoryChunk;
-       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-        result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-       end;
-      end;
+      if CurrentCost<BestCost then begin
 
-     end;
+       // Perform a test dry-run memory allocation without any real memory bucket node creation
+       if MemoryChunk.AllocateMemory(nil,nil,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
 
-     if not assigned(result) then begin
+        // At success, remember the result for later
 
-      // Only even if all the previous failed, then try to allocate a block inside already existent chunks
-      for TryIteration:=15 downto 0 do begin
+        BestCost:=CurrentCost;
+        BestMemoryChunk:=MemoryChunk;
 
-       PropertyFlags:=aMemoryRequiredPropertyFlags;
-       if (TryIteration and 8)<>0 then begin
-        if aMemoryPreferredPropertyFlags=0 then begin
-         // For avoid unnecessary multiplicate fMemoryChunkList traversals
-         continue;
-        end else begin
-         PropertyFlags:=PropertyFlags or aMemoryPreferredPropertyFlags;
-        end;
-       end;
-
-       AvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
-       if (TryIteration and 4)<>0 then begin
-        if aMemoryPreferredNotPropertyFlags=0 then begin
-         // For avoid unnecessary multiplicate fMemoryChunkList traversals
-         continue;
-        end else begin
-         AvoidPropertyFlags:=AvoidPropertyFlags or aMemoryPreferredNotPropertyFlags;
-        end;
-       end;
-
-       HeapFlags:=aMemoryRequiredHeapFlags;
-       if (TryIteration and 2)<>0 then begin
-        if aMemoryPreferredHeapFlags=0 then begin
-         // For avoid unnecessary multiplicate fMemoryChunkList traversals
-         continue;
-        end else begin
-         HeapFlags:=HeapFlags or aMemoryPreferredHeapFlags;
-        end;
-       end;
-
-       AvoidHeapFlags:=aMemoryAvoidHeapFlags;
-       if (TryIteration and 1)<>0 then begin
-        if aMemoryPreferredNotHeapFlags=0 then begin
-         // For avoid unnecessary multiplicate fMemoryChunkList traversals
-         continue;
-        end else begin
-         AvoidHeapFlags:=AvoidHeapFlags or aMemoryPreferredNotHeapFlags;
-        end;
-       end;
-
-       MemoryChunk:=fMemoryChunkList.First;
-       while assigned(MemoryChunk) do begin
-        if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-           ((PropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and PropertyFlags)=PropertyFlags)) and
-           ((AvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and AvoidPropertyFlags)=0)) and
-           ((HeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags)) and
-           ((AvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and AvoidHeapFlags)=0)) and
-           ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-           ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
-           (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
-         if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-          result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-          break;
-         end;
-        end;
-        MemoryChunk:=MemoryChunk.fNextMemoryChunk;
-       end;
-
-       if assigned(result) then begin
-        break;
-       end else begin
-        MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                       @fMemoryChunkList);
-        try
-         try
-          if MemoryChunk.TryCreate(MemoryChunkFlags,
-                                   VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
-                                   true,
-                                   aMemoryTypeBits,
-                                   PropertyFlags,
-                                   0,
-                                   AvoidPropertyFlags,
-                                   0,
-                                   HeapFlags,
-                                   0,
-                                   AvoidHeapFlags,
-                                   0,
-                                   nil,
-                                   false,
-                                   nil) then begin
-           if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-            result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
-           end;
-          end;
-         except
-          on E:EpvVulkanMemoryAllocationException do begin
-           result:=nil;
-          end;
-         end;
-        finally
-         if not assigned(result) then begin
-          FreeAndNil(MemoryChunk);
-         end;
-        end;
-        if assigned(result) then begin
+        // If it had already the best cost, then we can stop already here
+        if BestCost=0 then begin
          break;
         end;
+
        end;
 
       end;
 
      end;
 
+     MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+
     end;
 
-{   if not assigned(result) then begin
-     // Otherwise try to allocate a block inside a new chunk in the normal way
+    if (BestCost<High(TpvUInt32)) and assigned(BestMemoryChunk) then begin
+
+     // Then in a case of a positive best-found, compare it to a fresh new allocation
      MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
      try
       try
@@ -11009,7 +10819,7 @@ begin
                                 aMemoryPreferredNotHeapFlags,
                                 nil,
                                 false,
-                                nil) then begin
+                                @BestCost) then begin
         if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
          result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
         end;
@@ -11024,31 +10834,42 @@ begin
        FreeAndNil(MemoryChunk);
       end;
      end;
-    end;}
 
-    if not assigned(result) then begin
-     // Otherwise allocate a block inside a new chunk
-     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                    MemoryChunkFlags,
-                                                    VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
-                                                    true,
-                                                    aMemoryTypeBits,
-                                                    aMemoryRequiredPropertyFlags,
-                                                    aMemoryPreferredPropertyFlags,
-                                                    aMemoryAvoidPropertyFlags,
-                                                    aMemoryPreferredNotPropertyFlags,
-                                                    aMemoryRequiredHeapFlags,
-                                                    aMemoryPreferredHeapFlags,
-                                                    aMemoryAvoidHeapFlags,
-                                                    aMemoryPreferredNotHeapFlags,
-                                                    @fMemoryChunkList,
-                                                    nil);
-     if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-      result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
+     // When a new fresh allocation would have higher costs or it even did failed, then try to
+     // allocate a block in the best found memory chunk with the lowest overall cost.
+     if assigned(BestMemoryChunk) and not assigned(result) then begin
+      MemoryChunk:=BestMemoryChunk;
+      if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
+       result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
+      end;
      end;
+
     end;
 
    end;
+
+   // Otherwise when everything else fails, then allocate a block inside a new chunk in any case
+   if not assigned(result) then begin
+    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
+                                                   MemoryChunkFlags,
+                                                   VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                                   true,
+                                                   aMemoryTypeBits,
+                                                   aMemoryRequiredPropertyFlags,
+                                                   aMemoryPreferredPropertyFlags,
+                                                   aMemoryAvoidPropertyFlags,
+                                                   aMemoryPreferredNotPropertyFlags,
+                                                   aMemoryRequiredHeapFlags,
+                                                   aMemoryPreferredHeapFlags,
+                                                   aMemoryAvoidHeapFlags,
+                                                   aMemoryPreferredNotHeapFlags,
+                                                   @fMemoryChunkList,
+                                                   nil);
+    if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
+     result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
+    end;
+   end;
+
   finally
    fLock.Release;
   end;
