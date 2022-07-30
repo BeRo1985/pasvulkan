@@ -152,7 +152,7 @@ begin
  fTimeStampMasks.Resize(fCount);
  fResults:=TResults.Create;
  fResults.OwnsObjects:=true;
- for Index:=0 to fCount do begin
+ for Index:=0 to fCount+1 do begin
   fResults.Add(TResult.Create);
  end;
  fValid:=false;
@@ -223,9 +223,11 @@ begin
 end;
 
 function TpvTimerQuery.Update:boolean;
-const TotalString:TpvUTF8String='Total';
+const SumString:TpvUTF8String='Sum';
+      TotalString:TpvUTF8String='Total';
 var Index:TpvSizeInt;
     Result_:TResult;
+    Sum:TpvDouble;
 begin
  result:=(fQueryPool<>VK_NULL_HANDLE) and
          (fQueryedCount>0) and
@@ -238,6 +240,7 @@ begin
                                                SizeOf(TpvUInt64),
                                                TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
  if result then begin
+  Sum:=0.0;
   for Index:=0 to fQueryedCount-1 do begin
    Result_:=fResults[Index];
    if Result_.fName<>fNames.Items[Index] then begin
@@ -245,12 +248,19 @@ begin
    end;
    Result_.fDuration:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
    Result_.fValid:=true;
+   Sum:=Sum+Result_.fDuration;
   end;
   for Index:=fQueryedCount to fCount-1 do begin
    fResults[Index].fValid:=false;
   end;
   fTotal:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
   Result_:=fResults[fCount];
+  if Result_.fName<>SumString then begin
+   Result_.fName:=SumString;
+  end;
+  Result_.fDuration:=Sum;
+  Result_.fValid:=true;
+  Result_:=fResults[fCount+1];
   if Result_.fName<>TotalString then begin
    Result_.fName:=TotalString;
   end;
