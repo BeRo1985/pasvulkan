@@ -36,6 +36,7 @@ uses SysUtils,
      PasVulkan.Resources,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.TimerQuery,
      UnitGlobals,
      UnitOrderIndependentTransparencyBuffer,
      UnitOrderIndependentTransparencyImage,
@@ -14915,12 +14916,30 @@ begin
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var MaxLen:TpvSizeInt;
+    Result_:TpvTimerQuery.TResult;
 begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
     pvApplication.Terminate;
+   end;
+   KEYCODE_F8:begin
+    if assigned(fFrameGraph.LastTimerQueryResults) then begin
+     writeln('=================================================');
+     MaxLen:=1;
+     for Result_ in fFrameGraph.LastTimerQueryResults do begin
+      if Result_.Valid then begin
+       MaxLen:=Max(MaxLen,length(Result_.Name));
+      end;
+     end;
+     for Result_ in fFrameGraph.LastTimerQueryResults do begin
+      if Result_.Valid then begin
+       writeln(Result_.Name:MaxLen,': ',Result_.Duration:1:5,' ms');
+      end;
+     end;
+    end;
    end;
    KEYCODE_U:begin
     fCameraSpeed:=fCameraSpeed*0.5;

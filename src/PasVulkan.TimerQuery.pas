@@ -102,8 +102,8 @@ type { TpvTimerQuery }
        constructor Create(const aDevice:TpvVulkanDevice;const aCount:TpvSizeInt); reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       function Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String='';const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)):TpvSizeInt;
-       procedure Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+       function Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String='';const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)):TpvSizeInt; //VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+       procedure Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)); //VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
        function Update:boolean;
       public
        property RawResults:TRawResults read fRawResults;
