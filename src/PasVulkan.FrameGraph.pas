@@ -1196,6 +1196,7 @@ type EpvFrameGraph=class(Exception);
        fDrawFrameIndex:TpvSizeInt;
        fDrawWaitFence:TpvVulkanFence;
        fTimerQueries:TpvTimerQueries;
+       fLastTimerQueryResults:TpvTimerQuery.TResults;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames);
        destructor Destroy; override;
@@ -1294,6 +1295,7 @@ type EpvFrameGraph=class(Exception);
        property DrawInFlightFrameIndex:TpvSizeInt read fDrawInFlightFrameIndex;
        property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
        property TimerQueries:TpvTimerQueries read fTimerQueries;
+       property LastTimerQueryResults:TpvTimerQuery.TResults read fLastTimerQueryResults;
      end;
 
 implementation
@@ -7126,7 +7128,9 @@ begin
   fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].pSignalSemaphores:=nil;
  end;
  if assigned(fTimerQueries[fDrawInFlightFrameIndex]) then begin
-  fTimerQueries[fDrawInFlightFrameIndex].Update;
+  if fTimerQueries[fDrawInFlightFrameIndex].Update then begin
+   fLastTimerQueryResults:=fTimerQueries[fDrawInFlightFrameIndex].Results;
+  end;
   fTimerQueries[fDrawInFlightFrameIndex].Reset;
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin

@@ -75,7 +75,17 @@ type { TpvTimerQuery }
        type TNames=TpvGenericList<TpvUTF8String>;
             TRawResults=TpvDynamicArray<TpvUInt64>;
             TTimeStampMasks=TpvDynamicArray<TpvUInt64>;
-            TResults=TpvDynamicArray<TpvDouble>;
+            TResult=class
+             private
+              fName:TpvUTF8String;
+              fDuration:TpvDouble;
+              fValid:boolean;
+             published
+              property Name:TpvUTF8String read fName;
+              property Duration:TpvDouble read fDuration;
+              property Valid:boolean read fValid;
+            end;
+            TResults=TpvObjectGenericList<TResult>;
       private
        fDevice:TpvVulkanDevice;
        fQueryPool:TVkQueryPool;
@@ -112,7 +122,8 @@ implementation
 { TpvTimerQuery }
 
 constructor TpvTimerQuery.Create(const aDevice:TpvVulkanDevice;const aCount:TpvSizeInt);
-var QueryPoolCreateInfo:TVkQueryPoolCreateInfo;
+var Index:TpvSizeInt;
+    QueryPoolCreateInfo:TVkQueryPoolCreateInfo;
 begin
  fDevice:=aDevice;
  fQueryPool:=VK_NULL_HANDLE;
@@ -139,8 +150,11 @@ begin
  fRawResults.Resize(fCount shl 1);
  fTimeStampMasks.Initialize;
  fTimeStampMasks.Resize(fCount);
- fResults.Initialize;
- fResults.Resize(fCount);
+ fResults:=TResults.Create;
+ fResults.OwnsObjects:=true;
+ for Index:=0 to fCount do begin
+  fResults.Add(TResult.Create);
+ end;
  fValid:=false;
 end;
 
@@ -152,7 +166,7 @@ begin
  FreeAndNil(fNames);
  fTimeStampMasks.Finalize;
  fRawResults.Finalize;
- fResults.Finalize;
+ FreeAndNil(fResults);
  inherited Destroy;
 end;
 
@@ -209,7 +223,9 @@ begin
 end;
 
 function TpvTimerQuery.Update:boolean;
+const TotalString:TpvUTF8String='Total';
 var Index:TpvSizeInt;
+    Result_:TResult;
 begin
  result:=(fQueryPool<>VK_NULL_HANDLE) and
          (fQueryedCount>0) and
@@ -223,9 +239,23 @@ begin
                                                TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
  if result then begin
   for Index:=0 to fQueryedCount-1 do begin
-   fResults.Items[Index]:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
+   Result_:=fResults[Index];
+   if Result_.fName<>fNames.Items[Index] then begin
+    Result_.fName:=fNames.Items[Index];
+   end;
+   Result_.fDuration:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
+   Result_.fValid:=true;
+  end;
+  for Index:=fQueryedCount to fCount-1 do begin
+   fResults[Index].fValid:=false;
   end;
   fTotal:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
+  Result_:=fResults[fCount];
+  if Result_.fName<>TotalString then begin
+   Result_.fName:=TotalString;
+  end;
+  Result_.fDuration:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
+  Result_.fValid:=true;
  end;
 end;
 
