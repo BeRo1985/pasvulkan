@@ -199,7 +199,11 @@ layout(std140, set = 1, binding = 2) uniform uboCascadedShadowMaps {
   vec4 shadowMapSplitDepths[NUM_SHADOW_CASCADES];
 } uCascadedShadowMaps;
 
+#ifdef PCFPCSS
+layout(set = 1, binding = 3) uniform sampler2DArrayShadow uCascadedShadowMapTexture;
+#else
 layout(set = 1, binding = 3) uniform sampler2DArray uCascadedShadowMapTexture;
+#endif
 
 #endif
 
@@ -763,6 +767,168 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef SHADOWS
 
+#ifdef PCFPCSS
+
+vec2 getShadowOffsets(const in vec3 N, const in vec3 L) {
+  float cos_alpha = clamp(dot(N, L), 0.0, 1.0);
+  float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha)); // sin(acos(L·N))
+  float offset_scale_L = offset_scale_N / cos_alpha;          // tan(acos(L·N))
+  return (vec2(offset_scale_N, min(2.0, offset_scale_L)) * vec2(0.015, 0.015));// + vec2(0.0015, 0.0);
+}
+
+vec3 getOffsetedShadowPosition(const in vec3 pWorldSpacePosition, const in vec3 pLightDirection){
+  vec3 lDirectionToLight = normalize(-pLightDirection);
+  vec2 lShadowOffsets = vec2(0.0); //getShadowOffsets(gRawNormal, lDirectionToLight);  
+  return pWorldSpacePosition + ((inNormal * lShadowOffsets.x) + (lDirectionToLight * lShadowOffsets.y));
+}
+
+float doPCFSample(const in sampler2DArrayShadow pTexShadowMapArrayCompare, const in vec3 pBaseUVS, const in float pU, const in float pV, const in float pZ, const in vec2 pShadowMapSizeInv){
+#if 1
+  // Use hardware PCF
+  return texture(pTexShadowMapArrayCompare, vec4(pBaseUVS + vec3(vec2(vec2(pU, pV) * pShadowMapSizeInv), 0.0), pZ));
+#else
+  // Emulate hardware PCF with textureGather as reference
+  return dot(textureGather(pTexShadowMapArrayCompare, pBaseUVS + vec3(vec2(vec2(pU, pV) * pShadowMapSizeInv), 0.0), pZ), vec4(0.25));
+#endif
+}
+
+float getShadow(const in sampler2DArrayShadow pTexShadowMapArrayCompare, const in vec4 pShadowMapPosition, const in float pShadowMapSlice){
+  vec3 lShadowMapSpaceUVZ = fma(pShadowMapPosition.xyz / pShadowMapPosition.w, vec3(0.5), vec3(0.5));   
+#define OptimizedPCFFilterSize 7
+#if OptimizedPCFFilterSize != 2
+  vec2 lShadowMapSize = vec2(textureSize(pTexShadowMapArrayCompare, 0).xy);
+  vec2 lShadowMapSizeInv = vec2(1.0) / lShadowMapSize;
+ 
+  float lZReceiver = lShadowMapSpaceUVZ.z;
+  
+  vec2 lUV = lShadowMapSpaceUVZ.xy * lShadowMapSize;
+
+  vec3 lBaseUVS = vec3(floor(lUV + vec2(0.5)), floor(pShadowMapSlice + 0.5));
+
+  float lS = (lUV.x + 0.5) - lBaseUVS.x;
+  float lT = (lUV.y + 0.5) - lBaseUVS.y;
+
+  lBaseUVS.xy = (lBaseUVS.xy - vec2(0.5)) * lShadowMapSizeInv;
+#endif
+  float lSum = 0.0;
+#if OptimizedPCFFilterSize == 2
+  lSum = doPCFSample(pTexShadowMapArrayCompare, vec3(lShadowMapSpaceUVZ.xy, floor(pShadowMapSlice + 0.5)), 0.0, 0.0, lShadowMapSpaceUVZ.z, vec2(0.0));
+#elif OptimizedPCFFilterSize == 3
+
+  float lUW0 = 3.0 - (2.0 * lS);
+  float lUW1 = 1.0 + (2.0 * lS);
+
+  float lU0 = ((2.0 - lS) / lUW0) - 1.0;
+  float lU1 = (lS / lUW1) + 1.0;
+
+  float lVW0 = 3.0 - (2.0 * lT);
+  float lVW1 = 1.0 + (2.0 * lT);
+
+  float lV0 = ((2.0 - lT) / lVW0) - 1.0;
+  float lV1 = (lT / lVW1) + 1.0;
+
+  lSum += (lUW0 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW0 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV1, lZReceiver, lShadowMapSizeInv);
+
+  lSum *= 1.0 / 16.0;
+#elif OptimizedPCFFilterSize == 5
+
+  float lUW0 = 4.0 - (3.0 * lS);
+  float lUW1 = 7.0;
+  float lUW2 = 1.0 + (3.0 * lS);
+
+  float lU0 = ((3.0 - (2.0 * lS)) / lUW0) - 2.0;
+  float lU1 = (3.0 + lS) / lUW1;
+  float lU2 = (lS / lUW2) + 2.0;
+
+  float lVW0 = 4.0 - (3.0 * lT);
+  float lVW1 = 7.0;
+  float lVW2 = 1.0 + (3.0 * lT);
+
+  float lV0 = ((3.0 - (2.0 * lT)) / lVW0) - 2.0;
+  float lV1 = (3.0 + lT) / lVW1;
+  float lV2 = (lT / lVW2) + 2.0;
+
+  lSum += (lUW0 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV0, lZReceiver, lShadowMapSizeInv);
+
+  lSum += (lUW0 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV1, lZReceiver, lShadowMapSizeInv);
+
+  lSum += (lUW0 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV2, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV2, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV2, lZReceiver, lShadowMapSizeInv);
+
+  lSum *= 1.0 / 144.0;
+
+#elif OptimizedPCFFilterSize == 7
+
+  float lUW0 = (5.0 * lS) - 6;
+  float lUW1 = (11.0 * lS) - 28.0;
+  float lUW2 = -((11.0 * lS) + 17.0);
+  float lUW3 = -((5.0 * lS) + 1.0);
+
+  float lU0 = ((4.0 * lS) - 5.0) / lUW0 - 3.0;
+  float lU1 = ((4.0 * lS) - 16.0) / lUW1 - 1.0;
+  float lU2 = (-(((7.0 * lS) + 5.0)) / lUW2) + 1.0;
+  float lU3 = (-(lS / lUW3)) + 3.0;
+
+  float lVW0 = ((5.0 * lT) - 6.0);
+  float lVW1 = ((11.0 * lT) - 28.0);
+  float lVW2 = -((11.0 * lT) + 17.0);
+  float lVW3 = -((5.0 * lT) + 1.0);
+
+  float lV0 = (((4.0 * lT) - 5.0) / lVW0) - 3.0;
+  float lV1 = (((4.0 * lT) - 16.0) / lVW1) - 1.0;
+  float lV2 = ((-((7.0 * lT) + 5)) / lVW2) + 1.0;
+  float lV3 = (-(lT / lVW3)) + 3.0;
+
+  lSum += (lUW0 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV0, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW3 * lVW0) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU3, lV0, lZReceiver, lShadowMapSizeInv);
+
+  lSum += (lUW0 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV1, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW3 * lVW1) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU3, lV1, lZReceiver, lShadowMapSizeInv);
+
+  lSum += (lUW0 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV2, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV2, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV2, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW3 * lVW2) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU3, lV2, lZReceiver, lShadowMapSizeInv);
+
+  lSum += (lUW0 * lVW3) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU0, lV3, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW1 * lVW3) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU1, lV3, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW2 * lVW3) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU2, lV3, lZReceiver, lShadowMapSizeInv);
+  lSum += (lUW3 * lVW3) * doPCFSample(pTexShadowMapArrayCompare, lBaseUVS, lU3, lV3, lZReceiver, lShadowMapSizeInv);
+
+  lSum *= 1.0 / 2704.0;
+
+#endif
+
+  return 1.0 - clamp(lSum, 0.0, 1.0);
+}
+
+float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
+  mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
+  vec4 shadowClipSpace = shadowMapMatrix * vec4(getOffsetedShadowPosition(inWorldSpacePosition, lightDirection), 1.0);
+  vec4 shadowNDC = shadowClipSpace;
+  shadowNDC /= shadowNDC.w;
+  shadowNDC.xy = fma(shadowNDC.xy, vec2(0.5), vec2(0.5));
+  if (all(greaterThanEqual(shadowNDC, vec4(0.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
+    return getShadow(uCascadedShadowMapTexture, shadowClipSpace, cascadedShadowMapIndex);
+  } else {
+    return 1.0;
+  }
+}
+
+#else
+
 float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in float momentBias) {
   vec4 b = mix(moments, vec4(0.5), momentBias);
   vec3 z;
@@ -822,7 +988,7 @@ float getMSMShadowIntensity(vec4 moments, float depth, float depthBias, float mo
   return 1.0 - clamp((s.z + (s.w * ((((s.x * z.z) - (b.x * (s.x + z.z))) + b.y) / ((z.z - s.y) * (z.x - z.y))))) * 1.03, 0.0, 1.0);
 }
 
-float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
+float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
   vec4 shadowNDC = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
   shadowNDC /= shadowNDC.w;
@@ -841,6 +1007,7 @@ float doCascadedShadowMapMSMShadow(const in int cascadedShadowMapIndex, const in
   }
 }
 
+#endif
 #endif
 #endif
 
@@ -1154,14 +1321,14 @@ void main() {
                   for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepths[cascadedShadowMapIndex].xy;
                     if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
-                      float shadow = doCascadedShadowMapMSMShadow(cascadedShadowMapIndex, light.directionZFar.xyz);
+                      float shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, light.directionZFar.xyz);
                       int nextCascadedShadowMapIndex = cascadedShadowMapIndex + 1;
                       if (nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
                         vec2 nextShadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepths[nextCascadedShadowMapIndex].xy;
                         if ((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)) {
                           float splitFade = smoothstep(nextShadowMapSplitDepth.x, shadowMapSplitDepth.y, viewSpaceDepth);
                           if (splitFade > 0.0) {
-                            shadow = mix(shadow, doCascadedShadowMapMSMShadow(nextCascadedShadowMapIndex, light.directionZFar.xyz), splitFade);
+                            shadow = mix(shadow, doCascadedShadowMapShadow(nextCascadedShadowMapIndex, light.directionZFar.xyz), splitFade);
                           }
                         }
                       }

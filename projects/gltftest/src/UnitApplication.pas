@@ -44,6 +44,7 @@ type TApplication=class(TpvApplication)
        fShadowMapSize:TpvInt32;
        fTransparencyMode:TTransparencyMode;
        fAntialiasingMode:TAntialiasingMode;
+       fShadowMode:TShadowMode;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -73,6 +74,7 @@ type TApplication=class(TpvApplication)
        property ShadowMapSize:TpvInt32 read fShadowMapSize;
        property TransparencyMode:TTransparencyMode read fTransparencyMode;
        property AntialiasingMode:TAntialiasingMode read fAntialiasingMode;
+       property ShadowMode:TShadowMode read fShadowMode;
      end;
 
 var Application:TApplication=nil;
@@ -97,9 +99,10 @@ begin
  VulkanNVIDIAAfterMath:=false;
  fMaxMSAA:=0;
  fMaxShadowMSAA:=1;
- fShadowMapSize:=512;
+ fShadowMapSize:=2048;
  fTransparencyMode:=TTransparencyMode.Auto;
  fAntialiasingMode:=TAntialiasingMode.Auto;
+ fShadowMode:=TShadowMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
@@ -186,6 +189,19 @@ begin
      fAntialiasingMode:=TAntialiasingMode.MSAA;
     end else begin
      fTransparencyMode:=TTransparencyMode.Auto;
+    end;
+   end;
+  end else if (Parameter='--shadow-mode') or
+              (Parameter='/shadow-mode') then begin
+   if Index<=ParamCount then begin
+    Parameter:=LowerCase(trim(ParamStr(Index)));
+    inc(Index);
+    if Parameter='pcf' then begin
+     fShadowMode:=TShadowMode.PCF;
+    end else if Parameter='msm' then begin
+     fShadowMode:=TShadowMode.MSM;
+    end else begin
+     fShadowMode:=TShadowMode.Auto;
     end;
    end;
   end else begin

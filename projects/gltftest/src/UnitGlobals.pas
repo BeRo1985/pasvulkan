@@ -51,6 +51,14 @@ type TTransparencyMode=
        SMAA,
        MSAA
       );
+
+     TShadowMode=
+      (
+       Auto,
+       PCF,
+       MSM
+      );
+
 implementation
 
 end.
