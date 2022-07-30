@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Utils,
+     PasVulkan.TimerQuery,
      PasVulkan.NVIDIA.AfterMath;
 
 // Inspired from:

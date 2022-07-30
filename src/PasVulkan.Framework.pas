@@ -327,6 +327,8 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure InstallDebugReportCallback;
        function GetAPIVersionString:TpvRawByteString;
+      public
+       property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
        property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
       published
        property ApplicationName:TpvVulkanCharString read GetApplicationName write SetApplicationName;
@@ -365,6 +367,7 @@ type EpvVulkanException=class(Exception);
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
+       fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -422,6 +425,7 @@ type EpvVulkanException=class(Exception);
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
+       property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
@@ -606,6 +610,7 @@ type EpvVulkanException=class(Exception);
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
+       fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -624,6 +629,8 @@ type EpvVulkanException=class(Exception);
                            const aNeedSparseBinding:boolean=false);
        procedure Initialize;
        procedure WaitIdle;
+      public
+       property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
       published
        property Instance:TpvVulkanInstance read fInstance;
@@ -7099,6 +7106,15 @@ begin
   end;
  end;
 
+ begin
+  FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
+  fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0 then begin
+   fHostQueryResetFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fHostQueryResetFeaturesEXT;
+  end;
+ end;
+
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
     assigned(fInstance.Commands.Commands.GetPhysicalDeviceFeatures2KHR) then begin
   fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
@@ -8489,6 +8505,17 @@ begin
     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice;
     fBufferDeviceAddressFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fBufferDeviceAddressFeaturesKHR;
+   end;
+
+   begin
+    FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
+    fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+    if (fEnabledExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset<>VK_FALSE) then begin
+     fHostQueryResetFeaturesEXT.hostQueryReset:=PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset;
+     fHostQueryResetFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fHostQueryResetFeaturesEXT;
+    end;
    end;
 
   end;
