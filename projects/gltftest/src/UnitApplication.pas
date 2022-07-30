@@ -96,7 +96,7 @@ begin
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
  fMaxMSAA:=0;
- fMaxShadowMSAA:=0;
+ fMaxShadowMSAA:=1;
  fShadowMapSize:=512;
  fTransparencyMode:=TTransparencyMode.Auto;
  fAntialiasingMode:=TAntialiasingMode.Auto;
