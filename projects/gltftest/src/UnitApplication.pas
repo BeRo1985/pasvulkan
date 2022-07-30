@@ -99,7 +99,7 @@ begin
  VulkanNVIDIAAfterMath:=false;
  fMaxMSAA:=0;
  fMaxShadowMSAA:=1;
- fShadowMapSize:=512;
+ fShadowMapSize:=2048;
  fTransparencyMode:=TTransparencyMode.Auto;
  fAntialiasingMode:=TAntialiasingMode.Auto;
  fShadowMode:=TShadowMode.Auto;

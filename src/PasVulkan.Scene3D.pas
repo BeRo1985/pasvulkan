@@ -4846,7 +4846,8 @@ var Index,
     Area:TPasGLTFFloat;
     HasMorphVertexTargets,
     HasJoints,
-    DoNeedCalculateTangents:boolean;
+    DoNeedCalculateTangents,
+    BoundingBoxFirst:boolean;
     DestinationMeshPrimitiveVertices:TVertices;
     DestinationMeshPrimitiveIndices:TpvUInt32DynamicArray;
     MaxJointBlocks:PMaxJointBlocks;
@@ -4864,6 +4865,8 @@ begin
 
   fBoundingBox:=TpvAABB.Create(TpvVector3.InlineableCreate(Infinity,Infinity,Infinity),
                                TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity));
+
+  BoundingBoxFirst:=true;
 
  //DestinationMesh^.JointBlocks:=nil;
 
@@ -4903,14 +4906,6 @@ begin
         AccessorIndex:=SourceMeshPrimitive.Attributes['POSITION'];
         if AccessorIndex>=0 then begin
          TemporaryPositions:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
-         for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
-          fBoundingBox.Min[0]:=Min(fBoundingBox.Min[0],TemporaryPositions[VertexIndex,0]);
-          fBoundingBox.Min[1]:=Min(fBoundingBox.Min[1],TemporaryPositions[VertexIndex,1]);
-          fBoundingBox.Min[2]:=Min(fBoundingBox.Min[2],TemporaryPositions[VertexIndex,2]);
-          fBoundingBox.Max[0]:=Max(fBoundingBox.Max[0],TemporaryPositions[VertexIndex,0]);
-          fBoundingBox.Max[1]:=Max(fBoundingBox.Max[1],TemporaryPositions[VertexIndex,1]);
-          fBoundingBox.Max[2]:=Max(fBoundingBox.Max[2],TemporaryPositions[VertexIndex,2]);
-         end;
         end else begin
          raise EPasGLTF.Create('Missing position data');
         end;
@@ -5269,6 +5264,29 @@ begin
        SetLength(DestinationMeshPrimitiveIndices,length(TemporaryIndices));
        if length(TemporaryIndices)>0 then begin
         Move(TemporaryIndices[0],DestinationMeshPrimitiveIndices[0],length(TemporaryIndices)*SizeOf(TpvUInt32));
+       end;
+       if length(TemporaryIndices)>0 then begin
+        for IndexIndex:=0 to length(TemporaryIndices)-1 do begin
+         VertexIndex:=TemporaryIndices[IndexIndex];
+         if (VertexIndex>=0) and (VertexIndex<length(TemporaryPositions)) then begin
+          if BoundingBoxFirst then begin
+           BoundingBoxFirst:=false;
+           fBoundingBox.Min[0]:=TemporaryPositions[VertexIndex,0];
+           fBoundingBox.Min[1]:=TemporaryPositions[VertexIndex,1];
+           fBoundingBox.Min[2]:=TemporaryPositions[VertexIndex,2];
+           fBoundingBox.Max[0]:=TemporaryPositions[VertexIndex,0];
+           fBoundingBox.Max[1]:=TemporaryPositions[VertexIndex,1];
+           fBoundingBox.Max[2]:=TemporaryPositions[VertexIndex,2];
+          end else begin
+           fBoundingBox.Min[0]:=Min(fBoundingBox.Min[0],TemporaryPositions[VertexIndex,0]);
+           fBoundingBox.Min[1]:=Min(fBoundingBox.Min[1],TemporaryPositions[VertexIndex,1]);
+           fBoundingBox.Min[2]:=Min(fBoundingBox.Min[2],TemporaryPositions[VertexIndex,2]);
+           fBoundingBox.Max[0]:=Max(fBoundingBox.Max[0],TemporaryPositions[VertexIndex,0]);
+           fBoundingBox.Max[1]:=Max(fBoundingBox.Max[1],TemporaryPositions[VertexIndex,1]);
+           fBoundingBox.Max[2]:=Max(fBoundingBox.Max[2],TemporaryPositions[VertexIndex,2]);
+          end;
+         end;
+        end;
        end;
       end;
 
@@ -7191,17 +7209,29 @@ var LightMap:TpvScene3D.TGroup.TLights;
   var Index:TpvSizeInt;
       Matrix:TpvMatrix4x4;
       Node:TpvScene3D.TGroup.TNode;
+      Visible:boolean;
+      BoundingBox:TpvAABB;
   begin
    Node:=fNodes[aNodeIndex];
    Matrix:=((TpvMatrix4x4.CreateScale(Node.fScale)*
              (TpvMatrix4x4.CreateFromQuaternion(Node.fRotation)*
               TpvMatrix4x4.CreateTranslation(Node.fTranslation)))*Node.fMatrix)*aMatrix;
    if assigned(Node.fMesh) then begin
-    if First then begin
-     First:=false;
-     fBoundingBox:=Node.fMesh.fBoundingBox.Transform(Matrix);
-    end else begin
-     fBoundingBox:=fBoundingBox.Combine(Node.fMesh.fBoundingBox.Transform(Matrix));
+    Visible:=false;
+    for Index:=0 to length(Node.fMesh.fPrimitives)-1 do begin
+     if assigned(Node.fMesh.fPrimitives[Index].Material) and Node.fMesh.fPrimitives[Index].Material.fVisible then begin
+      Visible:=true;
+      break;
+     end;
+    end;
+    if Visible then begin
+     BoundingBox:=Node.fMesh.fBoundingBox.Transform(Matrix);
+     if First then begin
+      First:=false;
+      fBoundingBox:=BoundingBox;
+     end else begin
+      fBoundingBox:=fBoundingBox.Combine(BoundingBox);
+     end;
     end;
    end;
    for Index:=0 to Node.Children.Count-1 do begin
@@ -9497,6 +9527,72 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
   end;
  end;
+ procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
+     MorphTargetVertexIndex:TpvUInt32;
+     Mesh:TpvScene3D.TGroup.TMesh;
+     Skin:TpvScene3D.TGroup.TSkin;
+     InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
+     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+     Vertex:TpvScene3D.PVertex;
+     Position:TpvVector3;
+     JointBlock:PJointBlock;
+     DynamicBoundingBox:TpvAABB;
+     MorphTargetVertex:TpvScene3D.TGroup.PMorphTargetVertex;
+     OK:boolean;
+ begin
+  Mesh:=aNode.fMesh;
+  if assigned(Mesh) then begin
+   OK:=false;
+   Skin:=aNode.fSkin;
+   if assigned(Skin) then begin
+    InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
+   end else begin
+    InverseMatrix:=TpvMatrix4x4.Identity;
+   end;
+   ModelNodeMatrixEx:=aInstanceNode^.WorkMatrix*fModelMatrix;
+   DynamicBoundingBox.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+   DynamicBoundingBox.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+    for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+     Vertex:=@Group.fVertices.Items[VertexIndex];
+     Position:=Vertex^.Position;
+     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+      MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+      Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+      MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+     end;
+     ModelNodeMatrix:=ModelNodeMatrixEx;
+     if Vertex^.CountJointBlocks>0 then begin
+      Matrix:=TpvMatrix4x4.Identity;
+      for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+       JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+       for JointIndex:=0 to 3 do begin
+        Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+       end;
+      end;
+      ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+     end;
+     Position:=ModelNodeMatrix.MulHomogen(Position);
+     DynamicBoundingBox.Min[0]:=Min(DynamicBoundingBox.Min[0],Position[0]);
+     DynamicBoundingBox.Min[1]:=Min(DynamicBoundingBox.Min[1],Position[1]);
+     DynamicBoundingBox.Min[2]:=Min(DynamicBoundingBox.Min[2],Position[2]);
+     DynamicBoundingBox.Max[0]:=Max(DynamicBoundingBox.Max[0],Position[0]);
+     DynamicBoundingBox.Max[1]:=Max(DynamicBoundingBox.Max[1],Position[1]);
+     DynamicBoundingBox.Max[2]:=Max(DynamicBoundingBox.Max[2],Position[2]);
+     OK:=true;
+    end;
+   end;
+   if OK then begin
+    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
+   end else begin
+    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
+   end;
+   aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+  end;
+ end;
 var Index:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
@@ -9585,8 +9681,12 @@ begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=@fNodes[Index];
     if assigned(Node.fMesh) then begin
-     InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
-     InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+    {if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
+      ProcessMorphSkinNode(Node,InstanceNode);
+     end else}begin
+      InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
+      InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+     end;
     end else begin
      InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
      InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=false;
