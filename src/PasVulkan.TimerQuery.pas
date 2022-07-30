@@ -66,16 +66,43 @@ uses SysUtils,
      Math,
      Vulkan,
      PasVulkan.Types,
-     PasVulkan.Framework;
+     PasVulkan.Framework,
+     PasVulkan.Collections;
 
 type { TpvTimerQuery }
      TpvTimerQuery=class
+      public
+       type TNames=TpvGenericList<TpvUTF8String>;
+            TRawResults=TpvDynamicArray<TpvUInt64>;
+            TTimeStampMasks=TpvDynamicArray<TpvUInt64>;
+            TResults=TpvDynamicArray<TpvDouble>;
       private
        fDevice:TpvVulkanDevice;
        fQueryPool:TVkQueryPool;
+       fCount:TpvSizeInt;
+       fQueryedCount:TpvSizeInt;
+       fNames:TNames;
+       fRawResults:TRawResults;
+       fTimeStampMasks:TTimeStampMasks;
+       fResults:TResults;
+       fTickSeconds:TpvDouble;
+       fTotal:TpvDouble;
+       fValid:boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aCount:TpvSizeInt); reintroduce;
        destructor Destroy; override;
+       procedure Reset;
+       function Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String=''):TpvSizeInt;
+       procedure Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+       function Update:boolean;
+      public
+       property RawResults:TRawResults read fRawResults;
+       property Results:TResults read fResults;
+       property Total:Double read fTotal;
+      published
+       property Count:TpvSizeInt read fCount;
+       property QueryedCount:TpvSizeInt read fCount;
+       property Names:TNames read fNames;
      end;
 
 implementation
@@ -87,6 +114,7 @@ var QueryPoolCreateInfo:TVkQueryPoolCreateInfo;
 begin
  fDevice:=aDevice;
  fQueryPool:=VK_NULL_HANDLE;
+ fCount:=aCount;
  if assigned(fDevice.Commands.Commands.CreateQueryPool) and
     assigned(fDevice.Commands.Commands.DestroyQueryPool) and
     (fDevice.PhysicalDevice.HostQueryResetFeaturesEXT.hostQueryReset<>VK_FALSE) and
@@ -98,6 +126,17 @@ begin
                                                      0);
   VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,@QueryPoolCreateInfo,fDevice.AllocationCallbacks,@fQueryPool));
  end;
+ fTickSeconds:=fDevice.PhysicalDevice.Properties.limits.timestampPeriod;
+ fNames:=TNames.Create;
+ fNames.Count:=aCount;
+ fTotal:=0.0;
+ fRawResults.Initialize;
+ fRawResults.Count:=fCount shl 1;
+ fTimeStampMasks.Initialize;
+ fTimeStampMasks.Count:=fCount;
+ fResults.Initialize;
+ fResults.Count:=fCount;
+ fValid:=false;
 end;
 
 destructor TpvTimerQuery.Destroy;
@@ -105,7 +144,68 @@ begin
  if fQueryPool<>VK_NULL_HANDLE then begin
   fDevice.Commands.DestroyQueryPool(fDevice.Handle,fQueryPool,fDevice.AllocationCallbacks);
  end;
+ FreeAndNil(fNames);
+ fTimeStampMasks.Finalize;
+ fRawResults.Finalize;
+ fResults.Finalize;
  inherited Destroy;
+end;
+
+procedure TpvTimerQuery.Reset;
+begin
+ fQueryedCount:=0;
+ fValid:=false;
+end;
+
+function TpvTimerQuery.Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String=''):TpvSizeInt;
+var TimeStampValidBits,TimeStampMask:TpvUInt64;
+begin
+ if (fQueryPool<>VK_NULL_HANDLE) and (fQueryedCount<fCount) then begin
+  TimeStampValidBits:=fDevice.PhysicalDevice.QueueFamilyProperties[aQueue.QueueFamilyIndex].timestampValidBits;
+  if TimeStampValidBits<>0 then begin
+   if TimeStampValidBits>=64 then begin
+    TimeStampMask:=UInt64($ffffffffffffffff);
+   end else begin
+    TimeStampMask:=(UInt64(1) shl TimeStampValidBits)-1;
+   end;
+   fTimeStampMasks.Items[fQueryedCount]:=TimeStampMask;
+   if assigned(fDevice.Commands.Commands.ResetQueryPool) then begin
+    fDevice.Commands.ResetQueryPool(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
+   end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
+    fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
+   end;
+   aCommandBuffer.CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,fQueryPool,fQueryedCount shl 1);
+   if fNames[fQueryedCount]<>aName then begin
+    fNames[fQueryedCount]:=aName;
+   end;
+   result:=fQueryedCount;
+   fValid:=true;
+  end;
+ end else begin
+  result:=-1;
+  fValid:=false;
+ end;
+end;
+
+procedure TpvTimerQuery.Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if fValid then begin
+  aCommandBuffer.CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,fQueryPool,(fQueryedCount shl 1) or 1);
+  inc(fQueryedCount);
+  fValid:=false;
+ end;
+end;
+
+function TpvTimerQuery.Update:boolean;
+var Index:TpvSizeInt;
+begin
+ result:=(fQueryedCount>0) and (fDevice.Commands.GetQueryPoolResults(fDevice.Handle,fQueryPool,0,fQueryedCount shl 1,(fQueryedCount shl 1)*SizeOf(TpvUInt64),@fRawResults.Items[0],SizeOf(TpvUInt64),TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
+ if result then begin
+  for Index:=0 to fQueryedCount-1 do begin
+   fResults.Items[Index]:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
+  end;
+  fTotal:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
+ end;
 end;
 
 end.
