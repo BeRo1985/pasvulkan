@@ -16,7 +16,7 @@ layout(push_constant) uniform PushConstants {
   int frameCounter;  //
 } pushConstants;
 
-vec4 whiteNoise(ivec4 p){
+vec4 whiteNoise2(ivec4 p){
   
   uvec4 v = uvec4(p); 
 
@@ -45,20 +45,29 @@ vec4 whiteNoise(ivec4 p){
   return vec4(uintBitsToFloat(uvec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
    
 }      
+
+vec3 whiteNoise(ivec3 p){
+  const uint k = 1103515245u;
+  uvec3 v = uvec3(p); 
+  v = ((v >> 8u) ^ v.yzx) * k;
+  v = ((v >> 8u) ^ v.yzx) * k;
+  v = ((v >> 8u) ^ v.yzx) * k;
+  return fma(vec3(vec3(uintBitsToFloat(uvec3(uvec3(((v >> 9u) & uvec3(0x007fffffu)) | uvec3(0x3f800000u))))) - vec3(1.0)), vec3(2.0), vec3(-1.0));
+}
    
-vec4 pseudoBlueNoise(ivec4 p) {
-  return clamp((vec4(
-                whiteNoise(p + ivec3(-1, -1, 0).xyzz) + 
-                whiteNoise(p + ivec3(0, -1, 0).xyzz) + 
-                whiteNoise(p + ivec3(1, -1, 0).xyzz) +
-                whiteNoise(p + ivec3(-1, 0, 0).xyzz) +
+vec3 pseudoBlueNoise(ivec3 p) {
+  return clamp((vec3(
+                whiteNoise(p + ivec3(-1, -1, 0)) + 
+                whiteNoise(p + ivec3(0, -1, 0)) + 
+                whiteNoise(p + ivec3(1, -1, 0)) +
+                whiteNoise(p + ivec3(-1, 0, 0)) +
                 (whiteNoise(p) * (-8.0)) +
-                 whiteNoise(p + ivec3(1, 0, 0).xyzz) +
-                whiteNoise(p + ivec3(-1, 1, 0).xyzz) + 
-                whiteNoise(p + ivec3(0, 1, 0).xyzz) + 
-                whiteNoise(p + ivec3(1, 1, 0).xyzz)
+                 whiteNoise(p + ivec3(1, 0, 0)) +
+                whiteNoise(p + ivec3(-1, 1, 0)) + 
+                whiteNoise(p + ivec3(0, 1, 0)) + 
+                whiteNoise(p + ivec3(1, 1, 0))
                ) * ((0.5 * 2.1) / 9.0)
-              ) + vec4(0.5), vec4(0.0), vec4(1.0));
+              ) + vec3(0.5), vec3(0.0), vec3(1.0));
 }
 
 vec3 convertLinearRGBToSRGB(vec3 c) {
@@ -78,7 +87,7 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
 }
 void main() {
 #if 1
-  vec3 n = fma(pseudoBlueNoise(ivec4(gl_FragCoord.xy + ivec2(pushConstants.frameCounter), 0, 0)).xyz, vec3(2.0), vec3(-1.0));
+  vec3 n = fma(pseudoBlueNoise(ivec3(gl_FragCoord.xy + ivec2(pushConstants.frameCounter), 0)).xyz, vec3(2.0), vec3(-1.0));
   n = sign(n) * (vec3(1.0) - sqrt(vec3(1.0) - abs(n)));
   outFragColor = convertSRGBToLinearRGB(convertLinearRGBToSRGB(subpassLoad(uSubpassInput)) + vec4(n * (1.0 / 255.0), 0.0));
 #elif 0
