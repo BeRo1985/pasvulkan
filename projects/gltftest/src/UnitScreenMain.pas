@@ -1321,6 +1321,7 @@ type { TScreenMain }
        fOptimizedNonAlphaFormat:TVkFormat;
        fOldFPS:TpvInt32;
        fFPSTimeAccumulator:TpvDouble;
+       fFrameTimeString:string;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:Int32;const aViewLeft,aViewRight:TpvScene3D.TView);
       public
 
@@ -14645,6 +14646,7 @@ const Directions:array[boolean,boolean] of TpvScalar=
 var RotationSpeed,MovementSpeed:TpvDouble;
     FPS:TpvInt32;
     FPSString:string;
+    FrameTime:TpvDouble;
 begin
 
  RotationSpeed:=aDeltaTime*1.0;
@@ -14669,14 +14671,21 @@ begin
 
  FPS:=round(pvApplication.FramesPerSecond*100.0);
  fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
- if fFPSTimeAccumulator>=0.25 then begin
+ if (fFPSTimeAccumulator>=0.25) or (length(fFrameTimeString)=0) then begin
   fFPSTimeAccumulator:=frac(fFPSTimeAccumulator*4)*0.25;
   fOldFPS:=Low(Int32);
+  if assigned(fFrameGraph.LastTimerQueryResults) then begin
+   FrameTime:=fFrameGraph.LastTimerQueryResults[fFrameGraph.LastTimerQueryResults.Count-1].Duration;
+  end else begin
+   FrameTime:=0.0;
+  end;
+  Str(FrameTime:1:5,fFrameTimeString);
  end;
+
  if abs(fOldFPS-FPS)>=100 then begin
   fOldFPS:=FPS;
   str((FPS*0.01):4:2,FPSString);
-  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS]';
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
  end;
 
 //DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.DeltaTime);
