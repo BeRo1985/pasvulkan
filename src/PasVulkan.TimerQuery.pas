@@ -124,9 +124,12 @@ begin
      assigned(fDevice.Commands.Commands.ResetQueryPoolEXT)) then begin
   QueryPoolCreateInfo:=TVkQueryPoolCreateInfo.Create(0,
                                                      TVkQueryType(VK_QUERY_TYPE_TIMESTAMP),
-                                                     aCount,
+                                                     aCount shl 1,
                                                      0);
-  VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,@QueryPoolCreateInfo,fDevice.AllocationCallbacks,@fQueryPool));
+  VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,
+                                                     @QueryPoolCreateInfo,
+                                                     fDevice.AllocationCallbacks,
+                                                     @fQueryPool));
  end;
  fTickSeconds:=fDevice.PhysicalDevice.Properties.limits.timestampPeriod;
  fNames:=TNames.Create;
@@ -155,11 +158,11 @@ end;
 
 procedure TpvTimerQuery.Reset;
 begin
- if fQueryedCount>0 then begin
+ if (fQueryPool<>VK_NULL_HANDLE) and (fCount>0) then begin
   if assigned(fDevice.Commands.Commands.ResetQueryPool) then begin
-   fDevice.Commands.ResetQueryPool(fDevice.Handle,QueryedCount,0,fQueryedCount shl 1);
+   fDevice.Commands.ResetQueryPool(fDevice.Handle,fQueryPool,0,fCount shl 1);
   end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
-   fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,0,fQueryedCount shl 1);
+   fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,fQueryPool,0,fCount shl 1);
   end;
  end;
  fQueryedCount:=0;
@@ -208,7 +211,16 @@ end;
 function TpvTimerQuery.Update:boolean;
 var Index:TpvSizeInt;
 begin
- result:=(fQueryedCount>0) and (fDevice.Commands.GetQueryPoolResults(fDevice.Handle,fQueryPool,0,fQueryedCount shl 1,(fQueryedCount shl 1)*SizeOf(TpvUInt64),@fRawResults.Items[0],SizeOf(TpvUInt64),TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
+ result:=(fQueryPool<>VK_NULL_HANDLE) and
+         (fQueryedCount>0) and
+         (fDevice.Commands.GetQueryPoolResults(fDevice.Handle,
+                                               fQueryPool,
+                                               0,
+                                               fQueryedCount shl 1,
+                                               (fQueryedCount shl 1)*SizeOf(TpvUInt64),
+                                               @fRawResults.Items[0],
+                                               SizeOf(TpvUInt64),
+                                               TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
  if result then begin
   for Index:=0 to fQueryedCount-1 do begin
    fResults.Items[Index]:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
