@@ -92,8 +92,8 @@ type { TpvTimerQuery }
        constructor Create(const aDevice:TpvVulkanDevice;const aCount:TpvSizeInt); reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       function Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String=''):TpvSizeInt;
-       procedure Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+       function Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String='';const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)):TpvSizeInt;
+       procedure Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aPipelineStage:TVkPipelineStageFlagBits=TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
        function Update:boolean;
       public
        property RawResults:TRawResults read fRawResults;
@@ -157,7 +157,7 @@ begin
  fValid:=false;
 end;
 
-function TpvTimerQuery.Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String=''):TpvSizeInt;
+function TpvTimerQuery.Start(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aName:TpvUTF8String;const aPipelineStage:TVkPipelineStageFlagBits):TpvSizeInt;
 var TimeStampValidBits,TimeStampMask:TpvUInt64;
 begin
  if (fQueryPool<>VK_NULL_HANDLE) and (fQueryedCount<fCount) then begin
@@ -174,7 +174,7 @@ begin
    end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
     fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
    end;
-   aCommandBuffer.CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,fQueryPool,fQueryedCount shl 1);
+   aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,fQueryedCount shl 1);
    if fNames[fQueryedCount]<>aName then begin
     fNames[fQueryedCount]:=aName;
    end;
@@ -187,10 +187,10 @@ begin
  end;
 end;
 
-procedure TpvTimerQuery.Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvTimerQuery.Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aPipelineStage:TVkPipelineStageFlagBits);
 begin
  if fValid then begin
-  aCommandBuffer.CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,fQueryPool,(fQueryedCount shl 1) or 1);
+  aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,(fQueryedCount shl 1) or 1);
   inc(fQueryedCount);
   fValid:=false;
  end;
