@@ -105,6 +105,8 @@ type { TpvTimerQuery }
        property Names:TNames read fNames;
      end;
 
+     TpvTimerQueries=TpvObjectGenericList<TpvTimerQuery>;
+
 implementation
 
 { TpvTimerQuery }
@@ -153,6 +155,13 @@ end;
 
 procedure TpvTimerQuery.Reset;
 begin
+ if fQueryedCount>0 then begin
+  if assigned(fDevice.Commands.Commands.ResetQueryPool) then begin
+   fDevice.Commands.ResetQueryPool(fDevice.Handle,QueryedCount,0,fQueryedCount shl 1);
+  end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
+   fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,0,fQueryedCount shl 1);
+  end;
+ end;
  fQueryedCount:=0;
  fValid:=false;
 end;
@@ -169,11 +178,11 @@ begin
     TimeStampMask:=(UInt64(1) shl TimeStampValidBits)-1;
    end;
    fTimeStampMasks.Items[fQueryedCount]:=TimeStampMask;
-   if assigned(fDevice.Commands.Commands.ResetQueryPool) then begin
+{  if assigned(fDevice.Commands.Commands.ResetQueryPool) then begin
     fDevice.Commands.ResetQueryPool(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
    end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
     fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
-   end;
+   end;}
    aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,fQueryedCount shl 1);
    if fNames[fQueryedCount]<>aName then begin
     fNames[fQueryedCount]:=aName;

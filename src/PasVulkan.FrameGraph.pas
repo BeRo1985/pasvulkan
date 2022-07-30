@@ -969,6 +969,7 @@ type EpvFrameGraph=class(Exception);
                     public
                      property VulkanBuffers[const aSwapChainBufferIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
                    end;
+                   TTimerQueryIndices=array[0..MaxInFlightFrames-1] of TpvSizeInt;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -985,6 +986,7 @@ type EpvFrameGraph=class(Exception);
               fTag:TpvSizeInt;
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
+              fTimerQueryIndices:TTimerQueryIndices;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
               function GetSeparatePhysicalPass:boolean; inline;
               procedure SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
@@ -1091,6 +1093,8 @@ type EpvFrameGraph=class(Exception);
               procedure BeforeDestroySwapChain; virtual;
               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); virtual;
+             public
+              property TimerQueryIndices:TTimerQueryIndices read fTimerQueryIndices;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
@@ -1191,6 +1195,7 @@ type EpvFrameGraph=class(Exception);
        fDrawInFlightFrameIndex:TpvSizeInt;
        fDrawFrameIndex:TpvSizeInt;
        fDrawWaitFence:TpvVulkanFence;
+       fTimerQueries:TpvTimerQueries;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames);
        destructor Destroy; override;
@@ -1288,6 +1293,7 @@ type EpvFrameGraph=class(Exception);
        property DrawPreviousInFlightFrameIndex:TpvSizeInt read fDrawPreviousInFlightFrameIndex;
        property DrawInFlightFrameIndex:TpvSizeInt read fDrawInFlightFrameIndex;
        property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
+       property TimerQueries:TpvTimerQueries read fTimerQueries;
      end;
 
 implementation
@@ -2631,6 +2637,7 @@ end;
 { TpvFrameGraph.TPass }
 
 constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph);
+var Index:TpvSizeInt;
 begin
 
  inherited Create;
@@ -2666,6 +2673,10 @@ begin
  fFlags:=[TFlag.Enabled];
 
  fPhysicalPass:=nil;
+
+ for Index:=0 to length(fTimerQueryIndices)-1 do begin
+  fTimerQueryIndices[Index]:=-1;
+ end;
 
 end;
 
@@ -3551,6 +3562,11 @@ end;
 procedure TpvFrameGraph.TPhysicalComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fComputePass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fComputePass.fName);
+ end else begin
+  fComputePass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+ end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3559,6 +3575,9 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
+ end;
 end;
 
 { TpvFrameGraph.TPhysicalTransferPass }
@@ -3610,6 +3629,11 @@ end;
 procedure TpvFrameGraph.TPhysicalTransferPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fTransferPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fTransferPass.fName);
+ end else begin
+  fTransferPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+ end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3618,6 +3642,9 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
+ end;
 end;
 
 { TpvFrameGraph.TPhysicalCustomPass }
@@ -3669,6 +3696,11 @@ end;
 procedure TpvFrameGraph.TPhysicalCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fCustomPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fCustomPass.fName);
+ end else begin
+  fCustomPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+ end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3677,6 +3709,9 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
+ end;
 end;
 
 { TpvFrameGraph.TPhysicalRenderPass.TSubpass }
@@ -4063,7 +4098,15 @@ begin
  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
   Subpass:=fSubpasses[SubpassIndex];
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+   if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+    Subpass.fRenderPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,Subpass.fRenderPass.fName);
+   end else begin
+    Subpass.fRenderPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+   end;
    Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
+   if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+    fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
+   end;
   end;
   if (SubpassIndex+1)<fSubpasses.Count then begin
    aCommandBuffer.CmdNextSubpass(SubpassContents);
@@ -4184,11 +4227,15 @@ begin
 
  fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT});
 
+ fTimerQueries:=nil;
+
 end;
 
 destructor TpvFrameGraph.Destroy;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
+
+ FreeAndNil(fTimerQueries);
 
  FreeAndNil(fPhysicalPasses);
 
@@ -6635,6 +6682,16 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
  end;
+ procedure CreateTimerQuery;
+ var Index:TpvSizeInt;
+ begin
+  FreeAndNil(fTimerQueries);
+  fTimerQueries:=TpvTimerQueries.Create;
+  fTimerQueries.OwnsObjects:=true;
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fTimerQueries.Add(TpvTimerQuery.Create(fVulkanDevice,Passes.Count));
+  end;
+ end;
 begin
 
  fQueueFamilyIndices.Finish;
@@ -6686,6 +6743,8 @@ begin
  PrepareQueues;
 
  FinishPassUsedResources;
+
+ CreateTimerQuery;
 
 end;
 
@@ -7065,6 +7124,10 @@ begin
   fDrawToSignalSemaphoreExternalHandles[fDrawInFlightFrameIndex]:=VK_NULL_HANDLE;
   fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].signalSemaphoreCount:=0;
   fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].pSignalSemaphores:=nil;
+ end;
+ if assigned(fTimerQueries[fDrawInFlightFrameIndex]) then begin
+  fTimerQueries[fDrawInFlightFrameIndex].Update;
+  fTimerQueries[fDrawInFlightFrameIndex].Reset;
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
