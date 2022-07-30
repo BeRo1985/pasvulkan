@@ -773,12 +773,12 @@ vec2 getShadowOffsets(const in vec3 N, const in vec3 L) {
   float cos_alpha = clamp(dot(N, L), 0.0, 1.0);
   float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha)); // sin(acos(L·N))
   float offset_scale_L = offset_scale_N / cos_alpha;          // tan(acos(L·N))
-  return (vec2(offset_scale_N, min(2.0, offset_scale_L)) * vec2(0.015, 0.015));// + vec2(0.0015, 0.0);
+  return fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(0.015, 0.015), vec2(0.0015, 0.0));
 }
 
 vec3 getOffsetedShadowPosition(const in vec3 pWorldSpacePosition, const in vec3 pLightDirection){
   vec3 lDirectionToLight = normalize(-pLightDirection);
-  vec2 lShadowOffsets = vec2(0.0); //getShadowOffsets(gRawNormal, lDirectionToLight);  
+  vec2 lShadowOffsets = getShadowOffsets(inNormal, lDirectionToLight);  
   return pWorldSpacePosition + ((inNormal * lShadowOffsets.x) + (lDirectionToLight * lShadowOffsets.y));
 }
 
