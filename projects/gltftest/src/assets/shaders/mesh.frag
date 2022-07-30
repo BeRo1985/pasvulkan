@@ -793,7 +793,7 @@ float doPCFSample(const in sampler2DArrayShadow pTexShadowMapArrayCompare, const
 }
 
 float getShadow(const in sampler2DArrayShadow pTexShadowMapArrayCompare, const in vec4 pShadowMapPosition, const in float pShadowMapSlice){
-  vec3 lShadowMapSpaceUVZ = fma(pShadowMapPosition.xyz / pShadowMapPosition.w, vec3(0.5), vec3(0.5));   
+  vec3 lShadowMapSpaceUVZ = fma(pShadowMapPosition.xyz / pShadowMapPosition.w, vec2(0.5, 1.0).xxy, vec2(0.5, 0.0).xxy);   
 #define OptimizedPCFFilterSize 7
 #if OptimizedPCFFilterSize != 2
   vec2 lShadowMapSize = vec2(textureSize(pTexShadowMapArrayCompare, 0).xy);
