@@ -131,7 +131,7 @@ begin
                                                      fDevice.AllocationCallbacks,
                                                      @fQueryPool));
  end;
- fTickSeconds:=fDevice.PhysicalDevice.Properties.limits.timestampPeriod;
+ fTickSeconds:=fDevice.PhysicalDevice.Properties.limits.timestampPeriod*1e-9;
  fNames:=TNames.Create;
  fNames.Count:=aCount;
  fTotal:=0.0;
