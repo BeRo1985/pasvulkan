@@ -133,11 +133,11 @@ begin
  fNames.Count:=aCount;
  fTotal:=0.0;
  fRawResults.Initialize;
- fRawResults.Count:=fCount shl 1;
+ fRawResults.Resize(fCount shl 1);
  fTimeStampMasks.Initialize;
- fTimeStampMasks.Count:=fCount;
+ fTimeStampMasks.Resize(fCount);
  fResults.Initialize;
- fResults.Count:=fCount;
+ fResults.Resize(fCount);
  fValid:=false;
 end;
 
