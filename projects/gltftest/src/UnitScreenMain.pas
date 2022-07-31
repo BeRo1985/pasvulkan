@@ -2538,17 +2538,10 @@ begin
       VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
      end;
      VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
-     if fParent.fShadowMode=TShadowMode.MSM then begin
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=true;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=1.25;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=1.75;
-     end else begin
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
-     end;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
      VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanShadowMapSampleCountFlagBits;
