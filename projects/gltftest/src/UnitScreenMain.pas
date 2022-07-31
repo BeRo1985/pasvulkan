@@ -2557,10 +2557,18 @@ begin
       VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
      end;
      VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+     if fParent.fShadowMode=TShadowMode.MSM then begin
+      // For MSM we are using no depth bias at all
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+     end else begin
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=true;
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.5; // Constant bias in depth-resolution units by which shadows are moved away from the light. The value of 0.5 is used to round depth values up.
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=2.0; // Bias based on the change in depth in depth-resolution units by which shadows are moved away from the light. The value of 2.0 works well with PCF and DPCF.
+     end;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
      VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fParent.fVulkanShadowMapSampleCountFlagBits;
