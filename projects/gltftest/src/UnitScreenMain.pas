@@ -102,6 +102,7 @@ type { TScreenMain }
               Matrices:array[0..CountCascadedShadowMapCascades-1] of TpvMatrix4x4;
               SplitDepthsScales:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
               ConstantBiasNormalBiasSlopeBiasClamp:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
+              MetaData:array[0..3] of TpvUInt32;
              end;
              PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
@@ -2335,7 +2336,7 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Show;
 
- if fParent.fShadowMode=TShadowMode.PCF then begin
+ if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
 
   for InFlightFrameIndex:=0 to fParent.fCountInFlightFrames-1 do begin
 
@@ -2377,7 +2378,7 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- if fParent.fShadowMode=TShadowMode.PCF then begin
+ if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_shadowmap_vert.spv');
  end else begin
   Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
@@ -2414,7 +2415,7 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
- if fParent.fShadowMode=TShadowMode.PCF then begin
+ if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
 
   fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
   fGlobalVulkanDescriptorSetLayout.AddBinding(0,
@@ -2447,7 +2448,7 @@ begin
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
- if fParent.fShadowMode=TShadowMode.PCF then begin
+ if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
   fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
  end;
  fVulkanPipelineLayout.Initialize;
@@ -2460,7 +2461,7 @@ begin
 
  FreeAndNil(fVulkanPipelineLayout);
 
- if fParent.fShadowMode=TShadowMode.PCF then begin
+ if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
 
   for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
    FreeAndNil(fGlobalVulkanDescriptorSets[InFlightFrameIndex]);
@@ -2660,7 +2661,7 @@ procedure TScreenMain.TCascadedShadowMapRenderPass.OnSetRenderPassResources(cons
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
-  if fParent.fShadowMode=TShadowMode.PCF then begin
+  if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         fVulkanPipelineLayout.Handle,
                                         1,
@@ -2685,7 +2686,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fShadowMode=TShadowMode.PCF then begin
+  if fParent.fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
 
    ShadowMapUniformBuffer:=@fShadowMapUniformBuffers[aInFlightFrameIndex];
    ShadowMapUniformBuffer^.LightPositionDirection:=TpvVector4.InlineableCreate(TSkyCubeMap.LightDirection.xyz,1.0);
@@ -13038,7 +13039,7 @@ begin
   fShadowMode:=TShadowMode.PCF;
  end;
 
- if fShadowMode=TShadowMode.PCF then begin
+ if fShadowMode in [TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS] then begin
   fMeshFragShadowTypeName:='pcfpcss';
  end else begin
   fMeshFragShadowTypeName:='msm';
@@ -13483,7 +13484,7 @@ begin
 
  case fShadowMode of
 
-  TShadowMode.PCF:begin
+  TShadowMode.PCF,TShadowMode.DPCF,TShadowMode.PCSS:begin
 
    fCascadedShadowMapRenderPass:=TCascadedShadowMapRenderPass.Create(fFrameGraph,self);
    fCascadedShadowMapRenderPass.AddExplicitPassDependency(fMeshComputePass);
@@ -13726,45 +13727,45 @@ begin
 
   end;
 
+  TShadowMode.PCF:begin
+
+   fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                            TVkFilter.VK_FILTER_LINEAR,
+                                                            TVkFilter.VK_FILTER_LINEAR,
+                                                            TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            0.0,
+                                                            false,
+                                                            0.0,
+                                                            true,
+                                                            VK_COMPARE_OP_GREATER,
+                                                            0.0,
+                                                            0.0,
+                                                            VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                                            false);
+
+  end;
+
   else begin
 
-   if true then begin
-    fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                                             TVkFilter.VK_FILTER_NEAREST,
-                                                             TVkFilter.VK_FILTER_NEAREST,
-                                                             TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             0.0,
-                                                             false,
-                                                             0.0,
-                                                             false,
-                                                             VK_COMPARE_OP_ALWAYS,
-                                                             0.0,
-                                                             0.0,
-                                                             VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-                                                             false);
-   end else begin
-    fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                                             TVkFilter.VK_FILTER_LINEAR,
-                                                             TVkFilter.VK_FILTER_LINEAR,
-                                                             TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                             0.0,
-                                                             false,
-                                                             0.0,
-                                                             true,
-                                                             VK_COMPARE_OP_GREATER,
-                                                             0.0,
-                                                             0.0,
-                                                             VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-                                                             false);
-   end;
-
-
+   fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                            TVkFilter.VK_FILTER_NEAREST,
+                                                            TVkFilter.VK_FILTER_NEAREST,
+                                                            TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                            0.0,
+                                                            false,
+                                                            0.0,
+                                                            false,
+                                                            VK_COMPARE_OP_ALWAYS,
+                                                            0.0,
+                                                            0.0,
+                                                            VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                                            false);
   end;
 
  end;
@@ -14631,6 +14632,10 @@ begin
   fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
   fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].SplitDepthsScales[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,CascadedShadowMap^.Scales.x,CascadedShadowMap^.Scales.y);
   fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].ConstantBiasNormalBiasSlopeBiasClamp[CascadedShadowMapIndex]:=TpvVector4.Create(1e-3,1.0*TexelSizeAtOneMeter,10.0*TexelSizeAtOneMeter,0.0);
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[0]:=TpvUInt32(fShadowMode);
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[1]:=0;
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[2]:=0;
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[3]:=0;
 
  end;
 

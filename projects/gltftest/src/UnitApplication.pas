@@ -198,6 +198,10 @@ begin
     inc(Index);
     if Parameter='pcf' then begin
      fShadowMode:=TShadowMode.PCF;
+    end else if Parameter='dpcf' then begin
+     fShadowMode:=TShadowMode.DPCF;
+    end else if Parameter='pcss' then begin
+     fShadowMode:=TShadowMode.PCSS;
     end else if Parameter='msm' then begin
      fShadowMode:=TShadowMode.MSM;
     end else begin

@@ -33,7 +33,7 @@ uses SysUtils,
 
 type TTransparencyMode=
       (
-       Auto,
+       Auto=0,
        Direct,
        SPINLOCKOIT,
        INTERLOCKOIT,
@@ -44,7 +44,7 @@ type TTransparencyMode=
 
      TAntialiasingMode=
       (
-       Auto,
+       Auto=0,
        None,
        DSAA,
        FXAA,
@@ -54,9 +54,11 @@ type TTransparencyMode=
 
      TShadowMode=
       (
-       Auto,
-       PCF,
-       MSM
+       Auto=0,
+       PCF=1,
+       DPCF=2,
+       PCSS=3,
+       MSM=4
       );
 
 implementation
