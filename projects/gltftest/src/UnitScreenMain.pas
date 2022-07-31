@@ -65,7 +65,7 @@ type { TScreenMain }
               public
                View:TpvScene3D.TView;
                CombinedMatrix:TpvMatrix4x4;
-               SplitDepths:TpvVector3;
+               SplitDepths:TpvVector2;
                Scales:TpvVector2;
              end;
              { TLockOrderIndependentTransparentViewPort }
@@ -100,14 +100,15 @@ type { TScreenMain }
              TInFlightFrameCascadedShadowMaps=array[0..MaxInFlightFrames-1] of TCascadedShadowMaps;
              TCascadedShadowMapUniformBuffer=packed record
               Matrices:array[0..CountCascadedShadowMapCascades-1] of TpvMatrix4x4;
-              SplitDepths:array[0..CountCascadedShadowMapCascades-1] of TpvVector4; // actually TpvVector2 but because of alignment it is a TpvVector4 here
+              SplitDepthsScales:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
+              ConstantBiasNormalBiasSlopeBiasClamp:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
              end;
              PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
              TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
              TShadowMapUniformBuffer=packed record
               LightPositionDirection:TpvVector4;
-              ConstantBiasNormalBiasSlopeBias:TpvVector4;
+              ConstantBiasNormalBiasSlopeBiasClamp:TpvVector4;
              end;
              PShadowMapUniformBuffer=^TShadowMapUniformBuffer;
              TShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TShadowMapUniformBuffer;
@@ -2334,33 +2335,37 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Show;
 
- for InFlightFrameIndex:=0 to fParent.fCountInFlightFrames-1 do begin
+ if fParent.fShadowMode=TShadowMode.PCF then begin
 
-  FillChar(fShadowMapUniformBuffers[InFlightFrameIndex],SizeOf(TShadowMapUniformBuffer),#0);
+  for InFlightFrameIndex:=0 to fParent.fCountInFlightFrames-1 do begin
 
-  fShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                             SizeOf(TShadowMapUniformBuffer),
-                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                             [],
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             [TpvVulkanBufferFlag.PersistentMapped]);
+   FillChar(fShadowMapUniformBuffers[InFlightFrameIndex],SizeOf(TShadowMapUniformBuffer),#0);
 
-  fShadowMapVulkanUniformBuffers[InFlightFrameIndex].UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                                                fParent.fVulkanTransferCommandBuffer,
-                                                                fParent.fVulkanTransferCommandBufferFence,
-                                                                fShadowMapUniformBuffers[InFlightFrameIndex],
-                                                                0,
-                                                                SizeOf(TShadowMapUniformBuffer),
-                                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
-                                                                false);
+   fShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                              SizeOf(TShadowMapUniformBuffer),
+                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                              [],
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              [TpvVulkanBufferFlag.PersistentMapped]);
+
+   fShadowMapVulkanUniformBuffers[InFlightFrameIndex].UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                                                 fParent.fVulkanTransferCommandBuffer,
+                                                                 fParent.fVulkanTransferCommandBufferFence,
+                                                                 fShadowMapUniformBuffers[InFlightFrameIndex],
+                                                                 0,
+                                                                 SizeOf(TShadowMapUniformBuffer),
+                                                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                                                                 false);
+
+  end;
 
  end;
 
@@ -2372,7 +2377,11 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_shadowmap_vert.spv');
+ if fParent.fShadowMode=TShadowMode.PCF then begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_shadowmap_vert.spv');
+ end else begin
+  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
+ end;
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -2405,36 +2414,42 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
- fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
- fGlobalVulkanDescriptorSetLayout.AddBinding(0,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
-                                             []);
- fGlobalVulkanDescriptorSetLayout.Initialize;
+ if fParent.fShadowMode=TShadowMode.PCF then begin
 
- fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fParent.fCountInFlightFrames);
- fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*fParent.fCountInFlightFrames);
- fGlobalVulkanDescriptorPool.Initialize;
+  fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+  fGlobalVulkanDescriptorSetLayout.AddBinding(0,
+                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                              []);
+  fGlobalVulkanDescriptorSetLayout.Initialize;
 
- for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
-                                                                                 fGlobalVulkanDescriptorSetLayout);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                       [],
-                                                                       [fShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fParent.fCountInFlightFrames);
+  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*fParent.fCountInFlightFrames);
+  fGlobalVulkanDescriptorPool.Initialize;
+
+  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
+                                                                                  fGlobalVulkanDescriptorSetLayout);
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                        [],
+                                                                        [fShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                        [],
+                                                                        false);
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  end;
+
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fParent.fScene3D.GlobalVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
+ if fParent.fShadowMode=TShadowMode.PCF then begin
+  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
+ end;
  fVulkanPipelineLayout.Initialize;
 
 end;
@@ -2445,16 +2460,20 @@ begin
 
  FreeAndNil(fVulkanPipelineLayout);
 
- for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalVulkanDescriptorSets[InFlightFrameIndex]);
- end;
+ if fParent.fShadowMode=TShadowMode.PCF then begin
 
- FreeAndNil(fGlobalVulkanDescriptorPool);
+  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+   FreeAndNil(fGlobalVulkanDescriptorSets[InFlightFrameIndex]);
+  end;
 
- FreeAndNil(fGlobalVulkanDescriptorSetLayout);
+  FreeAndNil(fGlobalVulkanDescriptorPool);
 
- for InFlightFrameIndex:=0 to fParent.fCountInFlightFrames-1 do begin
-  FreeAndNil(fShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
+
+  for InFlightFrameIndex:=0 to fParent.fCountInFlightFrames-1 do begin
+   FreeAndNil(fShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
+  end;
+
  end;
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
@@ -2633,13 +2652,15 @@ procedure TScreenMain.TCascadedShadowMapRenderPass.OnSetRenderPassResources(cons
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       fVulkanPipelineLayout.Handle,
-                                       1,
-                                       1,
-                                       @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                       0,
-                                       nil);
+  if fParent.fShadowMode=TShadowMode.PCF then begin
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanPipelineLayout.Handle,
+                                        1,
+                                        1,
+                                        @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,
+                                        nil);
+  end;
  end;
 end;
 
@@ -2656,13 +2677,17 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  ShadowMapUniformBuffer:=@fShadowMapUniformBuffers[aInFlightFrameIndex];
-  ShadowMapUniformBuffer^.LightPositionDirection:=TpvVector4.InlineableCreate(TSkyCubeMap.LightDirection.xyz,1.0);
-  ShadowMapUniformBuffer^.ConstantBiasNormalBiasSlopeBias:=TpvVector4.InlineableCreate(0.0015,0.015,0.015,0.0);
+  if fParent.fShadowMode=TShadowMode.PCF then begin
 
-  fShadowMapVulkanUniformBuffers[aInFlightFrameIndex].UpdateData(ShadowMapUniformBuffer^,
-                                                                 0,
-                                                                 SizeOf(TShadowMapUniformBuffer));
+   ShadowMapUniformBuffer:=@fShadowMapUniformBuffers[aInFlightFrameIndex];
+   ShadowMapUniformBuffer^.LightPositionDirection:=TpvVector4.InlineableCreate(TSkyCubeMap.LightDirection.xyz,1.0);
+   ShadowMapUniformBuffer^.ConstantBiasNormalBiasSlopeBiasClamp:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+
+   fShadowMapVulkanUniformBuffers[aInFlightFrameIndex].UpdateData(ShadowMapUniformBuffer^,
+                                                                  0,
+                                                                  SizeOf(TShadowMapUniformBuffer));
+
+  end;
 
   fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                         -1,
@@ -13002,7 +13027,7 @@ begin
  fShadowMode:=UnitApplication.Application.ShadowMode;
 
  if fShadowMode=TShadowMode.Auto then begin
-  fShadowMode:=TShadowMode.MSM;
+  fShadowMode:=TShadowMode.PCF;
  end;
 
  if fShadowMode=TShadowMode.PCF then begin
@@ -13695,22 +13720,41 @@ begin
 
   else begin
 
-   fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                                            TVkFilter.VK_FILTER_LINEAR,
-                                                            TVkFilter.VK_FILTER_LINEAR,
-                                                            TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                                            0.0,
-                                                            false,
-                                                            0.0,
-                                                            true,
-                                                            VK_COMPARE_OP_GREATER,
-                                                            0.0,
-                                                            0.0,
-                                                            VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-                                                            false);
+   if true then begin
+    fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                             TVkFilter.VK_FILTER_NEAREST,
+                                                             TVkFilter.VK_FILTER_NEAREST,
+                                                             TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             0.0,
+                                                             false,
+                                                             0.0,
+                                                             false,
+                                                             VK_COMPARE_OP_ALWAYS,
+                                                             0.0,
+                                                             0.0,
+                                                             VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                                             false);
+   end else begin
+    fVulkanCascadedShadowMapSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+                                                             TVkFilter.VK_FILTER_LINEAR,
+                                                             TVkFilter.VK_FILTER_LINEAR,
+                                                             TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                             0.0,
+                                                             false,
+                                                             0.0,
+                                                             true,
+                                                             VK_COMPARE_OP_GREATER,
+                                                             0.0,
+                                                             0.0,
+                                                             VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                                             false);
+   end;
 
 
   end;
@@ -14287,12 +14331,13 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
     FromViewSpaceToLightSpaceMatrixRight,
     InverseProjectionMatrixLeft,
     InverseProjectionMatrixRight,
+    InverseLightViewProjectionMatrix,
     ViewMatrix:TpvMatrix4x4;
     CascadedShadowMapSplitLambda,
     CascadedShadowMapSplitOverlap,
     MinZ,MaxZ,MinZExtents,MaxZExtents,ZMargin,
     Ratio,SplitValue,UniformSplitValue,LogSplitValue,
-    FadeStartValue,LastValue,Value,
+    FadeStartValue,LastValue,Value,TexelSizeAtOneMeter,
 {$ifdef UseSphereBasedCascadedShadowMaps}
     Border,RoundedUpLightSpaceSphereRadius,
 {$endif}
@@ -14478,11 +14523,11 @@ begin
 
   //LightSpaceAABB:=SceneLightSpaceBoundingBox;
 
-//UnitsPerTexel:=(LightSpaceAABB.Max.xy-LightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(CascadedShadowMapWidth,CascadedShadowMapHeight);
-
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
   LightSpaceSphere.Radius:=ceil(LightSpaceSphere.Radius*16)/16;
   LightSpaceAABB:=LightSpaceSphere.ToAABB;
+
+  UnitsPerTexel:=(LightSpaceAABB.Max.xy-LightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(CascadedShadowMapWidth,CascadedShadowMapHeight);
 
 {$ifdef UseSphereBasedCascadedShadowMaps}
   LightSpaceSphere:=TpvSphere.CreateFromAABB(LightSpaceAABB);
@@ -14560,14 +14605,24 @@ begin
 
   LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
-  CascadedShadowMap.View.ViewMatrix:=LightViewMatrix;
-  CascadedShadowMap.View.ProjectionMatrix:=LightProjectionMatrix;
-  CascadedShadowMap.View.InverseViewMatrix:=LightViewMatrix.Inverse;
-  CascadedShadowMap.View.InverseProjectionMatrix:=LightProjectionMatrix.Inverse;
-  CascadedShadowMap.CombinedMatrix:=LightViewProjectionMatrix;
+  CascadedShadowMap^.View.ViewMatrix:=LightViewMatrix;
+  CascadedShadowMap^.View.ProjectionMatrix:=LightProjectionMatrix;
+  CascadedShadowMap^.View.InverseViewMatrix:=LightViewMatrix.Inverse;
+  CascadedShadowMap^.View.InverseProjectionMatrix:=LightProjectionMatrix.Inverse;
+  CascadedShadowMap^.CombinedMatrix:=LightViewProjectionMatrix;
+
+  InverseLightViewProjectionMatrix:=LightViewProjectionMatrix.Inverse;
+
+{ TexelSizeAtOneMeter:=Max(TpvVector3.InlineableCreate(InverseLightViewProjectionMatrix[0,0],InverseLightViewProjectionMatrix[0,1],InverseLightViewProjectionMatrix[0,2]).Length/CascadedShadowMapWidth,
+                                   TpvVector3.InlineableCreate(InverseLightViewProjectionMatrix[1,0],InverseLightViewProjectionMatrix[1,1],InverseLightViewProjectionMatrix[1,2]).Length/CascadedShadowMapHeight);}
+  TexelSizeAtOneMeter:=UnitsPerTexel.Length*SQRT_0_DOT_5*0.5;
+
+  CascadedShadowMap^.Scales.x:=TexelSizeAtOneMeter;
+  CascadedShadowMap^.Scales.y:=Max(4.0,(1.0*0.02)/TexelSizeAtOneMeter);
 
   fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].Matrices[CascadedShadowMapIndex]:=LightViewProjectionMatrix;
-  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].SplitDepths[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,0.0);
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].SplitDepthsScales[CascadedShadowMapIndex]:=TpvVector4.Create(CascadedShadowMap^.SplitDepths,CascadedShadowMap^.Scales.x,CascadedShadowMap^.Scales.y);
+  fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].ConstantBiasNormalBiasSlopeBiasClamp[CascadedShadowMapIndex]:=TpvVector4.Create(1e-3,1.0*TexelSizeAtOneMeter,1.0*TexelSizeAtOneMeter,0.0);
 
  end;
 
