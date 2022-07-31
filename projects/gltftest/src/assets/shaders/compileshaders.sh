@@ -36,6 +36,8 @@ compileshaderarguments=(
   '-V mesh.vert -o mesh_vert.spv'
 
   '-V mesh.vert -DVELOCITY -o mesh_velocity_vert.spv'
+
+  '-V mesh.vert -DSHADOWMAP -o mesh_shadowmap_vert.spv'
   
   '-V mesh.frag -DUSE_MATERIAL_BUFFER_REFERENCE -DLIGHTS -DSHADOWS -DMSM -o mesh_matbufref_msm_frag.spv'
   '-V mesh.frag -DUSE_MATERIAL_BUFFER_REFERENCE -DLIGHTS -DSHADOWS -DMSM -DALPHATEST -o mesh_matbufref_msm_masked_frag.spv'

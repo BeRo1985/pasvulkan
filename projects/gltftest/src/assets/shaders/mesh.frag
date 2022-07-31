@@ -773,7 +773,7 @@ vec2 getShadowOffsets(const in vec3 N, const in vec3 L) {
   float cos_alpha = clamp(dot(N, L), 0.0, 1.0);
   float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha)); // sin(acos(L·N))
   float offset_scale_L = offset_scale_N / cos_alpha;          // tan(acos(L·N))
-  return fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(0.015, 0.015), vec2(0.0015, 0.0));
+  return fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(0.0, 0.0), vec2(0.0, 0.0));
 }
 
 vec3 getOffsetedShadowPosition(const in vec3 pWorldSpacePosition, const in vec3 pLightDirection){
@@ -916,7 +916,8 @@ float getShadow(const in sampler2DArrayShadow pTexShadowMapArrayCompare, const i
 
 float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
-  vec4 shadowClipSpace = shadowMapMatrix * vec4(getOffsetedShadowPosition(inWorldSpacePosition, lightDirection), 1.0);
+  vec4 shadowClipSpace = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
+  //vec4 shadowClipSpace = shadowMapMatrix * vec4(getOffsetedShadowPosition(inWorldSpacePosition, lightDirection), 1.0);
   vec4 shadowNDC = shadowClipSpace;
   shadowNDC /= shadowNDC.w;
   shadowNDC.xy = fma(shadowNDC.xy, vec2(0.5), vec2(0.5));
