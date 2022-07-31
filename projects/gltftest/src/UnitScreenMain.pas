@@ -13002,7 +13002,7 @@ begin
  fShadowMode:=UnitApplication.Application.ShadowMode;
 
  if fShadowMode=TShadowMode.Auto then begin
-  fShadowMode:=TShadowMode.PCF;
+  fShadowMode:=TShadowMode.MSM;
  end;
 
  if fShadowMode=TShadowMode.PCF then begin

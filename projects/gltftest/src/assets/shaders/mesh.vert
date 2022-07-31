@@ -101,7 +101,7 @@ void main() {
                         );
   vec3 normal = normalize(tangentSpace[2]);
   {
-    float cos_alpha = clamp(dot(normal, lightDirection), 0.0, 1.0);
+    float cos_alpha = clamp(dot(normal, lightDirection), 1e-4, 1.0);
     float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha)); // sin(acos(L·N))
     float offset_scale_L = offset_scale_N / cos_alpha;          // tan(acos(L·N))
     vec2 offsets = fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(uShadowMap.constantBiasNormalBiasSlopeBias.yz), vec2(0.0, uShadowMap.constantBiasNormalBiasSlopeBias.x));
