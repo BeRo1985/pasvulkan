@@ -55,7 +55,7 @@ type TTransparencyMode=
      TShadowMode=
       (
        Auto=0,
-       None=1.
+       None=1,
        PCF=2,
        DPCF=3,
        PCSS=4,
