@@ -55,10 +55,11 @@ type TTransparencyMode=
      TShadowMode=
       (
        Auto=0,
-       PCF=1,
-       DPCF=2,
-       PCSS=3,
-       MSM=4
+       None=1.
+       PCF=2,
+       DPCF=3,
+       PCSS=4,
+       MSM=5
       );
 
 implementation

@@ -194,10 +194,11 @@ layout(set = 1, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[]
 layout(set = 1, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
 #ifdef SHADOWS
-const uint SHADOWMAP_MODE_PCF = 1;
-const uint SHADOWMAP_MODE_DPCF = 2;
-const uint SHADOWMAP_MODE_PCSS = 3;
-const uint SHADOWMAP_MODE_MSM = 4;
+const uint SHADOWMAP_MODE_NONE = 1;
+const uint SHADOWMAP_MODE_PCF = 2;
+const uint SHADOWMAP_MODE_DPCF = 3;
+const uint SHADOWMAP_MODE_PCSS = 4;
+const uint SHADOWMAP_MODE_MSM = 5;
 
 layout(std140, set = 1, binding = 2) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
@@ -1447,7 +1448,7 @@ void main() {
             vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
-            if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u)) {
+            if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
               switch (light.metaData.x) {
 #if 0
                 case 1u: { // Directional 

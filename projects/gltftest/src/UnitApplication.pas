@@ -196,7 +196,9 @@ begin
    if Index<=ParamCount then begin
     Parameter:=LowerCase(trim(ParamStr(Index)));
     inc(Index);
-    if Parameter='pcf' then begin
+    if Parameter='none' then begin
+     fShadowMode:=TShadowMode.None;
+    end else if Parameter='pcf' then begin
      fShadowMode:=TShadowMode.PCF;
     end else if Parameter='dpcf' then begin
      fShadowMode:=TShadowMode.DPCF;
