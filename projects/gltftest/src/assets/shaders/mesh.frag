@@ -770,13 +770,13 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef PCFPCSS
 
-vec3 getOffsetedWorldPosition(const in vec4 values, const in vec3 lightDirection){
+vec3 getOffsetedBiasedWorldPositionForShadowMapping(const in vec4 values, const in vec3 lightDirection){
   vec3 worldSpacePosition = inWorldSpacePosition;
   {
     vec3 worldSpaceNormal = inNormal;
     float cos_alpha = clamp(dot(worldSpaceNormal, lightDirection), 0.0, 1.0);
     float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha));   // sin(acos(L·N))
-    float offset_scale_L = offset_scale_N / max(1e-6, cos_alpha); // tan(acos(L·N))
+    float offset_scale_L = offset_scale_N / max(5e-4, cos_alpha); // tan(acos(L·N))
     vec2 offsets = fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(values.yz), vec2(0.0, values.x));
     if(values.w > 1e-6){
       offsets.xy = clamp(offsets.xy, vec2(-values.w), vec2(values.w));
@@ -976,8 +976,8 @@ float ContactHardenPCFKernel(const float occluders,
   }  
 }
 
-#ifdef UseReceiverPlaneDepthBias
-#undef UseReceiverPlaneDepthBias
+#ifndef UseReceiverPlaneDepthBias
+#define UseReceiverPlaneDepthBias
 #endif
 
 float Shadow2DPCFMultipleTapPCFContactHardend(const in sampler2DArray pTexShadowMapArrayCompare, 
@@ -990,7 +990,7 @@ float Shadow2DPCFMultipleTapPCFContactHardend(const in sampler2DArray pTexShadow
   vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
   mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
  
-  vec3 worldSpacePosition = getOffsetedWorldPosition(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
+  vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
   
   vec4 shadowNDC = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
   shadowNDC = fma(shadowNDC / shadowNDC.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
