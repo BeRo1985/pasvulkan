@@ -976,8 +976,8 @@ float ContactHardenPCFKernel(const float occluders,
   }  
 }
 
-#ifndef UseReceiverPlaneDepthBias
-#define UseReceiverPlaneDepthBias
+#ifdef UseReceiverPlaneDepthBias
+#undef UseReceiverPlaneDepthBias
 #endif
 
 float Shadow2DPCFMultipleTapPCFContactHardend(const in sampler2DArray pTexShadowMapArrayCompare, 
