@@ -54,13 +54,6 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-#ifdef SHADOWMAP
-layout(std140, set = 1, binding = 0) uniform uboShadowMap {
-  vec4 lightPositionDirection;
-  vec4 constantBiasNormalBiasSlopeBiasClamp; // x = constant bias, y = normal bias, z = slope Bias, w = clamp
-} uShadowMap;
-#endif
-
 out gl_PerVertex {
 	vec4 gl_Position;
 	float gl_PointSize;
@@ -94,26 +87,6 @@ void main() {
 #endif
 
   vec3 position = inPosition;
-
-#ifdef SHADOWMAP
-  vec3 lightDirection = normalize(
-                          (uShadowMap.lightPositionDirection.w > 0.5) ?
-                            (-uShadowMap.lightPositionDirection.xyz) :
-                            (uShadowMap.lightPositionDirection.xyz - position)
-                        );
-  vec3 normal = normalize(tangentSpace[2]);
-  {
-    float cos_alpha = clamp(dot(normal, lightDirection), 0.0, 1.0);
-    float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha)); // sin(acos(L·N))
-    float offset_scale_L = offset_scale_N / cos_alpha;          // tan(acos(L·N))
-    vec4 values = uShadowMap.constantBiasNormalBiasSlopeBiasClamp;
-    vec2 offsets = fma(vec2(offset_scale_N, min(2.0, offset_scale_L)), vec2(values.yz), vec2(0.0, values.x));
-    if(values.w > 1e-6){
-      offsets.xy = clamp(offsets.xy, vec2(-values.w), vec2(values.w));
-    }
-    position -= (normal * offsets.x) + (lightDirection * offsets.y);
-  }
-#endif
 
   vec4 worldSpacePosition = vec4(position, 1.0);
   worldSpacePosition.xyz /= worldSpacePosition.w;
