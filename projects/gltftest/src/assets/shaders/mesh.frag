@@ -1019,7 +1019,15 @@ float DoDPCF_PCSS(const in sampler2DArray shadowMapArray,
 
   vec3 texelSize = vec3(vec2(1.0) / size, 0);
   
-  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy + vec2(uvec2(inFrameIndex) & uvec2(0xff, 0x3ff))), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
+  float rotationAngle; 
+  {
+    const uint k = 1103515245u;
+    uvec3 v = uvec3(floatBitsToUint(inTexCoord0.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(gl_FragCoord.xy)); 
+    v = ((v >> 8u) ^ v.yzx) * k;
+    v = ((v >> 8u) ^ v.yzx) * k;
+    v = ((v >> 8u) ^ v.yzx) * k;
+    rotationAngle = ((uintBitsToFloat(uint(uint(((v.x >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0) * 6.28318530718;    
+  }
   vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
   mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
   
