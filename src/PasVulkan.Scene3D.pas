@@ -224,6 +224,7 @@ type EpvScene3D=class(Exception);
             TVertexStagePushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
+             FrameIndex:UInt32;
             end;
             PVertexStagePushConstants=^TVertexStagePushConstants;
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
@@ -1753,6 +1754,7 @@ type EpvScene3D=class(Exception);
                       const aRenderPassIndex:TpvSizeInt;
                       const aViewBaseIndex:TpvSizeInt;
                       const aCountViews:TpvSizeInt;
+                      const aFrameIndex:TpvSizeInt;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aPipelineLayout:TpvVulkanPipelineLayout;
                       const aOnSetRenderPassResources:TOnSetRenderPassResources;
@@ -11635,6 +11637,7 @@ procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines
                           const aRenderPassIndex:TpvSizeInt;
                           const aViewBaseIndex:TpvSizeInt;
                           const aCountViews:TpvSizeInt;
+                          const aFrameIndex:TpvSizeInt;
                           const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aPipelineLayout:TpvVulkanPipelineLayout;
                           const aOnSetRenderPassResources:TOnSetRenderPassResources;
@@ -11654,6 +11657,7 @@ begin
   VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
+  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
 
   if fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count>0 then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
