@@ -780,8 +780,12 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef PCFPCSS
 
+#ifndef UseReceiverPlaneDepthBias
+#define UseReceiverPlaneDepthBias
+#endif
+
 #ifdef UseReceiverPlaneDepthBias
-#undef UseReceiverPlaneDepthBias
+vec4 cascadedShadowMapPositions[NUM_SHADOW_CASCADES];
 #endif
 
 const int SHADOW_TAP_COUNT = 16;
@@ -805,6 +809,10 @@ const vec2 PoissonDiskSamples[16] = vec2[](
   vec2(0.14383161, -0.14100790)
 );
 
+#ifdef UseReceiverPlaneDepthBias
+
+vec2 shadowPositionReceiverPlaneDepthBias;
+
 vec2 computeReceiverPlaneDepthBias(const vec3 position) {
   // see: GDC '06: Shadow Mapping: GPU-based Tips and Techniques
   // Chain rule to compute dz/du and dz/dv
@@ -813,8 +821,10 @@ vec2 computeReceiverPlaneDepthBias(const vec3 position) {
   vec3 duvz_dx = dFdx(position);
   vec3 duvz_dy = dFdy(position);
   vec2 dz_duv = inverse(transpose(mat2(duvz_dx.xy, duvz_dy.xy))) * vec2(duvz_dx.z, duvz_dy.z);
-  return dz_duv;
+  return (any(isnan(dz_duv.xy)) || any(isinf(dz_duv.xy))) ? vec2(0.0) : dz_duv;
 }
+
+#endif
 
 vec3 getOffsetedBiasedWorldPositionForShadowMapping(const in vec4 values, const in vec3 lightDirection){
   vec3 worldSpacePosition = inWorldSpacePosition;
@@ -833,12 +843,11 @@ vec3 getOffsetedBiasedWorldPositionForShadowMapping(const in vec4 values, const 
 }
 
 float doPCFSample(const in sampler2DArrayShadow shadowMapArray, const in vec3 pBaseUVS, const in float pU, const in float pV, const in float pZ, const in vec2 pShadowMapSizeInv){
-#if 1
-  // Use hardware PCF
-  return texture(shadowMapArray, vec4(pBaseUVS + vec3(vec2(vec2(pU, pV) * pShadowMapSizeInv), 0.0), pZ));
+#ifdef UseReceiverPlaneDepthBias  
+  vec2 offset = vec2(pU, pV) * pShadowMapSizeInv;
+  return texture(shadowMapArray, vec4(pBaseUVS + vec3(offset, 0.0), pZ - dot(offset, shadowPositionReceiverPlaneDepthBias)));
 #else
-  // Emulate hardware PCF with textureGather as reference
-  return dot(textureGather(shadowMapArray, pBaseUVS + vec3(vec2(vec2(pU, pV) * pShadowMapSizeInv), 0.0), pZ), vec4(0.25));
+  return texture(shadowMapArray, vec4(pBaseUVS + vec3(vec2(vec2(pU, pV) * pShadowMapSizeInv), 0.0), pZ));
 #endif
 }
 
@@ -1007,12 +1016,7 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
   float occluderDistSum = 0.0;
   
   vec2 penumbraSize = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].w * texelSize.xy;
-    
-#ifdef UseReceiverPlaneDepthBias
-  vec2 dz_duv = computeReceiverPlaneDepthBias(shadowPosition.xyz); 
-  if((isnan(dz_duv.x) || isinf(dz_duv.x) || isnan(dz_duv.y) || isinf(dz_duv.y))){
-    dz_duv = vec2(0.0);
-  }
+
 #if 1
   const float countFactor = 1.0;
   for(int tapIndex = 0; tapIndex < SHADOW_TAP_COUNT; tapIndex++){
@@ -1020,7 +1024,11 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
     vec2 uv = shadowPosition.xy + offset;
     float sampleDepth = textureLod(shadowMapArray, vec3(uv, float(cascadedShadowMapIndex)), 0.0).x;
     float sampleDistance = sampleDepth - shadowPosition.z;
-    float sampleOccluder = step(dot(offset, dz_duv), sampleDistance);
+#ifdef UseReceiverPlaneDepthBias
+    float sampleOccluder = step(dot(offset, shadowPositionReceiverPlaneDepthBias), sampleDistance);
+#else
+    float sampleOccluder = step(0.0, sampleDistance);
+#endif
     occluders += sampleOccluder;
     occluderDistSum += sampleDistance * sampleOccluder;
   }
@@ -1030,40 +1038,48 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
     vec2 offset = PoissonDiskSamples[tapIndex] * rotationMatrix * penumbraSize;
     vec4 samples = textureGather(shadowMapArray, vec3(shadowPosition.xy + offset, float(cascadedShadowMapIndex))); // 01, 11, 10, 00  
     vec4 sampleDistances = samples - vec4(shadowPosition.z);
-    vec4 sampleOccluders = step(vec4(dot(offset + texelSize.zy, dz_duv), 
-                                     dot(offset + texelSize.xy, dz_duv), 
-                                     dot(offset + texelSize.xz, dz_duv), 
-                                     dot(offset, dz_duv)), sampleDistances);
-    occluders += dot(sampleOccluders, vec4(1.0));
-    occluderDistSum += dot(sampleDistances * sampleOccluders, vec4(1.0));
-  }
-#endif
-#else  
-  const float countFactor = 4.0;
-  for(int tapIndex = 0; tapIndex < SHADOW_TAP_COUNT; tapIndex++){
-    vec2 offset = PoissonDiskSamples[tapIndex] * rotationMatrix * penumbraSize;
-    vec4 samples = textureGather(shadowMapArray, vec3(shadowPosition.xy + offset, float(cascadedShadowMapIndex))); // 01, 11, 10, 00  
-    vec4 sampleDistances = samples - vec4(shadowPosition.z);
+#ifdef UseReceiverPlaneDepthBias
+    vec4 sampleOccluders = step(vec4(dot(offset + texelSize.zy, shadowPositionReceiverPlaneDepthBias), 
+                                     dot(offset + texelSize.xy, shadowPositionReceiverPlaneDepthBias), 
+                                     dot(offset + texelSize.xz, shadowPositionReceiverPlaneDepthBias), 
+                                     dot(offset, shadowPositionReceiverPlaneDepthBias)), sampleDistances);
+#else
     vec4 sampleOccluders = step(0.0, sampleDistances);
+#endif
     occluders += dot(sampleOccluders, vec4(1.0));
     occluderDistSum += dot(sampleDistances * sampleOccluders, vec4(1.0));
   }
 #endif
+
   return 1.0 - ContactHardenPCFKernel(occluders, occluderDistSum, shadowPosition.z, countFactor);
 }  
 
 float DoPCSS(const in sampler2DArray shadowMapArray, 
              const in int cascadedShadowMapIndex,
              const in vec4 shadowPosition){
-  // TODO
+
+  vec3 texelSize = vec3(vec2(1.0) / textureSize(shadowMapArray, 0).xy, 0);
+  
+  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
+  vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
+  mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
+  
+  float occluders = 0.0;  
+  float occluderDistSum = 0.0;
+
   return 1.0;
 } 
 
 float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   float value = 1.0;
+#ifdef UseReceiverPlaneDepthBias
+  vec4 shadowPosition = cascadedShadowMapPositions[cascadedShadowMapIndex];
+  shadowPositionReceiverPlaneDepthBias = computeReceiverPlaneDepthBias(shadowPosition.xyz); 
+#else
   vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
   vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
   shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
+#endif
   if(all(greaterThanEqual(shadowPosition, vec4(0.0))) && all(lessThanEqual(shadowPosition, vec4(1.0)))){
     switch(uCascadedShadowMaps.metaData.x){
       case SHADOWMAP_MODE_PCF:{
@@ -1477,6 +1493,22 @@ void main() {
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
                   float viewSpaceDepth = -inViewSpacePosition.z;
+#ifdef UseReceiverPlaneDepthBias
+                  // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
+                  // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
+                  // position are already known in advance, and always at any time and at any real current cascaded shadow 
+                  // map slice. Because otherwise one can see dFdx/dFdy caused artefacts on cascaded shadow map border
+                  // transitions.  
+                  {
+                    const vec3 lightDirection = -light.directionZFar.xyz;
+                    for(int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++){
+                      vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
+                      vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
+                      shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
+                      cascadedShadowMapPositions[cascadedShadowMapIndex] = shadowPosition;
+                    }
+                  }
+#endif
                   for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
                     if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
