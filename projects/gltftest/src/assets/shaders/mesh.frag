@@ -843,6 +843,14 @@ vec3 getOffsetedBiasedWorldPositionForShadowMapping(const in vec4 values, const 
   return worldSpacePosition;  
 }
 
+float CalculatePenumbraRatio(const in float zReceiver, const in float zBlocker, const in float nearOverFarMinusNear) {
+#if 1
+  return (zBlocker - zReceiver) / (1.0 - zBlocker);
+#else
+  return ((nearOverFarMinusNear + z_blocker) / (nearOverFarMinusNear + z_receiver)) - 1.0;
+#endif
+}
+
 float doPCFSample(const in sampler2DArrayShadow shadowMapArray, const in vec3 pBaseUVS, const in float pU, const in float pV, const in float pZ, const in vec2 pShadowMapSizeInv){
 #ifdef UseReceiverPlaneDepthBias  
   vec2 offset = vec2(pU, pV) * pShadowMapSizeInv;
@@ -1002,12 +1010,14 @@ float ContactHardenPCFKernel(const float occluders,
   }  
 }
 
-// Shadow2DPCFMultipleTapPCFContactHardend
-float DoDPCF(const in sampler2DArray shadowMapArray, 
-             const in int cascadedShadowMapIndex,
-             const in vec4 shadowPosition){
+float DoDPCF_PCSS(const in sampler2DArray shadowMapArray, 
+                  const in int cascadedShadowMapIndex,
+                  const in vec4 shadowPosition,
+                  const in bool DPCF){
   
-  vec3 texelSize = vec3(vec2(1.0) / textureSize(shadowMapArray, 0).xy, 0);
+  vec2 size = vec2(textureSize(shadowMapArray, 0).xy);
+
+  vec3 texelSize = vec3(vec2(1.0) / size, 0);
   
   float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy + vec2(uvec2(inFrameIndex) & uvec2(0xff, 0x3ff))), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
   vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
@@ -1018,7 +1028,7 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
   
   vec2 penumbraSize = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].w * texelSize.xy;
 
-#if 1
+#if 0
   const float countFactor = 1.0;
   for(int tapIndex = 0; tapIndex < SHADOW_TAP_COUNT; tapIndex++){
     vec2 offset = PoissonDiskSamples[tapIndex] * rotationMatrix * penumbraSize;
@@ -1037,13 +1047,13 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
   const float countFactor = 4.0;
   for(int tapIndex = 0; tapIndex < SHADOW_TAP_COUNT; tapIndex++){
     vec2 offset = PoissonDiskSamples[tapIndex] * rotationMatrix * penumbraSize;
-    vec4 samples = textureGather(shadowMapArray, vec3(shadowPosition.xy + offset, float(cascadedShadowMapIndex))); // 01, 11, 10, 00  
+    vec4 samples = textureGather(shadowMapArray, vec3(shadowPosition.xy + offset, float(cascadedShadowMapIndex)), 0); // 01, 11, 10, 00  
     vec4 sampleDistances = samples - vec4(shadowPosition.z);
 #ifdef UseReceiverPlaneDepthBias
-    vec4 sampleOccluders = step(vec4(dot(offset + texelSize.zy, shadowPositionReceiverPlaneDepthBias), 
-                                     dot(offset + texelSize.xy, shadowPositionReceiverPlaneDepthBias), 
-                                     dot(offset + texelSize.xz, shadowPositionReceiverPlaneDepthBias), 
-                                     dot(offset, shadowPositionReceiverPlaneDepthBias)), sampleDistances);
+    vec4 sampleOccluders = step(vec4(dot(offset + texelSize.zy, shadowPositionReceiverPlaneDepthBias),      // 01
+                                     dot(offset + texelSize.xy, shadowPositionReceiverPlaneDepthBias),      // 11
+                                     dot(offset + texelSize.xz, shadowPositionReceiverPlaneDepthBias),      // 10
+                                     dot(offset, shadowPositionReceiverPlaneDepthBias)), sampleDistances);  // 00
 #else
     vec4 sampleOccluders = step(0.0, sampleDistances);
 #endif
@@ -1052,24 +1062,60 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
   }
 #endif
 
-  return 1.0 - ContactHardenPCFKernel(occluders, occluderDistSum, shadowPosition.z, countFactor);
+  if(occluderDistSum == 0.0){
+    return 0.0;
+  }else{
+
+    float penumbraRatio = CalculatePenumbraRatio(shadowPosition.z, occluderDistSum / occluders, 0.0);
+    
+    if(DPCF){
+
+      // DPCF
+      
+      penumbraRatio = clamp(penumbraRatio, 0.0, 1.0);
+
+      float percentageOccluded = occluders * (1.0 / (SHADOW_TAP_COUNT * countFactor));
+
+      percentageOccluded = fma(percentageOccluded, 2.0, -1.0);
+      float occludedSign = sign(percentageOccluded);
+      percentageOccluded = fma(percentageOccluded, -occludedSign, 1.0);
+
+      return fma((1.0 - mix(percentageOccluded * percentageOccluded * percentageOccluded, percentageOccluded, penumbraRatio)) * occludedSign, 0.5, 0.5);
+
+    //return 1.0 - ContactHardenPCFKernel(occluders, occluderDistSum, shadowPosition.z, countFactor);
+
+    }else{
+
+      // PCSS
+
+      penumbraSize *= CalculatePenumbraRatio(shadowPosition.z, occluderDistSum / occluders, 0.0);
+
+      float occludedCount = 0.0;
+
+      for(int tapIndex = 0; tapIndex < SHADOW_TAP_COUNT; tapIndex++){
+        vec2 offset = PoissonDiskSamples[tapIndex] * rotationMatrix * penumbraSize;
+        vec2 position = shadowPosition.xy + offset;
+        vec2 gradient = fract((position * size) - 0.5);
+        vec4 samples = textureGather(shadowMapArray, vec3(position, float(cascadedShadowMapIndex)), 0); // 01, 11, 10, 00  
+        vec4 sampleDistances = samples - vec4(shadowPosition.z);
+#ifdef UseReceiverPlaneDepthBias
+        vec4 sampleOccluders = step(vec4(dot(offset + texelSize.zy, shadowPositionReceiverPlaneDepthBias),      // 01
+                                         dot(offset + texelSize.xy, shadowPositionReceiverPlaneDepthBias),      // 11
+                                         dot(offset + texelSize.xz, shadowPositionReceiverPlaneDepthBias),      // 10
+                                         dot(offset, shadowPositionReceiverPlaneDepthBias)), sampleDistances);  // 00
+#else
+        vec4 sampleOccluders = step(vec4(0.0), sampleDistances);
+#endif
+        occludedCount += mix(mix(sampleOccluders.w, sampleOccluders.z, gradient.x), mix(sampleOccluders.x, sampleOccluders.y, gradient.x), gradient.y);
+      }
+
+      return occludedCount * (1.0 / float(SHADOW_TAP_COUNT));
+
+    }  
+
+  }
+
 }  
-
-float DoPCSS(const in sampler2DArray shadowMapArray, 
-             const in int cascadedShadowMapIndex,
-             const in vec4 shadowPosition){
-
-  vec3 texelSize = vec3(vec2(1.0) / textureSize(shadowMapArray, 0).xy, 0);
-  
-  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy + vec2(uvec2(inFrameIndex) & uvec2(0xff, 0x3ff))), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
-  vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
-  mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
-  
-  float occluders = 0.0;  
-  float occluderDistSum = 0.0;
-
-  return 1.0;
-} 
 
 float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   float value = 1.0;
@@ -1088,11 +1134,11 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
         break;
       }
       case SHADOWMAP_MODE_DPCF:{
-        value = DoDPCF(uCascadedShadowMapTexture, cascadedShadowMapIndex, shadowPosition);
+        value = DoDPCF_PCSS(uCascadedShadowMapTexture, cascadedShadowMapIndex, shadowPosition, true);
         break;
       }
       case SHADOWMAP_MODE_PCSS:{
-        value = DoPCSS(uCascadedShadowMapTexture, cascadedShadowMapIndex, shadowPosition);
+        value = DoDPCF_PCSS(uCascadedShadowMapTexture, cascadedShadowMapIndex, shadowPosition, false);
         break;
       }
       default:{
