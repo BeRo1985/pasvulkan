@@ -56,9 +56,10 @@ layout(location = 8) in vec4 inColor0;
 layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in int inViewIndex;
+layout(location = 12) flat in uint inFrameIndex;
 #ifdef VELOCITY
-layout(location = 12) in vec4 inPreviousClipSpace;
-layout(location = 13) in vec4 inCurrentClipSpace;
+layout(location = 13) in vec4 inPreviousClipSpace;
+layout(location = 14) in vec4 inCurrentClipSpace;
 #endif
 
 #ifdef DEPTHONLY
@@ -1008,7 +1009,7 @@ float DoDPCF(const in sampler2DArray shadowMapArray,
   
   vec3 texelSize = vec3(vec2(1.0) / textureSize(shadowMapArray, 0).xy, 0);
   
-  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
+  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy + vec2(uvec2(inFrameIndex) & uvec2(0xff, 0x3ff))), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
   vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
   mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
   
@@ -1060,7 +1061,7 @@ float DoPCSS(const in sampler2DArray shadowMapArray,
 
   vec3 texelSize = vec3(vec2(1.0) / textureSize(shadowMapArray, 0).xy, 0);
   
-  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
+  float rotationAngle = fract(sin(dot(vec4(inTexCoord0.xy, gl_FragCoord.xy + vec2(uvec2(inFrameIndex) & uvec2(0xff, 0x3ff))), vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453) * 6.28318530718;
   vec2 rotation = vec2(sin(rotationAngle + vec2(0.0, 1.57079632679)));
   mat2 rotationMatrix = mat2(rotation.y, rotation.x, -rotation.x, rotation.y);
   

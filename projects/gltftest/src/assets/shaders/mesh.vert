@@ -28,15 +28,17 @@ layout(location = 8) out vec4 outColor0;
 layout(location = 9) out vec3 outModelScale;
 layout(location = 10) flat out uint outMaterialID;
 layout(location = 11) flat out int outViewIndex;
+layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
-layout(location = 12) out vec4 outPreviousClipSpace;
-layout(location = 13) out vec4 outCurrentClipSpace;
+layout(location = 13) out vec4 outPreviousClipSpace;
+layout(location = 14) out vec4 outCurrentClipSpace;
 #endif
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
+  uint frameIndex;
 } pushConstants;
 
 // Global descriptor set
@@ -69,7 +71,7 @@ out gl_PerVertex {
 void main() {
 
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-
+ 
   mat3 tangentSpace;
   {
     vec3 tangent = inTangent.xyz;
@@ -135,6 +137,7 @@ void main() {
   outModelScale = inModelScale;
   outMaterialID = inMaterialID;
   outViewIndex = int(viewIndex); 
+  outFrameIndex = pushConstants.frameIndex;
 
 #ifdef VELOCITY
    View previousView = uView.views[viewIndex + pushConstants.countViews];
