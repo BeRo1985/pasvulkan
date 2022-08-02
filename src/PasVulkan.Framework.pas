@@ -3028,6 +3028,7 @@ type EpvVulkanException=class(Exception);
       private
        fDevice:TpvVulkanDevice;
        fFormat:TVkFormat;
+       fSRGBFormat:TVkFormat;
        fImageLayout:TVkImageLayout;
        fImage:TpvVulkanImage;
        fImageView:TpvVulkanImageView;
@@ -3244,6 +3245,7 @@ type EpvVulkanException=class(Exception);
       published
        property Device:TpvVulkanDevice read fDevice;
        property Format:TVkFormat read fFormat;
+       property SRGBFormat:TVkFormat read fSRGBFormat;
        property ImageLayout:TVkImageLayout read fImageLayout;
        property Image:TpvVulkanImage read fImage;
        property ImageView:TpvVulkanImageView read fImageView;
@@ -19272,15 +19274,10 @@ var MaxDimension,MaxMipMapLevels:TpvInt32;
     Usage:TVkImageUsageFlags;
     ImageCreateFlags:TVkImageCreateFlags;
     ImageType:TVkImageType;
-    MemoryRequirements,SRGBMemoryRequirements:TVkMemoryRequirements;
-    ImageBlit:TVkImageBlit;
+    MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
-    PrefersDedicatedAllocation,
-    SRGBRequiresDedicatedAllocation,
-    SRGBPrefersDedicatedAllocation:boolean;
+    PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
-    AdditionalSRGB:boolean;
-    SRGBFormat:TVkFormat;
 begin
 
  inherited Create;
@@ -19354,142 +19351,140 @@ begin
  if aAdditionalSRGB then begin
   case aFormat of
    VK_FORMAT_R8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_R8_SRGB;
+    fSRGBFormat:=VK_FORMAT_R8_SRGB;
    end;
    VK_FORMAT_R8G8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_R8G8_SRGB;
+    fSRGBFormat:=VK_FORMAT_R8G8_SRGB;
    end;
    VK_FORMAT_R8G8B8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_R8G8B8_SRGB;
+    fSRGBFormat:=VK_FORMAT_R8G8B8_SRGB;
    end;
    VK_FORMAT_B8G8R8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_B8G8R8_SRGB;
+    fSRGBFormat:=VK_FORMAT_B8G8R8_SRGB;
    end;
    VK_FORMAT_R8G8B8A8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_R8G8B8A8_SRGB;
+    fSRGBFormat:=VK_FORMAT_R8G8B8A8_SRGB;
    end;
    VK_FORMAT_B8G8R8A8_UNORM:begin
-    SRGBFormat:=VK_FORMAT_B8G8R8A8_SRGB;
+    fSRGBFormat:=VK_FORMAT_B8G8R8A8_SRGB;
    end;
    VK_FORMAT_A8B8G8R8_UNORM_PACK32:begin
-    SRGBFormat:=VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+    fSRGBFormat:=VK_FORMAT_A8B8G8R8_SRGB_PACK32;
    end;
    VK_FORMAT_BC1_RGB_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_BC1_RGB_SRGB_BLOCK;
    end;
    VK_FORMAT_BC1_RGBA_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
    end;
    VK_FORMAT_BC2_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_BC2_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_BC2_SRGB_BLOCK;
    end;
    VK_FORMAT_BC3_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_BC3_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_BC3_SRGB_BLOCK;
    end;
    VK_FORMAT_BC7_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_BC7_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_BC7_SRGB_BLOCK;
    end;
    VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK;
    end;
    VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK;
    end;
    VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_4x4_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_5x4_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_5x5_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_6x5_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_6x6_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_8x5_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_8x6_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_8x8_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_10x5_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_10x6_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_10x8_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_10x10_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_12x10_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
    end;
    VK_FORMAT_ASTC_12x12_UNORM_BLOCK:begin
-    SRGBFormat:=VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
+    fSRGBFormat:=VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
    end;
    VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG:begin
-    SRGBFormat:=VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG;
+    fSRGBFormat:=VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG;
    end;
    VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG:begin
-    SRGBFormat:=VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG;
+    fSRGBFormat:=VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG;
    end;
    VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG:begin
-    SRGBFormat:=VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG;
+    fSRGBFormat:=VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG;
    end;
    VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG:begin
-    SRGBFormat:=VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG;
+    fSRGBFormat:=VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG;
    end;
    VK_FORMAT_ASTC_3x3x3_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_3x3x3_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_3x3x3_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_4x3x3_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_4x3x3_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_4x3x3_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_4x4x3_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_4x4x3_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_4x4x3_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_4x4x4_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_4x4x4_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_4x4x4_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_5x4x4_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_5x4x4_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_5x4x4_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_5x5x4_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_5x5x4_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_5x5x4_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_5x5x5_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_5x5x5_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_5x5x5_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_6x5x5_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_6x5x5_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_6x5x5_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_6x6x5_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_6x6x5_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_6x6x5_SRGB_BLOCK_EXT;
    end;
    VK_FORMAT_ASTC_6x6x6_UNORM_BLOCK_EXT:begin
-    SRGBFormat:=VK_FORMAT_ASTC_6x6x6_SRGB_BLOCK_EXT;
+    fSRGBFormat:=VK_FORMAT_ASTC_6x6x6_SRGB_BLOCK_EXT;
    end;
    else begin
-    SRGBFormat:=VK_FORMAT_UNDEFINED;
+    fSRGBFormat:=VK_FORMAT_UNDEFINED;
    end;
   end;
-  AdditionalSRGB:=SRGBFormat<>VK_FORMAT_UNDEFINED;
  end else begin
-  SRGBFormat:=VK_FORMAT_UNDEFINED;
-  AdditionalSRGB:=false;
+  fSRGBFormat:=VK_FORMAT_UNDEFINED;
  end;
 
  if (TpvVulkanTextureUsageFlag.Sampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
@@ -19556,7 +19551,7 @@ begin
  if aCountFaces=6 then begin
   ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
  end;
- if AdditionalSRGB then begin
+ if fSRGBFormat<>VK_FORMAT_UNDEFINED then begin
   ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
  end;
 
@@ -19582,7 +19577,7 @@ begin
                                0,
                                nil,
                                VK_IMAGE_LAYOUT_UNDEFINED,
-                               SRGBFormat
+                               fSRGBFormat
                               );
 
  MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fImage.fImageHandle,
@@ -19670,11 +19665,11 @@ begin
                                        0,
                                        Max(1,fTotalCountArrayLayers));
 
- if AdditionalSRGB then begin
+ if fSRGBFormat<>VK_FORMAT_UNDEFINED then begin
   fSRGBImageView:=TpvVulkanImageView.Create(fDevice,
                                             fImage,
                                             fImageViewType,
-                                            SRGBFormat,
+                                            fSRGBFormat,
                                             VK_COMPONENT_SWIZZLE_IDENTITY,
                                             VK_COMPONENT_SWIZZLE_IDENTITY,
                                             VK_COMPONENT_SWIZZLE_IDENTITY,
