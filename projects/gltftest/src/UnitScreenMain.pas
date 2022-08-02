@@ -15095,6 +15095,8 @@ begin
  CameraRotationX:=0.0;
  CameraRotationY:=0.0;
 
+ fZoom:=1.0;
+
  fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                      sin(-CameraRotationY*PI*2.0),
                                                                      cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
