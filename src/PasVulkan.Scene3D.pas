@@ -301,6 +301,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure PrepareDeferredFree; override;
               procedure Remove; virtual;
               procedure Upload; virtual;
               procedure Unload; virtual;
@@ -1494,6 +1495,7 @@ type EpvScene3D=class(Exception);
                      destructor Destroy; override;
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
+                     procedure Remove; override;
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
@@ -1593,6 +1595,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -2115,6 +2118,11 @@ end;
 procedure TpvScene3D.TBaseObject.BeforeDestruction;
 begin
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TBaseObject.PrepareDeferredFree;
+begin
+ Remove;
 end;
 
 procedure TpvScene3D.TBaseObject.Remove;
@@ -6215,24 +6223,41 @@ end;
 procedure TpvScene3D.TGroup.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fGroupListLock.Acquire;
- try
-  fSceneInstance.fGroups.Add(self);
- finally
-  fSceneInstance.fGroupListLock.Release;
+ if not fAdded then begin
+  try
+   fSceneInstance.fGroupListLock.Acquire;
+   try
+    fSceneInstance.fGroups.Add(self);
+   finally
+    fSceneInstance.fGroupListLock.Release;
+   end;
+  finally
+   fAdded:=true;
+  end;
  end;
 end;
 
 procedure TpvScene3D.TGroup.BeforeDestruction;
 begin
- fObjects.Clear;
- fSceneInstance.fGroupListLock.Acquire;
- try
-  fSceneInstance.fGroups.Remove(self);
- finally
-  fSceneInstance.fGroupListLock.Release;
- end;
+ Remove;
  inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.Remove;
+begin
+ if fAdded then begin
+  try
+   fObjects.Clear;
+   fSceneInstance.fGroupListLock.Acquire;
+   try
+    fSceneInstance.fGroups.Remove(self);
+   finally
+    fSceneInstance.fGroupListLock.Release;
+   end;
+  finally
+   fAdded:=false;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.Upload;
@@ -8122,50 +8147,67 @@ end;
 procedure TpvScene3D.TGroup.TInstance.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fGroupInstanceListLock.Acquire;
- try
-  fSceneInstance.fGroupInstances.Add(self);
- finally
-  fSceneInstance.fGroupInstanceListLock.Release;
- end;
- fGroup.fInstanceListLock.Acquire;
- try
-  fGroup.fInstances.Add(self);
- finally
-  fGroup.fInstanceListLock.Release;
+ if not fAdded then begin
+  try
+   fSceneInstance.fGroupInstanceListLock.Acquire;
+   try
+    fSceneInstance.fGroupInstances.Add(self);
+   finally
+    fSceneInstance.fGroupInstanceListLock.Release;
+   end;
+   fGroup.fInstanceListLock.Acquire;
+   try
+    fGroup.fInstances.Add(self);
+   finally
+    fGroup.fInstanceListLock.Release;
+   end;
+  finally
+   fAdded:=true;
+  end;
  end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
 begin
- try
-  fSceneInstance.fGroupInstanceListLock.Acquire;
+ Remove;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Remove;
+begin
+ if fAdded then begin
   try
-   fSceneInstance.fGroupInstances.Remove(self);
-  finally
-   fSceneInstance.fGroupInstanceListLock.Release;
-  end;
-  fGroup.fInstanceListLock.Acquire;
-  try
-   fGroup.fInstances.Remove(self);
-  finally
-   fGroup.fInstanceListLock.Release;
-  end;
-  if fAABBTreeProxy>=0 then begin
    try
-    if assigned(fGroup) and
-       assigned(fGroup.fSceneInstance) and
-       assigned(fGroup.fSceneInstance.fAABBTree) then begin
-     fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+    fSceneInstance.fGroupInstanceListLock.Acquire;
+    try
+     fSceneInstance.fGroupInstances.Remove(self);
+    finally
+     fSceneInstance.fGroupInstanceListLock.Release;
+    end;
+    fGroup.fInstanceListLock.Acquire;
+    try
+     fGroup.fInstances.Remove(self);
+    finally
+     fGroup.fInstanceListLock.Release;
+    end;
+    if fAABBTreeProxy>=0 then begin
+     try
+      if assigned(fGroup) and
+         assigned(fGroup.fSceneInstance) and
+         assigned(fGroup.fSceneInstance.fAABBTree) then begin
+       fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+      end;
+     finally
+      fAABBTreeProxy:=-1;
+     end;
     end;
    finally
-    fAABBTreeProxy:=-1;
+    fGroup:=nil;
    end;
+  finally
+   fAdded:=false;
   end;
- finally
-  fGroup:=nil;
  end;
- inherited BeforeDestruction;
 end;
 
 function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;

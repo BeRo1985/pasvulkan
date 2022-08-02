@@ -136,7 +136,8 @@ type EpvResource=class(Exception);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); reintroduce; virtual;
        destructor Destroy; override;
-       procedure DeferredFree;
+       procedure PrepareDeferredFree; virtual;
+       procedure DeferredFree; virtual;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
        function GetResource:TpvResource;
@@ -356,6 +357,10 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvResource.PrepareDeferredFree;
+begin
+end;
+
 procedure TpvResource.DeferredFree;
 begin
  if assigned(self) then begin
@@ -364,9 +369,13 @@ begin
      fResourceManager.fActive and
      assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
    try
-    fResourceManager.fDelayedToFreeResources.Add(self);
+    PrepareDeferredFree;
    finally
-    fIsOnDelayedToFreeResourcesList:=true;
+    try
+     fResourceManager.fDelayedToFreeResources.Add(self);
+    finally
+     fIsOnDelayedToFreeResourcesList:=true;
+    end;
    end;
   end else begin
    Destroy;
@@ -426,9 +435,13 @@ begin
   result:=TPasMPInterlocked.Decrement(fReferenceCounter);
   if result=0 then begin
    try
-    fResourceManager.fDelayedToFreeResources.Add(self);
+    PrepareDeferredFree;
    finally
-    fIsOnDelayedToFreeResourcesList:=true;
+    try
+     fResourceManager.fDelayedToFreeResources.Add(self);
+    finally
+     fIsOnDelayedToFreeResourcesList:=true;
+    end;
    end;
   end;
  end else begin
