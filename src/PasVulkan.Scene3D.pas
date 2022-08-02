@@ -313,6 +313,7 @@ type EpvScene3D=class(Exception);
              published
               property Name:TpvUTF8String read fName write fName;
               property Uploaded:TPasMPBool32 read fUploaded;
+              property ReferenceCounter:Int32 read fReferenceCounter;
             end;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
             TGroup=class;
@@ -1708,6 +1709,8 @@ type EpvScene3D=class(Exception);
        fHasTransmission:boolean;
        fVulkanBufferCopyBatchItemArrays:array[0..MaxInFlightFrames-1] of TpvVulkanBufferCopyBatchItemArray;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
+       procedure NewImageDescriptorGeneration;
+       procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
        procedure CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
@@ -2093,7 +2096,7 @@ begin
   fSceneInstance:=nil;
  end;
 
- ReleaseFrameDelay:=fSceneInstance.fCountInFlightFrames+1;
+ ReleaseFrameDelay:=Max(MaxInFlightFrames+1,fSceneInstance.fCountInFlightFrames+1);
 
  fUploaded:=false;
 
@@ -2210,6 +2213,7 @@ begin
      fSceneInstance.fImageIDManager.FreeID(fID);
      fID:=0;
     end;
+    fSceneInstance.NewImageDescriptorGeneration;
    finally
     fSceneInstance.fImageListLock.Release;
    end;
@@ -2462,6 +2466,7 @@ begin
      fSceneInstance.fSamplerIDManager.FreeID(fID);
      fID:=0;
     end;
+    fSceneInstance.NewImageDescriptorGeneration;
    finally
     fSceneInstance.fSamplerListLock.Release;
    end;
@@ -2720,6 +2725,7 @@ begin
      fSceneInstance.fTextureIDManager.FreeID(fID);
      fID:=0;
     end;
+    fSceneInstance.NewImageDescriptorGeneration;
    finally
     fSceneInstance.fTextureListLock.Release;
    end;
@@ -2758,14 +2764,14 @@ end;
 
 function TpvScene3D.TTexture.GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
 begin
- if assigned(fSampler) and assigned(fSampler.fSampler) then begin
+ if assigned(fSampler) and (fSampler.fReferenceCounter>0) and assigned(fSampler.fSampler) then begin
   result.Sampler:=fSampler.fSampler.Handle;
  end else begin
   result.Sampler:=VK_NULL_HANDLE;
  end;
- if ASRGB and assigned(fImage) and assigned(fImage.fTexture.SRGBImageView) then begin
+ if ASRGB and assigned(fImage) and (fImage.fReferenceCounter>0) and assigned(fImage.fTexture.SRGBImageView) then begin
   result.ImageView:=fImage.fTexture.SRGBImageView.Handle;
- end else if assigned(fImage) and assigned(fImage.fTexture.ImageView) then begin
+ end else if assigned(fImage) and (fImage.fReferenceCounter>0) and assigned(fImage.fTexture.ImageView) then begin
   result.ImageView:=fImage.fTexture.ImageView.Handle;
  end else begin
   result.ImageView:=VK_NULL_HANDLE;
@@ -2790,8 +2796,13 @@ end;
 procedure TpvScene3D.TTexture.AssignFromWhiteTexture;
 begin
  fName:=#0+'WhiteTexture';
+
  fImage:=fSceneInstance.fWhiteImage;
+ fImage.IncRef;
+
  fSampler:=fSceneInstance.fDefaultSampler;
+ fSampler.IncRef;
+
 end;
 
 procedure TpvScene3D.TTexture.AssignFromDefaultNormalMapTexture;
@@ -3185,6 +3196,7 @@ begin
      fSceneInstance.fMaterialIDManager.FreeID(fID);
      fID:=0;
     end;
+    fSceneInstance.NewMaterialDataGeneration;
    finally
     fSceneInstance.fMaterialListLock.Release;
    end;
@@ -6170,6 +6182,8 @@ end;
 destructor TpvScene3D.TGroup.Destroy;
 begin
 
+ Unload;
+
  while fInstances.Count>0 do begin
   fInstances[fInstances.Count-1].Free;
  end;
@@ -6567,13 +6581,8 @@ begin
          end;
         end;
        end;
-       fSceneInstance.fLock.Acquire;
-       try
-        inc(fSceneInstance.fImageDescriptorGeneration);
-        inc(fSceneInstance.fMaterialDataGeneration);
-       finally
-        fSceneInstance.fLock.Release;
-       end;
+       fSceneInstance.NewImageDescriptorGeneration;
+       fSceneInstance.NewMaterialDataGeneration;
       finally
        fUploaded:=true;
       end;
@@ -10545,6 +10554,44 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvScene3D.NewImageDescriptorGeneration;
+var Index:TpvSizeInt;
+begin
+ if assigned(fLock) then begin
+  fLock.Acquire;
+  try
+   inc(fImageDescriptorGeneration);
+   if fImageDescriptorGeneration=0 then begin
+    fImageDescriptorGeneration:=1;
+    for Index:=0 to fCountInFlightFrames-1 do begin
+     fImageDescriptorGenerations[Index]:=0;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.NewMaterialDataGeneration;
+var Index:TpvSizeInt;
+begin
+ if assigned(fLock) then begin
+  fLock.Acquire;
+  try
+   inc(fMaterialDataGeneration);
+   if fMaterialDataGeneration=0 then begin
+    fMaterialDataGeneration:=1;
+    for Index:=0 to fCountInFlightFrames-1 do begin
+     fMaterialDataGenerations[Index]:=0;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                          const aBuffer:TpvVulkanBuffer);
 var Index:TpvSizeInt;
@@ -10937,7 +10984,7 @@ begin
 
        for Index:=0 to fTextures.Count-1 do begin
         Texture:=fTextures[Index];
-        if Texture.fUploaded and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+        if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
          fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
          fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
         end;
@@ -11162,7 +11209,7 @@ begin
 
     for Index:=0 to fTextures.Count-1 do begin
      Texture:=fTextures[Index];
-     if Texture.fUploaded and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+     if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
       fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
       fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
      end;
