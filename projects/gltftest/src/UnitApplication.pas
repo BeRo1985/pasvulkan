@@ -104,6 +104,7 @@ begin
  fAntialiasingMode:=TAntialiasingMode.Auto;
  fShadowMode:=TShadowMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
+ AcceptDragDropFiles:=true;
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
  while Index<=ParamCount do begin

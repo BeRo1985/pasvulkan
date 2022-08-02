@@ -1357,6 +1357,10 @@ type { TScreenMain }
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; override;
+
+       procedure LoadGLTF(const aFileName:TpvUTF8String);
+
       published
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapSize;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapSize;
@@ -12677,11 +12681,9 @@ end;
 { TScreenMain }
 
 constructor TScreenMain.Create;
-var GLTF:TPasGLTF.TDocument;
-    AssetStream:TStream;
-    SampleCounts:TVkSampleCountFlags;
-    Center,Bounds:TpvVector3;
+var Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
+    SampleCounts:TVkSampleCountFlags;
     FormatProperties:TVkFormatProperties;
     MaxShadowMSAA,MaxMSAA:TpvInt32;
 begin
@@ -12792,6 +12794,7 @@ begin
  fPrimaryDirectionalLight.Visible:=true;
  fPrimaryDirectionalLight.Update;
 
+ {
  fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
@@ -12817,11 +12820,9 @@ begin
  finally
  end;
 
- fGroupInstance:=fGroup.CreateInstance;
+ fGroupInstance:=fGroup.CreateInstance;  }
 
- if fScene3D.HasTransmission then begin
-  fUseOITAlphaTest:=true;
- end;
+ fUseOITAlphaTest:=fScene3D.HasTransmission;
 
  fFrameGraph:=TpvFrameGraph.Create(pvApplication.VulkanDevice,fCountInFlightFrames);
 
@@ -13553,9 +13554,11 @@ begin
 
 // fFrameGraph.Dump;
 
- Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+ Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
 
- Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+ Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
+
+ fCameraSpeed:=1.0;
 
  CameraRotationX:=0.0;
  CameraRotationY:=0.0;
@@ -13566,9 +13569,6 @@ begin
                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
                                            Center,
                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
-
- fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
-
 end;
 
 destructor TScreenMain.Destroy;
@@ -14569,6 +14569,14 @@ var RotationSpeed,MovementSpeed:TpvDouble;
     FrameTime:TpvDouble;
 begin
 
+ if (fFrameGraph.DrawFrameIndex>=fFrameGraph.CountInFlightFrames) and (length(GLTFFileName)>0) then begin
+  try
+   LoadGLTF(GLTFFileName);
+  finally
+   GLTFFileName:='';
+  end;
+ end;
+
  RotationSpeed:=aDeltaTime*1.0;
  MovementSpeed:=aDeltaTime*1.0*fCameraSpeed;
 
@@ -14636,40 +14644,44 @@ begin
 
    ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
 
-   fGroupInstance.ModelMatrix:=ModelMatrix;
+   if assigned(fGroupInstance) then begin
 
-   begin
-    BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
-    for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
-     Factor:=fGroupInstance.Automations[Index].Factor;
-     if Index=fAnimationIndex then begin
-      if Factor<0.0 then begin
-       Factor:=0.0;
-       fGroupInstance.Automations[Index].ShadowTime:=0.0;
+    fGroupInstance.ModelMatrix:=ModelMatrix;
+
+    begin
+     BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
+     for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
+      Factor:=fGroupInstance.Automations[Index].Factor;
+      if Index=fAnimationIndex then begin
+       if Factor<0.0 then begin
+        Factor:=0.0;
+        fGroupInstance.Automations[Index].ShadowTime:=0.0;
+       end;
+       Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
+      end else if Factor>0.0 then begin
+       Factor:=Factor*(1.0-BlendFactor);
+       if Factor<1e-5 then begin
+        Factor:=-1.0;
+       end;
       end;
-      Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
-     end else if Factor>0.0 then begin
-      Factor:=Factor*(1.0-BlendFactor);
-      if Factor<1e-5 then begin
-       Factor:=-1.0;
-      end;
-     end;
-     if Factor>0.0 then begin
-      if Index>=0 then begin
-       t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
-       t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-       fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
-       fGroupInstance.Automations[Index].Complete:=true;
+      if Factor>0.0 then begin
+       if Index>=0 then begin
+        t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+        t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+        fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
+        fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
+        fGroupInstance.Automations[Index].Complete:=true;
+       end else begin
+        fGroupInstance.Automations[Index].Time:=0.0;
+        fGroupInstance.Automations[Index].Complete:=false;
+       end;
       end else begin
        fGroupInstance.Automations[Index].Time:=0.0;
-       fGroupInstance.Automations[Index].Complete:=false;
       end;
-     end else begin
-      fGroupInstance.Automations[Index].Time:=0.0;
+      fGroupInstance.Automations[Index].Factor:=Factor;
      end;
-     fGroupInstance.Automations[Index].Factor:=Factor;
     end;
+
    end;
 
    fScene3D.Update(aInFlightFrameIndex);
@@ -14876,21 +14888,27 @@ begin
     pvApplication.CatchMouse:=not pvApplication.CatchMouse;
    end;
    KEYCODE_V,KEYCODE_B:begin
-    if fAnimationIndex<0 then begin
-     fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
-    end else begin
-     dec(fAnimationIndex);
+    if assigned(fGroupInstance) then begin
+     if fAnimationIndex<0 then begin
+      fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
+     end else begin
+      dec(fAnimationIndex);
+     end;
     end;
    end;
    KEYCODE_N,KEYCODE_M:begin
-    inc(fAnimationIndex);
-    if fAnimationIndex>=fGroupInstance.Group.Animations.Count then begin
-     fAnimationIndex:=-1;
+    if assigned(fGroupInstance) then begin
+     inc(fAnimationIndex);
+     if fAnimationIndex>=fGroupInstance.Group.Animations.Count then begin
+      fAnimationIndex:=-1;
+     end;
     end;
    end;
    KEYCODE_0..KEYCODE_9:begin
-    if ((aKeyEvent.KeyCode-(KEYCODE_0+1))>=-1) and ((aKeyEvent.KeyCode-(KEYCODE_0+1))<fGroupInstance.Group.Animations.Count) then begin
-     fAnimationIndex:=aKeyEvent.KeyCode-(KEYCODE_0+1);
+    if assigned(fGroupInstance) then begin
+     if ((aKeyEvent.KeyCode-(KEYCODE_0+1))>=-1) and ((aKeyEvent.KeyCode-(KEYCODE_0+1))<fGroupInstance.Group.Animations.Count) then begin
+      fAnimationIndex:=aKeyEvent.KeyCode-(KEYCODE_0+1);
+     end;
     end;
    end;
    KEYCODE_BACKSPACE:begin
@@ -15005,6 +15023,86 @@ begin
   end;
   result:=true;
  end;
+end;
+
+function TScreenMain.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+begin
+ LoadGLTF(aFileName);
+ result:=true;
+end;
+
+procedure TScreenMain.LoadGLTF(const aFileName:TpvUTF8String);
+var GLTF:TPasGLTF.TDocument;
+    AssetStream:TStream;
+    Center,Bounds:TpvVector3;
+    CameraRotationX,CameraRotationY:TpvScalar;
+begin
+
+ if assigned(fGroupInstance) then begin
+  fGroupInstance.DeferredFree;
+  fGroupInstance:=nil;
+ end;
+
+ if assigned(fGroup) then begin
+  fGroup.DeferredFree;
+  fGroup:=nil;
+ end;
+
+ fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
+ try
+  fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
+  GLTF:=TPasGLTF.TDocument.Create;
+  try
+   if FileExists(aFileName) then begin
+    GLTF.RootPath:=ExtractFilePath(ExpandFileName(aFileName));
+    AssetStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+   end else begin
+    AssetStream:=pvApplication.Assets.GetAssetStream(aFileName);
+   end;
+   if assigned(AssetStream) then begin
+    try
+     GLTF.LoadFromStream(AssetStream);
+    finally
+     FreeAndNil(AssetStream);
+    end;
+   end;
+   fGroup.AssignFromGLTF(GLTF);
+  finally
+   FreeAndNil(GLTF);
+  end;
+ finally
+ end;
+
+ fGroupInstance:=fGroup.CreateInstance;
+
+if assigned(fGroup) then begin
+
+  Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+
+  Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+
+  fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
+
+ end else begin
+
+  Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+
+  Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
+
+  fCameraSpeed:=1.0;
+
+ end;
+
+ CameraRotationX:=0.0;
+ CameraRotationY:=0.0;
+
+ fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+                                                                     sin(-CameraRotationY*PI*2.0),
+                                                                     cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
+                                                           (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
+                                           Center,
+                                           TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
+
 end;
 
 end.
