@@ -10473,6 +10473,8 @@ begin
 
      fDefaultSampler.Upload;
 
+     fWhiteTexture.Upload;
+
      fVulkanStagingQueue:=pvApplication.VulkanDevice.UniversalQueue;
 
      fVulkanStagingCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
@@ -11150,6 +11152,10 @@ begin
     fBoundingBox:=fBoundingBox.Combine(GroupInstance.fBoundingBox);
    end;
   end;
+ end;
+ if First or IsZero(fBoundingBox.Radius) then begin
+  fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
+  fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
  end;
 
 end;

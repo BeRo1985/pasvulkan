@@ -110,6 +110,7 @@ const MaxSwapChainImages=3;
       EVENT_KEY=1;
       EVENT_POINTER=2;
       EVENT_SCROLLED=3;
+      EVENT_DRAGDROPFILE=4;
 
       KEYCODE_QUIT=-2;
       KEYCODE_ANYKEY=-1;
@@ -601,12 +602,14 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
+       function DragDropFileEvent(const aFileName:TpvUTF8String):boolean; virtual;
      end;
 
      PpvApplicationInputProcessorQueueEvent=^TpvApplicationInputProcessorQueueEvent;
      TpvApplicationInputProcessorQueueEvent=record
       Next:PpvApplicationInputProcessorQueueEvent;
       Time:TpvInt64;
+      StringData:TpvUTF8String;
       case Event:TpvInt32 of
        EVENT_KEY:(
         KeyEvent:TpvApplicationInputKeyEvent;
@@ -640,6 +643,7 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
+       function DragDropFileEvent(const aFileName:TpvUTF8String):boolean; override;
      end;
 
      TpvApplicationInputMultiplexer=class(TpvApplicationInputProcessor)
@@ -658,6 +662,7 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
+       function DragDropFileEvent(const aFileName:TpvUTF8String):boolean; override;
      end;
 
      TpvApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TpvApplicationRawByteString) of object;
@@ -841,6 +846,8 @@ type EpvApplication=class(Exception)
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
+       function DragDropFileEvent(const aFileName:TpvUTF8String):boolean; virtual;
+
        function CanBeParallelProcessed:boolean; virtual;
 
        procedure Check(const aDeltaTime:TpvDouble); virtual;
@@ -1008,6 +1015,7 @@ type EpvApplication=class(Exception)
        fCurrentVisibleMouseCursor:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
+       fCurrentAcceptDragDropFiles:TpvInt32;
        fCurrentBlocking:TpvInt32;
        fCurrentWaitOnPreviousFrames:TpvInt32;
 
@@ -1021,6 +1029,7 @@ type EpvApplication=class(Exception)
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
        fHideSystemBars:boolean;
+       fAcceptDragDropFiles:boolean;
        fAndroidMouseTouchEvents:boolean;
        fAndroidTouchMouseEvents:boolean;
        fAndroidBlockOnPause:boolean;
@@ -1411,6 +1420,8 @@ type EpvApplication=class(Exception)
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
+       function DragDropFileEvent(const aFileName:TpvUTF8String):boolean; virtual;
+
        function CanBeParallelProcessed:boolean; virtual;
 
        procedure Check(const aDeltaTime:TpvDouble); virtual; // example for VR input handling
@@ -1478,6 +1489,8 @@ type EpvApplication=class(Exception)
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
+
+       property AcceptDragDropFiles:boolean read fAcceptDragDropFiles write fAcceptDragDropFiles;
 
        property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
@@ -2332,6 +2345,11 @@ begin
  result:=false;
 end;
 
+function TpvApplicationInputProcessor.DragDropFileEvent(const aFileName:TpvUTF8String):boolean;
+begin
+ result:=false;
+end;
+
 constructor TpvApplicationInputProcessorQueue.Create;
 begin
  inherited Create;
@@ -2435,6 +2453,13 @@ begin
     EVENT_SCROLLED:begin
      fProcessor.Scrolled(CurrentEvent^.RelativeAmount);
     end;
+    EVENT_DRAGDROPFILE:begin
+     try
+      fProcessor.DragDropFileEvent(CurrentEvent^.StringData);
+     finally
+      CurrentEvent^.StringData:='';
+     end;
+    end;
    end;
   end;
   FreeEvent(CurrentEvent);
@@ -2491,6 +2516,24 @@ begin
   if assigned(Event) then begin
    Event^.Event:=EVENT_SCROLLED;
    Event^.RelativeAmount:=aRelativeAmount;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TpvApplicationInputProcessorQueue.DragDropFileEvent(const aFileName:TpvUTF8String):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_DRAGDROPFILE;
+   Event^.StringData:=aFileName;
+   UniqueString(Event^.StringData);
    PushEvent(Event);
   end;
  finally
@@ -2585,6 +2628,22 @@ begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
    if p.Scrolled(aRelativeAmount) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInputMultiplexer.DragDropFileEvent(const aFileName:TpvUTF8String):boolean;
+var i:TpvInt32;
+    p:TpvApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.DragDropFileEvent(aFileName) then begin
     result:=true;
     exit;
    end;
@@ -4135,6 +4194,17 @@ begin
        fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
       end;
      end;
+     SDL_DROPFILE:begin
+      if assigned(Event^.drop.FileName) then begin
+       try
+        if pvApplication.fAcceptDragDropFiles then begin
+         fProcessor.DragDropFileEvent(Event^.drop.FileName);
+        end;
+       finally
+        SDL_free(Event^.drop.FileName);
+       end;
+      end;
+     end;
      SDL_KEYDOWN,SDL_KEYUP,SDL_KEYTYPED:begin
       KeyCode:=TranslateSDLKeyCode(Event^.key.keysym.sym,Event^.key.keysym.scancode);
       KeyModifiers:=TranslateSDLKeyModifier(Event^.key.keysym.modifier);
@@ -4849,6 +4919,11 @@ begin
  result:=false;
 end;
 
+function TpvApplicationScreen.DragDropFileEvent(const aFileName:TpvUTF8String):boolean;
+begin
+ result:=false;
+end;
+
 function TpvApplicationScreen.CanBeParallelProcessed:boolean;
 begin
  result:=false;
@@ -5387,6 +5462,7 @@ begin
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
  fCurrentHideSystemBars:=-1;
+ fCurrentAcceptDragDropFiles:=-1;
  fCurrentBlocking:=-1;
  fCurrentWaitOnPreviousFrames:=-1;
 
@@ -5400,6 +5476,7 @@ begin
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
  fHideSystemBars:=false;
+ fAcceptDragDropFiles:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=false;
  fAndroidTouchMouseEvents:=false;
@@ -7738,6 +7815,17 @@ begin
 {$ifend}
  end;
 
+ if fCurrentAcceptDragDropFiles<>ord(fAcceptDragDropFiles) then begin
+  fCurrentAcceptDragDropFiles:=ord(fAcceptDragDropFiles);
+{$if defined(PasVulkanUseSDL2)}
+  if fAcceptDragDropFiles then begin
+   SDL_EventState(SDL_DROPFILE,SDL_ENABLE);
+  end else begin
+   SDL_EventState(SDL_DROPFILE,SDL_DISABLE);
+  end;
+{$ifend}
+ end;
+
  if fHasNewNextScreen then begin
   fHasNewNextScreen:=false;
   if assigned(fNextScreenClass) then begin
@@ -8930,6 +9018,15 @@ function TpvApplication.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.Scrolled(aRelativeAmount);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvApplication.DragDropFileEvent(const aFileName:TpvUTF8String):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.DragDropFileEvent(aFileName);
  end else begin
   result:=false;
  end;
