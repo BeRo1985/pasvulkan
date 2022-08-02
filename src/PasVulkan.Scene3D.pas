@@ -1638,6 +1638,8 @@ type EpvScene3D=class(Exception);
        fVulkanStagingCommandPool:TpvVulkanCommandPool;
        fVulkanStagingCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanStagingFence:TpvVulkanFence;
+       fImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
+       fImageDescriptorGeneration:TpvUInt32;
        fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
        fGlobalVulkanViewUniformStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
@@ -1672,6 +1674,8 @@ type EpvScene3D=class(Exception);
        fMaterialIDHashMap:TMaterialIDHashMap;
        fMaterialHashMap:TMaterialHashMap;
        fEmptyMaterial:TpvScene3D.TMaterial;
+       fMaterialDataGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
+       fMaterialDataGeneration:TpvUInt32;
        fLights:array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
        fCountLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
        fIndirectLights:array[0..MaxInFlightFrames-1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
@@ -10625,7 +10629,9 @@ begin
       end;
      end;
 
-     MaterialBufferDataSize:=Min(RoundUpToPowerOfTwo((MaxMaterialID+1)*SizeOf(TMaterial.TShaderData)),SizeOf(TMaterialBufferData));
+//   MaterialBufferDataSize:=Min(RoundUpToPowerOfTwo((MaxMaterialID+1)*SizeOf(TMaterial.TShaderData)),SizeOf(TMaterialBufferData));
+
+     MaterialBufferDataSize:=SizeOf(TMaterialBufferData);
 
      UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
      try
@@ -10869,6 +10875,18 @@ begin
       fGlobalVulkanDescriptorSets[Index].Flush;
      end;
 
+     for Index:=0 to fCountInFlightFrames-1 do begin
+      fImageDescriptorGenerations[Index]:=0;
+     end;
+
+     fImageDescriptorGeneration:=0;
+
+     for Index:=0 to fCountInFlightFrames-1 do begin
+      fMaterialDataGenerations[Index]:=0;
+     end;
+
+     fMaterialDataGeneration:=0;
+
     finally
      fUploaded:=true;
     end;
@@ -10982,18 +11000,107 @@ begin
 end;
 
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Group:TpvScene3D.TGroup;
+var Index,MaterialBufferDataSize:TpvSizeInt;
+    Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
     OldGeneration:TpvUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
+    Texture:TpvScene3D.TTexture;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
 
  for Group in fGroups do begin
   Group.Update(aInFlightFrameIndex);
+ end;
+
+ if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
+
+  fLock.Acquire;
+  try
+
+   if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
+
+    fImageDescriptorGenerations[aInFlightFrameIndex]:=fImageDescriptorGeneration;
+
+    for Index:=0 to length(fImageInfos)-1 do begin
+     fImageInfos[Index]:=fWhiteTexture.GetDescriptorImageInfo(false);
+    end;
+
+    for Index:=0 to fTextures.Count-1 do begin
+     Texture:=fTextures[Index];
+     if Texture.fUploaded and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+      fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
+      fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
+     end;
+    end;
+
+    fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                          0,
+                                                                          length(fImageInfos),
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                          fImageInfos,
+                                                                          [],
+                                                                          [],
+                                                                          true);
+
+   end;
+
+  finally
+   fLock.Release;
+  end;
+
+ end;
+
+ if fMaterialDataGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
+
+  fLock.Acquire;
+  try
+
+   if fMaterialDataGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
+
+    fMaterialDataGenerations[aInFlightFrameIndex]:=fMaterialDataGeneration;
+
+    MaterialBufferDataSize:=SizeOf(TMaterialBufferData);
+
+    case fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+      fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fMaterialBufferData,
+                                                                 0,
+                                                                 MaterialBufferDataSize);
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+
+      fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex].UpdateData(fMaterialBufferData,
+                                                                        0,
+                                                                        MaterialBufferDataSize);
+
+      fVulkanMaterialDataBuffers[aInFlightFrameIndex].CopyFrom(fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
+                                                               fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex],
+                                                               0,
+                                                               0,
+                                                               MaterialBufferDataSize);
+
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+    end;
+
+   end;
+
+  finally
+   fLock.Release;
+  end;
+
  end;
 
  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
