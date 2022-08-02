@@ -4103,8 +4103,10 @@ begin
  end else begin
   if fAABBTreeProxy>=0 then begin
    try
-    if assigned(fSceneInstance) and assigned(fSceneInstance.fLightAABBTree) then begin
-     fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+    if assigned(fSceneInstance) then begin
+     if assigned(fSceneInstance.fLightAABBTree) then begin
+      fSceneInstance.fLightAABBTree.DestroyProxy(fAABBTreeProxy);
+     end;
      TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
     end;
    finally
@@ -8188,6 +8190,7 @@ procedure TpvScene3D.TGroup.TInstance.Remove;
 begin
  if fAdded then begin
   try
+   UpdateInvisible;
    try
     fSceneInstance.fGroupInstanceListLock.Acquire;
     try
@@ -11192,7 +11195,7 @@ var Index,MaterialBufferDataSize:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
-    OldGeneration:TpvUInt32;
+    OldGeneration,NewGeneration:TpvUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
@@ -11308,7 +11311,9 @@ begin
  end;
 
  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
- if TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],fLightAABBTreeGeneration,OldGeneration)=OldGeneration then begin
+ NewGeneration:=fLightAABBTreeGeneration;
+ if (OldGeneration<>NewGeneration) and
+    (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
 
   LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
 
