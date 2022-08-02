@@ -15074,7 +15074,7 @@ begin
 
  fGroupInstance:=fGroup.CreateInstance;
 
-if assigned(fGroup) then begin
+ if assigned(fGroup) then begin
 
   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
 

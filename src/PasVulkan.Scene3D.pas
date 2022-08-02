@@ -1645,6 +1645,7 @@ type EpvScene3D=class(Exception);
        fVulkanStagingCommandPool:TpvVulkanCommandPool;
        fVulkanStagingCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanStagingFence:TpvVulkanFence;
+       fImageDescriptorGenerationLock:TPasMPSpinLock;
        fImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fImageDescriptorGeneration:TpvUInt32;
        fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
@@ -1683,6 +1684,7 @@ type EpvScene3D=class(Exception);
        fEmptyMaterial:TpvScene3D.TMaterial;
        fMaterialDataGenerations:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fMaterialDataGeneration:TpvUInt32;
+       fMaterialDataGenerationLock:TPasMPSpinLock;
        fLights:array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
        fCountLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
        fIndirectLights:array[0..MaxInFlightFrames-1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
@@ -10207,6 +10209,10 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
+ fImageDescriptorGenerationLock:=TPasMPSpinLock.Create;
+
+ fMaterialDataGenerationLock:=TPasMPSpinLock.Create;
+
  fBufferStreamingMode:=TBufferStreamingMode.Direct;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
@@ -10549,6 +10555,10 @@ begin
   fVulkanBufferCopyBatchItemArrays[Index].Finalize;
  end;
 
+ FreeAndNil(fImageDescriptorGenerationLock);
+
+ FreeAndNil(fMaterialDataGenerationLock);
+
  FreeAndNil(fLock);
 
  inherited Destroy;
@@ -10557,8 +10567,8 @@ end;
 procedure TpvScene3D.NewImageDescriptorGeneration;
 var Index:TpvSizeInt;
 begin
- if assigned(fLock) then begin
-  fLock.Acquire;
+ if assigned(fImageDescriptorGenerationLock) then begin
+  fImageDescriptorGenerationLock.Acquire;
   try
    inc(fImageDescriptorGeneration);
    if fImageDescriptorGeneration=0 then begin
@@ -10568,7 +10578,7 @@ begin
     end;
    end;
   finally
-   fLock.Release;
+   fImageDescriptorGenerationLock.Release;
   end;
  end;
 end;
@@ -10576,8 +10586,8 @@ end;
 procedure TpvScene3D.NewMaterialDataGeneration;
 var Index:TpvSizeInt;
 begin
- if assigned(fLock) then begin
-  fLock.Acquire;
+ if assigned(fMaterialDataGenerationLock) then begin
+  fMaterialDataGenerationLock.Acquire;
   try
    inc(fMaterialDataGeneration);
    if fMaterialDataGeneration=0 then begin
@@ -10587,7 +10597,7 @@ begin
     end;
    end;
   finally
-   fLock.Release;
+   fMaterialDataGenerationLock.Release;
   end;
  end;
 end;
@@ -11196,7 +11206,7 @@ begin
 
  if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
 
-  fLock.Acquire;
+  fImageDescriptorGenerationLock.Acquire;
   try
 
    if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
@@ -11227,14 +11237,14 @@ begin
    end;
 
   finally
-   fLock.Release;
+   fImageDescriptorGenerationLock.Release;
   end;
 
  end;
 
  if fMaterialDataGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
 
-  fLock.Acquire;
+  fMaterialDataGenerationLock.Acquire;
   try
 
    if fMaterialDataGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
@@ -11292,7 +11302,7 @@ begin
    end;
 
   finally
-   fLock.Release;
+   fMaterialDataGenerationLock.Release;
   end;
 
  end;
