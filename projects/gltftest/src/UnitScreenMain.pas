@@ -1877,7 +1877,7 @@ begin
                         OnSetRenderPassResources,
                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-{ if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not fParent.fUseOITAlphaTest then begin
+{ if (fParent.fTransparencyMode=TTransparencyMode.Direct) or not (fParent.fUseOITAlphaTest or Parent.fScene3D.HasTransmission) then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          IfThen(aFrameIndex=0,aInFlightFrameIndex,fFrameGraph.DrawPreviousInFlightFrameIndex),
                          aInFlightFrameIndex,
@@ -4409,7 +4409,7 @@ begin
                          OnSetRenderPassResources,
                          [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
-  if ((fParent.fTransparencyMode=TTransparencyMode.Direct) and not fParent.fScene3D.HasTransmission) or not fParent.fUseOITAlphaTest then begin
+  if ((fParent.fTransparencyMode=TTransparencyMode.Direct) and not fParent.fScene3D.HasTransmission) or not (fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission) then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -6264,7 +6264,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -7310,7 +7310,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -7933,7 +7933,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -8804,7 +8804,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -9316,7 +9316,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -10115,7 +10115,7 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fParent.fUseOITAlphaTest then begin
+  if fParent.fUseOITAlphaTest or fParent.fScene3D.HasTransmission then begin
    fParent.fScene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                          -1,
                          aInFlightFrameIndex,
@@ -12822,8 +12822,6 @@ begin
 
  fGroupInstance:=fGroup.CreateInstance;  }
 
- fUseOITAlphaTest:=fScene3D.HasTransmission;
-
  fFrameGraph:=TpvFrameGraph.Create(pvApplication.VulkanDevice,fCountInFlightFrames);
 
  fFrameGraph.SurfaceIsSwapchain:=true;
@@ -13569,6 +13567,15 @@ begin
                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
                                            Center,
                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
+
+ if {(fFrameGraph.DrawFrameIndex>=fFrameGraph.CountInFlightFrames) and} (length(GLTFFileName)>0) then begin
+  try
+   LoadGLTF(GLTFFileName);
+  finally
+   GLTFFileName:='';
+  end;
+ end;
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -14569,14 +14576,6 @@ var RotationSpeed,MovementSpeed:TpvDouble;
     FrameTime:TpvDouble;
 begin
 
- if (fFrameGraph.DrawFrameIndex>=fFrameGraph.CountInFlightFrames) and (length(GLTFFileName)>0) then begin
-  try
-   LoadGLTF(GLTFFileName);
-  finally
-   GLTFFileName:='';
-  end;
- end;
-
  RotationSpeed:=aDeltaTime*1.0;
  MovementSpeed:=aDeltaTime*1.0*fCameraSpeed;
 
@@ -15102,6 +15101,9 @@ if assigned(fGroup) then begin
                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
                                            Center,
                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
+
+ fCameraRotationX:=0.0;
+ fCameraRotationY:=0.0;
 
 end;
 
