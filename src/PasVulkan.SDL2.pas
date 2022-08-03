@@ -2291,6 +2291,8 @@ function SDL_GetWindowWMInfo(window:PSDL_Window;info:PSDL_SysWMinfo):TSDLInt32; 
 
 function SDL_SetWindowInputFocus(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+function SDL_RaiseWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 procedure SDL_DisableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_EnableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_IsScreenSaverEnabled:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};

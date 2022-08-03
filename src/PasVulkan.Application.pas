@@ -8889,7 +8889,7 @@ procedure TpvApplication.SetFocus;
 begin
 {$if defined(PasVulkanUseSDL2)}
  if assigned(fSurfaceWindow) then begin
-  SDL_SetWindowInputFocus(fSurfaceWindow);
+  SDL_RaiseWindow(fSurfaceWindow);
  end;
 {$ifend}
 end;
