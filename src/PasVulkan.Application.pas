@@ -1387,6 +1387,8 @@ type EpvApplication=class(Exception)
 
        procedure Run;
 
+       procedure SetFocus;
+
        procedure SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance); virtual;
 
        procedure ChooseVulkanPhysicalDevice(var aVulkanPhysicalDevice:TpvVulkanPhysicalDevice); virtual;
@@ -8881,6 +8883,15 @@ begin
  end;
 {$ifend}
 
+end;
+
+procedure TpvApplication.SetFocus;
+begin
+{$if defined(PasVulkanUseSDL2)}
+ if assigned(fSurfaceWindow) then begin
+  SDL_SetWindowInputFocus(fSurfaceWindow);
+ end;
+{$ifend}
 end;
 
 procedure TpvApplication.SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance);

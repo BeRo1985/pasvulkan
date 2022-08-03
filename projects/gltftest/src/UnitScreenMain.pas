@@ -15092,7 +15092,21 @@ end;
 
 procedure TScreenMain.LoadGLTF(const aFileName:TpvUTF8String);
 begin
+
+ if assigned(fGroupInstance) then begin
+  fGroupInstance.DeferredFree;
+  fGroupInstance:=nil;
+ end;
+
+ if assigned(fGroup) then begin
+  fGroup.DeferredFree;
+  fGroup:=nil;
+ end;
+
  pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,aFileName,OnFinish,fScene3D);
+
+ pvApplication.SetFocus;
+
 end;
 
 end.
