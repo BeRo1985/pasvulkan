@@ -28,6 +28,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
+     PasVulkan.Resources,
      PasVulkan.VirtualReality,
      UnitGlobals;
 
@@ -89,11 +90,12 @@ constructor TApplication.Create;
 var VirtualRealityMode:TpvVirtualReality.TMode;
 {$if not (defined(Android) or defined(iOS))}
     Index:TpvInt32;
-    Parameter:String;
+    OriginalParameter,Parameter:String;
 {$ifend}
 begin
  inherited Create;
  Application:=self;
+ PasVulkan.Resources.AllowExternalResources:=true;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
@@ -108,7 +110,8 @@ begin
 {$if not (defined(Android) or defined(iOS))}
  Index:=1;
  while Index<=ParamCount do begin
-  Parameter:=LowerCase(ParamStr(Index));
+  OriginalParameter:=ParamStr(Index);
+  Parameter:=OriginalParameter;
   inc(Index);
   if (Parameter='--openvr') or
      (Parameter='/openvr') then begin
@@ -212,7 +215,7 @@ begin
     end;
    end;
   end else begin
-   GLTFFileName:=Parameter;
+   GLTFFileName:=OriginalParameter;
   end;
  end;
 {$ifend}

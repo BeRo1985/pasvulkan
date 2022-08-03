@@ -261,6 +261,8 @@ type EpvResource=class(Exception);
        property BaseDataPath:TpvUTF8String read fBaseDataPath write fBaseDataPath;
      end;
 
+var AllowExternalResources:boolean=false;
+
 implementation
 
 uses PasVulkan.Application;
@@ -395,7 +397,7 @@ begin
   try
    OldReferenceCounter:=fReferenceCounter;
    try
-    fReferenceCounter:=fReferenceCounter+2; // For to avoid false-positive frees in this situation
+    inc(fReferenceCounter,2); // For to avoid false-positive frees in this situation
     if assigned(fResourceClassType) and (length(fFileName)>0) then begin
      fResourceClassType.fResourceFileNameMap.Delete(TpvUTF8String(LowerCase(String(fFileName))));
     end;
@@ -482,7 +484,11 @@ begin
  if pvApplication.Assets.ExistAsset(String(SanitizedFileName)) then begin
   result:=pvApplication.Assets.GetAssetStream(String(SanitizedFileName));
  end else begin
-  result:=nil;
+  if FileExists(String(SanitizedFileName)) then begin
+   result:=TFileStream.Create(String(SanitizedFileName),fmOpenRead);
+  end else begin
+   result:=nil;
+  end;
  end;
 end;
 
@@ -965,7 +971,7 @@ begin
   end;
 
   if (aTimeout>=0) and
-     (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime- aStartTime)>=aTimeout) then begin
+     (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime-aStartTime)>=aTimeout) then begin
    result:=false;
    break;
   end;
@@ -1143,8 +1149,28 @@ end;
 
 class function TpvResourceManager.SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String;
 var Index,LastDirectoryNameBeginIndex,Len:TpvSizeInt;
+    Temporary:TpvUTF8String;
 begin
+
  result:=aFileName;
+
+ if AllowExternalResources then begin
+  if FileExists(result) then begin
+   result:=ExpandFileName(result);
+   exit;
+  end else begin
+   for Index:=1 to length(result) do begin
+    if result[Index] in ['\','/'] then begin
+     Temporary:=ExpandFileName(result);
+     if FileExists(Temporary) then begin
+      result:=Temporary;
+      exit;
+     end;
+    end;
+   end;
+  end;
+ end;
+
  Index:=1;
  LastDirectoryNameBeginIndex:=1;
  Len:=length(result);
@@ -1180,6 +1206,7 @@ begin
    end;
   end;
  end;
+
 end;
 
 function TpvResourceManager.GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
@@ -1257,7 +1284,7 @@ begin
    try
     fLocked:=true;
     try
-     Resource:=aResourceClass.Create(self);
+     Resource:=aResourceClass.Create(self,aParent);
      Resource.SetFileName(FileName);
      Resource.fOnFinish:=aOnFinish;
     finally

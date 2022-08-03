@@ -348,6 +348,8 @@ type EpvScene3D=class(Exception);
               procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
+              function BeginLoad(const aStream:TStream):boolean; override;
+              function EndLoad:boolean; override;
               function GetHashData:THashData;
               procedure AssignFromWhiteTexture;
               procedure AssignFromDefaultNormalMapTexture;
@@ -2098,7 +2100,11 @@ begin
   fSceneInstance:=nil;
  end;
 
- ReleaseFrameDelay:=Max(MaxInFlightFrames+1,fSceneInstance.fCountInFlightFrames+1);
+ if assigned(fSceneInstance) then begin
+  ReleaseFrameDelay:=Max(MaxInFlightFrames+1,fSceneInstance.fCountInFlightFrames+1);
+ end else begin
+  ReleaseFrameDelay:=MaxInFlightFrames+1;
+ end;
 
  fUploaded:=false;
 
@@ -2377,6 +2383,30 @@ begin
    end;
   finally
    fLock.Release;
+  end;
+ end;
+end;
+
+function TpvScene3D.TImage.BeginLoad(const aStream:TStream):boolean;
+begin
+ result:=false;
+ if assigned(aStream) then begin
+  try
+   aStream.Seek(0,soBeginning);
+   fResourceDataStream.CopyFrom(aStream,aStream.Size);
+   result:=true;
+  except
+  end;
+ end;
+end;
+
+function TpvScene3D.TImage.EndLoad:boolean;
+begin
+ result:=inherited EndLoad;
+ if result then begin
+  if fSceneInstance.fUploaded then begin
+   Upload;
+   fSceneInstance.NewImageDescriptorGeneration;
   end;
  end;
 end;
@@ -7458,6 +7488,8 @@ begin
  if result then begin
   if SceneInstance.fUploaded then begin
    Upload;
+   fSceneInstance.NewImageDescriptorGeneration;
+   fSceneInstance.NewMaterialDataGeneration;
   end;
  end;
 end;

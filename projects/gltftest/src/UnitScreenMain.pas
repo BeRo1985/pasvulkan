@@ -1359,6 +1359,8 @@ type { TScreenMain }
 
        function DragDropFileEvent(aFileName:TpvUTF8String):boolean; override;
 
+       procedure OnFinish(const aResource:TpvResource;const aSuccess:boolean);
+
        procedure LoadGLTF(const aFileName:TpvUTF8String);
 
       published
@@ -15030,11 +15032,55 @@ begin
  result:=true;
 end;
 
+procedure TScreenMain.OnFinish(const aResource:TpvResource;const aSuccess:boolean);
+var Center,Bounds:TpvVector3;
+    CameraRotationX,CameraRotationY:TpvScalar;
+begin
+
+ if aResource=fGroup then begin
+
+  fGroupInstance:=fGroup.CreateInstance;
+
+  if assigned(fGroup) then begin
+
+   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+
+   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+
+   fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
+
+  end else begin
+
+   Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+
+   Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
+
+   fCameraSpeed:=1.0;
+
+  end;
+
+  CameraRotationX:=0.0;
+  CameraRotationY:=0.0;
+
+  fZoom:=1.0;
+
+  fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+                                                                      sin(-CameraRotationY*PI*2.0),
+                                                                      cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
+                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
+                                            Center,
+                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
+
+  fCameraRotationX:=0.0;
+  fCameraRotationY:=0.0;
+
+ end;
+
+end;
+
 procedure TScreenMain.LoadGLTF(const aFileName:TpvUTF8String);
 var GLTF:TPasGLTF.TDocument;
     AssetStream:TStream;
-    Center,Bounds:TpvVector3;
-    CameraRotationX,CameraRotationY:TpvScalar;
 begin
 
  if assigned(fGroupInstance) then begin
@@ -15047,7 +15093,9 @@ begin
   fGroup:=nil;
  end;
 
- fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
+ fGroup:=TpvScene3D.TGroup(pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,aFileName,OnFinish,fScene3D));
+
+{fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
  try
   fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
   GLTF:=TPasGLTF.TDocument.Create;
@@ -15072,40 +15120,7 @@ begin
  finally
  end;
 
- fGroupInstance:=fGroup.CreateInstance;
-
- if assigned(fGroup) then begin
-
-  Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
-
-  Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
-
-  fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
-
- end else begin
-
-  Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
-
-  Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
-
-  fCameraSpeed:=1.0;
-
- end;
-
- CameraRotationX:=0.0;
- CameraRotationY:=0.0;
-
- fZoom:=1.0;
-
- fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
-                                                                     sin(-CameraRotationY*PI*2.0),
-                                                                     cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                           (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
-                                           Center,
-                                           TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
-
- fCameraRotationX:=0.0;
- fCameraRotationY:=0.0;
+ OnFinish(fGroup,false);  }
 
 end;
 
