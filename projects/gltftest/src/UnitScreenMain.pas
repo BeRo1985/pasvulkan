@@ -15037,7 +15037,19 @@ var Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
 begin
 
- if aResource=fGroup then begin
+ if assigned(aResource) and (aResource is TpvScene3D.TGroup) then begin
+
+  if assigned(fGroupInstance) then begin
+   fGroupInstance.DeferredFree;
+   fGroupInstance:=nil;
+  end;
+
+  if assigned(fGroup) then begin
+   fGroup.DeferredFree;
+   fGroup:=nil;
+  end;
+
+  fGroup:=TpvScene3D.TGroup(aResource);
 
   fGroupInstance:=fGroup.CreateInstance;
 
@@ -15079,49 +15091,8 @@ begin
 end;
 
 procedure TScreenMain.LoadGLTF(const aFileName:TpvUTF8String);
-var GLTF:TPasGLTF.TDocument;
-    AssetStream:TStream;
 begin
-
- if assigned(fGroupInstance) then begin
-  fGroupInstance.DeferredFree;
-  fGroupInstance:=nil;
- end;
-
- if assigned(fGroup) then begin
-  fGroup.DeferredFree;
-  fGroup:=nil;
- end;
-
- fGroup:=TpvScene3D.TGroup(pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,aFileName,OnFinish,fScene3D));
-
-{fGroup:=TpvScene3D.TGroup.Create(pvApplication.ResourceManager,fScene3D);
- try
-  fGroup.Culling:=false; // true for GLTFs with large scenes like landscapes, cities, etc.
-  GLTF:=TPasGLTF.TDocument.Create;
-  try
-   if FileExists(aFileName) then begin
-    GLTF.RootPath:=ExtractFilePath(ExpandFileName(aFileName));
-    AssetStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
-   end else begin
-    AssetStream:=pvApplication.Assets.GetAssetStream(aFileName);
-   end;
-   if assigned(AssetStream) then begin
-    try
-     GLTF.LoadFromStream(AssetStream);
-    finally
-     FreeAndNil(AssetStream);
-    end;
-   end;
-   fGroup.AssignFromGLTF(GLTF);
-  finally
-   FreeAndNil(GLTF);
-  end;
- finally
- end;
-
- OnFinish(fGroup,false);  }
-
+ pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,aFileName,OnFinish,fScene3D);
 end;
 
 end.
