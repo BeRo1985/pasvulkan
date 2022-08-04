@@ -105,17 +105,23 @@ type TpvScene3DRenderer=class;
        type { TInstance }
             TInstance=class(TpvScene3DRendererBaseObject)
              private
+              fFrameGraph:TpvFrameGraph;
              public
               constructor Create(const aParent:TpvScene3DRendererBaseObject); reintroduce;
               destructor Destroy; override;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
             end;
       private
        fScene3D:TpvScene3D;
+       fVulkanDevice:TpvVulkanDevice;
+       fCountInFlightFrames:TpvSizeInt;
       public
-       constructor Create(const aScene3D:TpvScene3D); reintroduce;
+       constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
       published
        property Scene3D:TpvScene3D read fScene3D;
+       property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
      end;
 
 
@@ -200,19 +206,33 @@ end;
 constructor TpvScene3DRenderer.TInstance.Create(const aParent:TpvScene3DRendererBaseObject);
 begin
  inherited Create(aParent);
+
+ fFrameGraph:=TpvFrameGraph.Create(fRenderer.fVulkanDevice,fRenderer.fCountInFlightFrames);
+
 end;
 
 destructor TpvScene3DRenderer.TInstance.Destroy;
 begin
+ FreeAndNil(fFrameGraph);
  inherited Destroy;
 end;
 
 { TpvScene3DRenderer }
 
-constructor TpvScene3DRenderer.Create(const aScene3D:TpvScene3D);
+constructor TpvScene3DRenderer.Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt);
 begin
  inherited Create(nil);
+
  fScene3D:=aScene3D;
+
+ if assigned(aVulkanDevice) then begin
+  fVulkanDevice:=aVulkanDevice;
+ end else begin
+  fVulkanDevice:=pvApplication.VulkanDevice;
+ end;
+
+ fCountInFlightFrames:=aCountInFlightFrames;
+
 end;
 
 destructor TpvScene3DRenderer.Destroy;
