@@ -213,6 +213,8 @@ type { TpvScene3DRendererInstance }
        procedure Prepare;
        procedure AllocateResources;
        procedure ReleaseResources;
+       procedure AllocateDynamicResources;
+       procedure ReleaseDynamicResources;
        procedure Reset;
        procedure AddView(const aView:TpvScene3D.TView);
        procedure AddViews(const aViews:array of TpvScene3D.TView);
@@ -1015,6 +1017,16 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.AllocateResources;
+begin
+ fFrameGraph.Show;
+end;
+
+procedure TpvScene3DRendererInstance.ReleaseResources;
+begin
+ fFrameGraph.Hide;
+end;
+
+procedure TpvScene3DRendererInstance.AllocateDynamicResources;
 var InFlightFrameIndex,Index:TpvSizeInt;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -1198,7 +1210,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.ReleaseResources;
+procedure TpvScene3DRendererInstance.ReleaseDynamicResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
