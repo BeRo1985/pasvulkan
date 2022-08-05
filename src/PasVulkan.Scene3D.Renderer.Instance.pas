@@ -155,6 +155,8 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapHeight:TpvInt32;
        fCountSurfaceViews:TpvInt32;
        fSurfaceMultiviewMask:TpvUInt32;
+       fLeft:TpvInt32;
+       fTop:TpvInt32;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fFOV:TpvFloat;
@@ -221,6 +223,8 @@ type { TpvScene3DRendererInstance }
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
+       property Left:TpvInt32 read fLeft write fLeft;
+       property Top:TpvInt32 read fTop write fTop;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
@@ -231,6 +235,9 @@ type { TpvScene3DRendererInstance }
      end;
 
 implementation
+
+uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass;
 
 { TpvScene3DRendererInstance }
 
@@ -374,6 +381,11 @@ begin
   else begin
   end;
  end;
+
+ fLeft:=0;
+ fTop:=0;
+ fWidth:=1024;
+ fHeight:=768;
 
 end;
 
