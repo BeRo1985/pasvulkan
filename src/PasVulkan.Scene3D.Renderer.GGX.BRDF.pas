@@ -68,7 +68,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererGGXBRDF }
      TpvScene3DRendererGGXBRDF=class
@@ -131,14 +132,14 @@ var Index:TpvSizeInt;
 begin
  inherited Create;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/fullscreen_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
  try
   fVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/brdf_ggx_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('brdf_ggx_frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally

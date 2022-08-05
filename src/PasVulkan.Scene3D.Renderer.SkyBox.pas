@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.Scene3D;
+     PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererSkyBox }
      TpvScene3DRendererSkyBox=class
@@ -113,14 +114,14 @@ begin
 
  fScene3D:=aScene3D;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/skybox_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_vert.spv');
  try
   fVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/skybox_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally

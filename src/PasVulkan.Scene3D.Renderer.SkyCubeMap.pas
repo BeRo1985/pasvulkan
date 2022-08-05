@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererSkyCubeMap }
      TpvScene3DRendererSkyCubeMap=class
@@ -144,10 +145,10 @@ begin
 
  case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
   TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
   end;
   else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_sky_fast_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
   end;
  end;
  try

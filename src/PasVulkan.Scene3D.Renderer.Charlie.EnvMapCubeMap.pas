@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererCharlieEnvMapCubeMap }
      TpvScene3DRendererCharlieEnvMapCubeMap=class
@@ -143,7 +144,7 @@ var Index,MipMaps:TpvSizeInt;
 begin
  inherited Create;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_charlie_filter_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_charlie_filter_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
