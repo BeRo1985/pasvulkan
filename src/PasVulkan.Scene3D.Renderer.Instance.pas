@@ -148,6 +148,8 @@ type { TpvScene3DRendererInstance }
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
+            TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
+            TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -184,16 +186,16 @@ type { TpvScene3DRendererInstance }
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
        fLockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer;
        fLockOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
-       fLockOrderIndependentTransparencyABufferBuffers:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
-       fLockOrderIndependentTransparencyAuxImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
-       fLockOrderIndependentTransparencySpinLockImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
+       fLockOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers;
+       fLockOrderIndependentTransparencyAuxImages:TOrderIndependentTransparencyImages;
+       fLockOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages;
       private
        fCountLoopOrderIndependentTransparencyLayers:TpvInt32;
        fLoopOrderIndependentTransparentUniformBuffer:TLoopOrderIndependentTransparentUniformBuffer;
        fLoopOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
-       fLoopOrderIndependentTransparencyABufferBuffers:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
-       fLoopOrderIndependentTransparencyZBufferBuffers:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
-       fLoopOrderIndependentTransparencySBufferBuffers:array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
+       fLoopOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers;
+       fLoopOrderIndependentTransparencyZBufferBuffers:TOrderIndependentTransparencyBuffers;
+       fLoopOrderIndependentTransparencySBufferBuffers:TOrderIndependentTransparencyBuffers;
       private
        fApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer;
        fApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
@@ -218,6 +220,27 @@ type { TpvScene3DRendererInstance }
        property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
+      public
+       property CascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers read fCascadedShadowMapUniformBuffers;
+       property CascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers read fCascadedShadowMapVulkanUniformBuffers;
+      public
+       property CountLockOrderIndependentTransparencyLayers:TpvInt32 read fCountLockOrderIndependentTransparencyLayers;
+       property LockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer read fLockOrderIndependentTransparentUniformBuffer;
+       property LockOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fLockOrderIndependentTransparentUniformVulkanBuffer;
+       property LockOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers read fLockOrderIndependentTransparencyABufferBuffers;
+       property LockOrderIndependentTransparencyAuxImages:TOrderIndependentTransparencyImages read fLockOrderIndependentTransparencyAuxImages;
+       property LockOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages read fLockOrderIndependentTransparencySpinLockImages;
+      public
+       property CountLoopOrderIndependentTransparencyLayers:TpvInt32 read fCountLoopOrderIndependentTransparencyLayers;
+       property LoopOrderIndependentTransparentUniformBuffer:TLoopOrderIndependentTransparentUniformBuffer read fLoopOrderIndependentTransparentUniformBuffer;
+       property LoopOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fLoopOrderIndependentTransparentUniformVulkanBuffer;
+       property LoopOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers read fLoopOrderIndependentTransparencyABufferBuffers;
+       property LoopOrderIndependentTransparencyZBufferBuffers:TOrderIndependentTransparencyBuffers read fLoopOrderIndependentTransparencyZBufferBuffers;
+       property LoopOrderIndependentTransparencySBufferBuffers:TOrderIndependentTransparencyBuffers read fLoopOrderIndependentTransparencySBufferBuffers;
+      public
+       property ApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer read fApproximationOrderIndependentTransparentUniformBuffer;
+       property ApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fApproximationOrderIndependentTransparentUniformVulkanBuffer;
+      public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property ForwardMipmappedArray2DImages:TMipmappedArray2DImages read fForwardMipmappedArray2DImages;
       published
@@ -239,9 +262,41 @@ type { TpvScene3DRendererInstance }
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
+uses PasVulkan.Scene3D.Renderer.Passes.Passes,
+     PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.DepthMipMapComputePass;
+     PasVulkan.Scene3D.Renderer.Passes.DepthMipMapComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LockOrderIndependentTransparencyClearCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.LockOrderIndependentTransparencyRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LockOrderIndependentTransparencyBarrierCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyClearCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyPass1RenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyPass1BarrierCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyPass2RenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyPass2BarrierCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.LoopOrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.MomentBasedOrderIndependentTransparencyAbsorbanceRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.MomentBasedOrderIndependentTransparencyTransmittanceRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.MomentBasedOrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingFXAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAEdgesRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass;
 
 { TpvScene3DRendererInstance }
 
