@@ -206,6 +206,7 @@ type { TpvScene3DRendererInstance }
       private
        fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
        fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
+       fPasses:TObject;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
@@ -342,6 +343,8 @@ constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBa
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create(aParent);
+
+ fPasses:=TpvScene3DRendererInstancePasses.Create;
 
  fVirtualReality:=aVirtualReality;
 
@@ -525,6 +528,8 @@ begin
   else begin
   end;
  end;
+
+ FreeAndNil(fPasses);
 
  inherited Destroy;
 end;
