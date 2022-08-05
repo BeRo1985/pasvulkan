@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
@@ -119,7 +120,7 @@ begin
 
  inherited Show;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally

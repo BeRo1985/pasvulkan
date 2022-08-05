@@ -171,7 +171,7 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/fullscreen_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
  try
   fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -179,9 +179,9 @@ begin
  end;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/ssao_multiview_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_multiview_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/ssao_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_frag.spv');
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);

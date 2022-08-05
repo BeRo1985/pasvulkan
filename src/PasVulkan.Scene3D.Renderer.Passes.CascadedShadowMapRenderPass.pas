@@ -179,14 +179,14 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Show;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -194,11 +194,11 @@ begin
  end;
 
  if fInstance.Renderer.UseDemote then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_demote_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_demote_frag.spv');
  end else if fInstance.Renderer.UseNoDiscard then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_nodiscard_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_nodiscard_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_masked_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);

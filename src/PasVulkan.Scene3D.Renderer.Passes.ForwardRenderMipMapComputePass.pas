@@ -154,9 +154,9 @@ begin
  end;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level0_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_multiview_level0_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level0_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level0_comp.spv');
  end;
  try
   fDownsampleLevel0ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -165,9 +165,9 @@ begin
  end;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level1_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_multiview_level1_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level1_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level1_comp.spv');
  end;
  try
   fDownsampleLevel1ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -176,9 +176,9 @@ begin
  end;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_multiview_level2_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_multiview_level2_comp.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_'+Format+'_level2_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level2_comp.spv');
  end;
  try
   fDownsampleLevel2ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);

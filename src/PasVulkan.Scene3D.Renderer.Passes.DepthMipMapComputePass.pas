@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
@@ -149,29 +150,29 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_reversedz_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_reversedz_level0_comp.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_reversedz_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_reversedz_level0_comp.spv');
    end;
   end else begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_level0_comp.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_level0_comp.spv');
    end;
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_msaa_reversedz_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_msaa_reversedz_level0_comp.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_msaa_reversedz_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_msaa_reversedz_level0_comp.spv');
    end;
   end else begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_msaa_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_msaa_level0_comp.spv');
    end else begin
-    Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_msaa_level0_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_msaa_level0_comp.spv');
    end;
   end;
  end;
@@ -183,15 +184,15 @@ begin
 
  if fInstance.ZFar<0.0 then begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_multiview_reversedz_level1_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_reversedz_level1_comp.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_depth_reversedz_level1_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_reversedz_level1_comp.spv');
   end;
  end else begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_multiview_level1_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_multiview_level1_comp.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/downsample_level1_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_level1_comp.spv');
   end;
  end;
  try

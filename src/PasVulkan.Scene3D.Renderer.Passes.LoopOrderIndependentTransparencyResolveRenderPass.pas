@@ -170,7 +170,7 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/fullscreen_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
  try
   fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -179,15 +179,15 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_reversedz_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_reversedz_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_frag.spv');
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_reversedz_msaa_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_reversedz_msaa_frag.spv');
   end else begin
-   Stream:=pvApplication.Assets.GetAssetStream('shaders/loopoit_resolve_msaa_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_msaa_frag.spv');
   end;
  end;
  try

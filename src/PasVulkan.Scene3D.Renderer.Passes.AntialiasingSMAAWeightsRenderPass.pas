@@ -165,14 +165,14 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/antialiasing_smaa_weights_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('antialiasing_smaa_weights_vert.spv');
  try
   fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/antialiasing_smaa_weights_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('antialiasing_smaa_weights_frag.spv');
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally

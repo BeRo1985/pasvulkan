@@ -182,7 +182,7 @@ begin
 
  fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('msm_resolve_vert.spv');
  try
   fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -190,9 +190,9 @@ begin
  end;
 
  if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('msm_resolve_frag.spv');
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/msm_resolve_msaa_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('msm_resolve_msaa_frag.spv');
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
