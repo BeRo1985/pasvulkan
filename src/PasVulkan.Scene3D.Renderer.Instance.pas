@@ -147,6 +147,7 @@ type { TpvScene3DRendererInstance }
             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -197,8 +198,8 @@ type { TpvScene3DRendererInstance }
        fApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer;
        fApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
       private
-       fDepthMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
-       fForwardMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
+       fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
+       fForwardMipmappedArray2DImages:TMipmappedArray2DImages;
       private
        fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
        fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
@@ -217,6 +218,8 @@ type { TpvScene3DRendererInstance }
        property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
+       property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
+       property ForwardMipmappedArray2DImages:TMipmappedArray2DImages read fForwardMipmappedArray2DImages;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -237,7 +240,8 @@ type { TpvScene3DRendererInstance }
 implementation
 
 uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass;
+     PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthMipMapComputePass;
 
 { TpvScene3DRendererInstance }
 
