@@ -78,6 +78,7 @@ uses Classes,
      PasVulkan.CircularDoublyLinkedList,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
+     PasVulkan.Scene3D.Renderer.SheenELUTData,
      PasVulkan.Scene3D.Renderer.SMAAData,
      PasVulkan.Scene3D.Renderer.SkyCubeMap,
      PasVulkan.Scene3D.Renderer.SkyBox,
@@ -140,11 +141,25 @@ type TpvScene3DRenderer=class;
        fCountCascadedShadowMapMSAASamples:TpvSizeInt;
        fSurfaceSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:TpvSizeInt;
+      private
+       fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
+       fGGXBRDF:TpvScene3DRendererGGXBRDF;
+       fGGXEnvMapCubeMap:TpvScene3DRendererGGXEnvMapCubeMap;
+       fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
+       fCharlieEnvMapCubeMap:TpvScene3DRendererCharlieEnvMapCubeMap;
+       fLambertianEnvMapCubeMap:TpvScene3DRendererLambertianEnvMapCubeMap;
+       fSheenELUT:TpvVulkanTexture;
+       fShadowMapSampler:TpvVulkanSampler;
+       fSSAOSampler:TpvVulkanSampler;
+       fSMAAAreaTexture:TpvVulkanTexture;
+       fSMAASearchTexture:TpvVulkanTexture;
       public
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
        procedure Prepare;
+       procedure AllocateResources;
+       procedure ReleaseResources;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -167,6 +182,18 @@ type TpvScene3DRenderer=class;
        property CountCascadedShadowMapMSAASamples:TpvSizeInt read fCountCascadedShadowMapMSAASamples;
        property SurfaceSampleCountFlagBits:TVkSampleCountFlagBits read fSurfaceSampleCountFlagBits;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
+      published
+       property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
+       property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
+       property GGXEnvMapCubeMap:TpvScene3DRendererGGXEnvMapCubeMap read fGGXEnvMapCubeMap;
+       property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
+       property CharlieEnvMapCubeMap:TpvScene3DRendererCharlieEnvMapCubeMap read fCharlieEnvMapCubeMap;
+       property LambertianEnvMapCubeMap:TpvScene3DRendererLambertianEnvMapCubeMap read fLambertianEnvMapCubeMap;
+       property SheenELUT:TpvVulkanTexture read fSheenELUT;
+       property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
+       property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
+       property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
+       property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
      end;
 
 
@@ -602,6 +629,266 @@ begin
    end;
   end;
  end;
+
+end;
+
+procedure TpvScene3DRenderer.AllocateResources;
+var Index:TpvSizeInt;
+    Stream:TStream;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
+begin
+
+ fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fOptimizedNonAlphaFormat);
+
+ fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create;
+
+ fGGXEnvMapCubeMap:=TpvScene3DRendererGGXEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+
+ fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create;
+
+ fCharlieEnvMapCubeMap:=TpvScene3DRendererCharlieEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+
+ fLambertianEnvMapCubeMap:=TpvScene3DRendererLambertianEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+
+ case fShadowMode of
+
+  TpvScene3DRendererShadowMode.MSM:begin
+
+   fShadowMapSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                              TVkFilter.VK_FILTER_LINEAR,
+                                              TVkFilter.VK_FILTER_LINEAR,
+                                              TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              0.0,
+                                              false,
+                                              0.0,
+                                              false,
+                                              VK_COMPARE_OP_ALWAYS,
+                                              0.0,
+                                              0.0,
+                                              VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                              false);
+
+  end;
+
+  TpvScene3DRendererShadowMode.PCF:begin
+
+   fShadowMapSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                              TVkFilter.VK_FILTER_LINEAR,
+                                              TVkFilter.VK_FILTER_LINEAR,
+                                              TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              0.0,
+                                              false,
+                                              0.0,
+                                              true,
+                                              VK_COMPARE_OP_GREATER,
+                                              0.0,
+                                              0.0,
+                                              VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                              false);
+
+  end;
+
+  else begin
+
+   fShadowMapSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                              TVkFilter.VK_FILTER_NEAREST,
+                                              TVkFilter.VK_FILTER_NEAREST,
+                                              TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                              0.0,
+                                              false,
+                                              0.0,
+                                              false,
+                                              VK_COMPARE_OP_ALWAYS,
+                                              0.0,
+                                              0.0,
+                                              VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                              false);
+  end;
+
+ end;
+
+ fSSAOSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                       TVkFilter.VK_FILTER_LINEAR,
+                                       TVkFilter.VK_FILTER_LINEAR,
+                                       TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                       0.0,
+                                       false,
+                                       0.0,
+                                       false,
+                                       VK_COMPARE_OP_ALWAYS,
+                                       0.0,
+                                       0.0,
+                                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                       false);
+
+ UniversalQueue:=fVulkanDevice.UniversalQueue;
+ try
+
+  UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                   fVulkanDevice.UniversalQueueFamilyIndex,
+                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  try
+
+   UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                        VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   try
+
+    UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
+    try
+
+     case fAntialiasingMode of
+
+      TpvScene3DRendererAntialiasingMode.SMAA:begin
+
+       fSMAAAreaTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           VK_FORMAT_R8G8_UNORM,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           PasVulkan.Scene3D.Renderer.SMAAData.AREATEX_WIDTH,
+                                                           PasVulkan.Scene3D.Renderer.SMAAData.AREATEX_HEIGHT,
+                                                           0,
+                                                           0,
+                                                           1,
+                                                           0,
+                                                           [TpvVulkanTextureUsageFlag.General,
+                                                            TpvVulkanTextureUsageFlag.TransferDst,
+                                                            TpvVulkanTextureUsageFlag.TransferSrc,
+                                                            TpvVulkanTextureUsageFlag.Sampled],
+                                                           @PasVulkan.Scene3D.Renderer.SMAAData.AreaTexBytes[0],
+                                                           PasVulkan.Scene3D.Renderer.SMAAData.AREATEX_SIZE,
+                                                           false,
+                                                           false,
+                                                           0,
+                                                           true,
+                                                           false);
+
+       fSMAASearchTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                             UniversalQueue,
+                                                             UniversalCommandBuffer,
+                                                             UniversalFence,
+                                                             UniversalQueue,
+                                                             UniversalCommandBuffer,
+                                                             UniversalFence,
+                                                             VK_FORMAT_R8_UNORM,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             PasVulkan.Scene3D.Renderer.SMAAData.SEARCHTEX_WIDTH,
+                                                             PasVulkan.Scene3D.Renderer.SMAAData.SEARCHTEX_HEIGHT,
+                                                             0,
+                                                             0,
+                                                             1,
+                                                             0,
+                                                             [TpvVulkanTextureUsageFlag.General,
+                                                              TpvVulkanTextureUsageFlag.TransferDst,
+                                                              TpvVulkanTextureUsageFlag.TransferSrc,
+                                                              TpvVulkanTextureUsageFlag.Sampled],
+                                                             @PasVulkan.Scene3D.Renderer.SMAAData.SearchTexBytes[0],
+                                                             PasVulkan.Scene3D.Renderer.SMAAData.SEARCHTEX_SIZE,
+                                                             false,
+                                                             false,
+                                                             0,
+                                                             true,
+                                                             false);
+
+
+      end;
+      else begin
+      end;
+     end;
+
+     Stream:=pvApplication.Assets.GetAssetStream('textures/sheenelut.png');
+     try
+      fSheenELUT:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                    UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    VK_FORMAT_R8_UNORM,
+                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                    PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTWidth,
+                                                    PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTHeight,
+                                                    0,
+                                                    0,
+                                                    1,
+                                                    0,
+                                                    [TpvVulkanTextureUsageFlag.General,
+                                                     TpvVulkanTextureUsageFlag.TransferDst,
+                                                     TpvVulkanTextureUsageFlag.TransferSrc,
+                                                     TpvVulkanTextureUsageFlag.Sampled],
+                                                    @PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTDataBytes[0],
+                                                    SizeOf(PasVulkan.Scene3D.Renderer.SheenELUTData.TSheenELUTData),
+                                                    false,
+                                                    false,
+                                                    0,
+                                                    true,
+                                                    false);
+      fSheenELUT.UpdateSampler;
+     finally
+      FreeAndNil(Stream);
+     end;
+
+    finally
+     FreeAndNil(UniversalFence);
+    end;
+
+   finally
+    FreeAndNil(UniversalCommandBuffer);
+   end;
+
+  finally
+   FreeAndNil(UniversalCommandPool);
+  end;
+
+ finally
+  UniversalQueue:=nil;
+ end;
+
+end;
+
+procedure TpvScene3DRenderer.ReleaseResources;
+begin
+
+ FreeAndNil(fShadowMapSampler);
+
+ FreeAndNil(fSSAOSampler);
+
+ FreeAndNil(fSMAAAreaTexture);
+ FreeAndNil(fSMAASearchTexture);
+
+ FreeAndNil(fSheenELUT);
+
+ FreeAndNil(fCharlieEnvMapCubeMap);
+
+ FreeAndNil(fCharlieBRDF);
+
+ FreeAndNil(fGGXEnvMapCubeMap);
+
+ FreeAndNil(fGGXBRDF);
+
+ FreeAndNil(fLambertianEnvMapCubeMap);
+
+ FreeAndNil(fSkyCubeMap);
 
 end;
 
