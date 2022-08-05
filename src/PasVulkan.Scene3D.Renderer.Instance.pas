@@ -1357,9 +1357,24 @@ begin
 
  end;
 
- InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddViews([ViewLeft,ViewRight]);
-
- InFlightFrameState^.CountViews:=2;
+ case CountSurfaceViews of
+  1:begin
+   InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddView(ViewLeft);
+   InFlightFrameState^.CountViews:=1;
+  end;
+  2:begin
+   InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddViews([ViewLeft,ViewRight]);
+   InFlightFrameState^.CountViews:=2;
+  end;
+{ 6:begin
+   // TODO: Cube map
+   InFlightFrameState^.CountViews:=6;
+  end;}
+  else begin
+   Assert(false);
+   InFlightFrameState^.CountViews:=0;
+  end;
+ end;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex,
                              ViewLeft,
