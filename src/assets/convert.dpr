@@ -186,6 +186,13 @@ begin
   ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_vert.spv','VREnabledToScreenBlitVertSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
-  StringList.Free;
+  FreeAndNil(StringList);
+ end;
+ StringList:=TStringList.Create;
+ try
+  ConvertFile('shaders/scene3d/scene3dshaders.zip','Scene3DSPIRVShaders');
+  StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanScene3DAssets.inc');
+ finally
+  FreeAndNil(StringList);
  end;
 end.
