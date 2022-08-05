@@ -65,6 +65,7 @@ interface
 uses Classes,
      SysUtils,
      PasMP,
+     Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -74,7 +75,18 @@ uses Classes,
      PasVulkan.TimerQuery,
      PasVulkan.Collections,
      PasVulkan.CircularDoublyLinkedList,
-     PasVulkan.Scene3D;
+     PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer.SMAAData,
+     PasVulkan.Scene3D.Renderer.SkyCubeMap,
+     PasVulkan.Scene3D.Renderer.SkyBox,
+     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
+     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
+     PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
+     PasVulkan.Scene3D.Renderer.Lambertian.EnvMapCubeMap,
+     PasVulkan.Scene3D.Renderer.Charlie.BRDF,
+     PasVulkan.Scene3D.Renderer.Charlie.EnvMapCubeMap,
+     PasVulkan.Scene3D.Renderer.GGX.BRDF,
+     PasVulkan.Scene3D.Renderer.GGX.EnvMapCubeMap;
 
 type TpvScene3DRenderer=class;
 
@@ -97,21 +109,13 @@ type TpvScene3DRenderer=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+      published
+       property Parent:TpvScene3DRendererBaseObject read fParent;
+       property Renderer:TpvScene3DRenderer read fRenderer;
      end;
 
      { TpvScene3DRenderer }
      TpvScene3DRenderer=class(TpvScene3DRendererBaseObject)
-      public
-       type { TInstance }
-            TInstance=class(TpvScene3DRendererBaseObject)
-             private
-              fFrameGraph:TpvFrameGraph;
-             public
-              constructor Create(const aParent:TpvScene3DRendererBaseObject); reintroduce;
-              destructor Destroy; override;
-             published
-              property FrameGraph:TpvFrameGraph read fFrameGraph;
-            end;
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
@@ -119,13 +123,17 @@ type TpvScene3DRenderer=class;
       public
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
+       class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
       published
        property Scene3D:TpvScene3D read fScene3D;
+       property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
      end;
 
 
 implementation
+
+uses PasVulkan.Scene3D.Renderer.Instance;
 
 { TpvScene3DRendererBaseObject }
 
@@ -201,22 +209,6 @@ begin
  inherited BeforeDestruction;
 end;
 
-{ TpvScene3DRenderer.TInstance }
-
-constructor TpvScene3DRenderer.TInstance.Create(const aParent:TpvScene3DRendererBaseObject);
-begin
- inherited Create(aParent);
-
- fFrameGraph:=TpvFrameGraph.Create(fRenderer.fVulkanDevice,fRenderer.fCountInFlightFrames);
-
-end;
-
-destructor TpvScene3DRenderer.TInstance.Destroy;
-begin
- FreeAndNil(fFrameGraph);
- inherited Destroy;
-end;
-
 { TpvScene3DRenderer }
 
 constructor TpvScene3DRenderer.Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt);
@@ -238,6 +230,52 @@ end;
 destructor TpvScene3DRenderer.Destroy;
 begin
  inherited Destroy;
+end;
+
+class procedure TpvScene3DRenderer.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
+begin
+ if (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound=VK_FALSE) or
+    (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.runtimeDescriptorArray=VK_FALSE) or
+    (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.shaderSampledImageArrayNonUniformIndexing=VK_FALSE) then begin
+  raise EpvApplication.Create('Application','Support for VK_EXT_DESCRIPTOR_INDEXING (descriptorBindingPartiallyBound + runtimeDescriptorArray + shaderSampledImageArrayNonUniformIndexing) is needed',LOG_ERROR);
+ end;
+{if aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for VK_KHR_buffer_device_address (bufferDeviceAddress) is needed',LOG_ERROR);
+ end;}
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MAINTENANCE1_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MAINTENANCE2_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MAINTENANCE3_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME);
+ end;
+ if ((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
+    (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SPIRV_1_4_EXTENSION_NAME)>=0) then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+ end;
 end;
 
 end.
