@@ -262,8 +262,7 @@ type { TpvScene3DRendererInstance }
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Passes.Passes,
-     PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
+uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
