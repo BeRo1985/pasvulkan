@@ -196,7 +196,9 @@ type { TpvScene3DRendererInstance }
        fDepthMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
        fForwardMipmappedArray2DImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
       private
-       procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32;const aViewLeft,aViewRight:TpvScene3D.TView);
+       fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
+       fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
+       procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
        destructor Destroy; override;
@@ -947,7 +949,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32;const aViewLeft,aViewRight:TpvScene3D.TView);
+procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
 {$undef UseSphereBasedCascadedShadowMaps}
 const FrustumCorners:array[0..7] of TpvVector3=
        (
@@ -960,7 +962,7 @@ const FrustumCorners:array[0..7] of TpvVector3=
         (x:-1.0;y:1.0;z:1.0),
         (x:1.0;y:1.0;z:1.0)
        );
-var CascadedShadowMapIndex,Index:TpvSizeInt;
+var CascadedShadowMapIndex,Index,ViewIndex:TpvSizeInt;
     CascadedShadowMaps:PCascadedShadowMaps;
     CascadedShadowMap:PCascadedShadowMap;
     SceneWorldSpaceBoundingBox,
@@ -998,8 +1000,6 @@ var CascadedShadowMapIndex,Index:TpvSizeInt;
 {$endif}
     zNear,zFar,RealZNear,RealZFar:TpvScalar;
     DoNeedRefitNearFarPlanes:boolean;
-    ViewSpaceFrustumCornersLeft,
-    ViewSpaceFrustumCornersRight:array[0..7] of TpvVector3;
     InFlightFrameState:PInFlightFrameState;
 begin
 
@@ -1007,16 +1007,13 @@ begin
 
  SceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(SceneWorldSpaceBoundingBox);
 
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
  if IsInfinite(fZFar) then begin
   RealZNear:=0.1;
   RealZFar:=1.0;
-  for Index:=0 to 1 do begin
-   if Index=0 then begin
-    ViewMatrix:=aViewLeft.ViewMatrix;
-   end else begin
-    ViewMatrix:=aViewRight.ViewMatrix;
-   end;
-   ViewMatrix:=ViewMatrix.SimpleInverse;
+  for Index:=0 to InFlightFrameState^.CountViews-1 do begin
+   ViewMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ViewMatrix.SimpleInverse;
    if SceneWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
     if not SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
      Value:=SceneWorldSpaceSphere.Radius;
@@ -1043,25 +1040,20 @@ begin
 
  SceneClipWorldSpaceSphere:=TpvSphere.Create(SceneWorldSpaceSphere.Center,Max(SceneWorldSpaceSphere.Radius,RealZFar*0.5));
 
- ProjectionMatrix:=aViewLeft.ProjectionMatrix;
- if DoNeedRefitNearFarPlanes then begin
-  ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
-  ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
+ for Index:=0 to InFlightFrameState^.CountViews-1 do begin
+  ProjectionMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ProjectionMatrix;
+  if DoNeedRefitNearFarPlanes then begin
+   ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
+   ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
+  end;
+  fCascadedShadowMapInverseProjectionMatrices[Index]:=ProjectionMatrix.Inverse;
  end;
- InverseProjectionMatrixLeft:=ProjectionMatrix.Inverse;
-
- ProjectionMatrix:=aViewRight.ProjectionMatrix;
- if DoNeedRefitNearFarPlanes then begin
-  ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
-  ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
- end;
- InverseProjectionMatrixRight:=ProjectionMatrix.Inverse;
 
  LightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
  LightSideVector:=LightForwardVector.Perpendicular;
-{LightSideVector:=TpvVector3.InlineableCreate(-aViewLeft.ViewMatrix.RawComponents[0,2],
-                                              -aViewLeft.ViewMatrix.RawComponents[1,2],
-                                              -aViewLeft.ViewMatrix.RawComponents[2,2]).Normalize;
+{LightSideVector:=TpvVector3.InlineableCreate(-Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[0,2],
+                                              -Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[1,2],
+                                              -Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[2,2]).Normalize;
  if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
   if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
    LightSideVector:=TpvVector3.YAxis;
@@ -1088,13 +1080,8 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
- for Index:=0 to 1 do begin
-  if Index=0 then begin
-   ViewMatrix:=aViewLeft.ViewMatrix;
-  end else begin
-   ViewMatrix:=aViewRight.ViewMatrix;
-  end;
-  ViewMatrix:=ViewMatrix.SimpleInverse;
+ for Index:=0 to InFlightFrameState^.CountViews-1 do begin
+  ViewMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ViewMatrix.SimpleInverse;
   if not SceneClipWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
    ViewMatrix.Translation.xyz:=SceneClipWorldSpaceSphere.Center+((ViewMatrix.Translation.xyz-SceneClipWorldSpaceSphere.Center).Normalize*SceneClipWorldSpaceSphere.Radius);
   end;
@@ -1114,9 +1101,10 @@ begin
  MinZExtents:=MinZExtents-ZMargin;
  MaxZExtents:=MaxZExtents+ZMargin;
 
- for Index:=0 to 7 do begin
-  ViewSpaceFrustumCornersLeft[Index]:=InverseProjectionMatrixLeft.MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
-  ViewSpaceFrustumCornersRight[Index]:=InverseProjectionMatrixRight.MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
+ for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+  for Index:=0 to 7 do begin
+   fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index]:=fCascadedShadowMapInverseProjectionMatrices[ViewIndex].MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
+  end;
  end;
 
  CascadedShadowMaps:=@fInFlightFrameCascadedShadowMaps[aInFlightFrameIndex];
@@ -1143,33 +1131,24 @@ begin
   MinZ:=CascadedShadowMap^.SplitDepths.x;
   MaxZ:=CascadedShadowMap^.SplitDepths.y;
 
-  for Index:=0 to 7 do begin
-   case Index of
-    0..3:begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index].Lerp(ViewSpaceFrustumCornersLeft[Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
+  for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+   for Index:=0 to 7 do begin
+    case Index of
+     0..3:begin
+      LightSpaceCorner:=fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index].Lerp(fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
+     end;
+     else {4..7:}begin
+      LightSpaceCorner:=fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index-4].Lerp(fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index],(MaxZ-RealZNear)/(RealZFar-RealZNear));
+     end;
     end;
-    else {4..7:}begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersLeft[Index-4].Lerp(ViewSpaceFrustumCornersLeft[Index],(MaxZ-RealZNear)/(RealZFar-RealZNear));
-    end;
-   end;
-   LightSpaceCorner:=FromViewSpaceToLightSpaceMatrixLeft*LightSpaceCorner;
-   if Index=0 then begin
-    LightSpaceAABB.Min:=LightSpaceCorner;
-    LightSpaceAABB.Max:=LightSpaceCorner;
-   end else begin
-    LightSpaceAABB:=LightSpaceAABB.CombineVector3(LightSpaceCorner);
-   end;
-  end;
-  for Index:=0 to 7 do begin
-   case Index of
-    0..3:begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index].Lerp(ViewSpaceFrustumCornersRight[Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
-    end;
-    else {4..7:}begin
-     LightSpaceCorner:=ViewSpaceFrustumCornersRight[Index-4].Lerp(ViewSpaceFrustumCornersRight[Index],(MaxZ-RealZNear)/(RealZFar-RealZNear));
+    LightSpaceCorner:=FromViewSpaceToLightSpaceMatrixLeft*LightSpaceCorner;
+    if (ViewIndex=0) and (Index=0) then begin
+     LightSpaceAABB.Min:=LightSpaceCorner;
+     LightSpaceAABB.Max:=LightSpaceCorner;
+    end else begin
+     LightSpaceAABB:=LightSpaceAABB.CombineVector3(LightSpaceCorner);
     end;
    end;
-   LightSpaceAABB:=LightSpaceAABB.CombineVector3(FromViewSpaceToLightSpaceMatrixRight*LightSpaceCorner);
   end;
 
   if LightSpaceAABB.Intersect(SceneLightSpaceBoundingBox) then begin
@@ -1285,8 +1264,6 @@ begin
 
  end;
 
- InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
-
  InFlightFrameState^.CascadedShadowMapViewIndex:=Renderer.Scene3D.AddView(CascadedShadowMaps^[0].View);
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
   Renderer.Scene3D.AddView(CascadedShadowMaps^[CascadedShadowMapIndex].View);
@@ -1376,9 +1353,7 @@ begin
   end;
  end;
 
- CalculateCascadedShadowMaps(aInFlightFrameIndex,
-                             ViewLeft,
-                             ViewRight);
+ CalculateCascadedShadowMaps(aInFlightFrameIndex);
 
  fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex].UpdateData(fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
                                                                         0,
