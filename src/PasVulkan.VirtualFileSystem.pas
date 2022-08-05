@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Globals;
+unit PasVulkan.VirtualFileSystem;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -58,6 +58,7 @@ unit PasVulkan.Scene3D.Renderer.Globals;
   {$ifend}
  {$endif}
 {$endif}
+{$scopedenums on}
 {$m+}
 
 interface
@@ -65,59 +66,77 @@ interface
 uses SysUtils,
      Classes,
      Math,
-     Vulkan,
      PasVulkan.Types,
+     PasVulkan.Assets,
+     PasVulkan.Streams,
      PasVulkan.Math,
-     PasVulkan.Framework,
-     PasVulkan.Application,
-     PasVulkan.VirtualReality,
-     PasVulkan.VirtualFileSystem;
+     PasVulkan.Archive.ZIP;
 
-type TpvScene3DRendererAntialiasingMode=
-      (
-       Auto=0,
-       None,
-       DSAA,
-       FXAA,
-       SMAA,
-       MSAA
-      );
+type { TpvVirtualFileSystem }
 
-     PpvScene3DRendererAntialiasingMode=^TpvScene3DRendererAntialiasingMode;
-
-     TpvScene3DRendererShadowMode=
-      (
-       Auto=0,
-       None=1,
-       PCF=2,
-       DPCF=3,
-       PCSS=4,
-       MSM=5
-      );
-
-     PpvScene3DRendererShadowMode=^TpvScene3DRendererShadowMode;
-
-     TpvScene3DRendererTransparencyMode=
-      (
-       Auto=0,
-       Direct,
-       SPINLOCKOIT,
-       INTERLOCKOIT,
-       LOOPOIT,
-       WBOIT,
-       MBOIT
-      );
-
-     PpvScene3DRendererTransparencyMode=^TpvScene3DRendererTransparencyMode;
-
-var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
+     TpvVirtualFileSystem=class
+      private
+       fArchiveZIP:TpvArchiveZIP;
+       fStream:TStream;
+      public
+       constructor Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string=''); reintroduce; virtual;
+       destructor Destroy; override;
+       function ExistFile(const aFileName:string):boolean;
+       function GetFile(const aFileName:string):TStream;
+      published
+       property ArchiveZIP:TpvArchiveZIP read fArchiveZIP;
+     end;
 
 implementation
 
-uses PasVulkan.Scene3D.Assets;
+{ TpvVirtualFileSystem }
 
-initialization
- pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(@PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersData[0],PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersDataSize,'scene3dshaders.zip');
-finalization
- FreeAndNil(pvScene3DShaderVirtualFileSystem);
+constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string);
+var Stream:TStream;
+begin
+ inherited Create;
+ fStream:=TMemoryStream.Create;
+ fArchiveZIP:=TpvArchiveZIP.Create;
+ if (length(aFileName)>0) and FileExists(aFileName) then begin
+  Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ end else begin
+  Stream:=TMemoryStream.Create;
+  if assigned(aData) and (aDataSize>0) then begin
+   Stream.Write(aData^,aDataSize);
+   Stream.Seek(0,soBeginning);
+  end;
+ end;
+ try
+  fStream.CopyFrom(Stream,Stream.Size);
+  fStream.Seek(0,soBeginning);
+  fArchiveZIP.LoadFromStream(fStream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+destructor TpvVirtualFileSystem.Destroy;
+begin
+ FreeAndNil(fArchiveZIP);
+ FreeAndNil(fStream);
+ inherited Destroy;
+end;
+
+function TpvVirtualFileSystem.ExistFile(const aFileName:string):boolean;
+begin
+ result:=assigned(fArchiveZIP.Entries.Find(aFileName));
+end;
+
+function TpvVirtualFileSystem.GetFile(const aFileName:string):TStream;
+var ZIPEntry:TpvArchiveZIPEntry;
+begin
+ result:=nil;
+ ZIPEntry:=fArchiveZIP.Entries.Find(aFileName);
+ if assigned(ZIPEntry) then begin
+  result:=TMemoryStream.Create;
+  ZIPEntry.SaveToStream(result);
+  result.Seek(0,soBeginning);
+ end;
+end;
+
 end.
