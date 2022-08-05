@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass }
-      TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass }
+      TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass=class(TpvFrameGraph.TRenderPass)
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -110,9 +110,9 @@ type { TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass }
+{ TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass }
 
-constructor TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
@@ -157,12 +157,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Destroy;
+destructor TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Show;
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -211,7 +211,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Hide;
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Hide;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -223,7 +223,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -363,7 +363,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -385,12 +385,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAABlendRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var Metrices:TpvVector4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);

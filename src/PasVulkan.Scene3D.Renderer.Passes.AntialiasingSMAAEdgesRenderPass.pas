@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass }
-      TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass }
+      TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass=class(TpvFrameGraph.TRenderPass)
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -109,9 +109,9 @@ type { TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass }
+{ TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass }
 
-constructor TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
@@ -150,12 +150,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Destroy;
+destructor TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Show;
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -204,7 +204,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Hide;
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Hide;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -216,7 +216,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -340,7 +340,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -362,12 +362,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingSMAAEdgesRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var Metrices:TpvVector4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);

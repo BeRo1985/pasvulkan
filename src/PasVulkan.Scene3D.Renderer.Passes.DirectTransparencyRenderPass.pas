@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesDirectTransparencyRenderPass }
-     TpvScene3DRendererInstancePassesDirectTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesDirectTransparencyRenderPass }
+     TpvScene3DRendererPassesDirectTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -117,9 +117,9 @@ type { TpvScene3DRendererInstancePassesDirectTransparencyRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesDirectTransparencyRenderPass }
+{ TpvScene3DRendererPassesDirectTransparencyRenderPass }
 
-constructor TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDirectTransparencyRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 inherited Create(aFrameGraph);
 
@@ -194,12 +194,12 @@ inherited Create(aFrameGraph);
 
 end;
 
-destructor TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Destroy;
+destructor TpvScene3DRendererPassesDirectTransparencyRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Show;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.Show;
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
@@ -261,7 +261,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Hide;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.Hide;
 begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
@@ -279,7 +279,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -522,7 +522,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.BeforeDestroySwapChain;
 var Index:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -544,12 +544,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                              const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                              const aRenderPassIndex:TpvSizeInt;
                                                                              const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -567,7 +567,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin

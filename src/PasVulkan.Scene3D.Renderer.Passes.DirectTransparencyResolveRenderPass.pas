@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass }
-     TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesDirectTransparencyResolveRenderPass }
+     TpvScene3DRendererPassesDirectTransparencyResolveRenderPass=class(TpvFrameGraph.TRenderPass)
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -109,9 +109,9 @@ type { TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass }
+{ TpvScene3DRendererPassesDirectTransparencyResolveRenderPass }
 
-constructor TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
@@ -156,12 +156,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Destroy;
+destructor TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Show;
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -197,7 +197,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Hide;
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Hide;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -208,7 +208,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -351,7 +351,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -372,12 +372,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesDirectTransparencyResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

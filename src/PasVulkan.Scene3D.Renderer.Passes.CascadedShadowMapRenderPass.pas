@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass }
-     TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
+     TpvScene3DRendererPassesCascadedShadowMapRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -111,9 +111,9 @@ type { TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass }
+{ TpvScene3DRendererPassesCascadedShadowMapRenderPass }
 
-constructor TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 var Index:TpvSizeInt;
 begin
 inherited Create(aFrameGraph);
@@ -168,12 +168,12 @@ inherited Create(aFrameGraph);
 
 end;
 
-destructor TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Destroy;
+destructor TpvScene3DRendererPassesCascadedShadowMapRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Show;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Show;
 var InFlightFrameIndex:TpvSizeInt;
     Stream:TStream;
 begin
@@ -219,7 +219,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Hide;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Hide;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -240,7 +240,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.AfterCreateSwapChain;
 var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
@@ -376,7 +376,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.BeforeDestroySwapChain;
 var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
@@ -391,12 +391,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                             const aRenderPassIndex:TpvSizeInt;
                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -407,7 +407,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin

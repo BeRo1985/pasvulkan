@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass }
-      TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesAntialiasingDSAARenderPass }
+      TpvScene3DRendererPassesAntialiasingDSAARenderPass=class(TpvFrameGraph.TRenderPass)
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -110,9 +110,9 @@ type { TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass }
+{ TpvScene3DRendererPassesAntialiasingDSAARenderPass }
 
-constructor TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesAntialiasingDSAARenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
@@ -151,12 +151,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Destroy;
+destructor TpvScene3DRendererPassesAntialiasingDSAARenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Show;
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -205,7 +205,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Hide;
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.Hide;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -217,7 +217,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -340,7 +340,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -362,12 +362,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesAntialiasingDSAARenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingDSAARenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesSSAORenderPass }
-     TpvScene3DRendererInstancePassesSSAORenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesSSAORenderPass }
+     TpvScene3DRendererPassesSSAORenderPass=class(TpvFrameGraph.TRenderPass)
       public
        type TSSAOPushConstants=record
              ViewBaseIndex:UInt32;
@@ -115,9 +115,9 @@ type { TpvScene3DRendererInstancePassesSSAORenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesSSAORenderPass }
+{ TpvScene3DRendererPassesSSAORenderPass }
 
-constructor TpvScene3DRendererInstancePassesSSAORenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesSSAORenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
@@ -156,12 +156,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesSSAORenderPass.Destroy;
+destructor TpvScene3DRendererPassesSSAORenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.Show;
+procedure TpvScene3DRendererPassesSSAORenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -197,7 +197,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.Hide;
+procedure TpvScene3DRendererPassesSSAORenderPass.Hide;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -208,7 +208,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesSSAORenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -363,7 +363,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesSSAORenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -386,12 +386,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesSSAORenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAORenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesSSAORenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     SSAOPushConstants:TSSAOPushConstants;
 begin

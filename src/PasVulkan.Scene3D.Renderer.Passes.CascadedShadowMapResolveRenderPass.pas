@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass }
-     TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass }
+     TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        type TFragmentStagePushConstants=record
              CountSamples:Int32;
@@ -114,9 +114,9 @@ type { TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass }
+{ TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass }
 
-constructor TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 var Index:TpvSizeInt;
 begin
 
@@ -167,12 +167,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Destroy;
+destructor TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Show;
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -225,7 +225,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Hide;
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Hide;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -237,7 +237,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -277,7 +277,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.TFragmentStagePushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.TFragmentStagePushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
@@ -347,7 +347,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -368,12 +368,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  fFragmentStagePushConstants.CountSamples:=fInstance.Renderer.CountCascadedShadowMapMSAASamples;
@@ -385,7 +385,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererInstancePassesCascadedShadowMapResolveRenderPass.TFragmentStagePushConstants),
+                                 SizeOf(TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass.TFragmentStagePushConstants),
                                  @fFragmentStagePushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3*TpvScene3DRendererInstance.CountCascadedShadowMapCascades,1,0,0);

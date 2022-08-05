@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass }
-     TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass=class(TpvFrameGraph.TComputePass)
+type { TpvScene3DRendererPassesForwardRenderMipMapComputePass }
+     TpvScene3DRendererPassesForwardRenderMipMapComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
@@ -110,9 +110,9 @@ type { TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass }
+{ TpvScene3DRendererPassesForwardRenderMipMapComputePass }
 
-constructor TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesForwardRenderMipMapComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
 
@@ -128,12 +128,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Destroy;
+destructor TpvScene3DRendererPassesForwardRenderMipMapComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Show;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Show;
 var Stream:TStream;
     Format:string;
 begin
@@ -194,7 +194,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Hide;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Hide;
 begin
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel2Compute);
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel1Compute);
@@ -205,7 +205,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.AfterCreateSwapChain;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     ImageViewType:TVkImageViewType;
 begin
@@ -343,7 +343,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.BeforeDestroySwapChain;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
 begin
  FreeAndNil(fPipelineLevel2);
@@ -362,12 +362,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesForwardRenderMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
     ImageMemoryBarrier:TVkImageMemoryBarrier;

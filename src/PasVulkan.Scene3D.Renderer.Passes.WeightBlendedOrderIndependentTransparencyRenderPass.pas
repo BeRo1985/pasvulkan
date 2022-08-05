@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass }
-     TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass }
+     TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -118,9 +118,9 @@ type { TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparency
 
 implementation
 
-{ TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass }
+{ TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass }
 
-constructor TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 inherited Create(aFrameGraph);
 
@@ -187,12 +187,12 @@ inherited Create(aFrameGraph);
 
 end;
 
-destructor TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Destroy;
+destructor TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Show;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Show;
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
@@ -227,7 +227,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Hide;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Hide;
 begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
@@ -245,7 +245,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -493,7 +493,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.BeforeDestroySwapChain;
 var Index:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -515,12 +515,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                                     const aRenderPassIndex:TpvSizeInt;
                                                                                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -538,7 +538,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererInstancePassesWeightBlendedOrderIndependentTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                    const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin

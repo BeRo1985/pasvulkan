@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass }
-     TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass=class(TpvFrameGraph.TCustomPass)
+type { TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass }
+     TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass=class(TpvFrameGraph.TCustomPass)
       private
        fInstance:TpvScene3DRendererInstance;
       public
@@ -93,46 +93,46 @@ type { TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCust
 
 implementation
 
-{ TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass }
+{ TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass }
 
-constructor TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
  fInstance:=aInstance;
  Name:='LoopOrderIndependentTransparencyClearCustomPass';
 end;
 
-destructor TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Destroy;
+destructor TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Show;
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Show;
 begin
  inherited Show;
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Hide;
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Hide;
 begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesLoopOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesLoopOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
     CountBufferMemoryBarriers:TpvInt32;
 begin

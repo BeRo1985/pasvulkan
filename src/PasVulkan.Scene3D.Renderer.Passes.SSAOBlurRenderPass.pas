@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererInstancePassesSSAOBlurRenderPass }
-     TpvScene3DRendererInstancePassesSSAOBlurRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesSSAOBlurRenderPass }
+     TpvScene3DRendererPassesSSAOBlurRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        type TFragmentStagePushConstants=record
              Direction:TpvVector4;
@@ -114,9 +114,9 @@ type { TpvScene3DRendererInstancePassesSSAOBlurRenderPass }
 
 implementation
 
-{ TpvScene3DRendererInstancePassesSSAOBlurRenderPass }
+{ TpvScene3DRendererPassesSSAOBlurRenderPass }
 
-constructor TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aHorziontal:boolean);
+constructor TpvScene3DRendererPassesSSAOBlurRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aHorziontal:boolean);
 var Index:TpvSizeInt;
 begin
 
@@ -183,12 +183,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Destroy;
+destructor TpvScene3DRendererPassesSSAOBlurRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Show;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Show;
 var Stream:TStream;
 begin
 
@@ -237,7 +237,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Hide;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Hide;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -249,7 +249,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -289,7 +289,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererInstancePassesSSAOBlurRenderPass.TFragmentStagePushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesSSAOBlurRenderPass.TFragmentStagePushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
@@ -357,7 +357,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.BeforeDestroySwapChain;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -378,12 +378,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesSSAOBlurRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -394,7 +394,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererInstancePassesSSAOBlurRenderPass.TFragmentStagePushConstants),
+                                 SizeOf(TpvScene3DRendererPassesSSAOBlurRenderPass.TFragmentStagePushConstants),
                                  @fFragmentStagePushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);

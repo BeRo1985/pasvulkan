@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass }
-     TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass }
+     TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -119,9 +119,9 @@ type { TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTr
 
 implementation
 
-{ TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass }
+{ TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass }
 
-constructor TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 inherited Create(aFrameGraph);
 
@@ -198,12 +198,12 @@ inherited Create(aFrameGraph);
 
 end;
 
-destructor TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Destroy;
+destructor TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Show;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Show;
 var Stream:TStream;
 begin
  inherited Show;
@@ -245,7 +245,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Hide;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Hide;
 begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
@@ -263,7 +263,7 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.AfterCreateSwapChain;
 var InFlightFrameIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -531,7 +531,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.BeforeDestroySwapChain;
 var Index:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -553,12 +553,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                                                const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                                                const aRenderPassIndex:TpvSizeInt;
                                                                                                                const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -576,7 +576,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererInstancePassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                               const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
