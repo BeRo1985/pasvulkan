@@ -35,8 +35,9 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.Resources,
      PasVulkan.FrameGraph,
-     PasVulkan.Scene3D,
      PasVulkan.TimerQuery,
+     PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer,
      UnitGlobals,
      UnitOrderIndependentTransparencyBuffer,
      UnitOrderIndependentTransparencyImage,
@@ -143,10 +144,6 @@ type { TScreenMain }
                fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceNormals:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
                fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -204,10 +201,6 @@ type { TScreenMain }
                fVulkanRenderPass:TpvVulkanRenderPass;
                fParent:TScreenMain;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -378,10 +371,6 @@ type { TScreenMain }
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -453,10 +442,6 @@ type { TScreenMain }
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -536,10 +521,6 @@ type { TScreenMain }
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -633,10 +614,6 @@ type { TScreenMain }
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
 //             fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -687,10 +664,6 @@ type { TScreenMain }
                fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -771,10 +744,6 @@ type { TScreenMain }
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceMoments0:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceMoments1:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -813,10 +782,6 @@ type { TScreenMain }
                fResourceMoments0:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceMoments1:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -884,10 +849,6 @@ type { TScreenMain }
                fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceAccumulation:TpvFrameGraph.TPass.TUsedImageResource;
                fResourceRevealage:TpvFrameGraph.TPass.TUsedImageResource;
-               fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
-               fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-               fVulkanTransferCommandBufferFence:TpvVulkanFence;
                fMeshVertexShaderModule:TpvVulkanShaderModule;
                fMeshFragmentShaderModule:TpvVulkanShaderModule;
                fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
@@ -1618,14 +1579,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_velocity_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -1680,10 +1633,6 @@ begin
 
  FreeAndNil(fMeshDepthMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -2332,14 +2281,6 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -2397,11 +2338,6 @@ begin
  FreeAndNil(fMeshFragmentShaderModule);
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
-
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
 
  inherited Hide;
 end;
@@ -3886,14 +3822,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -4021,10 +3949,6 @@ begin
 
  end;
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -4889,14 +4813,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -4968,10 +4884,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -5786,14 +5698,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -5878,10 +5782,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -6901,14 +6801,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -6980,10 +6872,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -7494,14 +7382,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -7573,10 +7453,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -8442,14 +8318,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -8494,10 +8362,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -8926,14 +8790,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -8986,10 +8842,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
@@ -9753,14 +9605,6 @@ var Index:TpvSizeInt;
 begin
  inherited Show;
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.GraphicsQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
- fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-
  Stream:=pvApplication.Assets.GetAssetStream('shaders/mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -9805,10 +9649,6 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- FreeAndNil(fVulkanTransferCommandBufferFence);
- FreeAndNil(fVulkanTransferCommandBuffer);
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
- FreeAndNil(fVulkanGraphicsCommandBuffer);
  inherited Hide;
 end;
 
