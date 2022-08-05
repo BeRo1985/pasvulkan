@@ -85,6 +85,65 @@ type { TpvScene3DRendererInstance }
      TpvScene3DRendererInstance=class(TpvScene3DRendererBaseObject)
       public
        const CountCascadedShadowMapCascades=4;
+             CountOrderIndependentTransparencyLayers=8;
+       type { TInFlightFrameState }
+            TInFlightFrameState=record
+             Ready:TPasMPBool32;
+             FinalViewIndex:TpvSizeInt;
+             CountViews:TpvSizeInt;
+             CascadedShadowMapViewIndex:TpvSizeInt;
+             CountCascadedShadowMapViews:TpvSizeInt;
+            end;
+            PInFlightFrameState=^TInFlightFrameState;
+            TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
+            PInFlightFrameStates=^TInFlightFrameStates;
+             { TCascadedShadowMap }
+             TCascadedShadowMap=record
+              public
+               View:TpvScene3D.TView;
+               CombinedMatrix:TpvMatrix4x4;
+               SplitDepths:TpvVector2;
+               Scales:TpvVector2;
+             end;
+             { TLockOrderIndependentTransparentViewPort }
+             TLockOrderIndependentTransparentViewPort=packed record
+              x:TpvInt32;
+              y:TpvInt32;
+              z:TpvInt32;
+              w:TpvInt32;
+             end;
+             { TLockOrderIndependentTransparentUniformBuffer }
+             TLockOrderIndependentTransparentUniformBuffer=packed record
+              ViewPort:TLockOrderIndependentTransparentViewPort;
+             end;
+             { TLoopOrderIndependentTransparentViewPort }
+             TLoopOrderIndependentTransparentViewPort=packed record
+              x:TpvInt32;
+              y:TpvInt32;
+              z:TpvInt32;
+              w:TpvInt32;
+             end;
+             { TLoopOrderIndependentTransparentUniformBuffer }
+             TLoopOrderIndependentTransparentUniformBuffer=packed record
+              ViewPort:TLoopOrderIndependentTransparentViewPort;
+             end;
+             { TApproximationOrderIndependentTransparentUniformBuffer }
+             TApproximationOrderIndependentTransparentUniformBuffer=packed record
+              ZNearZFar:TpvVector4;
+             end;
+             PCascadedShadowMap=^TCascadedShadowMap;
+             TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
+             PCascadedShadowMaps=^TCascadedShadowMaps;
+             TInFlightFrameCascadedShadowMaps=array[0..MaxInFlightFrames-1] of TCascadedShadowMaps;
+             TCascadedShadowMapUniformBuffer=packed record
+              Matrices:array[0..CountCascadedShadowMapCascades-1] of TpvMatrix4x4;
+              SplitDepthsScales:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
+              ConstantBiasNormalBiasSlopeBiasClamp:array[0..CountCascadedShadowMapCascades-1] of TpvVector4;
+              MetaData:array[0..3] of TpvUInt32;
+             end;
+             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
+             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
+             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -96,10 +155,28 @@ type { TpvScene3DRendererInstance }
        fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
+       fCameraMatrix:TpvMatrix4x4;
+       fPointerToCameraMatrix:PpvMatrix4x4;
+       fInFlightFrameStates:TInFlightFrameStates;
+       fPointerToInFlightFrameStates:PInFlightFrameStates;
+      private
+       fVulkanFlushQueue:TpvVulkanQueue;
+       fVulkanFlushCommandPool:TpvVulkanCommandPool;
+       fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
+       fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+      private
+       fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
+       fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
+       fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
        destructor Destroy; override;
        procedure Prepare;
+      public
+       property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
+       property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -118,6 +195,7 @@ implementation
 { TpvScene3DRendererInstance }
 
 constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil);
+var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create(aParent);
 
@@ -153,13 +231,80 @@ begin
 
  fCascadedShadowMapHeight:=Renderer.ShadowMapSize;
 
+ fCameraMatrix:=TpvMatrix4x4.Identity;
+
+ fPointerToCameraMatrix:=@fCameraMatrix;
+
+ fPointerToInFlightFrameStates:=@fInFlightFrameStates;
+
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
+
+ FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
+
+ fVulkanFlushQueue:=fVulkanDevice.UniversalQueue;
+
+ fVulkanFlushCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                      fVulkanDevice.UniversalQueueFamilyIndex,
+                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+  fVulkanFlushCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fVulkanFlushCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  fVulkanFlushCommandBufferFences[InFlightFrameIndex]:=TpvVulkanFence.Create(fVulkanDevice);
+
+  fVulkanFlushSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+
+  fVulkanRenderSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+
+ end;
+
+ FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                     SizeOf(TCascadedShadowMapUniformBuffer),
+                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                     [],
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     [TpvVulkanBufferFlag.PersistentMapped]);
+ end;
 
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
+var InFlightFrameIndex:TpvSizeInt;
 begin
+
  FreeAndNil(fFrameGraph);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+  FreeAndNil(fVulkanRenderSemaphores[InFlightFrameIndex]);
+
+  FreeAndNil(fVulkanFlushCommandBuffers[InFlightFrameIndex]);
+
+  FreeAndNil(fVulkanFlushCommandBufferFences[InFlightFrameIndex]);
+
+  FreeAndNil(fVulkanFlushSemaphores[InFlightFrameIndex]);
+
+ end;
+
+ FreeAndNil(fVulkanFlushCommandPool);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
+ end;
+
+
  inherited Destroy;
 end;
 
