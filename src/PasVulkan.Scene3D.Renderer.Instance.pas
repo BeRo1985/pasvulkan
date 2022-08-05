@@ -165,6 +165,8 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
       private
+       fViews:TpvScene3D.TViews;
+      private
        fVulkanFlushQueue:TpvVulkanQueue;
        fVulkanFlushCommandPool:TpvVulkanCommandPool;
        fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
@@ -205,10 +207,14 @@ type { TpvScene3DRendererInstance }
        procedure Prepare;
        procedure AllocateResources;
        procedure ReleaseResources;
+       procedure Reset;
+       procedure AddView(const aView:TpvScene3D.TView);
+       procedure AddViews(const aViews:array of TpvScene3D.TView);
        procedure Update(const aInFlightFrameIndex:TpvInt32);
       public
        property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
+       property Views:TpvScene3D.TViews read fViews;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -949,6 +955,21 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.Reset;
+begin
+ fViews.Count:=0;
+end;
+
+procedure TpvScene3DRendererInstance.AddView(const aView:TpvScene3D.TView);
+begin
+ fViews.Add(aView);
+end;
+
+procedure TpvScene3DRendererInstance.AddViews(const aViews:array of TpvScene3D.TView);
+begin
+ fViews.Add(aViews);
+end;
+
 procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
 {$undef UseSphereBasedCascadedShadowMaps}
 const FrustumCorners:array[0..7] of TpvVector3=
@@ -1012,8 +1033,8 @@ begin
  if IsInfinite(fZFar) then begin
   RealZNear:=0.1;
   RealZFar:=1.0;
-  for Index:=0 to InFlightFrameState^.CountViews-1 do begin
-   ViewMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ViewMatrix.SimpleInverse;
+  for Index:=0 to fViews.Count-1 do begin
+   ViewMatrix:=fViews.Items[Index].ViewMatrix.SimpleInverse;
    if SceneWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
     if not SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
      Value:=SceneWorldSpaceSphere.Radius;
@@ -1040,8 +1061,8 @@ begin
 
  SceneClipWorldSpaceSphere:=TpvSphere.Create(SceneWorldSpaceSphere.Center,Max(SceneWorldSpaceSphere.Radius,RealZFar*0.5));
 
- for Index:=0 to InFlightFrameState^.CountViews-1 do begin
-  ProjectionMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ProjectionMatrix;
+ for Index:=0 to fViews.Count-1 do begin
+  ProjectionMatrix:=fViews.Items[Index].ProjectionMatrix;
   if DoNeedRefitNearFarPlanes then begin
    ProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
    ProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
@@ -1051,9 +1072,9 @@ begin
 
  LightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
  LightSideVector:=LightForwardVector.Perpendicular;
-{LightSideVector:=TpvVector3.InlineableCreate(-Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[0,2],
-                                              -Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[1,2],
-                                              -Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.RawComponents[2,2]).Normalize;
+{LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[1,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[2,2]).Normalize;
  if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
   if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
    LightSideVector:=TpvVector3.YAxis;
@@ -1080,8 +1101,8 @@ begin
  LightViewMatrix.RawComponents[3,2]:=0.0;
  LightViewMatrix.RawComponents[3,3]:=1.0;
 
- for Index:=0 to InFlightFrameState^.CountViews-1 do begin
-  ViewMatrix:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+Index].ViewMatrix.SimpleInverse;
+ for Index:=0 to fViews.Count-1 do begin
+  ViewMatrix:=fViews.Items[Index].ViewMatrix.SimpleInverse;
   if not SceneClipWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
    ViewMatrix.Translation.xyz:=SceneClipWorldSpaceSphere.Center+((ViewMatrix.Translation.xyz-SceneClipWorldSpaceSphere.Center).Normalize*SceneClipWorldSpaceSphere.Radius);
   end;
@@ -1101,7 +1122,7 @@ begin
  MinZExtents:=MinZExtents-ZMargin;
  MaxZExtents:=MaxZExtents+ZMargin;
 
- for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+ for ViewIndex:=0 to fViews.Count-1 do begin
   for Index:=0 to 7 do begin
    fCascadedShadowMapViewSpaceFrustumCorners[ViewIndex,Index]:=fCascadedShadowMapInverseProjectionMatrices[ViewIndex].MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
   end;
@@ -1131,7 +1152,7 @@ begin
   MinZ:=CascadedShadowMap^.SplitDepths.x;
   MaxZ:=CascadedShadowMap^.SplitDepths.y;
 
-  for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+  for ViewIndex:=0 to fViews.Count-1 do begin
    for Index:=0 to 7 do begin
     case Index of
      0..3:begin
@@ -1274,84 +1295,77 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32);
-var InFlightFrameState:PInFlightFrameState;
+var Index:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
     ViewMatrix:TpvMatrix4x4;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
- ViewMatrix:=fCameraMatrix.SimpleInverse;
+ if fViews.Count=0 then begin
 
- if assigned(fVirtualReality) then begin
+  ViewMatrix:=fCameraMatrix.SimpleInverse;
 
-  ViewLeft.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(0);
-  ViewLeft.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(0);
-  ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
-  ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+  if assigned(fVirtualReality) then begin
 
-  ViewRight.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(1);
-  ViewRight.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(1);
-  ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
-  ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
+   ViewLeft.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(0);
+   ViewLeft.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(0);
+   ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
- end else begin
+   ViewRight.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(1);
+   ViewRight.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(1);
+   ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
+   ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
-  ViewLeft.ViewMatrix:=ViewMatrix;
+   fViews.Add([ViewLeft,ViewRight]);
 
-  if fZFar>0.0 then begin
-   ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
-                                                                                 fWidth/fHeight,
-                                                                                 abs(fZNear),
-                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
   end else begin
-   ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
-                                                                                 fWidth/fHeight,
-                                                                                 abs(fZNear),
-                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
-  end;
-  if fZFar<0.0 then begin
-   if IsInfinite(fZFar) then begin
-    // Convert to reversed infinite Z
-    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=0.0;
-    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
-    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=abs(fZNear);
+
+   ViewLeft.ViewMatrix:=ViewMatrix;
+
+   if fZFar>0.0 then begin
+    ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
+                                                                                  fWidth/fHeight,
+                                                                                  abs(fZNear),
+                                                                                  IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
    end else begin
-    // Convert to reversed non-infinite Z
-    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
-    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
-    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
+                                                                                  fWidth/fHeight,
+                                                                                  abs(fZNear),
+                                                                                  IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
    end;
-  end;
-  ViewLeft.ProjectionMatrix:=ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
-  ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
-  ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+   if fZFar<0.0 then begin
+    if IsInfinite(fZFar) then begin
+     // Convert to reversed infinite Z
+     ViewLeft.ProjectionMatrix.RawComponents[2,2]:=0.0;
+     ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+     ViewLeft.ProjectionMatrix.RawComponents[3,2]:=abs(fZNear);
+    end else begin
+     // Convert to reversed non-infinite Z
+     ViewLeft.ProjectionMatrix.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
+     ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+     ViewLeft.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    end;
+   end;
+   ViewLeft.ProjectionMatrix:=ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
+   ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
-  ViewRight.ViewMatrix:=ViewLeft.ViewMatrix;
-  ViewRight.ProjectionMatrix:=ViewLeft.ProjectionMatrix;
-  ViewRight.InverseViewMatrix:=ViewLeft.InverseViewMatrix;
-  ViewRight.InverseProjectionMatrix:=ViewLeft.InverseProjectionMatrix;
+   fViews.Add(ViewLeft);
+
+  end;
 
  end;
 
- case CountSurfaceViews of
-  1:begin
-   InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddView(ViewLeft);
-   InFlightFrameState^.CountViews:=1;
-  end;
-  2:begin
-   InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddViews([ViewLeft,ViewRight]);
-   InFlightFrameState^.CountViews:=2;
-  end;
-{ 6:begin
-   // TODO: Cube map
-   InFlightFrameState^.CountViews:=6;
-  end;}
-  else begin
-   Assert(false);
-   InFlightFrameState^.CountViews:=0;
+ if fViews.Count>0 then begin
+  InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddView(fViews.Items[0]);
+  for Index:=1 to fViews.Count-1 do begin
+   Renderer.Scene3D.AddView(fViews.Items[Index]);
   end;
  end;
+ InFlightFrameState^.CountViews:=fViews.Count;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
 
