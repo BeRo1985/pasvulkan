@@ -83,8 +83,6 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.SMAAData,
      PasVulkan.Scene3D.Renderer.SkyCubeMap,
      PasVulkan.Scene3D.Renderer.SkyBox,
-     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
-     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.Lambertian.EnvMapCubeMap,
      PasVulkan.Scene3D.Renderer.Charlie.BRDF,
@@ -741,12 +739,12 @@ begin
  try
 
   UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                   fVulkanDevice.UniversalQueueFamilyIndex,
-                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                                    fVulkanDevice.UniversalQueueFamilyIndex,
+                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
   try
 
    UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                        VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+                                                         VK_COMMAND_BUFFER_LEVEL_PRIMARY);
    try
 
     UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
