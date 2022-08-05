@@ -172,11 +172,6 @@ type { TpvScene3DRendererInstance }
       private
        fViews:TpvScene3D.TViews;
       private
-       fVulkanFlushQueue:TpvVulkanQueue;
-       fVulkanFlushCommandPool:TpvVulkanCommandPool;
-       fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
-       fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
-       fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
        fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
@@ -391,19 +386,7 @@ begin
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
- fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
-
- fVulkanFlushCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
-                                                      Renderer.VulkanDevice.UniversalQueueFamilyIndex,
-                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-
-  fVulkanFlushCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fVulkanFlushCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-  fVulkanFlushCommandBufferFences[InFlightFrameIndex]:=TpvVulkanFence.Create(Renderer.VulkanDevice);
-
-  fVulkanFlushSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice);
 
   fVulkanRenderSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice);
 
@@ -499,18 +482,8 @@ begin
  FreeAndNil(fFrameGraph);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-
   FreeAndNil(fVulkanRenderSemaphores[InFlightFrameIndex]);
-
-  FreeAndNil(fVulkanFlushCommandBuffers[InFlightFrameIndex]);
-
-  FreeAndNil(fVulkanFlushCommandBufferFences[InFlightFrameIndex]);
-
-  FreeAndNil(fVulkanFlushSemaphores[InFlightFrameIndex]);
-
  end;
-
- FreeAndNil(fVulkanFlushCommandPool);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
