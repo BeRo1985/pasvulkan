@@ -144,7 +144,7 @@ type TpvScene3DRenderer=class;
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
-       procedure Setup;
+       procedure Prepare;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -329,10 +329,9 @@ begin
  end;
 end;
 
-procedure TpvScene3DRenderer.Setup;
+procedure TpvScene3DRenderer.Prepare;
 var SampleCounts:TVkSampleCountFlags;
     FormatProperties:TVkFormatProperties;
-    fMaxShadowMSAA,MaxMSAA:TpvInt32;
 begin
 
  if fShadowMapSize=0 then begin
