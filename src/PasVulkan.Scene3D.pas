@@ -6930,7 +6930,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Images.Count-1 do begin
    SourceImage:=aSourceDocument.Images[Index];
-   Image:=TImage.Create(pvApplication.ResourceManager,fSceneInstance);
+   Image:=TImage.Create(ResourceManager,fSceneInstance);
    try
     fSceneInstance.fImageListLock.Acquire;
     try
@@ -6962,7 +6962,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
    SourceSampler:=aSourceDocument.Samplers[Index];
-   Sampler:=TSampler.Create(pvApplication.ResourceManager,fSceneInstance);
+   Sampler:=TSampler.Create(ResourceManager,fSceneInstance);
    try
     fSceneInstance.fSamplerListLock.Acquire;
     try
@@ -6993,7 +6993,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Textures.Count-1 do begin
    SourceTexture:=aSourceDocument.Textures[Index];
-   Texture:=TTexture.Create(pvApplication.ResourceManager,fSceneInstance);
+   Texture:=TTexture.Create(ResourceManager,fSceneInstance);
    try
     fSceneInstance.fTextureListLock.Acquire;
     try
@@ -7024,7 +7024,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
  begin
   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
    SourceMaterial:=aSourceDocument.Materials[Index];
-   Material:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,fSceneInstance);
+   Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
    try
     fSceneInstance.fMaterialListLock.Acquire;
     try
@@ -10317,27 +10317,27 @@ begin
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
- fDefaultSampler:=TSampler.Create(pvApplication.ResourceManager,self);
+ fDefaultSampler:=TSampler.Create(ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
  fDefaultSampler.IncRef;
 
- fWhiteImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,self);
+ fWhiteImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fWhiteImage.AssignFromWhiteTexture;
  fWhiteImage.IncRef;
 
- fWhiteTexture:=TpvScene3D.TTexture.Create(pvApplication.ResourceManager,self);
+ fWhiteTexture:=TpvScene3D.TTexture.Create(ResourceManager,self);
  fWhiteTexture.AssignFromWhiteTexture;
  fWhiteTexture.IncRef;
 
- fDefaultNormalMapImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,self);
+ fDefaultNormalMapImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fDefaultNormalMapImage.AssignFromDefaultNormalMapTexture;
  fDefaultNormalMapImage.IncRef;
 
- fDefaultNormalMapTexture:=TpvScene3D.TTexture.Create(pvApplication.ResourceManager,self);
+ fDefaultNormalMapTexture:=TpvScene3D.TTexture.Create(ResourceManager,self);
  fDefaultNormalMapTexture.AssignFromDefaultNormalMapTexture;
  fDefaultNormalMapTexture.IncRef;
 
- fEmptyMaterial:=TpvScene3D.TMaterial.Create(pvApplication.ResourceManager,self);
+ fEmptyMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,self);
  fEmptyMaterial.AssignFromEmpty;
  fEmptyMaterial.IncRef;
 
