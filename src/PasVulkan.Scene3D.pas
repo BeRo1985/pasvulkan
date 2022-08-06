@@ -1714,6 +1714,7 @@ type EpvScene3D=class(Exception);
        fHasTransmission:boolean;
        fVulkanBufferCopyBatchItemArrays:array[0..MaxInFlightFrames-1] of TpvVulkanBufferCopyBatchItemArray;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
+       fRenderPassIndexCounter:TpvSizeInt;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -1739,6 +1740,8 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
+       procedure ResetRenderPasses;
+       function AcquireRenderPassIndex:TpvSizeInt;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure TransferViewsToPreviousViews;
        procedure ClearViews;
@@ -11229,6 +11232,16 @@ end;
 function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
 begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
+end;
+
+procedure TpvScene3D.ResetRenderPasses;
+begin
+ TPasMPInterlocked.Write(fRenderPassIndexCounter,0);
+end;
+
+function TpvScene3D.AcquireRenderPassIndex:TpvSizeInt;
+begin
+ result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter);
 end;
 
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);

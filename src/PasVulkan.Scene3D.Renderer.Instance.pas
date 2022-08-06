@@ -96,6 +96,8 @@ type { TpvScene3DRendererInstance }
              CountViews:TpvSizeInt;
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
+             ViewRenderPassIndex:TpvSizeInt;
+             CascadedShadowMapRenderPassIndex:TpvSizeInt;
             end;
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
@@ -1539,7 +1541,7 @@ begin
   LightSpaceAABB.Min.y:=floor(LightSpaceAABB.Min.y/UnitsPerTexel.y)*UnitsPerTexel.y;
 
   LightSpaceAABB.Max.x:=ceil(LightSpaceAABB.Max.x/UnitsPerTexel.x)*UnitsPerTexel.x;
-  LightSpaceAABB.Max.y:=ceil(LightSpaceAABB.Max.y/UnitsPerTexel.y)*UnitsPerTexel.y;{}
+  LightSpaceAABB.Max.y:=ceil(LightSpaceAABB.Max.y/UnitsPerTexel.y)*UnitsPerTexel.y;//}
 
   LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(LightSpaceAABB.Min.x,
                                                                       LightSpaceAABB.Max.x,
@@ -1674,9 +1676,13 @@ begin
                                                                         0,
                                                                         SizeOf(TCascadedShadowMapUniformBuffer));
 
+ InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+
+ InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+
  // Main viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
-                          0,
+                          InFlightFrameState^.ViewRenderPassIndex,
                           InFlightFrameState^.FinalViewIndex,
                           InFlightFrameState^.CountViews,
                           fWidth,
@@ -1686,7 +1692,7 @@ begin
 
  // Cascaded shadow map viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
-                          1,
+                          InFlightFrameState^.CascadedShadowMapRenderPassIndex,
                           InFlightFrameState^.CascadedShadowMapViewIndex,
                           InFlightFrameState^.CountCascadedShadowMapViews,
                           CascadedShadowMapWidth,

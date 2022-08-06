@@ -422,40 +422,40 @@ begin
   if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                         -1,
-                         aInFlightFrameIndex,
-                         1,
-                         InFlightFrameState^.CascadedShadowMapViewIndex,
-                         InFlightFrameState^.CountCascadedShadowMapViews,
-                         fFrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                   InFlightFrameState^.CascadedShadowMapViewIndex,
+                                   InFlightFrameState^.CountCascadedShadowMapViews,
+                                   fFrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                         -1,
-                         aInFlightFrameIndex,
-                         1,
-                         InFlightFrameState^.CascadedShadowMapViewIndex,
-                         InFlightFrameState^.CountCascadedShadowMapViews,
-                         fFrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                   InFlightFrameState^.CascadedShadowMapViewIndex,
+                                   InFlightFrameState^.CountCascadedShadowMapViews,
+                                   fFrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
  { fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                         -1,
-                         aInFlightFrameIndex,
-                         0,
-                         InFlightFrameState^.FinalViewIndex,
-                         InFlightFrameState^.CountViews,
-                         fFrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Blend]);}
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                   InFlightFrameState^.CascadedShadowMapViewIndex,
+                                   InFlightFrameState^.CountCascadedShadowMapViews,
+                                   fFrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Blend]);}
 
   end;
 

@@ -605,29 +605,29 @@ begin
 
   if fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                         -1,
-                         aInFlightFrameIndex,
-                         0,
-                         InFlightFrameState^.FinalViewIndex,
-                         InFlightFrameState^.CountViews,
-                         fFrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountViews,
+                                   fFrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
   end;
 
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
-                        -1,
-                        aInFlightFrameIndex,
-                        0,
-                        InFlightFrameState^.FinalViewIndex,
-                        InFlightFrameState^.CountViews,
-                        fFrameGraph.DrawFrameIndex,
-                        aCommandBuffer,
-                        fVulkanPipelineLayout,
-                        OnSetRenderPassResources,
-                        [TpvScene3D.TMaterial.TAlphaMode.Blend]);
+                                  -1,
+                                  aInFlightFrameIndex,
+                                  InFlightFrameState^.ViewRenderPassIndex,
+                                  InFlightFrameState^.FinalViewIndex,
+                                  InFlightFrameState^.CountViews,
+                                  fFrameGraph.DrawFrameIndex,
+                                  aCommandBuffer,
+                                  fVulkanPipelineLayout,
+                                  OnSetRenderPassResources,
+                                  [TpvScene3D.TMaterial.TAlphaMode.Blend]);
 
  end;
 

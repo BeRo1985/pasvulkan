@@ -482,6 +482,8 @@ begin
     end;
    end;
 
+   fScene3D.ResetRenderPasses;
+
    fRendererInstance.CameraMatrix:=fCameraMatrix;
 
    fRendererInstance.Reset;
