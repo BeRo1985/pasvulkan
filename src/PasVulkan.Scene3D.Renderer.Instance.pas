@@ -153,7 +153,9 @@ type { TpvScene3DRendererInstance }
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
+       fExternalImageFormat:TVkFormat;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
+       fHasExternalOutputImage:boolean;
        fCascadedShadowMapWidth:TpvInt32;
        fCascadedShadowMapHeight:TpvInt32;
        fCountSurfaceViews:TpvInt32;
@@ -203,7 +205,7 @@ type { TpvScene3DRendererInstance }
        fPasses:TObject;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
-       constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
+       constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
        procedure Prepare;
        procedure AllocateResources;
@@ -247,7 +249,9 @@ type { TpvScene3DRendererInstance }
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
+       property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
+       property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
        property Left:TpvInt32 read fLeft write fLeft;
@@ -340,12 +344,14 @@ type TpvScene3DRendererInstancePasses=class
 
 { TpvScene3DRendererInstance }
 
-constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil);
+constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality;const aExternalImageFormat:TVkFormat);
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create(aParent);
 
  fPasses:=TpvScene3DRendererInstancePasses.Create;
+
+ fExternalImageFormat:=aExternalImageFormat;
 
  fVirtualReality:=aVirtualReality;
 
@@ -387,7 +393,15 @@ begin
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 
- fFrameGraph.SurfaceIsSwapchain:=not assigned(fVirtualReality);
+ fFrameGraph.SurfaceIsSwapchain:=(fExternalImageFormat=VK_FORMAT_UNDEFINED) and not assigned(fVirtualReality);
+
+ if fFrameGraph.SurfaceIsSwapchain then begin
+  fExternalOutputImageData:=nil;
+ end else begin
+  fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
+ end;
+
+ fHasExternalOutputImage:=(fExternalImageFormat<>VK_FORMAT_UNDEFINED) and not assigned(fVirtualReality);
 
  fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame;
 
@@ -522,8 +536,6 @@ begin
 
  if assigned(fVirtualReality) then begin
 
-  fExternalOutputImageData:=TpvFrameGraph.TExternalImageData.Create(fFrameGraph);
-
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                    true,
                                    fVirtualReality.ImageFormat,
@@ -534,8 +546,6 @@ begin
                                    1
                                   );
  end else begin
-
-  fExternalOutputImageData:=nil;
 
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
                                    true,
@@ -1020,6 +1030,10 @@ begin
 
   fHeight:=fVirtualReality.Height;
 
+ end else if fHasExternalOutputImage then begin
+
+  // Nothing
+
  end else begin
 
   fWidth:=pvApplication.VulkanSwapChain.Width;
@@ -1044,6 +1058,10 @@ begin
   end;
 
   (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=fVirtualReality.ImageFormat;
+
+ end else if fHasExternalOutputImage then begin
+
+  (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=fExternalImageFormat;
 
  end;
 
@@ -1196,7 +1214,7 @@ begin
 
  fFrameGraph.BeforeDestroySwapChain;
 
- if assigned(fVirtualReality) then begin
+ if assigned(fExternalOutputImageData) then begin
   fExternalOutputImageData.VulkanImages.Clear;
  end;
 

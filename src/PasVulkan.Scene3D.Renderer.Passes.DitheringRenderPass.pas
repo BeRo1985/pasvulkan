@@ -141,7 +141,7 @@ begin
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
 
- if assigned(fInstance.VirtualReality) then begin
+ if assigned(fInstance.ExternalOutputImageData) then begin
   fResourceSurface:=AddImageOutput('resourcetype_output_color',
                                    'resource_output',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
