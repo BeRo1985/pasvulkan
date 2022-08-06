@@ -447,7 +447,7 @@ procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemapho
 begin
  if assigned(fVirtualReality) then begin
   inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
-  fVirtualReality.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+  fVirtualReality.Draw(aSwapChainImageIndex,DrawInFlightFrameIndex,aWaitSemaphore,aWaitFence);
  end else begin
   inherited Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
@@ -457,7 +457,7 @@ procedure TApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWait
 begin
  if assigned(fVirtualReality) then begin
   inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,nil);
-  fVirtualReality.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+  fVirtualReality.FinishFrame(aSwapChainImageIndex,DrawInFlightFrameIndex,aWaitSemaphore,aWaitFence);
  end else begin
   inherited FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
@@ -467,7 +467,7 @@ procedure TApplication.PostPresent(const aSwapChainImageIndex:TpvInt32);
 begin
  inherited PostPresent(aSwapChainImageIndex);
  if assigned(fVirtualReality) then begin
-  fVirtualReality.PostPresent(aSwapChainImageIndex);
+  fVirtualReality.PostPresent(aSwapChainImageIndex,DrawInFlightFrameIndex);
  end;
 end;
 
