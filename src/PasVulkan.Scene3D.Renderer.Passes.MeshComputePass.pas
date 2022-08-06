@@ -122,7 +122,7 @@ begin
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
  try
-  fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -144,12 +144,12 @@ begin
 
  inherited AfterCreateSwapChain;
 
- fPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
- fPipeline:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+ fPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                             pvApplication.VulkanPipelineCache,
                                             0,
                                             fVulkanPipelineShaderStageCompute,
@@ -158,7 +158,7 @@ begin
                                             0);
 
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
-  fEvents[Index]:=TpvVulkanEvent.Create(pvApplication.VulkanDevice);
+  fEvents[Index]:=TpvVulkanEvent.Create(fInstance.Renderer.VulkanDevice);
   fEventReady[Index]:=false;
  end;
 

@@ -159,7 +159,7 @@ begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level0_comp.spv');
  end;
  try
-  fDownsampleLevel0ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fDownsampleLevel0ComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -170,7 +170,7 @@ begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level1_comp.spv');
  end;
  try
-  fDownsampleLevel1ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fDownsampleLevel1ComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -181,7 +181,7 @@ begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_'+Format+'_level2_comp.spv');
  end;
  try
-  fDownsampleLevel2ComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fDownsampleLevel2ComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -212,7 +212,7 @@ begin
 
  inherited AfterCreateSwapChain;
 
- fVulkanSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+ fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
                                          TVkFilter.VK_FILTER_LINEAR,
                                          TVkFilter.VK_FILTER_LINEAR,
                                          TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
@@ -229,14 +229,14 @@ begin
                                          VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                          false);
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames*fInstance.ForwardMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*fInstance.ForwardMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*fInstance.ForwardMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.Initialize;
 
- fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                        1,
@@ -249,11 +249,11 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- fPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
- fPipelineLevel0:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+ fPipelineLevel0:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                   pvApplication.VulkanPipelineCache,
                                                   0,
                                                   fVulkanPipelineShaderStageDownsampleLevel0Compute,
@@ -261,7 +261,7 @@ begin
                                                   nil,
                                                   0);
 
- fPipelineLevel1:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+ fPipelineLevel1:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                   pvApplication.VulkanPipelineCache,
                                                   0,
                                                   fVulkanPipelineShaderStageDownsampleLevel1Compute,
@@ -269,7 +269,7 @@ begin
                                                   nil,
                                                   0);
 
- fPipelineLevel2:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+ fPipelineLevel2:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                   pvApplication.VulkanPipelineCache,
                                                   0,
                                                   fVulkanPipelineShaderStageDownsampleLevel2Compute,
@@ -284,7 +284,7 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
+  fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                    fResourceInput.VulkanImages[InFlightFrameIndex],
                                                                    ImageViewType,
                                                                    TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
