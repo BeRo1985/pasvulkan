@@ -10245,8 +10245,10 @@ begin
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
- end else begin
+ end else if assigned(pvApplication) then begin
   fVulkanDevice:=pvApplication.VulkanDevice;
+ end else begin
+  fVulkanDevice:=nil;
  end;
 
  fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
