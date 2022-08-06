@@ -251,6 +251,7 @@ var PhysicalDevice:TVkPhysicalDevice;
 begin
  inherited ChooseVulkanPhysicalDevice(aVulkanPhysicalDevice);
  if assigned(fVirtualReality) and not (fVirtualReality.Mode in [TpvVirtualReality.TMode.Disabled,TpvVirtualReality.TMode.Faked]) then begin
+  PhysicalDevice:=VK_NULL_HANDLE;
   fVirtualReality.ChooseVulkanPhysicalDevice(VulkanInstance,PhysicalDevice);
   pvApplication.VulkanPhysicalDeviceHandle:=PhysicalDevice;
  end;
