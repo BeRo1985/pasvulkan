@@ -91,6 +91,7 @@ type { TpvTimerQuery }
        fQueryPool:TVkQueryPool;
        fCount:TpvSizeInt;
        fQueryedCount:TpvSizeInt;
+       fQueryedTotalCount:TpvSizeInt;
        fNames:TNames;
        fRawResults:TRawResults;
        fTimeStampMasks:TTimeStampMasks;
@@ -135,7 +136,7 @@ begin
      assigned(fDevice.Commands.Commands.ResetQueryPoolEXT)) then begin
   QueryPoolCreateInfo:=TVkQueryPoolCreateInfo.Create(0,
                                                      TVkQueryType(VK_QUERY_TYPE_TIMESTAMP),
-                                                     aCount shl 1,
+                                                     (aCount shl 1)+1,
                                                      0);
   VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,
                                                      @QueryPoolCreateInfo,
@@ -147,7 +148,7 @@ begin
  fNames.Count:=aCount;
  fTotal:=0.0;
  fRawResults.Initialize;
- fRawResults.Resize(fCount shl 1);
+ fRawResults.Resize((fCount shl 1)+1);
  fTimeStampMasks.Initialize;
  fTimeStampMasks.Resize(fCount);
  fResults:=TResults.Create;
@@ -180,6 +181,7 @@ begin
   end;
  end;
  fQueryedCount:=0;
+ fQueryedTotalCount:=0;
  fValid:=false;
 end;
 
@@ -200,11 +202,12 @@ begin
    end else if assigned(fDevice.Commands.Commands.ResetQueryPoolEXT) then begin
     fDevice.Commands.ResetQueryPoolEXT(fDevice.Handle,QueryedCount,fQueryedCount shl 1,2);
    end;}
-   aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,fQueryedCount shl 1);
+   aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,fQueryedTotalCount);
    if fNames[fQueryedCount]<>aName then begin
     fNames[fQueryedCount]:=aName;
    end;
    result:=fQueryedCount;
+   inc(fQueryedTotalCount);
    fValid:=true;
   end;
  end else begin
@@ -216,8 +219,9 @@ end;
 procedure TpvTimerQuery.Stop(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aPipelineStage:TVkPipelineStageFlagBits);
 begin
  if fValid then begin
-  aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,(fQueryedCount shl 1) or 1);
+  aCommandBuffer.CmdWriteTimestamp(aPipelineStage,fQueryPool,fQueryedTotalCount);
   inc(fQueryedCount);
+  inc(fQueryedTotalCount);
   fValid:=false;
  end;
 end;
@@ -228,14 +232,16 @@ const SumString:TpvUTF8String='Sum';
 var Index:TpvSizeInt;
     Result_:TResult;
     Sum:TpvDouble;
+    a,b:TpvUInt64;
 begin
  result:=(fQueryPool<>VK_NULL_HANDLE) and
          (fQueryedCount>0) and
+         (fQueryedTotalCount>0) and
          (fDevice.Commands.GetQueryPoolResults(fDevice.Handle,
                                                fQueryPool,
                                                0,
-                                               fQueryedCount shl 1,
-                                               (fQueryedCount shl 1)*SizeOf(TpvUInt64),
+                                               fQueryedTotalCount,
+                                               fQueryedTotalCount*SizeOf(TpvUInt64),
                                                @fRawResults.Items[0],
                                                SizeOf(TpvUInt64),
                                                TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT))=VK_SUCCESS);
@@ -246,14 +252,20 @@ begin
    if Result_.fName<>fNames.Items[Index] then begin
     Result_.fName:=fNames.Items[Index];
    end;
-   Result_.fDuration:=((fRawResults.Items[(Index shl 1) or 1]-RawResults.Items[Index shl 1]) and fTimeStampMasks.Items[Index])*fTickSeconds;
+   a:=fRawResults.Items[(Index shl 1) or 1];
+   b:=RawResults.Items[Index shl 1];
+   Result_.fDuration:=((a-b) and fTimeStampMasks.Items[Index])*fTickSeconds;
    Result_.fValid:=true;
    Sum:=Sum+Result_.fDuration;
   end;
   for Index:=fQueryedCount to fCount-1 do begin
    fResults[Index].fValid:=false;
   end;
-  fTotal:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
+  begin
+   a:=fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1];
+   b:=fRawResults.Items[0] and fTimeStampMasks.Items[0];
+   fTotal:=(a-b)*fTickSeconds;
+  end;
   Result_:=fResults[fCount];
   if Result_.fName<>SumString then begin
    Result_.fName:=SumString;
@@ -264,7 +276,7 @@ begin
   if Result_.fName<>TotalString then begin
    Result_.fName:=TotalString;
   end;
-  Result_.fDuration:=((fRawResults.Items[((fQueryedCount-1) shl 1) or 1] and fTimeStampMasks.Items[fQueryedCount-1])-(fRawResults.Items[0] and fTimeStampMasks.Items[0]))*fTickSeconds;
+  Result_.fDuration:=fTotal;
   Result_.fValid:=true;
  end;
 end;
