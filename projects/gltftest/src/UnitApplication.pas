@@ -80,7 +80,7 @@ type TApplication=class(TpvApplication)
 
 var Application:TApplication=nil;
 
-    GLTFFileName:UTF8String='test.glb';
+    GLTFFileName:UTF8String='';
 
 implementation
 
