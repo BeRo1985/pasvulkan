@@ -1634,6 +1634,7 @@ type EpvScene3D=class(Exception);
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
       private
        fLock:TPasMPSpinLock;
+       fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fBufferStreamingMode:TBufferStreamingMode;
@@ -1734,7 +1735,7 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
@@ -1786,6 +1787,7 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
        property Views:TViews read fViews;
       published
+       property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property HasTransmission:boolean read fHasTransmission;
@@ -2262,20 +2264,20 @@ begin
     try
      if (fReferenceCounter>0) and not fUploaded then begin
       try
-       UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
+       UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
        try
-        UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                         pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
-                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+        UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
+                                                          fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
         try
          UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
                                                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          try
-          UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+          UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
           try
            case fKind of
             TpvScene3D.TImage.TKind.WhiteTexture:begin
-             fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+             fTexture:=TpvVulkanTexture.CreateFromMemory(fSceneInstance.fVulkanDevice,
                                                          UniversalQueue,
                                                          UniversalCommandBuffer,
                                                          UniversalFence,
@@ -2303,7 +2305,7 @@ begin
                                                          true);
             end;
             TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
-             fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+             fTexture:=TpvVulkanTexture.CreateFromMemory(fSceneInstance.fVulkanDevice,
                                                          UniversalQueue,
                                                          UniversalCommandBuffer,
                                                          UniversalFence,
@@ -2331,7 +2333,7 @@ begin
                                                          false);
             end;
             else begin
-             fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+             fTexture:=TpvVulkanTexture.CreateFromImage(fSceneInstance.fVulkanDevice,
                                                         UniversalQueue,
                                                         UniversalCommandBuffer,
                                                         UniversalFence,
@@ -2618,7 +2620,7 @@ begin
     try
      if (fReferenceCounter>0) and not fUploaded then begin
       try
-       fSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
+       fSampler:=TpvVulkanSampler.Create(fSceneInstance.fVulkanDevice,
                                          fMagFilter,
                                          fMinFilter,
                                          fMipmapMode,
@@ -2626,8 +2628,8 @@ begin
                                          fAddressModeT,
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                          0.0,
-                                         pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0,
-                                         Max(1.0,pvApplication.VulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),
+                                         fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0,
+                                         Max(1.0,fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),
                                          false,
                                          VK_COMPARE_OP_ALWAYS,
                                          0.0,
@@ -4175,7 +4177,7 @@ begin
    case fSceneInstance.fBufferStreamingMode of
 
     TBufferStreamingMode.Direct:begin
-     fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                      MaxVisibleLights*SizeOf(TLightItem),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -4190,7 +4192,7 @@ begin
                                                      0,
                                                      [TpvVulkanBufferFlag.PersistentMapped]
                                                     );
-     fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                     (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -4209,7 +4211,7 @@ begin
     end;
 
     TBufferStreamingMode.Staging:begin
-     fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                      MaxVisibleLights*SizeOf(TLightItem),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -4224,7 +4226,7 @@ begin
                                                      0,
                                                      []
                                                     );
-     fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fLightTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                     (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6349,7 +6351,7 @@ var Index:TpvSizeInt;
   fMorphTargetVertices.Finish;
   fJointBlocks.Finish;
 
-  fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+  fVulkanVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                               fVertices.Count*SizeOf(TVertex),
                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6373,7 +6375,7 @@ var Index:TpvSizeInt;
                                  TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 
   for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-   fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+   fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                              fVertices.Count*SizeOf(TCachedVertex),
                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6396,7 +6398,7 @@ var Index:TpvSizeInt;
                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
   end;
 
-{ fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+{ fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                              fIndices.Count*SizeOf(TVkUInt32),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6418,7 +6420,7 @@ var Index:TpvSizeInt;
                                 fIndices.Count*SizeOf(TVkUInt32),
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);//}
 
-  fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+  fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                  fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32),
                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6440,7 +6442,7 @@ var Index:TpvSizeInt;
                                     fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32),
                                     TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
-  fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+  fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                        fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6463,7 +6465,7 @@ var Index:TpvSizeInt;
                                           fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32),
                                           TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
-  fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+  fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                          fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6486,7 +6488,7 @@ var Index:TpvSizeInt;
                                             fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
                                             TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
-  fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+  fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                   fJointBlocks.Count*SizeOf(TJointBlock),
                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6527,7 +6529,7 @@ var Index:TpvSizeInt;
 
     for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
 
-     fVulkanNodeMatricesStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fVulkanNodeMatricesStagingBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                       (fNodes.Count+fCountJointNodeMatrices+1)*SizeOf(TpvMatrix4x4),
                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6543,7 +6545,7 @@ var Index:TpvSizeInt;
                                                                       [TpvVulkanBufferFlag.PersistentMapped]
                                                                      );
 
-     fVulkanMorphTargetVertexWeightsStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+     fVulkanMorphTargetVertexWeightsStagingBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                                   (Max(Max(fMorphTargetCount,fCountNodeWeights),1))*SizeOf(TpvFloat),
                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -6580,16 +6582,16 @@ begin
     try
      if not fUploaded then begin
       try
-       UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
+       UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
        try
-        UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                          pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+        UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
+                                                          fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
         try
          UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
                                                                VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          try
-          UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+          UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
           try
            ProcessPrimitives;
           finally
@@ -7887,7 +7889,7 @@ begin
 
       TBufferStreamingMode.Direct:begin
 
-       fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+       fNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                    length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -7903,7 +7905,7 @@ begin
                                                    [TpvVulkanBufferFlag.PersistentMapped]
                                                   );
 
-       fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+       fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -7923,7 +7925,7 @@ begin
 
       TBufferStreamingMode.Staging:begin
 
-       fNodeMatricesBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+       fNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                    length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -7939,7 +7941,7 @@ begin
                                                    []
                                                   );
 
-       fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+       fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -8312,7 +8314,7 @@ begin
         fVulkanDatas[Index].Upload;
        end;
 
-       fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+       fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                     length(fVulkanComputeDescriptorSets));
        fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*7);
@@ -10235,11 +10237,17 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
 var Index:TpvSizeInt;
 begin
 
  inherited Create(aResourceManager,aParent);
+
+ if assigned(aVulkanDevice) then begin
+  fVulkanDevice:=aVulkanDevice;
+ end else begin
+  fVulkanDevice:=pvApplication.VulkanDevice;
+ end;
 
  fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
 
@@ -10356,7 +10364,7 @@ begin
 
  ReleaseFrameDelay:=fCountInFlightFrames+1;
 
- fMeshComputeVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fMeshComputeVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
  // Group - Vertices
  fMeshComputeVulkanDescriptorSetLayout.AddBinding(0,
@@ -10409,7 +10417,7 @@ begin
 
  fMeshComputeVulkanDescriptorSetLayout.Initialize;
 
- fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice,TVkDescriptorSetLayoutCreateFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT),true);
+ fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice,TVkDescriptorSetLayoutCreateFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT),true);
  fGlobalVulkanDescriptorSetLayout.AddBinding(0,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
@@ -10691,16 +10699,16 @@ begin
 
        fWhiteTexture.Upload;
 
-       fVulkanStagingQueue:=pvApplication.VulkanDevice.UniversalQueue;
+       fVulkanStagingQueue:=fVulkanDevice.UniversalQueue;
 
-       fVulkanStagingCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                              pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+       fVulkanStagingCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                              fVulkanDevice.UniversalQueueFamilyIndex,
                                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
        fVulkanStagingCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanStagingCommandPool,
                                                                   VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-       fVulkanStagingFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+       fVulkanStagingFence:=TpvVulkanFence.Create(fVulkanDevice);
 
        case fBufferStreamingMode of
 
@@ -10717,7 +10725,7 @@ begin
          end;
 
          for Index:=0 to fCountInFlightFrames-1 do begin
-          fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+          fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                          SizeOf(TGlobalViewUniformBuffer),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -10739,7 +10747,7 @@ begin
 
          for Index:=0 to fCountInFlightFrames-1 do begin
 
-          fVulkanLightItemsStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+          fVulkanLightItemsStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                          MaxVisibleLights*SizeOf(TLightItem),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
@@ -10756,7 +10764,7 @@ begin
                                                                          [TpvVulkanBufferFlag.PersistentMapped]
                                                                         );
 
-          fVulkanLightTreeStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+          fVulkanLightTreeStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                         (MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
@@ -10773,7 +10781,7 @@ begin
                                                                         [TpvVulkanBufferFlag.PersistentMapped]
                                                                        );
 
-          fGlobalVulkanViewUniformStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+          fGlobalVulkanViewUniformStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                 SizeOf(TGlobalViewUniformBuffer),
                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -10791,7 +10799,7 @@ begin
          end;
 
          for Index:=0 to fCountInFlightFrames-1 do begin
-          fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+          fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                          SizeOf(TGlobalViewUniformBuffer),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -10819,7 +10827,7 @@ begin
         fLightBuffers[Index].Upload;
        end;
 
-       fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
+       fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*4);
        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
@@ -10851,16 +10859,16 @@ begin
 
        MaterialBufferDataSize:=SizeOf(TMaterialBufferData);
 
-       UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
+       UniversalQueue:=fVulkanDevice.UniversalQueue;
        try
-        UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                          pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
+        UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                          fVulkanDevice.UniversalQueueFamilyIndex,
                                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
         try
          UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
                                                                VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          try
-          UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+          UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
           try
 
            case fBufferStreamingMode of
@@ -10877,7 +10885,7 @@ begin
 
              for Index:=0 to fCountInFlightFrames-1 do begin
 
-              fVulkanMaterialDataStagingBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+              fVulkanMaterialDataStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                MaterialBufferDataSize,
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
@@ -10917,7 +10925,7 @@ begin
 
              TBufferStreamingMode.Direct:begin
 
-              fVulkanMaterialDataBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+              fVulkanMaterialDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                         MaterialBufferDataSize,
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
@@ -10946,7 +10954,7 @@ begin
 
              TBufferStreamingMode.Staging:begin
 
-              fVulkanMaterialDataBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+              fVulkanMaterialDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                         MaterialBufferDataSize,
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
@@ -10981,7 +10989,7 @@ begin
 
              DeviceAddress:=fVulkanMaterialDataBuffers[Index].DeviceAddress;
 
-             fVulkanMaterialUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+             fVulkanMaterialUniformBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                           SizeOf(TVkDeviceAddress),
                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -12014,7 +12022,7 @@ begin
 
   if fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count>0 then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or pvApplication.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                      0,
                                      0,
                                      nil,
