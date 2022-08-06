@@ -421,7 +421,7 @@ begin
 
  fShadowMapSize:=Max(16,fShadowMapSize);
 
- fBufferDeviceAddress:=CheckBufferDeviceAddress(fVulkanDevice);
+ fBufferDeviceAddress:=fScene3D.UseBufferDeviceAddress;
  if fBufferDeviceAddress then begin
   fMeshFragTypeName:='matbufref';
  end else begin
