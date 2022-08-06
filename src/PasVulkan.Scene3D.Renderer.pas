@@ -935,7 +935,7 @@ begin
                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or pvApplication.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                                           aWaitSemaphore,
                                                           fVulkanFlushSemaphores[aInFlightFrameIndex],
-                                                          nil,
+                                                          aWaitFence,
                                                           false);
   aWaitSemaphore:=fVulkanFlushSemaphores[aInFlightFrameIndex];
  end;

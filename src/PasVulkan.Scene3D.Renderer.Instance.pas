@@ -214,6 +214,7 @@ type { TpvScene3DRendererInstance }
        procedure AddView(const aView:TpvScene3D.TView);
        procedure AddViews(const aViews:array of TpvScene3D.TView);
        procedure Update(const aInFlightFrameIndex:TpvInt32);
+       procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
@@ -1644,6 +1645,17 @@ begin
                                                                         0,
                                                                         SizeOf(TCascadedShadowMapUniformBuffer));
 
+end;
+
+procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+begin
+ fFrameGraph.Draw(aSwapChainImageIndex,
+                  aInFlightFrameIndex,
+                  aFrameCounter,
+                  aWaitSemaphore,
+                  fVulkanRenderSemaphores[aInFlightFrameIndex],
+                  aWaitFence);
+ aWaitSemaphore:=fVulkanRenderSemaphores[aInFlightFrameIndex];
 end;
 
 end.
