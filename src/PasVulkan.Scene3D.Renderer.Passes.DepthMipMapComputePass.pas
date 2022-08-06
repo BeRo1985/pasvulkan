@@ -266,7 +266,7 @@ begin
  fPipelineLayout.Initialize;
 
  fPipelineLevel0:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
-                                                  pvApplication.VulkanPipelineCache,
+                                                  fInstance.Renderer.VulkanPipelineCache,
                                                   0,
                                                   fVulkanPipelineShaderStageDownsampleLevel0Compute,
                                                   fPipelineLayout,
@@ -274,7 +274,7 @@ begin
                                                   0);
 
  fPipelineLevel1:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
-                                                  pvApplication.VulkanPipelineCache,
+                                                  fInstance.Renderer.VulkanPipelineCache,
                                                   0,
                                                   fVulkanPipelineShaderStageDownsampleLevel1Compute,
                                                   fPipelineLayout,

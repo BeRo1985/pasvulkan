@@ -150,7 +150,7 @@ begin
  fPipelineLayout.Initialize;
 
  fPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
-                                            pvApplication.VulkanPipelineCache,
+                                            fInstance.Renderer.VulkanPipelineCache,
                                             0,
                                             fVulkanPipelineShaderStageCompute,
                                             fPipelineLayout,

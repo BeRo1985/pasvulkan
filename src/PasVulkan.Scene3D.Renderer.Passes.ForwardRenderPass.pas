@@ -484,7 +484,7 @@ begin
     for DoubleSided:=Low(TpvScene3D.TDoubleSided) to High(TpvScene3D.TDoubleSided) do begin
 
      VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
-                                                              pvApplication.VulkanPipelineCache,
+                                                              fInstance.Renderer.VulkanPipelineCache,
                                                               0,
                                                               [],
                                                               fVulkanPipelineLayout,

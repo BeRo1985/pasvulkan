@@ -121,6 +121,7 @@ type TpvScene3DRenderer=class;
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
+       fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
@@ -158,7 +159,7 @@ type TpvScene3DRenderer=class;
        fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
        fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       public
-       constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
+       constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aCountInFlightFrames:TpvSizeInt=0); reintroduce;
        destructor Destroy; override;
        class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
        class function CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean; static;
@@ -169,6 +170,7 @@ type TpvScene3DRenderer=class;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
@@ -287,7 +289,7 @@ end;
 
 { TpvScene3DRenderer }
 
-constructor TpvScene3DRenderer.Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt);
+constructor TpvScene3DRenderer.Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aCountInFlightFrames:TpvSizeInt);
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create(nil);
@@ -297,10 +299,20 @@ begin
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
  end else begin
-  fVulkanDevice:=fVulkanDevice;
+  fVulkanDevice:=pvApplication.VulkanDevice;
  end;
 
- fCountInFlightFrames:=aCountInFlightFrames;
+ if assigned(aVulkanPipelineCache) then begin
+  fVulkanPipelineCache:=aVulkanPipelineCache;
+ end else begin
+  fVulkanPipelineCache:=pvApplication.VulkanPipelineCache;
+ end;
+
+ if aCountInFlightFrames>0 then begin
+  fCountInFlightFrames:=aCountInFlightFrames;
+ end else begin
+  fCountInFlightFrames:=pvApplication.CountInFlightFrames;
+ end;
 
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
 

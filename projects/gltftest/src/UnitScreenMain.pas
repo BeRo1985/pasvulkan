@@ -190,7 +190,7 @@ begin
 
  fScene3D.Upload;
 
- fRenderer:=TpvScene3DRenderer.Create(fScene3D,pvApplication.VulkanDevice,fCountInFlightFrames);
+ fRenderer:=TpvScene3DRenderer.Create(fScene3D,pvApplication.VulkanDevice,pvApplication.VulkanPipelineCache,fCountInFlightFrames);
  fRenderer.AntialiasingMode:=UnitApplication.Application.AntialiasingMode;
  fRenderer.ShadowMode:=UnitApplication.Application.ShadowMode;
  fRenderer.TransparencyMode:=UnitApplication.Application.TransparencyMode;

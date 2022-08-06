@@ -322,7 +322,7 @@ begin
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
-                                                           pvApplication.VulkanPipelineCache,
+                                                           fInstance.Renderer.VulkanPipelineCache,
                                                            0,
                                                            [],
                                                            fVulkanPipelineLayout,
