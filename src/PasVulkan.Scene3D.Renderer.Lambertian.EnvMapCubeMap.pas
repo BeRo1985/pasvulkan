@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererLambertianEnvMapCubeMap }
      TpvScene3DRendererLambertianEnvMapCubeMap=class
@@ -143,9 +144,9 @@ var Index,MipMaps:TpvSizeInt;
 begin
  inherited Create;
 
- Stream:=pvApplication.Assets.GetAssetStream('shaders/cubemap_lambertian_filter_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_lambertian_filter_comp.spv');
  try
-  fComputeShaderModule:=TpvVulkanShaderModule.Create(aVulkanDevice,Stream);
+  fComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -154,7 +155,7 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
- fVulkanImage:=TpvVulkanImage.Create(aVulkanDevice,
+ fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
                                      aImageFormat,
@@ -174,7 +175,7 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 
- MemoryRequirements:=aVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
+ MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                                          RequiresDedicatedAllocation,
                                                                                          PrefersDedicatedAllocation);
 
@@ -184,7 +185,7 @@ begin
   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
  end;
 
- fMemoryBlock:=aVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+ fMemoryBlock:=pvApplication.VulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                             MemoryRequirements.size,
                                                                             MemoryRequirements.alignment,
                                                                             MemoryRequirements.memoryTypeBits,
@@ -204,35 +205,35 @@ begin
 
  fMemoryBlock.AssociatedObject:=self;
 
- VulkanCheckResult(aVulkanDevice.Commands.BindImageMemory(aVulkanDevice.Handle,
+ VulkanCheckResult(pvApplication.VulkanDevice.Commands.BindImageMemory(pvApplication.VulkanDevice.Handle,
                                                                        fVulkanImage.Handle,
                                                                        fMemoryBlock.MemoryChunk.Handle,
                                                                        fMemoryBlock.Offset));
 
- GraphicsQueue:=aVulkanDevice.GraphicsQueue;
+ GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
 
- ComputeQueue:=aVulkanDevice.ComputeQueue;
+ ComputeQueue:=pvApplication.VulkanDevice.ComputeQueue;
 
- GraphicsCommandPool:=TpvVulkanCommandPool.Create(aVulkanDevice,
-                                                  aVulkanDevice.GraphicsQueueFamilyIndex,
+ GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  try
 
   GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   try
 
-   GraphicsFence:=TpvVulkanFence.Create(aVulkanDevice);
+   GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
    try
 
-    ComputeCommandPool:=TpvVulkanCommandPool.Create(aVulkanDevice,
-                                                    aVulkanDevice.ComputeQueueFamilyIndex,
+    ComputeCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                    pvApplication.VulkanDevice.ComputeQueueFamilyIndex,
                                                     TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
     try
 
      ComputeCommandBuffer:=TpvVulkanCommandBuffer.Create(ComputeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
      try
 
-      ComputeFence:=TpvVulkanFence.Create(aVulkanDevice);
+      ComputeFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
       try
 
        FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
@@ -251,7 +252,7 @@ begin
                               GraphicsFence,
                               true);
 
-       fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
+       fVulkanSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
                                                TVkFilter(VK_FILTER_LINEAR),
                                                TVkFilter(VK_FILTER_LINEAR),
                                                TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
@@ -268,7 +269,7 @@ begin
                                                TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                                false);
 
-       fVulkanImageView:=TpvVulkanImageView.Create(aVulkanDevice,
+       fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                    fVulkanImage,
                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
                                                    aImageFormat,
@@ -292,7 +293,7 @@ begin
         SetLength(ImageViews,MipMaps);
         SetLength(DescriptorImageInfos,MipMaps);
         for Index:=0 to MipMaps-1 do begin
-         ImageViews[Index]:=TpvVulkanImageView.Create(aVulkanDevice,
+         ImageViews[Index]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                       fVulkanImage,
                                                       TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
                                                       aImageFormat,
@@ -314,7 +315,7 @@ begin
 
         try
 
-         VulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+         VulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
          try
           VulkanDescriptorSetLayout.AddBinding(0,
                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -328,7 +329,7 @@ begin
                                                []);
           VulkanDescriptorSetLayout.Initialize;
 
-          VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
+          VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                MipMaps);
           try
@@ -363,14 +364,14 @@ begin
             end;
             try
 
-             PipelineLayout:=TpvVulkanPipelineLayout.Create(aVulkanDevice);
+             PipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
              try
               PipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
               PipelineLayout.AddDescriptorSetLayout(VulkanDescriptorSetLayout);
               PipelineLayout.Initialize;
 
-              Pipeline:=TpvVulkanComputePipeline.Create(aVulkanDevice,
-                                                        aVulkanPipelineCache,
+              Pipeline:=TpvVulkanComputePipeline.Create(pvApplication.VulkanDevice,
+                                                        pvApplication.VulkanPipelineCache,
                                                         0,
                                                         fVulkanPipelineShaderStageCompute,
                                                         PipelineLayout,
