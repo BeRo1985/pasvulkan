@@ -70,11 +70,14 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Scene3D,
-     PasVulkan.Scene3D.Renderer.Globals;
+     PasVulkan.Scene3D.Renderer.Globals,
+     PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Instance;
 
 type { TpvScene3DRendererSkyBox }
      TpvScene3DRendererSkyBox=class
       private
+       fRenderer:TpvScene3DRenderer;
        fScene3D:TpvScene3D;
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
@@ -87,7 +90,7 @@ type { TpvScene3DRendererSkyBox }
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
 
-       constructor Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
+       constructor Create(const aRenderer:TpvScene3DRenderer;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 
        destructor Destroy; override;
 
@@ -106,24 +109,26 @@ implementation
 
 { TpvScene3DRendererSkyBox }
 
-constructor TpvScene3DRendererSkyBox.Create(const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
+constructor TpvScene3DRendererSkyBox.Create(const aRenderer:TpvScene3DRenderer;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
  inherited Create;
 
+ fRenderer:=aRenderer;
+
  fScene3D:=aScene3D;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_vert.spv');
  try
-  fVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fVertexShaderModule:=TpvVulkanShaderModule.Create(fRenderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_frag.spv');
  try
-  fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+  fFragmentShaderModule:=TpvVulkanShaderModule.Create(fRenderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -132,7 +137,7 @@ begin
 
  fVulkanPipelineShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
 
- fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fRenderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                        1,
@@ -145,7 +150,7 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fScene3D.CountInFlightFrames);
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fRenderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fScene3D.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fScene3D.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fScene3D.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
@@ -172,7 +177,7 @@ begin
   fVulkanDescriptorSets[Index].Flush;
  end;
 
- fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fRenderer.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
@@ -201,8 +206,8 @@ procedure TpvScene3DRendererSkyBox.AllocateResources(const aRenderPass:TpvVulkan
                                                      const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 begin
 
- fVulkanPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
-                                                   pvApplication.VulkanPipelineCache,
+ fVulkanPipeline:=TpvVulkanGraphicsPipeline.Create(fRenderer.VulkanDevice,
+                                                   fRenderer.VulkanPipelineCache,
                                                    0,
                                                    [],
                                                    fVulkanPipelineLayout,

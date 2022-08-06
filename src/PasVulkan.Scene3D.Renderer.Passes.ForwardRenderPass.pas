@@ -314,7 +314,8 @@ begin
 
  end;
 
- fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer.Scene3D,
+ fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
+                                          fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 
 end;
