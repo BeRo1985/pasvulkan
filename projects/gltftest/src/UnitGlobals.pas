@@ -29,38 +29,14 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.VirtualReality;
+     PasVulkan.VirtualReality,
+     PasVulkan.Scene3D.Renderer.Globals;
 
-type TTransparencyMode=
-      (
-       Auto=0,
-       Direct,
-       SPINLOCKOIT,
-       INTERLOCKOIT,
-       LOOPOIT,
-       WBOIT,
-       MBOIT
-      );
+type TTransparencyMode=TpvScene3DRendererTransparencyMode;
 
-     TAntialiasingMode=
-      (
-       Auto=0,
-       None,
-       DSAA,
-       FXAA,
-       SMAA,
-       MSAA
-      );
+     TAntialiasingMode=TpvScene3DRendererAntialiasingMode;
 
-     TShadowMode=
-      (
-       Auto=0,
-       None=1,
-       PCF=2,
-       DPCF=3,
-       PCSS=4,
-       MSM=5
-      );
+     TShadowMode=TpvScene3DRendererShadowMode;
 
 implementation
 

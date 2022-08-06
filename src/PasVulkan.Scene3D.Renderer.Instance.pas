@@ -210,13 +210,15 @@ type { TpvScene3DRendererInstance }
        procedure ReleaseResources;
        procedure AllocateDynamicResources;
        procedure ReleaseDynamicResources;
+       procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Reset;
        procedure AddView(const aView:TpvScene3D.TView);
        procedure AddViews(const aViews:array of TpvScene3D.TView);
-       procedure Update(const aInFlightFrameIndex:TpvInt32);
+       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32);
        procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
-       property CameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
+       property CameraMatrix:TpvMatrix4x4 read fCameraMatrix write fCameraMatrix;
+       property PointerToCameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
       public
@@ -384,6 +386,10 @@ begin
  fPointerToInFlightFrameStates:=@fInFlightFrameStates;
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
+
+ fFrameGraph.SurfaceIsSwapchain:=not assigned(fVirtualReality);
+
+ fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
@@ -1073,7 +1079,7 @@ begin
        fLockOrderIndependentTransparentUniformBuffer.ViewPort.z:=fLockOrderIndependentTransparentUniformBuffer.ViewPort.x*fLockOrderIndependentTransparentUniformBuffer.ViewPort.y;
        fLockOrderIndependentTransparentUniformBuffer.ViewPort.w:=(fCountLockOrderIndependentTransparencyLayers and $ffff) or ((Renderer.CountSurfaceMSAASamples and $ffff) shl 16);
 
-       fLockOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+       fLockOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.UniversalQueue,
                                                                       UniversalCommandBuffer,
                                                                       UniversalFence,
                                                                       fLockOrderIndependentTransparentUniformBuffer,
@@ -1113,7 +1119,7 @@ begin
        fLoopOrderIndependentTransparentUniformBuffer.ViewPort.z:=fLoopOrderIndependentTransparentUniformBuffer.ViewPort.x*fLoopOrderIndependentTransparentUniformBuffer.ViewPort.y;
        fLoopOrderIndependentTransparentUniformBuffer.ViewPort.w:=(fCountLoopOrderIndependentTransparencyLayers and $ffff) or ((Renderer.CountSurfaceMSAASamples and $ffff) shl 16);
 
-       fLoopOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+       fLoopOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.UniversalQueue,
                                                                       UniversalCommandBuffer,
                                                                       UniversalFence,
                                                                       fLoopOrderIndependentTransparentUniformBuffer,
@@ -1150,7 +1156,7 @@ begin
        fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.z:=ln(fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.x);
        fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.w:=ln(fApproximationOrderIndependentTransparentUniformBuffer.ZNearZFar.y);
 
-       fApproximationOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+       fApproximationOrderIndependentTransparentUniformVulkanBuffer.UploadData(pvApplication.VulkanDevice.UniversalQueue,
                                                                                UniversalCommandBuffer,
                                                                                UniversalFence,
                                                                                fApproximationOrderIndependentTransparentUniformBuffer,
@@ -1225,6 +1231,11 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+begin
+ fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);
 end;
 
 procedure TpvScene3DRendererInstance.Reset;
@@ -1566,7 +1577,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32);
+procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32);
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
@@ -1645,6 +1656,28 @@ begin
                                                                         0,
                                                                         SizeOf(TCascadedShadowMapUniformBuffer));
 
+ // Main viewport(s)
+ Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                          0,
+                          InFlightFrameState^.FinalViewIndex,
+                          InFlightFrameState^.CountViews,
+                          fWidth,
+                          fHeight,
+                          true,
+                          true);
+
+ // Cascaded shadow map viewport(s)
+ Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                          1,
+                          InFlightFrameState^.CascadedShadowMapViewIndex,
+                          InFlightFrameState^.CountCascadedShadowMapViews,
+                          CascadedShadowMapWidth,
+                          CascadedShadowMapHeight,
+                          false,
+                          true);
+
+ TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
+
 end;
 
 procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -1656,6 +1689,7 @@ begin
                   fVulkanRenderSemaphores[aInFlightFrameIndex],
                   aWaitFence);
  aWaitSemaphore:=fVulkanRenderSemaphores[aInFlightFrameIndex];
+ TPasMPInterlocked.Write(fInFlightFrameStates[aInFlightFrameIndex].Ready,false);
 end;
 
 end.

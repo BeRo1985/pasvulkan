@@ -161,6 +161,7 @@ type TpvScene3DRenderer=class;
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
+       class function CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean; static;
        procedure Prepare;
        procedure AllocateResources;
        procedure ReleaseResources;
@@ -221,6 +222,10 @@ begin
   end;
  end else begin
   fRenderer:=nil;
+ end;
+
+ if self is TpvScene3DRenderer then begin
+  fRenderer:=TpvScene3DRenderer(self);
  end;
 
  fOwnCircularDoublyLinkedListNode:=TpvScene3DRendererBaseObjectCircularDoublyLinkedListNode.Create;
@@ -388,6 +393,12 @@ begin
  end;
 end;
 
+class function TpvScene3DRenderer.CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean;
+begin
+ result:=(aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) and
+         (aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE);
+end;
+
 procedure TpvScene3DRenderer.Prepare;
 var SampleCounts:TVkSampleCountFlags;
     FormatProperties:TVkFormatProperties;
@@ -399,8 +410,7 @@ begin
 
  fShadowMapSize:=Max(16,fShadowMapSize);
 
- fBufferDeviceAddress:=(fVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) and
-                       (fVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE);
+ fBufferDeviceAddress:=CheckBufferDeviceAddress(fVulkanDevice);
  if fBufferDeviceAddress then begin
   fMeshFragTypeName:='matbufref';
  end else begin

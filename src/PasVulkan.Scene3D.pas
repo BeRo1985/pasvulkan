@@ -2249,10 +2249,10 @@ const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
-var GraphicsQueue:TpvVulkanQueue;
-    GraphicsCommandPool:TpvVulkanCommandPool;
-    GraphicsCommandBuffer:TpvVulkanCommandBuffer;
-    GraphicsFence:TpvVulkanFence;
+var UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
  if not fInUpload then begin
   fInUpload:=true;
@@ -2262,26 +2262,26 @@ begin
     try
      if (fReferenceCounter>0) and not fUploaded then begin
       try
-       GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
+       UniversalQueue:=pvApplication.VulkanDevice.UniversalQueue;
        try
-        GraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+        UniversalCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.UniversalQueueFamilyIndex,
                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
         try
-         GraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(GraphicsCommandPool,
+         UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
                                                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          try
-          GraphicsFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+          UniversalFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
           try
            case fKind of
             TpvScene3D.TImage.TKind.WhiteTexture:begin
              fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
+                                                         UniversalQueue,
+                                                         UniversalCommandBuffer,
+                                                         UniversalFence,
+                                                         UniversalQueue,
+                                                         UniversalCommandBuffer,
+                                                         UniversalFence,
                                                          VK_FORMAT_R8G8B8A8_UNORM,
                                                          VK_SAMPLE_COUNT_1_BIT,
                                                          8,
@@ -2304,12 +2304,12 @@ begin
             end;
             TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
              fTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
-                                                         GraphicsQueue,
-                                                         GraphicsCommandBuffer,
-                                                         GraphicsFence,
+                                                         UniversalQueue,
+                                                         UniversalCommandBuffer,
+                                                         UniversalFence,
+                                                         UniversalQueue,
+                                                         UniversalCommandBuffer,
+                                                         UniversalFence,
                                                          VK_FORMAT_R8G8B8A8_UNORM,
                                                          VK_SAMPLE_COUNT_1_BIT,
                                                          8,
@@ -2332,12 +2332,12 @@ begin
             end;
             else begin
              fTexture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
-                                                        GraphicsQueue,
-                                                        GraphicsCommandBuffer,
-                                                        GraphicsFence,
-                                                        GraphicsQueue,
-                                                        GraphicsCommandBuffer,
-                                                        GraphicsFence,
+                                                        UniversalQueue,
+                                                        UniversalCommandBuffer,
+                                                        UniversalFence,
+                                                        UniversalQueue,
+                                                        UniversalCommandBuffer,
+                                                        UniversalFence,
                                                         fResourceDataStream,
                                                         true,
                                                         false,
@@ -2345,16 +2345,16 @@ begin
             end;
            end;
           finally
-           FreeAndNil(GraphicsFence);
+           FreeAndNil(UniversalFence);
           end;
          finally
-          FreeAndNil(GraphicsCommandBuffer);
+          FreeAndNil(UniversalCommandBuffer);
          end;
         finally
-         FreeAndNil(GraphicsCommandPool);
+         FreeAndNil(UniversalCommandPool);
         end;
        finally
-        GraphicsQueue:=nil;
+        UniversalQueue:=nil;
        end;
       finally
        fUploaded:=true;
