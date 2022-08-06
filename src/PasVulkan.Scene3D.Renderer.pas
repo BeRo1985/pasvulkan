@@ -686,25 +686,24 @@ begin
 end;
 
 procedure TpvScene3DRenderer.AllocateResources;
-var Index:TpvSizeInt;
-    Stream:TStream;
+var Stream:TStream;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
 begin
 
- fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fOptimizedNonAlphaFormat);
+ fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fOptimizedNonAlphaFormat);
 
- fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create;
+ fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
- fGGXEnvMapCubeMap:=TpvScene3DRendererGGXEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+ fGGXEnvMapCubeMap:=TpvScene3DRendererGGXEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
- fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create;
+ fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
- fCharlieEnvMapCubeMap:=TpvScene3DRendererCharlieEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+ fCharlieEnvMapCubeMap:=TpvScene3DRendererCharlieEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
- fLambertianEnvMapCubeMap:=TpvScene3DRendererLambertianEnvMapCubeMap.Create(fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+ fLambertianEnvMapCubeMap:=TpvScene3DRendererLambertianEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
  case fShadowMode of
 
