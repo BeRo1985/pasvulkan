@@ -110,6 +110,12 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       TwoPI=PI*2.0;
 
+      OneOverPI=1.0/PI;
+
+      OneOverHalfPI=1.0/HalfPI;
+
+      OneOverTwoPI=1.0/TwoPI;
+
       SQRT_0_DOT_5=0.70710678118;
 
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};

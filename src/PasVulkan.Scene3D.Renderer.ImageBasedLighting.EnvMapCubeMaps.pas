@@ -65,6 +65,7 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     PasMP,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -128,6 +129,116 @@ type { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
 
 implementation
 
+function Hammersley(Index,NumSamples:TpvInt32):TpvVector2;
+const OneOver32Bit=1.0/4294967296.0;
+var ReversedIndex:TpvUInt32;
+begin
+ ReversedIndex:=TpvUInt32(Index);
+ ReversedIndex:=(ReversedIndex shl 16) or (ReversedIndex shr 16);
+ ReversedIndex:=((ReversedIndex and $00ff00ff) shl 8) or ((ReversedIndex and $ff00ff00) shr 8);
+ ReversedIndex:=((ReversedIndex and $0f0f0f0f) shl 4) or ((ReversedIndex and $f0f0f0f0) shr 4);
+ ReversedIndex:=((ReversedIndex and $33333333) shl 2) or ((ReversedIndex and $cccccccc) shr 2);
+ ReversedIndex:=((ReversedIndex and $55555555) shl 1) or ((ReversedIndex and $aaaaaaaa) shr 1);
+ result.x:=frac(TpvFloat(Index)/TpvFloat(NumSamples));
+ result.y:=ReversedIndex*OneOver32Bit;
+end;
+
+function GenerateTBN(const Normal:TpvVector3):TpvMatrix3x3;
+var Bitangent,Tangent:TpvVector3;
+begin
+ if (1.0-abs(Normal.y))<=1e-6 then begin
+  if Normal.y>0.0 then begin
+   Bitangent:=TpvVector3.InlineableCreate(0.0,0.0,1.0);
+  end else begin
+   Bitangent:=TpvVector3.InlineableCreate(0.0,0.0,-1.0);
+  end;
+ end else begin
+  Bitangent:=TpvVector3.InlineableCreate(0.0,1.0,0.0);
+ end;
+ Tangent:=Bitangent.Cross(Normal).Normalize;
+ result:=TpvMatrix3x3.Create(Tangent,Normal.Cross(Tangent).Normalize,Normal);
+end;
+
+function D_GGX(const NdotH,Roughness:TpvScalar):TpvScalar;
+begin
+ result:=sqr(Roughness/((1.0-sqr(NdotH))+sqr(NdotH*Roughness)))*OneOverPI;
+end;
+
+function GGX(const xi:TpvVector2;const Roughness:TpvScalar):TpvVector4;
+var Alpha:TpvScalar;
+begin
+ Alpha:=sqr(Roughness);
+ result.x:=Clamp(sqrt((1.0-xi.y)/(1.0+((sqr(Alpha)-1.0)*xi.y))),0.0,1.0);
+ result.y:=sqrt(1.0-sqr(result.x));
+ result.z:=TwoPI*xi.x;
+ result.w:=D_GGX(result.x,Alpha)*0.25;
+end;
+
+function D_Charlie(const SheenRoughness,NdotH:TpvScalar):TpvScalar;
+var InvR,Cos2H,Sin2H:TpvScalar;
+begin
+ InvR:=1.0/Clamp(SheenRoughness,1e-6,1.0);
+ Cos2H:=sqr(NdotH);
+ Sin2H:=1.0-Cos2H;
+ result:=(2.0+InvR)*power(Sin2H,InvR*0.5)*OneOverTwoPI;
+end;
+
+function Charlie(const xi:TpvVector2;const Roughness:TpvScalar):TpvVector4;
+var Alpha:TpvScalar;
+begin
+ Alpha:=sqr(Roughness);
+ result.y:=Power(xi.y,Alpha/((2.0*Alpha)+1.0));
+ result.x:=sqrt(1.0-sqr(result.y));
+ result.z:=TwoPI*xi.x;
+ result.w:=D_Charlie(Alpha,result.x)*0.25;
+end;
+
+function Lambertian(const xi:TpvVector2;const Roughness:TpvScalar):TpvVector4;
+begin
+ result.x:=sqrt(1.0-xi.y);
+ result.y:=sqrt(xi.y);
+ result.z:=TwoPI*xi.x;
+ result.w:=result.x*OneOverPI;
+end;
+
+type TImportanceSampleFunction=function(const xi:TpvVector2;const Roughness:TpvScalar):TpvVector4;
+
+     TImportanceSamples=array of TpvVector4;
+
+procedure GetImportanceSamples(out aSamples:TImportanceSamples;const aCount:TpvSizeInt;const aRoughness:TpvScalar;const aImportanceSampleFunction:TImportanceSampleFunction);
+var SampleIndex:TpvSizeInt;
+    t:TpvVector4;
+    x32,v:TpvUInt32;
+begin
+ aSamples:=nil;
+ SetLength(aSamples,aCount);
+ x32:=$3c7a92e1;
+ for SampleIndex:=0 to aCount-1 do begin
+  t.xy:=Hammersley(SampleIndex,aCount);
+  repeat
+   t:=aImportanceSampleFunction(t.xy,aRoughness);
+   t.xyz:=TpvVector3.InlineableCreate(TpvVector2.InlineableCreate(cos(t.z),sin(t.z))*t.y,t.x);
+   if t.z<1e-4 then begin
+    x32:=x32 xor (x32 shl 13);
+    x32:=x32 xor (x32 shr 17);
+    x32:=x32 xor (x32 shl 5);
+    v:=x32;
+    v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
+    t.x:=TpvFloat(pointer(@v)^)-2.0;
+    x32:=x32 xor (x32 shl 13);
+    x32:=x32 xor (x32 shr 17);
+    x32:=x32 xor (x32 shl 5);
+    v:=x32;
+    v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
+    t.y:=TpvFloat(pointer(@v)^)-2.0;
+   end else begin
+    break;
+   end;
+  until false;
+  aSamples[SampleIndex]:=t;
+ end;
+end;
+
 { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
 
 constructor TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aImageFormat:TVkFormat);
@@ -165,8 +276,11 @@ var ImageIndex,Index,MipMaps:TpvSizeInt;
 //ImageMemoryBarrier:TVkImageMemoryBarrier;
     Images:array[0..2] of PpvVulkanImage;
     MemoryBlocks:array[0..2] of PpvVulkanDeviceMemoryBlock;
+//  ImportanceSamples:TImportanceSamples;
 begin
  inherited Create;
+
+//GetImportanceSamples(ImportanceSamples,1024,0.1,Charlie);
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_filter_comp.spv');
  try

@@ -29,18 +29,43 @@ void main() {
   float roughness = mipMapLevelToRoughness(float(pushConstants.mipMapLevel), float(pushConstants.maxMipMapLevel));
   if(gl_LocalInvocationIndex == 0){
     switch(which){
-      case 0:{
-        for(int sampleIndex = 0, sampleCount = pushConstants.numSamples; sampleIndex < sampleCount; sampleIndex++){
-          vec4 importanceSample = GGX(Hammersley(sampleIndex, sampleCount), roughness);
-          ImportanceSamples[sampleIndex] = vec4(normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)), importanceSample.w);
-        }
-        break;
-      }
       case 1:{
         roughness = clamp(roughness, 1e-3, 1.0);
+        // fallthrough
+      }
+      case 0:{
+        const uint k = 1103515245u;
+        uvec3 v = uvec3(gl_GlobalInvocationID.xyz); 
+        v = ((v >> 8u) ^ v.yzx) * k;
+        v = ((v >> 8u) ^ v.yzx) * k;
+        v = ((v >> 8u) ^ v.yzx) * k;        
+        uint x32 = (0x3c7a92e1u ^ v.x) | 1u;
+        uint lcq = (0x1f2e6a83u ^ v.y) | 1u; 
         for(int sampleIndex = 0, sampleCount = pushConstants.numSamples; sampleIndex < sampleCount; sampleIndex++){
-          vec4 importanceSample = Charlie(Hammersley(sampleIndex, sampleCount), clamp(roughness, 1e-3, 1.0));
-          ImportanceSamples[sampleIndex] = vec4(normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)), importanceSample.w);
+          vec4 importanceSample;
+          vec2 uv = Hammersley(sampleIndex, sampleCount);
+          int tryIteration = 0;
+          do{
+            importanceSample = (which == 0) ? GGX(uv, roughness) : Charlie(uv, roughness);
+            importanceSample = vec4(normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)), importanceSample.w);
+            if(importanceSample.z < 1e-4){
+              // When it is too near on zero or negative, then try to get a random uv vector for a new attempt
+              x32 ^= x32 << 13u;
+              x32 ^= x32 >> 5u;
+              x32 ^= x32 << 17u;
+              lcq *= k;
+              uint a = x32 ^ ++lcq;
+              x32 ^= x32 << 13u;
+              x32 ^= x32 >> 5u;
+              x32 ^= x32 << 17u;
+              lcq *= k;
+              uint b = x32 ^ ++lcq;
+              uv = uintBitsToFloat(((uvec2(a, b) >> uvec2(10u)) & uvec2(0x3fffffu)) | uvec2(0x40000000u)) - vec2(2.0);
+            }else{
+              break;
+            }
+          }while(tryIteration++ < 4096);
+          ImportanceSamples[sampleIndex] = importanceSample;
         }
         break;
       }
