@@ -1715,6 +1715,7 @@ type EpvScene3D=class(Exception);
        fVulkanBufferCopyBatchItemArrays:array[0..MaxInFlightFrames-1] of TpvVulkanBufferCopyBatchItemArray;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
        fRenderPassIndexCounter:TpvSizeInt;
+       fPrimaryLightDirection:TpvVector3;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -1789,6 +1790,7 @@ type EpvScene3D=class(Exception);
        property BoundingBox:TpvAABB read fBoundingBox;
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
        property Views:TViews read fViews;
+       property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
@@ -10345,6 +10347,10 @@ begin
  fEmptyMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,self);
  fEmptyMaterial.AssignFromEmpty;
  fEmptyMaterial.IncRef;
+
+ fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.5,-1.0,-1.0).Normalize;
+
+//fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.333333333333,-0.666666666666,-0.666666666666).Normalize;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fLights[Index]:=TpvScene3D.TLights.Create;

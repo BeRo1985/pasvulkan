@@ -179,7 +179,7 @@ begin
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
  fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
  fPrimaryDirectionalLight.Color:=TpvVector3.InlineableCreate(1.7,1.15,0.70);
- fPrimaryDirectionalLight.Matrix:=TpvMatrix4x4.CreateConstructZ(-TpvScene3DRendererSkyCubeMap.LightDirection.xyz);
+ fPrimaryDirectionalLight.Matrix:=TpvMatrix4x4.CreateConstructZ(-fScene3D.PrimaryLightDirection);
  fPrimaryDirectionalLight.Intensity:=1.0;
  fPrimaryDirectionalLight.Range:=0.0;
  fPrimaryDirectionalLight.CastShadows:=true;
