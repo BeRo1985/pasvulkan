@@ -76,9 +76,9 @@ uses SysUtils,
 type { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
      TpvScene3DRendererImageBasedLightingEnvMapCubeMaps=class
       public
-       const Width=512;
-             Height=512;
-             Samples=1024;
+       const Width=128;
+             Height=128;
+             Samples=128;
       private
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -205,37 +205,44 @@ type TImportanceSampleFunction=function(const xi:TpvVector2;const Roughness:TpvS
 
      TImportanceSamples=array of TpvVector4;
 
-procedure GetImportanceSamples(out aSamples:TImportanceSamples;const aCount:TpvSizeInt;const aRoughness:TpvScalar;const aImportanceSampleFunction:TImportanceSampleFunction);
-var SampleIndex:TpvSizeInt;
+procedure GetImportanceSamples(out aSamples:TImportanceSamples;const aCount:TpvSizeInt;const aRoughness:TpvScalar;const aImportanceSampleFunction:TImportanceSampleFunction;const aLambertian:boolean);
+var SampleIndex,TryIteration:TpvSizeInt;
     t:TpvVector4;
     x32,v:TpvUInt32;
 begin
  aSamples:=nil;
  SetLength(aSamples,aCount);
- x32:=$3c7a92e1;
- for SampleIndex:=0 to aCount-1 do begin
-  t.xy:=Hammersley(SampleIndex,aCount);
-  repeat
-   t:=aImportanceSampleFunction(t.xy,aRoughness);
-   t.xyz:=TpvVector3.InlineableCreate(TpvVector2.InlineableCreate(cos(t.z),sin(t.z))*t.y,t.x);
-   if t.z<1e-4 then begin
-    x32:=x32 xor (x32 shl 13);
-    x32:=x32 xor (x32 shr 17);
-    x32:=x32 xor (x32 shl 5);
-    v:=x32;
-    v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
-    t.x:=TpvFloat(pointer(@v)^)-2.0;
-    x32:=x32 xor (x32 shl 13);
-    x32:=x32 xor (x32 shr 17);
-    x32:=x32 xor (x32 shl 5);
-    v:=x32;
-    v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
-    t.y:=TpvFloat(pointer(@v)^)-2.0;
-   end else begin
-    break;
+ if aLambertian then begin
+  for SampleIndex:=0 to aCount-1 do begin
+   t:=aImportanceSampleFunction(Hammersley(SampleIndex,aCount),aRoughness);
+   aSamples[SampleIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(TpvVector2.InlineableCreate(cos(t.z),sin(t.z))*t.y,t.x).Normalize,t.w);
+  end;
+ end else begin
+  x32:=$3c7a92e1;
+  for SampleIndex:=0 to aCount-1 do begin
+   t.xy:=Hammersley(SampleIndex,aCount);
+   for TryIteration:=1 to 256 do begin
+    t:=aImportanceSampleFunction(t.xy,aRoughness);
+    t.xyz:=TpvVector3.InlineableCreate(TpvVector2.InlineableCreate(cos(t.z),sin(t.z))*t.y,t.x).Normalize;
+    if t.z<1e-4 then begin
+     x32:=x32 xor (x32 shl 13);
+     x32:=x32 xor (x32 shr 17);
+     x32:=x32 xor (x32 shl 5);
+     v:=x32;
+     v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
+     t.x:=TpvFloat(pointer(@v)^)-2.0;
+     x32:=x32 xor (x32 shl 13);
+     x32:=x32 xor (x32 shr 17);
+     x32:=x32 xor (x32 shl 5);
+     v:=x32;
+     v:=(((v shr 10) and $3fffff)+((v shr 9) and 1)) or $40000000;
+     t.y:=TpvFloat(pointer(@v)^)-2.0;
+    end else begin
+     break;
+    end;
    end;
-  until false;
-  aSamples[SampleIndex]:=t;
+   aSamples[SampleIndex]:=t;
+  end;
  end;
 end;
 
@@ -636,7 +643,11 @@ begin
 
                  PushConstants.MipMapLevel:=Index;
                  PushConstants.MaxMipMapLevel:=MipMaps-1;
-                 PushConstants.NumSamples:=Samples;
+                 if (ImageIndex=0) and (Index=0) then begin
+                  PushConstants.NumSamples:=1;
+                 end else begin
+                  PushConstants.NumSamples:=Min(8 shl Index,Samples);
+                 end;
                  PushConstants.Which:=ImageIndex;
 
                  ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
