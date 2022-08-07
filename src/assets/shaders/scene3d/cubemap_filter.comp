@@ -43,7 +43,7 @@ void main() {
           break;
         }
         case 1:{
-          result = filterCharlie(uSourceTexture, direction, pushConstants.numCharlieSamples, roughness);
+          result = filterCharlie(uSourceTexture, direction, pushConstants.numCharlieSamples, clamp(roughness, 1e-3, 1.0));
           break;
         }
         case 2:{
