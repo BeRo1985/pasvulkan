@@ -76,9 +76,9 @@ uses SysUtils,
 type { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
      TpvScene3DRendererImageBasedLightingEnvMapCubeMaps=class
       public
-       const Width=128;
-             Height=128;
-             Samples=128;
+       const Width=512;
+             Height=512;
+             Samples=1024;
       private
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -646,7 +646,7 @@ begin
                  if (ImageIndex=0) and (Index=0) then begin
                   PushConstants.NumSamples:=1;
                  end else begin
-                  PushConstants.NumSamples:=Min(8 shl Index,Samples);
+                  PushConstants.NumSamples:=Min(128 shl Index,Samples);
                  end;
                  PushConstants.Which:=ImageIndex;
 
