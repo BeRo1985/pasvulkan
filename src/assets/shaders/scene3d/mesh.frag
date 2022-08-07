@@ -785,6 +785,8 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 #define UseReceiverPlaneDepthBias
 #endif
 
+#undef UseReceiverPlaneDepthBias // because it seems to crash Intel iGPUs   
+
 #ifdef UseReceiverPlaneDepthBias
 vec4 cascadedShadowMapPositions[NUM_SHADOW_CASCADES];
 #endif
