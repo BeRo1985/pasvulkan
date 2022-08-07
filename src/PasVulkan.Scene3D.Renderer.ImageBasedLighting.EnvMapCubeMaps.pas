@@ -134,12 +134,8 @@ constructor TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(const aVul
 type TPushConstants=record
       MipMapLevel:TpvInt32;
       MaxMipMapLevel:TpvInt32;
-      NumGGXSamples:TpvInt32;
-      NumCharlieSamples:TpvInt32;
-      NumLambertianSamples:TpvInt32;
-      Dummy0:TpvInt32;
-      Dummy1:TpvInt32;
-      Dummy2:TpvInt32;
+      NumSamples:TpvInt32;
+      Which:TpvInt32;
      end;
      PpvVulkanImage=^TpvVulkanImage;
      PpvVulkanDeviceMemoryBlock=^TpvVulkanDeviceMemoryBlock;
@@ -161,7 +157,7 @@ var ImageIndex,Index,MipMaps:TpvSizeInt;
     ImageViews:array[0..2] of array of TpvVulkanImageView;
     VulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
     VulkanDescriptorPool:TpvVulkanDescriptorPool;
-    VulkanDescriptorSets:array of TpvVulkanDescriptorSet;
+    VulkanDescriptorSets:array[0..2] of array of TpvVulkanDescriptorSet;
     DescriptorImageInfos:array[0..2] of array of TVkDescriptorImageInfo;
     PipelineLayout:TpvVulkanPipelineLayout;
     Pipeline:TpvVulkanComputePipeline;
@@ -414,45 +410,47 @@ begin
                                                []);
           VulkanDescriptorSetLayout.AddBinding(1,
                                                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                               3,
+                                               1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                []);
           VulkanDescriptorSetLayout.Initialize;
 
           VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                               MipMaps);
+                                                               3*MipMaps);
           try
-           VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MipMaps);
+           VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3*MipMaps);
            VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,3*MipMaps);
            VulkanDescriptorPool.Initialize;
 
-           VulkanDescriptorSets:=nil;
+           for ImageIndex:=0 to 2 do begin
+            VulkanDescriptorSets[ImageIndex]:=nil;
+           end;
            try
-            SetLength(VulkanDescriptorSets,MipMaps);
-            for Index:=0 to MipMaps-1 do begin
-             VulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
-                                                                        VulkanDescriptorSetLayout);
+            for ImageIndex:=0 to 2 do begin
+             SetLength(VulkanDescriptorSets[ImageIndex],MipMaps);
+             for Index:=0 to MipMaps-1 do begin
+              VulkanDescriptorSets[ImageIndex,Index]:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
+                                                                                    VulkanDescriptorSetLayout);
 
-             VulkanDescriptorSets[Index].WriteToDescriptorSet(0,
-                                                              0,
-                                                              1,
-                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                              [aDescriptorImageInfo],
-                                                              [],
-                                                              [],
-                                                              false);
-             VulkanDescriptorSets[Index].WriteToDescriptorSet(1,
-                                                              0,
-                                                              3,
-                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                              [DescriptorImageInfos[0,Index],
-                                                               DescriptorImageInfos[1,Index],
-                                                               DescriptorImageInfos[2,Index]],
-                                                              [],
-                                                              [],
-                                                              false);
-             VulkanDescriptorSets[Index].Flush;
+              VulkanDescriptorSets[ImageIndex,Index].WriteToDescriptorSet(0,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                          [aDescriptorImageInfo],
+                                                                          [],
+                                                                          [],
+                                                                          false);
+              VulkanDescriptorSets[ImageIndex,Index].WriteToDescriptorSet(1,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                          [DescriptorImageInfos[ImageIndex,Index]],
+                                                                          [],
+                                                                          [],
+                                                                          false);
+              VulkanDescriptorSets[ImageIndex,Index].Flush;
+             end;
             end;
             try
 
@@ -510,31 +508,34 @@ begin
   }
                ComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
 
-               for Index:=0 to MipMaps-1 do begin
+               for ImageIndex:=0 to 2 do begin
 
-                ComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                           PipelineLayout.Handle,
-                                                           0,
-                                                           1,
-                                                           @VulkanDescriptorSets[Index].Handle,
-                                                           0,
-                                                           nil);
+                for Index:=0 to MipMaps-1 do begin
 
-                PushConstants.MipMapLevel:=Index;
-                PushConstants.MaxMipMapLevel:=MipMaps-1;
-                PushConstants.NumGGXSamples:=Samples;
-                PushConstants.NumCharlieSamples:=Samples;
-                PushConstants.NumLambertianSamples:=Samples;
+                 ComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                            PipelineLayout.Handle,
+                                                            0,
+                                                            1,
+                                                            @VulkanDescriptorSets[ImageIndex,Index].Handle,
+                                                            0,
+                                                            nil);
 
-                ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
-                                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                                      0,
-                                                      SizeOf(TPushConstants),
-                                                      @PushConstants);
+                 PushConstants.MipMapLevel:=Index;
+                 PushConstants.MaxMipMapLevel:=MipMaps-1;
+                 PushConstants.NumSamples:=Samples;
+                 PushConstants.Which:=ImageIndex;
 
-                ComputeCommandBuffer.CmdDispatch(Max(1,(Width+((1 shl (4+Index))-1)) shr (4+Index)),
-                                                 Max(1,(Height+((1 shl (4+Index))-1)) shr (4+Index)),
-                                                 6*3);
+                 ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
+                                                       TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                                       0,
+                                                       SizeOf(TPushConstants),
+                                                       @PushConstants);
+
+                 ComputeCommandBuffer.CmdDispatch(Max(1,(Width+((1 shl (4+Index))-1)) shr (4+Index)),
+                                                  Max(1,(Height+((1 shl (4+Index))-1)) shr (4+Index)),
+                                                  6);
+
+                end;
 
                end;
 
@@ -584,13 +585,17 @@ begin
              end;
 
             finally
-             for Index:=0 to MipMaps-1 do begin
-              FreeAndNil(VulkanDescriptorSets[Index]);
+             for ImageIndex:=0 to 2 do begin
+              for Index:=0 to MipMaps-1 do begin
+               FreeAndNil(VulkanDescriptorSets[ImageIndex,Index]);
+              end;
              end;
             end;
 
            finally
-            VulkanDescriptorSets:=nil;
+            for ImageIndex:=0 to 2 do begin
+             VulkanDescriptorSets[ImageIndex]:=nil;
+            end;
            end;
 
           finally

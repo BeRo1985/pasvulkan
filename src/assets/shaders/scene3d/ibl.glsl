@@ -39,12 +39,16 @@ mat3 generateTBN(const in vec3 normal) {
   return mat3(tangent, cross(normal, tangent), normal);
 }
 
-struct MicrofacetDistributionSample {
+/*struct MicrofacetDistributionSample {
   float pdf;
   float cosTheta;
   float sinTheta;
   float phi;
-};
+};*/
+
+#ifdef COMPUTESHADER
+shared vec4 ImportanceSamples[1024]; // 16KiB
+#endif
 
 float D_GGX(const in float NdotH, const in float roughness) {
   float a = NdotH * roughness;
@@ -57,13 +61,23 @@ float D_GGX(const in float NdotH, const in float roughness) {
 // This implementation is based on https://bruop.github.io/ibl/,
 //  https://www.tobias-franke.eu/log/2014/03/30/notes_on_importance_sampling.html
 // and https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch20.html
-MicrofacetDistributionSample GGX(const in vec2 xi, const in float roughness) {
+/*MicrofacetDistributionSample GGX(const in vec2 xi, const in float roughness) {
   MicrofacetDistributionSample ggx;
   float alpha = roughness * roughness;
   ggx.cosTheta = clamp(sqrt((1.0 - xi.y) / (1.0 + (((alpha * alpha) - 1.0) * xi.y))), 0.0, 1.0);
   ggx.sinTheta = sqrt(1.0 - (ggx.cosTheta * ggx.cosTheta));
   ggx.phi = 2.0 * PI * xi.x;
   ggx.pdf = D_GGX(ggx.cosTheta, alpha) * 0.25;
+  return ggx;
+}*/
+
+vec4 GGX(const in vec2 xi, const in float roughness) {
+  vec4 ggx;
+  float alpha = roughness * roughness;
+  ggx.x = clamp(sqrt((1.0 - xi.y) / (1.0 + (((alpha * alpha) - 1.0) * xi.y))), 0.0, 1.0);
+  ggx.y = sqrt(1.0 - (ggx.x * ggx.x));
+  ggx.z = 2.0 * PI * xi.x;
+  ggx.w = D_GGX(ggx.x, alpha) * 0.25;
   return ggx;
 }
 
@@ -86,7 +100,7 @@ float D_Charlie(float sheenRoughness, const in float NdotH) {
   return (2.0 + invR) * pow(sin2h, invR * 0.5) / (2.0 * PI);
 }
 
-MicrofacetDistributionSample Charlie(const in vec2 xi, const in float roughness) {
+/*MicrofacetDistributionSample Charlie(const in vec2 xi, const in float roughness) {
   MicrofacetDistributionSample charlie;
   float alpha = roughness * roughness;
   charlie.sinTheta = pow(xi.y, alpha / ((2.0 * alpha) + 1.0));
@@ -94,38 +108,57 @@ MicrofacetDistributionSample Charlie(const in vec2 xi, const in float roughness)
   charlie.phi = 2.0 * PI * xi.x;
   charlie.pdf = D_Charlie(alpha, charlie.cosTheta) * 0.25;
   return charlie;
+}*/
+
+vec4 Charlie(const in vec2 xi, const in float roughness) {
+  vec4 charlie;
+  float alpha = roughness * roughness;
+  charlie.y = pow(xi.y, alpha / ((2.0 * alpha) + 1.0));
+  charlie.x = sqrt(1.0 - (charlie.y * charlie.y));
+  charlie.z = 2.0 * PI * xi.x;
+  charlie.w = D_Charlie(alpha, charlie.x) * 0.25;
+  return charlie;
 }
 
-MicrofacetDistributionSample Lambertian(const in vec2 xi, const in float roughness) {
+/*MicrofacetDistributionSample Lambertian(const in vec2 xi, const in float roughness) {
   MicrofacetDistributionSample lambertian;
   lambertian.cosTheta = sqrt(1.0 - xi.y);
   lambertian.sinTheta = sqrt(xi.y);  // equivalent to `sqrt(1.0 - cosTheta*cosTheta)`;
   lambertian.phi = 2.0 * PI * xi.x;
   lambertian.pdf = lambertian.cosTheta * INV_PI;
   return lambertian;
+}*/
+
+vec4 Lambertian(const in vec2 xi, const in float roughness) {
+  vec4 lambertian;
+  lambertian.x = sqrt(1.0 - xi.y);
+  lambertian.y = sqrt(xi.y);  // equivalent to `sqrt(1.0 - cosTheta*cosTheta)`;
+  lambertian.z = 2.0 * PI * xi.x;
+  lambertian.w = lambertian.x * INV_PI;
+  return lambertian;
 }
 
-vec4 getImportanceSampleLambertian(const in int sampleIndex, const in int sampleCount, const in vec3 normal, const in float roughness) {
-  MicrofacetDistributionSample importanceSample = Lambertian(Hammersley(sampleIndex, sampleCount), roughness);
-  return vec4(generateTBN(normal) *                                                                                                                    //
-                  normalize(vec3(vec2(cos(importanceSample.phi), sin(importanceSample.phi)) * importanceSample.sinTheta, importanceSample.cosTheta)),  //
-              importanceSample.pdf                                                                                                                     //
+vec4 getImportanceSampleLambertian(const in int sampleIndex, const in int sampleCount, const in mat3 tbn, const in float roughness) {
+  vec4 importanceSample = Lambertian(Hammersley(sampleIndex, sampleCount), roughness);
+  return vec4(tbn *                                                                                                                    //
+              normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)),  //
+              importanceSample.w                                                                                                                     //
   );
 }
 
-vec4 getImportanceSampleGGX(const in int sampleIndex, const in int sampleCount, const in vec3 normal, const in float roughness) {
-  MicrofacetDistributionSample importanceSample = GGX(Hammersley(sampleIndex, sampleCount), roughness);
-  return vec4(generateTBN(normal) *                                                                                                                    //
-                  normalize(vec3(vec2(cos(importanceSample.phi), sin(importanceSample.phi)) * importanceSample.sinTheta, importanceSample.cosTheta)),  //
-              importanceSample.pdf                                                                                                                     //
+vec4 getImportanceSampleGGX(const in int sampleIndex, const in int sampleCount, const in mat3 tbn, const in float roughness) {
+  vec4 importanceSample = GGX(Hammersley(sampleIndex, sampleCount), roughness);
+  return vec4(tbn *                                                                                                                    //
+              normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)),  //
+              importanceSample.w                                                                                                                     //
   );
 }
 
-vec4 getImportanceSampleCharlie(const in int sampleIndex, const in int sampleCount, const in vec3 normal, const in float roughness) {
-  MicrofacetDistributionSample importanceSample = Charlie(Hammersley(sampleIndex, sampleCount), roughness);
-  return vec4(generateTBN(normal) *                                                                                                                    //
-                  normalize(vec3(vec2(cos(importanceSample.phi), sin(importanceSample.phi)) * importanceSample.sinTheta, importanceSample.cosTheta)),  //
-              importanceSample.pdf                                                                                                                     //
+vec4 getImportanceSampleCharlie(const in int sampleIndex, const in int sampleCount, const in mat3 tbn, const in float roughness) {
+  vec4 importanceSample = Charlie(Hammersley(sampleIndex, sampleCount), roughness);
+  return vec4(tbn *                                                                                                                    //
+              normalize(vec3(vec2(cos(importanceSample.z), sin(importanceSample.z)) * importanceSample.y, importanceSample.x)),  //
+              importanceSample.w                                                                                                                     //
   );
 }
 
@@ -137,8 +170,14 @@ vec4 filterLambertian(const in samplerCube cubeMap, const in vec3 N, const in in
   vec4 result = vec4(0.0);
   float lodBias = 0.0;
   int width = int(textureSize(cubeMap, 0).x); 
+  mat3 tbn = generateTBN(N);
   for (int i = 0; i < sampleCount; i++) {
-    vec4 importanceSample = getImportanceSampleLambertian(i, sampleCount, N, roughness);
+#ifdef COMPUTESHADER
+    vec4 importanceSample = ImportanceSamples[i];
+    importanceSample = vec4(tbn * importanceSample.xyz, importanceSample.w);
+#else
+    vec4 importanceSample = getImportanceSampleLambertian(i, sampleCount, tbn, roughness);
+#endif
     vec3 H = vec3(importanceSample.xyz);
     result += textureLod(cubeMap, H, computeLod(importanceSample.w, width, sampleCount) + lodBias);
   }
@@ -150,8 +189,14 @@ vec4 filterGGX(const in samplerCube cubeMap, const in vec3 N, const in int sampl
   float weight = 0.0;
   float lodBias = 0.0;
   int width = int(textureSize(cubeMap, 0).x); 
+  mat3 tbn = generateTBN(N);
   for (int i = 0; i < sampleCount; i++) {
-    vec4 importanceSample = getImportanceSampleGGX(i, sampleCount, N, roughness);
+#ifdef COMPUTESHADER
+    vec4 importanceSample = ImportanceSamples[i];
+    importanceSample = vec4(tbn * importanceSample.xyz, importanceSample.w);
+#else
+    vec4 importanceSample = getImportanceSampleGGX(i, sampleCount, tbn, roughness);
+#endif
     vec3 H = vec3(importanceSample.xyz);
     float lod = computeLod(importanceSample.w, width, sampleCount) + lodBias;
     vec3 V = N;
@@ -170,8 +215,14 @@ vec4 filterCharlie(const in samplerCube cubeMap, const in vec3 N, const in int s
   float weight = 0.0;
   float lodBias = 0.0;
   int width = int(textureSize(cubeMap, 0).x); 
+  mat3 tbn = generateTBN(N);
   for (int i = 0; i < sampleCount; i++) {
-    vec4 importanceSample = getImportanceSampleCharlie(i, sampleCount, N, roughness);
+#ifdef COMPUTESHADER
+    vec4 importanceSample = ImportanceSamples[i];
+    importanceSample = vec4(tbn * importanceSample.xyz, importanceSample.w);
+#else
+    vec4 importanceSample = getImportanceSampleCharlie(i, sampleCount, tbn, roughness);
+#endif
     vec3 H = vec3(importanceSample.xyz);
     float lod = computeLod(importanceSample.w, width, sampleCount) + lodBias;
     vec3 V = N;
@@ -199,8 +250,9 @@ vec2 LUTGGX(const in float NdotV, const in float roughness, const in int sampleC
   vec3 V = vec3(sqrt(1.0 - (NdotV * NdotV)), 0.0, NdotV);
   vec3 N = vec3(0.0, 0.0, 1.0);
   vec2 r = vec2(0.0);
+  mat3 tbn = generateTBN(N);
   for (int i = 0; i < sampleCount; i++) {
-    vec3 H = getImportanceSampleGGX(i, sampleCount, N, roughness).xyz;
+    vec3 H = getImportanceSampleGGX(i, sampleCount, tbn, roughness).xyz;
     vec3 L = normalize(reflect(-V, H));
     float NdotL = clamp(L.z, 0.0, 1.0);
     float NdotH = clamp(H.z, 0.0, 1.0);
@@ -217,8 +269,9 @@ float LUTCharlie(const in float NdotV, const in float roughness, const in int sa
   vec3 V = vec3(sqrt(1.0 - (NdotV * NdotV)), 0.0, NdotV);
   vec3 N = vec3(0.0, 0.0, 1.0);
   float r = 0.0;
+  mat3 tbn = generateTBN(N);
   for (int i = 0; i < sampleCount; i++) {
-    vec3 H = getImportanceSampleCharlie(i, sampleCount, N, roughness).xyz;
+    vec3 H = getImportanceSampleCharlie(i, sampleCount, tbn, roughness).xyz;
     vec3 L = normalize(reflect(-V, H));
     float NdotL = clamp(L.z, 0.0, 1.0);
     float NdotH = clamp(H.z, 0.0, 1.0);
