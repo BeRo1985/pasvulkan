@@ -40,7 +40,7 @@ void main() {
         v = ((v >> 8u) ^ v.yzx) * k;
         v = ((v >> 8u) ^ v.yzx) * k;        
         uint x32 = (0x3c7a92e1u ^ v.x) | 1u;
-        uint lcq = (0x1f2e6a83u ^ v.y) | 1u; 
+        uint lcg = (0x1f2e6a83u ^ v.y) | 1u; 
         for(int sampleIndex = 0, sampleCount = pushConstants.numSamples; sampleIndex < sampleCount; sampleIndex++){
           vec4 importanceSample;
           vec2 uv = Hammersley(sampleIndex, sampleCount);
@@ -53,13 +53,13 @@ void main() {
               x32 ^= x32 << 13u;
               x32 ^= x32 >> 5u;
               x32 ^= x32 << 17u;
-              lcq *= k;
-              uint a = x32 ^ ++lcq;
+              lcg *= k;
+              uint a = x32 ^ ++lcg;
               x32 ^= x32 << 13u;
               x32 ^= x32 >> 5u;
               x32 ^= x32 << 17u;
-              lcq *= k;
-              uint b = x32 ^ ++lcq;
+              lcg *= k;
+              uint b = x32 ^ ++lcg;
               uv = uintBitsToFloat(((uvec2(a, b) >> uvec2(10u)) & uvec2(0x3fffffu)) | uvec2(0x40000000u)) - vec2(2.0);
             }else{
               break;
