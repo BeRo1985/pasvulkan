@@ -1,0 +1,57 @@
+#version 450 core
+
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant, std140, row_major) uniform PushConstants {
+  int mipMapLevel;
+  int maxMipMapLevel;
+  int numGGXSamples;
+  int numCharlieSamples;
+  int numLambertianSamples;
+  int dummy0;
+  int dummy1;
+  int dummy2;
+} pushConstants;
+/* clang-format on */
+
+layout(set = 0, binding = 0) uniform samplerCube uSourceTexture;
+
+layout(set = 0, binding = 1) writeonly uniform imageCube uDestinationTexture[];
+
+#include "roughness.glsl"
+#include "ibl.glsl"
+
+void main() {
+  ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
+  int which = uvw.z / 6;
+  if((which >= 0) && (which < 3)){
+    uvw.z %= 6;
+    ivec2 destinationTextureSize = imageSize(uDestinationTexture[nonuniformEXT(which)]).xy;
+    if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
+      vec3 direction = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
+      float roughness = mipMapLevelToRoughness(float(pushConstants.mipMapLevel), float(pushConstants.maxMipMapLevel));
+      vec4 result = vec4(0.0);
+      switch(which){
+        case 0:{
+          result = filterGGX(uSourceTexture, direction, pushConstants.numGGXSamples, roughness);
+          break;
+        }
+        case 1:{
+          result = filterCharlie(uSourceTexture, direction, pushConstants.numCharlieSamples, roughness);
+          break;
+        }
+        case 2:{
+          result = filterLambertian(uSourceTexture, direction, pushConstants.numLambertianSamples, roughness);
+          break;
+        }
+      }
+      imageStore(uDestinationTexture[nonuniformEXT(which)], uvw, result);
+    }
+  }
+}

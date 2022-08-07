@@ -83,11 +83,9 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.SMAAData,
      PasVulkan.Scene3D.Renderer.SkyCubeMap,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
-     PasVulkan.Scene3D.Renderer.Lambertian.EnvMapCubeMap,
+     PasVulkan.Scene3D.Renderer.ImageBasedLighting.EnvMapCubeMaps,
      PasVulkan.Scene3D.Renderer.Charlie.BRDF,
-     PasVulkan.Scene3D.Renderer.Charlie.EnvMapCubeMap,
-     PasVulkan.Scene3D.Renderer.GGX.BRDF,
-     PasVulkan.Scene3D.Renderer.GGX.EnvMapCubeMap;
+     PasVulkan.Scene3D.Renderer.GGX.BRDF;
 
 type TpvScene3DRenderer=class;
 
@@ -143,10 +141,8 @@ type TpvScene3DRenderer=class;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
-       fGGXEnvMapCubeMap:TpvScene3DRendererGGXEnvMapCubeMap;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
-       fCharlieEnvMapCubeMap:TpvScene3DRendererCharlieEnvMapCubeMap;
-       fLambertianEnvMapCubeMap:TpvScene3DRendererLambertianEnvMapCubeMap;
+       fImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps;
        fSheenELUT:TpvVulkanTexture;
        fShadowMapSampler:TpvVulkanSampler;
        fSSAOSampler:TpvVulkanSampler;
@@ -192,10 +188,8 @@ type TpvScene3DRenderer=class;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
        property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
-       property GGXEnvMapCubeMap:TpvScene3DRendererGGXEnvMapCubeMap read fGGXEnvMapCubeMap;
        property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
-       property CharlieEnvMapCubeMap:TpvScene3DRendererCharlieEnvMapCubeMap read fCharlieEnvMapCubeMap;
-       property LambertianEnvMapCubeMap:TpvScene3DRendererLambertianEnvMapCubeMap read fLambertianEnvMapCubeMap;
+       property ImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps read fImageBasedLightingEnvMapCubeMaps;
        property SheenELUT:TpvVulkanTexture read fSheenELUT;
        property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
@@ -697,13 +691,9 @@ begin
 
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
- fGGXEnvMapCubeMap:=TpvScene3DRendererGGXEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
-
  fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
- fCharlieEnvMapCubeMap:=TpvScene3DRendererCharlieEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
-
- fLambertianEnvMapCubeMap:=TpvScene3DRendererLambertianEnvMapCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+ fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
  case fShadowMode of
 
@@ -930,15 +920,11 @@ begin
 
  FreeAndNil(fSheenELUT);
 
- FreeAndNil(fCharlieEnvMapCubeMap);
-
  FreeAndNil(fCharlieBRDF);
-
- FreeAndNil(fGGXEnvMapCubeMap);
 
  FreeAndNil(fGGXBRDF);
 
- FreeAndNil(fLambertianEnvMapCubeMap);
+ FreeAndNil(fImageBasedLightingEnvMapCubeMaps);
 
  FreeAndNil(fSkyCubeMap);
 

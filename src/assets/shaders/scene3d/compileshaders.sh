@@ -345,10 +345,8 @@ compileshaderarguments=(
   '-V cubemap_sky.comp -DFAST -o cubemap_sky_fast_comp.spv'
   '-V cubemap_sky.frag -o cubemap_sky_frag.spv'
   '-V cubemap_sky.frag -DFAST -o cubemap_sky_fast_frag.spv'
-  '-V cubemap_charlie_filter.comp -o cubemap_charlie_filter_comp.spv'
-  '-V cubemap_ggx_filter.comp -o cubemap_ggx_filter_comp.spv'
-  '-V cubemap_lambertian_filter.comp -o cubemap_lambertian_filter_comp.spv'
-
+  '-V cubemap_filter.comp -o cubemap_filter_comp.spv'
+  
   '-V passthrough.vert -o passthrough_vert.spv'
   
   '-V dummy.frag -o dummy_frag.spv'

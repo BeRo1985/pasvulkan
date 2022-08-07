@@ -349,9 +349,9 @@ begin
                                                                        0,
                                                                        3,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [fInstance.Renderer.GGXEnvMapCubeMap.DescriptorImageInfo,
-                                                                        fInstance.Renderer.CharlieEnvMapCubeMap.DescriptorImageInfo,
-                                                                        fInstance.Renderer.LambertianEnvMapCubeMap.DescriptorImageInfo],
+                                                                       [fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                                        fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                                        fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
