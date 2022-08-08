@@ -224,8 +224,8 @@ type EpvScene3D=class(Exception);
             TVertexStagePushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
+             CountAllViews:UInt32;
              FrameIndex:UInt32;
-             Dummy:UInt32;
              Jitter:TpvVector4;
             end;
             PVertexStagePushConstants=^TVertexStagePushConstants;
@@ -12043,8 +12043,8 @@ begin
   VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
+  VertexStagePushConstants^.CountAllViews:=fViews.Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
-  VertexStagePushConstants^.Dummy:=0;
   if assigned(aJitter) then begin
    VertexStagePushConstants^.Jitter:=aJitter^;
   end else begin
