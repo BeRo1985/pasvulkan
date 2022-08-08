@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAWaitEventCustomPass;
+unit PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPreCustomPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -76,11 +76,10 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass }
-     TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass=class(TpvFrameGraph.TCustomPass)
+type { TpvScene3DRendererPassesAntialiasingTAAPreCustomPass }
+     TpvScene3DRendererPassesAntialiasingTAAPreCustomPass=class(TpvFrameGraph.TCustomPass)
       private
        fInstance:TpvScene3DRendererInstance;
-       fResourceHistoryColor:TpvFrameGraph.TPass.TUsedImageResource;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -94,85 +93,94 @@ type { TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass }
 
 implementation
 
-{ TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass }
+{ TpvScene3DRendererPassesAntialiasingTAAPreCustomPass }
 
-constructor TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
  fInstance:=aInstance;
- Name:='AntialiasingTAAWaitEventCustomPass';
-
- fResourceHistoryColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
-                                      'resource_temporal_antialiasing_history_color',
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                       TpvFrameGraph.TResourceTransition.TFlag.PreviousFrameInput]
-                                     );
+ Name:='AntialiasingTAAPreCustomPass';
 end;
 
-destructor TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Destroy;
+destructor TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.AcquirePersistentResources;
 begin
  inherited AcquirePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.ReleasePersistentResources;
 begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.AcquireVolatileResources;
 begin
  inherited AcquireVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.ReleaseVolatileResources;
 begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     ImageSubresourceRange:TVkImageSubresourceRange;
+    PreviousInFlightFrameIndex:TpvSizeInt;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,fInstance.CountSurfaceViews);
 
- ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                                                  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
-                                                  TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+ PreviousInFlightFrameIndex:=fFrameGraph.DrawPreviousInFlightFrameIndex;
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                   TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                   TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                   VK_QUEUE_FAMILY_IGNORED,
                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                  fResourceHistoryColor.VulkanImages[FrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(aInFlightFrameIndex,-1)].Handle,
+                                                  fInstance.TAAHistoryImages[FrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(aInFlightFrameIndex,-1)].VulkanImage.Handle,
                                                   ImageSubresourceRange);
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   0,
-                                   nil,
-                                   0,
-                                   nil,
-                                   1,
-                                   @ImageMemoryBarrier);
+ if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fInstance.fTAAEventReady[PreviousInFlightFrameIndex] then begin
+  fInstance.fTAAEventReady[PreviousInFlightFrameIndex]:=false;
+  aCommandBuffer.CmdWaitEvents(1,
+                               @fInstance.fTAAEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                               0,nil,
+                               0,nil,
+                               1,@ImageMemoryBarrier);
+  aCommandBuffer.CmdResetEvent(fInstance.fTAAEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
+ end else begin
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+ end;
 
 end;
 

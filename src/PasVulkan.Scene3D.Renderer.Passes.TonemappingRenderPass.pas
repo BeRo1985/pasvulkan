@@ -133,7 +133,7 @@ begin
                                        fInstance.CountSurfaceViews);
 
  if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
+  fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
                                 'resource_temporal_antialiasing_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);

@@ -80,6 +80,7 @@ uses Classes,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage;
@@ -149,6 +150,7 @@ type { TpvScene3DRendererInstance }
             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererArray2DImage;
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
@@ -204,6 +206,12 @@ type { TpvScene3DRendererInstance }
       private
        fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
        fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
+      private
+       fTAAHistoryImages:TArray2DImages;
+      public
+       fTAAEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+       fTAAEventReady:array[0..MaxInFlightFrames-1] of boolean;
+      private
        fPasses:TObject;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
@@ -249,6 +257,8 @@ type { TpvScene3DRendererInstance }
       public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property ForwardMipmappedArray2DImages:TMipmappedArray2DImages read fForwardMipmappedArray2DImages;
+      public
+       property TAAHistoryImages:TArray2DImages read fTAAHistoryImages;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -297,9 +307,9 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MomentBasedOrderIndependentTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyResolveRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAWaitEventCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPreCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAACopyRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -338,9 +348,9 @@ type TpvScene3DRendererInstancePasses=class
        fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass;
        fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass;
        fMomentBasedOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyResolveRenderPass;
-       fAntialiasingTAAWaitEventCustomPass:TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass;
+       fAntialiasingTAAPreCustomPass:TpvScene3DRendererPassesAntialiasingTAAPreCustomPass;
        fAntialiasingTAARenderPass:TpvScene3DRendererPassesAntialiasingTAARenderPass;
-       fAntialiasingTAACopyRenderPass:TpvScene3DRendererPassesAntialiasingTAACopyRenderPass;
+       fAntialiasingTAAPostCustomPass:TpvScene3DRendererPassesAntialiasingTAAPostCustomPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
@@ -673,10 +683,8 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
-                                  1,
-                                  VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                  1
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_color_tonemapping',
@@ -998,19 +1006,41 @@ begin
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAWaitEventCustomPass:=TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass:=TpvScene3DRendererPassesAntialiasingTAAPreCustomPass.Create(fFrameGraph,self);
+  case Renderer.TransparencyMode of
+   TpvScene3DRendererTransparencyMode.Direct:begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDirectTransparencyResolveRenderPass);
+   end;
+   TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
+   TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLockOrderIndependentTransparencyResolveRenderPass);
+   end;
+   TpvScene3DRendererTransparencyMode.LOOPOIT:begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLoopOrderIndependentTransparencyResolveRenderPass);
+   end;
+   TpvScene3DRendererTransparencyMode.WBOIT:begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWeightBlendedOrderIndependentTransparencyResolveRenderPass);
+   end;
+   TpvScene3DRendererTransparencyMode.MBOIT:begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMomentBasedOrderIndependentTransparencyResolveRenderPass);
+   end;
+   else begin
+    TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+   end;
+  end;
 
   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass:=TpvScene3DRendererPassesAntialiasingTAARenderPass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAWaitEventCustomPass);
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPreCustomPass);
 
-  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAACopyRenderPass:=TpvScene3DRendererPassesAntialiasingTAACopyRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPostCustomPass:=TpvScene3DRendererPassesAntialiasingTAAPostCustomPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPostCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass);
 
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAACopyRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPostCustomPass);
  end;
 
  case Renderer.AntialiasingMode of
@@ -1240,6 +1270,19 @@ begin
   UniversalQueue:=nil;
  end;
 
+ if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fTAAHistoryImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
+                                                                                fHeight,
+                                                                                fCountSurfaceViews,
+                                                                                Renderer.OptimizedNonAlphaFormat,
+                                                                                TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+   fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+   fTAAEventReady[InFlightFrameIndex]:=false;
+  end;
+ end;
+
  fFrameGraph.AcquireVolatileResources;
 
 end;
@@ -1249,6 +1292,13 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
 
  fFrameGraph.ReleaseVolatileResources;
+
+ if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   FreeAndNil(fTAAHistoryImages[InFlightFrameIndex]);
+   FreeAndNil(fTAAEvents[InFlightFrameIndex]);
+  end;
+ end;
 
  if assigned(fExternalOutputImageData) then begin
   fExternalOutputImageData.VulkanImages.Clear;

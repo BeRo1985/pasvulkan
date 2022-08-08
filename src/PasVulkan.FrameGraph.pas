@@ -4480,6 +4480,10 @@ type TEventBeforeAfter=(Event,Before,After);
       result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
      end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+     end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
      end;
@@ -4568,6 +4572,12 @@ type TEventBeforeAfter=(Event,Before,After);
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
      end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
      end;
@@ -4605,6 +4615,12 @@ type TEventBeforeAfter=(Event,Before,After);
      VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:begin
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
