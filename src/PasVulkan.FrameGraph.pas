@@ -5494,11 +5494,11 @@ type TEventBeforeAfter=(Event,Before,After);
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=-1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
     if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
    end else if aResourcePhysicalData is TResourcePhysicalBufferData then begin
     FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
@@ -5526,11 +5526,11 @@ type TEventBeforeAfter=(Event,Before,After);
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=-1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
     if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
    end else begin
     Assert(false);
