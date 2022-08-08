@@ -1599,6 +1599,8 @@ procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3;const Tol
 
 function MaxOverlaps(const Min1,Max1,Min2,Max2:TpvScalar;var LowerLim,UpperLim:TpvScalar):boolean;
 
+function GetHaltonSequence(const aIndex,aPrimeBase:TpvUInt32):TpvDouble;
+
 function PackFP32FloatToM6E5Float(const pValue:TpvFloat):TpvUInt32;
 function PackFP32FloatToM5E5Float(const pValue:TpvFloat):TpvUInt32;
 function Float32ToFloat11(const pValue:TpvFloat):TpvUInt32;
@@ -16665,6 +16667,22 @@ begin
    end;
   end;
   result:=true;
+ end;
+end;
+
+function GetHaltonSequence(const aIndex,aPrimeBase:TpvUInt32):TpvDouble;
+var f,OneOverPrimeBase:TpvDouble;
+    Current,CurrentDiv:TpvInt32;
+begin
+ result:=0.0;
+ OneOverPrimeBase:=1.0/aPrimeBase;
+ f:=OneOverPrimeBase;
+ Current:=aIndex;
+ while Current>0 do begin
+  CurrentDiv:=Current div aPrimeBase;
+  result:=result+(f*(Current-(CurrentDiv*aPrimeBase)));
+  Current:=CurrentDiv;
+  f:=f*OneOverPrimeBase;
  end;
 end;
 

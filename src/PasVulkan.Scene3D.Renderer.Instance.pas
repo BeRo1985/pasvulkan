@@ -362,6 +362,11 @@ type TpvScene3DRendererInstancePasses=class
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
      end;
 
+const CountJitterOffsets=128;
+      JitterOffsetMask=CountJitterOffsets-1;
+
+var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
+
 { TpvScene3DRendererInstance }
 
 constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality;const aExternalImageFormat:TVkFormat);
@@ -1683,29 +1688,9 @@ begin
 end;
 
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
-const Jitter:array[0..15,0..1] of TpvFloat=
-       (
-        (0.500000,0.333333),
-        (0.250000,0.666667),
-        (0.750000,0.111111),
-        (0.125000,0.444444),
-        (0.625000,0.777778),
-        (0.375000,0.222222),
-        (0.875000,0.555556),
-        (0.062500,0.888889),
-        (0.562500,0.037037),
-        (0.312500,0.370370),
-        (0.812500,0.703704),
-        (0.187500,0.148148),
-        (0.687500,0.481481),
-        (0.437500,0.814815),
-        (0.937500,0.259259),
-        (0.031250,0.592593)
-       );
 begin
  if (Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA) and (aFrameCounter>=0) then begin
-  result.x:=((Jitter[aFrameCounter and 15,0]-0.5)*2)/fWidth;
-  result.y:=((Jitter[aFrameCounter and 15,1]-0.5)*2)/fHeight;
+  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fWidth,fHeight);
  end else begin
   result.x:=0.0;
   result.y:=0.0;
@@ -1840,5 +1825,15 @@ begin
  TPasMPInterlocked.Write(fInFlightFrameStates[aInFlightFrameIndex].Ready,false);
 end;
 
+procedure InitializeJitterOffsets;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to length(JitterOffsets)-1 do begin
+  JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index,2),GetHaltonSequence(Index,3));
+ end;
+end;
+
+initialization
+ InitializeJitterOffsets;
 end.
 
