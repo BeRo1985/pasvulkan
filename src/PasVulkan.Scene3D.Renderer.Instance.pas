@@ -297,6 +297,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAACopyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -336,6 +337,7 @@ type TpvScene3DRendererInstancePasses=class
        fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass;
        fMomentBasedOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyResolveRenderPass;
        fAntialiasingTAARenderPass:TpvScene3DRendererPassesAntialiasingTAARenderPass;
+       fAntialiasingTAACopyRenderPass:TpvScene3DRendererPassesAntialiasingTAACopyRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
@@ -662,6 +664,18 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
+                                  true,
+                                  Renderer.OptimizedNonAlphaFormat,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1,
+                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_color_tonemapping',
                                   true,
                                   VK_FORMAT_R8G8B8A8_SRGB,//TVkFormat(TpvInt32(IfThen(Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),TpvInt32(VK_FORMAT_R8G8B8A8_SRGB),TpvInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
@@ -980,10 +994,18 @@ begin
  end;
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+
   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass:=TpvScene3DRendererPassesAntialiasingTAARenderPass.Create(fFrameGraph,self);
+
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAACopyRenderPass:=TpvScene3DRendererPassesAntialiasingTAACopyRenderPass.Create(fFrameGraph,self);
+
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
+
+ if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAACopyRenderPass);
+ end;
 
  case Renderer.AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.DSAA:begin

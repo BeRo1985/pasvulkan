@@ -6076,7 +6076,16 @@ type TEventBeforeAfter=(Event,Before,After);
 
        // Input => Output
 
-       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0000');
+       if (TResourceTransition.TFlag.PreviousFrameInput in FromResourceTransition.Flags) and not
+          (TResourceTransition.TFlag.PreviousFrameInput in ToResourceTransition.Flags) then begin
+
+        // Ignore
+
+       end else begin
+
+        raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0000');
+
+       end;
 
       end else if (FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
                   (ToResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
@@ -6358,8 +6367,16 @@ type TEventBeforeAfter=(Event,Before,After);
          Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
          Attachment^.StencilLoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-         Attachment^.InitialLayout:=ResourceTransition.fLayout;
-         Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         if ImageResourceType.fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+          Attachment^.InitialLayout:=ImageResourceType.fInitialLayout;
+         end else begin
+          Attachment^.InitialLayout:=ResourceTransition.fLayout;
+         end;
+         if ImageResourceType.fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+          Attachment^.FinalLayout:=ImageResourceType.fFinalLayout;
+         end else begin
+          Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         end;
          Attachment^.ImageUsageFlags:=0;
          Attachment^.ClearValueInitialized:=false;
          Attachment^.HasInitialLayout:=false;
@@ -6453,7 +6470,13 @@ type TEventBeforeAfter=(Event,Before,After);
              Attachment^.InitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
             end else if Attachment^.InitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
              Attachment^.HasInitialLayout:=true;
-             Attachment^.InitialLayout:=ResourceTransition.fLayout;
+             if assigned(Attachment^.Resource.ResourceType) and
+                (Attachment^.Resource.ResourceType is TImageResourceType) and
+                (TImageResourceType(Attachment^.Resource.ResourceType).fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED) then begin
+              Attachment^.InitialLayout:=TImageResourceType(Attachment^.Resource.ResourceType).fInitialLayout;
+             end else begin
+              Attachment^.InitialLayout:=ResourceTransition.fLayout;
+             end;
             end;
            end;
           end;
@@ -6464,7 +6487,13 @@ type TEventBeforeAfter=(Event,Before,After);
               (fRootPass=RenderPass))} then begin
            Attachment^.FinalLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
           end else begin
-           Attachment^.FinalLayout:=ResourceTransition.fLayout;
+           if assigned(Attachment^.Resource.ResourceType) and
+              (Attachment^.Resource.ResourceType is TImageResourceType) and
+              (TImageResourceType(Attachment^.Resource.ResourceType).fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED) then begin
+            Attachment^.FinalLayout:=TImageResourceType(Attachment^.Resource.ResourceType).fFinalLayout;
+           end else begin
+            Attachment^.FinalLayout:=ResourceTransition.fLayout;
+           end;
           end;
           if not Attachment^.ClearValueInitialized then begin
            Attachment^.ClearValueInitialized:=true;
