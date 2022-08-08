@@ -157,9 +157,9 @@ void main() {
       historySample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
 
       color = mix(historySample, 
-                          currentSamples[4], 
-                          vec4(mix(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(min(historySample.w, currentSamples[4].w), 0.0, 1.0)), 0.0, 1.0))); 
-                          
+                  currentSamples[4], 
+                  vec4(mix(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0)), 0.0, 1.0))); 
+
       color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65536.0));    
 
     }

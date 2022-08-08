@@ -1838,7 +1838,7 @@ procedure InitializeJitterOffsets;
 var Index:TpvSizeInt;
 begin
  for Index:=0 to length(JitterOffsets)-1 do begin
-  JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index,2),GetHaltonSequence(Index,3));
+  JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index+1,2),GetHaltonSequence(Index+1,3));
  end;
 end;
 
