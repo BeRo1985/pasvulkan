@@ -431,7 +431,11 @@ procedure TpvScene3DRendererPassesAntialiasingTAARenderPass.Execute(const aComma
 var PushConstants:TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.DeltaTime:=pvApplication.DeltaTime;
+ if aFrameIndex=0 then begin
+  PushConstants.DeltaTime:=0.0;
+ end else begin
+  PushConstants.DeltaTime:=pvApplication.DeltaTime;
+ end;
  PushConstants.Omega:=5.0;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
