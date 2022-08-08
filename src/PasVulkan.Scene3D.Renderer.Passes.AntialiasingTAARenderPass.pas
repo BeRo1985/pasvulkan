@@ -80,8 +80,9 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
       TpvScene3DRendererPassesAntialiasingTAARenderPass=class(TpvFrameGraph.TRenderPass)
        public
         type TPushConstants=record
-              DeltaTime:TpvFloat;
-              Omega:TpvFloat;
+              TranslucentCoefficient:TpvFloat;
+              OpaqueCoefficient:TpvFloat;
+              VarianceClipGamma:TpvFloat;
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -452,11 +453,14 @@ var PushConstants:TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  if aFrameIndex=0 then begin
-  PushConstants.DeltaTime:=0.0;
+  PushConstants.TranslucentCoefficient:=1.0;
+  PushConstants.OpaqueCoefficient:=1.0;
  end else begin
-  PushConstants.DeltaTime:=pvApplication.DeltaTime;
+  PushConstants.TranslucentCoefficient:=Clamp(1.0-exp((-10.0)*pvApplication.DeltaTime),1e-3,0.5);
+  PushConstants.OpaqueCoefficient:=Clamp(1.0-exp((-3.0)*pvApplication.DeltaTime),1e-3,0.5);
  end;
- PushConstants.Omega:=20.0;
+ PushConstants.VarianceClipGamma:=1.25;
+ writeln(PushConstants.OpaqueCoefficient:1:10);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
