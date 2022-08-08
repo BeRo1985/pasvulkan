@@ -66,31 +66,11 @@ void main() {
 
   if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
 
+    // First frame, so do nothing then.
+
     color = textureLod(uCurrentColorTexture, uvw, 0.0);
 
   }else{
-/*
-    float filterRadius = pushConstants.resolveFilterDiameter * 0.5;
-    float invFilterRadius = 1.0 / filterRadius;
-    vec4 sum = vec4(0.0);
-    float weight = 0.0;
-    vec4 minimumSampleColor = vec4(3e+24);
-    vec4 maximumSampleColor = vec4(-3e+24);
-    for(int y = -1; y <= 1; y++){
-      for(int x = -1; x <= 1; x++){
-        vec2 sampleOffset = vec2(vec2(x, y) * invTexSize);
-        vec3 sampleUVW = vec3(clamp(uvw.xy + sampleOffset, vec2(0.0), vec2(1.0)), uvw.z);
-        vec4 sampleColor = textureLod(uCurrentColorTexture, sampleUVW, 0);
-        vec2 sampleDistance = abs(sampleOffset) * invFilterRadius; 
-        float sampleWeight = 1.0;
-        minimumSampleColor = min(minimumSampleColor, sampleColor);
-        maximumSampleColor = min(maximumSampleColor, sampleColor);
-        sum += sampleColor * sampleWeight;
-        weight *= sampleWeight;
-        sampleM0 += sampleColor;
-        sampleM1 += sampleColor;
-      }
-    }*/
 
     vec4 velocityUVWZ;
     {
@@ -169,21 +149,19 @@ void main() {
 
     float currentLuminance = currentSamples[4].x;
     float historyLuminance = historySample.x;    
-    float unbiasedDifference = abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2));
-		float unbiasedWeight = 1.0 - unbiasedDifference;
-		float unbiasedWeightSqr = unbiasedWeight * unbiasedWeight;
-		historySample =  mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, unbiasedWeightSqr));
-
+		float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
+		historySample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
+        
     vec4 blendedSample;
     if(any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
       blendedSample = currentSamples[4];
     }else{
       blendedSample = mix(historySample, 
                           currentSamples[4], 
-                          vec4(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, currentSamples[4].w))); 
+                          vec4(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, min(historySample.w, currentSamples[4].w)))); 
     }
 
-    color = Untonemap(YCoCgToRGB(blendedSample));    
+    color = clamp(Untonemap(YCoCgToRGB(blendedSample)), vec4(0.0), vec4(65536.0));    
 
   }
 
