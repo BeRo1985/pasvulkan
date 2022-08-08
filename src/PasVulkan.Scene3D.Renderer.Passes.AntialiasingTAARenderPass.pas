@@ -456,11 +456,10 @@ begin
   PushConstants.TranslucentCoefficient:=1.0;
   PushConstants.OpaqueCoefficient:=1.0;
  end else begin
-  PushConstants.TranslucentCoefficient:=Clamp(1.0-exp((-10.0)*pvApplication.DeltaTime),1e-3,0.5);
+  PushConstants.TranslucentCoefficient:=Clamp(1.0-exp((-30.0)*pvApplication.DeltaTime),1e-3,0.5);
   PushConstants.OpaqueCoefficient:=Clamp(1.0-exp((-3.0)*pvApplication.DeltaTime),1e-3,0.5);
  end;
  PushConstants.VarianceClipGamma:=1.25;
- writeln(PushConstants.OpaqueCoefficient:1:10);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
