@@ -58,12 +58,12 @@ void main() {
 
     color = mix(historySample, 
                 currentSamples[4], 
-                vec4(mix(1.0,
+                vec4(mix(0.25,
                          (any(lessThan(historyUVW.xy, vec2(0.0))) || 
                           any(greaterThan(historyUVW.xy, vec2(1.0)))) 
                           ? 1.0 
                           : (1.0 - exp((-pushConstants.omega) * deltaTime)),
-                          (currentSamples[4].w > 0.5) ? 1.0 : 0.0
+                          currentSamples[4].w
                         )
                     )
                );    
