@@ -120,8 +120,22 @@ var MemoryRequirements:TVkMemoryRequirements;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
     ImageViewType:TVkImageViewType;
+    ImageAspectMask:TVkImageAspectFlags;
 begin
  inherited Create;
+
+ case aFormat of
+  VK_FORMAT_D16_UNORM,
+  VK_FORMAT_D16_UNORM_S8_UINT,
+  VK_FORMAT_D24_UNORM_S8_UINT,
+  VK_FORMAT_D32_SFLOAT,
+  VK_FORMAT_D32_SFLOAT_S8_UINT:begin
+   ImageAspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT);
+  end;
+  else begin
+   ImageAspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  end;
+ end;
 
  if aLayers>1 then begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
@@ -141,7 +155,7 @@ begin
                                      aSampleBits,
                                      VK_IMAGE_TILING_OPTIMAL,
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
-                                     TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                     //TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
@@ -198,12 +212,12 @@ begin
    try
 
     FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
-    ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageSubresourceRange.aspectMask:=ImageAspectMask;
     ImageSubresourceRange.baseMipLevel:=0;
     ImageSubresourceRange.levelCount:=1;
     ImageSubresourceRange.baseArrayLayer:=0;
     ImageSubresourceRange.layerCount:=aLayers;
-    fVulkanImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+    fVulkanImage.SetLayout(ImageAspectMask,
                            TVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
                            aImageLayout,
                            @ImageSubresourceRange,
@@ -237,7 +251,7 @@ begin
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                ImageAspectMask,
                                                 0,
                                                 1,
                                                 0,
@@ -251,7 +265,7 @@ begin
                                                      TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                      TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                      TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                     TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                     ImageAspectMask,
                                                      0,
                                                      1,
                                                      0,

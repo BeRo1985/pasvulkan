@@ -207,7 +207,8 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
        fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
       private
-       fTAAHistoryImages:TArray2DImages;
+       fTAAHistoryColorImages:TArray2DImages;
+       fTAAHistoryDepthImages:TArray2DImages;
       public
        fTAAEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fTAAEventReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -259,7 +260,8 @@ type { TpvScene3DRendererInstance }
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property ForwardMipmappedArray2DImages:TMipmappedArray2DImages read fForwardMipmappedArray2DImages;
       public
-       property TAAHistoryImages:TArray2DImages read fTAAHistoryImages;
+      property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
+      property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -732,7 +734,7 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or (IfThen(Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),0)),
                                   1
                                  );
 
@@ -1278,12 +1280,18 @@ begin
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-   fTAAHistoryImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
-                                                                                fHeight,
-                                                                                fCountSurfaceViews,
-                                                                                Renderer.OptimizedNonAlphaFormat,
-                                                                                TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+   fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
+                                                                                     fHeight,
+                                                                                     fCountSurfaceViews,
+                                                                                     Renderer.OptimizedNonAlphaFormat,
+                                                                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+   fTAAHistoryDepthImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
+                                                                                     fHeight,
+                                                                                     fCountSurfaceViews,
+                                                                                     VK_FORMAT_D32_SFLOAT,
+                                                                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
    fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
    fTAAEventReady[InFlightFrameIndex]:=false;
   end;
@@ -1301,7 +1309,8 @@ begin
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-   FreeAndNil(fTAAHistoryImages[InFlightFrameIndex]);
+   FreeAndNil(fTAAHistoryColorImages[InFlightFrameIndex]);
+   FreeAndNil(fTAAHistoryDepthImages[InFlightFrameIndex]);
    FreeAndNil(fTAAEvents[InFlightFrameIndex]);
   end;
  end;

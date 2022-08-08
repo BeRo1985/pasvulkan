@@ -149,7 +149,7 @@ begin
                                                   TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                   VK_QUEUE_FAMILY_IGNORED,
                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                  fInstance.TAAHistoryImages[FrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(aInFlightFrameIndex,-1)].VulkanImage.Handle,
+                                                  fInstance.TAAHistoryColorImages[FrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(aInFlightFrameIndex,-1)].VulkanImage.Handle,
                                                   ImageSubresourceRange);
 
  if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fInstance.fTAAEventReady[PreviousInFlightFrameIndex] then begin
