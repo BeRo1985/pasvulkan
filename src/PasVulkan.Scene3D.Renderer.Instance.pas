@@ -218,7 +218,8 @@ type { TpvScene3DRendererInstance }
        procedure Reset;
        procedure AddView(const aView:TpvScene3D.TView);
        procedure AddViews(const aViews:array of TpvScene3D.TView);
-       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32);
+       function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property CameraMatrix:TpvMatrix4x4 read fCameraMatrix write fCameraMatrix;
@@ -1625,7 +1626,17 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32);
+function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+const Jitter:array[0..3,0..1] of TpvFloat=((-0.5,0.5),(0.5,0.5),(0.5,-0.5),(-0.5,-0.5));
+begin
+ result:=aProjectionMatrix;
+ if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+  result.RawComponents[3,0]:=result.RawComponents[3,0]+(Jitter[aFrameCounter and 3,0]/fWidth);
+  result.RawComponents[3,1]:=result.RawComponents[3,1]+(Jitter[aFrameCounter and 3,1]/fHeight);
+ end;
+end;
+
+procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
@@ -1641,12 +1652,12 @@ begin
   if assigned(fVirtualReality) then begin
 
    ViewLeft.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(0);
-   ViewLeft.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(0);
+   ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
    ViewRight.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(1);
-   ViewRight.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(1);
+   ViewRight.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(1),aFrameCounter);
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
@@ -1680,7 +1691,7 @@ begin
      ViewLeft.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
     end;
    end;
-   ViewLeft.ProjectionMatrix:=ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
+   ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace,aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 

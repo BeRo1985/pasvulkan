@@ -117,7 +117,7 @@ type { TScreenMain }
 
        function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; override;
 
-       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aDeltaTime:TpvDouble);
+       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
 
@@ -398,7 +398,7 @@ begin
  result:=TPasMPInterlocked.Read(fInFlightFrameStates[aInFlightFrameIndex].Ready);
 end;
 
-procedure TScreenMain.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aDeltaTime:TpvDouble);
+procedure TScreenMain.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
     ModelMatrix,ViewMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
@@ -488,7 +488,7 @@ begin
 
    fRendererInstance.Reset;
 
-   fRendererInstance.DrawUpdate(aInFlightFrameIndex);
+   fRendererInstance.DrawUpdate(aInFlightFrameIndex,aFrameCounter);
 
    fScene3D.UpdateViews(aInFlightFrameIndex);
 
@@ -515,7 +515,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- DrawUpdate(InFlightFrameIndex,pvApplication.DeltaTime);
+ DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
