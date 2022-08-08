@@ -362,6 +362,7 @@ compileshaderarguments=(
   
   '-V antialiasing_dsaa.frag -o antialiasing_dsaa_frag.spv'
   '-V antialiasing_fxaa.frag -o antialiasing_fxaa_frag.spv'
+  '-V antialiasing_taa.frag -o antialiasing_taa_frag.spv'
   '-V antialiasing_none.frag -o antialiasing_none_frag.spv'
   
   '-V antialiasing_smaa_blend.vert -o antialiasing_smaa_blend_vert.spv'
