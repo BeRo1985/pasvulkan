@@ -8,9 +8,11 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outFragColor;
 
-layout(set = 0, binding = 0) uniform sampler2DArray uCurrentTexture;
-layout(set = 0, binding = 1) uniform sampler2DArray uHistoryTexture;
-layout(set = 0, binding = 2) uniform sampler2DArray uVelocityTexture;
+layout(set = 0, binding = 0) uniform sampler2DArray uCurrentColorTexture;
+layout(set = 0, binding = 1) uniform sampler2DArray uCurrentDepthTexture;
+layout(set = 0, binding = 2) uniform sampler2DArray uHistoryColorTexture;
+layout(set = 0, binding = 3) uniform sampler2DArray uHistoryDepthTexture;
+layout(set = 0, binding = 4) uniform sampler2DArray uVelocityTexture;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
   float deltaTime;
@@ -19,7 +21,7 @@ layout(push_constant, std140, row_major) uniform PushConstants {
 
 void main() {
     
-  vec2 texSize = vec2(textureSize(uCurrentTexture, 0).xy);
+  vec2 texSize = vec2(textureSize(uCurrentColorTexture, 0).xy);
   vec2 invTexSize = vec2(1.0) / texSize;
   
   vec4 color = vec4(0.0);
@@ -30,20 +32,20 @@ void main() {
 
   if(deltaTime < 1e-6){
 
-    color = textureLod(uCurrentTexture, uvw, 0.0);
+    color = textureLod(uCurrentColorTexture, uvw, 0.0);
 
   }else{
   
     vec4 currentSamples[9];
-    currentSamples[0] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2(-1, -1));
-    currentSamples[1] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 0, -1));
-    currentSamples[2] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 1, -1));
-    currentSamples[3] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2(-1,  0));
-    currentSamples[4] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 0,  0));
-    currentSamples[5] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 1,  0));
-    currentSamples[6] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2(-1,  1));
-    currentSamples[7] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 0,  1));
-    currentSamples[8] = textureLodOffset(uCurrentTexture, uvw, 0, ivec2( 1,  1));
+    currentSamples[0] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1));
+    currentSamples[1] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1));
+    currentSamples[2] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1));
+    currentSamples[3] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0));
+    currentSamples[4] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0));
+    currentSamples[5] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0));
+    currentSamples[6] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1));
+    currentSamples[7] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1));
+    currentSamples[8] = textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1));
         
     vec4 minimumColor = currentSamples[0],
          maximumColor = currentSamples[0];   
@@ -54,7 +56,7 @@ void main() {
            
     vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
         
-    vec4 historySample = clamp(texture(uHistoryTexture, historyUVW, 0.0), minimumColor, maximumColor);
+    vec4 historySample = clamp(texture(uHistoryColorTexture, historyUVW, 0.0), minimumColor, maximumColor);
 
     color = mix(historySample, 
                 currentSamples[4], 
