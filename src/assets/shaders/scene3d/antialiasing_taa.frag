@@ -98,70 +98,71 @@ void main() {
 
     vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
 
-    vec4 currentSamples[9];    
-    currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
-    currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
-    currentSamples[2] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
-    currentSamples[3] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
-    currentSamples[4] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
-    currentSamples[5] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
-    currentSamples[6] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
-    currentSamples[7] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
-    currentSamples[8] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
-        
-    // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
-    //        1         0 1 2
-    // (min 3 4 5 + min 3 4 5) * 0.5
-    //        7         6 7 8        
-    vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
-         maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
-    minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
-    maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
-    vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
-    
-    {
-      // Variance clipping ("An Excursion in Temporal Supersampling")
-      vec4 m0 = currentSamples[0],
-           m1 = currentSamples[0] * currentSamples[0];   
-      for(int i = 1; i < 9; ++i) {
-        vec4 currentSample = currentSamples[i]; 
-        m0 += currentSample;
-        m1 += currentSample * currentSample;
-      }
-      m0 *= 1.0 / 9.0;
-      m1 *= 1.0 / 9.0;
-      vec4 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
-      minimumColor = max(minimumColor, m0 - sigma);
-      maximumColor = min(maximumColor, m0 + sigma);
-    }            
-
-    {
-      vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
-      vec2 chromaCenter = currentSamples[4].yz;
-      minimumColor.yz = chromaCenter - chromaExtent;
-      maximumColor.yz = chromaCenter + chromaExtent;
-      averageColor.yz = chromaCenter;
-    }  
-       
-    vec4 historySample = RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
-    
-    historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
-
-    float currentLuminance = currentSamples[4].x;
-    float historyLuminance = historySample.x;    
-		float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
-		historySample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
-        
-    vec4 blendedSample;
     if(any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
-      blendedSample = currentSamples[4];
+      color = textureLod(uCurrentColorTexture, uvw, 0.0);
     }else{
-      blendedSample = mix(historySample, 
-                          currentSamples[4], 
-                          vec4(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, min(historySample.w, currentSamples[4].w)))); 
-    }
 
-    color = clamp(Untonemap(YCoCgToRGB(blendedSample)), vec4(0.0), vec4(65536.0));    
+      vec4 currentSamples[9];    
+      currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
+      currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
+      currentSamples[2] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
+      currentSamples[3] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
+      currentSamples[4] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
+      currentSamples[5] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
+      currentSamples[6] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
+      currentSamples[7] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
+      currentSamples[8] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
+          
+      // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
+      //        1         0 1 2
+      // (min 3 4 5 + min 3 4 5) * 0.5
+      //        7         6 7 8        
+      vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
+          maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
+      minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+      maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+      vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
+      
+      {
+        // Variance clipping ("An Excursion in Temporal Supersampling")
+        vec4 m0 = currentSamples[0],
+            m1 = currentSamples[0] * currentSamples[0];   
+        for(int i = 1; i < 9; ++i) {
+          vec4 currentSample = currentSamples[i]; 
+          m0 += currentSample;
+          m1 += currentSample * currentSample;
+        }
+        m0 *= 1.0 / 9.0;
+        m1 *= 1.0 / 9.0;
+        vec4 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
+        minimumColor = max(minimumColor, m0 - sigma);
+        maximumColor = min(maximumColor, m0 + sigma);
+      }            
+
+      {
+        vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
+        vec2 chromaCenter = currentSamples[4].yz;
+        minimumColor.yz = chromaCenter - chromaExtent;
+        maximumColor.yz = chromaCenter + chromaExtent;
+        averageColor.yz = chromaCenter;
+      }  
+        
+      vec4 historySample = RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
+      
+      historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
+
+      float currentLuminance = currentSamples[4].x;
+      float historyLuminance = historySample.x;    
+      float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
+      historySample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
+
+      color = mix(historySample, 
+                          currentSamples[4], 
+                          vec4(mix(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(min(historySample.w, currentSamples[4].w), 0.0, 1.0)), 0.0, 1.0))); 
+                          
+      color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65536.0));    
+
+    }
 
   }
 
