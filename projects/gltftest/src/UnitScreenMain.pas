@@ -198,13 +198,13 @@ begin
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
  fRenderer.Prepare;
 
- fRenderer.AllocateResources;
+ fRenderer.AcquirePermanentResources;
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
 
  fRendererInstance.Prepare;
 
- fRendererInstance.AllocateResources;
+ fRendererInstance.AcquirePermanentResources;
 
  Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
 
@@ -237,9 +237,9 @@ end;
 destructor TScreenMain.Destroy;
 var Index:TpvSizeInt;
 begin
- fRendererInstance.ReleaseResources;
+ fRendererInstance.ReleasePermanentResources;
  FreeAndNil(fRendererInstance);
- fRenderer.ReleaseResources;
+ fRenderer.ReleasePermanentResources;
  FreeAndNil(fRenderer);
  fScene3D.Unload;
  FreeAndNil(fGroupInstance);
@@ -320,7 +320,7 @@ begin
  fRendererInstance.Width:=fWidth;
  fRendererInstance.Height:=fHeight;
 
- fRendererInstance.AllocateDynamicResources;
+ fRendererInstance.AcquireDynamicResources;
 
  pvApplication.SkipNextDrawFrame:=true;
 

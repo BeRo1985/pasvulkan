@@ -100,10 +100,10 @@ type { TpvScene3DRendererPassesForwardRenderMipMapComputePass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure Show; override;
-       procedure Hide; override;
-       procedure AfterCreateSwapChain; override;
-       procedure BeforeDestroySwapChain; override;
+       procedure AcquirePermanentResources; override;
+       procedure ReleasePermanentResources; override;
+       procedure AcquireDynamicResources; override;
+       procedure ReleaseDynamicResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -133,12 +133,12 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Show;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.AcquirePermanentResources;
 var Stream:TStream;
     Format:string;
 begin
 
- inherited Show;
+ inherited AcquirePermanentResources;
 
  case fInstance.Renderer.OptimizedNonAlphaFormat of
   VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
@@ -194,7 +194,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Hide;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.ReleasePermanentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel2Compute);
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel1Compute);
@@ -202,15 +202,15 @@ begin
  FreeAndNil(fDownsampleLevel2ComputeShaderModule);
  FreeAndNil(fDownsampleLevel1ComputeShaderModule);
  FreeAndNil(fDownsampleLevel0ComputeShaderModule);
- inherited Hide;
+ inherited ReleasePermanentResources;
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.AcquireDynamicResources;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     ImageViewType:TVkImageViewType;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireDynamicResources;
 
  fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
                                          TVkFilter.VK_FILTER_LINEAR,
@@ -343,7 +343,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.ReleaseDynamicResources;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
 begin
  FreeAndNil(fPipelineLevel2);
@@ -359,7 +359,7 @@ begin
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
  FreeAndNil(fVulkanSampler);
- inherited BeforeDestroySwapChain;
+ inherited ReleaseDynamicResources;
 end;
 
 procedure TpvScene3DRendererPassesForwardRenderMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

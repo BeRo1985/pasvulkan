@@ -90,10 +90,10 @@ type { TpvScene3DRendererPassesMeshComputePass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure Show; override;
-       procedure Hide; override;
-       procedure AfterCreateSwapChain; override;
-       procedure BeforeDestroySwapChain; override;
+       procedure AcquirePermanentResources; override;
+       procedure ReleasePermanentResources; override;
+       procedure AcquireDynamicResources; override;
+       procedure ReleaseDynamicResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -114,11 +114,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.Show;
+procedure TpvScene3DRendererPassesMeshComputePass.AcquirePermanentResources;
 var Stream:TStream;
 begin
 
- inherited Show;
+ inherited AcquirePermanentResources;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
  try
@@ -131,18 +131,18 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.Hide;
+procedure TpvScene3DRendererPassesMeshComputePass.ReleasePermanentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
- inherited Hide;
+ inherited ReleasePermanentResources;
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesMeshComputePass.AcquireDynamicResources;
 var Index:TpvSizeInt;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireDynamicResources;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
@@ -164,7 +164,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesMeshComputePass.ReleaseDynamicResources;
 var Index:TpvSizeInt;
 begin
  FreeAndNil(fPipeline);
@@ -172,7 +172,7 @@ begin
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fEvents[Index]);
  end;
- inherited BeforeDestroySwapChain;
+ inherited ReleaseDynamicResources;
 end;
 
 procedure TpvScene3DRendererPassesMeshComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

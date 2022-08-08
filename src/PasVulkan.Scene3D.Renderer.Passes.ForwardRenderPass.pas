@@ -111,10 +111,10 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fSkyBox:TpvScene3DRendererSkyBox;
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure Show; override;
-       procedure Hide; override;
-       procedure AfterCreateSwapChain; override;
-       procedure BeforeDestroySwapChain; override;
+       procedure AcquirePermanentResources; override;
+       procedure ReleasePermanentResources; override;
+       procedure AcquireDynamicResources; override;
+       procedure ReleaseDynamicResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -219,11 +219,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderPass.Show;
+procedure TpvScene3DRendererPassesForwardRenderPass.AcquirePermanentResources;
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
- inherited Show;
+ inherited AcquirePermanentResources;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
@@ -320,7 +320,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderPass.Hide;
+procedure TpvScene3DRendererPassesForwardRenderPass.ReleasePermanentResources;
 begin
 
  FreeAndNil(fSkyBox);
@@ -353,10 +353,10 @@ begin
 
  end;
 
- inherited Hide;
+ inherited ReleasePermanentResources;
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesForwardRenderPass.AcquireDynamicResources;
 var InFlightFrameIndex:TpvSizeInt;
     DepthPrePass:boolean;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
@@ -365,7 +365,7 @@ var InFlightFrameIndex:TpvSizeInt;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireDynamicResources;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -630,7 +630,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesForwardRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesForwardRenderPass.ReleaseDynamicResources;
 var Index:TpvSizeInt;
     DepthPrePass:boolean;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
@@ -653,7 +653,7 @@ begin
  end;
  FreeAndNil(fGlobalVulkanDescriptorPool);
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
- inherited BeforeDestroySwapChain;
+ inherited ReleaseDynamicResources;
 end;
 
 procedure TpvScene3DRendererPassesForwardRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

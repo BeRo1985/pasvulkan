@@ -210,9 +210,9 @@ type { TpvScene3DRendererInstance }
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
        procedure Prepare;
-       procedure AllocateResources;
-       procedure ReleaseResources;
-       procedure AllocateDynamicResources;
+       procedure AcquirePermanentResources;
+       procedure ReleasePermanentResources;
+       procedure AcquireDynamicResources;
        procedure ReleaseDynamicResources;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Reset;
@@ -1008,17 +1008,17 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.AllocateResources;
+procedure TpvScene3DRendererInstance.AcquirePermanentResources;
 begin
- fFrameGraph.Show;
+ fFrameGraph.AcquirePermanentResources;
 end;
 
-procedure TpvScene3DRendererInstance.ReleaseResources;
+procedure TpvScene3DRendererInstance.ReleasePermanentResources;
 begin
- fFrameGraph.Hide;
+ fFrameGraph.ReleasePermanentResources;
 end;
 
-procedure TpvScene3DRendererInstance.AllocateDynamicResources;
+procedure TpvScene3DRendererInstance.AcquireDynamicResources;
 var InFlightFrameIndex,Index:TpvSizeInt;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -1206,7 +1206,7 @@ begin
   UniversalQueue:=nil;
  end;
 
- fFrameGraph.AfterCreateSwapChain;
+ fFrameGraph.AcquireDynamicResources;
 
 end;
 
@@ -1214,7 +1214,7 @@ procedure TpvScene3DRendererInstance.ReleaseDynamicResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
- fFrameGraph.BeforeDestroySwapChain;
+ fFrameGraph.ReleaseDynamicResources;
 
  if assigned(fExternalOutputImageData) then begin
   fExternalOutputImageData.VulkanImages.Clear;

@@ -101,10 +101,10 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure Show; override;
-       procedure Hide; override;
-       procedure AfterCreateSwapChain; override;
-       procedure BeforeDestroySwapChain; override;
+       procedure AcquirePermanentResources; override;
+       procedure ReleasePermanentResources; override;
+       procedure AcquireDynamicResources; override;
+       procedure ReleaseDynamicResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -173,11 +173,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Show;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.AcquirePermanentResources;
 var InFlightFrameIndex:TpvSizeInt;
     Stream:TStream;
 begin
- inherited Show;
+ inherited AcquirePermanentResources;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
@@ -219,7 +219,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Hide;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.ReleasePermanentResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -237,17 +237,17 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- inherited Hide;
+ inherited ReleasePermanentResources;
 end;
 
-procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.AfterCreateSwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.AcquireDynamicResources;
 var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireDynamicResources;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -376,7 +376,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.BeforeDestroySwapChain;
+procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.ReleaseDynamicResources;
 var AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided:TpvScene3D.TDoubleSided;
@@ -388,7 +388,7 @@ begin
    end;
   end;
  end;
- inherited BeforeDestroySwapChain;
+ inherited ReleaseDynamicResources;
 end;
 
 procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

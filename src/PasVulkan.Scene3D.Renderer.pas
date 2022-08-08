@@ -159,8 +159,8 @@ type TpvScene3DRenderer=class;
        class procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); static;
        class function CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean; static;
        procedure Prepare;
-       procedure AllocateResources;
-       procedure ReleaseResources;
+       procedure AcquirePermanentResources;
+       procedure ReleasePermanentResources;
        procedure Flush(const aInFlightFrameIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       published
        property Scene3D:TpvScene3D read fScene3D;
@@ -679,7 +679,7 @@ begin
 
 end;
 
-procedure TpvScene3DRenderer.AllocateResources;
+procedure TpvScene3DRenderer.AcquirePermanentResources;
 var Stream:TStream;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -908,7 +908,7 @@ begin
 
 end;
 
-procedure TpvScene3DRenderer.ReleaseResources;
+procedure TpvScene3DRenderer.ReleasePermanentResources;
 begin
 
  FreeAndNil(fShadowMapSampler);
