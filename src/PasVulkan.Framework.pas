@@ -20352,7 +20352,7 @@ begin
  if aStream.Read(Header,SizeOf(TDDSHeader))<>SizeOf(TDDSHeader) then begin
   raise EpvVulkanTextureException.Create('Invalid DDS stream');
  end;
- if ((Header.dwMagic<>DDS_MAGIC) or (Header.dwSize<>124) or ((Header.dwFlags and DDSD_PIXELFORMAT)=0) or ((Header.dwFlags and DDSD_CAPS)=0)) then begin
+ if (Header.dwMagic<>DDS_MAGIC) or (Header.dwSize<>124) {or ((Header.dwFlags and DDSD_PIXELFORMAT)=0) or ((Header.dwFlags and DDSD_CAPS)=0)} then begin
   raise EpvVulkanTextureException.Create('Invalid DDS stream');
  end;
  if (Header.dwFlags and DDSD_WIDTH)<>0 then begin
@@ -20400,7 +20400,7 @@ begin
   end;
  end;
  ImageFormat:=VK_FORMAT_UNDEFINED;
- if (Header.dwFlags and DDSD_PIXELFORMAT)<>0 then begin
+{if (Header.dwFlags and DDSD_PIXELFORMAT)<>0 then}begin
   if (Header.PixelFormat.dwFlags and DDPF_FOURCC)<>0 then begin
    case Header.PixelFormat.dwFourCC of
     D3DFMT_DXT1:begin
@@ -21618,7 +21618,10 @@ begin
                 aMipMaps,
                 aSRGB,
                 aAdditionalSRGB);
- end else if ((PDDSHeader(TpvPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(TpvPointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
+ end else if ((PDDSHeader(TpvPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and
+              (PDDSHeader(TpvPointer(@FirstBytes))^.dwSize=124){ and not
+              (((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or
+               ((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))}) then begin
   CreateFromDDS(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -22102,6 +22105,22 @@ begin
    aCompressed:=true;
   end;
   VK_FORMAT_BC5_SNORM_BLOCK:begin
+   aMipMapSize:=((aMipMapHeight+3) div 4)*((aMipMapWidth+3) div 4)*16;
+   aCompressed:=true;
+  end;
+  VK_FORMAT_BC6H_SFLOAT_BLOCK:begin
+   aMipMapSize:=((aMipMapHeight+3) div 4)*((aMipMapWidth+3) div 4)*16;
+   aCompressed:=true;
+  end;
+  VK_FORMAT_BC6H_UFLOAT_BLOCK:begin
+   aMipMapSize:=((aMipMapHeight+3) div 4)*((aMipMapWidth+3) div 4)*16;
+   aCompressed:=true;
+  end;
+  VK_FORMAT_BC7_SRGB_BLOCK:begin
+   aMipMapSize:=((aMipMapHeight+3) div 4)*((aMipMapWidth+3) div 4)*16;
+   aCompressed:=true;
+  end;
+  VK_FORMAT_BC7_UNORM_BLOCK:begin
    aMipMapSize:=((aMipMapHeight+3) div 4)*((aMipMapWidth+3) div 4)*16;
    aCompressed:=true;
   end;
