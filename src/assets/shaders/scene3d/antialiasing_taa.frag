@@ -52,7 +52,7 @@ void main() {
       maximumColor = max(maximumColor, currentSamples[i]);
     }
            
-    vec3 historyUVW = uvw; + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
+    vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
         
     vec4 historySample = clamp(texture(uHistoryTexture, historyUVW, 0.0), minimumColor, maximumColor);
 

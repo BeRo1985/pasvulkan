@@ -226,6 +226,7 @@ type { TpvScene3DRendererInstance }
        procedure Reset;
        procedure AddView(const aView:TpvScene3D.TView);
        procedure AddViews(const aViews:array of TpvScene3D.TView);
+       function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
        procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -1681,7 +1682,7 @@ begin
 
 end;
 
-function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
 const Jitter:array[0..15,0..1] of TpvFloat=
        (
         (0.500000,0.333333),
@@ -1702,10 +1703,23 @@ const Jitter:array[0..15,0..1] of TpvFloat=
         (0.031250,0.592593)
        );
 begin
+ if (Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA) and (aFrameCounter>=0) then begin
+  result.x:=((Jitter[aFrameCounter and 15,0]-0.5)*2)/fWidth;
+  result.y:=((Jitter[aFrameCounter and 15,1]-0.5)*2)/fHeight;
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+var v:TpvVector2;
+begin
  result:=aProjectionMatrix;
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  result.RawComponents[3,0]:=result.RawComponents[3,0]+(((Jitter[aFrameCounter and 15,0]-0.5)*2)/fWidth);
-  result.RawComponents[3,1]:=result.RawComponents[3,1]+(((Jitter[aFrameCounter and 15,1]-0.5)*2)/fHeight);
+  v:=GetJitterOffset(aFrameCounter);
+  result.RawComponents[3,0]:=result.RawComponents[3,0]+v.x;
+  result.RawComponents[3,1]:=result.RawComponents[3,1]+v.y;
  end;
 end;
 

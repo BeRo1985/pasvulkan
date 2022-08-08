@@ -32,6 +32,7 @@ layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
 layout(location = 13) out vec4 outPreviousClipSpace;
 layout(location = 14) out vec4 outCurrentClipSpace;
+layout(location = 15) out vec4 outJitter;
 #endif
 
 /* clang-format off */
@@ -39,6 +40,8 @@ layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint frameIndex;
+  uint dummy;
+  vec4 jitter;
 } pushConstants;
 
 // Global descriptor set
@@ -116,6 +119,7 @@ void main() {
    View previousView = uView.views[viewIndex + pushConstants.countViews];
    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
    gl_Position = outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+   outJitter = pushConstants.jitter;
 #else
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
 #endif

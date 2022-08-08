@@ -60,6 +60,7 @@ layout(location = 12) flat in uint inFrameIndex;
 #ifdef VELOCITY
 layout(location = 13) in vec4 inPreviousClipSpace;
 layout(location = 14) in vec4 inCurrentClipSpace;
+layout(location = 15) in vec4 inJitter;
 #endif
 
 #ifdef DEPTHONLY
@@ -2166,7 +2167,7 @@ void main() {
 #endif
 
 #ifdef VELOCITY
-  outFragVelocity = ((inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w)) * 0.5;
+  outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
 
   vec3 normal = normalize(inNormal);
   normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));

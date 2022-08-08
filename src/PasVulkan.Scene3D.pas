@@ -225,6 +225,8 @@ type EpvScene3D=class(Exception);
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
              FrameIndex:UInt32;
+             Dummy:UInt32;
+             Jitter:TpvVector4;
             end;
             PVertexStagePushConstants=^TVertexStagePushConstants;
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
@@ -1780,7 +1782,8 @@ type EpvScene3D=class(Exception);
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aPipelineLayout:TpvVulkanPipelineLayout;
                       const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                      const aJitter:PpvVector4=nil);
        procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
                               const aAspectRatio:TpvScalar;
                               out aZNear:TpvScalar;
@@ -12023,7 +12026,8 @@ procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines
                           const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aPipelineLayout:TpvVulkanPipelineLayout;
                           const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                          const aJitter:PpvVector4);
 var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     Group:TpvScene3D.TGroup;
     VisibleBit:TPasMPUInt32;
@@ -12040,6 +12044,12 @@ begin
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
+  VertexStagePushConstants^.Dummy:=0;
+  if assigned(aJitter) then begin
+   VertexStagePushConstants^.Jitter:=aJitter^;
+  end else begin
+   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
+  end;
 
   if fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count>0 then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),

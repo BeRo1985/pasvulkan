@@ -425,7 +425,7 @@ begin
  end else begin
   PushConstants.DeltaTime:=pvApplication.DeltaTime;
  end;
- PushConstants.Omega:=5.0;
+ PushConstants.Omega:=20.0;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
