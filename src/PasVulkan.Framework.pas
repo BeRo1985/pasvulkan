@@ -22593,8 +22593,8 @@ begin
          BufferImageCopy^.imageOffset.x:=0;
          BufferImageCopy^.imageOffset.y:=0;
          BufferImageCopy^.imageOffset.z:=DepthIndex;
-         BufferImageCopy^.imageExtent.width:=Max(1,fWidth);
-         BufferImageCopy^.imageExtent.height:=Max(1,fHeight);
+         BufferImageCopy^.imageExtent.width:=Max(1,MipMapWidth);
+         BufferImageCopy^.imageExtent.height:=Max(1,MipMapHeight);
          BufferImageCopy^.imageExtent.depth:=1;
          MipMapSize:=0;
          Compressed:=false;
@@ -22636,8 +22636,8 @@ begin
          BufferImageCopy^.imageOffset.x:=0;
          BufferImageCopy^.imageOffset.y:=0;
          BufferImageCopy^.imageOffset.z:=DepthIndex;
-         BufferImageCopy^.imageExtent.width:=Max(1,fWidth);
-         BufferImageCopy^.imageExtent.height:=Max(1,fHeight);
+         BufferImageCopy^.imageExtent.width:=Max(1,MipMapWidth);
+         BufferImageCopy^.imageExtent.height:=Max(1,MipMapHeight);
          BufferImageCopy^.imageExtent.depth:=1;
          MipMapSize:=0;
          GetMipMapSize(fFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed);
