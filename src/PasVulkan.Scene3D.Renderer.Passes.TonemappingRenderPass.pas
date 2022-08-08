@@ -97,10 +97,10 @@ type { TpvScene3DRendererPassesTonemappingRenderPass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -166,11 +166,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesTonemappingRenderPass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesTonemappingRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 
  fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
@@ -198,7 +198,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesTonemappingRenderPass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesTonemappingRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -206,13 +206,13 @@ begin
  FreeAndNil(fVulkanVertexShaderModule);
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesTonemappingRenderPass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesTonemappingRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -318,7 +318,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesTonemappingRenderPass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesTonemappingRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -336,7 +336,7 @@ begin
 
  fVulkanRenderPass:=nil;
 
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesTonemappingRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

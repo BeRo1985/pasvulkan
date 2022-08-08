@@ -96,10 +96,10 @@ type { TpvScene3DRendererPassesDepthMipMapComputePass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -141,11 +141,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesDepthMipMapComputePass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesDepthMipMapComputePass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
@@ -207,21 +207,21 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthMipMapComputePass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesDepthMipMapComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel1Compute);
  FreeAndNil(fVulkanPipelineShaderStageDownsampleLevel0Compute);
  FreeAndNil(fDownsampleLevel1ComputeShaderModule);
  FreeAndNil(fDownsampleLevel0ComputeShaderModule);
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesDepthMipMapComputePass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesDepthMipMapComputePass.AcquireVolatileResources;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     ImageViewType:TVkImageViewType;
 begin
 
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 
  fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
                                          TVkFilter.VK_FILTER_NEAREST,
@@ -347,7 +347,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthMipMapComputePass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesDepthMipMapComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
 begin
  FreeAndNil(fPipelineLevel1);
@@ -362,7 +362,7 @@ begin
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
  FreeAndNil(fVulkanSampler);
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesDepthMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

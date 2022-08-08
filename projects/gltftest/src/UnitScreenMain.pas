@@ -198,13 +198,13 @@ begin
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
  fRenderer.Prepare;
 
- fRenderer.AcquirePermanentResources;
+ fRenderer.AcquirePersistentResources;
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
 
  fRendererInstance.Prepare;
 
- fRendererInstance.AcquirePermanentResources;
+ fRendererInstance.AcquirePersistentResources;
 
  Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
 
@@ -237,9 +237,9 @@ end;
 destructor TScreenMain.Destroy;
 var Index:TpvSizeInt;
 begin
- fRendererInstance.ReleasePermanentResources;
+ fRendererInstance.ReleasePersistentResources;
  FreeAndNil(fRendererInstance);
- fRenderer.ReleasePermanentResources;
+ fRenderer.ReleasePersistentResources;
  FreeAndNil(fRenderer);
  fScene3D.Unload;
  FreeAndNil(fGroupInstance);
@@ -320,7 +320,7 @@ begin
  fRendererInstance.Width:=fWidth;
  fRendererInstance.Height:=fHeight;
 
- fRendererInstance.AcquireDynamicResources;
+ fRendererInstance.AcquireVolatileResources;
 
  pvApplication.SkipNextDrawFrame:=true;
 
@@ -329,7 +329,7 @@ end;
 procedure TScreenMain.BeforeDestroySwapChain;
 var Index:TpvSizeInt;
 begin
- fRendererInstance.ReleaseDynamicResources;
+ fRendererInstance.ReleaseVolatileResources;
  inherited BeforeDestroySwapChain;
 end;
 

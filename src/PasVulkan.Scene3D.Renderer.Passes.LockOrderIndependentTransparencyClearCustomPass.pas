@@ -84,10 +84,10 @@ type { TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -108,24 +108,24 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.AcquirePersistentResources;
 begin
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.ReleasePersistentResources;
 begin
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.AcquireVolatileResources;
 begin
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.ReleaseVolatileResources;
 begin
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyClearCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

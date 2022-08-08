@@ -90,10 +90,10 @@ type { TpvScene3DRendererPassesMeshComputePass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -114,11 +114,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesMeshComputePass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
  try
@@ -131,18 +131,18 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesMeshComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesMeshComputePass.AcquireVolatileResources;
 var Index:TpvSizeInt;
 begin
 
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
@@ -164,7 +164,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesMeshComputePass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesMeshComputePass.ReleaseVolatileResources;
 var Index:TpvSizeInt;
 begin
  FreeAndNil(fPipeline);
@@ -172,7 +172,7 @@ begin
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fEvents[Index]);
  end;
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesMeshComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

@@ -102,10 +102,10 @@ type { TpvScene3DRendererPassesDepthVelocityNormalsRenderPass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -211,11 +211,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.AcquirePersistentResources;
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_velocity_vert.spv');
  try
@@ -256,7 +256,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.ReleasePersistentResources;
 begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
@@ -271,10 +271,10 @@ begin
 
  FreeAndNil(fMeshDepthMaskedFragmentShaderModule);
 
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -282,7 +282,7 @@ var InFlightFrameIndex:TpvSizeInt;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
 begin
 
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -409,7 +409,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.ReleaseVolatileResources;
 var Index:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -423,7 +423,7 @@ begin
   end;
  end;
  FreeAndNil(fVulkanPipelineLayout);
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);

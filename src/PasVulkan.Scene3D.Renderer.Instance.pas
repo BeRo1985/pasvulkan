@@ -210,10 +210,10 @@ type { TpvScene3DRendererInstance }
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
        procedure Prepare;
-       procedure AcquirePermanentResources;
-       procedure ReleasePermanentResources;
-       procedure AcquireDynamicResources;
-       procedure ReleaseDynamicResources;
+       procedure AcquirePersistentResources;
+       procedure ReleasePersistentResources;
+       procedure AcquireVolatileResources;
+       procedure ReleaseVolatileResources;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Reset;
        procedure AddView(const aView:TpvScene3D.TView);
@@ -1008,17 +1008,17 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.AcquirePermanentResources;
+procedure TpvScene3DRendererInstance.AcquirePersistentResources;
 begin
- fFrameGraph.AcquirePermanentResources;
+ fFrameGraph.AcquirePersistentResources;
 end;
 
-procedure TpvScene3DRendererInstance.ReleasePermanentResources;
+procedure TpvScene3DRendererInstance.ReleasePersistentResources;
 begin
- fFrameGraph.ReleasePermanentResources;
+ fFrameGraph.ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererInstance.AcquireDynamicResources;
+procedure TpvScene3DRendererInstance.AcquireVolatileResources;
 var InFlightFrameIndex,Index:TpvSizeInt;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -1206,15 +1206,15 @@ begin
   UniversalQueue:=nil;
  end;
 
- fFrameGraph.AcquireDynamicResources;
+ fFrameGraph.AcquireVolatileResources;
 
 end;
 
-procedure TpvScene3DRendererInstance.ReleaseDynamicResources;
+procedure TpvScene3DRendererInstance.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
- fFrameGraph.ReleaseDynamicResources;
+ fFrameGraph.ReleaseVolatileResources;
 
  if assigned(fExternalOutputImageData) then begin
   fExternalOutputImageData.VulkanImages.Clear;

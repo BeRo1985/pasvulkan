@@ -104,10 +104,10 @@ type { TpvScene3DRendererPassesSSAOBlurRenderPass }
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aHorziontal:boolean); reintroduce;
        destructor Destroy; override;
-       procedure AcquirePermanentResources; override;
-       procedure ReleasePermanentResources; override;
-       procedure AcquireDynamicResources; override;
-       procedure ReleaseDynamicResources; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
@@ -188,11 +188,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquirePermanentResources;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
- inherited AcquirePermanentResources;
+ inherited AcquirePersistentResources;
 
  fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(FrameGraph.TransferQueue.CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
@@ -237,7 +237,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleasePermanentResources;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -246,13 +246,13 @@ begin
  FreeAndNil(fVulkanVertexShaderModule);
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
- inherited ReleasePermanentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquireDynamicResources;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
- inherited AcquireDynamicResources;
+ inherited AcquireVolatileResources;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -357,7 +357,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleaseDynamicResources;
+procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -375,7 +375,7 @@ begin
 
  fVulkanRenderPass:=nil;
 
- inherited ReleaseDynamicResources;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
