@@ -40,7 +40,7 @@ void main() {
     color = vec4(opaque.xyz, 1.0);
   } else {
     vec4 transparent = vec4(accumulation.xyz / clamp(accumulation.w, 1e-4f, 5e4f), 1.0f - revealage);
-    color = vec4(mix(opaque.xyz, transparent.xyz, transparent.w), 1.0);
+    color = vec4(mix(opaque.xyz, transparent.xyz, transparent.w), (transparent.w < 1e-4) ? 1.0 : 0.0);
   }
 
   outColor = color;

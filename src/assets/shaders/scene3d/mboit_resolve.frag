@@ -43,7 +43,7 @@ void main() {
     if (isinf(b0) || isnan(b0)) {
       total_transmittance = 1e7;
     }
-    color = vec4((total_transmittance * opaque.xyz) + (((1.0 - total_transmittance) / transparent.w) * vec3(transparent.xyz)), 1.0);
+    color = vec4((total_transmittance * opaque.xyz) + (((1.0 - total_transmittance) / transparent.w) * vec3(transparent.xyz)), 0.0);
   }
 
   outColor = color;

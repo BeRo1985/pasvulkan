@@ -122,5 +122,6 @@ void main() {
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 
-  outColor = color;
+  outColor = vec4(color.xyz, (oitCountFragments == 0) ? 1.0 : 0.0);
+  
 }

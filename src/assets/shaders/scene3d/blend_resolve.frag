@@ -21,9 +21,11 @@ void blend(inout vec4 target, const in vec4 source) {                  //
 void main() {
   vec4 color = vec4(0.0);
 
-  blend(color, subpassLoad(uSubpassInputTransparent));
+  vec4 transprency = subpassLoad(uSubpassInputTransparent);
+  bool hasTransparency = transprency.w > 1e-4;
+  blend(color, transprency);
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 
-  outColor = color;
+  outColor = vec4(color.xyz, hasTransparency ? 0.0 : 1.0);
 }

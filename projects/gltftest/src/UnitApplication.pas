@@ -192,6 +192,8 @@ begin
      fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.SMAA;
     end else if Parameter='msaa' then begin
      fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.MSAA;
+    end else if Parameter='taa' then begin
+     fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
     end else begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.Auto;
     end;
