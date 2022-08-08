@@ -1682,12 +1682,30 @@ begin
 end;
 
 function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
-const Jitter:array[0..3,0..1] of TpvFloat=((-0.5,0.5),(0.5,0.5),(0.5,-0.5),(-0.5,-0.5));
+const Jitter:array[0..15,0..1] of TpvFloat=
+       (
+        (0.500000,0.333333),
+        (0.250000,0.666667),
+        (0.750000,0.111111),
+        (0.125000,0.444444),
+        (0.625000,0.777778),
+        (0.375000,0.222222),
+        (0.875000,0.555556),
+        (0.062500,0.888889),
+        (0.562500,0.037037),
+        (0.312500,0.370370),
+        (0.812500,0.703704),
+        (0.187500,0.148148),
+        (0.687500,0.481481),
+        (0.437500,0.814815),
+        (0.937500,0.259259),
+        (0.031250,0.592593)
+       );
 begin
  result:=aProjectionMatrix;
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  result.RawComponents[3,0]:=result.RawComponents[3,0]+(Jitter[aFrameCounter and 3,0]/fWidth);
-  result.RawComponents[3,1]:=result.RawComponents[3,1]+(Jitter[aFrameCounter and 3,1]/fHeight);
+  result.RawComponents[3,0]:=result.RawComponents[3,0]+(((Jitter[aFrameCounter and 15,0]-0.5)*2)/fWidth);
+  result.RawComponents[3,1]:=result.RawComponents[3,1]+(((Jitter[aFrameCounter and 15,1]-0.5)*2)/fHeight);
  end;
 end;
 

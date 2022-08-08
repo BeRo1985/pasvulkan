@@ -52,18 +52,18 @@ void main() {
       maximumColor = max(maximumColor, currentSamples[i]);
     }
            
-    vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
+    vec3 historyUVW = uvw; + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
         
     vec4 historySample = clamp(texture(uHistoryTexture, historyUVW, 0.0), minimumColor, maximumColor);
 
     color = mix(historySample, 
                 currentSamples[4], 
-                vec4(mix(0.9,
+                vec4(mix(1.0,
                          (any(lessThan(historyUVW.xy, vec2(0.0))) || 
                           any(greaterThan(historyUVW.xy, vec2(1.0)))) 
                           ? 1.0 
                           : (1.0 - exp((-pushConstants.omega) * deltaTime)),
-                          currentSamples[4].w
+                          (currentSamples[4].w > 0.5) ? 1.0 : 0.0
                         )
                     )
                );    
