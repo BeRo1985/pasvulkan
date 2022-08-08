@@ -101,7 +101,7 @@ constructor TpvScene3DRendererPassesAntialiasingTAAPostCustomPass.Create(const a
 begin
  inherited Create(aFrameGraph);
  fInstance:=aInstance;
- Name:='AntiafResourceColorliasingTAAPostCustomPass';
+ Name:='AntialiasingTAAPostCustomPass';
 
  fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
                                'resource_temporal_antialiasing_color',

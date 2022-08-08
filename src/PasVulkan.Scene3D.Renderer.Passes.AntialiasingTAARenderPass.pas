@@ -124,7 +124,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingTAA';
+ Name:='AntialiasingTAARenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
