@@ -91,15 +91,14 @@ void main() {
 
   vec3 position = inPosition;
 
-  vec4 worldSpacePosition = vec4(position, 1.0);
-  worldSpacePosition.xyz /= worldSpacePosition.w;
+  vec3 worldSpacePosition = position;
 
   vec4 viewSpacePosition = view.viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
-  outWorldSpacePosition = worldSpacePosition.xyz;
+  outWorldSpacePosition = worldSpacePosition;
   outViewSpacePosition = viewSpacePosition.xyz;
-  outCameraRelativePosition = worldSpacePosition.xyz - cameraPosition;
+  outCameraRelativePosition = worldSpacePosition - cameraPosition;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
 #ifdef VELOCITY
@@ -117,8 +116,9 @@ void main() {
 
 #ifdef VELOCITY
    View previousView = uView.views[viewIndex + pushConstants.countViews];
+   outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
-   gl_Position = outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+   gl_Position = outCurrentClipSpace;
    outJitter = pushConstants.jitter;
 #else
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
