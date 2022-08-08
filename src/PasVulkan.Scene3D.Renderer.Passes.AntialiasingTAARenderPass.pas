@@ -83,6 +83,8 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               TranslucentCoefficient:TpvFloat;
               OpaqueCoefficient:TpvFloat;
               VarianceClipGamma:TpvFloat;
+              FeedbackMin:TpvFloat;
+              FeedbackMax:TpvFloat;
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -460,6 +462,8 @@ begin
   PushConstants.OpaqueCoefficient:=Clamp(1.0-exp((-3.0)*pvApplication.DeltaTime),1e-3,0.5);
  end;
  PushConstants.VarianceClipGamma:=1.25;
+ PushConstants.FeedbackMin:=0.88;
+ PushConstants.FeedbackMax:=0.97;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,

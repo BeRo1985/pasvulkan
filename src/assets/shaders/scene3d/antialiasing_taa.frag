@@ -18,6 +18,8 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   float translucentCoefficient;
   float opaqueCoefficient;
   float varianceClipGamma;
+  float feedbackMin; 
+  float feedbackMax; 
 } pushConstants;
 
 const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, -0.25);
@@ -44,13 +46,13 @@ vec4 YCoCgToRGB(in vec4 c){
   return vec4(YCoCgToRGBMatrix * c.xyz, c.w);
 }
 
-vec3 ClipAABB(vec3 point, vec3 aabbMin, vec3 aabbMax){	
-  vec3 center = (aabbMin + aabbMax) * 0.5;
-	vec3 extents = fma(aabbMax - aabbMin, vec3(0.5), vec3(1e-7));
-	vec3 offset = point - center;
-	vec3 a = abs(offset.xyz / extents);
-	float maxUnit = max(a.x, max(a.y, a.z));
-	return (maxUnit > 1.0) ? (center + (offset / maxUnit)) : point;
+vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
+  vec3 p_clip = (aabbMin + aabbMax) * 0.5;
+	vec3 e_clip = fma(aabbMax - aabbMin, vec3(0.5), vec3(1e-7));
+	vec4 v_clip = q - vec4(p_clip, p.w);
+	vec3 a_unit = abs(v_clip.xyz / e_clip);
+	float maxUnit = max(a_unit.x, max(a_unit.y, a_unit.z));
+	return (maxUnit > 1.0) ? vec4(vec4(p_clip, p.w) + (v_clip / maxUnit)) : q;
 }
 
 void main() {
@@ -62,16 +64,60 @@ void main() {
   
   vec3 uvw = vec3(inTexCoord, float(gl_ViewIndex));
 
-  vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0.0);
-   
-  if((abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ||
-      (any(lessThan(historyUVW.xy, vec2(0.0))) ||
-       any(greaterThan(historyUVW.xy, vec2(1.0))))){
+  if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
 
     color = textureLod(uCurrentColorTexture, uvw, 0.0);
 
   }else{
-  
+/*
+    float filterRadius = pushConstants.resolveFilterDiameter * 0.5;
+    float invFilterRadius = 1.0 / filterRadius;
+    vec4 sum = vec4(0.0);
+    float weight = 0.0;
+    vec4 minimumSampleColor = vec4(3e+24);
+    vec4 maximumSampleColor = vec4(-3e+24);
+    for(int y = -1; y <= 1; y++){
+      for(int x = -1; x <= 1; x++){
+        vec2 sampleOffset = vec2(vec2(x, y) * invTexSize);
+        vec3 sampleUVW = vec3(clamp(uvw.xy + sampleOffset, vec2(0.0), vec2(1.0)), uvw.z);
+        vec4 sampleColor = textureLod(uCurrentColorTexture, sampleUVW, 0);
+        vec2 sampleDistance = abs(sampleOffset) * invFilterRadius; 
+        float sampleWeight = 1.0;
+        minimumSampleColor = min(minimumSampleColor, sampleColor);
+        maximumSampleColor = min(maximumSampleColor, sampleColor);
+        sum += sampleColor * sampleWeight;
+        weight *= sampleWeight;
+        sampleM0 += sampleColor;
+        sampleM1 += sampleColor;
+      }
+    }*/
+
+    vec4 velocityUVWZ;
+    {
+      vec3 depthSamples[9];
+      depthSamples[0] = vec3(-1.0, -1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0, -1.0) * invTexSize), 0), 0.0).x);
+      depthSamples[1] = vec3( 0.0, -1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0, -1.0) * invTexSize), 0), 0.0).x);
+      depthSamples[2] = vec3( 1.0, -1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0, -1.0) * invTexSize), 0), 0.0).x);
+      depthSamples[3] = vec3(-1.0,  0.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  0.0) * invTexSize), 0), 0.0).x);
+      depthSamples[4] = vec3( 0.0,  0.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  0.0) * invTexSize), 0), 0.0).x);
+      depthSamples[5] = vec3( 1.0,  0.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  0.0) * invTexSize), 0), 0.0).x);
+      depthSamples[6] = vec3(-1.0,  1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  1.0) * invTexSize), 0), 0.0).x);
+      depthSamples[7] = vec3( 0.0,  1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  1.0) * invTexSize), 0), 0.0).x);
+      depthSamples[8] = vec3( 1.0,  1.0, textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  1.0) * invTexSize), 0), 0.0).x);
+      vec3 bestDepth = depthSamples[0];
+      if(bestDepth.z > depthSamples[1].z){ bestDepth = depthSamples[1]; }
+      if(bestDepth.z > depthSamples[2].z){ bestDepth = depthSamples[2]; }
+      if(bestDepth.z > depthSamples[3].z){ bestDepth = depthSamples[3]; }
+      if(bestDepth.z > depthSamples[4].z){ bestDepth = depthSamples[4]; }
+      if(bestDepth.z > depthSamples[5].z){ bestDepth = depthSamples[5]; }
+      if(bestDepth.z > depthSamples[6].z){ bestDepth = depthSamples[6]; }
+      if(bestDepth.z > depthSamples[7].z){ bestDepth = depthSamples[7]; }
+      if(bestDepth.z > depthSamples[8].z){ bestDepth = depthSamples[8]; }
+      velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
+    }
+
+    vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
+
     vec4 currentSamples[9];    
     currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
     currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
@@ -87,34 +133,55 @@ void main() {
     //        1         0 1 2
     // (min 3 4 5 + min 3 4 5) * 0.5
     //        7         6 7 8        
-    vec3 minimumColor = min(min(min(min(currentSamples[1].xyz, currentSamples[3].xyz), currentSamples[4].xyz), currentSamples[5].xyz), currentSamples[7].xyz),
-         maximumColor = max(max(max(max(currentSamples[1].xyz, currentSamples[3].xyz), currentSamples[4].xyz), currentSamples[5].xyz), currentSamples[7].xyz);
-    minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0].xyz), currentSamples[2].xyz), currentSamples[6].xyz), currentSamples[8].xyz)) * 0.5;
-    maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0].xyz), currentSamples[2].xyz), currentSamples[6].xyz), currentSamples[8].xyz)) * 0.5;
+    vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
+         maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
+    minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+    maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+    vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
     
     {
       // Variance clipping ("An Excursion in Temporal Supersampling")
-      vec3 m0 = currentSamples[0].xyz,
-           m1 = currentSamples[0].xyz * currentSamples[0].xyz;   
+      vec4 m0 = currentSamples[0],
+           m1 = currentSamples[0] * currentSamples[0];   
       for(int i = 1; i < 9; ++i) {
         vec4 currentSample = currentSamples[i]; 
-        m0 += currentSample.xyz;
-        m1 += currentSample.xyz * currentSample.xyz;
+        m0 += currentSample;
+        m1 += currentSample * currentSample;
       }
       m0 *= 1.0 / 9.0;
       m1 *= 1.0 / 9.0;
-      vec3 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
+      vec4 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
       minimumColor = max(minimumColor, m0 - sigma);
       maximumColor = min(maximumColor, m0 + sigma);
-    }              
+    }            
+
+    {
+      vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
+      vec2 chromaCenter = currentSamples[4].yz;
+      minimumColor.yz = chromaCenter - chromaExtent;
+      maximumColor.yz = chromaCenter + chromaExtent;
+      averageColor.yz = chromaCenter;
+    }  
        
     vec4 historySample = RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
     
-    historySample.xyz = ClipAABB(historySample.xyz, minimumColor, maximumColor);
+    historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
-    vec4 blendedSample = mix(historySample, 
-                             currentSamples[4], 
-                             vec4(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, min(historySample.w, currentSamples[4].w))));
+    float currentLuminance = currentSamples[4].x;
+    float historyLuminance = historySample.x;    
+    float unbiasedDifference = abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2));
+		float unbiasedWeight = 1.0 - unbiasedDifference;
+		float unbiasedWeightSqr = unbiasedWeight * unbiasedWeight;
+		historySample =  mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, unbiasedWeightSqr));
+
+    vec4 blendedSample;
+    if(any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
+      blendedSample = currentSamples[4];
+    }else{
+      blendedSample = mix(historySample, 
+                          currentSamples[4], 
+                          vec4(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, currentSamples[4].w))); 
+    }
 
     color = Untonemap(YCoCgToRGB(blendedSample));    
 
