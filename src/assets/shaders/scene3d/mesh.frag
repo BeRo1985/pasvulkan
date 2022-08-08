@@ -2166,7 +2166,7 @@ void main() {
 #endif
 
 #ifdef VELOCITY
-  outFragVelocity = (inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w);
+  outFragVelocity = ((inCurrentClipSpace.xy / inCurrentClipSpace.w) - (inPreviousClipSpace.xy / inPreviousClipSpace.w)) * 0.5;
 
   vec3 normal = normalize(inNormal);
   normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
