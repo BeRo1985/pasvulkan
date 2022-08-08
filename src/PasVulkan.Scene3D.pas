@@ -11821,14 +11821,14 @@ begin
   if assigned(fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
    case fBufferStreamingMode of
     TBufferStreamingMode.Direct:begin
-     fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fViews.Items[0],
+     fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
                                                                      0,
                                                                      (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
                                                                      FlushUpdateData
                                                                     );
     end;
     TBufferStreamingMode.Staging:begin
-     fGlobalVulkanViewUniformStagingBuffers[aInFlightFrameIndex].UpdateData(fViews.Items[0],
+     fGlobalVulkanViewUniformStagingBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
                                                                             0,
                                                                             (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
                                                                             FlushUpdateData
