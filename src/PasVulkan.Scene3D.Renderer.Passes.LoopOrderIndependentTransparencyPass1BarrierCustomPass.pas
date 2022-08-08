@@ -139,8 +139,8 @@ begin
 
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                    0,
-                                                    0,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
                                                     fInstance.LoopOrderIndependentTransparencyZBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);

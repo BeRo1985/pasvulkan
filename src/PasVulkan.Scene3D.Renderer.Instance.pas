@@ -297,6 +297,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MomentBasedOrderIndependentTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.WeightBlendedOrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAWaitEventCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAACopyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
@@ -337,6 +338,7 @@ type TpvScene3DRendererInstancePasses=class
        fMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyAbsorbanceRenderPass;
        fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass;
        fMomentBasedOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyResolveRenderPass;
+       fAntialiasingTAAWaitEventCustomPass:TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass;
        fAntialiasingTAARenderPass:TpvScene3DRendererPassesAntialiasingTAARenderPass;
        fAntialiasingTAACopyRenderPass:TpvScene3DRendererPassesAntialiasingTAACopyRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
@@ -996,7 +998,10 @@ begin
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
 
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAWaitEventCustomPass:=TpvScene3DRendererPassesAntialiasingTAAWaitEventCustomPass.Create(fFrameGraph,self);
+
   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass:=TpvScene3DRendererPassesAntialiasingTAARenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAARenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAWaitEventCustomPass);
 
   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAACopyRenderPass:=TpvScene3DRendererPassesAntialiasingTAACopyRenderPass.Create(fFrameGraph,self);
 

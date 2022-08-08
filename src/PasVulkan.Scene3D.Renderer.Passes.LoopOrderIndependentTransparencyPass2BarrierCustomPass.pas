@@ -140,8 +140,8 @@ begin
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                        0,
-                                                        0,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fInstance.LoopOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
@@ -149,8 +149,8 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         0,
-                                                         0,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
                                                          fInstance.LoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
