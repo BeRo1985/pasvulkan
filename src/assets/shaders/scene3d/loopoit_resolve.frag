@@ -10,7 +10,11 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
+#ifdef MSAA
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputTransparent;
+#else
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
+#endif
 
 layout(std140, set = 0, binding = 2) uniform uboOIT {
   uvec4 oitViewPort;  //
@@ -76,10 +80,13 @@ void main() {
   }
 #endif
 
+#ifdef MSAA
+  const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
+#endif
+
   if (oitCountFragments > 0) {
 
 #ifdef MSAA
-    const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
 
 #if 1
     vec4 oitMSAAColors[MAX_MSAA];
@@ -124,7 +131,17 @@ void main() {
 
 #endif
 
+#ifdef MSAA
+  {
+    vec4 sampleColor = vec4(0.0);  
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
+      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, oitMSAASampleIndex));
+    }
+    blend(color, ApplyInverseToneMapping(sampleColor / oitMSAA));   
+  }
+#else
   blend(color, subpassLoad(uSubpassInputTransparent));
+#endif
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 

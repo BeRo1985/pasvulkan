@@ -10,7 +10,11 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
+#ifdef MSAA
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputTransparent;
+#else
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
+#endif
 
 layout(set = 0, binding = 2, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
 
@@ -88,6 +92,10 @@ void main() {
 
   const int oitCountFragments = min(MAX_OIT_LAYERS, min(oitCountLayers, int(imageLoad(uOITImgAux, oitCoord).r)));
 
+#ifdef MSAA
+  const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
+#endif
+
   if (oitCountFragments > 0) {
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                             //
       oitFragments[oitFragmentIndex] = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitFragmentIndex * oitViewSize));  //
@@ -96,7 +104,6 @@ void main() {
     sort(oitFragments, oitCountFragments);
 
 #ifdef MSAA
-    const int oitMSAA = clamp(int(uOIT.oitViewPort.w >> 16), 1, MAX_MSAA);
 
 #if 1
     vec4 oitMSAAColors[MAX_MSAA];
@@ -143,7 +150,17 @@ void main() {
 
 #endif
 
+#ifdef MSAA
+  {
+    vec4 sampleColor = vec4(0.0);  
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
+      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, oitMSAASampleIndex));
+    }
+    blend(color, ApplyInverseToneMapping(sampleColor / oitMSAA));   
+  }
+#else
   blend(color, subpassLoad(uSubpassInputTransparent));
+#endif
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 
