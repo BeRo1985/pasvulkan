@@ -5,14 +5,18 @@
 
 layout(location = 0) in vec3 inPosition; 
 layout(location = 1) in vec4 inColor;    
+#if USETEXTURE
 layout(location = 2) in vec3 inTexCoord; 
+#endif
 layout(location = 3) in uint inState;    
 layout(location = 4) in vec4 inClipRect; 
 layout(location = 5) in vec4 inMetaInfo; 
 
 layout(location = 0) out vec2 outPosition;
 layout(location = 1) out vec4 outColor;
+#if USETEXTURE
 layout(location = 2) out vec3 outTexCoord;
+#endif
 layout(location = 3) flat out ivec4 outState;    
 #if USECLIPDISTANCE
 layout(location = 4) out vec4 outMetaInfo; 
@@ -36,7 +40,9 @@ out gl_PerVertex {
 void main(void){
   outPosition = inPosition.xy;
   outColor = inColor;
+#if USETEXTURE
   outTexCoord = inTexCoord;
+#endif
   outState = ivec4(uvec4((inState >> 0u) & 0x3u,
                          (inState >> 2u) & 0xffu,                         
                          (inState >> 10u) & 0xfu,                         

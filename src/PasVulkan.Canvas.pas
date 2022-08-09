@@ -535,6 +535,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDevice:TpvVulkanDevice;
        fReferenceCounter:TpvInt32;
        fCanvasVertexShaderModule:TpvVulkanShaderModule;
+       fCanvasVertexNoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentGUINoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentNoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentTextureShaderModule:TpvVulkanShaderModule;
@@ -548,6 +549,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCanvasFragmentTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageVertexNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentTexture:TpvVulkanPipelineShaderStage;
@@ -2938,6 +2940,17 @@ begin
  end;
 
  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasNoTextureVertexClipDistanceSPIRVData,CanvasNoTextureVertexClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasNoTextureVertexSPIRVData,CanvasNoTextureVertexSPIRVDataSize);
+ end;
+ try
+  fCanvasVertexNoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
   Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureClipDistanceSPIRVData,CanvasFragmentGUINoTextureClipDistanceSPIRVDataSize);
  end else begin
   Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureSPIRVData,CanvasFragmentGUINoTextureSPIRVDataSize);
@@ -3071,6 +3084,8 @@ begin
 
  fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
 
+ fVulkanPipelineCanvasShaderStageVertexNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexNoTextureShaderModule,'main');
+
  fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentGUINoTextureShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureShaderModule,'main');
@@ -3101,6 +3116,7 @@ destructor TpvCanvasCommon.Destroy;
 begin
  fDevice.CanvasCommon:=nil;
  FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageVertexNoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentGUINoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTexture);
@@ -3114,6 +3130,7 @@ begin
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard);
  FreeAndNil(fCanvasVertexShaderModule);
+ FreeAndNil(fCanvasVertexNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentGUINoTextureShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentTextureShaderModule);
@@ -3335,7 +3352,14 @@ begin
                                                               0);
      fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]:=VulkanGraphicsPipeline;
 
-     VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
+     case TextureModeIndex of
+      0:begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertexNoTexture);
+      end;
+      else begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
+      end;
+     end;
 
      case BlendingModeIndex of
       TpvCanvasBlendingMode.None:begin
@@ -3394,7 +3418,9 @@ begin
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
-     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
+     if TextureModeIndex<>0 then begin
+      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
+     end;
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
      VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));

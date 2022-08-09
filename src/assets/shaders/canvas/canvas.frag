@@ -346,7 +346,11 @@ void main(void){
                                       vec2(pushConstants.fillMatrix[0].z, pushConstants.fillMatrix[1].z));
 #endif
 #if !((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
-  color = inColor;
+  if(inTexCoord.x > 0.0){    
+    color = vec4(0.0) + inColor;
+  }else{
+    color = inColor;
+  }
 #else 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
   #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
