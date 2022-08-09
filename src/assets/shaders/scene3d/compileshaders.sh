@@ -376,6 +376,8 @@ compileshaderarguments=(
   '-V antialiasing_smaa_weights.frag -o antialiasing_smaa_weights_frag.spv'
   
   '-V blit.frag -o blit_frag.spv'
+
+  '-V msaa_resolve.frag -o msaa_resolve_frag.spv'
   
   '-V msm_blur.frag -o msm_blur_frag.spv'
   '-V msm_blur.vert -o msm_blur_vert.spv'
