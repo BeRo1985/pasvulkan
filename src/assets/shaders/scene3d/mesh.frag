@@ -60,9 +60,9 @@ layout(location = 12) flat in uint inFrameIndex;
 #ifdef VELOCITY
 layout(location = 13) in vec4 inPreviousClipSpace;
 layout(location = 14) in vec4 inCurrentClipSpace;
-layout(location = 15) in vec4 inJitter;
+layout(location = 15) flat in vec4 inJitter;
 #else
-layout(location = 13) in vec2 inJitter;
+layout(location = 13) flat in vec2 inJitter;
 #endif
 
 #ifdef DEPTHONLY

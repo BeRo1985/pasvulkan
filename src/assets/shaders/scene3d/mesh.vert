@@ -32,9 +32,9 @@ layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
 layout(location = 13) out vec4 outPreviousClipSpace;
 layout(location = 14) out vec4 outCurrentClipSpace;
-layout(location = 15) out vec4 outJitter;
+layout(location = 15) flat out vec4 outJitter;
 #else
-layout(location = 13) out vec2 outJitter;
+layout(location = 13) flat out vec2 outJitter;
 #endif
 
 /* clang-format off */
