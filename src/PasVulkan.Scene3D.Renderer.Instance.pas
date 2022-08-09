@@ -364,7 +364,7 @@ type TpvScene3DRendererInstancePasses=class
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
      end;
 
-const CountJitterOffsets=16;
+const CountJitterOffsets=128;
       JitterOffsetMask=CountJitterOffsets-1;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
@@ -1837,7 +1837,7 @@ end;
 procedure InitializeJitterOffsets;
 var Index:TpvSizeInt;
 begin
- for Index:=0 to length(JitterOffsets)-1 do begin
+ for Index:=0 to CountJitterOffsets-1 do begin
   JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index+1,2),GetHaltonSequence(Index+1,3));
  end;
 end;
