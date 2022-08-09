@@ -33,6 +33,8 @@ layout(location = 12) flat out uint outFrameIndex;
 layout(location = 13) out vec4 outPreviousClipSpace;
 layout(location = 14) out vec4 outCurrentClipSpace;
 layout(location = 15) out vec4 outJitter;
+#else
+layout(location = 13) out vec2 outJitter;
 #endif
 
 /* clang-format off */
@@ -115,13 +117,14 @@ void main() {
   outFrameIndex = pushConstants.frameIndex;
 
 #ifdef VELOCITY
-   View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-   outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
-   outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
-   gl_Position = outCurrentClipSpace;
-   outJitter = pushConstants.jitter;
+  View previousView = uView.views[viewIndex + pushConstants.countAllViews];
+  outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
+  outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+  gl_Position = outCurrentClipSpace;
+  outJitter = pushConstants.jitter;
 #else
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+  outJitter = pushConstants.jitter.xy;
 #endif
 
   gl_PointSize = 1.0;

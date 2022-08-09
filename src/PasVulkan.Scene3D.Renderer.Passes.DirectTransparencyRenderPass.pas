@@ -590,7 +590,8 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   @InFlightFrameState^.Jitter);
   end;
 
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
@@ -603,7 +604,8 @@ begin
                                   aCommandBuffer,
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,
-                                  [TpvScene3D.TMaterial.TAlphaMode.Blend]);
+                                  [TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                  @InFlightFrameState^.Jitter);
 
  end;
 

@@ -710,7 +710,8 @@ begin
                                     aCommandBuffer,
                                     fVulkanPipelineLayout,
                                     OnSetRenderPassResources,
-                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                                    @InFlightFrameState^.Jitter);
 
  {  if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
      fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -723,7 +724,8 @@ begin
                                      aCommandBuffer,
                                      fVulkanPipelineLayout,
                                      OnSetRenderPassResources,
-                                     [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                     [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                     @InFlightFrameState^.Jitter);
     end;}
 
    end;   *)
@@ -738,7 +740,8 @@ begin
                          aCommandBuffer,
                          fVulkanPipelineLayout,
                          OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+                         [TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                         @InFlightFrameState^.Jitter);
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -751,7 +754,8 @@ begin
                          aCommandBuffer,
                          fVulkanPipelineLayout,
                          OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                         @InFlightFrameState^.Jitter);
   end;
 
  { if fInstance.Renderer.UseDepthPrepass then begin
@@ -766,7 +770,8 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   @InFlightFrameState^.Jitter);
 
    end;}
 

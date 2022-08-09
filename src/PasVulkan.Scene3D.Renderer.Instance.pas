@@ -99,6 +99,7 @@ type { TpvScene3DRendererInstance }
              CountCascadedShadowMapViews:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
+             Jitter:TpvVector4;
             end;
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
@@ -1797,6 +1798,9 @@ begin
  InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
 
  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+
+ InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
+ InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
 
  // Main viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,

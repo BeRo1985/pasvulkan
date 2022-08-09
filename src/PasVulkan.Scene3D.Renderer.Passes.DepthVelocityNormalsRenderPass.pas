@@ -445,7 +445,6 @@ end;
 procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                          const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    Jitter:TpvVector4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -454,9 +453,6 @@ begin
  if InFlightFrameState^.Ready then begin
 
   fOnSetRenderPassResourcesDone:=false;
-
-  Jitter.xy:=fInstance.GetJitterOffset(fFrameGraph.DrawFrameIndex);
-  Jitter.zw:=fInstance.GetJitterOffset(fFrameGraph.DrawFrameIndex-1);
 
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                   IfThen(aFrameIndex=0,aInFlightFrameIndex,fFrameGraph.DrawPreviousInFlightFrameIndex),
@@ -469,7 +465,7 @@ begin
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,
                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                  @Jitter);
+                                  @InFlightFrameState^.Jitter);
 
 { if (fInstance.Renderer.TransparencyMode=TTransparencyMode.Direct) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -483,7 +479,7 @@ begin
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,
                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                  @Jitter);
+                                  @InFlightFrameState^.Jitter);
   end;}
 
  end;

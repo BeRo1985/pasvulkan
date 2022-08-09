@@ -61,6 +61,8 @@ layout(location = 12) flat in uint inFrameIndex;
 layout(location = 13) in vec4 inPreviousClipSpace;
 layout(location = 14) in vec4 inCurrentClipSpace;
 layout(location = 15) in vec4 inJitter;
+#else
+layout(location = 13) in vec2 inJitter;
 #endif
 
 #ifdef DEPTHONLY
@@ -1307,8 +1309,8 @@ void main() {
 #endif
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
-  texCoords[0] = inTexCoord0;
-  texCoords[1] = inTexCoord1;
+  texCoords[0] = inTexCoord0 - ((dFdxFine(inTexCoord0) * inJitter.x) + (dFdyFine(inTexCoord0) * inJitter.y));
+  texCoords[1] = inTexCoord1 - ((dFdxFine(inTexCoord1) * inJitter.x) + (dFdyFine(inTexCoord1) * inJitter.y));
   texCoords_dFdx[0] = dFdx(inTexCoord0);
   texCoords_dFdx[1] = dFdx(inTexCoord1);
   texCoords_dFdy[0] = dFdy(inTexCoord0);
