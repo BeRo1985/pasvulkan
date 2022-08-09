@@ -1309,12 +1309,16 @@ void main() {
 #endif
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
-  texCoords[0] = inTexCoord0 - ((dFdxFine(inTexCoord0) * inJitter.x) + (dFdyFine(inTexCoord0) * inJitter.y));
-  texCoords[1] = inTexCoord1 - ((dFdxFine(inTexCoord1) * inJitter.x) + (dFdyFine(inTexCoord1) * inJitter.y));
-  texCoords_dFdx[0] = dFdx(inTexCoord0);
-  texCoords_dFdx[1] = dFdx(inTexCoord1);
-  texCoords_dFdy[0] = dFdy(inTexCoord0);
-  texCoords_dFdy[1] = dFdy(inTexCoord1);
+  texCoords[0] = inTexCoord0;
+  texCoords[1] = inTexCoord1;
+  texCoords_dFdx[0] = dFdxFine(inTexCoord0);
+  texCoords_dFdx[1] = dFdxFine(inTexCoord1);
+  texCoords_dFdy[0] = dFdyFine(inTexCoord0);
+  texCoords_dFdy[1] = dFdyFine(inTexCoord1);
+  /*if(!any(notEqual(inJitter.xy, vec2(0.0))))*/{
+    texCoords[0] -= (texCoords_dFdx[0] * inJitter.x) + (texCoords_dFdy[0] * inJitter.y);
+    texCoords[1] -= (texCoords_dFdx[1] * inJitter.x) + (texCoords_dFdy[1] * inJitter.y);
+  }  
 #endif
 #ifndef DEPTHONLY
   envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
