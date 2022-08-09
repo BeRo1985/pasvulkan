@@ -1,6 +1,7 @@
 #version 450 core
 
 #extension GL_EXT_multiview : enable
+#extension GL_GOOGLE_include_directive : enable
 
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
@@ -22,6 +23,11 @@ layout(set = 0, binding = 4, r32ui) uniform readonly uimageBuffer uOITImgSBuffer
 #endif
 
 /* clang-format on */
+
+#if defined(MSAA)
+#include "bidirectional_tonemapping.glsl"
+#include "premultiplied_alpha.glsl"
+#endif
 
 void blend(inout vec4 target, const in vec4 source) {                  //
   target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a);  //
@@ -90,9 +96,9 @@ void main() {
       }
     }
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
-      color += oitMSAAColors[oitMSAASampleIndex];                                           //
+      color += ApplyToneMapping(oitMSAAColors[oitMSAASampleIndex]);                         //
     }
-    color /= oitMSAA;
+    color = ApplyInverseToneMapping(color / oitMSAA);
 #else
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
       vec4 sampleColor = vec4(0.0);
@@ -103,9 +109,9 @@ void main() {
           blend(sampleColor, fragmentColor);                                                                                      //
         }
       }
-      color += sampleColor;
+      color += ApplyToneMapping(sampleColor);
     }
-    color /= oitMSAA;
+    color = ApplyInverseToneMapping(color / oitMSAA);
 #endif
 #else
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
