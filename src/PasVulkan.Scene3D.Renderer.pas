@@ -642,7 +642,8 @@ begin
    TpvVulkanVendorID.NVIDIA:begin
     if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
      if (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
-        fVulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock then begin
+        fVulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock and
+        (fCountSurfaceMSAASamples=1) then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.INTERLOCKOIT;
      end else begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKOIT;
