@@ -77,7 +77,6 @@ void main() {
     vec2 depthTransform = vec2(pushConstants.ZMul, pushConstants.ZAdd);
 
     vec4 velocityUVWZ;
-    bool skyRegion;
     {
       vec3 depthSamples[9];
       depthSamples[0] = vec3(-1.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
@@ -90,23 +89,20 @@ void main() {
       depthSamples[7] = vec3( 0.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
       depthSamples[8] = vec3( 1.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
       vec3 bestDepth = depthSamples[0];
-      skyRegion = max(max(max(max(max(max(max(max(depthSamples[0].z, depthSamples[1].z), depthSamples[2].z), depthSamples[3].z), depthSamples[4].z), depthSamples[5].z), depthSamples[6].z), depthSamples[7].z), depthSamples[8].z) < 1e-7;
-      if(!skyRegion){
-        if(bestDepth.z > depthSamples[1].z){ bestDepth = depthSamples[1]; }
-        if(bestDepth.z > depthSamples[2].z){ bestDepth = depthSamples[2]; }
-        if(bestDepth.z > depthSamples[3].z){ bestDepth = depthSamples[3]; }
-        if(bestDepth.z > depthSamples[4].z){ bestDepth = depthSamples[4]; }
-        if(bestDepth.z > depthSamples[5].z){ bestDepth = depthSamples[5]; }
-        if(bestDepth.z > depthSamples[6].z){ bestDepth = depthSamples[6]; }
-        if(bestDepth.z > depthSamples[7].z){ bestDepth = depthSamples[7]; }
-        if(bestDepth.z > depthSamples[8].z){ bestDepth = depthSamples[8]; }
-      }
+      if(bestDepth.z < depthSamples[1].z){ bestDepth = depthSamples[1]; }
+      if(bestDepth.z < depthSamples[2].z){ bestDepth = depthSamples[2]; }
+      if(bestDepth.z < depthSamples[3].z){ bestDepth = depthSamples[3]; }
+      if(bestDepth.z < depthSamples[4].z){ bestDepth = depthSamples[4]; }
+      if(bestDepth.z < depthSamples[5].z){ bestDepth = depthSamples[5]; }
+      if(bestDepth.z < depthSamples[6].z){ bestDepth = depthSamples[6]; }
+      if(bestDepth.z < depthSamples[7].z){ bestDepth = depthSamples[7]; }
+      if(bestDepth.z < depthSamples[8].z){ bestDepth = depthSamples[8]; }
       velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
     }
 
     vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
 
-    if(skyRegion || any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
+    if((velocityUVWZ.w < 1e-7) || any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
       color = textureLod(uCurrentColorTexture, uvw, 0.0);
     }else{
 
