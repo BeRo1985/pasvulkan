@@ -11281,8 +11281,9 @@ begin
 
     fImageDescriptorGenerations[aInFlightFrameIndex]:=fImageDescriptorGeneration;
 
-    for Index:=0 to length(fImageInfos)-1 do begin
-     fImageInfos[Index]:=fWhiteTexture.GetDescriptorImageInfo(false);
+    fImageInfos[0]:=fWhiteTexture.GetDescriptorImageInfo(false);
+    for Index:=1 to length(fImageInfos)-1 do begin
+     fImageInfos[Index]:=fImageInfos[0];
     end;
 
     for Index:=0 to fTextures.Count-1 do begin

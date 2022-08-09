@@ -85,6 +85,8 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               VarianceClipGamma:TpvFloat;
               FeedbackMin:TpvFloat;
               FeedbackMax:TpvFloat;
+              ZMul:TpvFloat;
+              ZAdd:TpvFloat;
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -464,6 +466,13 @@ begin
  PushConstants.VarianceClipGamma:=1.25;
  PushConstants.FeedbackMin:=0.88;
  PushConstants.FeedbackMax:=0.97;
+ if fInstance.ZFar>0.0 then begin
+  PushConstants.ZMul:=-1.0;
+  PushConstants.ZAdd:=1.0;
+ end else begin
+  PushConstants.ZMul:=1.0;
+  PushConstants.ZAdd:=0.0;
+ end;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,

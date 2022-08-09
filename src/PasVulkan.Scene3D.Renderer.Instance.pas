@@ -364,7 +364,7 @@ type TpvScene3DRendererInstancePasses=class
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
      end;
 
-const CountJitterOffsets=128;
+const CountJitterOffsets=16;
       JitterOffsetMask=CountJitterOffsets-1;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
@@ -1699,7 +1699,7 @@ end;
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
 begin
  if (Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA) and (aFrameCounter>=0) then begin
-  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fWidth,fHeight);
+  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*1.0)/TpvVector2.InlineableCreate(fWidth,fHeight);
  end else begin
   result.x:=0.0;
   result.y:=0.0;
