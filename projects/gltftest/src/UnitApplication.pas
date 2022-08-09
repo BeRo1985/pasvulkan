@@ -46,6 +46,8 @@ type TApplication=class(TpvApplication)
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
+       fMakeScreenshotJPEG:boolean;
+       fMakeScreenshotPNG:boolean;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -97,6 +99,8 @@ begin
  inherited Create;
  Application:=self;
  PasVulkan.Resources.AllowExternalResources:=true;
+ fMakeScreenshotJPEG:=false;
+ fMakeScreenshotPNG:=false;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
@@ -376,7 +380,11 @@ begin
      VirtualReality.ResetOrientation;
     end;
    end;
+   KEYCODE_F10:begin
+    fMakeScreenshotJPEG:=true;
+   end;
    KEYCODE_F11:begin
+    fMakeScreenshotPNG:=true;
    end;
   end;
  end;
@@ -407,12 +415,38 @@ begin
 end;
 
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var Stream:TMemoryStream;
 begin
  if assigned(fVirtualReality) then begin
   inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
   fVirtualReality.Draw(aSwapChainImageIndex,DrawInFlightFrameIndex,aWaitSemaphore,aWaitFence);
  end else begin
   inherited Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end;
+ if fMakeScreenshotJPEG then begin
+  fMakeScreenshotJPEG:=false;
+  Stream:=TMemoryStream.Create;
+  try
+   VulkanSwapChain.SaveScreenshotAsJPEGToStream(Stream);
+   try
+    Stream.SaveToFile('screenshot.jpeg');
+   except
+   end;
+  finally
+   Stream.Free;
+  end;
+ end else if fMakeScreenshotPNG then begin
+  fMakeScreenshotPNG:=false;
+  Stream:=TMemoryStream.Create;
+  try
+   VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);
+   try
+    Stream.SaveToFile('screenshot.png');
+   except
+   end;
+  finally
+   Stream.Free;
+  end;
  end;
 end;
 

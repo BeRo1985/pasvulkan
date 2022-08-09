@@ -508,7 +508,8 @@ begin
     end;
    end;
   end;
-  ///fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
+  ///
+  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
  end;
 
  SampleCounts:=fVulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
