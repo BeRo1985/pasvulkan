@@ -156,7 +156,7 @@ void main() {
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
       sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, oitMSAASampleIndex));
     }
-    blend(color, ApplyInverseToneMapping(sampleColor / oitMSAA));   
+    blend(color, ApplyInverseToneMapping(sampleColor / float(oitMSAA)));   
   }
 #else
   blend(color, subpassLoad(uSubpassInputTransparent));

@@ -118,7 +118,7 @@ void main() {
       }
       color += ApplyToneMapping(sampleColor);
     }
-    color = ApplyInverseToneMapping(color / oitMSAA);
+    color = ApplyInverseToneMapping(color / float(oitMSAA));
 #endif
 #else
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //

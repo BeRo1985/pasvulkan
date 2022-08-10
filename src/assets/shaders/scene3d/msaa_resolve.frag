@@ -25,5 +25,5 @@ void main() {
   for (int i = 0; i < samples; i++) {
     color += ApplyToneMapping(subpassLoad(uSubPassInputMSAA, i));
   }
-  outColor = ApplyInverseToneMapping(color / samples);   
+  outColor = ApplyInverseToneMapping(color / float(samples));   
 }

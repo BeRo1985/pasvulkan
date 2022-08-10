@@ -44,7 +44,7 @@ void main() {
   for (int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++) {
     transparency += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, sampleIndex));
   }
-  transparency = ApplyInverseToneMapping(transparency / countSamples);
+  transparency = ApplyInverseToneMapping(transparency / float(countSamples));
 #else
   vec4 transparency = subpassLoad(uSubpassInputTransparent);
 #endif
