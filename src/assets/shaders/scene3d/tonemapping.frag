@@ -8,7 +8,7 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInput;
 
-#define HDRToneMappingOperator 5
+#define HDRToneMappingOperator 8
 
 #if HDRToneMappingOperator == 1
 vec3 linear(const in vec3 color) { return color; }
