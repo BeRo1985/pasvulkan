@@ -693,6 +693,7 @@ type EpvScene3D=class(Exception);
               procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
+              procedure Assign(const aFrom:TMaterial);
               procedure AssignFromEmpty;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
@@ -886,6 +887,10 @@ type EpvScene3D=class(Exception);
                     Count:TpvSizeInt;
                    end;
                    PNodeMeshPrimitiveShaderStorageBufferObject=^TNodeShaderStorageBufferObject;
+                   TMaterialMap=array of TpvUInt32;
+                   TMaterialIDMapArrayIndexHashMap=TpvHashMap<TID,TpvSizeInt>;
+                   TMaterialIDMapArray=TpvGenericList<TpvSizeInt>;
+                   TMaterialIDMapArrays=TpvObjectGenericList<TMaterialIDMapArray>;
                    TGroupObject=class
                     private
                      fName:TpvUTF8String;
@@ -1450,6 +1455,8 @@ type EpvScene3D=class(Exception);
                      fActive:boolean;
                      fPreviousActive:boolean;
                      fScene:TPasGLTFSizeInt;
+                     fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
+                     fDuplicatedMaterials:TpvScene3D.TMaterials;
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
@@ -1530,6 +1537,10 @@ type EpvScene3D=class(Exception);
               fCulling:boolean;
               fObjects:TBaseObjects;
               fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
+              fMaterials:TpvScene3D.TMaterials;
+              fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
+              fMaterialIDMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap;
+              fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCameras:TpvScene3D.TGroup.TCameras;
               fMeshes:TpvScene3D.TGroup.TMeshes;
@@ -3423,10 +3434,14 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TMaterial.Assign(const aFrom:TMaterial);
+begin
+ fName:=aFrom.fName;
+ fData:=aFrom.fData;
+ fShaderData:=aFrom.fShaderData;
+end;
+
 procedure TpvScene3D.TMaterial.AssignFromEmpty;
-var Index:TpvSizeInt;
-    JSONItem:TPasJSONItem;
-    JSONObject:TPasJSONItemObject;
 begin
 
  fName:='';
@@ -6167,6 +6182,16 @@ begin
  fMaterialsToDuplicate:=TpvScene3D.TGroup.TMaterialsToDuplicate.Create;
  fMaterialsToDuplicate.OwnsObjects:=false;
 
+ fMaterials:=TpvScene3D.TMaterials.Create;
+ fMaterials.OwnsObjects:=false;
+
+ fMaterialMap:=nil;
+
+ fMaterialIDMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap.Create(-1);
+
+ fMaterialIDMapArrays:=TpvScene3D.TGroup.TMaterialIDMapArrays.Create;
+ fMaterialIDMapArrays.OwnsObjects:=true;
+
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
 
@@ -6257,7 +6282,15 @@ begin
 
  FreeAndNil(fObjects);
 
+ FreeAndNil(fMaterials);
+
  FreeAndNil(fMaterialsToDuplicate);
+
+ FreeAndNil(fMaterialIDMapArrayIndexHashMap);
+
+ FreeAndNil(fMaterialIDMapArrays);
+
+ fMaterialMap:=nil;
 
  fDrawChoreographyBatchCondensedIndices.Finalize;
 
@@ -6927,7 +6960,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
     ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
     TextureMap:TpvScene3D.TTextures;
-    MaterialMap:TpvScene3D.TMaterials;
+    //MaterialMap:TpvScene3D.TMaterials;
     HasLights:boolean;
  procedure ProcessImages;
  var Index:TpvSizeInt;
@@ -7024,35 +7057,62 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessMaterials;
- var Index:TpvSizeInt;
+ var Index,MaterialIDMapArrayIndex:TpvSizeInt;
      SourceMaterial:TPasGLTF.TMaterial;
      Material,
      HashedMaterial:TpvScene3D.TMaterial;
      HashData:TpvScene3D.TMaterial.THashData;
+     MaterialIDMapArray:TMaterialIDMapArray;
  begin
+
+  SetLength(fMaterialMap,aSourceDocument.Materials.Count);
+
   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
+
    SourceMaterial:=aSourceDocument.Materials[Index];
+
    Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
    try
+
     fSceneInstance.fMaterialListLock.Acquire;
     try
+
      Material.AssignFromGLTF(aSourceDocument,SourceMaterial,TextureMap);
+
      HashData:=Material.fData;
+
      HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
      if assigned(HashedMaterial) then begin
-      MaterialMap.Add(HashedMaterial);
+      fMaterials.Add(HashedMaterial);
      end else begin
       fSceneInstance.fMaterialHashMap[HashData]:=Material;
-      MaterialMap.Add(Material);
+      fMaterials.Add(Material);
       Material:=nil;
      end;
+
     finally
      fSceneInstance.fMaterialListLock.Release;
     end;
+
    finally
     FreeAndNil(Material);
    end;
+
+   Material:=fMaterials[Index];
+
+   fMaterialMap[Index]:=Material.fID;
+
+   MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+   if MaterialIDMapArrayIndex<0 then begin
+    MaterialIDMapArray:=TMaterialIDMapArray.Create;
+    MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
+    fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
+   end else begin
+    MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+   end;
+   MaterialIDMapArray.Add(Index);
   end;
+
  end;
  procedure ProcessAnimations;
  type TMaterialHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
@@ -7091,9 +7151,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
          Channel:=@Animation.fChannels[ChannelIndex];
          if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets) and
             (Channel^.TargetIndex>=0) and
-            (Channel^.TargetIndex<MaterialMap.Count) then begin
-          Material:=MaterialMap[Channel^.TargetIndex];
-          Channel^.TargetIndex:=MaterialMap[Channel^.TargetIndex].fID;
+            (Channel^.TargetIndex<fMaterials.Count) then begin
+          Material:=fMaterials[Channel^.TargetIndex];
+          Channel^.TargetIndex:=Material.fID;
           MaterialArrayIndex:=MaterialHashMap[Channel^.TargetIndex];
           if MaterialArrayIndex<0 then begin
            MaterialArrayIndex:=MaterialArrayList.Add(Channel^.TargetIndex);
@@ -7201,7 +7261,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self,Index);
    try
-    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,MaterialMap);
+    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,fMaterials);
    finally
     fMeshes.Add(Mesh);
    end;
@@ -7413,8 +7473,8 @@ begin
 
      ProcessTextures;
 
-     MaterialMap:=TpvScene3D.TMaterials.Create;
-     MaterialMap.OwnsObjects:=false;
+{    MaterialMap:=TpvScene3D.TMaterials.Create;
+     MaterialMap.OwnsObjects:=false;}
      try
 
       ProcessMaterials;
@@ -7442,7 +7502,7 @@ begin
       CalculateBoundingBox;
 
      finally
-      FreeAndNil(MaterialMap);
+//    FreeAndNil(MaterialMap);
      end;
 
     finally
@@ -8067,30 +8127,88 @@ end;
 { TpvScene3D.TGroup.TInstance }
 
 constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
-var Index,OtherIndex:TpvSizeInt;
+var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
     Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
+    MaterialToDuplicate,DuplicatedMaterial,Material:TpvScene3D.TMaterial;
+    MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
 begin
  inherited Create(aResourceManager,aParent);
+
  if aParent is TGroup then begin
   fGroup:=TpvScene3D.TGroup(aParent);
  end else begin
   fGroup:=nil;
  end;
+
  fLock:=TPasMPSpinLock.Create;
+
  fActive:=true;
+
  fPreviousActive:=false;
+
  fUploaded:=false;
+
  fModelMatrix:=TpvMatrix4x4.Identity;
+
  fScene:=-1;
+
  fNodes:=nil;
+
  fSkins:=nil;
+
+ fMaterialMap:=nil;
+
+ fDuplicatedMaterials:=TpvScene3D.TMaterials.Create;
+ fDuplicatedMaterials.OwnsObjects:=false;
+
  fAnimations:=nil;
+
+ begin
+
+  if fGroup.fMaterialsToDuplicate.Count=0 then begin
+
+   fMaterialMap:=fGroup.fMaterialMap;
+
+  end else begin
+
+   fMaterialMap:=copy(fGroup.fMaterialMap,0,length(fGroup.fMaterialMap));
+
+   for Index:=0 to fGroup.fMaterialsToDuplicate.Count-1 do begin
+    MaterialToDuplicate:=fGroup.fMaterialsToDuplicate[Index];
+    if assigned(MaterialToDuplicate) then begin
+     MaterialIDMapArrayIndex:=fGroup.fMaterialIDMapArrayIndexHashMap[MaterialToDuplicate.fID];
+     if (MaterialIDMapArrayIndex>=0) and (MaterialIDMapArrayIndex<fGroup.fMaterialIDMapArrays.Count) then begin
+      MaterialIDMapArray:=fGroup.fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+      DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+      try
+       DuplicatedMaterial.Assign(MaterialToDuplicate);
+       for MaterialIndex in MaterialIDMapArray do begin
+        fMaterialMap[MaterialIndex]:=DuplicatedMaterial.fID;
+       end;
+      finally
+       try
+        DuplicatedMaterial.IncRef;
+       finally
+        fDuplicatedMaterials.Add(DuplicatedMaterial);
+       end;
+      end;
+     end;
+    end;
+
+   end;
+
+  end;
+
+ end;
+
  SetLength(fNodes,fGroup.fNodes.Count);
+
  SetLength(fSkins,fGroup.fSkins.Count);
+
  begin
   fLights:=TpvScene3D.TGroup.TInstance.TLights.Create;
   fLights.OwnsObjects:=true;
@@ -8103,6 +8221,7 @@ begin
    end;
   end;
  end;
+
  begin
   fCameras:=TpvScene3D.TGroup.TInstance.TCameras.Create;
   fCameras.OwnsObjects:=true;
@@ -8115,12 +8234,14 @@ begin
    end;
   end;
  end;
+
 {SetLength(fLightNodes,fGroup.fLights.Count);
  SetLength(fLightShadowMapMatrices,fParent.fLights.Count);
  SetLength(fLightShadowMapZFarValues,fParent.fLights.Count);
  for Index:=0 to length(fLightNodes)-1 do begin
   fLightNodes[Index]:=-1;
  end;}
+
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   InstanceNode:=@fNodes[Index];
   Node:=fGroup.fNodes[Index];
@@ -8137,6 +8258,7 @@ begin
   InstanceNode^.CacheVerticesGeneration:=1;
   InstanceNode^.CacheVerticesDirtyCounter:=1;
  end;
+
  SetLength(fAnimations,fGroup.fAnimations.Count+1);
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
@@ -8151,14 +8273,21 @@ begin
    end;
   end;
  end;
+
  fAnimations[0].Factor:=1.0;
+
  fNodeMatrices:=nil;
+
  fMorphTargetVertexWeights:=nil;
+
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
  end;
+
  fAABBTreeProxy:=-1;
+
  SetLength(fCacheVerticesNodeDirtyBitmap,((length(fNodes)+31) shr 5)+1);
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
@@ -8190,8 +8319,13 @@ begin
   FreeAndNil(fAnimations[Index]);
  end;
  fCacheVerticesNodeDirtyBitmap:=nil;
+ for Index:=0 to fDuplicatedMaterials.Count-1 do begin
+  fDuplicatedMaterials[Index].DecRef;
+ end;
+ FreeAndNil(fDuplicatedMaterials);
  fNodes:=nil;
  fSkins:=nil;
+ fMaterialMap:=nil;
  fAnimations:=nil;
  fNodeMatrices:=nil;
  fMorphTargetVertexWeights:=nil;
