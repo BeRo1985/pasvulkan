@@ -6250,6 +6250,7 @@ begin
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
+var Material:TpvScene3D.TMaterial;
 begin
 
  Unload;
@@ -6282,6 +6283,9 @@ begin
 
  FreeAndNil(fObjects);
 
+ for Material in fMaterials do begin
+  Material.DecRef;
+ end;
  FreeAndNil(fMaterials);
 
  FreeAndNil(fMaterialsToDuplicate);
@@ -7099,18 +7103,24 @@ var LightMap:TpvScene3D.TGroup.TLights;
    end;
 
    Material:=fMaterials[Index];
+   try
 
-   fMaterialMap[Index]:=Material.fID;
+    fMaterialMap[Index]:=Material.fID;
 
-   MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
-   if MaterialIDMapArrayIndex<0 then begin
-    MaterialIDMapArray:=TMaterialIDMapArray.Create;
-    MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
-    fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
-   end else begin
-    MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+    MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+    if MaterialIDMapArrayIndex<0 then begin
+     MaterialIDMapArray:=TMaterialIDMapArray.Create;
+     MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
+     fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
+    end else begin
+     MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+    end;
+    MaterialIDMapArray.Add(Index);
+
+   finally
+    Material.IncRef;
    end;
-   MaterialIDMapArray.Add(Index);
+
   end;
 
  end;
@@ -7121,7 +7131,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
       TTargetArrayList=TpvDynamicArrayList<TpvUInt64>;
       TTargetUsedBitmap=array of TpvUInt32;
  var Index,ChannelIndex,TargetIndex,CountDefaultChannels,
-     MaterialArrayIndex:TpvSizeInt;
+     MaterialArrayIndex,MaterialIDMapArrayIndex,
+     MaterialIndex:TpvSizeInt;
      SourceAnimation:TPasGLTF.TAnimation;
      Animation:TpvScene3D.TGroup.TAnimation;
      Channel:TpvScene3D.TGroup.TAnimation.PChannel;
@@ -7132,7 +7143,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
      TargetArrayList:TTargetArrayList;
      TargetUsedBitmap:TTargetUsedBitmap;
      CompactCode:TpvUInt64;
-     Material:TpvScene3D.TMaterial;
+     Material,DuplicatedMaterial:TpvScene3D.TMaterial;
+     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
  begin
   MaterialHashMap:=TMaterialHashMap.Create(-1);
   try
@@ -7152,7 +7164,27 @@ var LightMap:TpvScene3D.TGroup.TLights;
          if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets) and
             (Channel^.TargetIndex>=0) and
             (Channel^.TargetIndex<fMaterials.Count) then begin
-          Material:=fMaterials[Channel^.TargetIndex];
+          MaterialIndex:=Channel^.TargetIndex;
+          Material:=fMaterials[MaterialIndex];
+          MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+          if MaterialIDMapArrayIndex>=0 then begin
+           MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+           if MaterialIDMapArray.Count>=2 then begin
+            DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+            try
+             DuplicatedMaterial.Assign(Material);
+             Material.DecRef;
+             Material:=DuplicatedMaterial;
+             Material.IncRef;
+             MaterialIDMapArray.Remove(MaterialIndex);
+             MaterialIDMapArray:=TMaterialIDMapArray.Create;
+             fMaterialIDMapArrayIndexHashMap.Add(Material.fID,fMaterialIDMapArrays.Add(MaterialIDMapArray));
+             MaterialIDMapArray.Add(MaterialIndex);
+            finally
+             fMaterials[MaterialIndex]:=Material;
+            end;
+           end;
+          end;
           Channel^.TargetIndex:=Material.fID;
           MaterialArrayIndex:=MaterialHashMap[Channel^.TargetIndex];
           if MaterialArrayIndex<0 then begin
