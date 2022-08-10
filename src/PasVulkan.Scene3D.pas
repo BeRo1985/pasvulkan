@@ -1075,7 +1075,7 @@ type EpvScene3D=class(Exception);
                                  TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
                            public
                             PrimitiveMode:TVkPrimitiveTopology;
-                            MaterialID:TpvSizeUInt;
+                            MaterialID:TpvInt64;
                             Material:TMaterial;
                             Targets:TTargets;
                             MorphTargetBaseIndex:TpvSizeUInt;
@@ -4810,7 +4810,7 @@ begin
    end else begin
     MaterialID:=0;
    end;}
-   MaterialID:=Primitive^.MaterialID;
+   MaterialID:=Primitive^.MaterialID+1; // +1 because 0 = empty material
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive^.MorphTargetBaseIndex;
@@ -4863,7 +4863,7 @@ begin
     MaterialID:=0;
    end;}
 
-   MaterialID:=Primitive^.MaterialID;
+   MaterialID:=Primitive^.MaterialID+1; // +1 because 0 = empty material
 
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
@@ -5014,14 +5014,14 @@ begin
 
       DestinationMeshPrimitive:=@fPrimitives[PrimitiveIndex];
 
-      DestinationMeshPrimitive^.MaterialID:=SourceMeshPrimitive.Material;
-
       if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
+       DestinationMeshPrimitive^.MaterialID:=SourceMeshPrimitive.Material;
        DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
        if assigned(DestinationMeshPrimitive^.Material) then begin
         DestinationMeshPrimitive^.Material.IncRef;
        end;
       end else begin
+       DestinationMeshPrimitive^.MaterialID:=-1;
        DestinationMeshPrimitive^.Material:=fGroup.fSceneInstance.fEmptyMaterial;
       end;
 
@@ -7076,7 +7076,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
      MaterialIDMapArray:TMaterialIDMapArray;
  begin
 
-  SetLength(fMaterialMap,aSourceDocument.Materials.Count);
+  SetLength(fMaterialMap,aSourceDocument.Materials.Count+1);
+
+  fMaterialMap[0]:=fSceneInstance.fEmptyMaterial.fID;
 
   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
 
@@ -7112,7 +7114,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
    Material:=fMaterials[Index];
    try
 
-    fMaterialMap[Index]:=Material.fID;
+    fMaterialMap[Index+1]:=Material.fID;
 
     MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
     if MaterialIDMapArrayIndex<0 then begin
@@ -8226,7 +8228,7 @@ begin
       try
        DuplicatedMaterial.Assign(MaterialToDuplicate);
        for MaterialIndex in MaterialIDMapArray do begin
-        fMaterialMap[MaterialIndex]:=DuplicatedMaterial.fID;
+        fMaterialMap[MaterialIndex+1]:=DuplicatedMaterial.fID;
        end;
       finally
        try
@@ -8512,7 +8514,7 @@ begin
           try
 
            fVulkanMaterialIDMapBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                              Max(1,length(fMaterialMap))*SizeOf(TpvUInt32),
+                                                              length(fMaterialMap)*SizeOf(TpvUInt32),
                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                               [],
