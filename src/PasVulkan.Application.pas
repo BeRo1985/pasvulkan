@@ -5666,8 +5666,8 @@ begin
  TemporaryString:=WideString(What);
  OutputDebugStringW(PWideChar(TemporaryString));
  StdOut:=GetStdHandle(Std_Output_Handle);
- Win32Check(StdOut<>Invalid_Handle_Value);
- if StdOut<>0 then begin
+//Win32Check(StdOut<>Invalid_Handle_Value);
+ if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
   WriteLn(What);
  end;
 {$ifend}
