@@ -181,14 +181,14 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  fResourceColor:=AddImageResolveOutput('resourcetype_color',
+{ fResourceColor:=AddImageResolveOutput('resourcetype_color',
                                         'resource_orderindependenttransparency_tailblending_color',
                                         'resource_orderindependenttransparency_tailblending_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
+                                       );}
 
  end;
 
@@ -590,8 +590,7 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                   @InFlightFrameState^.Jitter);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
   end;
 
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
@@ -604,8 +603,7 @@ begin
                                   aCommandBuffer,
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,
-                                  [TpvScene3D.TMaterial.TAlphaMode.Blend],
-                                  @InFlightFrameState^.Jitter);
+                                  [TpvScene3D.TMaterial.TAlphaMode.Blend]);
 
  end;
 

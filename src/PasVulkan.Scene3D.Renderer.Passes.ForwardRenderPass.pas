@@ -187,14 +187,14 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  fResourceColor:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
+{ fResourceColor:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                         'resource_forwardrendering_color',
                                         'resource_forwardrendering_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
+                                       );}
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                      'resource_msaa_depth_data',
@@ -710,8 +710,7 @@ begin
                                     aCommandBuffer,
                                     fVulkanPipelineLayout,
                                     OnSetRenderPassResources,
-                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                    @InFlightFrameState^.Jitter);
+                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
  {  if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
      fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -724,8 +723,7 @@ begin
                                      aCommandBuffer,
                                      fVulkanPipelineLayout,
                                      OnSetRenderPassResources,
-                                     [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                     @InFlightFrameState^.Jitter);
+                                     [TpvScene3D.TMaterial.TAlphaMode.Mask]);
     end;}
 
    end;   *)
@@ -740,8 +738,7 @@ begin
                          aCommandBuffer,
                          fVulkanPipelineLayout,
                          OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                         @InFlightFrameState^.Jitter);
+                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -754,8 +751,7 @@ begin
                          aCommandBuffer,
                          fVulkanPipelineLayout,
                          OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                         @InFlightFrameState^.Jitter);
+                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
   end;
 
  { if fInstance.Renderer.UseDepthPrepass then begin
@@ -770,8 +766,7 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                   @InFlightFrameState^.Jitter);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
    end;}
 

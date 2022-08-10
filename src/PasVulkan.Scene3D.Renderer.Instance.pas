@@ -293,6 +293,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
@@ -334,6 +335,7 @@ type TpvScene3DRendererInstancePasses=class
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
+       fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TpvScene3DRendererPassesDirectTransparencyRenderPass;
        fDirectTransparencyResolveRenderPass:TpvScene3DRendererPassesDirectTransparencyResolveRenderPass;
@@ -925,6 +927,10 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]);
+
+ if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass:=TpvScene3DRendererPassesForwardResolveRenderPass.Create(fFrameGraph,self);
+ end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass:=TpvScene3DRendererPassesForwardRenderMipMapComputePass.Create(fFrameGraph,self);
 
