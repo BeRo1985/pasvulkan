@@ -1075,6 +1075,7 @@ type EpvScene3D=class(Exception);
                                  TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
                            public
                             PrimitiveMode:TVkPrimitiveTopology;
+                            MaterialID:TpvSizeUInt;
                             Material:TMaterial;
                             Targets:TTargets;
                             MorphTargetBaseIndex:TpvSizeUInt;
@@ -1476,6 +1477,7 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
+                     fVulkanMaterialIDMapBuffer:TpvVulkanBuffer;
                      fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
                      fVulkanComputeDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                      fScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
@@ -4803,11 +4805,12 @@ begin
 
   for PrimitiveIndex:=0 to length(fPrimitives)-1 do begin
    Primitive:=@fPrimitives[PrimitiveIndex];
-   if assigned(Primitive^.Material) then begin
+{  if assigned(Primitive^.Material) then begin
     MaterialID:=Primitive^.Material.ID;
    end else begin
     MaterialID:=0;
-   end;
+   end;}
+   MaterialID:=Primitive^.MaterialID;
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive^.MorphTargetBaseIndex;
@@ -4854,11 +4857,13 @@ begin
 
    Primitive:=@fPrimitives[PrimitiveIndex];
 
-   if assigned(Primitive^.Material) then begin
+{  if assigned(Primitive^.Material) then begin
     MaterialID:=Primitive^.Material.ID;
    end else begin
     MaterialID:=0;
-   end;
+   end;}
+
+   MaterialID:=Primitive^.MaterialID;
 
    NodeMeshPrimitiveInstanceIndex:=Primitive^.NodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance:=@Primitive^.NodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
@@ -5008,6 +5013,8 @@ begin
       SourceMeshPrimitive:=aSourceMesh.Primitives.Items[PrimitiveIndex];
 
       DestinationMeshPrimitive:=@fPrimitives[PrimitiveIndex];
+
+      DestinationMeshPrimitive^.MaterialID:=SourceMeshPrimitive.Material;
 
       if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
        DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
@@ -8461,6 +8468,10 @@ end;
 procedure TpvScene3D.TGroup.TInstance.Upload;
 var Index:TpvSizeInt;
     DescriptorSet:TpvVulkanDescriptorSet;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
 
  if not fInUpload then begin
@@ -8488,10 +8499,58 @@ begin
         fVulkanDatas[Index].Upload;
        end;
 
+       UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
+       try
+        UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
+                                                          fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+        try
+         UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+         try
+          UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
+          try
+
+           fVulkanMaterialIDMapBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                              Max(1,length(fMaterialMap))*SizeOf(TpvUInt32),
+                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                              [],
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                              0,
+                                                              0,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              []
+                                                             );
+
+           fVulkanMaterialIDMapBuffer.UploadData(UniversalQueue,
+                                                 UniversalCommandBuffer,
+                                                 UniversalFence,
+                                                 fMaterialMap[0],
+                                                 0,
+                                                 length(fMaterialMap)*SizeOf(TpvUInt32),
+                                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+
+          finally
+           FreeAndNil(UniversalFence);
+          end;
+         finally
+          FreeAndNil(UniversalCommandBuffer);
+         end;
+        finally
+         FreeAndNil(UniversalCommandPool);
+        end;
+       finally
+       end;
+
        fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                     length(fVulkanComputeDescriptorSets));
-       fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*7);
+       fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*8);
        fVulkanComputeDescriptorPool.Initialize;
 
        for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
@@ -8555,6 +8614,14 @@ begin
                                             [fVulkanDatas[Index].fMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
                                             [],
                                             false);
+         DescriptorSet.WriteToDescriptorSet(7,
+                                            0,
+                                            1,
+                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                            [],
+                                            [fVulkanMaterialIDMapBuffer.DescriptorBufferInfo],
+                                            [],
+                                            false);
          DescriptorSet.Flush;
         finally
          fVulkanComputeDescriptorSets[Index]:=DescriptorSet;
@@ -8592,6 +8659,7 @@ begin
       FreeAndNil(fVulkanComputeDescriptorSets[Index]);
      end;
      FreeAndNil(fVulkanComputeDescriptorPool);
+     FreeAndNil(fVulkanMaterialIDMapBuffer);
      for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
       fVulkanDatas[Index].Unload;
      end;
@@ -10590,6 +10658,13 @@ begin
 
  // Instance - Morph target weights
  fMeshComputeVulkanDescriptorSetLayout.AddBinding(6,
+                                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+ // Instance - Material ID map
+ fMeshComputeVulkanDescriptorSetLayout.AddBinding(7,
                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                   1,
                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),

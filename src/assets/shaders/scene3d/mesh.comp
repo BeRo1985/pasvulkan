@@ -69,6 +69,10 @@ layout(std430, set = 0, binding = 6) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
+layout(std430, set = 0, binding = 7) buffer MaterialIDMap {
+  uint materialIDMap[];
+};
+
 /* clang-format on */
 
 vec3 octDecode(vec2 oct) {
@@ -163,7 +167,7 @@ void main() {
         vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
 
         OutPackedVertex outPackedVertex;
-        outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), inMaterialID);
+        outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), materialIDMap[inMaterialID]);
         outPackedVertex.normalSignTangent = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
                                                   packSnorm2x16(tangent.xy), packSnorm2x16(vec2(tangent.z, 0.0)));
         outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
