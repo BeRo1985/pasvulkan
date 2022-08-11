@@ -484,9 +484,10 @@ type EpvScene3D=class(Exception);
                    PPBRSpecularGlossiness=^TPBRSpecularGlossiness;
                    TPBRSheen=record
                     Active:boolean;
-                    IntensityFactor:TpvFloat;
                     ColorFactor:TpvVector3;
-                    ColorIntensityTexture:TTextureReference;
+                    ColorTexture:TTextureReference;
+                    RoughnessFactor:TpvFloat;
+                    RoughnessTexture:TTextureReference;
                    end;
                    PPBRSheen=^TPBRSheen;
                    TPBRClearCoat=record
@@ -530,7 +531,7 @@ type EpvScene3D=class(Exception);
                       SpecularFactor:TpvVector4; // actually TpvVector3, but for easier and more convenient alignment reasons a TpvVector4
                       EmissiveFactor:TpvVector4; // w = EmissiveStrength
                       MetallicRoughnessNormalScaleOcclusionStrengthFactor:TpvVector4;
-                      SheenColorFactorSheenIntensityFactor:TpvVector4;
+                      SheenColorFactorSheenRoughnessFactor:TpvVector4;
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
                       IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:TpvVector4;
                       IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:TpvVector4;
@@ -604,9 +605,10 @@ type EpvScene3D=class(Exception);
                      );
                      PBRSheen:(
                       Active:false;
-                      IntensityFactor:1.0;
-                      ColorFactor:(x:1.0;y:1.0;z:1.0);
-                      ColorIntensityTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      ColorFactor:(x:0.0;y:0.0;z:0.0);
+                      ColorTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      RoughnessFactor:0.0;
+                      RoughnessTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
                      PBRClearCoat:(
                       Active:false;
@@ -648,7 +650,7 @@ type EpvScene3D=class(Exception);
                      SpecularFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
-                     SheenColorFactorSheenIntensityFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
+                     SheenColorFactorSheenRoughnessFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
                      IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:(x:400.0;y:0.0;z:0.0;w:Infinity);
@@ -1512,10 +1514,10 @@ type EpvScene3D=class(Exception);
                                           MaterialPBRIridescenceIor:TpvFloat;
                                           MaterialPBRIridescenceMinimum:TpvFloat;
                                           MaterialPBRIridescenceMaximum:TpvFloat;
-                                          MaterialPBRSheenColorFactor:TpvVector4;
+                                          MaterialPBRSheenColorFactor:TpvVector3;
                                           MaterialPBRSheenRoughnessFactor:TpvFloat;
                                           MaterialPBRSpecularFactor:TpvFloat;
-                                          MaterialPBRSpecularColorFactor:TpvVector4;
+                                          MaterialPBRSpecularColorFactor:TpvVector3;
                                           MaterialPBRTransmissionFactor:TpvFloat;
                                           MaterialPBRVolumeThicknessFactor:TpvFloat;
                                           MaterialPBRVolumeAttenuationDistance:TpvFloat;
@@ -3155,11 +3157,18 @@ begin
    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
   end;
  end;
- if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+ if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
   try
-   fData.PBRSheen.ColorIntensityTexture.Texture.DecRef;
+   fData.PBRSheen.ColorTexture.Texture.DecRef;
   finally
-   fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
+   fData.PBRSheen.ColorTexture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+  try
+   fData.PBRSheen.RoughnessTexture.Texture.DecRef;
+  finally
+   fData.PBRSheen.ColorTexture.Texture:=nil;
   end;
  end;
  if assigned(fData.PBRClearCoat.Texture.Texture) then begin
@@ -3308,11 +3317,18 @@ begin
      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
     end;
    end;
-   if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+   if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
     try
-     fData.PBRSheen.ColorIntensityTexture.Texture.DecRef;
+     fData.PBRSheen.ColorTexture.Texture.DecRef;
     finally
-     fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
+     fData.PBRSheen.ColorTexture.Texture:=nil;
+    end;
+   end;
+   if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+    try
+     fData.PBRSheen.RoughnessTexture.Texture.DecRef;
+    finally
+     fData.PBRSheen.RoughnessTexture.Texture:=nil;
     end;
    end;
    if assigned(fData.PBRClearCoat.Texture.Texture) then begin
@@ -3477,8 +3493,14 @@ begin
         end;
        end;
 
-       if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
-        fData.PBRSheen.ColorIntensityTexture.Texture.Upload;
+       if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+        fData.PBRSheen.ColorTexture.Texture.Upload;
+       end else begin
+        fSceneInstance.fWhiteTexture.Upload;
+       end;
+
+       if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+        fData.PBRSheen.RoughnessTexture.Texture.Upload;
        end else begin
         fSceneInstance.fWhiteTexture.Upload;
        end;
@@ -3792,7 +3814,7 @@ begin
    JSONObject:=TPasJSONItemObject(JSONItem);
    fVisible:=true;
    fData.PBRSheen.Active:=true;
-   fData.PBRSheen.IntensityFactor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],1.0));
+   fData.PBRSheen.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['roughnessFactor'],TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],1.0)));
    JSONItem:=JSONObject.Properties['colorFactor'];
    if not assigned(JSONItem) then begin
     JSONItem:=JSONObject.Properties['sheenColor'];
@@ -3802,19 +3824,33 @@ begin
     fData.PBRSheen.ColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
     fData.PBRSheen.ColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
    end;
-   JSONItem:=JSONObject.Properties['colorIntensityTexture'];
+   JSONItem:=JSONObject.Properties['sheenColorTexture'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
     if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRSheen.ColorIntensityTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
-      fData.PBRSheen.ColorIntensityTexture.Texture.IncRef;
+     fData.PBRSheen.ColorTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+      fData.PBRSheen.ColorTexture.Texture.IncRef;
      end;
     end else begin
-     fData.PBRSheen.ColorIntensityTexture.Texture:=nil;
+     fData.PBRSheen.ColorTexture.Texture:=nil;
     end;
-    fData.PBRSheen.ColorIntensityTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRSheen.ColorIntensityTexture.Transform.AssignFromGLTF(fData.PBRSheen.ColorIntensityTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    fData.PBRSheen.ColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.PBRSheen.ColorTexture.Transform.AssignFromGLTF(fData.PBRSheen.ColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+   end;
+   JSONItem:=JSONObject.Properties['sheenRoughnessTexture'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+    if (Index>=0) and (Index<aTextureMap.Count) then begin
+     fData.PBRSheen.RoughnessTexture.Texture:=aTextureMap[Index];
+     if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+      fData.PBRSheen.RoughnessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRSheen.RoughnessTexture.Texture:=nil;
+    end;
+    fData.PBRSheen.RoughnessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+    fData.PBRSheen.RoughnessTexture.Transform.AssignFromGLTF(fData.PBRSheen.RoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
    end;
   end;
  end;
@@ -4034,14 +4070,14 @@ begin
    end;
    fShaderData.SpecularFactor:=TpvVector4.InlineableCreate(fData.PBRMetallicRoughness.SpecularColorFactor[0],fData.PBRMetallicRoughness.SpecularColorFactor[1],fData.PBRMetallicRoughness.SpecularColorFactor[2],fData.PBRMetallicRoughness.SpecularFactor);
    if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
-    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 9);
-    fShaderData.Textures[9]:=(fData.PBRMetallicRoughness.SpecularTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[9]:=fData.PBRMetallicRoughness.SpecularTexture.Transform.ToAlignedMatrix3x2;
+    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 10);
+    fShaderData.Textures[10]:=(fData.PBRMetallicRoughness.SpecularTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularTexture.TexCoord and $f) shl 16);
+    fShaderData.TextureTransforms[10]:=fData.PBRMetallicRoughness.SpecularTexture.Transform.ToAlignedMatrix3x2;
    end;
    if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
-    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 10);
-    fShaderData.Textures[10]:=(fData.PBRMetallicRoughness.SpecularColorTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord and $f) shl 16);
-    fShaderData.TextureTransforms[10]:=fData.PBRMetallicRoughness.SpecularColorTexture.Transform.ToAlignedMatrix3x2;
+    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
+    fShaderData.Textures[11]:=(fData.PBRMetallicRoughness.SpecularColorTexture.Texture.ID and $ffff) or ((fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord and $f) shl 16);
+    fShaderData.TextureTransforms[11]:=fData.PBRMetallicRoughness.SpecularColorTexture.Transform.ToAlignedMatrix3x2;
    end;
   end;
   TMaterial.TShadingModel.PBRSpecularGlossiness:begin
@@ -4101,14 +4137,19 @@ begin
 
  if fData.PBRSheen.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 7);
-  fShaderData.SheenColorFactorSheenIntensityFactor[0]:=fData.PBRSheen.ColorFactor[0];
-  fShaderData.SheenColorFactorSheenIntensityFactor[1]:=fData.PBRSheen.ColorFactor[1];
-  fShaderData.SheenColorFactorSheenIntensityFactor[2]:=fData.PBRSheen.ColorFactor[2];
-  fShaderData.SheenColorFactorSheenIntensityFactor[3]:=fData.PBRSheen.IntensityFactor;
-  if assigned(fData.PBRSheen.ColorIntensityTexture.Texture) then begin
+  fShaderData.SheenColorFactorSheenRoughnessFactor[0]:=fData.PBRSheen.ColorFactor[0];
+  fShaderData.SheenColorFactorSheenRoughnessFactor[1]:=fData.PBRSheen.ColorFactor[1];
+  fShaderData.SheenColorFactorSheenRoughnessFactor[2]:=fData.PBRSheen.ColorFactor[2];
+  fShaderData.SheenColorFactorSheenRoughnessFactor[3]:=fData.PBRSheen.RoughnessFactor;
+  if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 5);
-   fShaderData.Textures[5]:=(fData.PBRSheen.ColorIntensityTexture.Texture.ID and $ffff) or ((fData.PBRSheen.ColorIntensityTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[5]:=fData.PBRSheen.ColorIntensityTexture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures[5]:=(fData.PBRSheen.ColorTexture.Texture.ID and $ffff) or ((fData.PBRSheen.ColorTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[5]:=fData.PBRSheen.ColorTexture.Transform.ToAlignedMatrix3x2;
+  end;
+  if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 6);
+   fShaderData.Textures[6]:=(fData.PBRSheen.RoughnessTexture.Texture.ID and $ffff) or ((fData.PBRSheen.RoughnessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[6]:=fData.PBRSheen.RoughnessTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4117,19 +4158,19 @@ begin
   fShaderData.ClearcoatFactorClearcoatRoughnessFactor[0]:=fData.PBRClearCoat.Factor;
   fShaderData.ClearcoatFactorClearcoatRoughnessFactor[1]:=fData.PBRClearCoat.RoughnessFactor;
   if assigned(fData.PBRClearCoat.Texture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 6);
-   fShaderData.Textures[6]:=(fData.PBRClearCoat.Texture.Texture.ID and $ffff) or ((fData.PBRClearCoat.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[6]:=fData.PBRClearCoat.Texture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 7);
+   fShaderData.Textures[7]:=(fData.PBRClearCoat.Texture.Texture.ID and $ffff) or ((fData.PBRClearCoat.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[7]:=fData.PBRClearCoat.Texture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 7);
-   fShaderData.Textures[7]:=(fData.PBRClearCoat.RoughnessTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.RoughnessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[7]:=fData.PBRClearCoat.RoughnessTexture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 8);
+   fShaderData.Textures[8]:=(fData.PBRClearCoat.RoughnessTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.RoughnessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.RoughnessTexture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 8);
-   fShaderData.Textures[8]:=(fData.PBRClearCoat.NormalTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.NormalTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[8]:=fData.PBRClearCoat.NormalTexture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 9);
+   fShaderData.Textures[9]:=(fData.PBRClearCoat.NormalTexture.Texture.ID and $ffff) or ((fData.PBRClearCoat.NormalTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[9]:=fData.PBRClearCoat.NormalTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4142,14 +4183,14 @@ begin
   fShaderData.IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum[3]:=fData.Iridescence.ThicknessMinimum;
   fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[0]:=fData.Iridescence.ThicknessMaximum;
   if assigned(fData.Iridescence.Texture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 11);
-   fShaderData.Textures[11]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[11]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 12);
+   fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
   end;
   if assigned(fData.Iridescence.Texture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 12);
-   fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
+   fShaderData.Textures[13]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[13]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4157,9 +4198,9 @@ begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 11);
   fShaderData.IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance[1]:=fData.Transmission.Factor;
   if assigned(fData.Transmission.Texture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
-   fShaderData.Textures[13]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[13]:=fData.Transmission.Texture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 14);
+   fShaderData.Textures[14]:=(fData.Transmission.Texture.Texture.ID and $ffff) or ((fData.Transmission.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[14]:=fData.Transmission.Texture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4171,9 +4212,9 @@ begin
   fShaderData.VolumeAttenuationColor[1]:=fData.Volume.AttenuationColor[1];
   fShaderData.VolumeAttenuationColor[2]:=fData.Volume.AttenuationColor[2];
   if assigned(fData.Volume.ThicknessTexture.Texture) then begin
-   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 14);
-   fShaderData.Textures[14]:=(fData.Volume.ThicknessTexture.Texture.ID and $ffff) or ((fData.Volume.ThicknessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[14]:=fData.Volume.ThicknessTexture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 15);
+   fShaderData.Textures[15]:=(fData.Volume.ThicknessTexture.Texture.ID and $ffff) or ((fData.Volume.ThicknessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[15]:=fData.Volume.ThicknessTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4789,6 +4830,8 @@ begin
     TAnimation.TChannel.TTarget.PointerNodeScale,
     TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
     TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
      OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
      try
@@ -4802,9 +4845,7 @@ begin
     end;
     TAnimation.TChannel.TTarget.Rotation,
     TAnimation.TChannel.TTarget.PointerNodeRotation,
-    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
-    TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
-    TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
+    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
      OutputVector4Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector4Array(false);
      try
       for ValueIndex:=0 to length(DestinationAnimationChannel^.OutputVector4Array)-1 do begin
@@ -8213,6 +8254,21 @@ var Index:TpvSizeInt;
     MaterialNormalTextureScaleSum:TpvScene3D.TScalarSum;
     MaterialOcclusionTextureStrengthSum:TpvScene3D.TScalarSum;
     MaterialPBRClearCoatFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRClearCoatRoughnessFactorSum:TpvScene3D.TScalarSum;
+    MaterialEmissiveStrengthSum:TpvScene3D.TScalarSum;
+    MaterialIORSum:TpvScene3D.TScalarSum;
+    MaterialPBRIridescenceFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRIridescenceIorSum:TpvScene3D.TScalarSum;
+    MaterialPBRIridescenceMinimumSum:TpvScene3D.TScalarSum;
+    MaterialPBRIridescenceMaximumSum:TpvScene3D.TScalarSum;
+    MaterialPBRSheenColorFactorSum:TpvScene3D.TVector3Sum;
+    MaterialPBRSheenRoughnessFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRSpecularFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRSpecularColorFactorSum:TpvScene3D.TVector3Sum;
+    MaterialPBRTransmissionFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRVolumeThicknessFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRVolumeAttenuationDistanceSum:TpvScene3D.TScalarSum;
+    MaterialPBRVolumeAttenuationColorSum:TpvScene3D.TVector3Sum;
     DoUpdate:boolean;
 begin
  DoUpdate:=false;
@@ -8232,6 +8288,21 @@ begin
   MaterialNormalTextureScaleSum.Clear;
   MaterialOcclusionTextureStrengthSum.Clear;
   MaterialPBRClearCoatFactorSum.Clear;
+  MaterialPBRClearCoatRoughnessFactorSum.Clear;
+  MaterialEmissiveStrengthSum.Clear;
+  MaterialIORSum.Clear;
+  MaterialPBRIridescenceFactorSum.Clear;
+  MaterialPBRIridescenceIorSum.Clear;
+  MaterialPBRIridescenceMinimumSum.Clear;
+  MaterialPBRIridescenceMaximumSum.Clear;
+  MaterialPBRSheenColorFactorSum.Clear;
+  MaterialPBRSheenRoughnessFactorSum.Clear;
+  MaterialPBRSpecularFactorSum.Clear;
+  MaterialPBRSpecularColorFactorSum.Clear;
+  MaterialPBRTransmissionFactorSum.Clear;
+  MaterialPBRVolumeThicknessFactorSum.Clear;
+  MaterialPBRVolumeAttenuationDistanceSum.Clear;
+  MaterialPBRVolumeAttenuationColorSum.Clear;
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
@@ -8245,6 +8316,17 @@ begin
      MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
      MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
      MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
+     MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
+     MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
+     MaterialIORSum.Add(fData.IOR,Factor);
+     MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
+     MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
+     MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
+     MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
+     MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
+     MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
+     MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
+     MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
     end else begin
      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin

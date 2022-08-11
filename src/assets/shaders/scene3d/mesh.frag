@@ -116,7 +116,7 @@ struct Material {
   vec4 specularFactor;
   vec4 emissiveFactor;
   vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
-  vec4 sheenColorFactorSheenIntensityFactor;
+  vec4 sheenColorFactorSheenRoughnessFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
@@ -169,7 +169,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   vec4 specularFactor;
   vec4 emissiveFactor;
   vec4 metallicRoughnessNormalScaleOcclusionStrengthFactor;
-  vec4 sheenColorFactorSheenIntensityFactor;
+  vec4 sheenColorFactorSheenRoughnessFactor;
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
@@ -621,7 +621,7 @@ float getSpecularOcclusion(const in float NdotV, const in float ao, const in flo
   return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0); 
 } 
 
-void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec4 sheenColorIntensityFactor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
+void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec3 sheenColor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
   vec3 halfVector = normalize(viewDirection + lightDirection);
   float nDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
   float nDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
@@ -631,9 +631,9 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
   diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
   specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
   if ((flags & (1u << 7u)) != 0u) {
-    float sheenColorMax = max(max(sheenColorIntensityFactor.x, sheenColorIntensityFactor.y), sheenColorIntensityFactor.z);
+    float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
     albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), 1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
-    sheenOutput += BRDF_specularSheen(sheenColorIntensityFactor.xyz * sheenColorIntensityFactor.w, sheenRoughness, nDotL, nDotV, nDotH) * lit;
+    sheenOutput += BRDF_specularSheen(sheenColor, sheenRoughness, nDotL, nDotV, nDotH) * lit;
   }
   if ((flags & (1u << 8u)) != 0u) {
     float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
@@ -1350,8 +1350,8 @@ void main() {
           vec3 specularColorFactor = material.specularFactor.xyz;
           specularWeight = material.specularFactor.w;
           if ((flags & (1u << 9u)) != 0u) {
-            specularWeight *= textureFetch(9, vec4(1.0), false).w;
-            specularColorFactor *= textureFetch(10, vec4(1.0), true).xyz;
+            specularWeight *= textureFetch(10, vec4(1.0), false).w;
+            specularColorFactor *= textureFetch(11, vec4(1.0), true).xyz;
           }
           vec3 dielectricSpecularF0 = clamp(F0 * specularColorFactor, vec3(0.0), vec3(1.0));
           vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
@@ -1437,10 +1437,10 @@ void main() {
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFresnel = F0;
         iridescenceF0 = F0;
-        iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 11)) != 0) ? textureFetch(11, vec4(1.0), false).x : 1.0);
+        iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 12)) != 0) ? textureFetch(12, vec4(1.0), false).x : 1.0);
         iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
         if ((textureFlags.x & (1 << 12)) != 0){
-          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x, textureFetch(12, vec4(1.0), false).y);  
+          iridescenceThickness = mix(material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.w, material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x, textureFetch(13, vec4(1.0), false).y);  
         }else{
           iridescenceThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.x;  
         }
@@ -1456,10 +1456,10 @@ void main() {
 
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
-        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 13)) != 0) ? textureFetch(13, vec4(1.0), false).x : 1.0);  
+        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).x : 1.0);  
       }
       if ((flags & (1u << 12u)) != 0u) {
-        volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).y : 1.0);  
+        volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 15)) != 0) ? textureFetch(15, vec4(1.0), false).y : 1.0);  
         volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
         volumeAttenuationColor = material.volumeAttenuationColor.xyz;        
       }
@@ -1467,14 +1467,42 @@ void main() {
 
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 
-      vec4 sheenColorIntensityFactor = vec4(1.0);
+      vec3 sheenColor = vec3(0.0);
       float sheenRoughness = 0.0;
       if ((flags & (1u << 7u)) != 0u) {
-        sheenColorIntensityFactor = material.sheenColorFactorSheenIntensityFactor;
+        sheenColor = material.sheenColorFactorSheenRoughnessFactor.xyz;
+        sheenRoughness = material.sheenColorFactorSheenRoughnessFactor.w;
         if ((textureFlags.x & (1 << 5)) != 0) {
-          sheenColorIntensityFactor *= textureFetch(5, vec4(1.0), true);
+          sheenColor *= textureFetch(5, vec4(1.0), true).xyz;
         }
-        sheenRoughness = max(perceptualRoughness, 1e-7);
+        if ((textureFlags.x & (1 << 6)) != 0) {
+          sheenRoughness *= textureFetch(6, vec4(1.0), true).x;
+        }
+#undef UseGeometryRoughness
+#ifdef UseGeometryRoughness
+        sheenRoughness = min(max(sheenRoughness, minimumRoughness) + geometryRoughness, 1.0);
+#else        
+        // Vlachos 2015, "Advanced VR Rendering"
+        // Kaplanyan 2016, "Stable specular highlights"
+        // Tokuyoshi 2017, "Error Reduction and Simplification for Shading Anti-Aliasing"
+        // Tokuyoshi and Kaplanyan 2019, "Improved Geometric Specular Antialiasing"
+        // Tokuyoshi and Kaplanyan 2021, "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
+        // ===========================================================================================================
+        // In the original paper, this implementation is intended for deferred rendering, but here it is also used 
+        // for forward rendering (as described in Tokuyoshi and Kaplanyan 2019 and 2021). This is mainly because 
+        // the forward version requires an expensive transformation of the half-vector by the tangent frame for each
+        // light. Thus, this is an approximation based on world-space normals, but it works well enough for what is 
+        // needed and is an clearly improvement over the implementation based on Vlachos 2015.
+        float kernelRoughness;
+        {
+          const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+          vec3 dx = dFdx(inNormal), dy = dFdy(inNormal);
+          kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+          float roughness = sheenRoughness * sheenRoughness;
+          sheenRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
+        }
+#endif
+        sheenRoughness = max(sheenRoughness, 1e-7);
       }
 
       vec3 clearcoatF0 = vec3(0.04);
@@ -1485,14 +1513,14 @@ void main() {
       if ((flags & (1u << 8u)) != 0u) {
         clearcoatFactor = material.clearcoatFactorClearcoatRoughnessFactor.x;
         clearcoatRoughness = material.clearcoatFactorClearcoatRoughnessFactor.y;
-        if ((textureFlags.x & (1 << 6)) != 0) {
-          clearcoatFactor *= textureFetch(6, vec4(1.0), false).x;
-        }
         if ((textureFlags.x & (1 << 7)) != 0) {
-          clearcoatRoughness *= textureFetch(7, vec4(1.0), false).y;
+          clearcoatFactor *= textureFetch(7, vec4(1.0), false).x;
         }
         if ((textureFlags.x & (1 << 8)) != 0) {
-          vec4 normalTexture = textureFetch(8, vec2(0.0, 1.0).xxyx, false);
+          clearcoatRoughness *= textureFetch(8, vec4(1.0), false).y;
+        }
+        if ((textureFlags.x & (1 << 9)) != 0) {
+          vec4 normalTexture = textureFetch(9, vec2(0.0, 1.0).xxyx, false);
           clearcoatNormal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
         } else {
           clearcoatNormal = normalize(inNormal);
@@ -1661,7 +1689,7 @@ void main() {
                             transparency,                                       //
                             alphaRoughness,                                     //
                             cavity,                                             //
-                            sheenColorIntensityFactor,                          //
+                            sheenColor,                                         //
                             sheenRoughness,                                     //
                             clearcoatNormal,                                    //
                             clearcoatF0,                                        //
@@ -1734,7 +1762,7 @@ void main() {
                       transparency,                       //
                       alphaRoughness,                     //
                       cavity,                             //
-                      sheenColorIntensityFactor,          //
+                      sheenColor,                         //
                       sheenRoughness,                     //
                       clearcoatNormal,                    //
                       clearcoatF0,                        //
@@ -1754,7 +1782,7 @@ void main() {
                     transparency,                       //
                     alphaRoughness,                     //
                     cavity,                             //
-                    sheenColorIntensityFactor,          //
+                    sheenColor,                         //
                     sheenRoughness,                     //
                     clearcoatNormal,                    //
                     clearcoatF0,                        //
@@ -1764,7 +1792,7 @@ void main() {
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
-        sheenOutput += getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColorIntensityFactor.xyz);
+        sheenOutput += getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor);
       }
       if ((flags & (1u << 8u)) != 0u) {
         clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
