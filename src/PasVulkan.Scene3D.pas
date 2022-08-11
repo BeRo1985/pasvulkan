@@ -8388,6 +8388,42 @@ begin
        MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor);
       end;
      end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
+       MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
+      end else begin
+       MaterialPBRClearCoatRoughnessFactorSum.Add(Overwrite^.MaterialPBRClearCoatRoughnessFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveStrength in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveStrength in Overwrite^.Flags then begin
+       MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
+      end else begin
+       MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialIOR in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialIOR in Overwrite^.Flags then begin
+       MaterialIORSum.Add(fData.IOR,Factor);
+      end else begin
+       MaterialIORSum.Add(Overwrite^.MaterialIOR,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceFactor in Overwrite^.Flags then begin
+       MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
+      end else begin
+       MaterialPBRIridescenceFactorSum.Add(Overwrite^.MaterialPBRIridescenceFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceIor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceIor in Overwrite^.Flags then begin
+       MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
+      end else begin
+       MaterialPBRIridescenceIorSum.Add(Overwrite^.MaterialPBRIridescenceIor,Factor);
+      end;
+     end;
+
     end;
    end;
   end;
