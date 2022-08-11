@@ -10158,9 +10158,9 @@ var CullFace,Blend:TPasGLTFInt32;
            MaterialOverwrite^.MaterialPBRIridescenceMaximum:=Scalar;
           end;
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor:begin
-           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSheenColorFactor);
-           MaterialOverwrite^.MaterialPBRSheenColorFactor:=Scalar;
+           MaterialOverwrite^.MaterialPBRSheenColorFactor:=Vector3;
           end;
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor:begin
            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -10173,9 +10173,9 @@ var CullFace,Blend:TPasGLTFInt32;
            MaterialOverwrite^.MaterialPBRSpecularFactor:=Scalar;
           end;
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
-           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSpecularColorFactor);
-           MaterialOverwrite^.MaterialPBRSpecularColorFactor:=Scalar;
+           MaterialOverwrite^.MaterialPBRSpecularColorFactor:=Vector3;
           end;
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -10193,9 +10193,9 @@ var CullFace,Blend:TPasGLTFInt32;
            MaterialOverwrite^.MaterialPBRVolumeAttenuationDistance:=Scalar;
           end;
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor:begin
-           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor);
-           MaterialOverwrite^.MaterialPBRVolumeAttenuationColor:=Scalar;
+           MaterialOverwrite^.MaterialPBRVolumeAttenuationColor:=Vector3;
           end;
           else begin
           end;
