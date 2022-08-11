@@ -1243,7 +1243,8 @@ type EpvScene3D=class(Exception);
                                           None,
                                           Node,
                                           Light,
-                                          Camera
+                                          Camera,
+                                          Material
                                          );
                                   private
                                    fType:TType;
