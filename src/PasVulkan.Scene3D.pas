@@ -9248,6 +9248,8 @@ var CullFace,Blend:TPasGLTFInt32;
      LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.POverwrite;
      Camera:TpvScene3D.TGroup.TInstance.TCamera;
      CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.POverwrite;
+     Material:TpvScene3D.TGroup.TInstance.TMaterial;
+     MaterialOverwrite:TpvScene3D.TGroup.TInstance.TMaterial.POverwrite;
  begin
 
   Animation:=fGroup.fAnimations[aAnimationIndex];
@@ -9980,6 +9982,102 @@ var CullFace,Blend:TPasGLTFInt32;
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
           CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultPerspectiveZNear,
                                                           TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.PerspectiveZNear];
+         end;
+         else begin
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor{,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotate,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale}:begin
+      Material:=fMaterials[AnimationDefaultChannel^.TargetIndex];
+      MaterialOverwrite:=nil;
+      if aFactor>=-0.5 then begin
+       InstanceAnimationChannel:=nil;
+       for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
+        if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material) and
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) then begin
+         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+         break;
+        end;
+       end;
+       if assigned(InstanceAnimationChannel) then begin
+        if assigned(Material) then begin
+         MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
+        end else begin
+         MaterialOverwrite:=nil;
+        end;
+       end else if assigned(Material) and
+                   (Material.fCountOverwrites<length(Material.fOverwrites)) and
+                   (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
+        InstanceChannelIndex:=CountInstanceChannels;
+        inc(CountInstanceChannels);
+        InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
+        InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
+        InstanceAnimationChannel.fTarget:=Material;
+        InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
+        inc(Material.fCountOverwrites);
+        MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
+        MaterialOverwrite^.Flags:=[];
+        MaterialOverwrite^.Factor:=Max(aFactor,0.0);
+       end else begin
+        MaterialOverwrite:=nil;
+       end;
+       if assigned(MaterialOverwrite) then begin
+        case AnimationDefaultChannel^.Target of
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialAlphaCutOff,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialAlphaCutOff];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveFactor,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveFactor];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialNormalTextureScale,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialNormalTextureScale];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialOcclusionTextureStrength,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialOcclusionTextureStrength];
          end;
          else begin
          end;
