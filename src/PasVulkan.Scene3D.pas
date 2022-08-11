@@ -116,6 +116,29 @@ type EpvScene3D=class(Exception);
               Staging
              );
             TGraphicsPipelines=array[TPrimitiveTopology,TDoubleSided] of TpvVulkanPipeline;
+            TTextureIndices=
+             (
+              PBRMetallicRoughnessBaseColorTexture=0,
+              PBRMetallicRoughnessMetallicRoughnessTexture=1,
+              PBRSpecularGlossinessDiffuseTexture=0,
+              PBRSpecularGlossinessSpecularGlossinessTexture=1,
+              PBRUnlitColorTexture=0,
+              NormalTexture=2,
+              OcclusionTexture=3,
+              EmissiveTexture=4,
+              PBRSheenColorTexture=5,
+              PBRSheenRoughnessTexture=6,
+              PBRClearCoatTexture=7,
+              PBRClearCoatRoughnessTexture=8,
+              PBRClearCoatNormalTexture=9,
+              PBRSpecularSpecularTexture=10,
+              PBRSpecularSpecularColorTexture=11,
+              PBRIridescenceTexture=12,
+              PBRIridescenceThicknessTexture=13,
+              PBRTransmissionTexture=14,
+              PBRVolumeThicknessTexture=15,
+              Dummy=256
+             );
             TVertexAttributeBinBoundingBoxesdingLocations=class
              public
               const Position=0;
@@ -4187,10 +4210,10 @@ begin
    fShaderData.Textures[12]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.Texture.TexCoord and $f) shl 16);
    fShaderData.TextureTransforms[12]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
   end;
-  if assigned(fData.Iridescence.Texture.Texture) then begin
+  if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
    fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 13);
-   fShaderData.Textures[13]:=(fData.Iridescence.Texture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
-   fShaderData.TextureTransforms[13]:=fData.Iridescence.Texture.Transform.ToAlignedMatrix3x2;
+   fShaderData.Textures[13]:=(fData.Iridescence.ThicknessTexture.Texture.ID and $ffff) or ((fData.Iridescence.ThicknessTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[13]:=fData.Iridescence.ThicknessTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
 
@@ -4574,6 +4597,7 @@ var Index,ChannelIndex,ValueIndex,StringPosition,StartStringPosition:TPasGLTFSiz
     JSONItem:TPasJSONItem;
     TargetPointerString,TargetPointerSubString:TpvUTF8String;
     TargetPointerStrings:array of TpvUTF8String;
+    Target:TAnimation.TChannel.TTarget;
 begin
 
  fName:=aSourceAnimation.Name;
@@ -4674,7 +4698,34 @@ begin
        end else if TargetPointerStrings[0]='materials' then begin
         if length(TargetPointerStrings)>2 then begin
          DestinationAnimationChannel.TargetIndex:=StrToIntDef(TargetPointerStrings[1],0);
-         if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
+         if (length(TargetPointerStrings)>4) and
+            ((TargetPointerStrings[length(TargetPointerStrings)-3]='extensions') and
+             (TargetPointerStrings[length(TargetPointerStrings)-2]='KHR_texture_transform') and
+             ((TargetPointerStrings[length(TargetPointerStrings)-1]='offset') or
+              (TargetPointerStrings[length(TargetPointerStrings)-1]='scale') or
+              (TargetPointerStrings[length(TargetPointerStrings)-1]='rotation'))) then begin
+          if TargetPointerStrings[length(TargetPointerStrings)-1]='offset' then begin
+           Target:=TAnimation.TChannel.TTarget.PointerTextureOffset;
+          end else if TargetPointerStrings[length(TargetPointerStrings)-1]='scale' then begin
+           Target:=TAnimation.TChannel.TTarget.PointerTextureScale;
+          end else{if TargetPointerStrings[length(TargetPointerStrings)-1]='rotation' then}begin
+           Target:=TAnimation.TChannel.TTarget.PointerTextureRotation;
+          end;
+          case length(TargetPointerStrings) of
+           6:begin
+            if TargetPointerStrings[2]='emissiveTexture' then begin
+
+            end;
+           end;
+           7:begin
+            if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
+             if TargetPointerStrings[3]='baseColorTexture' then begin
+
+             end;
+            end;
+           end;
+          end;
+         end else if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
           if length(TargetPointerStrings)>3 then begin
            if TargetPointerStrings[3]='baseColorFactor' then begin
             DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor;
