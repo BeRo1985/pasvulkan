@@ -8327,6 +8327,10 @@ begin
      MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
      MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
      MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
+     MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
+     MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
+     MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
+     MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
     end else begin
      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
@@ -8395,6 +8399,21 @@ begin
   fWorkData.NormalTextureScale:=MaterialNormalTextureScaleSum.Get(fData.NormalTextureScale);
   fWorkData.OcclusionTextureStrength:=MaterialOcclusionTextureStrengthSum.Get(fData.OcclusionTextureStrength);
   fWorkData.PBRClearCoat.Factor:=MaterialOcclusionTextureStrengthSum.Get(fData.PBRClearCoat.Factor);
+  fWorkData.PBRClearCoat.RoughnessFactor:=MaterialPBRClearCoatRoughnessFactorSum.Get(fData.PBRClearCoat.RoughnessFactor);
+  fWorkData.EmissiveFactor[3]:=MaterialEmissiveStrengthSum.Get(fData.EmissiveFactor[3]);
+  fWorkData.IOR:=MaterialIORSum.Get(fData.IOR);
+  fWorkData.Iridescence.Factor:=MaterialPBRIridescenceFactorSum.Get(fData.Iridescence.Factor);
+  fWorkData.Iridescence.Ior:=MaterialPBRIridescenceIorSum.Get(fData.Iridescence.Ior);
+  fWorkData.Iridescence.ThicknessMinimum:=MaterialPBRIridescenceMinimumSum.Get(fData.Iridescence.ThicknessMinimum);
+  fWorkData.Iridescence.ThicknessMaximum:=MaterialPBRIridescenceMaximumSum.Get(fData.Iridescence.ThicknessMaximum);
+  fWorkData.PBRSheen.ColorFactor:=MaterialPBRSheenColorFactorSum.Get(fData.PBRSheen.ColorFactor);
+  fWorkData.PBRSheen.RoughnessFactor:=MaterialPBRSheenRoughnessFactorSum.Get(fData.PBRSheen.RoughnessFactor);
+  fWorkData.PBRMetallicRoughness.SpecularFactor:=MaterialPBRSpecularFactorSum.Get(fData.PBRMetallicRoughness.SpecularFactor);
+  fWorkData.PBRMetallicRoughness.SpecularColorFactor:=MaterialPBRSpecularColorFactorSum.Get(fData.PBRMetallicRoughness.SpecularColorFactor);
+  fWorkData.Transmission.Factor:=MaterialPBRTransmissionFactorSum.Get(fData.Transmission.Factor);
+  fWorkData.Volume.ThicknessFactor:=MaterialPBRVolumeThicknessFactorSum.Get(fData.Volume.ThicknessFactor);
+  fWorkData.Volume.AttenuationColor:=MaterialPBRVolumeAttenuationColorSum.Get(fData.Volume.AttenuationColor);
+  fWorkData.Volume.AttenuationDistance:=MaterialPBRVolumeAttenuationDistanceSum.Get(fData.Volume.AttenuationDistance);
   DoUpdate:=true;
  end;
  if DoUpdate then begin
