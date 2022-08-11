@@ -8134,10 +8134,13 @@ var Index:TpvSizeInt;
     MaterialEmissiveFactorSum:TpvScene3D.TVector4Sum;
     MaterialNormalTextureScaleSum:TpvScene3D.TScalarSum;
     MaterialOcclusionTextureStrengthSum:TpvScene3D.TScalarSum;
+    DoUpdate:boolean;
 begin
+ DoUpdate:=false;
  if fCountOverwrites=0 then begin
   if fEffectiveData=@fWorkData then begin
    fWorkData:=fData;
+   DoUpdate:=true;
   end;
   fEffectiveData:=@fData;
  end else begin
@@ -8221,6 +8224,11 @@ begin
   fWorkData.EmissiveFactor:=MaterialEmissiveFactorSum.Get(fData.EmissiveFactor);
   fWorkData.NormalTextureScale:=MaterialNormalTextureScaleSum.Get(fData.NormalTextureScale);
   fWorkData.OcclusionTextureStrength:=MaterialOcclusionTextureStrengthSum.Get(fData.OcclusionTextureStrength);
+  DoUpdate:=true;
+ end;
+ if DoUpdate then begin
+  fMaterial.fData:=fEffectiveData^;
+  fMaterial.FillShaderData;
  end;
 end;
 
