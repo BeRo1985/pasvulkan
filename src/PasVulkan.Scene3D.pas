@@ -7170,36 +7170,45 @@ var LightMap:TpvScene3D.TGroup.TLights;
         Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
          Channel:=@Animation.fChannels[ChannelIndex];
-         if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets) and
-            (Channel^.TargetIndex>=0) and
-            (Channel^.TargetIndex<fMaterials.Count) then begin
-          MaterialIndex:=Channel^.TargetIndex;
-          Material:=fMaterials[MaterialIndex];
-          MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
-          if MaterialIDMapArrayIndex>=0 then begin
-           MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
-           if MaterialIDMapArray.Count>=2 then begin
-            DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
-            try
-             DuplicatedMaterial.Assign(Material);
-             Material.DecRef;
-             Material:=DuplicatedMaterial;
-             Material.IncRef;
-             MaterialIDMapArray.Remove(MaterialIndex);
-             MaterialIDMapArray:=TMaterialIDMapArray.Create;
-             fMaterialIDMapArrayIndexHashMap.Add(Material.fID,fMaterialIDMapArrays.Add(MaterialIDMapArray));
-             MaterialIDMapArray.Add(MaterialIndex);
-            finally
-             fMaterials[MaterialIndex]:=Material;
+         if Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets then begin
+          if (Channel^.TargetIndex>=0) and (Channel^.TargetIndex<fMaterials.Count) then begin
+           MaterialIndex:=Channel^.TargetIndex;
+           Material:=fMaterials[MaterialIndex];
+           MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+           if MaterialIDMapArrayIndex>=0 then begin
+            MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+            if MaterialIDMapArray.Count>0 then begin
+             if MaterialIDMapArray.Count>=2 then begin
+              DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+              try
+               DuplicatedMaterial.Assign(Material);
+               Material.DecRef;
+               Material:=DuplicatedMaterial;
+               Material.IncRef;
+               MaterialIDMapArray.Remove(MaterialIndex);
+               MaterialIDMapArray:=TMaterialIDMapArray.Create;
+               fMaterialIDMapArrayIndexHashMap.Add(Material.fID,fMaterialIDMapArrays.Add(MaterialIDMapArray));
+               MaterialIDMapArray.Add(MaterialIndex);
+              finally
+               fMaterials[MaterialIndex]:=Material;
+               fMaterialMap[Index+1]:=Material.fID;
+              end;
+             end;
+             //Channel^.TargetIndex:=Material.fID;
+             MaterialArrayIndex:=MaterialHashMap[Material.fID];
+             if MaterialArrayIndex<0 then begin
+              MaterialArrayIndex:=MaterialArrayList.Add(Material.fID);
+              MaterialHashMap.Add(Material.fID,MaterialArrayIndex);
+              fMaterialsToDuplicate.Add(Material);
+             end;
+            end else begin
+             Channel^.TargetIndex:=-1;
             end;
+           end else begin
+            Channel^.TargetIndex:=-1;
            end;
-          end;
-          Channel^.TargetIndex:=Material.fID;
-          MaterialArrayIndex:=MaterialHashMap[Channel^.TargetIndex];
-          if MaterialArrayIndex<0 then begin
-           MaterialArrayIndex:=MaterialArrayList.Add(Channel^.TargetIndex);
-           MaterialHashMap.Add(Channel^.TargetIndex,MaterialArrayIndex);
-           fMaterialsToDuplicate.Add(Material);
+          end else begin
+           Channel^.TargetIndex:=-1;
           end;
          end;
         end;
