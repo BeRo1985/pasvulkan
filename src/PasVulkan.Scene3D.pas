@@ -1432,6 +1432,118 @@ type EpvScene3D=class(Exception);
                             property EffectiveData:TpvScene3D.PCameraData read fEffectiveData;
                           end;
                           TCameras=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TCamera>;
+                          { TMaterial }
+                          TMaterial=class
+                           public
+                            type TOverwriteFlag=
+                                         (
+                                          Defaults,
+                                          DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
+                                          DefaultMaterialPBRMetallicRoughnessMetallicFactor,
+                                          DefaultMaterialPBRMetallicRoughnessRoughnessFactor,
+                                          DefaultMaterialAlphaCutOff,
+                                          DefaultMaterialEmissiveFactor,
+                                          DefaultMaterialNormalTextureScale,
+                                          DefaultMaterialOcclusionTextureStrength,
+                                          DefaultMaterialPBRClearCoatFactor,
+                                          DefaultMaterialPBRClearCoatRoughnessFactor,
+                                          DefaultMaterialEmissiveStrength,
+                                          DefaultMaterialIOR,
+                                          DefaultMaterialPBRIridescenceFactor,
+                                          DefaultMaterialPBRIridescenceIor,
+                                          DefaultMaterialPBRIridescenceMinimum,
+                                          DefaultMaterialPBRIridescenceMaximum,
+                                          DefaultMaterialPBRSheenColorFactor,
+                                          DefaultMaterialPBRSheenRoughnessFactor,
+                                          DefaultMaterialPBRSpecularFactor,
+                                          DefaultMaterialPBRSpecularColorFactor,
+                                          DefaultMaterialPBRTransmissionFactor,
+                                          DefaultMaterialPBRVolumeThicknessFactor,
+                                          DefaultMaterialPBRVolumeAttenuationDistance,
+                                          DefaultMaterialPBRVolumeAttenuationColor,
+                                          DefaultTextureOffset,
+                                          DefaultTextureRotation,
+                                          DefaultTextureScale,
+                                          MaterialPBRMetallicRoughnessBaseColorFactor,
+                                          MaterialPBRMetallicRoughnessMetallicFactor,
+                                          MaterialPBRMetallicRoughnessRoughnessFactor,
+                                          MaterialAlphaCutOff,
+                                          MaterialEmissiveFactor,
+                                          MaterialNormalTextureScale,
+                                          MaterialOcclusionTextureStrength,
+                                          MaterialPBRClearCoatFactor,
+                                          MaterialPBRClearCoatRoughnessFactor,
+                                          MaterialEmissiveStrength,
+                                          MaterialIOR,
+                                          MaterialPBRIridescenceFactor,
+                                          MaterialPBRIridescenceIor,
+                                          MaterialPBRIridescenceMinimum,
+                                          MaterialPBRIridescenceMaximum,
+                                          MaterialPBRSheenColorFactor,
+                                          MaterialPBRSheenRoughnessFactor,
+                                          MaterialPBRSpecularFactor,
+                                          MaterialPBRSpecularColorFactor,
+                                          MaterialPBRTransmissionFactor,
+                                          MaterialPBRVolumeThicknessFactor,
+                                          MaterialPBRVolumeAttenuationDistance,
+                                          MaterialPBRVolumeAttenuationColor,
+                                          TextureOffset,
+                                          TextureRotation,
+                                          TextureScale
+                                         );
+                                        TOverwriteFlags=set of TOverwriteFlag;
+                                        TOverwrite=record
+                                         public
+                                          Flags:TOverwriteFlags;
+                                          Factor:TpvFloat;
+                                          MaterialPBRMetallicRoughnessBaseColorFactor:TpvVector4;
+                                          MaterialPBRMetallicRoughnessMetallicFactor:TpvFloat;
+                                          MaterialPBRMetallicRoughnessRoughnessFactor:TpvFloat;
+                                          MaterialAlphaCutOff:TpvFloat;
+                                          MaterialEmissiveFactor:TpvFloat;
+                                          MaterialNormalTextureScale:TpvFloat;
+                                          MaterialOcclusionTextureStrength:TpvFloat;
+                                          MaterialPBRClearCoatFactor:TpvFloat;
+                                          MaterialPBRClearCoatRoughnessFactor:TpvFloat;
+                                          MaterialEmissiveStrength:TpvFloat;
+                                          MaterialIOR:TpvFloat;
+                                          MaterialPBRIridescenceFactor:TpvFloat;
+                                          MaterialPBRIridescenceIor:TpvFloat;
+                                          MaterialPBRIridescenceMinimum:TpvFloat;
+                                          MaterialPBRIridescenceMaximum:TpvFloat;
+                                          MaterialPBRSheenColorFactor:TpvVector4;
+                                          MaterialPBRSheenRoughnessFactor:TpvFloat;
+                                          MaterialPBRSpecularFactor:TpvFloat;
+                                          MaterialPBRSpecularColorFactor:TpvVector4;
+                                          MaterialPBRTransmissionFactor:TpvFloat;
+                                          MaterialPBRVolumeThicknessFactor:TpvFloat;
+                                          MaterialPBRVolumeAttenuationDistance:TpvFloat;
+                                          MaterialPBRVolumeAttenuationColor:TpvVector3;
+                                          TextureOffset:TpvVector2;
+                                          TextureRotation:TpvFloat;
+                                          TextureScale:TpvVector2;
+                                        end;
+                                        POverwrite=^TOverwrite;
+                                        TOverwrites=array of TOverwrite;
+                           private
+                            fInstance:TInstance;
+                            fMaterial:TpvScene3D.TMaterial;
+                            fData:TpvScene3D.TMaterial.TData;
+                            fWorkData:TpvScene3D.TMaterial.TData;
+                            fEffectiveData:TpvScene3D.TMaterial.PData;
+                            fOverwrites:TOverwrites;
+                            fCountOverwrites:TpvSizeInt;
+                           public
+                            constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aMaterial:TpvScene3D.TMaterial);
+                            destructor Destroy; override;
+                            procedure Update;
+                           public
+                            property Material:TpvScene3D.TMaterial read fMaterial;
+                            property Data:TpvScene3D.TMaterial.TData read fData write fData;
+                            property WorkData:TpvScene3D.TMaterial.TData read fWorkData write fWorkData;
+                            property EffectiveData:TpvScene3D.TMaterial.PData read fEffectiveData;
+                          end;
+                          TMaterials=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TMaterial>;
                           { TVulkanData }
                           TVulkanData=class
                            private
@@ -4597,6 +4709,7 @@ begin
     TAnimation.TChannel.TTarget.PointerNodeTranslation,
     TAnimation.TChannel.TTarget.PointerNodeScale,
     TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
     TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
      OutputVector3Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector3Array(false);
      try
@@ -4610,7 +4723,9 @@ begin
     end;
     TAnimation.TChannel.TTarget.Rotation,
     TAnimation.TChannel.TTarget.PointerNodeRotation,
-    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
+    TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
      OutputVector4Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector4Array(false);
      try
       for ValueIndex:=0 to length(DestinationAnimationChannel^.OutputVector4Array)-1 do begin
@@ -4640,6 +4755,19 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
     TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
     TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+    TAnimation.TChannel.TTarget.PointerMaterialIOR,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
     TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
     TAnimation.TChannel.TTarget.PointerPunctualLightRange,
     TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
@@ -7971,6 +8099,127 @@ begin
    else begin
    end;
   end;
+ end;
+end;
+
+{ TpvScene3D.TGroup.TInstance.TMaterial }
+
+constructor TpvScene3D.TGroup.TInstance.TMaterial.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aMaterial:TpvScene3D.TMaterial);
+begin
+ inherited Create;
+ fInstance:=aInstance;
+ fMaterial:=aMaterial;
+ fData:=fMaterial.fData;
+ fWorkData:=fMaterial.fData;
+ fEffectiveData:=@fData;
+ fOverwrites:=nil;
+ fCountOverwrites:=0;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TMaterial.Destroy;
+begin
+ fOverwrites:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TMaterial.Update;
+var Index:TpvSizeInt;
+    Factor:TpvDouble;
+    Overwrite:TpvScene3D.TGroup.TInstance.TMaterial.POverwrite;
+    MaterialPBRMetallicRoughnessBaseColorFactorSum:TpvScene3D.TVector4Sum;
+    MaterialPBRMetallicRoughnessMetallicFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRMetallicRoughnessRoughnessFactorSum:TpvScene3D.TScalarSum;
+    MaterialAlphaCutOffSum:TpvScene3D.TScalarSum;
+    MaterialEmissiveFactorSum:TpvScene3D.TVector4Sum;
+    MaterialNormalTextureScaleSum:TpvScene3D.TScalarSum;
+    MaterialOcclusionTextureStrengthSum:TpvScene3D.TScalarSum;
+begin
+ if fCountOverwrites=0 then begin
+  if fEffectiveData=@fWorkData then begin
+   fWorkData:=fData;
+  end;
+  fEffectiveData:=@fData;
+ end else begin
+  fEffectiveData:=@fWorkData;
+  MaterialPBRMetallicRoughnessBaseColorFactorSum.Clear;
+  MaterialPBRMetallicRoughnessMetallicFactorSum.Clear;
+  MaterialPBRMetallicRoughnessRoughnessFactorSum.Clear;
+  MaterialAlphaCutOffSum.Clear;
+  MaterialEmissiveFactorSum.Clear;
+  MaterialNormalTextureScaleSum.Clear;
+  MaterialOcclusionTextureStrengthSum.Clear;
+  for Index:=0 to fCountOverwrites-1 do begin
+   Overwrite:=@fOverwrites[Index];
+   Factor:=Overwrite.Factor;
+   if not IsZero(Factor) then begin
+    if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
+     MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
+     MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
+     MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
+     MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
+     MaterialEmissiveFactorSum.Add(fData.EmissiveFactor,Factor);
+     MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
+     MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+    end else begin
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
+       MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
+      end else begin
+       MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessBaseColorFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
+       MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
+      end else begin
+       MaterialPBRMetallicRoughnessMetallicFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessMetallicFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
+       MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
+      end else begin
+       MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessRoughnessFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialAlphaCutOff in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialAlphaCutOff in Overwrite^.Flags then begin
+       MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
+      end else begin
+       MaterialAlphaCutOffSum.Add(Overwrite^.MaterialAlphaCutOff,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveFactor in Overwrite^.Flags then begin
+       MaterialEmissiveFactorSum.Add(fData.EmissiveFactor,Factor);
+      end else begin
+       MaterialEmissiveFactorSum.Add(Overwrite^.MaterialEmissiveFactor,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialNormalTextureScale in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialNormalTextureScale in Overwrite^.Flags then begin
+       MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
+      end else begin
+       MaterialNormalTextureScaleSum.Add(Overwrite^.MaterialNormalTextureScale,Factor);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialOcclusionTextureStrength in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialOcclusionTextureStrength in Overwrite^.Flags then begin
+       MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+      end else begin
+       MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor);
+      end;
+     end;
+    end;
+   end;
+  end;
+  fWorkData.PBRMetallicRoughness.BaseColorFactor:=MaterialPBRMetallicRoughnessBaseColorFactorSum.Get(fData.PBRMetallicRoughness.BaseColorFactor);
+  fWorkData.PBRMetallicRoughness.MetallicFactor:=MaterialPBRMetallicRoughnessMetallicFactorSum.Get(fData.PBRMetallicRoughness.MetallicFactor);
+  fWorkData.PBRMetallicRoughness.RoughnessFactor:=MaterialPBRMetallicRoughnessRoughnessFactorSum.Get(fData.PBRMetallicRoughness.RoughnessFactor);
+  fWorkData.AlphaCutOff:=MaterialAlphaCutOffSum.Get(fData.AlphaCutOff);
+  fWorkData.EmissiveFactor:=MaterialEmissiveFactorSum.Get(fData.EmissiveFactor);
+  fWorkData.NormalTextureScale:=MaterialNormalTextureScaleSum.Get(fData.NormalTextureScale);
+  fWorkData.OcclusionTextureStrength:=MaterialOcclusionTextureStrengthSum.Get(fData.OcclusionTextureStrength);
  end;
 end;
 
