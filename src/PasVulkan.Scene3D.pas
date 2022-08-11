@@ -8993,6 +8993,17 @@ var CullFace,Blend:TPasGLTFInt32;
    InstanceCamera.fCountOverwrites:=0;
   end;
  end;
+ procedure ResetMaterials;
+ var Index:TPasGLTFSizeInt;
+     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
+ begin
+  for Index:=0 to fMaterials.Count-1 do begin
+   InstanceMaterial:=fMaterials[Index];
+   if assigned(InstanceMaterial) then begin
+    InstanceMaterial.fCountOverwrites:=0;
+   end;
+  end;
+ end;
  procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -10299,6 +10310,7 @@ var Index:TPasGLTFSizeInt;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     AABB:TpvAABB;
 begin
 
@@ -10323,6 +10335,8 @@ begin
    ResetLights;
 
    ResetCameras;
+
+   ResetMaterials;
 
    for Index:=0 to Scene.Nodes.Count-1 do begin
     ResetNode(Scene.Nodes[Index].Index);
@@ -10353,6 +10367,13 @@ begin
 
    for Index:=0 to fCameras.Count-1 do begin
     fCameras[Index].Update;
+   end;
+
+   for Index:=0 to fMaterials.Count-1 do begin
+    InstanceMaterial:=fMaterials[Index];
+    if assigned(InstanceMaterial) then begin
+     InstanceMaterial.Update;
+    end;
    end;
 
    for Index:=0 to Scene.fNodes.Count-1 do begin
