@@ -10425,6 +10425,11 @@ var CullFace,Blend:TPasGLTFInt32;
           MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor,
                                                               TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor];
          end;
+{        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotate,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+          // TODO
+         end;}
          else begin
          end;
         end;
