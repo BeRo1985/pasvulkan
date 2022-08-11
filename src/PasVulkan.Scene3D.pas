@@ -7154,6 +7154,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      CompactCode:TpvUInt64;
      Material,DuplicatedMaterial:TpvScene3D.TMaterial;
      MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
+     OK:boolean;
  begin
   MaterialHashMap:=TMaterialHashMap.Create(-1);
   try
@@ -7171,6 +7172,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
          Channel:=@Animation.fChannels[ChannelIndex];
          if Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.MaterialTargets then begin
+          OK:=false;
           if (Channel^.TargetIndex>=0) and (Channel^.TargetIndex<fMaterials.Count) then begin
            MaterialIndex:=Channel^.TargetIndex;
            Material:=fMaterials[MaterialIndex];
@@ -7201,13 +7203,11 @@ var LightMap:TpvScene3D.TGroup.TLights;
               MaterialHashMap.Add(Material.fID,MaterialArrayIndex);
               fMaterialsToDuplicate.Add(Material);
              end;
-            end else begin
-             Channel^.TargetIndex:=-1;
+             OK:=true;
             end;
-           end else begin
-            Channel^.TargetIndex:=-1;
            end;
-          end else begin
+          end;
+          if not OK then begin
            Channel^.TargetIndex:=-1;
           end;
          end;
