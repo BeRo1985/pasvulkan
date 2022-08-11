@@ -4661,6 +4661,68 @@ begin
             DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength;
            end;
           end;
+         end else if TargetPointerStrings[2]='extensions' then begin
+          if length(TargetPointerStrings)>3 then begin
+           if TargetPointerStrings[3]='KHR_materials_emissive_strength' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='emissiveStrength' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_ior' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='ior' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialIOR;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_transmission' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='transmissionFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_iridescence' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='iridescenceFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor;
+             end else if TargetPointerStrings[4]='iridescenceIor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor;
+             end else if TargetPointerStrings[4]='iridescenceThicknessMinimum' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum;
+             end else if TargetPointerStrings[4]='iridescenceThicknessMaximum' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_volume' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='attenuationColor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor;
+             end else if TargetPointerStrings[4]='attenuationDistance' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance;
+             end else if TargetPointerStrings[4]='thicknessFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_sheen' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='sheenColorFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor;
+             end else if TargetPointerStrings[4]='sheenRoughnessFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_specular' then begin
+            if length(TargetPointerStrings)>4 then begin
+             if TargetPointerStrings[4]='specularFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor;
+             end else if TargetPointerStrings[4]='specularColorFactor' then begin
+              DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor;
+             end;
+            end;
+           end else if TargetPointerStrings[3]='KHR_materials_transform' then begin
+            // TODO
+           end;
+          end;
          end;
         end;
        end else if TargetPointerStrings[0]='extensions' then begin
@@ -8150,6 +8212,7 @@ var Index:TpvSizeInt;
     MaterialEmissiveFactorSum:TpvScene3D.TVector3Sum;
     MaterialNormalTextureScaleSum:TpvScene3D.TScalarSum;
     MaterialOcclusionTextureStrengthSum:TpvScene3D.TScalarSum;
+    MaterialPBRClearCoatFactorSum:TpvScene3D.TScalarSum;
     DoUpdate:boolean;
 begin
  DoUpdate:=false;
@@ -8168,6 +8231,7 @@ begin
   MaterialEmissiveFactorSum.Clear;
   MaterialNormalTextureScaleSum.Clear;
   MaterialOcclusionTextureStrengthSum.Clear;
+  MaterialPBRClearCoatFactorSum.Clear;
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
@@ -8180,6 +8244,7 @@ begin
      MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
      MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
      MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+     MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
     end else begin
      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
@@ -8230,6 +8295,13 @@ begin
        MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor);
       end;
      end;
+     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatFactor in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatFactor in Overwrite^.Flags then begin
+       MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
+      end else begin
+       MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor);
+      end;
+     end;
     end;
    end;
   end;
@@ -8240,6 +8312,7 @@ begin
   fWorkData.EmissiveFactor.xyz:=MaterialEmissiveFactorSum.Get(fData.EmissiveFactor.xyz);
   fWorkData.NormalTextureScale:=MaterialNormalTextureScaleSum.Get(fData.NormalTextureScale);
   fWorkData.OcclusionTextureStrength:=MaterialOcclusionTextureStrengthSum.Get(fData.OcclusionTextureStrength);
+  fWorkData.PBRClearCoat.Factor:=MaterialOcclusionTextureStrengthSum.Get(fData.PBRClearCoat.Factor);
   DoUpdate:=true;
  end;
  if DoUpdate then begin
