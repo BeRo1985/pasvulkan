@@ -8522,6 +8522,10 @@ begin
      Material:=fSceneInstance.fMaterialIDHashMap[fMaterialMap[Index+1]];
      if assigned(Material) then begin
       InstanceMaterial:=TpvScene3D.TGroup.TInstance.TMaterial.Create(self,Material);
+      try
+       SetLength(InstanceMaterial.fOverwrites,fGroup.fAnimations.Count+1);
+      finally
+      end;
      end;
     end;
    finally
