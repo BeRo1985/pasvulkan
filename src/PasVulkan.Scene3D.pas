@@ -1571,6 +1571,7 @@ type EpvScene3D=class(Exception);
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
                      fDuplicatedMaterials:TpvScene3D.TMaterials;
+                     fMaterials:TpvScene3D.TGroup.TInstance.TMaterials;
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
@@ -8433,6 +8434,7 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     MaterialToDuplicate,DuplicatedMaterial,Material:TpvScene3D.TMaterial;
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
 begin
@@ -8501,6 +8503,22 @@ begin
 
    end;
 
+  end;
+
+  fMaterials:=TpvScene3D.TGroup.TInstance.TMaterials.Create;
+  fMaterials.OwnsObjects:=true;
+  for Index:=0 to fGroup.fMaterials.Count-1 do begin
+   InstanceMaterial:=nil;
+   try
+    if fMaterialMap[Index+1]<>fGroup.fMaterialMap[Index+1] then begin
+     Material:=fSceneInstance.fMaterialIDHashMap[fMaterialMap[Index+1]];
+     if assigned(Material) then begin
+      InstanceMaterial:=TpvScene3D.TGroup.TInstance.TMaterial.Create(self,Material);
+     end;
+    end;
+   finally
+    fMaterials.Add(InstanceMaterial);
+   end;
   end;
 
  end;
@@ -8618,6 +8636,7 @@ begin
  for Index:=0 to length(fAnimations)-1 do begin
   FreeAndNil(fAnimations[Index]);
  end;
+ FreeAndNil(fMaterials);
  fCacheVerticesNodeDirtyBitmap:=nil;
  for Index:=0 to fDuplicatedMaterials.Count-1 do begin
   fDuplicatedMaterials[Index].DecRef;
