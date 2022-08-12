@@ -10192,10 +10192,10 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor{,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotate,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale}:begin
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
 
        Material:=fMaterials[AnimationChannel^.TargetIndex];
 
