@@ -140,6 +140,30 @@ type EpvScene3D=class(Exception);
               PBRVolumeThicknessTexture=15,
               Dummy=256
              );
+            TTextureIndex=
+             (
+              None=-1,
+              PBRMetallicRoughnessBaseColorTexture=0,
+              PBRMetallicRoughnessMetallicRoughnessTexture=1,
+              NormalTexture=2,
+              OcclusionTexture=3,
+              EmissiveTexture=4,
+              PBRSheenColorTexture=5,
+              PBRSheenRoughnessTexture=6,
+              PBRClearCoatTexture=7,
+              PBRClearCoatRoughnessTexture=8,
+              PBRClearCoatNormalTexture=9,
+              PBRSpecularSpecularTexture=10,
+              PBRSpecularSpecularColorTexture=11,
+              PBRIridescenceTexture=12,
+              PBRIridescenceThicknessTexture=13,
+              PBRTransmissionTexture=14,
+              PBRVolumeThicknessTexture=15,
+              PBRSpecularGlossinessDiffuseTexture=16,
+              PBRSpecularGlossinessSpecularGlossinessTexture=17,
+              PBRUnlitColorTexture=18,
+              Dummy=256
+             );
             TVertexAttributeBinBoundingBoxesdingLocations=class
              public
               const Position=0;
@@ -574,27 +598,32 @@ type EpvScene3D=class(Exception);
                      );
                    end;
                    PShaderData=^TShaderData;
+
+                   { TData }
+
                    TData=record
-                    ShadingModel:TShadingModel;
-                    AlphaCutOff:TpvFloat;
-                    AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
-                    DoubleSided:boolean;
-                    NormalTexture:TTextureReference;
-                    NormalTextureScale:TpvFloat;
-                    OcclusionTexture:TTextureReference;
-                    OcclusionTextureStrength:TpvFloat;
-                    EmissiveFactor:TpvVector4; // w = EmissiveStrength
-                    EmissiveTexture:TTextureReference;
-                    PBRMetallicRoughness:TPBRMetallicRoughness;
-                    PBRSpecularGlossiness:TPBRSpecularGlossiness;
-                    PBRSheen:TPBRSheen;
-                    PBRClearCoat:TPBRClearCoat;
-                    Unlit:TUnlit;
-                    IOR:TpvFloat;
-                    Iridescence:TIridescence;
-                    Transmission:TTransmission;
-                    Volume:TVolume;
-                    AnimatedTextureMask:TpvUInt64;
+                    public
+                     ShadingModel:TShadingModel;
+                     AlphaCutOff:TpvFloat;
+                     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                     DoubleSided:boolean;
+                     NormalTexture:TTextureReference;
+                     NormalTextureScale:TpvFloat;
+                     OcclusionTexture:TTextureReference;
+                     OcclusionTextureStrength:TpvFloat;
+                     EmissiveFactor:TpvVector4; // w = EmissiveStrength
+                     EmissiveTexture:TTextureReference;
+                     PBRMetallicRoughness:TPBRMetallicRoughness;
+                     PBRSpecularGlossiness:TPBRSpecularGlossiness;
+                     PBRSheen:TPBRSheen;
+                     PBRClearCoat:TPBRClearCoat;
+                     Unlit:TUnlit;
+                     IOR:TpvFloat;
+                     Iridescence:TIridescence;
+                     Transmission:TTransmission;
+                     Volume:TVolume;
+                     AnimatedTextureMask:TpvUInt64;
+                     function GetTextureTransform(const aTextureIndex:TpvScene3D.TTextureIndex):TpvScene3D.TMaterial.TTextureReference.PTransform;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -1570,9 +1599,9 @@ type EpvScene3D=class(Exception);
                             fEffectiveData:TpvScene3D.TMaterial.PData;
                             fOverwrites:TOverwrites;
                             fCountOverwrites:TpvSizeInt;
-                            fTextureOffsetSums:array[0..15] of TpvScene3D.TVector2Sum;
-                            fTextureRotationSums:array[0..15] of TpvScene3D.TScalarSum;
-                            fTextureScaleSums:array[0..15] of TpvScene3D.TVector2Sum;
+                            fTextureOffsetSums:array[0..18] of TpvScene3D.TVector2Sum;
+                            fTextureRotationSums:array[0..18] of TpvScene3D.TScalarSum;
+                            fTextureScaleSums:array[0..18] of TpvScene3D.TVector2Sum;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aMaterial:TpvScene3D.TMaterial);
                             destructor Destroy; override;
@@ -3113,6 +3142,74 @@ begin
  result[2]:=PpvVector2(pointer(@Temporary.RawComponents[3,0]))^;
 end;
 
+{ TpvScene3D.TMaterial.TData }
+
+function TpvScene3D.TMaterial.TData.GetTextureTransform(const aTextureIndex:TpvScene3D.TTextureIndex):TpvScene3D.TMaterial.TTextureReference.PTransform;
+begin
+ case aTextureIndex of
+  TpvScene3D.TTextureIndex.PBRMetallicRoughnessBaseColorTexture:begin
+   result:=@PBRMetallicRoughness.BaseColorTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRMetallicRoughnessMetallicRoughnessTexture:begin
+   result:=@PBRMetallicRoughness.MetallicRoughnessTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSpecularGlossinessDiffuseTexture:begin
+   result:=@PBRSpecularGlossiness.DiffuseTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSpecularGlossinessSpecularGlossinessTexture:begin
+   result:=@PBRSpecularGlossiness.SpecularGlossinessTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRUnlitColorTexture:begin
+   result:=@PBRMetallicRoughness.BaseColorTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.NormalTexture:begin
+   result:=@PBRMetallicRoughness.BaseColorTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.OcclusionTexture:begin
+   result:=@OcclusionTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.EmissiveTexture:begin
+   result:=@EmissiveTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSheenColorTexture:begin
+   result:=@PBRSheen.ColorTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSheenRoughnessTexture:begin
+   result:=@PBRSheen.RoughnessTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRClearCoatTexture:begin
+   result:=@PBRClearCoat.Texture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRClearCoatRoughnessTexture:begin
+   result:=@PBRClearCoat.RoughnessTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRClearCoatNormalTexture:begin
+   result:=@PBRClearCoat.NormalTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSpecularSpecularTexture:begin
+   result:=@PBRMetallicRoughness.SpecularTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRSpecularSpecularColorTexture:begin
+   result:=@PBRMetallicRoughness.SpecularColorTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRIridescenceTexture:begin
+   result:=@Iridescence.Texture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRIridescenceThicknessTexture:begin
+   result:=@Iridescence.ThicknessTexture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRTransmissionTexture:begin
+   result:=@Transmission.Texture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRVolumeThicknessTexture:begin
+   result:=@Volume.ThicknessTexture.Transform;
+  end;
+  else begin
+   result:=nil;
+  end;
+ end;
+end;
+
 { TpvScene3D.TMaterial }
 
 constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
@@ -4612,7 +4709,7 @@ var Index,ChannelIndex,ValueIndex,StringPosition,StartStringPosition:TPasGLTFSiz
     TargetPointerString,TargetPointerSubString:TpvUTF8String;
     TargetPointerStrings:array of TpvUTF8String;
     Target:TAnimation.TChannel.TTarget;
-    TextureRawIndex:TpvScene3D.TTextureRawIndex;
+    TextureRawIndex:TpvScene3D.TTextureIndex;
 begin
 
  fName:=aSourceAnimation.Name;
@@ -4726,23 +4823,23 @@ begin
           end else{if TargetPointerStrings[length(TargetPointerStrings)-1]='rotation' then}begin
            Target:=TAnimation.TChannel.TTarget.PointerTextureRotation;
           end;
-          TextureRawIndex:=TpvScene3D.TTextureRawIndex.None;
+          TextureRawIndex:=TpvScene3D.TTextureIndex.None;
           case length(TargetPointerStrings) of
            6:begin
             if TargetPointerStrings[2]='emissiveTexture' then begin
-             TextureRawIndex:=TpvScene3D.TTextureRawIndex.EmissiveTexture;
+             TextureRawIndex:=TpvScene3D.TTextureIndex.EmissiveTexture;
             end else if TargetPointerStrings[2]='normalTexture' then begin
-             TextureRawIndex:=TpvScene3D.TTextureRawIndex.NormalTexture;
+             TextureRawIndex:=TpvScene3D.TTextureIndex.NormalTexture;
             end else if TargetPointerStrings[2]='occlusionTexture' then begin
-             TextureRawIndex:=TpvScene3D.TTextureRawIndex.OcclusionTexture;
+             TextureRawIndex:=TpvScene3D.TTextureIndex.OcclusionTexture;
             end;
            end;
            7:begin
             if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
              if TargetPointerStrings[3]='baseColorTexture' then begin
-              TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRMetallicRoughnessBaseColorTexture;
+              TextureRawIndex:=TpvScene3D.TTextureIndex.PBRMetallicRoughnessBaseColorTexture;
              end else if TargetPointerStrings[3]='metallicRoughnessTexture' then begin
-              TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRMetallicRoughnessMetallicRoughnessTexture;
+              TextureRawIndex:=TpvScene3D.TTextureIndex.PBRMetallicRoughnessMetallicRoughnessTexture;
              end;
             end;
            end;
@@ -4750,49 +4847,49 @@ begin
             if TargetPointerStrings[2]='extensions' then begin
              if TargetPointerStrings[3]='pbrSpecularGlossiness' then begin
               if TargetPointerStrings[4]='diffuseTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularGlossinessDiffuseTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularGlossinessDiffuseTexture;
               end else if TargetPointerStrings[4]='specularGlossinessTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularGlossinessSpecularGlossinessTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularGlossinessSpecularGlossinessTexture;
               end;
              end else if TargetPointerStrings[3]='pbrClearCoat' then begin
               if TargetPointerStrings[4]='clearcoatTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRClearCoatTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRClearCoatTexture;
               end else if TargetPointerStrings[4]='clearcoatRoughnessTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRClearCoatRoughnessTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRClearCoatRoughnessTexture;
               end else if TargetPointerStrings[4]='clearcoatNormalTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRClearCoatNormalTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRClearCoatNormalTexture;
               end;
              end else if TargetPointerStrings[3]='pbrSheen' then begin
               if TargetPointerStrings[4]='sheenColorTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSheenColorTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSheenColorTexture;
               end else if TargetPointerStrings[4]='sheenRoughnessTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSheenRoughnessTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSheenRoughnessTexture;
               end;
              end else if TargetPointerStrings[3]='pbrSpecular' then begin
               if TargetPointerStrings[4]='specularTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularSpecularTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularSpecularTexture;
               end else if TargetPointerStrings[4]='specularColorTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularSpecularColorTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularSpecularColorTexture;
               end;
              end else if TargetPointerStrings[3]='pbrIridescence' then begin
               if TargetPointerStrings[4]='iridesceneTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRIridescenceTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRIridescenceTexture;
               end else if TargetPointerStrings[4]='iridescenceThicknessTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRIridescenceThicknessTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRIridescenceThicknessTexture;
               end;
              end else if TargetPointerStrings[3]='pbrTransmission' then begin
               if TargetPointerStrings[4]='transmissionTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRTransmissionTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRTransmissionTexture;
               end;
              end else if TargetPointerStrings[3]='pbrVolume' then begin
               if TargetPointerStrings[4]='thicknessTexture' then begin
-               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRVolumeThicknessTexture;
+               TextureRawIndex:=TpvScene3D.TTextureIndex.PBRVolumeThicknessTexture;
               end;
              end;
             end;
            end;
           end;
-          if TextureRawIndex<>TpvScene3D.TTextureRawIndex.None then begin
+          if TextureRawIndex<>TpvScene3D.TTextureIndex.None then begin
            DestinationAnimationChannel.Target:=Target;
            DestinationAnimationChannel.TargetSubIndex:=TpvSizeInt(TextureRawIndex);
           end;
