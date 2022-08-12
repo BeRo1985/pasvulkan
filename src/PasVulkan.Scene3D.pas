@@ -8758,6 +8758,30 @@ begin
       end;
      end else begin
       // Texture
+      TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
+      if assigned(TextureTransform) then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureOffset in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureOffset in Overwrite^.Flags then begin
+         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor);
+        end else begin
+         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureOffset,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureRotation in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureRotation in Overwrite^.Flags then begin
+         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor);
+        end else begin
+         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureRotation,Factor);
+        end;
+       end;
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureScale in Overwrite^.Flags then begin
+        if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureScale in Overwrite^.Flags then begin
+         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor);
+        end else begin
+         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureScale,Factor);
+        end;
+       end;
+      end;
      end;
     end;
    end;
@@ -8785,6 +8809,22 @@ begin
   fWorkData.Volume.ThicknessFactor:=MaterialPBRVolumeThicknessFactorSum.Get(fData.Volume.ThicknessFactor);
   fWorkData.Volume.AttenuationColor:=MaterialPBRVolumeAttenuationColorSum.Get(fData.Volume.AttenuationColor);
   fWorkData.Volume.AttenuationDistance:=MaterialPBRVolumeAttenuationDistanceSum.Get(fData.Volume.AttenuationDistance);
+  begin
+   AnimatedTextureMask:=fData.AnimatedTextureMask;
+   while AnimatedTextureMask<>0 do begin
+    AnimatedTextureIndex:=TPasMPMath.FindFirstSetBit64(AnimatedTextureMask);
+    TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(AnimatedTextureIndex));
+    if assigned(TextureTransform) then begin
+     WorkTextureTransform:=fWorkData.GetTextureTransform(TpvScene3D.TTextureIndex(AnimatedTextureIndex));
+     if assigned(WorkTextureTransform) then begin
+      WorkTextureTransform^.Offset:=fTextureOffsetSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Get(TextureTransform^.Offset);
+      WorkTextureTransform^.Rotation:=fTextureRotationSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Get(TextureTransform^.Rotation);
+      WorkTextureTransform^.Scale:=fTextureScaleSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Get(TextureTransform^.Scale);
+     end;
+    end;
+    AnimatedTextureMask:=AnimatedTextureMask and (AnimatedTextureMask-1);
+   end;
+  end;
   DoUpdate:=true;
  end;
  if DoUpdate then begin
