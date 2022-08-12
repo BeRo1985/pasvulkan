@@ -4779,6 +4779,10 @@ begin
             end;
            end;
           end;
+          if TextureRawIndex<>TpvScene3D.TTextureRawIndex.None then begin
+           DestinationAnimationChannel.Target:=Target;
+           DestinationAnimationChannel.TargetSubIndex:=TpvSizeInt(TextureRawIndex);
+          end;
          end else if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
           if length(TargetPointerStrings)>3 then begin
            if TargetPointerStrings[3]='baseColorFactor' then begin
