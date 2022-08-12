@@ -161,8 +161,7 @@ type EpvScene3D=class(Exception);
               PBRVolumeThicknessTexture=15,
               PBRSpecularGlossinessDiffuseTexture=16,
               PBRSpecularGlossinessSpecularGlossinessTexture=17,
-              PBRUnlitColorTexture=18,
-              Dummy=256
+              PBRUnlitColorTexture=18
              );
             TVertexAttributeBinBoundingBoxesdingLocations=class
              public
@@ -1599,9 +1598,9 @@ type EpvScene3D=class(Exception);
                             fEffectiveData:TpvScene3D.TMaterial.PData;
                             fOverwrites:TOverwrites;
                             fCountOverwrites:TpvSizeInt;
-                            fTextureOffsetSums:array[0..18] of TpvScene3D.TVector2Sum;
-                            fTextureRotationSums:array[0..18] of TpvScene3D.TScalarSum;
-                            fTextureScaleSums:array[0..18] of TpvScene3D.TVector2Sum;
+                            fTextureOffsetSums:array[TpvScene3D.TTextureIndex] of TpvScene3D.TVector2Sum;
+                            fTextureRotationSums:array[TpvScene3D.TTextureIndex] of TpvScene3D.TScalarSum;
+                            fTextureScaleSums:array[TpvScene3D.TTextureIndex] of TpvScene3D.TVector2Sum;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aMaterial:TpvScene3D.TMaterial);
                             destructor Destroy; override;
@@ -8507,8 +8506,10 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialPBRVolumeThicknessFactorSum:TpvScene3D.TScalarSum;
     MaterialPBRVolumeAttenuationDistanceSum:TpvScene3D.TScalarSum;
     MaterialPBRVolumeAttenuationColorSum:TpvScene3D.TVector3Sum;
-    DoUpdate:boolean;
     AnimatedTextureMask:TpvUInt64;
+    TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
+    WorkTextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
+    DoUpdate:boolean;
 begin
  DoUpdate:=false;
  if fCountOverwrites=0 then begin
@@ -8546,9 +8547,9 @@ begin
    AnimatedTextureMask:=fData.AnimatedTextureMask;
    while AnimatedTextureMask<>0 do begin
     AnimatedTextureIndex:=TPasMPMath.FindFirstSetBit64(AnimatedTextureMask);
-    fTextureOffsetSums[AnimatedTextureIndex].Clear;
-    fTextureRotationSums[AnimatedTextureIndex].Clear;
-    fTextureScaleSums[AnimatedTextureIndex].Clear;
+    fTextureOffsetSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Clear;
+    fTextureRotationSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Clear;
+    fTextureScaleSums[TpvScene3D.TTextureIndex(AnimatedTextureIndex)].Clear;
     AnimatedTextureMask:=AnimatedTextureMask and (AnimatedTextureMask-1);
    end;
   end;
@@ -8584,6 +8585,12 @@ begin
       MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
      end else begin
       // Texture
+      TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
+      if assigned(TextureTransform) then begin
+       fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor);
+       fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor);
+       fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor);
+      end;
      end;
     end else begin
      if Overwrite^.SubIndex<0 then begin
