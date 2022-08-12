@@ -114,11 +114,20 @@ void main() {
       if (oitFragments[oitFragmentIndex].w != 0) {                                                      //
         uvec4 fragment = oitFragments[oitFragmentIndex];                                                //
         vec4 fragmentColor = vec4(vec2(unpackHalf2x16(fragment.x)), vec2(unpackHalf2x16(fragment.y)));  //
+#if 1
+        uint oitMSAASampleMask = fragment.w;                                                            //  
+        while(oitMSAASampleMask != 0){                                                                  //
+          int oitMSAASampleIndex = findLSB(oitMSAASampleMask);                                          // 
+          blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                      //
+          oitMSAASampleMask &= (oitMSAASampleMask - 1u);                                                // 
+        }                                                                                               //
+#else
         for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {          //
           if ((fragment.w & (1u << oitMSAASampleIndex)) != 0) {                                         //
             blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                    //
           }
         }
+#endif
       }
     }
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //

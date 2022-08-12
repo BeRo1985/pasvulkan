@@ -96,11 +96,20 @@ void main() {
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
       uvec3 fragment = oitFragments[oitFragmentIndex];                                                                        //
       vec4 fragmentColor = vec4(unpackHalf2x16(fragment.x), unpackHalf2x16(fragment.y));                                      //
+#if 1
+      uint oitMSAASampleMask = fragment.z;                                                                                    //  
+      while(oitMSAASampleMask != 0){                                                                                          //
+        int oitMSAASampleIndex = findLSB(oitMSAASampleMask);                                                                  // 
+        blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                                              //
+        oitMSAASampleMask &= (oitMSAASampleMask - 1u);                                                                        // 
+      }                                                                                                                       //
+#else
       for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {                                  //
         if ((fragment.z & (1u << oitMSAASampleIndex)) != 0) {                                                                 //
           blend(oitMSAAColors[oitMSAASampleIndex], fragmentColor);                                                            //
         }
       }
+#endif
     }
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
       color += ApplyToneMapping(oitMSAAColors[oitMSAASampleIndex]);                         //
