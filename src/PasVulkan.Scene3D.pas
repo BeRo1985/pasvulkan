@@ -116,8 +116,9 @@ type EpvScene3D=class(Exception);
               Staging
              );
             TGraphicsPipelines=array[TPrimitiveTopology,TDoubleSided] of TpvVulkanPipeline;
-            TTextureIndices=
+            TTextureRawIndex=
              (
+              None=-1,
               PBRMetallicRoughnessBaseColorTexture=0,
               PBRMetallicRoughnessMetallicRoughnessTexture=1,
               PBRSpecularGlossinessDiffuseTexture=0,
@@ -4598,6 +4599,7 @@ var Index,ChannelIndex,ValueIndex,StringPosition,StartStringPosition:TPasGLTFSiz
     TargetPointerString,TargetPointerSubString:TpvUTF8String;
     TargetPointerStrings:array of TpvUTF8String;
     Target:TAnimation.TChannel.TTarget;
+    TextureRawIndex:TpvScene3D.TTextureRawIndex;
 begin
 
  fName:=aSourceAnimation.Name;
@@ -4711,16 +4713,34 @@ begin
           end else{if TargetPointerStrings[length(TargetPointerStrings)-1]='rotation' then}begin
            Target:=TAnimation.TChannel.TTarget.PointerTextureRotation;
           end;
+          TextureRawIndex:=TpvScene3D.TTextureRawIndex.None;
           case length(TargetPointerStrings) of
            6:begin
             if TargetPointerStrings[2]='emissiveTexture' then begin
-
+             TextureRawIndex:=TpvScene3D.TTextureRawIndex.EmissiveTexture;
+            end else if TargetPointerStrings[2]='normalTexture' then begin
+             TextureRawIndex:=TpvScene3D.TTextureRawIndex.NormalTexture;
+            end else if TargetPointerStrings[2]='occlusionTexture' then begin
+             TextureRawIndex:=TpvScene3D.TTextureRawIndex.OcclusionTexture;
             end;
            end;
            7:begin
             if TargetPointerStrings[2]='pbrMetallicRoughness' then begin
              if TargetPointerStrings[3]='baseColorTexture' then begin
-
+              TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRMetallicRoughnessBaseColorTexture;
+             end else if TargetPointerStrings[3]='metallicRoughnessTexture' then begin
+              TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRMetallicRoughnessMetallicRoughnessTexture;
+             end;
+            end;
+           end;
+           8:begin
+            if TargetPointerStrings[2]='extensions' then begin
+             if TargetPointerStrings[3]='pbrSpecularGlossiness' then begin
+              if TargetPointerStrings[4]='diffuseTexture' then begin
+               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularGlossinessDiffuseTexture;
+              end else if TargetPointerStrings[4]='specularGlossinessTexture' then begin
+               TextureRawIndex:=TpvScene3D.TTextureRawIndex.PBRSpecularGlossinessSpecularGlossinessTexture;
+              end;
              end;
             end;
            end;
@@ -4740,7 +4760,7 @@ begin
          end else if TargetPointerStrings[2]='alphaCutoff' then begin
           DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff;
          end else if TargetPointerStrings[2]='emissiveFactor' then begin
-          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength;
+          DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor;
          end else if TargetPointerStrings[2]='normalTexture' then begin
           if length(TargetPointerStrings)>3 then begin
            if TargetPointerStrings[3]='scale' then begin
@@ -4749,7 +4769,7 @@ begin
           end;
          end else if TargetPointerStrings[2]='occlusionTexture' then begin
           if length(TargetPointerStrings)>3 then begin
-           if TargetPointerStrings[3]='scale' then begin
+           if TargetPointerStrings[3]='strength' then begin
             DestinationAnimationChannel^.Target:=TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength;
            end;
           end;
