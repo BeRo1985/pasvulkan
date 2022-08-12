@@ -594,6 +594,7 @@ type EpvScene3D=class(Exception);
                     Iridescence:TIridescence;
                     Transmission:TTransmission;
                     Volume:TVolume;
+                    AnimatedTextureMask:TpvUInt64;
                    end;
                    PData=^TData;
                    THashData=TData;
@@ -667,6 +668,7 @@ type EpvScene3D=class(Exception);
                       AttenuationColor:(x:1.0;y:1.0;z:1.0);
                       AttenuationDistance:Infinity;
                      );
+                     AnimatedTextureMask:0;
                     );
                    DefaultShaderData:TShaderData=
                     (
@@ -1018,6 +1020,12 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialPBRVolumeThicknessFactor,
                                     TTarget.PointerMaterialPBRVolumeAttenuationDistance,
                                     TTarget.PointerMaterialPBRVolumeAttenuationColor,
+                                    TTarget.PointerTextureOffset,
+                                    TTarget.PointerTextureRotation,
+                                    TTarget.PointerTextureScale
+                                   ];
+                                  TextureTargets:TTargetSet=
+                                   [
                                     TTarget.PointerTextureOffset,
                                     TTarget.PointerTextureRotation,
                                     TTarget.PointerTextureScale
@@ -7577,6 +7585,12 @@ var LightMap:TpvScene3D.TGroup.TLights;
               fMaterialsToDuplicate.Add(Material);
              end;
              OK:=true;
+            end;
+           end;
+           if assigned(Material) then begin
+            if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.TextureTargets) and
+               (Channel^.TargetSubIndex>=0) then begin
+             Material.fData.AnimatedTextureMask:=Material.fData.AnimatedTextureMask or (TpvUInt64(1) shl TpvSizeInt(Channel^.TargetSubIndex));
             end;
            end;
           end;
