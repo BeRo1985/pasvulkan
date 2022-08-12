@@ -4935,6 +4935,18 @@ begin
     end;
    end;
    case DestinationAnimationChannel^.Target of
+    TAnimation.TChannel.TTarget.PointerTextureOffset,
+    TAnimation.TChannel.TTarget.PointerTextureScale:begin
+     OutputVector2Array:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsVector2Array(false);
+     try
+      SetLength(DestinationAnimationChannel^.OutputVector2Array,length(OutputVector2Array));
+      if length(OutputVector2Array)>0 then begin
+       Move(OutputVector2Array[0],DestinationAnimationChannel^.OutputVector2Array[0],length(OutputVector2Array)*SizeOf(TpvVector2));
+      end;
+     finally
+      OutputVector2Array:=nil;
+     end;
+    end;
     TAnimation.TChannel.TTarget.Translation,
     TAnimation.TChannel.TTarget.Scale,
     TAnimation.TChannel.TTarget.PointerNodeTranslation,
@@ -4999,6 +5011,7 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
+    TAnimation.TChannel.TTarget.PointerTextureRotation,
     TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
     TAnimation.TChannel.TTarget.PointerPunctualLightRange,
     TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
