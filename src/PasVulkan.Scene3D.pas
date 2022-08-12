@@ -1523,6 +1523,7 @@ type EpvScene3D=class(Exception);
                                         TOverwrite=record
                                          public
                                           Flags:TOverwriteFlags;
+                                          SubIndex:TpvSizeInt;
                                           Factor:TpvFloat;
                                           MaterialPBRMetallicRoughnessBaseColorFactor:TpvVector4;
                                           MaterialPBRMetallicRoughnessMetallicFactor:TpvFloat;
@@ -8418,190 +8419,200 @@ begin
    Factor:=Overwrite.Factor;
    if not IsZero(Factor) then begin
     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.Defaults in Overwrite^.Flags then begin
-     MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
-     MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
-     MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
-     MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
-     MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
-     MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
-     MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
-     MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
-     MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
-     MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
-     MaterialIORSum.Add(fData.IOR,Factor);
-     MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
-     MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
-     MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
-     MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
-     MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
-     MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
-     MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
-     MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
-     MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
-     MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
-     MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
-     MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
+     if Overwrite^.SubIndex<0 then begin
+      // Material
+      MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
+      MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
+      MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
+      MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
+      MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
+      MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
+      MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+      MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
+      MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
+      MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
+      MaterialIORSum.Add(fData.IOR,Factor);
+      MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
+      MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
+      MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
+      MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
+      MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
+      MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
+      MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
+      MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
+      MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
+      MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
+      MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
+      MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
+     end else begin
+      // Texture
+     end;
     end else begin
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
-       MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
-      end else begin
-       MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessBaseColorFactor,Factor);
+     if Overwrite^.SubIndex<0 then begin
+      // Material
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
+        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
+       end else begin
+        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessBaseColorFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
-       MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
-      end else begin
-       MaterialPBRMetallicRoughnessMetallicFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessMetallicFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
+        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
+       end else begin
+        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessMetallicFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
-       MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
-      end else begin
-       MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessRoughnessFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
+        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
+       end else begin
+        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessRoughnessFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialAlphaCutOff in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialAlphaCutOff in Overwrite^.Flags then begin
-       MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
-      end else begin
-       MaterialAlphaCutOffSum.Add(Overwrite^.MaterialAlphaCutOff,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialAlphaCutOff in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialAlphaCutOff in Overwrite^.Flags then begin
+        MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
+       end else begin
+        MaterialAlphaCutOffSum.Add(Overwrite^.MaterialAlphaCutOff,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveFactor in Overwrite^.Flags then begin
-       MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
-      end else begin
-       MaterialEmissiveFactorSum.Add(Overwrite^.MaterialEmissiveFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveFactor in Overwrite^.Flags then begin
+        MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
+       end else begin
+        MaterialEmissiveFactorSum.Add(Overwrite^.MaterialEmissiveFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialNormalTextureScale in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialNormalTextureScale in Overwrite^.Flags then begin
-       MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
-      end else begin
-       MaterialNormalTextureScaleSum.Add(Overwrite^.MaterialNormalTextureScale,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialNormalTextureScale in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialNormalTextureScale in Overwrite^.Flags then begin
+        MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
+       end else begin
+        MaterialNormalTextureScaleSum.Add(Overwrite^.MaterialNormalTextureScale,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialOcclusionTextureStrength in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialOcclusionTextureStrength in Overwrite^.Flags then begin
-       MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
-      end else begin
-       MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialOcclusionTextureStrength in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialOcclusionTextureStrength in Overwrite^.Flags then begin
+        MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+       end else begin
+        MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatFactor in Overwrite^.Flags then begin
-       MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
-      end else begin
-       MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatFactor in Overwrite^.Flags then begin
+        MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
+       end else begin
+        MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
-       MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
-      end else begin
-       MaterialPBRClearCoatRoughnessFactorSum.Add(Overwrite^.MaterialPBRClearCoatRoughnessFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
+        MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
+       end else begin
+        MaterialPBRClearCoatRoughnessFactorSum.Add(Overwrite^.MaterialPBRClearCoatRoughnessFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveStrength in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveStrength in Overwrite^.Flags then begin
-       MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
-      end else begin
-       MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialEmissiveStrength in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialEmissiveStrength in Overwrite^.Flags then begin
+        MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
+       end else begin
+        MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialIOR in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialIOR in Overwrite^.Flags then begin
-       MaterialIORSum.Add(fData.IOR,Factor);
-      end else begin
-       MaterialIORSum.Add(Overwrite^.MaterialIOR,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialIOR in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialIOR in Overwrite^.Flags then begin
+        MaterialIORSum.Add(fData.IOR,Factor);
+       end else begin
+        MaterialIORSum.Add(Overwrite^.MaterialIOR,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceFactor in Overwrite^.Flags then begin
-       MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
-      end else begin
-       MaterialPBRIridescenceFactorSum.Add(Overwrite^.MaterialPBRIridescenceFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceFactor in Overwrite^.Flags then begin
+        MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
+       end else begin
+        MaterialPBRIridescenceFactorSum.Add(Overwrite^.MaterialPBRIridescenceFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceIor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceIor in Overwrite^.Flags then begin
-       MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
-      end else begin
-       MaterialPBRIridescenceIorSum.Add(Overwrite^.MaterialPBRIridescenceIor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceIor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceIor in Overwrite^.Flags then begin
+        MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
+       end else begin
+        MaterialPBRIridescenceIorSum.Add(Overwrite^.MaterialPBRIridescenceIor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
-       MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
-      end else begin
-       MaterialPBRIridescenceMinimumSum.Add(Overwrite^.MaterialPBRIridescenceMinimum,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
+        MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
+       end else begin
+        MaterialPBRIridescenceMinimumSum.Add(Overwrite^.MaterialPBRIridescenceMinimum,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
-       MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
-      end else begin
-       MaterialPBRIridescenceMaximumSum.Add(Overwrite^.MaterialPBRIridescenceMaximum,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
+        MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
+       end else begin
+        MaterialPBRIridescenceMaximumSum.Add(Overwrite^.MaterialPBRIridescenceMaximum,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSheenColorFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSheenColorFactor in Overwrite^.Flags then begin
-       MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
-      end else begin
-       MaterialPBRSheenColorFactorSum.Add(Overwrite^.MaterialPBRSheenColorFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSheenColorFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSheenColorFactor in Overwrite^.Flags then begin
+        MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
+       end else begin
+        MaterialPBRSheenColorFactorSum.Add(Overwrite^.MaterialPBRSheenColorFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
-       MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
-      end else begin
-       MaterialPBRSheenRoughnessFactorSum.Add(Overwrite^.MaterialPBRSheenRoughnessFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
+        MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
+       end else begin
+        MaterialPBRSheenRoughnessFactorSum.Add(Overwrite^.MaterialPBRSheenRoughnessFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSpecularFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSpecularFactor in Overwrite^.Flags then begin
-       MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
-      end else begin
-       MaterialPBRSpecularFactorSum.Add(Overwrite^.MaterialPBRSpecularFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSpecularFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSpecularFactor in Overwrite^.Flags then begin
+        MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
+       end else begin
+        MaterialPBRSpecularFactorSum.Add(Overwrite^.MaterialPBRSpecularFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
-       MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
-      end else begin
-       MaterialPBRSpecularColorFactorSum.Add(Overwrite^.MaterialPBRSpecularColorFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
+        MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
+       end else begin
+        MaterialPBRSpecularColorFactorSum.Add(Overwrite^.MaterialPBRSpecularColorFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRTransmissionFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRTransmissionFactor in Overwrite^.Flags then begin
-       MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
-      end else begin
-       MaterialPBRTransmissionFactorSum.Add(Overwrite^.MaterialPBRTransmissionFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRTransmissionFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRTransmissionFactor in Overwrite^.Flags then begin
+        MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
+       end else begin
+        MaterialPBRTransmissionFactorSum.Add(Overwrite^.MaterialPBRTransmissionFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
-       MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
-      end else begin
-       MaterialPBRVolumeThicknessFactorSum.Add(Overwrite^.MaterialPBRVolumeThicknessFactor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
+        MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
+       end else begin
+        MaterialPBRVolumeThicknessFactorSum.Add(Overwrite^.MaterialPBRVolumeThicknessFactor,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
-       MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
-      end else begin
-       MaterialPBRVolumeAttenuationDistanceSum.Add(Overwrite^.MaterialPBRVolumeAttenuationDistance,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
+        MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
+       end else begin
+        MaterialPBRVolumeAttenuationDistanceSum.Add(Overwrite^.MaterialPBRVolumeAttenuationDistance,Factor);
+       end;
       end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
-       MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
-      end else begin
-       MaterialPBRVolumeAttenuationColorSum.Add(Overwrite^.MaterialPBRVolumeAttenuationColor,Factor);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
+        MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
+       end else begin
+        MaterialPBRVolumeAttenuationColorSum.Add(Overwrite^.MaterialPBRVolumeAttenuationColor,Factor);
+       end;
       end;
+     end else begin
+      // Texture
      end;
     end;
    end;
@@ -10232,6 +10243,7 @@ var CullFace,Blend:TPasGLTFInt32;
          inc(Material.fCountOverwrites);
          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
          MaterialOverwrite^.Flags:=[];
+         MaterialOverwrite^.SubIndex:=TargetSubIndex;
          MaterialOverwrite^.Factor:=Max(aFactor,0.0);
         end else begin
          MaterialOverwrite:=nil;
@@ -10667,6 +10679,7 @@ var CullFace,Blend:TPasGLTFInt32;
         inc(Material.fCountOverwrites);
         MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
         MaterialOverwrite^.Flags:=[];
+        MaterialOverwrite^.SubIndex:=TargetSubIndex;
         MaterialOverwrite^.Factor:=Max(aFactor,0.0);
        end else begin
         MaterialOverwrite:=nil;
