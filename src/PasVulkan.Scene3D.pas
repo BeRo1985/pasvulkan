@@ -10199,7 +10199,7 @@ var CullFace,Blend:TPasGLTFInt32;
 
        Material:=fMaterials[AnimationChannel^.TargetIndex];
 
-       TargetSubIndex:=AnimationDefaultChannel^.TargetSubIndex;
+       TargetSubIndex:=AnimationChannel^.TargetSubIndex;
 
        MaterialOverwrite:=nil;
 
