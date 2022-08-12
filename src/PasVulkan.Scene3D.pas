@@ -1570,6 +1570,9 @@ type EpvScene3D=class(Exception);
                             fEffectiveData:TpvScene3D.TMaterial.PData;
                             fOverwrites:TOverwrites;
                             fCountOverwrites:TpvSizeInt;
+                            fTextureOffsetSums:array[0..15] of TpvScene3D.TVector2Sum;
+                            fTextureRotationSums:array[0..15] of TpvScene3D.TScalarSum;
+                            fTextureScaleSums:array[0..15] of TpvScene3D.TVector2Sum;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aMaterial:TpvScene3D.TMaterial);
                             destructor Destroy; override;
@@ -8381,7 +8384,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.TMaterial.Update;
-var Index:TpvSizeInt;
+var Index,AnimatedTextureIndex:TpvSizeInt;
     Factor:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TMaterial.POverwrite;
     MaterialPBRMetallicRoughnessBaseColorFactorSum:TpvScene3D.TVector4Sum;
@@ -8408,6 +8411,7 @@ var Index:TpvSizeInt;
     MaterialPBRVolumeAttenuationDistanceSum:TpvScene3D.TScalarSum;
     MaterialPBRVolumeAttenuationColorSum:TpvScene3D.TVector3Sum;
     DoUpdate:boolean;
+    AnimatedTextureMask:TpvUInt64;
 begin
  DoUpdate:=false;
  if fCountOverwrites=0 then begin
@@ -8441,6 +8445,16 @@ begin
   MaterialPBRVolumeThicknessFactorSum.Clear;
   MaterialPBRVolumeAttenuationDistanceSum.Clear;
   MaterialPBRVolumeAttenuationColorSum.Clear;
+  begin
+   AnimatedTextureMask:=fData.AnimatedTextureMask;
+   while AnimatedTextureMask<>0 do begin
+    AnimatedTextureIndex:=TPasMPMath.FindFirstSetBit64(AnimatedTextureMask);
+    fTextureOffsetSums[AnimatedTextureIndex].Clear;
+    fTextureRotationSums[AnimatedTextureIndex].Clear;
+    fTextureScaleSums[AnimatedTextureIndex].Clear;
+    AnimatedTextureMask:=AnimatedTextureMask and (AnimatedTextureMask-1);
+   end;
+  end;
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
