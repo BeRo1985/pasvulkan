@@ -1276,6 +1276,7 @@ type EpvScene3D=class(Exception);
                                   private
                                    fType:TType;
                                    fTarget:Pointer;
+                                   fTargetSubIndex:TpvSizeInt;
                                    fOverwrite:TpvSizeInt;
                                  end;
                                  TChannels=TpvObjectGenericList<TChannel>;
@@ -9637,7 +9638,8 @@ var CullFace,Blend:TPasGLTFInt32;
      LastIndex,
      LowIndex,
      HighIndex,
-     MidIndex:TpvSizeInt;
+     MidIndex,
+     TargetSubIndex:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
      AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
@@ -9647,6 +9649,7 @@ var CullFace,Blend:TPasGLTFInt32;
      Node:TpvScene3D.TGroup.TInstance.PNode;
      Time,Factor,Value,KeyDelta,v0,v1,a,b:TpvDouble;
      Scalar:TpvFloat;
+     Vector2:TpvVector2;
      Vector3:TpvVector3;
      Vector4:TpvVector4;
      TimeIndices:array[0..1] of TpvSizeInt;
@@ -10196,13 +10199,16 @@ var CullFace,Blend:TPasGLTFInt32;
 
        Material:=fMaterials[AnimationChannel^.TargetIndex];
 
+       TargetSubIndex:=AnimationDefaultChannel^.TargetSubIndex;
+
        MaterialOverwrite:=nil;
 
        if aFactor>=-0.5 then begin
         InstanceAnimationChannel:=nil;
         for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
          if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) then begin
+            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) and
+            (InstanceAnimation.fChannels[InstanceChannelIndex].fTargetSubIndex=TargetSubIndex) then begin
           InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
           break;
          end;
@@ -10221,6 +10227,7 @@ var CullFace,Blend:TPasGLTFInt32;
          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
          InstanceAnimationChannel.fTarget:=Material;
+         InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
          InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
          inc(Material.fCountOverwrites);
          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
@@ -10346,6 +10353,21 @@ var CullFace,Blend:TPasGLTFInt32;
            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor);
            MaterialOverwrite^.MaterialPBRVolumeAttenuationColor:=Vector3;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
+           ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureOffset);
+           MaterialOverwrite^.TextureOffset:=Vector2;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
+           ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureRotation);
+           MaterialOverwrite^.TextureRotation:=Scalar;
+          end;
+          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+           ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureScale);
+           MaterialOverwrite^.TextureScale:=Vector2;
           end;
           else begin
           end;
@@ -10609,17 +10631,19 @@ var CullFace,Blend:TPasGLTFInt32;
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
-     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor{,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
-     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotate,
-     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale}:begin
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
       Material:=fMaterials[AnimationDefaultChannel^.TargetIndex];
+      TargetSubIndex:=AnimationDefaultChannel^.TargetSubIndex;
       MaterialOverwrite:=nil;
       if aFactor>=-0.5 then begin
        InstanceAnimationChannel:=nil;
        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material) and
-           (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) then begin
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) and
+           (InstanceAnimation.fChannels[InstanceChannelIndex].fTargetSubIndex=TargetSubIndex) then begin
          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
          break;
         end;
@@ -10638,6 +10662,7 @@ var CullFace,Blend:TPasGLTFInt32;
         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
         InstanceAnimationChannel.fTarget:=Material;
+        InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
         InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
         inc(Material.fCountOverwrites);
         MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
@@ -10740,11 +10765,18 @@ var CullFace,Blend:TPasGLTFInt32;
           MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor,
                                                               TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.MaterialPBRVolumeAttenuationColor];
          end;
-{        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotate,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureOffset,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureOffset];
+         end;
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureRotation,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureRotation];
+         end;
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-          // TODO
-         end;}
+          MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultTextureScale,
+                                                              TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.TextureScale];
+         end;
          else begin
          end;
         end;
