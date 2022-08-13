@@ -1708,7 +1708,8 @@ type EpvScene3D=class(Exception);
                                         const aReversedZ:boolean=false;
                                         const aInfiniteFarPlane:boolean=false;
                                         const aZNear:PpvFloat=nil;
-                                        const aZFar:PpvFloat=nil):boolean;
+                                        const aZFar:PpvFloat=nil;
+                                        const aAspectRatio:TpvFloat=0.0):boolean;
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
@@ -11531,7 +11532,8 @@ function TpvScene3D.TGroup.TInstance.GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                                const aReversedZ:boolean;
                                                const aInfiniteFarPlane:boolean;
                                                const aZNear:PpvFloat;
-                                               const aZFar:PpvFloat):boolean;
+                                               const aZFar:PpvFloat;
+                                               const aAspectRatio:TpvFloat):boolean;
 const DEG2RAD=PI/180;
 var NodeMatrix:TpvMatrix4x4;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
@@ -11571,12 +11573,12 @@ begin
    TpvScene3D.TCameraData.TType.Perspective:begin
     if aReversedZ or (Camera.EffectiveData^.Perspective.ZFar<0.0) then begin
      aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
-                                                                           Camera.EffectiveData^.Perspective.AspectRatio,
+                                                                           IfThen(aAspectRatio<-EPSILON,abs(aAspectRatio),IfThen(IsZero(Camera.EffectiveData^.Perspective.AspectRatio),aAspectRatio,Camera.EffectiveData^.Perspective.AspectRatio)),
                                                                            abs(Camera.EffectiveData^.Perspective.ZNear),
                                                                            IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
     end else begin
      aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
-                                                                           Camera.EffectiveData^.Perspective.AspectRatio,
+                                                                           IfThen(aAspectRatio<-EPSILON,abs(aAspectRatio),IfThen(IsZero(Camera.EffectiveData^.Perspective.AspectRatio),aAspectRatio,Camera.EffectiveData^.Perspective.AspectRatio)),
                                                                            abs(Camera.EffectiveData^.Perspective.ZNear),
                                                                            IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
     end;

@@ -499,13 +499,18 @@ begin
                                 ViewMatrix,
                                 ProjectionMatrix,
                                 true,
-                                true) then begin
+                                true,
+                                nil,
+                                nil,
+                                -(fRendererInstance.Width/fRendererInstance.Height)) then begin
      fRendererInstance.CameraMatrix:=CameraMatrix;
-     View.ViewMatrix:=ViewMatrix;
-     View.ProjectionMatrix:=ProjectionMatrix;
-     View.InverseViewMatrix:=ViewMatrix.Inverse;
-     View.InverseProjectionMatrix:=ProjectionMatrix.Inverse;
-     fRendererInstance.AddView(View);
+     if not assigned(UnitApplication.Application.VirtualReality) then begin
+      View.ViewMatrix:=ViewMatrix;
+      View.ProjectionMatrix:=ProjectionMatrix;
+      View.InverseViewMatrix:=ViewMatrix.Inverse;
+      View.InverseProjectionMatrix:=ProjectionMatrix.Inverse;
+      fRendererInstance.AddView(View);
+     end;
     end else begin
      fRendererInstance.CameraMatrix:=fCameraMatrix;
     end;
