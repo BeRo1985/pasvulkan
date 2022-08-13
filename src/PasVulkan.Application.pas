@@ -7139,7 +7139,8 @@ begin
     except
      on VulkanResultException:EpvVulkanResultException do begin
       case VulkanResultException.ResultCode of
-       VK_ERROR_SURFACE_LOST_KHR:begin
+       VK_ERROR_SURFACE_LOST_KHR,
+       VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
         VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
        end;
@@ -7387,7 +7388,8 @@ begin
  except
   on VulkanResultException:EpvVulkanResultException do begin
    case VulkanResultException.ResultCode of
-    VK_ERROR_SURFACE_LOST_KHR:begin
+    VK_ERROR_SURFACE_LOST_KHR,
+    VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;

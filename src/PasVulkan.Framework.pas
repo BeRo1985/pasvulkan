@@ -6231,6 +6231,9 @@ begin
   VK_ERROR_INVALID_SHADER_NV:begin
    result:='VK_ERROR_INVALID_SHADER_NV';
   end;
+  VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+   result:='VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT';
+  end;
   else begin
    result:='Unknown error code detected ('+TpvVulkanCharString(IntToStr(TpvInt32(ErrorCode)))+')';
   end;
