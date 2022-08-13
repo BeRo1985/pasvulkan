@@ -11537,7 +11537,7 @@ function TpvScene3D.TGroup.TInstance.GetCamera(const aNodeIndex:TPasGLTFSizeInt;
 const DEG2RAD=PI/180;
 var NodeMatrix:TpvMatrix4x4;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
-    f:TpvFloat;
+    AspectRatio:TpvFloat;
 begin
  result:=((aNodeIndex>=0) and (aNodeIndex<fGroup.fNodes.Count)) and assigned(fGroup.fNodes[aNodeIndex].Camera);
  if result then begin
@@ -11571,14 +11571,20 @@ begin
     aProjectionMatrix:=aProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
    end;
    TpvScene3D.TCameraData.TType.Perspective:begin
+     if ((aAspectRatio<0.0) and not IsZero(aAspectRatio)) or
+        IsZero(Camera.EffectiveData^.Perspective.AspectRatio) then begin
+     AspectRatio:=abs(aAspectRatio);
+    end else begin
+     AspectRatio:=Camera.EffectiveData^.Perspective.AspectRatio;
+    end;
     if aReversedZ or (Camera.EffectiveData^.Perspective.ZFar<0.0) then begin
      aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
-                                                                           IfThen(aAspectRatio<-EPSILON,abs(aAspectRatio),IfThen(IsZero(Camera.EffectiveData^.Perspective.AspectRatio),aAspectRatio,Camera.EffectiveData^.Perspective.AspectRatio)),
+                                                                           AspectRatio,
                                                                            abs(Camera.EffectiveData^.Perspective.ZNear),
                                                                            IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
     end else begin
      aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
-                                                                           IfThen(aAspectRatio<-EPSILON,abs(aAspectRatio),IfThen(IsZero(Camera.EffectiveData^.Perspective.AspectRatio),aAspectRatio,Camera.EffectiveData^.Perspective.AspectRatio)),
+                                                                           AspectRatio,
                                                                            abs(Camera.EffectiveData^.Perspective.ZNear),
                                                                            IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
     end;
