@@ -14365,7 +14365,25 @@ begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
   end;
 
-  VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
+  if fExclusiveFullScreen then begin
+
+   SwapChainCreateInfo.pNext:=@SurfaceFullScreenExclusiveInfoEXT;
+
+   if fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle)<>VK_SUCCESS then begin
+
+    SwapChainCreateInfo.pNext:=nil;
+
+    fExclusiveFullScreen:=false;
+
+    VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
+
+   end;
+
+  end else begin
+
+   VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
+
+  end;
 
   VulkanCheckResult(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,nil));
 
