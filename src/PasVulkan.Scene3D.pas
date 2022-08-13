@@ -1731,6 +1731,7 @@ type EpvScene3D=class(Exception);
                    TInstances=TpvObjectGenericList<TInstance>;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TNodeNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
              private
               fCulling:boolean;
               fObjects:TBaseObjects;
@@ -1779,7 +1780,8 @@ type EpvScene3D=class(Exception);
               fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
               fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
-              fNodeNameIndexHashMap:TNodeNameIndexHashMap;
+              fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
+              fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
               procedure ConstructBuffers;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
@@ -1824,6 +1826,7 @@ type EpvScene3D=class(Exception);
               property BoundingBox:TpvAABB read fBoundingBox;
               property NodeIndexByName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByName;
               property NodeByName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByName;
+              property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
              published
               property Culling:boolean read fCulling write fCulling;
               property Objects:TBaseObjects read fObjects;
@@ -6753,7 +6756,9 @@ begin
  fInstances:=TInstances.Create;
  fInstances.OwnsObjects:=false;
 
- fNodeNameIndexHashMap:=TNodeNameIndexHashMap.Create(-1);
+ fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNodeNameIndexHashMap.Create(-1);
+
+ fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
 end;
 
@@ -6819,6 +6824,8 @@ begin
  fJointBlockOffsets:=nil;
 
  FreeAndNil(fNodeNameIndexHashMap);
+
+ FreeAndNil(fCameraNodeIndices);
 
  FreeAndNil(fLock);
 
@@ -7905,9 +7912,14 @@ var LightMap:TpvScene3D.TGroup.TLights;
    end;
   end;
   fNodeNameIndexHashMap.Clear;
+  fCameraNodeIndices.Clear;
   for Index:=0 to fNodes.Count-1 do begin
-   fNodes[Index].Finish;
-   fNodeNameIndexHashMap.Add(fNodes[Index].fName,Index);
+   Node:=fNodes[Index];
+   Node.Finish;
+   fNodeNameIndexHashMap.Add(Node.fName,Index);
+   if assigned(Node.Camera) then begin
+    fCameraNodeIndices.Add(Index);
+   end;
   end;
   begin
    Offset:=fNodes.Count+1;
