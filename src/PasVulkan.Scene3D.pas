@@ -11542,22 +11542,6 @@ begin
      aZFar^:=Camera.EffectiveData^.Orthographic.ZFar;
     end;
     aProjectionMatrix:=aProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
-{   aProjectionMatrix.RawComponents[0,0]:=2.0/Camera.EffectiveData^.Orthographic.XMag;
-    aProjectionMatrix.RawComponents[0,1]:=0.0;
-    aProjectionMatrix.RawComponents[0,2]:=0.0;
-    aProjectionMatrix.RawComponents[0,3]:=0.0;
-    aProjectionMatrix.RawComponents[1,0]:=0.0;
-    aProjectionMatrix.RawComponents[1,1]:=2.0/Camera.EffectiveData^.Orthographic.YMag;
-    aProjectionMatrix.RawComponents[1,2]:=0.0;
-    aProjectionMatrix.RawComponents[1,3]:=0.0;
-    aProjectionMatrix.RawComponents[2,0]:=0.0;
-    aProjectionMatrix.RawComponents[2,1]:=0.0;
-    aProjectionMatrix.RawComponents[2,2]:=(-2.0)/(Camera.EffectiveData^.Orthographic.ZFar-Camera.EffectiveData^.Orthographic.ZNear);
-    aProjectionMatrix.RawComponents[2,3]:=0.0;
-    aProjectionMatrix.RawComponents[3,0]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.XMag*0.5)+(Camera^.EffectiveData^.Orthographic.XMag*-0.5)))/Camera^.XMag;
-    aProjectionMatrix.RawComponents[3,1]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.YMag*0.5)+(Camera^.EffectiveData^.Orthographic.YMag*-0.5)))/Camera^.YMag;
-    aProjectionMatrix.RawComponents[3,2]:=(-(Camera.EffectiveData^.Orthographic.ZFar+Camera.EffectiveData^.Orthographic.ZNear))/(Camera.EffectiveData^.Orthographic.ZFar-Camera.EffectiveData^.Orthographic.ZNear);
-    aProjectionMatrix.RawComponents[3,3]:=1.0;  }
    end;
    TpvScene3D.TCameraData.TType.Perspective:begin
     if aReversedZ or (Camera.EffectiveData^.Perspective.ZFar<0.0) then begin
