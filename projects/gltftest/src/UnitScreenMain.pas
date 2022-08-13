@@ -403,7 +403,7 @@ var Index:TpvSizeInt;
     ModelMatrix,CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
-    ViewLeft,ViewRight:TpvScene3D.TView;
+    View:TpvScene3D.TView;
     InFlightFrameState:PInFlightFrameState;
     BlendFactor,Factor:single;
 begin
@@ -491,8 +491,14 @@ begin
                                 CameraMatrix,
                                 ViewMatrix,
                                 ProjectionMatrix,
+                                true,
                                 true) then begin
      fRendererInstance.CameraMatrix:=CameraMatrix;
+     View.ViewMatrix:=ViewMatrix;
+     View.ProjectionMatrix:=ProjectionMatrix;
+     View.InverseViewMatrix:=ViewMatrix.Inverse;
+     View.InverseProjectionMatrix:=ProjectionMatrix.Inverse;
+     fRendererInstance.AddView(View);
     end else begin
      fRendererInstance.CameraMatrix:=fCameraMatrix;
     end;

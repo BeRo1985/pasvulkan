@@ -1705,7 +1705,8 @@ type EpvScene3D=class(Exception);
                                         out aCameraMatrix:TpvMatrix4x4;
                                         out aViewMatrix:TpvMatrix4x4;
                                         out aProjectionMatrix:TpvMatrix4x4;
-                                        const aReversedZWithInfiniteFarPlane:boolean=false;
+                                        const aReversedZ:boolean=false;
+                                        const aInfiniteFarPlane:boolean=false;
                                         const aZNear:PpvFloat=nil;
                                         const aZFar:PpvFloat=nil):boolean;
                     published
@@ -11502,7 +11503,8 @@ function TpvScene3D.TGroup.TInstance.GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                                out aCameraMatrix:TpvMatrix4x4;
                                                out aViewMatrix:TpvMatrix4x4;
                                                out aProjectionMatrix:TpvMatrix4x4;
-                                               const aReversedZWithInfiniteFarPlane:boolean;
+                                               const aReversedZ:boolean;
+                                               const aInfiniteFarPlane:boolean;
                                                const aZNear:PpvFloat;
                                                const aZFar:PpvFloat):boolean;
 const DEG2RAD=PI/180;
@@ -11542,48 +11544,50 @@ begin
     end;
    end;
    TpvScene3D.TCameraData.TType.Perspective:begin
-    f:=1.0/tan(Camera.EffectiveData^.Perspective.YFov*0.5);
-    aProjectionMatrix.RawComponents[0,0]:=f/Camera.EffectiveData^.Perspective.AspectRatio;
-    aProjectionMatrix.RawComponents[0,1]:=0.0;
-    aProjectionMatrix.RawComponents[0,2]:=0.0;
-    aProjectionMatrix.RawComponents[0,3]:=0.0;
-    aProjectionMatrix.RawComponents[1,0]:=0.0;
-    aProjectionMatrix.RawComponents[1,1]:=f;
-    aProjectionMatrix.RawComponents[1,2]:=0.0;
-    aProjectionMatrix.RawComponents[1,3]:=0.0;
-    if aReversedZWithInfiniteFarPlane then begin
-     // Reversed Z with infinite far plane (so zfar is ignored here)
-     aProjectionMatrix.RawComponents[2,0]:=0.0;
-     aProjectionMatrix.RawComponents[2,1]:=0.0;
-     aProjectionMatrix.RawComponents[2,2]:=0.0;
-     aProjectionMatrix.RawComponents[2,3]:=-1.0;
-     aProjectionMatrix.RawComponents[3,0]:=0.0;
-     aProjectionMatrix.RawComponents[3,1]:=0.0;
-     aProjectionMatrix.RawComponents[3,2]:=Camera.EffectiveData^.Perspective.ZNear;
-     aProjectionMatrix.RawComponents[3,3]:=0.0;
-     if assigned(aZNear) then begin
-      aZNear^:=Camera.EffectiveData^.Orthographic.ZNear;
-     end;
-     if assigned(aZFar) then begin
-      aZFar^:=-Infinity;
+    if aReversedZ or (Camera.EffectiveData^.Perspective.ZFar<0.0) then begin
+     aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
+                                                                           Camera.EffectiveData^.Perspective.AspectRatio,
+                                                                           abs(Camera.EffectiveData^.Perspective.ZNear),
+                                                                           IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
+    end else begin
+     aProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(Camera.EffectiveData^.Perspective.YFov*RAD2DEG,
+                                                                           Camera.EffectiveData^.Perspective.AspectRatio,
+                                                                           abs(Camera.EffectiveData^.Perspective.ZNear),
+                                                                           IfThen(IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane,1024.0,abs(Camera.EffectiveData^.Perspective.ZFar)));
+    end;
+    if (Camera.EffectiveData^.Perspective.ZFar<0.0) or aReversedZ then begin
+     if IsInfinite(Camera.EffectiveData^.Perspective.ZFar) or aInfiniteFarPlane then begin
+      // Convert to reversed infinite Z
+      aProjectionMatrix.RawComponents[2,2]:=0.0;
+      aProjectionMatrix.RawComponents[2,3]:=-1.0;
+      aProjectionMatrix.RawComponents[3,2]:=abs(Camera.EffectiveData^.Perspective.ZNear);
+      if assigned(aZNear) then begin
+       aZNear^:=Camera.EffectiveData^.Perspective.ZNear;
+      end;
+      if assigned(aZFar) then begin
+       aZFar^:=-Infinity;
+      end;
+     end else begin
+      // Convert to reversed non-infinite Z
+      aProjectionMatrix.RawComponents[2,2]:=abs(Camera.EffectiveData^.Perspective.ZNear)/(abs(Camera.EffectiveData^.Perspective.ZFar)-abs(Camera.EffectiveData^.Perspective.ZNear));
+      aProjectionMatrix.RawComponents[2,3]:=-1.0;
+      aProjectionMatrix.RawComponents[3,2]:=(abs(Camera.EffectiveData^.Perspective.ZNear)*abs(Camera.EffectiveData^.Perspective.ZFar))/(abs(Camera.EffectiveData^.Perspective.ZFar)-abs(Camera.EffectiveData^.Perspective.ZNear));
+      if assigned(aZNear) then begin
+       aZNear^:=Camera.EffectiveData^.Perspective.ZNear;
+      end;
+      if assigned(aZFar) then begin
+       aZFar^:=Camera.EffectiveData^.Perspective.ZFar;
+      end;
      end;
     end else begin
-     // Traditional
-     aProjectionMatrix.RawComponents[2,0]:=0.0;
-     aProjectionMatrix.RawComponents[2,1]:=0.0;
-     aProjectionMatrix.RawComponents[2,2]:=(-(Camera.EffectiveData^.Perspective.ZFar+Camera.EffectiveData^.Perspective.ZNear))/(Camera.EffectiveData^.Perspective.ZFar-Camera.EffectiveData^.Perspective.ZNear);
-     aProjectionMatrix.RawComponents[2,3]:=-1.0;
-     aProjectionMatrix.RawComponents[3,0]:=0.0;
-     aProjectionMatrix.RawComponents[3,1]:=0.0;
-     aProjectionMatrix.RawComponents[3,2]:=(-(2.0*Camera.EffectiveData^.Perspective.ZNear*Camera.EffectiveData^.Perspective.ZFar))/(Camera.EffectiveData^.Perspective.ZFar-Camera.EffectiveData^.Perspective.ZNear);
-     aProjectionMatrix.RawComponents[3,3]:=0.0;
      if assigned(aZNear) then begin
-      aZNear^:=Camera.EffectiveData^.Orthographic.ZNear;
+      aZNear^:=Camera.EffectiveData^.Perspective.ZNear;
      end;
      if assigned(aZFar) then begin
-      aZFar^:=Camera.EffectiveData^.Orthographic.ZFar;
+      aZFar^:=Camera.EffectiveData^.Perspective.ZFar;
      end;
     end;
+    aProjectionMatrix:=aProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
    end;
    else begin
     result:=false;
