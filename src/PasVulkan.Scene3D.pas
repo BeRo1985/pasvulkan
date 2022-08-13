@@ -1700,6 +1700,11 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+                     function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
+                                        out aCameraMatrix:TpvMatrix4x4;
+                                        out aViewMatrix:TpvMatrix4x4;
+                                        out aProjectionMatrix:TpvMatrix4x4;
+                                        const aReversedZWithInfiniteFarPlane:boolean=false):boolean;
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
@@ -11474,6 +11479,80 @@ begin
 
  end;
 
+end;
+
+function TpvScene3D.TGroup.TInstance.GetCamera(const aNodeIndex:TPasGLTFSizeInt;
+                                               out aCameraMatrix:TpvMatrix4x4;
+                                               out aViewMatrix:TpvMatrix4x4;
+                                               out aProjectionMatrix:TpvMatrix4x4;
+                                               const aReversedZWithInfiniteFarPlane:boolean):boolean;
+const DEG2RAD=PI/180;
+var NodeMatrix:TpvMatrix4x4;
+    Camera:TpvScene3D.TGroup.TInstance.TCamera;
+    f:TpvFloat;
+begin
+ result:=((aNodeIndex>=0) and (aNodeIndex<fGroup.fNodes.Count)) and assigned(fGroup.fNodes[aNodeIndex].Camera);
+ if result then begin
+  Camera:=fCameras[fGroup.fNodes[aNodeIndex].Camera.Index];
+  NodeMatrix:=fNodes[aNodeIndex].WorkMatrix;
+  aCameraMatrix:=NodeMatrix;
+  aViewMatrix:=NodeMatrix.Inverse;
+  case Camera.EffectiveData^.Type_ of
+   TpvScene3D.TCameraData.TType.Orthographic:begin
+    aProjectionMatrix.RawComponents[0,0]:=2.0/Camera.EffectiveData^.Orthographic.XMag;
+    aProjectionMatrix.RawComponents[0,1]:=0.0;
+    aProjectionMatrix.RawComponents[0,2]:=0.0;
+    aProjectionMatrix.RawComponents[0,3]:=0.0;
+    aProjectionMatrix.RawComponents[1,0]:=0.0;
+    aProjectionMatrix.RawComponents[1,1]:=2.0/Camera.EffectiveData^.Orthographic.YMag;
+    aProjectionMatrix.RawComponents[1,2]:=0.0;
+    aProjectionMatrix.RawComponents[1,3]:=0.0;
+    aProjectionMatrix.RawComponents[2,0]:=0.0;
+    aProjectionMatrix.RawComponents[2,1]:=0.0;
+    aProjectionMatrix.RawComponents[2,2]:=(-2.0)/(Camera.EffectiveData^.Orthographic.ZFar-Camera.EffectiveData^.Orthographic.ZNear);
+    aProjectionMatrix.RawComponents[2,3]:=0.0;
+    aProjectionMatrix.RawComponents[3,0]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.XMag*0.5)+(Camera^.EffectiveData^.Orthographic.XMag*-0.5)))/Camera^.XMag;
+    aProjectionMatrix.RawComponents[3,1]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.YMag*0.5)+(Camera^.EffectiveData^.Orthographic.YMag*-0.5)))/Camera^.YMag;
+    aProjectionMatrix.RawComponents[3,2]:=(-(Camera.EffectiveData^.Orthographic.ZFar+Camera.EffectiveData^.Orthographic.ZNear))/(Camera.EffectiveData^.Orthographic.ZFar-Camera.EffectiveData^.Orthographic.ZNear);
+    aProjectionMatrix.RawComponents[3,3]:=1.0;
+   end;
+   TpvScene3D.TCameraData.TType.Perspective:begin
+    f:=1.0/tan(Camera.EffectiveData^.Perspective.YFov*0.5);
+    aProjectionMatrix.RawComponents[0,0]:=f/Camera.EffectiveData^.Perspective.AspectRatio;
+    aProjectionMatrix.RawComponents[0,1]:=0.0;
+    aProjectionMatrix.RawComponents[0,2]:=0.0;
+    aProjectionMatrix.RawComponents[0,3]:=0.0;
+    aProjectionMatrix.RawComponents[1,0]:=0.0;
+    aProjectionMatrix.RawComponents[1,1]:=f;
+    aProjectionMatrix.RawComponents[1,2]:=0.0;
+    aProjectionMatrix.RawComponents[1,3]:=0.0;
+    if aReversedZWithInfiniteFarPlane then begin
+     // Reversed Z with infinite far plane (so zfar is ignored here)
+     aProjectionMatrix.RawComponents[2,0]:=0.0;
+     aProjectionMatrix.RawComponents[2,1]:=0.0;
+     aProjectionMatrix.RawComponents[2,2]:=0.0;
+     aProjectionMatrix.RawComponents[2,3]:=-1.0;
+     aProjectionMatrix.RawComponents[3,0]:=0.0;
+     aProjectionMatrix.RawComponents[3,1]:=0.0;
+     aProjectionMatrix.RawComponents[3,2]:=Camera.EffectiveData^.Perspective.ZNear;
+     aProjectionMatrix.RawComponents[3,3]:=0.0;
+    end else begin
+     // Traditional
+     aProjectionMatrix.RawComponents[2,0]:=0.0;
+     aProjectionMatrix.RawComponents[2,1]:=0.0;
+     aProjectionMatrix.RawComponents[2,2]:=(-(Camera.EffectiveData^.Perspective.ZFar+Camera.EffectiveData^.Perspective.ZNear))/(Camera.EffectiveData^.Perspective.ZFar-Camera.EffectiveData^.Perspective.ZNear);
+     aProjectionMatrix.RawComponents[2,3]:=-1.0;
+     aProjectionMatrix.RawComponents[3,0]:=0.0;
+     aProjectionMatrix.RawComponents[3,1]:=0.0;
+     aProjectionMatrix.RawComponents[3,2]:=(-(2.0*Camera.EffectiveData^.Perspective.ZNear*Camera.EffectiveData^.Perspective.ZFar))/(Camera.EffectiveData^.Perspective.ZFar-Camera.EffectiveData^.Perspective.ZNear);
+     aProjectionMatrix.RawComponents[3,3]:=0.0;
+    end;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
