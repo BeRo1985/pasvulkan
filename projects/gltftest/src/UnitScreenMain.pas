@@ -487,7 +487,7 @@ begin
    fRendererInstance.Reset;
 
    if assigned(fGroupInstance) then begin
-    if fGroupInstance.GetCamera(fGroup.GetNodeIndex('Camera-Perspective'),
+    if fGroupInstance.GetCamera(fGroup.GetNodeIndex('Camera-Orthographic'),
                                 CameraMatrix,
                                 ViewMatrix,
                                 ProjectionMatrix,

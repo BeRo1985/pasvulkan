@@ -11520,7 +11520,29 @@ begin
   aViewMatrix:=NodeMatrix.Inverse;
   case Camera.EffectiveData^.Type_ of
    TpvScene3D.TCameraData.TType.Orthographic:begin
-    aProjectionMatrix.RawComponents[0,0]:=2.0/Camera.EffectiveData^.Orthographic.XMag;
+    if aReversedZ or (Camera.EffectiveData^.Orthographic.ZFar<0) then begin
+     aProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(-Camera.EffectiveData^.Orthographic.XMag,
+                                                                     Camera.EffectiveData^.Orthographic.XMag,
+                                                                     -Camera.EffectiveData^.Orthographic.YMag,
+                                                                     Camera.EffectiveData^.Orthographic.YMag,
+                                                                     Camera.EffectiveData^.Orthographic.ZFar,
+                                                                     Camera.EffectiveData^.Orthographic.ZNear);
+    end else begin
+     aProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(-Camera.EffectiveData^.Orthographic.XMag,
+                                                                     Camera.EffectiveData^.Orthographic.XMag,
+                                                                     -Camera.EffectiveData^.Orthographic.YMag,
+                                                                     Camera.EffectiveData^.Orthographic.YMag,
+                                                                     Camera.EffectiveData^.Orthographic.ZNear,
+                                                                     Camera.EffectiveData^.Orthographic.ZFar);
+    end;
+    if assigned(aZNear) then begin
+     aZNear^:=Camera.EffectiveData^.Orthographic.ZNear;
+    end;
+    if assigned(aZFar) then begin
+     aZFar^:=Camera.EffectiveData^.Orthographic.ZFar;
+    end;
+    aProjectionMatrix:=aProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
+{   aProjectionMatrix.RawComponents[0,0]:=2.0/Camera.EffectiveData^.Orthographic.XMag;
     aProjectionMatrix.RawComponents[0,1]:=0.0;
     aProjectionMatrix.RawComponents[0,2]:=0.0;
     aProjectionMatrix.RawComponents[0,3]:=0.0;
@@ -11535,13 +11557,7 @@ begin
     aProjectionMatrix.RawComponents[3,0]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.XMag*0.5)+(Camera^.EffectiveData^.Orthographic.XMag*-0.5)))/Camera^.XMag;
     aProjectionMatrix.RawComponents[3,1]:=0.0; // simplified from: (-((Camera^.EffectiveData^.Orthographic.YMag*0.5)+(Camera^.EffectiveData^.Orthographic.YMag*-0.5)))/Camera^.YMag;
     aProjectionMatrix.RawComponents[3,2]:=(-(Camera.EffectiveData^.Orthographic.ZFar+Camera.EffectiveData^.Orthographic.ZNear))/(Camera.EffectiveData^.Orthographic.ZFar-Camera.EffectiveData^.Orthographic.ZNear);
-    aProjectionMatrix.RawComponents[3,3]:=1.0;
-    if assigned(aZNear) then begin
-     aZNear^:=Camera.EffectiveData^.Orthographic.ZNear;
-    end;
-    if assigned(aZFar) then begin
-     aZFar^:=Camera.EffectiveData^.Orthographic.ZFar;
-    end;
+    aProjectionMatrix.RawComponents[3,3]:=1.0;  }
    end;
    TpvScene3D.TCameraData.TType.Perspective:begin
     if aReversedZ or (Camera.EffectiveData^.Perspective.ZFar<0.0) then begin
