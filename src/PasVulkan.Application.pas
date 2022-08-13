@@ -5911,6 +5911,10 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME);
   end;
 
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+  end;
+
   if fVulkanDebugging and
      fVulkanDebuggingEnabled and
      fVulkanValidation and

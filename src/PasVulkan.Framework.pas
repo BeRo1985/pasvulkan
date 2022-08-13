@@ -602,6 +602,7 @@ type EpvVulkanException=class(Exception);
        fCanvasCommon:TObject;
        fImageFormatList:boolean;
        fUseNVIDIADeviceDiagnostics:boolean;
+       fFullScreenExclusiveSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -663,6 +664,7 @@ type EpvVulkanException=class(Exception);
        property ImageFormatList:boolean read fImageFormatList;
        property UseNVIDIADeviceDiagnostics:boolean read fUseNVIDIADeviceDiagnostics write fUseNVIDIADeviceDiagnostics;
        property NVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV read fNVIDIADeviceDiagnosticsFlags write fNVIDIADeviceDiagnosticsFlags;
+       property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -8522,6 +8524,8 @@ begin
      DeviceCreateInfo.pNext:=@fHostQueryResetFeaturesEXT;
     end;
    end;
+
+   fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>0;
 
   end;
 
