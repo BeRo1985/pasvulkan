@@ -14171,8 +14171,8 @@ begin
    FillChar(SurfaceFullScreenExclusiveInfoEXT,SizeOf(TVkSurfaceFullScreenExclusiveInfoEXT),#0);
    SurfaceFullScreenExclusiveInfoEXT.sType:=VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
    SurfaceFullScreenExclusiveInfoEXT.pNext:=@SurfaceFullScreenExclusiveWin32InfoEXT;
-   SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
-   //SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;// APPLICATION_CONTROLLED_EXT;
+   //SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
+   SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 
    FillChar(PhysicalDeviceSurfaceInfo2KHR,SizeOf(TVkPhysicalDeviceSurfaceInfo2KHR),#0);
    PhysicalDeviceSurfaceInfo2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
