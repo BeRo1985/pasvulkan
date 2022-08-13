@@ -1805,6 +1805,8 @@ type EpvScene3D=class(Exception);
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aOnSetRenderPassResources:TOnSetRenderPassResources;
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+              function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
+              function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
               destructor Destroy; override;
@@ -1818,9 +1820,10 @@ type EpvScene3D=class(Exception);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
               function CreateInstance:TpvScene3D.TGroup.TInstance;
-              function GetNodeIndex(const aNodeName:TpvUTF8String):TpvSizeInt;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
+              property NodeIndexByName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByName;
+              property NodeByName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByName;
              published
               property Culling:boolean read fCulling write fCulling;
               property Objects:TBaseObjects read fObjects;
@@ -1832,7 +1835,6 @@ type EpvScene3D=class(Exception);
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
-              property NodeNameIndexHashMap:TNodeNameIndexHashMap read fNodeNameIndexHashMap;
             end;
             TGroups=TpvObjectGenericList<TGroup>;
             TImageIDHashMap=TpvHashMap<TID,TImage>;
@@ -8226,9 +8228,20 @@ begin
  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
 end;
 
-function TpvScene3D.TGroup.GetNodeIndex(const aNodeName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
 begin
  result:=fNodeNameIndexHashMap[aNodeName];
+end;
+
+function TpvScene3D.TGroup.GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
+var NodeIndex:TpvSizeInt;
+begin
+ NodeIndex:=fNodeNameIndexHashMap[aNodeName];
+ if NodeIndex>=0 then begin
+  result:=fNodes[NodeIndex];
+ end else begin
+  result:=nil;
+ end;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
