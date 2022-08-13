@@ -957,6 +957,7 @@ type EpvScene3D=class(Exception);
                      destructor Destroy; override;
                     published
                      property Group:TGroup read fGroup write fGroup;
+                     property Name:TpvUTF8String read fName write fName;
                    end;
                    { TAnimation }
                    TAnimation=class(TGroupObject)
@@ -1728,6 +1729,7 @@ type EpvScene3D=class(Exception);
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
+                   TNodeNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fCulling:boolean;
               fObjects:TBaseObjects;
@@ -1776,6 +1778,7 @@ type EpvScene3D=class(Exception);
               fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
               fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
+              fNodeNameIndexHashMap:TNodeNameIndexHashMap;
               procedure ConstructBuffers;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
@@ -1814,6 +1817,7 @@ type EpvScene3D=class(Exception);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
               function CreateInstance:TpvScene3D.TGroup.TInstance;
+              function GetNodeIndex(const aNodeName:TpvUTF8String):TpvSizeInt;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
              published
@@ -1827,6 +1831,7 @@ type EpvScene3D=class(Exception);
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
+              property NodeNameIndexHashMap:TNodeNameIndexHashMap read fNodeNameIndexHashMap;
             end;
             TGroups=TpvObjectGenericList<TGroup>;
             TImageIDHashMap=TpvHashMap<TID,TImage>;
@@ -6745,6 +6750,8 @@ begin
  fInstances:=TInstances.Create;
  fInstances.OwnsObjects:=false;
 
+ fNodeNameIndexHashMap:=TNodeNameIndexHashMap.Create(-1);
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
@@ -6807,6 +6814,8 @@ begin
  fJointBlocks.Finalize;
 
  fJointBlockOffsets:=nil;
+
+ FreeAndNil(fNodeNameIndexHashMap);
 
  FreeAndNil(fLock);
 
@@ -7892,10 +7901,11 @@ var LightMap:TpvScene3D.TGroup.TLights;
     fNodes.Add(Node);
    end;
   end;
+  fNodeNameIndexHashMap.Clear;
   for Index:=0 to fNodes.Count-1 do begin
    fNodes[Index].Finish;
+   fNodeNameIndexHashMap.Add(fNodes[Index].fName,Index);
   end;
-
   begin
    Offset:=fNodes.Count+1;
    for Index:=0 to length(fJointBlockOffsets)-1 do begin
@@ -8213,6 +8223,11 @@ end;
 function TpvScene3D.TGroup.CreateInstance:TpvScene3D.TGroup.TInstance;
 begin
  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
+end;
+
+function TpvScene3D.TGroup.GetNodeIndex(const aNodeName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fNodeNameIndexHashMap[aNodeName];
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }

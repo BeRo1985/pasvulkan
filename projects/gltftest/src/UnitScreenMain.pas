@@ -400,7 +400,7 @@ end;
 
 procedure TScreenMain.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
-    ModelMatrix,ViewMatrix:TpvMatrix4x4;
+    ModelMatrix,CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
     ViewLeft,ViewRight:TpvScene3D.TView;
@@ -484,9 +484,21 @@ begin
 
    fScene3D.ResetRenderPasses;
 
-   fRendererInstance.CameraMatrix:=fCameraMatrix;
-
    fRendererInstance.Reset;
+
+   if assigned(fGroupInstance) then begin
+    if fGroupInstance.GetCamera(fGroup.GetNodeIndex('Camera-Perspective'),
+                                CameraMatrix,
+                                ViewMatrix,
+                                ProjectionMatrix,
+                                true) then begin
+     fRendererInstance.CameraMatrix:=CameraMatrix;
+    end else begin
+     fRendererInstance.CameraMatrix:=fCameraMatrix;
+    end;
+   end else begin
+    fRendererInstance.CameraMatrix:=fCameraMatrix;
+   end;
 
    fRendererInstance.DrawUpdate(aInFlightFrameIndex,aFrameCounter);
 
