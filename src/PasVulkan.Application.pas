@@ -6501,7 +6501,7 @@ begin
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
-                                             fUseExclusiveFullScreen,
+                                             fUseExclusiveFullScreen and fFullscreen,
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
