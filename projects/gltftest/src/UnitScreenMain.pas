@@ -72,6 +72,7 @@ type { TScreenMain }
        fCameraRotationX:TpvScalar;
        fCameraRotationY:TpvScalar;
        fZoom:TpvScalar;
+       fCameraIndex:TpvSizeInt;
        fCameraMatrix:TpvMatrix4x4;
        fCameraSpeed:TpvScalar;
        fUpdateLock:TPasMPCriticalSection;
@@ -214,6 +215,8 @@ begin
 
  CameraRotationX:=0.0;
  CameraRotationY:=0.0;
+
+ fCameraIndex:=-1;
 
  fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
                                                                      sin(-CameraRotationY*PI*2.0),
@@ -486,8 +489,12 @@ begin
 
    fRendererInstance.Reset;
 
-   if assigned(fGroupInstance) then begin
-    if fGroupInstance.GetCamera(fGroup.NodeIndexByName['LightsCamera'],
+   if assigned(fGroup) and
+      assigned(fGroupInstance) and
+      (fGroup.CameraNodeIndices.Count>0) and
+      (fCameraIndex>=0) and
+      (fCameraIndex<fGroup.CameraNodeIndices.Count) then begin
+    if fGroupInstance.GetCamera(fGroup.CameraNodeIndices[fCameraIndex],
                                 CameraMatrix,
                                 ViewMatrix,
                                 ProjectionMatrix,
@@ -665,6 +672,22 @@ begin
    KEYCODE_C:begin
     fKeyRollDec:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
    end;
+   KEYCODE_HOME:begin
+    if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down) and assigned(fGroup) then begin
+     inc(fCameraIndex);
+     if fCameraIndex>=fGroup.CameraNodeIndices.Count then begin
+      fCameraIndex:=-1;
+     end;
+    end;
+   end;
+   KEYCODE_END:begin
+    if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down) and assigned(fGroup) then begin
+     dec(fCameraIndex);
+     if fCameraIndex<=-2 then begin
+      fCameraIndex:=fGroup.CameraNodeIndices.Count-1;
+     end;
+    end;
+   end;
   end;
  end;
 end;
@@ -752,6 +775,8 @@ begin
   fGroup:=TpvScene3D.TGroup(aResource);
 
   fGroupInstance:=fGroup.CreateInstance;
+
+  fCameraIndex:=-1;
 
   if assigned(fGroup) then begin
 
