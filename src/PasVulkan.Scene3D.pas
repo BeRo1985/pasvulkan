@@ -853,6 +853,7 @@ type EpvScene3D=class(Exception);
               fLightMetaInfos:TLightMetaInfos;
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
               fLightTreeVulkanBuffer:TpvVulkanBuffer;
+              fLightMetaInfoVulkanBuffer:TpvVulkanBuffer;
              public
               constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
               destructor Destroy; override;
@@ -1890,6 +1891,7 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fMaterialBufferData:TMaterialBufferData;
        fVulkanMaterialDataStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -4536,12 +4538,13 @@ begin
   try
    FreeAndNil(fLightItemsVulkanBuffer);
    FreeAndNil(fLightTreeVulkanBuffer);
+   FreeAndNil(fLightMetaInfos);
 
    case fSceneInstance.fBufferStreamingMode of
 
     TBufferStreamingMode.Direct:begin
      fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                     MaxVisibleLights*SizeOf(TLightItem),
+                                                     MaxVisibleLights*SizeOf(TpvScene3D.TLightItem),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                      [],
@@ -4570,12 +4573,26 @@ begin
                                                     0,
                                                     [TpvVulkanBufferFlag.PersistentMapped]
                                                    );
-
+     fLightMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                        MaxVisibleLights*SizeOf(TpvScene3D.TLightMetaInfo),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [TpvVulkanBufferFlag.PersistentMapped]
+                                                       );
     end;
 
     TBufferStreamingMode.Staging:begin
      fLightItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                     MaxVisibleLights*SizeOf(TLightItem),
+                                                     MaxVisibleLights*SizeOf(TpvScene3D.TLightItem),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                      [],
@@ -4604,6 +4621,21 @@ begin
                                                     0,
                                                     []
                                                    );
+     fLightMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                        MaxVisibleLights*SizeOf(TpvScene3D.TLightMetaInfo),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        []
+                                                       );
 
     end;
 
@@ -4624,6 +4656,7 @@ begin
   try
    FreeAndNil(fLightItemsVulkanBuffer);
    FreeAndNil(fLightTreeVulkanBuffer);
+   FreeAndNil(fLightMetaInfoVulkanBuffer);
   finally
    fUploaded:=false;
   end;
@@ -4648,27 +4681,31 @@ begin
 
     TBufferStreamingMode.Direct:begin
      if fLightItems.Count>0 then begin
-      fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),FlushUpdateData);
+      fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem),FlushUpdateData);
      end;
      if fLightTree.Count>0 then begin
       fLightTreeVulkanBuffer.UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
      end else begin
       fLightTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
      end;
+     if fLightItems.Count>0 then begin
+      fLightMetaInfoVulkanBuffer.UpdateData(fLightMetaInfos[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo),FlushUpdateData);
+     end;
 
 {    fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightItemsVulkanBuffer);
-     fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightTreeVulkanBuffer);}
+     fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightTreeVulkanBuffer);
+     fSceneInstance.AddInFlightFrameBufferMemoryBarrier(aInFlightFrameIndex,fLightMetaInfoVulkanBuffer);}
 
     end;
 
     TBufferStreamingMode.Staging:begin
      if fLightItems.Count>0 then begin
-      fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex].UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),FlushUpdateData);
+      fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex].UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem),FlushUpdateData);
       fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
                                        fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex],
                                        0,
                                        0,
-                                       Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem));
+                                       Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem));
      end;
      if fLightTree.Count>0 then begin
       fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex].UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
@@ -4684,6 +4721,14 @@ begin
                                       0,
                                       0,
                                       SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode));
+     end;
+     if fLightItems.Count>0 then begin
+      fSceneInstance.fVulkanLightMetaInfoStagingBuffers[fInFlightFrameIndex].UpdateData(fLightMetaInfos[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo),FlushUpdateData);
+      fLightMetaInfoVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
+                                          fSceneInstance.fVulkanLightMetaInfoStagingBuffers[fInFlightFrameIndex],
+                                          0,
+                                          0,
+                                          Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo));
      end;
     end;
 
@@ -12461,6 +12506,8 @@ begin
 
           fVulkanLightTreeStagingBuffers[Index]:=nil;
 
+          fVulkanLightMetaInfoStagingBuffers[Index]:=nil;
+
           fGlobalVulkanViewUniformStagingBuffers[Index]:=nil;
 
          end;
@@ -12489,7 +12536,7 @@ begin
          for Index:=0 to fCountInFlightFrames-1 do begin
 
           fVulkanLightItemsStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                         MaxVisibleLights*SizeOf(TLightItem),
+                                                                         MaxVisibleLights*SizeOf(TpvScene3D.TLightItem),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -12521,6 +12568,23 @@ begin
                                                                         0,
                                                                         [TpvVulkanBufferFlag.PersistentMapped]
                                                                        );
+
+          fVulkanLightMetaInfoStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            MaxVisibleLights*SizeOf(TpvScene3D.TLightMetaInfo),
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PersistentMapped]
+                                                                           );
 
           fGlobalVulkanViewUniformStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                 SizeOf(TGlobalViewUniformBuffer),
@@ -12919,6 +12983,7 @@ begin
      for Index:=0 to fCountInFlightFrames-1 do begin
       FreeAndNil(fVulkanLightItemsStagingBuffers[Index]);
       FreeAndNil(fVulkanLightTreeStagingBuffers[Index]);
+      FreeAndNil(fVulkanLightMetaInfoStagingBuffers[Index]);
      end;
 
      for Group in fGroups do begin
