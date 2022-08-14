@@ -1776,6 +1776,13 @@ type EpvVulkanException=class(Exception);
       Data:TVkUInt8Array;
      end;
 
+     TpvVulkanExclusiveFullScreenMode=
+      (
+       Default=-1,
+       Disallowed=0,
+       Allowed=1
+      );
+
      TpvVulkanSwapChain=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1816,7 +1823,7 @@ type EpvVulkanException=class(Exception);
                           const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
                           const aSRGB:boolean=false;
                           const aFullScreen:boolean=false;
-                          const aExclusiveFullScreen:boolean=false;
+                          const aExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode=TpvVulkanExclusiveFullScreenMode.Default;
                           const aWindow:Pointer=nil); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aSurface:TpvVulkanSurface;
@@ -14086,7 +14093,7 @@ constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
                                       const aDesiredTransform:TVkSurfaceTransformFlagsKHR;
                                       const aSRGB:boolean;
                                       const aFullScreen:boolean;
-                                      const aExclusiveFullScreen:boolean;
+                                      const aExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode;
                                       const aWindow:Pointer);
 type TPresentModes=VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
@@ -14173,11 +14180,17 @@ begin
    FillChar(SurfaceFullScreenExclusiveInfoEXT,SizeOf(TVkSurfaceFullScreenExclusiveInfoEXT),#0);
    SurfaceFullScreenExclusiveInfoEXT.sType:=VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
    SurfaceFullScreenExclusiveInfoEXT.pNext:=@SurfaceFullScreenExclusiveWin32InfoEXT;
-   if aExclusiveFullScreen then begin
-    //SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
-    SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
-   end else begin
-    SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+   case aExclusiveFullScreenMode of
+    TpvVulkanExclusiveFullScreenMode.Disallowed:begin
+     SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    end;
+    TpvVulkanExclusiveFullScreenMode.Allowed:begin
+     SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+   //SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
+    end;
+    else begin
+     SurfaceFullScreenExclusiveInfoEXT.fullScreenExclusive:=VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+    end;
    end;
 
    FillChar(PhysicalDeviceSurfaceInfo2KHR,SizeOf(TVkPhysicalDeviceSurfaceInfo2KHR),#0);

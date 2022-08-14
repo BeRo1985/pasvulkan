@@ -1091,7 +1091,7 @@ type EpvApplication=class(Exception)
        fVideoFlags:TSDLUInt32;
 {$ifend}
 
-       fUseExclusiveFullScreen:boolean;
+       fExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode;
 
        fFullscreenFocusNeeded:boolean;
 
@@ -1485,7 +1485,7 @@ type EpvApplication=class(Exception)
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
-       property UseExclusiveFullScreen:boolean read fUseExclusiveFullScreen write fUseExclusiveFullScreen;
+       property ExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode read fExclusiveFullScreenMode write fExclusiveFullScreenMode;
 
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
 
@@ -5479,7 +5479,7 @@ begin
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
- fUseExclusiveFullScreen:=false;
+ fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
  fResizable:=true;
  fVisibleMouseCursor:=false;
@@ -6502,7 +6502,7 @@ begin
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
                                              fFullscreen,
-                                             fUseExclusiveFullScreen,
+                                             fExclusiveFullScreenMode,
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;

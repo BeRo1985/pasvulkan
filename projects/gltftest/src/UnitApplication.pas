@@ -101,7 +101,7 @@ begin
  PasVulkan.Resources.AllowExternalResources:=true;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
- UseExclusiveFullScreen:=true;
+ ExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Disallowed;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
