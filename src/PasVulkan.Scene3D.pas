@@ -847,21 +847,6 @@ type EpvScene3D=class(Exception);
             PTLightMetaInfos=^TLightMetaInfos;
             { TLightBuffer }
             TLightBuffer=class
-             public
-              type TPushConstants=packed record
-                    public
-                     TileSizeX:TpvUInt32;
-                     TileSizeY:TpvUInt32;
-                     ZNear:TpvFloat;
-                     ZFar:TpvFloat;
-                     ////
-                     ViewRect:TpvVector4;
-                     ////
-                     CountLights:TpvUInt32;
-                     ViewIndex:TpvUInt32;
-                     Size:TpvUInt32;
-                     Dummy:TpvUInt32;
-                   end;
              private
               fSceneInstance:TpvScene3D;
               fInFlightFrameIndex:TpvSizeInt;
@@ -873,11 +858,6 @@ type EpvScene3D=class(Exception);
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
               fLightTreeVulkanBuffer:TpvVulkanBuffer;
               fLightMetaInfoVulkanBuffer:TpvVulkanBuffer;
-              fLightInverseProjectionMatricesVulkanBuffer:TpvVulkanBuffer;
-              fLightClusterAABBVulkanBuffer:TpvVulkanBuffer;
-              fLightGridIndexListVulkanBuffer:TpvVulkanBuffer;
-              fLightGridClustersVulkanBuffer:TpvVulkanBuffer;
-              fLightGridIndexListCounterVulkanBuffer:TpvVulkanBuffer;
              public
               constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
               destructor Destroy; override;
