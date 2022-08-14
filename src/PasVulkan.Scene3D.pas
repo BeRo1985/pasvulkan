@@ -95,6 +95,10 @@ type EpvScene3D=class(Exception);
       public
        const MaxRenderPassIndices=32;
              MaxVisibleLights=65536;
+             LightClusterSizeX=16;
+             LightClusterSizeY=8;
+             LightClusterSizeZ=32;
+             LightClusterSize=LightClusterSizeX*LightClusterSizeY*LightClusterSizeZ;
              // Light cluster index 3D grid size = ceil(CanvasWidth/64) x ceil(CanvasHeight/64) x 16
              LightClusterTileWidthBits=6;
              LightClusterTileHeightBits=6;
