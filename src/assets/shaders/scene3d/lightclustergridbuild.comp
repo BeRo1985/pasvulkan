@@ -14,7 +14,7 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   uvec4 countLightsViewIndexSize;
 } pushConstants;
 
-layout(std430, set = 0, binding = 0) buffer InverseProjectionMatrices {
+layout(std140, set = 0, binding = 0) buffer InverseProjectionMatrices {
   mat4 inverseProjectionMatrices[];
 };
 
