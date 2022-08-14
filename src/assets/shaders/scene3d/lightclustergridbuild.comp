@@ -13,6 +13,7 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   ivec2 tileSize; 
   vec2 zNearFar;
   vec4 viewRect;
+  int countLights;
 } pushConstants;
 
 struct AABB {
@@ -36,18 +37,27 @@ void main() {
   //
   const float infinity = uintBitsToFloat(0x7f800000u);
 
-  int clusterIndex = int((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
+  ivec3 globalInvocationID = ivec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz; 
+  ivec3 globalSize = ivec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
+  int globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
+ 
+  int clusterIndex = globalInvocationIndex;
 
-  vec4 minScreen = vec3(vec2(ivec2(gl_GlobalInvocationID.xy) * pushConstants.tileSize.xy), 1.0).xyzz;
-  vec4 maxScreen = vec3(vec2((ivec2(gl_GlobalInvocationID.xy) + ivec2(1)) * pushConstants.tileSize.xy), 1.0).xyzz;
+#ifdef REVERSEDZ
+  vec4 minScreen = vec4(vec2(ivec2(globalInvocationID.xy) * pushConstants.tileSize.xy), 1.0, 1.0);
+  vec4 maxScreen = vec4(vec2((ivec2(globalInvocationID.xy) + ivec2(1)) * pushConstants.tileSize.xy), 1.0, 1.0);
+#else
+  vec4 minScreen = vec4(vec2(ivec2(globalInvocationID.xy) * pushConstants.tileSize.xy), 0.0, 1.0);
+  vec4 maxScreen = vec4(vec2((ivec2(globalInvocationID.xy) + ivec2(1)) * pushConstants.tileSize.xy), 0.0, 1.0);
+#endif
 
   vec3 minEye = screen2Eye(minScreen).xyz;
   vec3 maxEye = screen2Eye(maxScreen).xyz;
 
-  float clusterNear = pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, gl_GlobalInvocationID.z / float(gl_WorkGroupSize.z));
-  float clusterFar = ((gl_GlobalInvocationID.z + 1) == gl_WorkGroupSize.z)  //
+  float clusterNear = pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, globalInvocationID.z / float(globalSize.z));
+  float clusterFar = ((globalInvocationID.z + 1) == globalSize.z)  //
                          ? infinity                                         // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
-                         : (pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, (gl_GlobalInvocationID.z + 1) / float(gl_WorkGroupSize.z)));
+                         : (pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, (globalInvocationID.z + 1) / float(globalSize.z)));
 
   vec3 minNear = (minEye * clusterNear) / minEye.z;
   vec3 minFar = (minEye * clusterFar) / minEye.z;

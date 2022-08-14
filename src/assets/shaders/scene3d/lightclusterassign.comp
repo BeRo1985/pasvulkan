@@ -1,0 +1,101 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 8, local_size_z = 4) in;
+
+layout(push_constant, std140, row_major) uniform PushConstants {
+  mat4 inverseProjectionMatrix;
+  ivec2 tileSize; 
+  vec2 zNearFar;
+  vec4 viewRect;
+  int countLights;
+} pushConstants;
+
+struct AABB {
+  vec4 minBounds;
+  vec4 maxBounds; 
+};
+
+struct LightMetaInfo {
+  vec4 minBounds; // xyz = min. pos, w = active state
+  vec4 maxBounds; // xyz = max. pos, w = unused
+};
+
+layout(std430, set=0, binding = 0) buffer Clusters {
+  AABB clusterAABBs[];
+};
+
+layout(std430, set=0, binding = 1) buffer LightMetaInfos {
+  LightMetaInfo lightMetaInfos[];
+};
+
+layout (std430, binding = 2) buffer GlobalLightIndexList {
+  uint globalLightIndexList[];
+};
+
+layout (std430, binding = 3) buffer LightGridClusters {
+  uvec2 lightGridClusters[];
+};
+
+layout (std430, binding = 4) buffer GlobalIndexCount {
+  uint globalIndexCount;
+};
+
+/* clang-format on */
+
+shared LightMetaInfo sharedLightMetaInfos[16 * 8 * 4];
+
+vec4 screen2Eye(vec4 coord) {
+  vec3 ndc = fma(vec3((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, coord.z), vec3(2.0), vec3(-1.0));
+  vec4 eye = pushConstants.inverseProjectionMatrix * vec4(ndc, 1.0);
+  return eye / eye.w;
+}
+
+void main() {
+  //
+  const float infinity = uintBitsToFloat(0x7f800000u);
+
+  int localIndex = int(gl_LocalInvocationIndex);
+  int clusterIndex = localIndex + int((gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z) * gl_WorkGroupID.z);
+
+  int countThreads = int(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
+  int countLights = pushConstants.countLights;
+  int countBatches = (countLights + (countThreads - 1)) / countThreads;
+
+  int countVisibleLights = 0;
+  int visibleLightIndices[128];
+  
+  for(int batchIndex = 0; batchIndex < countBatches; batchIndex++){
+    int linuxTransferIndex = (batchIndex * countThreads) + localIndex;
+    sharedLightMetaInfos[localIndex] = (linuxTransferIndex < countLights) ? lightMetaInfos[linuxTransferIndex] : LightMetaInfo(vec4(0.0), vec4(0.0));
+    barrier();
+    for(int lightProcessIndex = 0; lightProcessIndex < countThreads; lightProcessIndex++){
+      if(sharedLightMetaInfos[lightProcessIndex].minBounds.w > 0.5){
+        vec3 clusterAABBMin = clusterAABBs[clusterIndex].minBounds.xyz;
+        vec3 clusterAABBMax = clusterAABBs[clusterIndex].maxBounds.xyz;
+        vec3 lightAABBMin = sharedLightMetaInfos[localIndex].minBounds.xyz;
+        vec3 lightAABBMax = sharedLightMetaInfos[localIndex].minBounds.xyz;
+        if ((countVisibleLights < 128) && 
+            (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))){          
+          visibleLightIndices[countVisibleLights++] = (batchIndex * countThreads) + lightProcessIndex;
+        }
+      } 
+    }
+  }
+
+  barrier();
+
+  uint offset = atomicAdd(globalIndexCount, uint(countVisibleLights));
+
+  for(int lightIndex = 0; lightIndex < countVisibleLights; countVisibleLights++){
+   globalLightIndexList[offset + lightIndex] = visibleLightIndices[lightIndex];
+  }
+
+  lightGridClusters[clusterIndex] = uvec2(offset, uint(countVisibleLights));
+
+}

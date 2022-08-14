@@ -30,6 +30,8 @@ compileshaderarguments=(
   '-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o downsample_depth_multiview_reversedz_level1_comp.spv'
 
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
+  '-V lightclustergridbuild.comp -DREVERSEDZ -o lightclustergridbuild_reversedz_comp.spv'
+  '-V lightclusterassign.comp -o lightclusterassign_comp.spv'
   
   '-V mesh.comp -o mesh_comp.spv'
 
