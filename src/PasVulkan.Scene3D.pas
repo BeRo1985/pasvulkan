@@ -834,6 +834,13 @@ type EpvScene3D=class(Exception);
             end;
             PLightItem=^TLightItem;
             TLightItems=TpvDynamicArray<TLightItem>;
+            TLightMetaInfo=packed record
+             MinBounds:TpvVector4;
+             MaxBounds:TpvVector4;
+            end;
+            PLightMetaInfo=^TLightMetaInfo;
+            TLightMetaInfos=array[0..MaxVisibleLights-1] of TLightMetaInfo;
+            PTLightMetaInfos=^TLightMetaInfos;
             { TLightBuffer }
             TLightBuffer=class
              private
@@ -843,6 +850,7 @@ type EpvScene3D=class(Exception);
               fLightItems:TLightItems;
               fLightAABBTreeGeneration:TpvUInt64;
               fLightTree:TpvBVHDynamicAABBTree.TGPUSkipListNodeArray;
+              fLightMetaInfos:TLightMetaInfos;
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
               fLightTreeVulkanBuffer:TpvVulkanBuffer;
              public
@@ -1956,7 +1964,8 @@ type EpvScene3D=class(Exception);
                                                const aRoot:TpvSizeInt);
        procedure CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                             const aRoot:TpvSizeInt;
-                                            var aLightItemArray:TpvScene3D.TLightItems);
+                                            var aLightItemArray:TpvScene3D.TLightItems;
+                                            var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
        function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
@@ -13136,7 +13145,7 @@ begin
   end;
 
   LightBuffer:=fLightBuffers[aInFlightFrameIndex];
-  CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems);
+  CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
   fLightAABBTree.GetGPUSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
   LightBuffer.Update;
 
@@ -13427,9 +13436,11 @@ end;
 
 procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                                 const aRoot:TpvSizeInt;
-                                                var aLightItemArray:TpvScene3D.TLightItems);
+                                                var aLightItemArray:TpvScene3D.TLightItems;
+                                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
  procedure ProcessLight(const aLight:TpvScene3D.TLight);
  var LightItem:TpvScene3D.PLightItem;
+     LightMetaInfo:TpvScene3D.PLightMetaInfo;
      InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
  begin
   if aLightItemArray.Count<MaxVisibleLights then begin
@@ -13447,6 +13458,9 @@ procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAA
    LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fDataPointer^.fRange);
    LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
    LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+   LightMetaInfo:=@aLightMetaInfoArray[aLight.fLightItemIndex];
+   LightMetaInfo^.MinBounds:=TpvVector4.Create(aLight.fBoundingBox.Min,1.0);
+   LightMetaInfo^.MaxBounds:=TpvVector4.Create(aLight.fBoundingBox.Max,0.0);
   end else begin
    aLight.fLightItemIndex:=-1;
   end;
