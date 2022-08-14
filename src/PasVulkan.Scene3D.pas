@@ -838,6 +838,7 @@ type EpvScene3D=class(Exception);
             TLightBuffer=class
              private
               fSceneInstance:TpvScene3D;
+              fInFlightFrameIndex:TpvSizeInt;
               fUploaded:TPasMPBool32;
               fLightItems:TLightItems;
               fLightAABBTreeGeneration:TpvUInt64;
@@ -845,11 +846,11 @@ type EpvScene3D=class(Exception);
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
               fLightTreeVulkanBuffer:TpvVulkanBuffer;
              public
-              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
               destructor Destroy; override;
               procedure Upload;
               procedure Unload;
-              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+              procedure Update;
             end;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
             { TLight }
@@ -4503,10 +4504,11 @@ end;
 
 { TpvScene3D.TLightBuffer }
 
-constructor TpvScene3D.TLightBuffer.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TLightBuffer.Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
+ fInFlightFrameIndex:=aInFlightFrameIndex;
  fUploaded:=false;
  fLightTree.Initialize;
  fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-2;
@@ -4619,7 +4621,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TLightBuffer.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TLightBuffer.Update;
 const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TGPUSkipListNode=
        (AABBMin:(x:0.0;y:0.0;z:0.0);
         SkipCount:0;
@@ -4652,24 +4654,24 @@ begin
 
     TBufferStreamingMode.Staging:begin
      if fLightItems.Count>0 then begin
-      fSceneInstance.fVulkanLightItemsStagingBuffers[aInFlightFrameIndex].UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),FlushUpdateData);
-      fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
-                                       fSceneInstance.fVulkanLightItemsStagingBuffers[aInFlightFrameIndex],
+      fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex].UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem),FlushUpdateData);
+      fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
+                                       fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex],
                                        0,
                                        0,
                                        Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TLightItem));
      end;
      if fLightTree.Count>0 then begin
-      fSceneInstance.fVulkanLightTreeStagingBuffers[aInFlightFrameIndex].UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
-      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
-                                      fSceneInstance.fVulkanLightTreeStagingBuffers[aInFlightFrameIndex],
+      fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex].UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
+      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
+                                      fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex],
                                       0,
                                       0,
                                       Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode));
      end else begin
-      fSceneInstance.fVulkanLightTreeStagingBuffers[aInFlightFrameIndex].UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
-      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
-                                      fSceneInstance.fVulkanLightTreeStagingBuffers[aInFlightFrameIndex],
+      fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex].UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode),FlushUpdateData);
+      fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
+                                      fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex],
                                       0,
                                       0,
                                       SizeOf(TpvBVHDynamicAABBTree.TGPUSkipListNode));
@@ -12196,7 +12198,7 @@ begin
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self);
+  fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self,Index);
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -13136,7 +13138,7 @@ begin
   LightBuffer:=fLightBuffers[aInFlightFrameIndex];
   CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems);
   fLightAABBTree.GetGPUSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
-  LightBuffer.Update(aInFlightFrameIndex);
+  LightBuffer.Update;
 
  end;
 
