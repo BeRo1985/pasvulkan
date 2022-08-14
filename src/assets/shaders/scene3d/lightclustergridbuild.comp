@@ -9,19 +9,23 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
-  mat4 inverseProjectionMatrix;
   ivec2 tileSize; 
   vec2 zNearFar;
   vec4 viewRect;
   int countLights;
+  int viewIndex;
 } pushConstants;
+
+layout(std430, set = 0, binding = 0) buffer InverseProjectionMatrices {
+  mat4 inverseProjectionMatrices[];
+};
 
 struct AABB {
   vec4 minBounds;
   vec4 maxBounds; 
 };
 
-layout(std430, set=0, binding = 0) buffer Clusters {
+layout(std430, set = 0, binding = 1) buffer Clusters {
   AABB clusterAABBs[];
 };
 
@@ -29,7 +33,7 @@ layout(std430, set=0, binding = 0) buffer Clusters {
 
 vec4 screen2Eye(vec4 coord) {
   vec3 ndc = fma(vec3((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, coord.z), vec3(2.0), vec3(-1.0));
-  vec4 eye = pushConstants.inverseProjectionMatrix * vec4(ndc, 1.0);
+  vec4 eye = inverseProjectionMatrices[pushConstants.viewIndex] * vec4(ndc, 1.0);
   return eye / eye.w;
 }
 
@@ -41,7 +45,7 @@ void main() {
   ivec3 globalSize = ivec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
   int globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
  
-  int clusterIndex = globalInvocationIndex;
+  int clusterIndex = globalInvocationIndex + (pushConstants.viewIndex * (16 * 8 * 32));
 
 #ifdef REVERSEDZ
   vec4 minScreen = vec4(vec2(ivec2(globalInvocationID.xy) * pushConstants.tileSize.xy), 1.0, 1.0);
@@ -56,7 +60,7 @@ void main() {
 
   float clusterNear = pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, globalInvocationID.z / float(globalSize.z));
   float clusterFar = ((globalInvocationID.z + 1) == globalSize.z)  //
-                         ? infinity                                         // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
+                         ? infinity                                // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
                          : (pushConstants.zNearFar.x * pow(pushConstants.zNearFar.y / pushConstants.zNearFar.x, (globalInvocationID.z + 1) / float(globalSize.z)));
 
   vec3 minNear = (minEye * clusterNear) / minEye.z;

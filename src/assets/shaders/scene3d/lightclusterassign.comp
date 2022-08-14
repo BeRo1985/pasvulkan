@@ -9,11 +9,11 @@
 layout(local_size_x = 16, local_size_y = 8, local_size_z = 4) in;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
-  mat4 inverseProjectionMatrix;
   ivec2 tileSize; 
   vec2 zNearFar;
   vec4 viewRect;
   int countLights;
+  int viewIndex;
 } pushConstants;
 
 struct AABB {
@@ -26,11 +26,11 @@ struct LightMetaInfo {
   vec4 maxBounds; // xyz = max. pos, w = unused
 };
 
-layout(std430, set=0, binding = 0) buffer Clusters {
+layout(std430, set = 0, binding = 0) buffer Clusters {
   AABB clusterAABBs[];
 };
 
-layout(std430, set=0, binding = 1) buffer LightMetaInfos {
+layout(std430, set = 0, binding = 1) buffer LightMetaInfos {
   LightMetaInfo lightMetaInfos[];
 };
 
@@ -50,18 +50,12 @@ layout (std430, binding = 4) buffer GlobalIndexCount {
 
 shared LightMetaInfo sharedLightMetaInfos[16 * 8 * 4];
 
-vec4 screen2Eye(vec4 coord) {
-  vec3 ndc = fma(vec3((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, coord.z), vec3(2.0), vec3(-1.0));
-  vec4 eye = pushConstants.inverseProjectionMatrix * vec4(ndc, 1.0);
-  return eye / eye.w;
-}
-
 void main() {
   //
   const float infinity = uintBitsToFloat(0x7f800000u);
 
   int localIndex = int(gl_LocalInvocationIndex);
-  int clusterIndex = localIndex + int((gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z) * gl_WorkGroupID.z);
+  int clusterIndex = (localIndex + int((gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z) * gl_WorkGroupID.z)) + (pushConstants.viewIndex * (16 * 8 * 32));
 
   int countThreads = int(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
   int countLights = pushConstants.countLights;
