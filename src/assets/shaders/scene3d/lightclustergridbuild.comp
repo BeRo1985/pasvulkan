@@ -47,6 +47,11 @@ vec4 screen2Eye(vec4 coord) {
   return eye / eye.w;
 }
 
+vec3 lineIntersectionToZPlane(vec3 firstPoint, vec3 secondPoint, float zValueViewSpace){
+  vec3 lineDirection = secondPoint - firstPoint;
+  return fma(lineDirection, vec3((zValueViewSpace - firstPoint.z) / lineDirection.z), firstPoint);
+}
+
 void main() {
   //
 
@@ -80,13 +85,50 @@ void main() {
                          ? 3.4e+32  // infinity                     // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
                          : (ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, (globalInvocationID.z + 1) / float(globalSize.z)));
 
+#if 1 
   vec3 minNear = (minEye * clusterNear) / minEye.z;
   vec3 minFar = (minEye * clusterFar) / minEye.z;
   vec3 maxNear = (maxEye * clusterNear) / maxEye.z;
   vec3 maxFar = (maxEye * clusterFar) / maxEye.z;
+#else
+  vec3 minNear = lineIntersectionToZPlane(vec3(0.0), minEye, clusterNear);
+  vec3 minFar = lineIntersectionToZPlane(vec3(0.0), minEye, clusterFar); 
+  vec3 maxNear = lineIntersectionToZPlane(vec3(0.0), maxEye, clusterNear);
+  vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxEye, clusterFar); 
+#endif
 
-  lightGridClusterAABBs[clusterIndex].minBounds = vec4(vec3(min(min(minNear, minFar), min(maxNear, maxFar))), 1.0);
-  lightGridClusterAABBs[clusterIndex].maxBounds = vec4(vec3(max(max(minNear, minFar), max(maxNear, maxFar))), 1.0);
+  vec3 aabbMin = min(min(minNear, minFar), min(maxNear, maxFar));
+  vec3 aabbMax = max(max(minNear, minFar), max(maxNear, maxFar));
+  
+  mat4 m = view.inverseViewMatrix;
+
+  vec4 aabbCorners[8] = {
+    m * vec4(aabbMin.x, aabbMin.y, aabbMin.z, 1.0),  //
+    m * vec4(aabbMin.x, aabbMin.y, aabbMax.z, 1.0),  //
+    m * vec4(aabbMin.x, aabbMax.y, aabbMin.z, 1.0),  //
+    m * vec4(aabbMin.x, aabbMax.y, aabbMax.z, 1.0),  //
+    m * vec4(aabbMax.x, aabbMin.y, aabbMin.z, 1.0),  //
+    m * vec4(aabbMax.x, aabbMin.y, aabbMax.z, 1.0),  //
+    m * vec4(aabbMax.x, aabbMax.y, aabbMin.z, 1.0),  //
+    m * vec4(aabbMax.x, aabbMax.y, aabbMax.z, 1.0),  //
+  };
+  aabbCorners[0] /= aabbCorners[0].w;
+  aabbCorners[1] /= aabbCorners[1].w;
+  aabbCorners[2] /= aabbCorners[2].w;
+  aabbCorners[3] /= aabbCorners[3].w;
+  aabbCorners[4] /= aabbCorners[4].w;
+  aabbCorners[5] /= aabbCorners[5].w;
+  aabbCorners[6] /= aabbCorners[6].w;
+  aabbCorners[7] /= aabbCorners[7].w;
+  aabbMin = min(min(min(min(min(min(min(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
+  aabbMax = max(max(max(max(max(max(max(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
+
+  vec3 center = (aabbMin + aabbMax) * 0.5;
+  vec3 extents = (aabbMax - aabbMin) * 0.5;
+  float radius = length(extents);
+
+  lightGridClusterAABBs[clusterIndex].minBounds = vec4(aabbMin, 1.0);
+  lightGridClusterAABBs[clusterIndex].maxBounds = vec4(aabbMax, radius);
 
   if(clusterIndex == 0u){
     lightGridIndexListCounter = 0u; 

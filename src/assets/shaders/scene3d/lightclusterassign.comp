@@ -79,34 +79,10 @@ void main() {
   uint countVisibleLights = 0u;
   uint visibleLightIndices[128];
 
-  mat4 mvp = view.viewMatrix;
-
   for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
     if (linuxTransferIndex < countLights) {
-      LightMetaInfo lightMetaInfo = lightMetaInfos[linuxTransferIndex];
-      vec4 corners[8] = {
-          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
-          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
-      };
-      corners[0] /= corners[0].w;
-      corners[1] /= corners[1].w;
-      corners[2] /= corners[2].w;
-      corners[3] /= corners[3].w;
-      corners[4] /= corners[4].w;
-      corners[5] /= corners[5].w;
-      corners[6] /= corners[6].w;
-      corners[7] /= corners[7].w;
-      sharedLightMetaInfos[localInvocationIndex] = LightMetaInfo(                                                                                                                  //
-          vec4(min(min(min(min(min(min(min(corners[0], corners[1]), corners[2]), corners[3]), corners[4]), corners[5]), corners[6]), corners[7]).xyz, lightMetaInfo.minBounds.w),  //
-          vec4(max(max(max(max(max(max(max(corners[0], corners[1]), corners[2]), corners[3]), corners[4]), corners[5]), corners[6]), corners[7]).xyz, lightMetaInfo.maxBounds.w)   //
-      );
+      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
     } else {
       sharedLightMetaInfos[localInvocationIndex] = LightMetaInfo(vec4(0.0), vec4(0.0));
     }
@@ -116,7 +92,7 @@ void main() {
         vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minBounds.xyz;
         vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxBounds.xyz;
         vec3 lightAABBMin = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
-        vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
+        vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].maxBounds.xyz;
         if ((countVisibleLights < 128u) && (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))) {
           visibleLightIndices[countVisibleLights++] = (batchIndex * countThreads) + lightProcessIndex;
         }
