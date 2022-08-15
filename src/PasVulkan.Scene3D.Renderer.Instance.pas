@@ -1230,7 +1230,7 @@ begin
                                                                                                0,
                                                                                                []);
        fLightGridClusterAABBVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                                      fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ*SizeOf(TpvVector4)*fCountSurfaceViews,
+                                                                                      fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ*SizeOf(TpvVector4)*2*fCountSurfaceViews,
                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                       [],
