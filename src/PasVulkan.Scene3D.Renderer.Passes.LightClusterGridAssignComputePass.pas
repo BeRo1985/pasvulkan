@@ -324,10 +324,11 @@ begin
                                   SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
                                   @LightGridPushConstants);
 
+{
   aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
                              (fInstance.LightGridSizeY+7) shr 3,
                              (fInstance.LightGridSizeZ+7) shr 3);
-
+                                                                      }
   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
   MemoryBarrier.pNext:=nil;
