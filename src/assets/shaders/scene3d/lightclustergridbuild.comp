@@ -84,7 +84,7 @@ void main() {
 
   vec2 ZNearZFar = uintBitsToFloat(pushConstants.tileSizeZNearZFar.zw);
 
-  float clusterNear = ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, globalInvocationID.z / float(globalSize.z));
+  float clusterNear = (globalInvocationID.z == 0u) ? 0.0 : (ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, globalInvocationID.z / float(globalSize.z)));
   float clusterFar = ((globalInvocationID.z + 1u) == globalSize.z)  //
                          ? 3.4e+32  // infinity                     // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
                          : (ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, (globalInvocationID.z + 1) / float(globalSize.z)));
