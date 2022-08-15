@@ -166,6 +166,7 @@ type { TpvScene3DRendererInstance }
             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererArray2DImage;
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
@@ -201,11 +202,11 @@ type { TpvScene3DRendererInstance }
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
-       fLightInverseProjectionMatricesVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fLightGridClusterAABBVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fLightGridIndexListCounterVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fLightGridIndexListVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fLightGridClustersVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLightInverseProjectionMatricesVulkanBuffers:TVulkanBuffers;
+       fLightGridClusterAABBVulkanBuffers:TVulkanBuffers;
+       fLightGridIndexListCounterVulkanBuffers:TVulkanBuffers;
+       fLightGridIndexListVulkanBuffers:TVulkanBuffers;
+       fLightGridClustersVulkanBuffers:TVulkanBuffers;
       private
        fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
@@ -264,6 +265,12 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
       public
+       property LightInverseProjectionMatricesVulkanBuffers:TVulkanBuffers read fLightInverseProjectionMatricesVulkanBuffers;
+       property LightGridClusterAABBVulkanBuffers:TVulkanBuffers read fLightGridClusterAABBVulkanBuffers;
+       property LightGridIndexListCounterVulkanBuffers:TVulkanBuffers read fLightGridIndexListCounterVulkanBuffers;
+       property LightGridIndexListVulkanBuffers:TVulkanBuffers read fLightGridIndexListVulkanBuffers;
+       property LightGridClustersVulkanBuffers:TVulkanBuffers read fLightGridClustersVulkanBuffers;
+      public
        property CascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers read fCascadedShadowMapUniformBuffers;
        property CascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers read fCascadedShadowMapVulkanUniformBuffers;
       public
@@ -313,6 +320,7 @@ implementation
 uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthVelocityNormalsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthMipMapComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.LightClusterGridBuildComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
@@ -355,6 +363,7 @@ type TpvScene3DRendererInstancePasses=class
        fMeshComputePass:TpvScene3DRendererPassesMeshComputePass;
        fDepthVelocityNormalsRenderPass:TpvScene3DRendererPassesDepthVelocityNormalsRenderPass;
        fDepthMipMapComputePass:TpvScene3DRendererPassesDepthMipMapComputePass;
+       fLightClusterGridBuildComputePass:TpvScene3DRendererPassesLightClusterGridBuildComputePass;
        fCascadedShadowMapRenderPass:TpvScene3DRendererPassesCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
