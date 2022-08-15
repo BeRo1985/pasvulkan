@@ -116,7 +116,7 @@ type { TpvScene3DRendererInstance }
               CountLights:TpvUInt32;
               ViewIndex:TpvUInt32;
               Size:TpvUInt32;
-              Dummy:TpvUInt32;
+              OffsetedViewIndex:TpvUInt32;
             end;
             PLightGridPushConstants=^TLightGridPushConstants;
             { TCascadedShadowMap }

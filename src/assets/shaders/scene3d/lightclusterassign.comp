@@ -11,7 +11,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 layout(push_constant, std140, row_major) uniform PushConstants {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
-  uvec4 countLightsViewIndexSize;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
 } pushConstants;
 
 struct AABB {
@@ -62,7 +62,7 @@ shared LightMetaInfo sharedLightMetaInfos[8 * 8 * 8];
 void main() {
   //
 
-  View view = uView.views[pushConstants.countLightsViewIndexSize.y];
+  View view = uView.views[pushConstants.countLightsViewIndexSizeOffsetedViewIndex.w];
 
   uint localInvocationIndex = uint(gl_LocalInvocationIndex);
 
@@ -70,16 +70,16 @@ void main() {
   uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz);
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
 
-  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSize.y * pushConstants.countLightsViewIndexSize.z);
+  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 
   uint countThreads = int(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
-  uint countLights = pushConstants.countLightsViewIndexSize.x;
+  uint countLights = pushConstants.countLightsViewIndexSizeOffsetedViewIndex.x;
   uint countBatches = (countLights + (countThreads - 1u)) / countThreads;
 
   uint countVisibleLights = 0u;
   uint visibleLightIndices[128];
 
-  mat4 mvp = view.inverseViewMatrix;
+  mat4 mvp = view.viewMatrix;
 
   for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;

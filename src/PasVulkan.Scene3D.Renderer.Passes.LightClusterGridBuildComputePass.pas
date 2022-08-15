@@ -290,6 +290,8 @@ begin
 
   LightGridPushConstants.ViewIndex:=ViewIndex;
 
+  LightGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,

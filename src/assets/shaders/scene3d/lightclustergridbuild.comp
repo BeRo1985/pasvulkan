@@ -11,7 +11,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 layout(push_constant, std140, row_major) uniform PushConstants {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
-  uvec4 countLightsViewIndexSize;  
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;  
 } pushConstants;
 
 struct View {
@@ -50,7 +50,7 @@ vec4 screen2Eye(vec4 coord) {
 void main() {
   //
 
-  View view = uView.views[pushConstants.countLightsViewIndexSize.y];
+  View view = uView.views[pushConstants.countLightsViewIndexSizeOffsetedViewIndex.w];
 
   invMat = view.inverseProjectionMatrix;
 
@@ -60,7 +60,7 @@ void main() {
   uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
  
-  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSize.y * pushConstants.countLightsViewIndexSize.z);
+  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 
 #ifdef REVERSEDZ
   vec4 minScreen = vec4(vec2(uvec2(globalInvocationID.xy) * pushConstants.tileSizeZNearZFar.xy), 1.0, 1.0);
