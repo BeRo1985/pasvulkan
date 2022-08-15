@@ -48,7 +48,7 @@ mat4 invMat;
 vec4 screen2Eye(vec4 coord) {
   vec2 ndc = fma((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, vec2(2.0), vec2(-1.0));
   vec4 eye = invMat * vec4(ndc, coord.z, 1.0);
-  return eye / eye.w;
+  return (eye / eye.w);
 }
 
 vec3 lineIntersectionToZPlane(vec3 firstPoint, vec3 secondPoint, float zValueViewSpace){
@@ -95,10 +95,10 @@ void main() {
   vec3 maxNear = (maxEye * clusterNear) / maxEye.z;
   vec3 maxFar = (maxEye * clusterFar) / maxEye.z;
 #else
-  vec3 minNear = lineIntersectionToZPlane(vec3(0.0), minEye, clusterNear);
-  vec3 minFar = lineIntersectionToZPlane(vec3(0.0), minEye, clusterFar); 
-  vec3 maxNear = lineIntersectionToZPlane(vec3(0.0), maxEye, clusterNear);
-  vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxEye, clusterFar); 
+  vec3 minNear = lineIntersectionToZPlane(vec3(0.0), minEye, -clusterNear);
+  vec3 minFar = lineIntersectionToZPlane(vec3(0.0), minEye, -clusterFar); 
+  vec3 maxNear = lineIntersectionToZPlane(vec3(0.0), maxEye, -clusterNear);
+  vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxEye, -clusterFar); 
 #endif
 
   vec3 aabbViewSpaceMin = min(min(minNear, minFar), min(maxNear, maxFar));

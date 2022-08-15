@@ -108,7 +108,6 @@ void main() {
             countVisibleLights++;     
             break;
           }      
-          case 3:      
           case 2:{
             // Point light => check in view space
             vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
@@ -126,7 +125,7 @@ void main() {
             }
             break;
           }
-          case 5:{
+          case 3:{
             // Spot light => check in world space
             vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minWorldSpaceBounds.xyz;
             vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxWorldSpaceBounds.xyz;
