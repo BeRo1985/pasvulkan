@@ -200,6 +200,24 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fInstance.LightGridClusterAABBVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fInstance.LightGridIndexListCounterVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false
+                                                                );
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
@@ -224,8 +242,9 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesLightClusterGridBuildComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var InFlightFrameIndex:TpvInt32;
+var InFlightFrameIndex,ViewIndex:TpvInt32;
     LightGridPushConstants:TpvScene3DRendererInstance.TLightGridPushConstants;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     MemoryBarrier:TVkMemoryBarrier;
 begin
 
@@ -233,15 +252,29 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+ InFlightFrameState:=@fInstance.InFlightFrameStates^[InFlightFrameIndex];
+
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.pNext:=nil;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   1,@MemoryBarrier,
+                                   0,nil,
+                                   0,nil);
 
  FillChar(LightGridPushConstants,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),#0);
+ LightGridPushConstants.TileSizeX:=fInstance.LightGridTileSizeX;
+ LightGridPushConstants.TileSizeY:=fInstance.LightGridTileSizeY;
+ LightGridPushConstants.ZNear:=0.01;
+ LightGridPushConstants.ZFar:=4096.0;
+ LightGridPushConstants.CountLights:=fInstance.Renderer.Scene3D.LightBuffers[InFlightFrameIndex].LightItems.Count;
+ LightGridPushConstants.Size:=fInstance.LightGridSizeX*fInstance.LightGridSizeY*fInstance.LightGridSizeZ;
 
- aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                 0,
-                                 SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
-                                 @LightGridPushConstants);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                       fPipelineLayout.Handle,
@@ -251,9 +284,21 @@ begin
                                       0,
                                       nil);
 
-{aCommandBuffer.CmdDispatch(Max(1,(fInstance.Width+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
-                            Max(1,(fInstance.Height+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
-                            fInstance.CountSurfaceViews);     }
+ for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+
+  LightGridPushConstants.ViewIndex:=ViewIndex;
+
+  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
+                                  @LightGridPushConstants);
+
+ aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
+                            (fInstance.LightGridSizeY+7) shr 3,
+                            (fInstance.LightGridSizeZ+7) shr 3);
+
+ end;
 
  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;

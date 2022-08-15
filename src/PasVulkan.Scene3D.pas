@@ -864,6 +864,8 @@ type EpvScene3D=class(Exception);
               procedure Upload;
               procedure Unload;
               procedure Update;
+             public
+              property LightItems:TLightItems read fLightItems;
             end;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
             { TLight }
@@ -2033,6 +2035,7 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
        property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
+       property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;

@@ -171,6 +171,7 @@ type { TpvScene3DRendererInstance }
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
+            TLightInverseProjectionMatricesMatrices=array[0..7] of TpvMatrix4x4;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -202,6 +203,7 @@ type { TpvScene3DRendererInstance }
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
+       fLightInverseProjectionMatricesMatrices:TLightInverseProjectionMatricesMatrices;
        fLightInverseProjectionMatricesVulkanBuffers:TVulkanBuffers;
        fLightGridClusterAABBVulkanBuffers:TVulkanBuffers;
        fLightGridIndexListCounterVulkanBuffers:TVulkanBuffers;
@@ -1210,7 +1212,7 @@ begin
 
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
       fLightInverseProjectionMatricesVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                                               256*SizeOf(TpvMatrix4x4),
+                                                                                               SizeOf(TLightInverseProjectionMatricesMatrices),
                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                [],
@@ -1961,15 +1963,29 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var ViewIndex:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
 begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+  fLightInverseProjectionMatricesMatrices[ViewIndex]:=Renderer.Scene3D.Views.Items[InFlightFrameState^.FinalViewIndex+ViewIndex].InverseProjectionMatrix;
+ end;
+
+ fLightInverseProjectionMatricesVulkanBuffers[aInFlightFrameIndex].UpdateData(fLightInverseProjectionMatricesMatrices,0,SizeOf(TLightInverseProjectionMatricesMatrices));
+
  fFrameGraph.Draw(aSwapChainImageIndex,
                   aInFlightFrameIndex,
                   aFrameCounter,
                   aWaitSemaphore,
                   fVulkanRenderSemaphores[aInFlightFrameIndex],
                   aWaitFence);
+
  aWaitSemaphore:=fVulkanRenderSemaphores[aInFlightFrameIndex];
+
  TPasMPInterlocked.Write(fInFlightFrameStates[aInFlightFrameIndex].Ready,false);
+
 end;
 
 procedure InitializeJitterOffsets;
