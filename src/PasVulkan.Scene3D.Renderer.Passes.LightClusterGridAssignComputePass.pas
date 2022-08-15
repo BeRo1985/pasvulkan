@@ -322,23 +322,23 @@ begin
                                   SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
                                   @LightGridPushConstants);
 
- aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
-                            (fInstance.LightGridSizeY+7) shr 3,
-                            (fInstance.LightGridSizeZ+7) shr 3);
+  aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
+                             (fInstance.LightGridSizeY+7) shr 3,
+                             (fInstance.LightGridSizeZ+7) shr 3);
+
+  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  MemoryBarrier.pNext:=nil;
+  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    IfThen(ViewIndex=(InFlightFrameState^.CountViews-1),TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)),
+                                    0,
+                                    1,@MemoryBarrier,
+                                    0,nil,
+                                    0,nil);
 
  end;
-
- FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
- MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
- MemoryBarrier.pNext:=nil;
- MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   0,
-                                   1,@MemoryBarrier,
-                                   0,nil,
-                                   0,nil);
 
 end;
 
