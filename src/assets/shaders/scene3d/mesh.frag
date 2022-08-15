@@ -231,6 +231,8 @@ layout (std140, set = 1, binding = 5) readonly uniform LightGlobals {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
 } uLightGlobals;
 
 layout (std430, set = 1, binding = 6) readonly buffer LightGridIndexList {
@@ -1555,6 +1557,20 @@ void main() {
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
 
 #ifdef LIGHTS
+#define LIGHTCLUSTERS
+#ifdef LIGHTCLUSTERS
+      // Light cluster grid
+      uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uLightGlobals.tileSizeZNearZFar.xy), 
+                               uint(clamp(fma(log(inViewSpacePosition.z), uLightGlobals.scaleBiasMax.x, uLightGlobals.scaleBiasMax.z), 0.0, uLightGlobals.scaleBiasMax.z)));
+      uint clusterIndex = min((((clusterXYZ.z * uLightGlobals.clusterSize.y) + clusterXYZ.y) * uLightGlobals.clusterSize.x) + clusterXYZ.x, uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
+                               (uint(gl_ViewIndex) * uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
+      uvec2 clusterData = lightGridClusters[clusterIndex];
+      for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
+        {
+          {
+            Light light = lights[lightGridIndexList[clusterLightIndex]];
+#else
+      // Light BVH
       uint lightTreeNodeIndex = 0;
       uint lightTreeNodeCount = lightTreeNodes[0].aabbMinSkipCount.w;
       while (lightTreeNodeIndex < lightTreeNodeCount) {
@@ -1564,6 +1580,7 @@ void main() {
         if (all(greaterThanEqual(inWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(inWorldSpacePosition.xyz, aabbMax))) {
           if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
+#endif
             float lightAttenuation = 1.0;
             vec3 lightDirection;
             vec3 lightPosition = light.positionRange.xyz; 
@@ -1759,12 +1776,18 @@ void main() {
               }
 #endif
             }
+#ifdef LIGHTCLUSTERS
+          }
+        }
+      }
+#else
           }
           lightTreeNodeIndex++;
         } else {
           lightTreeNodeIndex += max(1u, lightTreeNode.aabbMinSkipCount.w);
         }
       }
+#endif
 /*    if (lightTreeNodeIndex == 0u) {
         doSingleLight(vec3(1.7, 1.15, 0.70),              //
                       vec3(1.0),                          //

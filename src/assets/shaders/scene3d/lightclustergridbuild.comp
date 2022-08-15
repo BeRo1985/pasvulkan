@@ -12,6 +12,8 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;  
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
 } pushConstants;
 
 struct View {

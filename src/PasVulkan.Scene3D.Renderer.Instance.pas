@@ -117,6 +117,16 @@ type { TpvScene3DRendererInstance }
               ViewIndex:TpvUInt32;
               Size:TpvUInt32;
               OffsetedViewIndex:TpvUInt32;
+              ////
+              ClusterSizeX:TpvUInt32;
+              ClusterSizeY:TpvUInt32;
+              ClusterSizeZ:TpvUInt32;
+              Reversed0:TpvUInt32;
+              //
+              ZScale:TpvFloat;
+              ZBias:TpvFloat;
+              ZMax:TpvFloat;
+              Reversed1:TpvUInt32;
             end;
             PLightGridPushConstants=^TLightGridPushConstants;
             { TCascadedShadowMap }
@@ -1984,6 +1994,13 @@ begin
  fLightGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fWidth,fHeight);
  fLightGridPushConstants.CountLights:=Renderer.Scene3D.LightBuffers[aInFlightFrameIndex].LightItems.Count;
  fLightGridPushConstants.Size:=fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ;
+ fLightGridPushConstants.OffsetedViewIndex:=fInFlightFrameStates[aInFlightFrameIndex].FinalViewIndex;
+ fLightGridPushConstants.ClusterSizeX:=fLightGridSizeX;
+ fLightGridPushConstants.ClusterSizeY:=fLightGridSizeY;
+ fLightGridPushConstants.ClusterSizeZ:=fLightGridSizeZ;
+ fLightGridPushConstants.ZScale:=fLightGridSizeZ/ln(fLightGridPushConstants.ZFar/fLightGridPushConstants.ZNear);
+ fLightGridPushConstants.ZBias:=-((fLightGridSizeZ*ln(fLightGridPushConstants.ZNear))/ln(fLightGridPushConstants.ZFar/fLightGridPushConstants.ZNear));
+ fLightGridPushConstants.ZMax:=fLightGridSizeZ;
 
  fLightGridGlobalsVulkanBuffers[aInFlightFrameIndex].UpdateData(fLightGridPushConstants,0,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants));
 
