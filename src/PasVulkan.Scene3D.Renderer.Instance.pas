@@ -265,6 +265,11 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
       public
+       property LightGridSizeX:TpvInt32 read fLightGridSizeX;
+       property LightGridSizeY:TpvInt32 read fLightGridSizeY;
+       property LightGridSizeZ:TpvInt32 read fLightGridSizeZ;
+       property LightGridTileSizeX:TpvInt32 read fLightGridTileSizeX;
+       property LightGridTileSizeY:TpvInt32 read fLightGridTileSizeY;
        property LightInverseProjectionMatricesVulkanBuffers:TVulkanBuffers read fLightInverseProjectionMatricesVulkanBuffers;
        property LightGridClusterAABBVulkanBuffers:TVulkanBuffers read fLightGridClusterAABBVulkanBuffers;
        property LightGridIndexListCounterVulkanBuffers:TVulkanBuffers read fLightGridIndexListCounterVulkanBuffers;
@@ -294,8 +299,8 @@ type { TpvScene3DRendererInstance }
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property ForwardMipmappedArray2DImages:TMipmappedArray2DImages read fForwardMipmappedArray2DImages;
       public
-      property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
-      property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
+       property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
+       property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
