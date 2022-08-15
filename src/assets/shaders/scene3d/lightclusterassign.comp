@@ -72,7 +72,7 @@ void main() {
 
   uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 
-  uint countThreads = int(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
+  uint countThreads = uint(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
   uint countLights = pushConstants.countLightsViewIndexSizeOffsetedViewIndex.x;
   uint countBatches = (countLights + (countThreads - 1u)) / countThreads;
 
