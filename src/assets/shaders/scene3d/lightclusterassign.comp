@@ -24,23 +24,23 @@ struct LightMetaInfo {
   vec4 maxBounds; // xyz = max. pos, w = unused
 };
 
-layout(std430, set = 0, binding = 0) buffer Clusters {
-  AABB clusterAABBs[];
+layout(std430, set = 0, binding = 0) buffer LightGridClusterAABBs {
+  AABB lightGridClusterAABBs[];
 };
 
 layout(std430, set = 0, binding = 1) buffer LightMetaInfos {
   LightMetaInfo lightMetaInfos[];
 };
 
-layout (std430, binding = 2) buffer LightGridIndexList {
+layout (std430, set = 0, binding = 2) buffer LightGridIndexList {
   uint lightGridIndexList[];
 };
 
-layout (std430, binding = 3) buffer LightGridClusters {
+layout (std430, set = 0, binding = 3) buffer LightGridClusters {
   uvec2 lightGridClusters[];
 };
 
-layout (std430, binding = 4) buffer LightGridIndexListCounter {
+layout (std430, set = 0, binding = 4) buffer LightGridIndexListCounter {
   uint lightGridIndexListCounter;
 };
 
@@ -75,8 +75,8 @@ void main() {
     barrier();
     for(uint lightProcessIndex = 0u; lightProcessIndex < countThreads; lightProcessIndex++){
       if(sharedLightMetaInfos[lightProcessIndex].minBounds.w > 0.5){
-        vec3 clusterAABBMin = clusterAABBs[clusterIndex].minBounds.xyz;
-        vec3 clusterAABBMax = clusterAABBs[clusterIndex].maxBounds.xyz;
+        vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minBounds.xyz;
+        vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxBounds.xyz;
         vec3 lightAABBMin = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
         vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
         if ((countVisibleLights < 128u) && 

@@ -23,10 +23,13 @@ struct AABB {
   vec4 maxBounds; 
 };
 
-layout(std430, set = 0, binding = 1) buffer Clusters {
-  AABB clusterAABBs[];
+layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
+  AABB lightGridClusterAABBs[];
 };
 
+layout (std430, set = 0, binding = 2) buffer LightGridIndexListCounter {
+  uint lightGridIndexListCounter;
+};
 /* clang-format on */
 
 vec4 screen2Eye(vec4 coord) {
@@ -68,6 +71,11 @@ void main() {
   vec3 maxNear = (maxEye * clusterNear) / maxEye.z;
   vec3 maxFar = (maxEye * clusterFar) / maxEye.z;
 
-  clusterAABBs[clusterIndex].minBounds = vec4(vec3(min(min(minNear, minFar), min(maxNear, maxFar))), 1.0);
-  clusterAABBs[clusterIndex].maxBounds = vec4(vec3(max(max(minNear, minFar), max(maxNear, maxFar))), 1.0);
+  lightGridClusterAABBs[clusterIndex].minBounds = vec4(vec3(min(min(minNear, minFar), min(maxNear, maxFar))), 1.0);
+  lightGridClusterAABBs[clusterIndex].maxBounds = vec4(vec3(max(max(minNear, minFar), max(maxNear, maxFar))), 1.0);
+
+  if(clusterIndex == 0u){
+    lightGridIndexListCounter = 0u; 
+  }
+
 }
