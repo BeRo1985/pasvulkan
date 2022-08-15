@@ -2000,7 +2000,7 @@ begin
  fLightGridPushConstants.ClusterSizeZ:=fLightGridSizeZ;
  fLightGridPushConstants.ZScale:=fLightGridSizeZ/Log2(fLightGridPushConstants.ZFar/fLightGridPushConstants.ZNear);
  fLightGridPushConstants.ZBias:=-((fLightGridSizeZ*Log2(fLightGridPushConstants.ZNear))/Log2(fLightGridPushConstants.ZFar/fLightGridPushConstants.ZNear));
- fLightGridPushConstants.ZMax:=fLightGridSizeZ;
+ fLightGridPushConstants.ZMax:=fLightGridSizeZ-1;
 
  fLightGridGlobalsVulkanBuffers[aInFlightFrameIndex].UpdateData(fLightGridPushConstants,0,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants));
 
