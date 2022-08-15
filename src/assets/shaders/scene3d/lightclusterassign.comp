@@ -81,21 +81,18 @@ void main() {
 
   for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
-    if (linuxTransferIndex < countLights) {
-      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
-    } else {
-      sharedLightMetaInfos[localInvocationIndex] = LightMetaInfo(vec4(0.0), vec4(0.0));
-    }
+    sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[min(linuxTransferIndex, countLights + 1)];
     barrier();
-    for (uint lightProcessIndex = 0u; lightProcessIndex < countThreads; lightProcessIndex++) {
-      if (sharedLightMetaInfos[lightProcessIndex].minBounds.w > 0.5) {
+    for (uint lightProcessIndex = 0u; (lightProcessIndex < countThreads) && (countVisibleLights < 128u); lightProcessIndex++) {
+      LightMetaInfo lightMetaInfo = sharedLightMetaInfos[lightProcessIndex];
+      if (lightMetaInfo.minBounds.w > 0.5) {
         vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minBounds.xyz;
         vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxBounds.xyz;
-        vec3 lightAABBMin = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
-        vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].maxBounds.xyz;
-        if ((countVisibleLights < 128u) && (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))) {
-          visibleLightIndices[countVisibleLights] = (batchIndex * countThreads) + lightProcessIndex;
-          countVisibleLights++;          
+        vec3 lightAABBMin = lightMetaInfo.minBounds.xyz;
+        vec3 lightAABBMax = lightMetaInfo.maxBounds.xyz;
+        if (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax))) {
+          visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+          countVisibleLights++;     
         }
       }
     }
@@ -105,7 +102,7 @@ void main() {
 
   uint offset = atomicAdd(lightGridIndexListCounter, countVisibleLights);
 
-  for (uint lightIndex = 0u; lightIndex < countVisibleLights; countVisibleLights++) {
+  for (uint lightIndex = 0u; lightIndex < countVisibleLights; lightIndex++) {
     lightGridIndexList[offset + lightIndex] = visibleLightIndices[lightIndex];
   }
 

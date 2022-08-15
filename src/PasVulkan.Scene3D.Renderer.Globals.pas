@@ -118,7 +118,7 @@ implementation
 uses PasVulkan.Scene3D.Assets;
 
 initialization
- pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(@PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersData[0],PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersDataSize,'scene3dshaders.zip');
+ pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(@PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersData[0],PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersDataSize,'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip');
 finalization
  FreeAndNil(pvScene3DShaderVirtualFileSystem);
 end.
