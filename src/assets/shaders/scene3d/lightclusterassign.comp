@@ -94,7 +94,8 @@ void main() {
         vec3 lightAABBMin = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
         vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].maxBounds.xyz;
         if ((countVisibleLights < 128u) && (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))) {
-          visibleLightIndices[countVisibleLights++] = (batchIndex * countThreads) + lightProcessIndex;
+          visibleLightIndices[countVisibleLights] = (batchIndex * countThreads) + lightProcessIndex;
+          countVisibleLights++;          
         }
       }
     }
