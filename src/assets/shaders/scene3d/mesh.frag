@@ -1561,9 +1561,9 @@ void main() {
 #ifdef LIGHTCLUSTERS
       // Light cluster grid
       uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uLightGlobals.tileSizeZNearZFar.xy), 
-                               uint(clamp(fma(log(inViewSpacePosition.z), uLightGlobals.scaleBiasMax.x, uLightGlobals.scaleBiasMax.y), 0.0, uLightGlobals.scaleBiasMax.z)));
+                               uint(clamp(fma(log2(-inViewSpacePosition.z), uLightGlobals.scaleBiasMax.x, uLightGlobals.scaleBiasMax.y), 0.0, uLightGlobals.scaleBiasMax.z)));
       uint clusterIndex = min((((clusterXYZ.z * uLightGlobals.clusterSize.y) + clusterXYZ.y) * uLightGlobals.clusterSize.x) + clusterXYZ.x, uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
-                               (uint(gl_ViewIndex) * uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
+                               (uint(gl_ViewIndex + uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
       uvec2 clusterData = lightGridClusters[clusterIndex];
       for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
         {
