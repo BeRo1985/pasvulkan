@@ -104,6 +104,21 @@ type { TpvScene3DRendererInstance }
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
             PInFlightFrameStates=^TInFlightFrameStates;
+            TLightGridPushConstants=packed record
+             public
+              TileSizeX:TpvUInt32;
+              TileSizeY:TpvUInt32;
+              ZNear:TpvFloat;
+              ZFar:TpvFloat;
+              ////
+              ViewRect:TpvVector4;
+              ////
+              CountLights:TpvUInt32;
+              ViewIndex:TpvUInt32;
+              Size:TpvUInt32;
+              Dummy:TpvUInt32;
+            end;
+            PLightGridPushConstants=^TLightGridPushConstants;
             { TCascadedShadowMap }
             TCascadedShadowMap=record
              public
@@ -169,6 +184,11 @@ type { TpvScene3DRendererInstance }
        fTop:TpvInt32;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fLightGridSizeX:TpvInt32;
+       fLightGridSizeY:TpvInt32;
+       fLightGridSizeZ:TpvInt32;
+       fLightGridTileSizeX:TpvInt32;
+       fLightGridTileSizeY:TpvInt32;
        fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
@@ -180,6 +200,12 @@ type { TpvScene3DRendererInstance }
        fViews:TpvScene3D.TViews;
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+      private
+       fLightInverseProjectionMatricesVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLightGridClusterAABBVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLightGridIndexListCounterVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLightGridIndexListVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLightGridClustersVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
@@ -384,6 +410,10 @@ begin
  fExternalImageFormat:=aExternalImageFormat;
 
  fVirtualReality:=aVirtualReality;
+
+ fLightGridSizeX:=16;
+ fLightGridSizeY:=16;
+ fLightGridSizeZ:=16;
 
  if assigned(fVirtualReality) then begin
 
@@ -1161,6 +1191,82 @@ begin
     UniversalFence:=TpvVulkanFence.Create(Renderer.VulkanDevice);
     try
 
+     fLightGridTileSizeX:=(fWidth+(fLightGridSizeX-1)) div fLightGridSizeX;
+     fLightGridTileSizeY:=(fHeight+(fLightGridSizeY-1)) div fLightGridSizeY;
+
+     for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+      fLightInverseProjectionMatricesVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                               256*SizeOf(TpvMatrix4x4),
+                                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                               [],
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               []);
+       fLightGridClusterAABBVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                      fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ*SizeOf(TpvVector4)*fCountSurfaceViews,
+                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                      [],
+                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                      0,
+                                                                                      0,
+                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      []);
+       fLightGridIndexListCounterVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                           SizeOf(TpvUInt32),
+                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                           [],
+                                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                           0,
+                                                                                           0,
+                                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                           0,
+                                                                                           0,
+                                                                                           0,
+                                                                                           0,
+                                                                                           []);
+       fLightGridIndexListVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                    fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ*SizeOf(TpvUInt32)*128*fCountSurfaceViews,
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                    [],
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    []);
+       fLightGridClustersVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                   fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ*SizeOf(TpvUInt32)*2*fCountSurfaceViews,
+                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                   [],
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   []);
+     end;
+
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
       fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       fForwardMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -1329,6 +1435,14 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fDepthMipmappedArray2DImages[InFlightFrameIndex]);
   FreeAndNil(fForwardMipmappedArray2DImages[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fLightInverseProjectionMatricesVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLightGridClusterAABBVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLightGridIndexListCounterVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLightGridIndexListVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLightGridClustersVulkanBuffers[InFlightFrameIndex]);
  end;
 
  case Renderer.TransparencyMode of
