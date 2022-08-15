@@ -271,6 +271,7 @@ begin
  LightGridPushConstants.TileSizeY:=fInstance.LightGridTileSizeY;
  LightGridPushConstants.ZNear:=0.01;
  LightGridPushConstants.ZFar:=4096.0;
+ LightGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fInstance.Width,fInstance.Height);
  LightGridPushConstants.CountLights:=fInstance.Renderer.Scene3D.LightBuffers[InFlightFrameIndex].LightItems.Count;
  LightGridPushConstants.Size:=fInstance.LightGridSizeX*fInstance.LightGridSizeY*fInstance.LightGridSizeZ;
 
