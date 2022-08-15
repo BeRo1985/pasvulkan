@@ -1579,7 +1579,9 @@ begin
   for Index:=0 to fViews.Count-1 do begin
    ViewMatrix:=fViews.Items[Index].ViewMatrix.SimpleInverse;
    if SceneWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
-    if not SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
+    if SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
+     Value:=Value*2.0;
+    end else begin
      Value:=SceneWorldSpaceSphere.Radius;
     end;
    end else begin
