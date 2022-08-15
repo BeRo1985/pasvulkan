@@ -13532,8 +13532,8 @@ procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAA
    LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
    LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
    LightMetaInfo:=@aLightMetaInfoArray[aLight.fLightItemIndex];
-   LightMetaInfo^.MinBounds:=TpvVector4.Create(aLight.fBoundingBox.Min,1.0);
-   LightMetaInfo^.MaxBounds:=TpvVector4.Create(aLight.fBoundingBox.Max,0.0);
+   LightMetaInfo^.MinBounds:=TpvVector4.Create(aLight.fBoundingBox.Min,TpvUInt32(aLight.fDataPointer^.Type_));
+   LightMetaInfo^.MaxBounds:=TpvVector4.Create(aLight.fBoundingBox.Max,aLight.fBoundingBox.Radius);
   end else begin
    aLight.fLightItemIndex:=-1;
   end;

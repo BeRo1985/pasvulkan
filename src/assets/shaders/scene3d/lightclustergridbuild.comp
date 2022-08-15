@@ -26,8 +26,10 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
 } uView;
 
 struct AABB {
-  vec4 minBounds;
-  vec4 maxBounds; 
+  vec4 minViewSpaceBounds;
+  vec4 maxViewSpaceBounds; 
+  vec4 minWorldSpaceBounds;
+  vec4 maxWorldSpaceBounds;
 };
 
 layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
@@ -97,20 +99,20 @@ void main() {
   vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxEye, clusterFar); 
 #endif
 
-  vec3 aabbMin = min(min(minNear, minFar), min(maxNear, maxFar));
-  vec3 aabbMax = max(max(minNear, minFar), max(maxNear, maxFar));
+  vec3 aabbViewSpaceMin = min(min(minNear, minFar), min(maxNear, maxFar));
+  vec3 aabbViewSpaceMax = max(max(minNear, minFar), max(maxNear, maxFar));
   
-  mat4 m = view.inverseViewMatrix;
+  mat4 viewSpaceToWorldSpaceMatrix = view.inverseViewMatrix;
 
   vec4 aabbCorners[8] = {
-    m * vec4(aabbMin.x, aabbMin.y, aabbMin.z, 1.0),  //
-    m * vec4(aabbMin.x, aabbMin.y, aabbMax.z, 1.0),  //
-    m * vec4(aabbMin.x, aabbMax.y, aabbMin.z, 1.0),  //
-    m * vec4(aabbMin.x, aabbMax.y, aabbMax.z, 1.0),  //
-    m * vec4(aabbMax.x, aabbMin.y, aabbMin.z, 1.0),  //
-    m * vec4(aabbMax.x, aabbMin.y, aabbMax.z, 1.0),  //
-    m * vec4(aabbMax.x, aabbMax.y, aabbMin.z, 1.0),  //
-    m * vec4(aabbMax.x, aabbMax.y, aabbMax.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0),  //
+    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0),  //
   };
   aabbCorners[0] /= aabbCorners[0].w;
   aabbCorners[1] /= aabbCorners[1].w;
@@ -120,15 +122,17 @@ void main() {
   aabbCorners[5] /= aabbCorners[5].w;
   aabbCorners[6] /= aabbCorners[6].w;
   aabbCorners[7] /= aabbCorners[7].w;
-  aabbMin = min(min(min(min(min(min(min(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
-  aabbMax = max(max(max(max(max(max(max(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
+  vec3 aabbWorldSpaceMin = min(min(min(min(min(min(min(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
+  vec3 aabbWorldSpaceMax = max(max(max(max(max(max(max(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
 
-  vec3 center = (aabbMin + aabbMax) * 0.5;
-  vec3 extents = (aabbMax - aabbMin) * 0.5;
+  vec3 center = (aabbViewSpaceMin + aabbViewSpaceMax) * 0.5;
+  vec3 extents = (aabbViewSpaceMax - aabbViewSpaceMin) * 0.5;
   float radius = length(extents);
 
-  lightGridClusterAABBs[clusterIndex].minBounds = vec4(aabbMin, 1.0);
-  lightGridClusterAABBs[clusterIndex].maxBounds = vec4(aabbMax, radius);
+  lightGridClusterAABBs[clusterIndex].minViewSpaceBounds = vec4(aabbViewSpaceMin, center.x);
+  lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds = vec4(aabbViewSpaceMin, center.y);
+  lightGridClusterAABBs[clusterIndex].minWorldSpaceBounds = vec4(aabbWorldSpaceMin, center.z);
+  lightGridClusterAABBs[clusterIndex].maxWorldSpaceBounds = vec4(aabbWorldSpaceMax, radius);
 
   if(clusterIndex == 0u){
     lightGridIndexListCounter = 0u; 
