@@ -81,7 +81,12 @@ void main() {
 
   for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
-    sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[min(linuxTransferIndex, countLights + 1)];
+    if(linuxTransferIndex < countLights){
+      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
+    }else{ 
+      sharedLightMetaInfos[localInvocationIndex].minBounds = vec4(0.0);
+      sharedLightMetaInfos[localInvocationIndex].maxBounds = vec4(0.0);
+    }
     barrier();
     for (uint lightProcessIndex = 0u; (lightProcessIndex < countThreads) && (countVisibleLights < 128u); lightProcessIndex++) {
       LightMetaInfo lightMetaInfo = sharedLightMetaInfos[lightProcessIndex];
