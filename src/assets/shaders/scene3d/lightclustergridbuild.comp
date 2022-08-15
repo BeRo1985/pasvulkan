@@ -11,12 +11,19 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 layout(push_constant, std140, row_major) uniform PushConstants {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
-  uvec4 countLightsViewIndexSize;
+  uvec4 countLightsViewIndexSize;  
 } pushConstants;
 
-layout(std140, set = 0, binding = 0) buffer InverseProjectionMatrices {
-  mat4 inverseProjectionMatrices[];
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
+
+layout(std140, set = 0, binding = 0) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
 
 struct AABB {
   vec4 minBounds;
@@ -32,14 +39,21 @@ layout (std430, set = 0, binding = 2) buffer LightGridIndexListCounter {
 };
 /* clang-format on */
 
+mat4 invMat;
+
 vec4 screen2Eye(vec4 coord) {
   vec2 ndc = fma((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, vec2(2.0), vec2(-1.0));
-  vec4 eye = inverseProjectionMatrices[pushConstants.countLightsViewIndexSize.y] * vec4(ndc, coord.z, 1.0);
+  vec4 eye = invMat * vec4(ndc, coord.z, 1.0);
   return eye / eye.w;
 }
 
 void main() {
   //
+
+  View view = uView.views[pushConstants.countLightsViewIndexSize.y];
+
+  invMat = view.inverseProjectionMatrix;
+
   const float infinity = uintBitsToFloat(0x7f800000u);
 
   uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz; 

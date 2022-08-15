@@ -24,23 +24,34 @@ struct LightMetaInfo {
   vec4 maxBounds; // xyz = max. pos, w = unused
 };
 
-layout(std430, set = 0, binding = 0) buffer LightGridClusterAABBs {
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(std140, set = 0, binding = 0) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
   AABB lightGridClusterAABBs[];
 };
 
-layout(std430, set = 0, binding = 1) buffer LightMetaInfos {
+layout(std430, set = 0, binding = 2) buffer LightMetaInfos {
   LightMetaInfo lightMetaInfos[];
 };
 
-layout (std430, set = 0, binding = 2) buffer LightGridIndexList {
+layout (std430, set = 0, binding = 3) buffer LightGridIndexList {
   uint lightGridIndexList[];
 };
 
-layout (std430, set = 0, binding = 3) buffer LightGridClusters {
+layout (std430, set = 0, binding = 4) buffer LightGridClusters {
   uvec2 lightGridClusters[];
 };
 
-layout (std430, set = 0, binding = 4) buffer LightGridIndexListCounter {
+layout (std430, set = 0, binding = 5) buffer LightGridIndexListCounter {
   uint lightGridIndexListCounter;
 };
 
@@ -49,13 +60,16 @@ layout (std430, set = 0, binding = 4) buffer LightGridIndexListCounter {
 shared LightMetaInfo sharedLightMetaInfos[8 * 8 * 8];
 
 void main() {
-  
+  //
+
+  View view = uView.views[pushConstants.countLightsViewIndexSize.y];
+
   uint localInvocationIndex = uint(gl_LocalInvocationIndex);
 
-  uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz; 
-  uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
+  uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz);  //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz;
+  uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz);
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
- 
+
   uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSize.y * pushConstants.countLightsViewIndexSize.z);
 
   uint countThreads = int(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
@@ -64,26 +78,49 @@ void main() {
 
   uint countVisibleLights = 0u;
   uint visibleLightIndices[128];
-  
-  for(uint batchIndex = 0; batchIndex < countBatches; batchIndex++){
+
+  mat4 mvp = view.inverseViewMatrix;
+
+  for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
-    if(linuxTransferIndex < countLights){
-      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
-    }else{
+    if (linuxTransferIndex < countLights) {
+      LightMetaInfo lightMetaInfo = lightMetaInfos[linuxTransferIndex];
+      vec4 corners[8] = {
+          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.maxBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.minBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.maxBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
+          mvp * vec4(lightMetaInfo.minBounds.x, lightMetaInfo.minBounds.y, lightMetaInfo.maxBounds.z, 1.0),  //
+      };
+      corners[0] /= corners[0].w;
+      corners[1] /= corners[1].w;
+      corners[2] /= corners[2].w;
+      corners[3] /= corners[3].w;
+      corners[4] /= corners[4].w;
+      corners[5] /= corners[5].w;
+      corners[6] /= corners[6].w;
+      corners[7] /= corners[7].w;
+      sharedLightMetaInfos[localInvocationIndex] = LightMetaInfo(                                                                                                                  //
+          vec4(min(min(min(min(min(min(min(corners[0], corners[1]), corners[2]), corners[3]), corners[4]), corners[5]), corners[6]), corners[7]).xyz, lightMetaInfo.minBounds.w),  //
+          vec4(max(max(max(max(max(max(max(corners[0], corners[1]), corners[2]), corners[3]), corners[4]), corners[5]), corners[6]), corners[7]).xyz, lightMetaInfo.maxBounds.w)   //
+      );
+    } else {
       sharedLightMetaInfos[localInvocationIndex] = LightMetaInfo(vec4(0.0), vec4(0.0));
-    } 
+    }
     barrier();
-    for(uint lightProcessIndex = 0u; lightProcessIndex < countThreads; lightProcessIndex++){
-      if(sharedLightMetaInfos[lightProcessIndex].minBounds.w > 0.5){
+    for (uint lightProcessIndex = 0u; lightProcessIndex < countThreads; lightProcessIndex++) {
+      if (sharedLightMetaInfos[lightProcessIndex].minBounds.w > 0.5) {
         vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minBounds.xyz;
         vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxBounds.xyz;
         vec3 lightAABBMin = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
         vec3 lightAABBMax = sharedLightMetaInfos[localInvocationIndex].minBounds.xyz;
-        if ((countVisibleLights < 128u) && 
-            (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))){          
+        if ((countVisibleLights < 128u) && (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))) {
           visibleLightIndices[countVisibleLights++] = (batchIndex * countThreads) + lightProcessIndex;
         }
-      } 
+      }
     }
   }
 
@@ -91,10 +128,9 @@ void main() {
 
   uint offset = atomicAdd(lightGridIndexListCounter, countVisibleLights);
 
-  for(uint lightIndex = 0u; lightIndex < countVisibleLights; countVisibleLights++){
+  for (uint lightIndex = 0u; lightIndex < countVisibleLights; countVisibleLights++) {
     lightGridIndexList[offset + lightIndex] = visibleLightIndices[lightIndex];
   }
 
   lightGridClusters[clusterIndex] = uvec2(offset, countVisibleLights);
-
 }

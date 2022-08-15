@@ -866,6 +866,7 @@ type EpvScene3D=class(Exception);
               procedure Update;
              public
               property LightItems:TLightItems read fLightItems;
+              property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
             end;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
             { TLight }
