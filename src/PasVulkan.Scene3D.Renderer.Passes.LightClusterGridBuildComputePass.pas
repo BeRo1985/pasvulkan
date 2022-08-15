@@ -296,9 +296,9 @@ begin
                                   SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
                                   @LightGridPushConstants);
 
- aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
-                            (fInstance.LightGridSizeY+7) shr 3,
-                            (fInstance.LightGridSizeZ+7) shr 3);
+  aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
+                             (fInstance.LightGridSizeY+7) shr 3,
+                             (fInstance.LightGridSizeZ+7) shr 3);
 
  end;
 
