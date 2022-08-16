@@ -5,7 +5,7 @@
   {$define fpcandroid}
  {$endif}
 {$endif}
-{$ifdef fpcandroid}library{$else}program{$endif} gltftest;
+{$ifdef fpcandroid}library{$else}program{$endif} gltfviewer;
 {$ifdef fpc}
  {$mode delphi}
 {$else}

@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{0510a7d8-14e5-4538-91c7-c8eba50f88a9}</ProjectGuid>
-        <MainSource>gltftest.dpr</MainSource>
+        <MainSource>gltfviewer.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
         <TargetedPlatforms>3</TargetedPlatforms>
@@ -74,7 +74,7 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_N>true</DCC_N>
-        <SanitizedProjectName>gltftest</SanitizedProjectName>
+        <SanitizedProjectName>gltfviewer</SanitizedProjectName>
         <VerInfo_Locale>1031</VerInfo_Locale>
         <DCC_E>false</DCC_E>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
@@ -192,7 +192,7 @@
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>DEBUG;NoVSync;DirectDebugGUI;$(DCC_Define)</DCC_Define>
         <DCC_Optimize>false</DCC_Optimize>
-        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+        <DCC_GeneraviewerackFrames>true</DCC_GeneraviewerackFrames>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_iOSDevice64)'!=''">
         <BT_BuildType>Debug</BT_BuildType>
@@ -233,7 +233,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">gltftest.dpr</Source>
+                    <Source Name="MainSource">gltfviewer.dpr</Source>
                 </Source>
                 <Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\bcboffice2k250.bpl">Embarcadero C++Builder Office 2000 Servers Package</Excluded_Packages>
@@ -272,9 +272,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="DelphiOutput\Win32\Debug\gltftest.exe" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="DelphiOutput\Win32\Debug\gltfviewer.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
-                        <RemoteName>gltftest.exe</RemoteName>
+                        <RemoteName>gltfviewer.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

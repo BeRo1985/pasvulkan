@@ -10,7 +10,7 @@
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="gltftest"/>
+      <Title Value="gltfviewer"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -37,7 +37,7 @@
     </RunParams>
     <Units Count="1">
       <Unit0>
-        <Filename Value="gltftest.dpr"/>
+        <Filename Value="gltfviewer.dpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
     </Units>
@@ -46,7 +46,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value=".\..\bin\gltftest"/>
+      <Filename Value=".\..\bin\gltfviewer"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);.;..\..\..\src"/>
