@@ -14212,8 +14212,6 @@ begin
 
    fExclusiveFullScreen:=SurfaceCapabilitiesFullScreenExclusiveEXT.fullScreenExclusiveSupported<>VK_FALSE;
 
-   writeln(fExclusiveFullScreen);
-
   end else{$endif}begin
 
    SurfaceCapabilities:=fDevice.fPhysicalDevice.GetSurfaceCapabilities(fSurface);
