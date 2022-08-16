@@ -99,6 +99,8 @@ type { TpvScene3DRendererInstance }
              CountCascadedShadowMapViews:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
+             ZNear:TpvFloat;
+             ZFar:TpvFloat;
              Jitter:TpvVector4;
             end;
             PInFlightFrameState=^TInFlightFrameState;
@@ -1615,6 +1617,9 @@ begin
   DoNeedRefitNearFarPlanes:=fZFar<0.0;
  end;
 
+ InFlightFrameState^.ZNear:=Min(RealZNear,1e-4);
+ InFlightFrameState^.ZFar:=RealZFar;
+
  CascadedShadowMapSplitLambda:=0.5;
 
  CascadedShadowMapSplitOverlap:=0.1;
@@ -1989,8 +1994,8 @@ begin
  FillChar(fLightGridPushConstants,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),#0);
  fLightGridPushConstants.TileSizeX:=fLightGridTileSizeX;
  fLightGridPushConstants.TileSizeY:=fLightGridTileSizeY;
- fLightGridPushConstants.ZNear:=0.01;
- fLightGridPushConstants.ZFar:=4096.0;
+ fLightGridPushConstants.ZNear:=InFlightFrameStates[aInFlightFrameIndex].ZNear;
+ fLightGridPushConstants.ZFar:=InFlightFrameStates[aInFlightFrameIndex].ZFar;
  fLightGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fWidth,fHeight);
  fLightGridPushConstants.CountLights:=Renderer.Scene3D.LightBuffers[aInFlightFrameIndex].LightItems.Count;
  fLightGridPushConstants.Size:=fLightGridSizeX*fLightGridSizeY*fLightGridSizeZ;
