@@ -108,6 +108,26 @@ void main() {
             countVisibleLights++;     
             break;
           }      
+#if 1
+          case 2:
+          case 3:{
+            // Check in view space
+            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
+            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds.xyz;
+            // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
+            // without scaling the radius in the worst case
+            vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
+            vec4 lightAABBMax = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.maxBounds.xyz, 1.0);
+            lightAABBMin /= lightAABBMin.w;
+            lightAABBMax /= lightAABBMax.w;
+            vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
+            if(distance(clamp(lightSphere.xyz, clusterAABBMin, clusterAABBMax), lightSphere.xyz) <= lightSphere.w){
+              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              countVisibleLights++;     
+            }
+            break;
+          }
+#else
           case 2:{
             // Point light => check in view space
             vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
@@ -137,6 +157,7 @@ void main() {
             }
             break;
           }
+#endif
           default:{
             break;
           }
