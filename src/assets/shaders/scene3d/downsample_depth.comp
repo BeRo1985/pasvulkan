@@ -61,7 +61,7 @@ float linearizeDepth(float z) {
 #else
   vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
 #endif
-  return v.x / v.y;
+  return -(v.x / v.y);
 }
 
 #endif
@@ -111,25 +111,17 @@ void main() {
           }
       #endif
         depth = maxDepth;
-        uint minDepthUI = floatBitsToUint(linearizeDepth(minDepth));
-        uint maxDepthUI = floatBitsToUint(linearizeDepth(maxDepth));
-#ifdef REVERSEDZ
-        atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
-#else
+        float minDepthLinear = linearizeDepth(minDepth);
+        float maxDepthLinear = linearizeDepth(maxDepth);
+        uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
+        uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
         atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
         atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
-#endif
     #else
         depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
         uint depthUI = floatBitsToUint(linearizeDepth(depth));
-#ifdef REVERSEDZ
-        atomicMax(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
-#else
         atomicMin(nearestFarthestDepthBuffer.x, depthUI);
         atomicMax(nearestFarthestDepthBuffer.y, depthUI);
-#endif
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
@@ -183,25 +175,17 @@ void main() {
           }
       #endif
         depth = maxDepth;
-        uint minDepthUI = floatBitsToUint(linearizeDepth(minDepth));
-        uint maxDepthUI = floatBitsToUint(linearizeDepth(maxDepth));
-#ifdef REVERSEDZ
-        atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
-#else
+        float minDepthLinear = linearizeDepth(minDepth);
+        float maxDepthLinear = linearizeDepth(maxDepth);
+        uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
+        uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
         atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
         atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
-#endif
     #else
         depth = texelFetch(uSourceTexture, xy, 0).x;
         uint depthUI = floatBitsToUint(linearizeDepth(depth));
-#ifdef REVERSEDZ
-        atomicMax(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
-#else
         atomicMin(nearestFarthestDepthBuffer.x, depthUI);
         atomicMax(nearestFarthestDepthBuffer.y, depthUI);
-#endif
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);
