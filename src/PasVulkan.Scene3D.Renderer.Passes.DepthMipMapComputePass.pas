@@ -78,6 +78,11 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesDepthMipMapComputePass }
      TpvScene3DRendererPassesDepthMipMapComputePass=class(TpvFrameGraph.TComputePass)
+      public
+       type TPushConstants=packed record
+             CountSamples:TpvUInt32;
+             BaseViewIndex:TpvUInt32;
+            end;
       private
        fInstance:TpvScene3DRendererInstance;
        fFarthest:boolean;
@@ -247,6 +252,7 @@ begin
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*fInstance.DepthMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*fInstance.DepthMipmappedArray2DImages[0].MipMapLevels);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -265,10 +271,15 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
+ fVulkanDescriptorSetLayout.AddBinding(3,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvUInt32));
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererPassesDepthMipMapComputePass.TPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -357,6 +368,15 @@ begin
                                                                                    [],
                                                                                    false
                                                                                   );
+   fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(3,
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                                   [],
+                                                                                   [fInstance.Renderer.Scene3D.GlobalVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                   [],
+                                                                                   false
+                                                                                  );
    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].Flush;
   end;
  end;
@@ -393,6 +413,7 @@ var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     CountSamples:TpvUInt32;
     NearestFarthestDepthVulkanBuffer:TpvVulkanBuffer;
+    PushConstants:TpvScene3DRendererPassesDepthMipMapComputePass.TPushConstants;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -459,13 +480,14 @@ begin
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
   end;
 
-  CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
+  PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
+  PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[InFlightFrameIndex].FinalViewIndex;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
-                                  SizeOf(TpvUInt32),
-                                  @CountSamples);
+                                  SizeOf(TpvScene3DRendererPassesDepthMipMapComputePass.TPushConstants),
+                                  @PushConstants);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                        fPipelineLayout.Handle,

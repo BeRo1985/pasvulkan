@@ -34,12 +34,36 @@ layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture
 
 layout(push_constant) uniform PushConstants {
   uint countSamples;
+  uint baseViewIndex;
 } pushConstants;
 
 #if MIPMAPLEVEL == 0
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
 layout(std430, set = 0, binding = 2) volatile buffer NearestFarthestDepthBuffer {
   uvec4 nearestFarthestDepthBuffer;
 };
+
+layout(std140, set = 0, binding = 3) uniform uboViews {
+  View views[256];
+} uView;
+
+mat4 inverseProjectionMatrix;
+
+float linearizeDepth(float z) {
+#if 0
+  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
+
 #endif
 
 /* clang-format on */
@@ -67,6 +91,7 @@ void main() {
     ivec3 sourceSizeMask = sourceSize - ivec3(1);
     float depth;
   #if MIPMAPLEVEL == 0
+    inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + uint(viewIndex)].inverseProjectionMatrix;
     #ifdef MSAA       
       #ifdef REVERSEDZ
           float minDepth = 0.0;
@@ -86,8 +111,8 @@ void main() {
           }
       #endif
         depth = maxDepth;
-        uint minDepthUI = floatBitsToUint(minDepth);
-        uint maxDepthUI = floatBitsToUint(maxDepth);
+        uint minDepthUI = floatBitsToUint(linearizeDepth(minDepth));
+        uint maxDepthUI = floatBitsToUint(linearizeDepth(maxDepth));
 #ifdef REVERSEDZ
         atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
         atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
@@ -97,7 +122,7 @@ void main() {
 #endif
     #else
         depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
-        uint depthUI = floatBitsToUint(depth);
+        uint depthUI = floatBitsToUint(linearizeDepth(depth));
 #ifdef REVERSEDZ
         atomicMax(nearestFarthestDepthBuffer.x, depthUI);
         atomicMin(nearestFarthestDepthBuffer.y, depthUI);
@@ -138,6 +163,7 @@ void main() {
     ivec2 sourceSizeMask = sourceSize - ivec2(1);
     float depth;
   #if MIPMAPLEVEL == 0
+    inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex].inverseProjectionMatrix;
     #ifdef MSAA
       #ifdef REVERSEDZ
           float minDepth = 0.0;
@@ -157,8 +183,8 @@ void main() {
           }
       #endif
         depth = maxDepth;
-        uint minDepthUI = floatBitsToUint(minDepth);
-        uint maxDepthUI = floatBitsToUint(maxDepth);
+        uint minDepthUI = floatBitsToUint(linearizeDepth(minDepth));
+        uint maxDepthUI = floatBitsToUint(linearizeDepth(maxDepth));
 #ifdef REVERSEDZ
         atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
         atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
@@ -168,7 +194,7 @@ void main() {
 #endif
     #else
         depth = texelFetch(uSourceTexture, xy, 0).x;
-        uint depthUI = floatBitsToUint(depth);
+        uint depthUI = floatBitsToUint(linearizeDepth(depth));
 #ifdef REVERSEDZ
         atomicMax(nearestFarthestDepthBuffer.x, depthUI);
         atomicMin(nearestFarthestDepthBuffer.y, depthUI);
