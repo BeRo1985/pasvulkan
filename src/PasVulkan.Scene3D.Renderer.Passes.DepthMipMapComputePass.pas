@@ -403,12 +403,12 @@ begin
 
 // fInstance.NearestFarthestDepthVulkanBuffers[InFlightFrameIndex].
 
- if fInstance.ZFar<0 then begin
-  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32),TVkUInt32($00000000));
-  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*1,SizeOf(TVkUInt32),TVkUInt32($ffffffff));
- end else begin
+ if fInstance.ZFar<0.0 then begin
   aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32),TVkUInt32($ffffffff));
   aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*1,SizeOf(TVkUInt32),TVkUInt32($00000000));
+ end else begin
+  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32),TVkUInt32($00000000));
+  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*1,SizeOf(TVkUInt32),TVkUInt32($ffffffff));
  end;
 
  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
