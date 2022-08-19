@@ -93,7 +93,7 @@ layout(location = 13) flat in vec2 inJitter;
 #endif
 
 // Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
-// when the validation layers are active!
+// when the validation layers and a debugger (GDB, LLDB, etc.) are active at the same time!
 #undef USE_SPECIALIZATION_CONSTANTS
 #ifdef USE_SPECIALIZATION_CONSTANTS
 layout (constant_id = 0) const bool UseReversedZ = true;

@@ -4022,7 +4022,9 @@ begin
  end;
 
  for Subpass in fSubpasses do begin
+//write('Compiling render pass ', Subpass.fRenderPass.Name,' . . .');
   Subpass.AcquireVolatileResources;
+//writeln(' OK!');
  end;
 
 end;
