@@ -859,38 +859,33 @@ begin
       end;
      end;
 
-     Stream:=pvApplication.Assets.GetAssetStream('textures/sheenelut.png');
-     try
-      fSheenELUT:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
-                                                    UniversalQueue,
-                                                    UniversalCommandBuffer,
-                                                    UniversalFence,
-                                                    UniversalQueue,
-                                                    UniversalCommandBuffer,
-                                                    UniversalFence,
-                                                    VK_FORMAT_R8_UNORM,
-                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                    PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTWidth,
-                                                    PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTHeight,
-                                                    0,
-                                                    0,
-                                                    1,
-                                                    0,
-                                                    [TpvVulkanTextureUsageFlag.General,
-                                                     TpvVulkanTextureUsageFlag.TransferDst,
-                                                     TpvVulkanTextureUsageFlag.TransferSrc,
-                                                     TpvVulkanTextureUsageFlag.Sampled],
-                                                    @PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTDataBytes[0],
-                                                    SizeOf(PasVulkan.Scene3D.Renderer.SheenELUTData.TSheenELUTData),
-                                                    false,
-                                                    false,
-                                                    0,
-                                                    true,
-                                                    false);
-      fSheenELUT.UpdateSampler;
-     finally
-      FreeAndNil(Stream);
-     end;
+     fSheenELUT:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                   UniversalQueue,
+                                                   UniversalCommandBuffer,
+                                                   UniversalFence,
+                                                   UniversalQueue,
+                                                   UniversalCommandBuffer,
+                                                   UniversalFence,
+                                                   VK_FORMAT_R8_UNORM,
+                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                   PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTWidth,
+                                                   PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTHeight,
+                                                   0,
+                                                   0,
+                                                   1,
+                                                   0,
+                                                   [TpvVulkanTextureUsageFlag.General,
+                                                    TpvVulkanTextureUsageFlag.TransferDst,
+                                                    TpvVulkanTextureUsageFlag.TransferSrc,
+                                                    TpvVulkanTextureUsageFlag.Sampled],
+                                                   @PasVulkan.Scene3D.Renderer.SheenELUTData.SheenELUTDataBytes[0],
+                                                   SizeOf(PasVulkan.Scene3D.Renderer.SheenELUTData.TSheenELUTData),
+                                                   false,
+                                                   false,
+                                                   0,
+                                                   true,
+                                                   false);
+     fSheenELUT.UpdateSampler;
 
     finally
      FreeAndNil(UniversalFence);
