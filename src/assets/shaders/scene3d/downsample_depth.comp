@@ -140,18 +140,42 @@ void main() {
   #if MIPMAPLEVEL == 0
     #ifdef MSAA
       #ifdef REVERSEDZ
-          depth = 1.0;
+          float minDepth = 0.0;
+          float maxDepth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = min(depth, texelFetch(uSourceTexture, xy, i).x);
+            float sampleDepth = texelFetch(uSourceTexture, xy, i).x;
+            minDepth = max(minDepth, sampleDepth);
+            maxDepth = min(maxDepth, sampleDepth);
           }
       #else
-          depth = 0.0;
+          float minDepth = 1.0;
+          float maxDepth = 0.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, texelFetch(uSourceTexture, xy, i).x);
+            float sampleDepth = texelFetch(uSourceTexture, xy, i).x;
+            minDepth = min(minDepth, sampleDepth);
+            maxDepth = max(maxDepth, sampleDepth);
           }
       #endif
+        depth = maxDepth;
+        uint minDepthUI = floatBitsToUint(minDepth);
+        uint maxDepthUI = floatBitsToUint(maxDepth);
+#ifdef REVERSEDZ
+        atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
+        atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
+#else
+        atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
+#endif
     #else
         depth = texelFetch(uSourceTexture, xy, 0).x;
+        uint depthUI = floatBitsToUint(depth);
+#ifdef REVERSEDZ
+        atomicMax(nearestFarthestDepthBuffer.x, depthUI);
+        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+#else
+        atomicMin(nearestFarthestDepthBuffer.x, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.y, depthUI);
+#endif
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);
