@@ -502,11 +502,23 @@ begin
                                      0,nil,
                                      1,@ImageMemoryBarrier);
   end else begin
+
+   FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
+   BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+   BufferMemoryBarrier.pNext:=nil;
+   BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarrier.buffer:=NearestFarthestDepthVulkanBuffer.Handle;
+   BufferMemoryBarrier.offset:=0;
+   BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
+
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                      0,
                                      0,nil,
-                                     0,nil,
+                                     1,@BufferMemoryBarrier,
                                      1,@ImageMemoryBarrier);
   end;
 
