@@ -80,6 +80,7 @@ type { TpvScene3DRendererPassesDepthMipMapComputePass }
      TpvScene3DRendererPassesDepthMipMapComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
+       fFarthest:boolean;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fDownsampleLevel0ComputeShaderModule:TpvVulkanShaderModule;
        fDownsampleLevel1ComputeShaderModule:TpvVulkanShaderModule;

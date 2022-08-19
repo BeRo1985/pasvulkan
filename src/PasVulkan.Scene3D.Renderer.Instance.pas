@@ -222,6 +222,8 @@ type { TpvScene3DRendererInstance }
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
+       fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
+      private
        fLightGridPushConstants:TpvScene3DRendererInstance.TLightGridPushConstants;
        fLightGridGlobalsVulkanBuffers:TVulkanBuffers;
        fLightGridClusterAABBVulkanBuffers:TVulkanBuffers;
@@ -286,6 +288,8 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
+      public
+       property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
       public
        property LightGridSizeX:TpvInt32 read fLightGridSizeX;
        property LightGridSizeY:TpvInt32 read fLightGridSizeY;
@@ -1247,6 +1251,23 @@ begin
     UniversalFence:=TpvVulkanFence.Create(Renderer.VulkanDevice);
     try
 
+     for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+      fNearestFarthestDepthVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                     SizeOf(TpvVector4),
+                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                     [],
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                     0,
+                                                                                     0,
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     0,
+                                                                                     []);
+     end;
+
      fLightGridTileSizeX:=(fWidth+(fLightGridSizeX-1)) div fLightGridSizeX;
      fLightGridTileSizeY:=(fHeight+(fLightGridSizeY-1)) div fLightGridSizeY;
 
@@ -1491,6 +1512,10 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fDepthMipmappedArray2DImages[InFlightFrameIndex]);
   FreeAndNil(fForwardMipmappedArray2DImages[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fNearestFarthestDepthVulkanBuffers[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
