@@ -92,6 +92,13 @@ layout(location = 13) flat in vec2 inJitter;
   #endif
 #endif
 
+// Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
+// when the validation layers are active!
+#undef USE_SPECIALIZATION_CONSTANTS
+#ifdef USE_SPECIALIZATION_CONSTANTS
+layout (constant_id = 0) const bool UseReversedZ = true;
+#endif
+
 const int TEXTURE_BRDF_GGX = 0;
 const int TEXTURE_BRDF_CHARLIE = 1;
 const int TEXTURE_BRDF_SHEEN_E = 2;
@@ -1902,11 +1909,15 @@ void main() {
   #else 
     #if defined(NODISCARD)  
       // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
+#ifdef USE_SPECIALIZATION_CONSTANTS
+      fragDepth = UseReversedZ ? -0.1 : 1.1;      
+#else
       #if defined(REVERSEDZ)
         fragDepth = -0.1;
       #else
         fragDepth = 1.1;
       #endif
+#endif
     #else
       #if defined(USEDEMOTE)
         demote;
@@ -2028,10 +2039,15 @@ void main() {
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
  #endif 
   if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+     ((UseReversedZ && (oitCurrentDepth >= oitDepth)) ||
+      ((!UseReversedZ) && (oitCurrentDepth <= oitDepth))) &&
+#else
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
 #else
      (oitCurrentDepth <= oitDepth) &&  
+#endif
 #endif
      (min(alpha, finalColor.w) > 0.0)
     ){
@@ -2071,19 +2087,28 @@ void main() {
             finalColor = vec4(0.0);
           }else{
             int oitFurthest = 0;
+#ifdef USE_SPECIALIZATION_CONSTANTS
+            uint oitMaxDepth = UseReversedZ ? 0xffffffffu : 0u;
+#else
   #ifdef REVERSEDZ
             uint oitMaxDepth = 0xffffffffu;
   #else
             uint oitMaxDepth = 0;
-  #endif          
+  #endif
+#endif
             for(int oitIndex = 0; oitIndex < oitCountLayers; oitIndex++){
               uint oitTestDepth = imageLoad(uOITImgABuffer, oitABufferBaseIndex + (oitIndex * oitViewSize)).z;
               if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+                  (UseReversedZ && (oitTestDepth < oitMaxDepth)) ||
+                  ((!UseReversedZ) && (oitTestDepth > oitMaxDepth))
+#else
   #ifdef REVERSEDZ
                   (oitTestDepth < oitMaxDepth)
   #else
                   (oitTestDepth > oitMaxDepth)
   #endif
+#endif
                 ){
                 oitMaxDepth = oitTestDepth;
                 oitFurthest = oitIndex;
@@ -2091,11 +2116,16 @@ void main() {
             }
 
             if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+               (UseReversedZ && (oitMaxDepth < oitStoreValue.z)) ||
+               ((!UseReversedZ) && (oitMaxDepth > oitStoreValue.z))
+#else
   #ifdef REVERSEDZ
               (oitMaxDepth < oitStoreValue.z)
   #else
               (oitMaxDepth > oitStoreValue.z)
-  #endif          
+  #endif
+#endif
               ){
               int oitIndex = oitABufferBaseIndex + (oitFurthest * oitViewSize);
               uvec4 oitOldValue = imageLoad(uOITImgABuffer, oitIndex);
@@ -2143,10 +2173,15 @@ void main() {
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r); 
  #endif 
  if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+     ((UseReversedZ && ((oitCurrentDepth >= oitDepth))) ||
+      ((!UseReversedZ) && ((oitCurrentDepth <= oitDepth)))) &&
+#else
 #ifdef REVERSEDZ
      (oitCurrentDepth >= oitDepth) &&  
 #else
      (oitCurrentDepth <= oitDepth) &&  
+#endif
 #endif
 #if defined(LOOPOIT_PASS1)
      (alpha > 0.0)
@@ -2164,6 +2199,25 @@ void main() {
 
     #if defined(LOOPOIT_PASS1)
 
+#ifdef USE_SPECIALIZATION_CONSTANTS
+      if(UseReversedZ){
+        for(int oitLayerIndex = 0; oitLayerIndex < oitCountLayers; oitLayerIndex++){
+          uint oitDepth = imageAtomicMax(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
+          if((oitDepth == 0x00000000u) || (oitDepth == oitCurrentDepth)){
+            break;
+          }
+          oitCurrentDepth = min(oitCurrentDepth, oitDepth);
+        }
+      }else{
+        for(int oitLayerIndex = 0; oitLayerIndex < oitCountLayers; oitLayerIndex++){
+          uint oitDepth = imageAtomicMin(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
+          if((oitDepth == 0xFFFFFFFFu) || (oitDepth == oitCurrentDepth)){
+            break;
+          }
+          oitCurrentDepth = max(oitCurrentDepth, oitDepth);
+        }
+      }
+#else
       for(int oitLayerIndex = 0; oitLayerIndex < oitCountLayers; oitLayerIndex++){
 #ifdef REVERSEDZ
         uint oitDepth = imageAtomicMax(uOITImgZBuffer, oitBufferBaseIndex + oitLayerIndex, oitCurrentDepth);
@@ -2179,6 +2233,7 @@ void main() {
         oitCurrentDepth = max(oitCurrentDepth, oitDepth);
 #endif
       }
+#endif
 
 #ifndef DEPTHONLY    
       outFragColor = vec4(0.0);
@@ -2186,13 +2241,23 @@ void main() {
 
     #elif defined(LOOPOIT_PASS2)
 
-      if(imageLoad(uOITImgZBuffer, oitBufferBaseIndex + (oitCountLayers - 1)).x
+#ifdef USE_SPECIALIZATION_CONSTANTS
+      float oitTempDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + (oitCountLayers - 1)).x;
+#endif      
+      if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+         ((UseReversedZ && (oitTempDepth > oitCurrentDepth)) ||
+          ((!UseReversedZ) && (oitTempDepth < oitCurrentDepth)))
+#else          
+         imageLoad(uOITImgZBuffer, oitBufferBaseIndex + (oitCountLayers - 1)).x
 #ifdef REVERSEDZ
          >
 #else 
          <
 #endif
-         oitCurrentDepth){
+         oitCurrentDepth
+#endif
+        ){
 #ifndef DEPTHONLY    
         outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
 #endif
@@ -2202,13 +2267,20 @@ void main() {
         while(oitStart < oitEnd){
           int oitMid = (oitStart + oitEnd) >> 1;
           uint oitDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + oitMid).x;
-          if(oitDepth
+          if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+             ((UseReversedZ && (oitDepth > oitCurrentDepth)) ||
+              ((!UseReversedZ) && (oitDepth < oitCurrentDepth)))
+#else
+             oitDepth
 #ifdef REVERSEDZ
              > 
 #else
              <
 #endif
-            oitCurrentDepth){
+            oitCurrentDepth
+#endif
+            ){
             oitStart = oitMid + 1; 
           }else{
             oitEnd = oitMid; 

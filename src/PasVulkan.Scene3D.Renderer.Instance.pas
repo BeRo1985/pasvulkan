@@ -183,6 +183,12 @@ type { TpvScene3DRendererInstance }
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
+            { TMeshFragmentSpecializationConstants }
+            TMeshFragmentSpecializationConstants=record
+             public
+              UseReversedZ:TVkBool32;
+              procedure SetPipelineShaderStage(const aVulkanPipelineShaderStage:TpvVulkanPipelineShaderStage);
+            end;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -209,6 +215,7 @@ type { TpvScene3DRendererInstance }
        fPointerToCameraMatrix:PpvMatrix4x4;
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
+       fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
       private
        fViews:TpvScene3D.TViews;
       private
@@ -277,6 +284,7 @@ type { TpvScene3DRendererInstance }
        property PointerToCameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
+       property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       public
        property LightGridSizeX:TpvInt32 read fLightGridSizeX;
        property LightGridSizeY:TpvInt32 read fLightGridSizeY;
@@ -427,6 +435,14 @@ const CountJitterOffsets=128;
       JitterOffsetMask=CountJitterOffsets-1;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
+
+{ TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants }
+
+procedure TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants.SetPipelineShaderStage(const aVulkanPipelineShaderStage:TpvVulkanPipelineShaderStage);
+begin
+{aVulkanPipelineShaderStage.AddSpecializationMapEntry(0,TVkPtrUInt(pointer(@UseReversedZ))-TVkPtrUInt(pointer(@self)),SizeOf(TVkBool32));
+ aVulkanPipelineShaderStage.AddSpecializationDataFromMemory(@self,SizeOf(TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants),true);}
+end;
 
 { TpvScene3DRendererInstance }
 
@@ -583,6 +599,8 @@ begin
  fTop:=0;
  fWidth:=1024;
  fHeight:=768;
+
+ fMeshFragmentSpecializationConstants.UseReversedZ:=IfThen(fZFar<0.0,VK_TRUE,VK_FALSE);
 
 end;
 

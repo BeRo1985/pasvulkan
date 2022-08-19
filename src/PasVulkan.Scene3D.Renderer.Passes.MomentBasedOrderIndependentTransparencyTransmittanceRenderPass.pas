@@ -205,8 +205,11 @@ end;
 
 procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.AcquirePersistentResources;
 var Stream:TStream;
+    MeshFragmentSpecializationConstants:TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants;
 begin
  inherited AcquirePersistentResources;
+
+ MeshFragmentSpecializationConstants:=fInstance.MeshFragmentSpecializationConstants;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
@@ -240,8 +243,10 @@ begin
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
 
  fVulkanPipelineShaderStageMeshFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshFragmentShaderModule,'main');
+ MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshFragment);
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
+ MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshMaskedFragment);
 
 end;
 
