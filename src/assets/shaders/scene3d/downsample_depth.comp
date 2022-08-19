@@ -36,6 +36,12 @@ layout(push_constant) uniform PushConstants {
   uint countSamples;
 } pushConstants;
 
+#if MIPMAPLEVEL == 0
+layout(std430, set = 0, binding = 2) volatile buffer NearestFarthestDepthBuffer {
+  uvec4 nearestFarthestDepthBuffer;
+};
+#endif
+
 /* clang-format on */
 
 void main() {
@@ -61,20 +67,44 @@ void main() {
     ivec3 sourceSizeMask = sourceSize - ivec3(1);
     float depth;
   #if MIPMAPLEVEL == 0
-    #ifdef MSAA
+    #ifdef MSAA       
       #ifdef REVERSEDZ
-          depth = 1.0;
+          float minDepth = 0.0;
+          float maxDepth = 1.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = min(depth, texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x);
+            float sampleDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x; 
+            minDepth = max(minDepth, sampleDepth);
+            maxDepth = min(maxDepth, sampleDepth);
           }
       #else
-          depth = 0.0;
+          float minDepth = 1.0;
+          float maxDepth = 0.0;
           for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            depth = max(depth, texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x);
+            float sampleDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x; 
+            minDepth = min(minDepth, sampleDepth);
+            maxDepth = max(maxDepth, sampleDepth);
           }
       #endif
+        depth = maxDepth;
+        uint minDepthUI = floatBitsToUint(minDepth);
+        uint maxDepthUI = floatBitsToUint(maxDepth);
+#ifdef REVERSEDZ
+        atomicMax(nearestFarthestDepthBuffer.x, minDepthUI);
+        atomicMin(nearestFarthestDepthBuffer.y, maxDepthUI);
+#else
+        atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
+#endif
     #else
         depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
+        uint depthUI = floatBitsToUint(depth);
+#ifdef REVERSEDZ
+        atomicMax(nearestFarthestDepthBuffer.x, depthUI);
+        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+#else
+        atomicMin(nearestFarthestDepthBuffer.x, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.y, depthUI);
+#endif
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
