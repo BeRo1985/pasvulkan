@@ -110,7 +110,7 @@ type { TpvScene3DRendererCameraPreset }
        destructor Destroy; override;
       published
 
-       // Sensor size at digital cameras in mm (or film size at analog cameras
+       // Sensor size at digital cameras in mm (or film size at analog cameras)
        property SensorSize:TpvVector2Property read fSensorSizeProperty;
 
        // Focal length in mm
