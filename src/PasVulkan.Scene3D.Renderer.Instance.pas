@@ -390,6 +390,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrefilterRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
@@ -440,6 +441,7 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingTAAPostCustomPass:TpvScene3DRendererPassesAntialiasingTAAPostCustomPass;
        fDepthOfFieldPrepareRenderPass:TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass;
        fDepthOfFieldPrefilterRenderPass:TpvScene3DRendererPassesDepthOfFieldPrefilterRenderPass;
+       fDepthOfFieldBlurRenderPass:TpvScene3DRendererPassesDepthOfFieldBlurRenderPass;
        fDepthOfFieldGatherPass1RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass;
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
@@ -1202,8 +1204,11 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass:=TpvScene3DRendererPassesDepthOfFieldPrefilterRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrepareRenderPass);
 
+ TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBlurRenderPass:=TpvScene3DRendererPassesDepthOfFieldBlurRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBlurRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass);
+
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass:=TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Create(fFrameGraph,self);
- TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBlurRenderPass);
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrepareRenderPass);
 
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass2RenderPass:=TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass.Create(fFrameGraph,self);
