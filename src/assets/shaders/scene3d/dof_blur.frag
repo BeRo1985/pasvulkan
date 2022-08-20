@@ -31,9 +31,9 @@ vec2 getBokehTapSampleCoord(const in vec2 o, const in float f, const float n, co
 
 void main(){
   
-	vec2 inputTextureSize = textureSize(uTextureInput, 0).xy; 
-
-	vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
+  vec2 inputTextureSize = textureSize(uTextureInput, 0).xy; 
+ 
+  vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
 
   float aspectRatio = inputTextureSize.y / inputTextureSize.x;
 
