@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass;
+unit PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -77,20 +77,18 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
-     TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass }
+     TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass=class(TpvFrameGraph.TRenderPass)
       public
        type TPushConstants=record
-             ViewBaseIndex:TpvUInt32;
-             FocalLength:TpvFloat;
-             FNumber:TpvFloat;
-             SensorSizeY:TpvFloat;
+             CountSamples:TpvInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-       fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOutput0:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOutput1:TpvFrameGraph.TPass.TUsedImageResource;
        fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fVulkanVertexShaderModule:TpvVulkanShaderModule;
@@ -116,16 +114,16 @@ type { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
 
 implementation
 
-{ TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
+{ TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass }
 
-constructor TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='DepthOfFieldPrepareRenderPass';
+ Name:='DepthOfFieldGatherPass1RenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
@@ -141,48 +139,35 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
-                                'resource_temporal_antialiasing_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
- end else begin
-  if fInstance.Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.DIRECT,
-                                             TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
-                                             TpvScene3DRendererTransparencyMode.INTERLOCKOIT,
-                                             TpvScene3DRendererTransparencyMode.LOOPOIT,
-                                             TpvScene3DRendererTransparencyMode.WBOIT,
-                                             TpvScene3DRendererTransparencyMode.MBOIT] then begin
-   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'resource_combinedopaquetransparency_final_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-  end else begin
-   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'resource_forwardrendering_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-  end;
- end;
+ fResourceColor:=AddImageInput('resourcetype_depthoffield_work_data',
+                               'resource_depthoffield_prepare_data',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
- fResourceOutput:=AddImageOutput('resourcetype_depthoffield_work_data',
-                                 'resource_depthoffield_prepare_data',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
+ fResourceOutput0:=AddImageOutput('resourcetype_depthoffield_work_data',
+                                  'resource_depthoffield_pass1_0',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+ fResourceOutput1:=AddImageOutput('resourcetype_depthoffield_work_data',
+                                  'resource_depthoffield_pass1_1',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
 
 end;
 
-destructor TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Destroy;
+destructor TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
@@ -199,7 +184,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('dof_prepare_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('dof_gather_pass1_frag.spv');
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -214,7 +199,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -225,7 +210,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
@@ -252,30 +237,12 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
-                                       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
- fVulkanDescriptorSetLayout.AddBinding(1,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
- fVulkanDescriptorSetLayout.AddBinding(2,
-                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
- fVulkanDescriptorSetLayout.AddBinding(3,
-                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
@@ -287,7 +254,7 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                  0,
                                                                  1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                                 fResourceColor.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                 fResourceColor.ResourceTransition.Layout)],
@@ -295,39 +262,12 @@ begin
                                                                  [],
                                                                  false
                                                                 );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo.imageView,
-                                                                                                TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                 [],
-                                                                 [],
-                                                                 false
-                                                                );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                 [],
-                                                                 [fInstance.Renderer.Scene3D.GlobalVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                 [],
-                                                                 [fInstance.DepthOfFieldAutoFocusVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.TPushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -384,6 +324,17 @@ begin
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                      VK_BLEND_FACTOR_DST_ALPHA,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ONE,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
  fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
  fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
@@ -397,7 +348,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -420,21 +371,18 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    PushConstants:TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.TPushConstants;
+    PushConstants:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
- PushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
- PushConstants.FocalLength:=fInstance.CameraPreset.FocalLength;
- PushConstants.FNumber:=fInstance.CameraPreset.FNumber;
- PushConstants.SensorSizeY:=fInstance.CameraPreset.SensorSize.Y;
+ PushConstants.CountSamples:=32;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
@@ -443,7 +391,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.TPushConstants),
+                                 SizeOf(TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.TPushConstants),
                                  @PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);

@@ -389,6 +389,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -970,7 +971,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_depthoffield_prepare',
+ fFrameGraph.AddImageResourceType('resourcetype_depthoffield_work_data',
                                   false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
