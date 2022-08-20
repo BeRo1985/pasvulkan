@@ -161,7 +161,7 @@ begin
  inherited Create;
  fSensorSize:=TpvVector2.Create(36.0,24.0); // 36 x 24 mm
  fSensorSizeProperty:=TpvVector2Property.Create(@fSensorSize);
- fFocalLength:=5.0;
+ fFocalLength:=50.0;
  fFlangeFocalDistance:=100.0;
  fFocalPlaneDistance:=1000.0;
  fFNumber:=5.6;

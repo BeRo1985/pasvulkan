@@ -434,7 +434,7 @@ begin
  PushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
  PushConstants.FocalLength:=fInstance.CameraPreset.FocalLength;
  PushConstants.FNumber:=fInstance.CameraPreset.FNumber;
- PushConstants.SensorSizeY:=fInstance.CameraPreset.SensorSize.Y;
+ PushConstants.SensorSizeY:=fInstance.CameraPreset.SensorSize.y;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
