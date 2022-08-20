@@ -48,7 +48,7 @@ float linearizeDepth(float z) {
 void main(){
   vec4 color = subpassLoad(uSubpassColor);
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
-  float depth = clamp(linearizeDepth(rawDepth), 0.0, 262144.0);
+  float depth = clamp(linearizeDepth(rawDepth), 0.0, 4096.0);
   {
     float luminance = dot(color.xyz, vec3(0.299, 0.587, 0.114));
     float luminanceThreshold = 0.5;
