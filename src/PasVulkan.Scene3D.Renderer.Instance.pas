@@ -390,6 +390,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -437,6 +438,7 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingTAAPostCustomPass:TpvScene3DRendererPassesAntialiasingTAAPostCustomPass;
        fDepthOfFieldPrepareRenderPass:TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass;
        fDepthOfFieldGatherPass1RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass;
+       fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
@@ -1176,8 +1178,11 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass:=TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrepareRenderPass);
 
+ TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass2RenderPass:=TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass2RenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass);
+
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
- TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass2RenderPass);
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPostCustomPass);
