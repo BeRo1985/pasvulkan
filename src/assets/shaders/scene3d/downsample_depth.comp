@@ -116,12 +116,20 @@ void main() {
         uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
         uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
         atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
+        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+          atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
+          atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
+        }
     #else
         depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
         uint depthUI = floatBitsToUint(linearizeDepth(depth));
         atomicMin(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMax(nearestFarthestDepthBuffer.y, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.z, depthUI);
+        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+          atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+          atomicMax(nearestFarthestDepthBuffer.w, depthUI);
+        }
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
@@ -180,12 +188,20 @@ void main() {
         uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
         uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
         atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMax(nearestFarthestDepthBuffer.y, maxDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
+        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+          atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
+          atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
+        }
     #else
         depth = texelFetch(uSourceTexture, xy, 0).x;
         uint depthUI = floatBitsToUint(linearizeDepth(depth));
         atomicMin(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMax(nearestFarthestDepthBuffer.y, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.z, depthUI);
+        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+          atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+          atomicMax(nearestFarthestDepthBuffer.w, depthUI);
+        }  
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);

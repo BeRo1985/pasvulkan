@@ -81,7 +81,7 @@ type { TpvScene3DRendererPassesDepthMipMapComputePass }
       public
        type TPushConstants=packed record
              CountSamples:TpvUInt32;
-             ViewBaseIndex:TpvUInt32;
+             BaseViewIndex:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -424,8 +424,8 @@ begin
 
 // fInstance.NearestFarthestDepthVulkanBuffers[InFlightFrameIndex].
 
- aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32),TVkUInt32($ffffffff));
- aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*1,SizeOf(TVkUInt32),TVkUInt32($00000000));
+ aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32)*2,TVkUInt32($ffffffff));
+ aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*2,SizeOf(TVkUInt32)*2,TVkUInt32($00000000));
 
  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
  BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -476,7 +476,7 @@ begin
   end;
 
   PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
-  PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[InFlightFrameIndex].FinalViewIndex;
+  PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[InFlightFrameIndex].FinalViewIndex;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
