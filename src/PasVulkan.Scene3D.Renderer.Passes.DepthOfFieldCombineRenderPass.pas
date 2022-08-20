@@ -150,7 +150,7 @@ begin
                                 []);
 
  fResourceOutput:=AddImageOutput('resourcetype_depthoffield',
-                                 'resource_depthoffield_final',
+                                 'resource_depthoffield_combined',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
