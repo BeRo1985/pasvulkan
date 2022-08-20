@@ -24,7 +24,7 @@ struct View {
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassColor;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassDepth;
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 
 layout(std140, set = 0, binding = 2) uniform uboViews {
   View views[256];
@@ -47,7 +47,7 @@ float linearizeDepth(float z) {
 
 void main(){
   vec4 color = subpassLoad(uSubpassColor);
-  float depth = linearizeDepth(subpassLoad(uSubpassDepth).x);
+  float depth = linearizeDepth(texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x);
   {
     float luminance = dot(color.xyz, vec3(0.299, 0.587, 0.114));
     float luminanceThreshold = 0.5;
