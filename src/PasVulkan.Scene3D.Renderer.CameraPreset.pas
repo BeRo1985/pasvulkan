@@ -100,6 +100,7 @@ type { TpvScene3DRendererCameraPreset }
        fFNumberMin:TpvFloat;
        fFNumberMax:TpvFloat;
        fNgon:TpvFloat;
+       fMaxCoC:TpvFloat;
        fHighlightThreshold:TpvFloat;
        fHighlightGain:TpvFloat;
        fBokehChromaticAberration:TpvFloat;
@@ -135,6 +136,9 @@ type { TpvScene3DRendererCameraPreset }
        // ngon
        property Ngon:TpvFloat read fNgon write fNgon;
 
+       // maximum CoC radius
+       property MaxCoC:TpvFloat read fMaxCoC write fMaxCoC;
+
        // Highlight threshold
        property HighlightThreshold:TpvFloat read fHighlightThreshold write fHighlightThreshold;
 
@@ -168,6 +172,7 @@ begin
  fFNumberMin:=1.0;
  fFNumberMax:=16.0;
  fNgon:=6;
+ fMaxCoC:=0.05;
  fHighlightThreshold:=0.25;
  fHighlightGain:=1.0;
  fBokehChromaticAberration:=0.7;
@@ -189,6 +194,7 @@ begin
  fFNumberMin:=aFrom.fFNumberMin;
  fFNumberMax:=aFrom.fFNumberMax;
  fNgon:=aFrom.fNgon;
+ fMaxCoC:=aFrom.fMaxCoC;
  fHighlightThreshold:=aFrom.fHighlightThreshold;
  fHighlightGain:=aFrom.fHighlightGain;
  fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
