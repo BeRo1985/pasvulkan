@@ -13,6 +13,7 @@ layout(push_constant) uniform PushConstants {
   float fFactor;
   float ngon;
   float downSampleFactor;
+  int blurKernelSize;
 } pushConstants;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTextureInput;
@@ -46,8 +47,8 @@ void main(){
   vec4 farSum = vec4(0.0);
   vec4 nearSum = vec4(0.0);
 
-  const int countSquaredRootSamples = 8,
-            countSamples = countSquaredRootSamples * countSquaredRootSamples;
+  int countSquaredRootSamples = pushConstants.blurKernelSize,
+      countSamples = countSquaredRootSamples * countSquaredRootSamples;
   for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
 #if 0

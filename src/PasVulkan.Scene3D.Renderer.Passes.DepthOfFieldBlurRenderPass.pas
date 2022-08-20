@@ -85,6 +85,7 @@ type { TpvScene3DRendererPassesDepthOfFieldBlurRenderPass }
              FFactor:TpvFloat;
              Ngon:TpvFloat;
              DownSampleFactor:TpvFloat;
+             BlurKernelSize:TpvInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -369,6 +370,7 @@ begin
  PushConstants.FFactor:=fInstance.CameraPreset.FNumber;
  PushConstants.Ngon:=fInstance.CameraPreset.Ngon;
  PushConstants.DownSampleFactor:=2.0;
+ PushConstants.BlurKernelSize:=fInstance.CameraPreset.BlurKernelSize;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

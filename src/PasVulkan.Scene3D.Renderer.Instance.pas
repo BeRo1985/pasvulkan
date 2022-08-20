@@ -1299,6 +1299,8 @@ begin
 
  end;
 
+ fCameraPreset.MaxCoC:=((fCameraPreset.BlurKernelSize*4.0)+6.0)/fHeight;
+
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
  fFrameGraph.SetSwapChain(pvApplication.VulkanSwapChain,

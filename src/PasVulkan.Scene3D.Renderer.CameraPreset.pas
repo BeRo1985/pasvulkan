@@ -99,6 +99,7 @@ type { TpvScene3DRendererCameraPreset }
        fFNumber:TpvFloat;
        fFNumberMin:TpvFloat;
        fFNumberMax:TpvFloat;
+       fBlurKernelSize:TpvInt32;
        fNgon:TpvFloat;
        fMaxCoC:TpvFloat;
        fHighlightThreshold:TpvFloat;
@@ -136,6 +137,9 @@ type { TpvScene3DRendererCameraPreset }
        // ngon
        property Ngon:TpvFloat read fNgon write fNgon;
 
+       // Blur kernel size
+       property BlurKernelSize:TpvInt32 read fBlurKernelSize write fBlurKernelSize;
+
        // maximum CoC radius
        property MaxCoC:TpvFloat read fMaxCoC write fMaxCoC;
 
@@ -172,6 +176,7 @@ begin
  fFNumberMin:=1.0;
  fFNumberMax:=16.0;
  fNgon:=6;
+ fBlurKernelSize:=8;
  fMaxCoC:=0.05;
  fHighlightThreshold:=0.25;
  fHighlightGain:=1.0;
@@ -193,6 +198,7 @@ begin
  fFNumber:=aFrom.fFNumber;
  fFNumberMin:=aFrom.fFNumberMin;
  fFNumberMax:=aFrom.fFNumberMax;
+ fBlurKernelSize:=aFrom.fBlurKernelSize;
  fNgon:=aFrom.fNgon;
  fMaxCoC:=aFrom.fMaxCoC;
  fHighlightThreshold:=aFrom.fHighlightThreshold;
