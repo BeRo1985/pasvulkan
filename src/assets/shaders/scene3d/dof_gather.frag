@@ -78,7 +78,7 @@ void main(){
 
 	vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
 
-  vec3 uvw = vec3(gl_FragCoord.xy / inputTextureSize.xy, gl_ViewIndex); 
+  vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 	
   // Start by sampling at the center of the blur.
   vec4 baseColor = fma(textureLod(uTextureInput, uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(1.0, -1.0).xxxy);
@@ -120,7 +120,7 @@ void main(){
 
 	vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
 
-  vec3 uvw = vec3(gl_FragCoord.xy / inputTextureSize.xy, gl_ViewIndex); 
+  vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 
   // Use the combined output as the base for the second pass.
   vec4 baseColor = fma(textureLod(uTextureInputs[1], uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(1.0, -1.0).xxxy);
