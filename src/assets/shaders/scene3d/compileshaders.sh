@@ -33,6 +33,7 @@ compileshaderarguments=(
   '-V dof_prepare.frag -o dof_prepare_frag.spv'
   '-V dof_gather.frag -DPASS1 -o dof_gather_pass1_frag.spv'
   '-V dof_gather.frag -DPASS2 -o dof_gather_pass2_frag.spv'
+  '-V dof_resolve.frag -o dof_resolve_frag.spv'
 
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   '-V lightclustergridbuild.comp -DREVERSEDZ -o lightclustergridbuild_reversedz_comp.spv'

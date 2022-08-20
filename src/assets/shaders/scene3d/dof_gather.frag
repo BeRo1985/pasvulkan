@@ -31,7 +31,7 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
 											 const in vec2 inputTextureSize, 
 											 inout vec4 color){
 	
-  vec4 sampleColor = fma(textureLod(inputTexture, uvw, LOD), vec2(1.0, 2.0).xxxy, vec2(1.0, -1.0).xxxy);
+  vec4 sampleColor = fma(textureLod(inputTexture, uvw, LOD), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
 
 	// CoC < 0.0 means the pixel is in front of the focal plane.
 	bool blurNear = sampleColor.w < 0.0;
@@ -81,7 +81,7 @@ void main(){
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 	
   // Start by sampling at the center of the blur.
-  vec4 baseColor = fma(textureLod(uTextureInput, uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(1.0, -1.0).xxxy);
+  vec4 baseColor = fma(textureLod(uTextureInput, uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
 
   // Final color and CoC size will be accumulated in the output.
   vec4 outputA = vec4(vec3(0.0), baseColor.w);
@@ -96,7 +96,7 @@ void main(){
 
   for(int i = 0, j = pushConstants.countSamples; i < j; i++){
     float stepDistance = (float(i) + 0.5) * inverseInputTextureSize.y;
-    sampleCountA += doGatherAndApply(uTextureInput, uvw + (vec3(0.0, 1.0, 0.0) * stepDistance), float(LOD), baseColor.w, stepDistance, inputTextureSize, outputA);     // Vertical blur.
+    sampleCountA += doGatherAndApply(uTextureInput, uvw + (vec3(0.0, 1.0, 0.0) * stepDistance), float(LOD), baseColor.w, stepDistance, inputTextureSize, outputA);  // Vertical blur.
     sampleCountB += doGatherAndApply(uTextureInput, uvw + (vec3(stepX, -0.5, 0.0) * stepDistance), float(LOD), baseColor.w, stepDistance, inputTextureSize, outputB); // Diagonal blur.
 	}
 	 
@@ -123,7 +123,7 @@ void main(){
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 
   // Use the combined output as the base for the second pass.
-  vec4 baseColor = fma(textureLod(uTextureInputs[1], uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(1.0, -1.0).xxxy);
+  vec4 baseColor = fma(textureLod(uTextureInputs[1], uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
 
 	// Two sets of colour to accumulate this time.
 	vec4 outputA = vec4(vec3(0.0), baseColor.w);
