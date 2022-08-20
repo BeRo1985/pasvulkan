@@ -12,16 +12,24 @@ layout(push_constant) uniform PushConstants {
   float coefficient;
 } pushConstants;
 
-layout(std430, set = 0, binding = 0) volatile buffer NearestFarthestDepthBuffer {
+layout(std430, set = 0, binding = 0) readonly buffer NearestFarthestDepthBuffer {
   vec4 nearestFarthestDepthBuffer;
 };
 
-layout(std430, set = 0, binding = 1) volatile buffer AutoFocusDepth {
+layout(std430, set = 0, binding = 1) readonly buffer LastAutoFocusDepth {
+  float lastAutoFocusDepth;
+};
+
+layout(std430, set = 0, binding = 2) writeonly buffer AutoFocusDepth {
   float autoFocusDepth;
 };
 
 /* clang-format on */
 
 void main() {
-  autoFocusDepth = (pushConstants.coefficient >= 1.0) ? nearestFarthestDepthBuffer.x : mix(autoFocusDepth, nearestFarthestDepthBuffer.x, clamp(pushConstants.coefficient, 0.0, 1.0));
+  autoFocusDepth = ((pushConstants.coefficient >= 1.0) || isnan(lastAutoFocusDepth) || isinf(lastAutoFocusDepth)) 
+                      ? nearestFarthestDepthBuffer.x 
+                      : mix(lastAutoFocusDepth, 
+                            nearestFarthestDepthBuffer.x, 
+                            clamp(pushConstants.coefficient, 0.0, 1.0));
 }

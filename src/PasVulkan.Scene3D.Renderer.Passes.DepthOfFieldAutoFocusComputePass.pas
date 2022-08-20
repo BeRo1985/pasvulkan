@@ -153,7 +153,7 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames*2);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames*3);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -163,6 +163,11 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(1,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(2,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -199,6 +204,15 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
+                                                                 [fInstance.DepthOfFieldAutoFocusVulkanBuffers[(InFlightFrameIndex+(FrameGraph.CountInFlightFrames-1)) mod FrameGraph.CountInFlightFrames].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
                                                                  [fInstance.DepthOfFieldAutoFocusVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
@@ -231,6 +245,17 @@ var PushConstants:TpvScene3DRendererPassesDepthOfFieldAutoFocusComputePass.TPush
     MemoryBarrier:TVkMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   1,@MemoryBarrier,
+                                   0,nil,
+                                   0,nil);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
