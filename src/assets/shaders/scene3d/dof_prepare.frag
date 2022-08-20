@@ -47,7 +47,8 @@ float linearizeDepth(float z) {
 
 void main(){
   vec4 color = subpassLoad(uSubpassColor);
-  float depth = linearizeDepth(texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x);
+  float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+  float depth = linearizeDepth(rawDepth);
   {
     float luminance = dot(color.xyz, vec3(0.299, 0.587, 0.114));
     float luminanceThreshold = 0.5;
@@ -57,7 +58,7 @@ void main(){
     }
   }
   float CoC = 0.0;
-  {
+  if(!(isinf(depth) || isnan(depth) || (rawDepth == 0.0) || (rawDepth == 1.0))){
     // f = Focal length (where light starts getting in focus)
     // d0 = Focus distance (aka as plane in focus or camera focal distance) 
     // z = Distance from the lens to the object
