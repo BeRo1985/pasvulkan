@@ -217,6 +217,7 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
+       fCameraPreset:TpvScene3DRendererCameraPreset;
       private
        fViews:TpvScene3D.TViews;
       private
@@ -289,6 +290,8 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
+      published
+       property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -385,6 +388,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPreCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -465,6 +469,8 @@ begin
  fExternalImageFormat:=aExternalImageFormat;
 
  fVirtualReality:=aVirtualReality;
+
+ fCameraPreset:=TpvScene3DRendererCameraPreset.Create;
 
  fLightGridSizeX:=16;
  fLightGridSizeY:=16;
@@ -644,6 +650,8 @@ begin
  end;
 
  FreeAndNil(fPasses);
+
+ FreeAndNil(fCameraPreset);
 
  inherited Destroy;
 end;

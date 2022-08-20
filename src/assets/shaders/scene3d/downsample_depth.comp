@@ -34,7 +34,7 @@ layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture
 
 layout(push_constant) uniform PushConstants {
   uint countSamples;
-  uint baseViewIndex;
+  uint viewBaseIndex;
 } pushConstants;
 
 #if MIPMAPLEVEL == 0
@@ -91,7 +91,7 @@ void main() {
     ivec3 sourceSizeMask = sourceSize - ivec3(1);
     float depth;
   #if MIPMAPLEVEL == 0
-    inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + uint(viewIndex)].inverseProjectionMatrix;
+    inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(viewIndex)].inverseProjectionMatrix;
     #ifdef MSAA       
       #ifdef REVERSEDZ
           float minDepth = 0.0;
@@ -155,7 +155,7 @@ void main() {
     ivec2 sourceSizeMask = sourceSize - ivec2(1);
     float depth;
   #if MIPMAPLEVEL == 0
-    inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex].inverseProjectionMatrix;
+    inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex].inverseProjectionMatrix;
     #ifdef MSAA
       #ifdef REVERSEDZ
           float minDepth = 0.0;

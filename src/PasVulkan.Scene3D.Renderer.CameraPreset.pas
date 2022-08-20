@@ -108,6 +108,7 @@ type { TpvScene3DRendererCameraPreset }
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Assign(const aFrom:TpvScene3DRendererCameraPreset);
       published
 
        // Sensor size at digital cameras in mm (or film size at analog cameras)
@@ -176,6 +177,21 @@ destructor TpvScene3DRendererCameraPreset.Destroy;
 begin
  FreeAndNil(fSensorSizeProperty);
  inherited Destroy;
+end;
+
+procedure TpvScene3DRendererCameraPreset.Assign(const aFrom:TpvScene3DRendererCameraPreset);
+begin
+ fSensorSize:=aFrom.fSensorSize;
+ fFocalLength:=aFrom.fFocalLength;
+ fFlangeFocalDistance:=aFrom.fFlangeFocalDistance;
+ fFocalPlaneDistance:=aFrom.fFocalPlaneDistance;
+ fFNumber:=aFrom.fFNumber;
+ fFNumberMin:=aFrom.fFNumberMin;
+ fFNumberMax:=aFrom.fFNumberMax;
+ fNgon:=aFrom.fNgon;
+ fHighlightThreshold:=aFrom.fHighlightThreshold;
+ fHighlightGain:=aFrom.fHighlightGain;
+ fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
 end;
 
 function TpvScene3DRendererCameraPreset.GetFieldOfViewAngleRadians:TpvFloat;

@@ -81,7 +81,7 @@ type { TpvScene3DRendererPassesDepthMipMapComputePass }
       public
        type TPushConstants=packed record
              CountSamples:TpvUInt32;
-             BaseViewIndex:TpvUInt32;
+             ViewBaseIndex:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -476,7 +476,7 @@ begin
   end;
 
   PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
-  PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[InFlightFrameIndex].FinalViewIndex;
+  PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[InFlightFrameIndex].FinalViewIndex;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

@@ -9,7 +9,7 @@ layout(location = 0) in vec2 inTexCoord;
 layout(location = 0) out vec4 outFragColor;
 
 layout(push_constant) uniform PushConstants {
-  uint baseViewIndex;
+  uint viewBaseIndex;
   float focalLength;
   float fNumber;
   float sensorSizeY;
@@ -34,7 +34,7 @@ layout(std430, set = 0, binding = 3) readonly buffer AutoFocusDepth {
   float autoFocusDepth;
 };
 
-mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + uint(gl_ViewIndex)].inverseProjectionMatrix;
+mat4 inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].inverseProjectionMatrix;
 
 float linearizeDepth(float z) {
 #if 0
