@@ -42,8 +42,8 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
 	// Check if the CoC of the sampled pixel is big enough to scatter here, and
 	// the sampled pixel is in front of the focal plane or
 	// this pixel is behind the focal plane and the sampled pixel isn't too far behind it.
-  if((absoluteCoC > stepDistance) && (blurNear || ((baseCoC > 0.0)))){
-//if((lAbsoluteCoC > pStepDistance) && (lBlurNear || ((pBaseCoC > 0.0) && (lAbsoluteCoC < (pBaseCoC * 2.0))))){
+//if((absoluteCoC > stepDistance) && (blurNear || ((baseCoC > 0.0)))){
+  if((absoluteCoC > stepDistance) && (blurNear || ((baseCoC > 0.0) && (absoluteCoC < (baseCoC * 2.0))))){
 		// Sort out the CoC of the blurred image, by taking to biggest CoC to maintain the
 		// hexagon shape in the second pass.
 		// Near-blurred pixels should continue to blur over far pixels. Far pixels don't blur
