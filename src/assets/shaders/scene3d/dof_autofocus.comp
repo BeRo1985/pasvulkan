@@ -13,7 +13,7 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(std430, set = 0, binding = 0) volatile buffer NearestFarthestDepthBuffer {
-  uvec4 nearestFarthestDepthBuffer;
+  vec4 nearestFarthestDepthBuffer;
 };
 
 layout(std430, set = 0, binding = 1) volatile buffer AutoFocusDepth {
