@@ -25,7 +25,7 @@ void main(){
   vec4 redSamples = textureGather(uTextureInput, uvw, 0);
   vec4 greenSamples = textureGather(uTextureInput, uvw, 1);
   vec4 blueSamples = textureGather(uTextureInput, uvw, 2);
-  vec4 CoCs = fma(textureGather(uTextureInput, uvw, 3), vec4(2.0), vec4(-1.0));
+  vec4 CoCs = clamp(fma(textureGather(uTextureInput, uvw, 3), vec4(2.0), vec4(-1.0)), vec4(-pushConstants.maxCoC), vec4(pushConstants.maxCoC));
 
   vec4 c0 = vec4(redSamples.x, greenSamples.x, blueSamples.x, 1.0);
   vec4 c1 = vec4(redSamples.y, greenSamples.y, blueSamples.y, 1.0);
@@ -34,10 +34,10 @@ void main(){
 
   // Weights for bleeding and flickering reducation
   vec4 weights = vec4( //
-    abs(CoCs.x) / (max(max(c0.x, c0.y), c0.z) + 1.0), //
-    abs(CoCs.y) / (max(max(c1.x, c1.y), c1.z) + 1.0), //
-    abs(CoCs.z) / (max(max(c2.x, c2.y), c2.z) + 1.0), //
-    abs(CoCs.w) / (max(max(c3.x, c3.y), c3.z) + 1.0) //
+    abs(CoCs.x) / ((max(max(c0.x, c0.y), c0.z) + 1.0) * pushConstants.maxCoC), //
+    abs(CoCs.y) / ((max(max(c1.x, c1.y), c1.z) + 1.0) * pushConstants.maxCoC), //
+    abs(CoCs.z) / ((max(max(c2.x, c2.y), c2.z) + 1.0) * pushConstants.maxCoC), //
+    abs(CoCs.w) / ((max(max(c3.x, c3.y), c3.z) + 1.0) * pushConstants.maxCoC) //
   );
 
   vec3 average = (c0.xyz * weights.x) + (c1.xyz * weights.y) + (c2.xyz * weights.z) + (c3.xyz * weights.w);
@@ -49,7 +49,7 @@ void main(){
   );
 
   // Get the largest CoC
-  float CoC = (((-minMaxCoC.x) > minMaxCoC.y) ? minMaxCoC.x : minMaxCoC.y) * pushConstants.maxCoC;
+  float CoC = ((-minMaxCoC.x) > minMaxCoC.y) ? minMaxCoC.x : minMaxCoC.y;
 
   // Premultiply with CoC   
   average *= smoothstep(0.0, inverseInputTextureSize.y * 2.0, abs(CoC));
