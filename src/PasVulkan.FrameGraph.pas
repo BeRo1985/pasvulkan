@@ -301,16 +301,16 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
-              fPersientent:boolean;
+              fPersistent:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean); reintroduce; virtual;
+                                 const aPersistent:boolean); reintroduce; virtual;
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
-              property Persientent:boolean read fPersientent write fPersientent;
+              property Persistent:boolean read fPersistent write fPersistent;
             end;
             TImageResourceType=class(TResourceType)
              private
@@ -327,7 +327,7 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
                                  const aImageType:TImageType;
@@ -340,7 +340,7 @@ type EpvFrameGraph=class(Exception);
                                  const aAdditionalFormat:TVkFormat); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
                                  const aImageType:TImageType;
@@ -380,7 +380,7 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aSize:TVkDeviceSize;
                                  const aUsage:TVkBufferUsageFlags;
                                  const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -808,7 +808,7 @@ type EpvFrameGraph=class(Exception);
              public
               type TAttachment=record
                     Resource:TResource;
-                    Persientent:boolean;
+                    Persistent:boolean;
                     ImageType:TImageType;
                     Format:TVkFormat;
                     Samples:TVkSampleCountFlagBits;
@@ -1206,7 +1206,7 @@ type EpvFrameGraph=class(Exception);
                               const aSurfaceDepthFormat:TVkFormat);
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
        function AddImageResourceType(const aName:TpvRawByteString;
-                                     const aPersientent:boolean;
+                                     const aPersistent:boolean;
                                      const aFormat:TVkFormat;
                                      const aSamples:TVkSampleCountFlagBits;
                                      const aImageType:TImageType;
@@ -1218,7 +1218,7 @@ type EpvFrameGraph=class(Exception);
                                      const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
                                      const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
-                                     const aPersientent:boolean;
+                                     const aPersistent:boolean;
                                      const aFormat:TVkFormat;
                                      const aSamples:TVkSampleCountFlagBits;
                                      const aImageType:TImageType;
@@ -1229,7 +1229,7 @@ type EpvFrameGraph=class(Exception);
                                      const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
                                      const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddBufferResourceType(const aName:TpvRawByteString;
-                                      const aPersientent:boolean;
+                                      const aPersistent:boolean;
                                       const aSize:TVkDeviceSize;
                                       const aUsage:TVkBufferUsageFlags;
                                       const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -1664,7 +1664,7 @@ end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aName:TpvRawByteString;
-                                               const aPersientent:boolean);
+                                               const aPersistent:boolean);
 begin
  inherited Create;
  if length(trim(String(aName)))=0 then begin
@@ -1677,7 +1677,7 @@ begin
  fName:=aName;
  fFrameGraph.fResourceTypes.Add(self);
  fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
- fPersientent:=aPersientent;
+ fPersistent:=aPersistent;
 end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
@@ -1689,7 +1689,7 @@ end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                     const aName:TpvRawByteString;
-                                                    const aPersientent:boolean;
+                                                    const aPersistent:boolean;
                                                     const aFormat:TVkFormat;
                                                     const aSamples:TVkSampleCountFlagBits;
                                                     const aImageType:TImageType;
@@ -1703,7 +1703,7 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
 begin
  Create(aFrameGraph,
         aName,
-        aPersientent);
+        aPersistent);
  fFormat:=aFormat;
  fSamples:=aSamples;
  fImageType:=aImageType;
@@ -1718,7 +1718,7 @@ end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                     const aName:TpvRawByteString;
-                                                    const aPersientent:boolean;
+                                                    const aPersistent:boolean;
                                                     const aFormat:TVkFormat;
                                                     const aSamples:TVkSampleCountFlagBits;
                                                     const aImageType:TImageType;
@@ -1731,7 +1731,7 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
 begin
  Create(aFrameGraph,
         aName,
-        aPersientent,
+        aPersistent,
         aFormat,
         aSamples,
         aImageType,
@@ -1757,7 +1757,7 @@ end;
 
 constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                      const aName:TpvRawByteString;
-                                                     const aPersientent:boolean;
+                                                     const aPersistent:boolean;
                                                      const aSize:TVkDeviceSize;
                                                      const aUsage:TVkBufferUsageFlags;
                                                      const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
@@ -1770,7 +1770,7 @@ constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameG
                                                      const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                                      const aBufferFlags:TpvVulkanBufferFlags);
 begin
- inherited Create(aFrameGraph,aName,aPersientent);
+ inherited Create(aFrameGraph,aName,aPersistent);
  fSize:=aSize;
  fUsage:=fUsage;
  fMemoryRequiredPropertyFlags:=aMemoryRequiredPropertyFlags;
@@ -4343,7 +4343,7 @@ begin
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
-                                            const aPersientent:boolean;
+                                            const aPersistent:boolean;
                                             const aFormat:TVkFormat;
                                             const aSamples:TVkSampleCountFlagBits;
                                             const aImageType:TImageType;
@@ -4357,7 +4357,7 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
-                                   aPersientent,
+                                   aPersistent,
                                    aFormat,
                                    aSamples,
                                    aImageType,
@@ -4371,7 +4371,7 @@ begin
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
-                                            const aPersientent:boolean;
+                                            const aPersistent:boolean;
                                             const aFormat:TVkFormat;
                                             const aSamples:TVkSampleCountFlagBits;
                                             const aImageType:TImageType;
@@ -4384,7 +4384,7 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
-                                   aPersientent,
+                                   aPersistent,
                                    aFormat,
                                    aSamples,
                                    aImageType,
@@ -4397,7 +4397,7 @@ begin
 end;
 
 function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
-                                             const aPersientent:boolean;
+                                             const aPersistent:boolean;
                                              const aSize:TVkDeviceSize;
                                              const aUsage:TVkBufferUsageFlags;
                                              const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -4412,7 +4412,7 @@ function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
 begin
  result:=TBufferResourceType.Create(self,
                                     aName,
-                                    aPersientent,
+                                    aPersistent,
                                     aSize,
                                     aUsage,
                                     aMemoryRequiredPropertyFlags,
@@ -5164,7 +5164,7 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreateResourceAliasGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
-   result:=(not aResource.fResourceType.fPersientent) and
+   result:=(not aResource.fResourceType.fPersistent) and
            (not assigned(aResource.fExternalData)) and
            (not ((aResource.fResourceType is TImageResourceType) and
                  (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface))) and
@@ -6377,7 +6377,7 @@ type TEventBeforeAfter=(Event,Before,After);
          AttachmentIndex:=PhysicalRenderPass.fAttachments.AddNew;
          Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
          Attachment^.Resource:=ResourceTransition.fResource;
-         Attachment^.Persientent:=ImageResourceType.fPersientent;
+         Attachment^.Persistent:=ImageResourceType.fPersistent;
          Attachment^.ImageType:=ImageResourceType.fImageType;
          Attachment^.Format:=ImageResourceType.fFormat;
          Attachment^.Samples:=ImageResourceType.fSamples;
@@ -6630,7 +6630,7 @@ type TEventBeforeAfter=(Event,Before,After);
        end;
        UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<Subpass.fRenderPass.fTopologicalSortIndex;
        UsedAfter:=Subpass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
-       IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persientent;
+       IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persistent;
        if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
         Subpass.fPreserveAttachments.Add(AttachmentIndex);
        end;
