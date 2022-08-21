@@ -223,7 +223,7 @@ begin
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
- PushConstants.Size:=16;
+ PushConstants.Size:=fInstance.CameraPreset.BlurKernelSize;
  PushConstants.FFactor:=fInstance.CameraPreset.FNumber;
  PushConstants.Ngon:=fInstance.CameraPreset.Ngon;
  PushConstants.PhiShutterMax:=HalfPI;

@@ -24,16 +24,6 @@ layout(std430, set = 0, binding = 1) readonly buffer BokehShapeTaps {
 };
 
 const float PI = 3.14159265359;   
-const float halfPI = 1.57079632679;
-
-// o = tap sample xy, f = f-factor, n = diaphragm shape ngon, phiShutterMax = max. lens shutter rotation 
-vec2 getBokehTapSampleCoord(const in vec2 o, const in float f, const float n, const in float phiShutterMax){
-    vec2 ab = (o * 2.0) - vec2(1.0);    
-    vec2 phir = ((ab.x * ab.x) > (ab.y * ab.y)) ? vec2((abs(ab.x) > 1e-8) ? ((PI * 0.25) * (ab.y / ab.x)) : 0.0, ab.x) : vec2((abs(ab.y) > 1e-8) ? ((PI * 0.5) - ((PI * 0.25) * (ab.x / ab.y))) : 0.0, ab.y); 
-    phir.x += f * phiShutterMax;
-    phir.y *= (f > 0.0) ? pow((cos(PI / n) / cos(phir.x - ((2.0 * (PI / n)) * floor(((n * phir.x) + PI) / (2.0 * PI))))), f) : 1.0;
-    return sin(vec2(phir.x) + vec2(0.0, halfPI)) * phir.y;
-}                   
 
 void main(){
   
@@ -53,23 +43,11 @@ void main(){
  
   float halfMargin = 0.5 * inverseInputTextureSize.y;
 
-  int countSquaredRootSamples = pushConstants.blurKernelSize,
-      countSamples = countSquaredRootSamples * countSquaredRootSamples;
+  int countSamples = countBokehShapeTaps;
       
   for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
-#define UseDynamicBokehTaps
-#ifdef UseDynamicBokehTaps
-    vec2 offset = getBokehTapSampleCoord(vec2(ivec2(sampleIndex / countSquaredRootSamples, 
-                                                    sampleIndex % countSquaredRootSamples)) / float(countSquaredRootSamples - 1), 
-                                         pushConstants.fFactor, 
-                                         pushConstants.ngon,
-                                         halfPI) * pushConstants.maxCoC;
-#else
-    vec2 offset = sin(vec2(float(sampleIndex) * 2.39996322973) + 
-                      vec2(0.0, 1.57079632679)) *
-                  (float(sampleIndex) / float(countSamples - 1)) * pushConstants.maxCoC;
-#endif       
+    vec2 offset = bokehShapeTaps[sampleIndex] * pushConstants.maxCoC;
      
     float offsetDistance = max(1e-7, length(offset));
      
@@ -97,33 +75,21 @@ void main(){
   vec4 farSum = vec4(0.0);
   vec4 nearSum = vec4(0.0);
 
-  int countSquaredRootSamples = pushConstants.blurKernelSize,
-      countSamples = countSquaredRootSamples * countSquaredRootSamples;
+  int countSamples = countBokehShapeTaps;
       
   for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
-#define UseDynamicBokehTaps
-#ifdef UseDynamicBokehTaps
-    vec2 offset = getBokehTapSampleCoord(vec2(ivec2(sampleIndex / countSquaredRootSamples, 
-                                                    sampleIndex % countSquaredRootSamples)) / float(countSquaredRootSamples - 1), 
-                                         pushConstants.fFactor, 
-                                         pushConstants.ngon,
-                                         halfPI) * pushConstants.maxCoC;
-#else
-    vec2 offset = sin(vec2(float(sampleIndex) * 2.39996322973) + 
-                      vec2(0.0, 1.57079632679)) *
-                  (float(sampleIndex) / float(countSamples - 1)) * pushConstants.maxCoC;
-#endif       
+    vec2 offset = bokehShapeTaps[sampleIndex] * pushConstants.maxCoC;
      
-     float offsetDistance = max(1e-7, length(offset));
+    float offsetDistance = max(1e-7, length(offset));
      
-     offset.x *= aspectRatio;
+    offset.x *= aspectRatio;
 
-     vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
+    vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
          
-     farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
+    farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
 
-     nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(marginEx, -sampleTexel.w);
+    nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(marginEx, -sampleTexel.w);
 
   }
 
