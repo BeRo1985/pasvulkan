@@ -16,9 +16,9 @@ layout(set = 0, binding = 0) uniform sampler2DArray uTextureInput;
 
 void main(){
   
-	vec2 inputTextureSize = textureSize(uTextureInput, 0).xy; 
+  vec2 inputTextureSize = textureSize(uTextureInput, 0).xy; 
 
-	vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
+  vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
 
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 
