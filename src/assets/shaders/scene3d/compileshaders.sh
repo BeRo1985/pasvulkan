@@ -34,6 +34,7 @@ compileshaderarguments=(
   '-V dof_prepare.frag -o dof_prepare_frag.spv'
   '-V dof_prefilter.frag -o dof_prefilter_frag.spv'
   '-V dof_blur.frag -o dof_blur_frag.spv'
+  '-V dof_bruteforce.frag -o dof_bruteforce_frag.spv'
   '-V dof_postblur.frag -o dof_postblur_frag.spv'
   '-V dof_combine.frag -o dof_combine_frag.spv'
   '-V dof_gather.frag -DPASS1 -o dof_gather_pass1_frag.spv'
