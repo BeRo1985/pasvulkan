@@ -116,7 +116,8 @@ type TpvScene3DRendererAntialiasingMode=
        Auto=0,
        None,
        Hexagon,
-       Flexible
+       Flexible,
+       Bruteforce
       );
 
      PpvScene3DRendererDepthOfFieldMode=^TpvScene3DRendererDepthOfFieldMode;
