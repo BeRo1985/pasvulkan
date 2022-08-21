@@ -225,6 +225,7 @@ type { TpvScene3DRendererInstance }
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
+       fDepthOfFieldBokenShapeTapVulkanBuffers:TVulkanBuffers;
       private
        fLightGridPushConstants:TpvScene3DRendererInstance.TLightGridPushConstants;
        fLightGridGlobalsVulkanBuffers:TVulkanBuffers;
@@ -296,6 +297,7 @@ type { TpvScene3DRendererInstance }
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
+       property DepthOfFieldBokenShapeTapVulkanBuffers:TVulkanBuffers read fDepthOfFieldBokenShapeTapVulkanBuffers;
       public
        property LightGridSizeX:TpvInt32 read fLightGridSizeX;
        property LightGridSizeY:TpvInt32 read fLightGridSizeY;
@@ -392,6 +394,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrepareRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldBokehComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPrefilterRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldPostBlurRenderPass,
@@ -445,6 +448,7 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingTAARenderPass:TpvScene3DRendererPassesAntialiasingTAARenderPass;
        fAntialiasingTAAPostCustomPass:TpvScene3DRendererPassesAntialiasingTAAPostCustomPass;
        fDepthOfFieldPrepareRenderPass:TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass;
+       fDepthOfFieldBokehComputePass:TpvScene3DRendererPassesDepthOfFieldBokehComputePass;
        fDepthOfFieldPrefilterRenderPass:TpvScene3DRendererPassesDepthOfFieldPrefilterRenderPass;
        fDepthOfFieldBlurRenderPass:TpvScene3DRendererPassesDepthOfFieldBlurRenderPass;
        fDepthOfFieldPostBlurRenderPass:TpvScene3DRendererPassesDepthOfFieldPostBlurRenderPass;
@@ -1201,7 +1205,10 @@ begin
 
   if Renderer.DepthOfFieldMode=TpvScene3DRendererDepthOfFieldMode.Flexible then begin
 
+   TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBokehComputePass:=TpvScene3DRendererPassesDepthOfFieldBokehComputePass.Create(fFrameGraph,self);
+
    TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass:=TpvScene3DRendererPassesDepthOfFieldPrefilterRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrefilterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBokehComputePass);
 
    TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBlurRenderPass:=TpvScene3DRendererPassesDepthOfFieldBlurRenderPass.Create(fFrameGraph,self);
 
@@ -1363,6 +1370,20 @@ begin
                                                                                       0,
                                                                                       0,
                                                                                       []);
+      fDepthOfFieldBokenShapeTapVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                                                          (SizeOf(TpvVector2)*4096)+SizeOf(TpvVector4),
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                          [],
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                          0,
+                                                                                          0,
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          []);
      end;
 
      fLightGridTileSizeX:=(fWidth+(fLightGridSizeX-1)) div fLightGridSizeX;
@@ -1614,6 +1635,7 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fNearestFarthestDepthVulkanBuffers[InFlightFrameIndex]);
   FreeAndNil(fDepthOfFieldAutoFocusVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fDepthOfFieldBokenShapeTapVulkanBuffers[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin

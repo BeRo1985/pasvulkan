@@ -18,6 +18,11 @@ layout(push_constant) uniform PushConstants {
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTextureInput;
 
+layout(std430, set = 0, binding = 1) readonly buffer BokehShapeTaps {
+  int countBokehShapeTaps; 
+  vec2 bokehShapeTaps[];
+};
+
 const float PI = 3.14159265359;   
 const float halfPI = 1.57079632679;
 
@@ -85,7 +90,9 @@ void main(){
 
 #else
 
-  float margin = inverseInputTextureSize.y * 2.0;
+  float marginEx = inverseInputTextureSize.y * pushConstants.downSampleFactor;
+
+  float margin = marginEx * 2.0;
 
   vec4 farSum = vec4(0.0);
   vec4 nearSum = vec4(0.0);
@@ -116,7 +123,7 @@ void main(){
          
      farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
 
-     nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(inverseInputTextureSize.y * 0.5, -sampleTexel.w);
+     nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(marginEx, -sampleTexel.w);
 
   }
 

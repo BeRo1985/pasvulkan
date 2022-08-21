@@ -30,6 +30,7 @@ compileshaderarguments=(
   '-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o downsample_depth_multiview_reversedz_level1_comp.spv'
 
   '-V dof_autofocus.comp -o dof_autofocus_comp.spv'
+  '-V dof_bokeh.comp -o dof_bokeh_comp.spv'
   '-V dof_prepare.frag -o dof_prepare_frag.spv'
   '-V dof_prefilter.frag -o dof_prefilter_frag.spv'
   '-V dof_blur.frag -o dof_blur_frag.spv'
