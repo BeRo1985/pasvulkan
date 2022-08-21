@@ -169,7 +169,7 @@ begin
   end;
  end;
 
- fResourceOutput:=AddImageOutput('resourcetype_depthoffield_work_data',
+ fResourceOutput:=AddImageOutput('resourcetype_depthoffield',
                                  'resource_depthoffield_prepare_data',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,

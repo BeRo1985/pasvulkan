@@ -151,12 +151,12 @@ begin
 
  end else begin
 
-  fResourceColor0:=AddImageInput('resourcetype_depthoffield_work_data',
+  fResourceColor0:=AddImageInput('resourcetype_depthoffield',
                                  'resource_depthoffield_prepare_data',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
-  fResourceColor1:=AddImageInput('resourcetype_depthoffield_work_data',
+  fResourceColor1:=AddImageInput('resourcetype_depthoffield',
                                  'resource_depthoffield_pass2',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
