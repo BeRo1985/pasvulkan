@@ -144,12 +144,12 @@ begin
 
   TpvScene3DRendererDepthOfFieldMode.Flexible:begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color',
+   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
-   fResourceColor1:=AddImageInput('resourcetype_color',
+   fResourceColor1:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
@@ -158,7 +158,7 @@ begin
 
   TpvScene3DRendererDepthOfFieldMode.Bruteforce:begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color',
+   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
@@ -169,12 +169,12 @@ begin
 
   else {TpvScene3DRendererDepthOfFieldMode.Hexagon:}begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color',
+   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
-   fResourceColor1:=AddImageInput('resourcetype_color',
+   fResourceColor1:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_pass2',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
@@ -183,7 +183,7 @@ begin
 
  end;
 
- fResourceOutput:=AddImageOutput('resourcetype_color',
+ fResourceOutput:=AddImageOutput('resourcetype_color_posteffect',
                                  'resource_depthoffield_final',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
