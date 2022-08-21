@@ -87,9 +87,8 @@ type { TpvScene3DRendererPassesDepthOfFieldResolveRenderPass }
       private
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
-       fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-{      fResourceColor0:TpvFrameGraph.TPass.TUsedImageResource;
-       fResourceColor1:TpvFrameGraph.TPass.TUsedImageResource;}
+       fResourceColor0:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceColor1:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
@@ -104,7 +103,7 @@ type { TpvScene3DRendererPassesDepthOfFieldResolveRenderPass }
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCombinedInput:boolean); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -118,7 +117,7 @@ implementation
 
 { TpvScene3DRendererPassesDepthOfFieldResolveRenderPass }
 
-constructor TpvScene3DRendererPassesDepthOfFieldResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDepthOfFieldResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCombinedInput:boolean);
 begin
 
  inherited Create(aFrameGraph);
@@ -141,20 +140,27 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_depthoffield',
-                               'resource_depthoffield_combined',
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+ if aCombinedInput then begin
 
-{fResourceColor0:=AddImageInput('resourcetype_depthoffield_work_data',
-                                'resource_depthoffield_prepare_data',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+  fResourceColor0:=AddImageInput('resourcetype_depthoffield',
+                                 'resource_depthoffield_combined',
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
- fResourceColor1:=AddImageInput('resourcetype_depthoffield_work_data',
-                                'resource_depthoffield_pass2',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);}
+  fResourceColor1:=fResourceColor0;
+
+ end else begin
+
+  fResourceColor0:=AddImageInput('resourcetype_depthoffield_work_data',
+                                 'resource_depthoffield_prepare_data',
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+
+  fResourceColor1:=AddImageInput('resourcetype_depthoffield_work_data',
+                                 'resource_depthoffield_pass2',
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+ end;
 
  fResourceOutput:=AddImageOutput('resourcetype_depthoffield',
                                  'resource_depthoffield_final',
@@ -259,11 +265,11 @@ begin
                                                                  2,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fResourceColor.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                fResourceColor.ResourceTransition.Layout),
+                                                                                                fResourceColor0.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceColor0.ResourceTransition.Layout),
                                                                   TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fResourceColor.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                fResourceColor.ResourceTransition.Layout)],
+                                                                                                fResourceColor1.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceColor1.ResourceTransition.Layout)],
                                                                  [],
                                                                  [],
                                                                  false
