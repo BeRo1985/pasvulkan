@@ -825,7 +825,7 @@ begin
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_color',
-                                  false,
+                                  true,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
@@ -875,7 +875,7 @@ begin
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_normals',
-                                  false,
+                                  true,
                                   VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
@@ -885,7 +885,7 @@ begin
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_ssao',
-                                  false,
+                                  true,
                                   VK_FORMAT_R32G32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
@@ -895,7 +895,7 @@ begin
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_ssao_final',
-                                  false,
+                                  true,
                                   VK_FORMAT_R8_UNORM,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
