@@ -169,6 +169,9 @@ begin
                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
+
+ fInstance.LastOutputResource:=fResourceOutput;
+
 end;
 
 destructor TpvScene3DRendererPassesDepthOfFieldResolveRenderPass.Destroy;
