@@ -139,17 +139,17 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor0:=AddImageInput('resourcetype_depthoffield',
+ fResourceColor0:=AddImageInput('resourcetype_color',
                                'resource_depthoffield_pass1_0',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
- fResourceColor1:=AddImageInput('resourcetype_depthoffield',
+ fResourceColor1:=AddImageInput('resourcetype_color',
                                'resource_depthoffield_pass1_1',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
- fResourceOutput:=AddImageOutput('resourcetype_depthoffield',
+ fResourceOutput:=AddImageOutput('resourcetype_color',
                                  'resource_depthoffield_pass2',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
