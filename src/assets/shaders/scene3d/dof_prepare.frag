@@ -11,8 +11,10 @@ layout(location = 0) out vec4 outFragColor;
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   float focalLength;
+  float focalPlaneDistance; 
   float fNumber;
   float sensorSizeY;
+  uint useAutoFocus;
 } pushConstants;
 
 struct View {
@@ -79,7 +81,7 @@ void main(){
     //             z * ( d0 - f ) 
     //
     float z = depth * 1000.0, // distance in mm
-          d0 = autoFocusDepth * 1000.0, // focal plane in mm (here: depth from auto-focus)
+          d0 = (pushConstants.useAutoFocus != 0) ? (autoFocusDepth * 1000.0) : pushConstants.focalPlaneDistance, // focal plane in mm 
           f = pushConstants.focalLength, // focal length in mm
           D = f / pushConstants.fNumber; // Aperture diameter in mm
 #if 1         

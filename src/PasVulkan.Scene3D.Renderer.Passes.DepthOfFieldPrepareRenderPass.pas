@@ -83,8 +83,10 @@ type { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
        type TPushConstants=record
              ViewBaseIndex:TpvUInt32;
              FocalLength:TpvFloat;
+             FocalPlaneDistance:TpvFloat;
              FNumber:TpvFloat;
              SensorSizeY:TpvFloat;
+             UseAutoFocus:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -433,8 +435,10 @@ begin
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
  PushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
  PushConstants.FocalLength:=fInstance.CameraPreset.FocalLength;
+ PushConstants.FocalPlaneDistance:=fInstance.CameraPreset.FocalPlaneDistance;
  PushConstants.FNumber:=fInstance.CameraPreset.FNumber;
  PushConstants.SensorSizeY:=fInstance.CameraPreset.SensorSize.y;
+ PushConstants.UseAutoFocus:=ord(fInstance.CameraPreset.AutoFocus) and 1;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

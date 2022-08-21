@@ -105,6 +105,7 @@ type { TpvScene3DRendererCameraPreset }
        fHighlightThreshold:TpvFloat;
        fHighlightGain:TpvFloat;
        fBokehChromaticAberration:TpvFloat;
+       fAutoFocus:boolean;
        function GetFieldOfViewAngleRadians:TpvFloat;
        function GetAspectRatio:TpvFloat;
       public
@@ -158,6 +159,9 @@ type { TpvScene3DRendererCameraPreset }
        // Aspect ratio
        property AspectRatio:TpvFloat read GetAspectRatio;
 
+       // AutoFocus
+       property AutoFocus:boolean read fAutoFocus write fAutoFocus;
+
     end;
 
 implementation
@@ -181,6 +185,7 @@ begin
  fHighlightThreshold:=0.25;
  fHighlightGain:=1.0;
  fBokehChromaticAberration:=0.7;
+ fAutoFocus:=false;
 end;
 
 destructor TpvScene3DRendererCameraPreset.Destroy;
@@ -204,6 +209,7 @@ begin
  fHighlightThreshold:=aFrom.fHighlightThreshold;
  fHighlightGain:=aFrom.fHighlightGain;
  fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
+ fAutoFocus:=aFrom.fAutoFocus;
 end;
 
 function TpvScene3DRendererCameraPreset.GetFieldOfViewAngleRadians:TpvFloat;
