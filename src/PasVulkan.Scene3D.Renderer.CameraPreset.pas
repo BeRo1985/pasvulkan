@@ -176,7 +176,7 @@ begin
  fFocalLength:=50.0;
  fFlangeFocalDistance:=100.0;
  fFocalPlaneDistance:=4000.0;
- fFNumber:=5.6;
+ fFNumber:=16.0;
  fFNumberMin:=1.0;
  fFNumberMax:=16.0;
  fNgon:=6;
