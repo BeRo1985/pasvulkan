@@ -175,7 +175,7 @@ begin
  fSensorSizeProperty:=TpvVector2Property.Create(@fSensorSize);
  fFocalLength:=50.0;
  fFlangeFocalDistance:=100.0;
- fFocalPlaneDistance:=1000.0;
+ fFocalPlaneDistance:=4000.0;
  fFNumber:=5.6;
  fFNumberMin:=1.0;
  fFNumberMax:=16.0;

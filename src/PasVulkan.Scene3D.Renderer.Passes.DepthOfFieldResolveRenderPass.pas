@@ -378,7 +378,7 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
  PushConstants.BokehChromaticAberration:=fInstance.CameraPreset.BokehChromaticAberration;
- PushConstants.Debug:=1;
+ PushConstants.Debug:=0;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
