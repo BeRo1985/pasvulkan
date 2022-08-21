@@ -382,7 +382,7 @@ var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
- PushConstants.CountSamples:=32;
+ PushConstants.CountSamples:=fInstance.CameraPreset.BlurKernelSize;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
