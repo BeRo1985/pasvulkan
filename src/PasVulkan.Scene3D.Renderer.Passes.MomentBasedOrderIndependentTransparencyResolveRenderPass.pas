@@ -202,6 +202,8 @@ begin
 
  end;
 
+ fInstance.LastOutputResource:=fResourceSurface;
+
 end;
 
 destructor TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyResolveRenderPass.Destroy;

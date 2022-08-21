@@ -143,31 +143,10 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
-                                'resource_temporal_antialiasing_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
- end else begin
-  if fInstance.Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.DIRECT,
-                                             TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
-                                             TpvScene3DRendererTransparencyMode.INTERLOCKOIT,
-                                             TpvScene3DRendererTransparencyMode.LOOPOIT,
-                                             TpvScene3DRendererTransparencyMode.WBOIT,
-                                             TpvScene3DRendererTransparencyMode.MBOIT] then begin
-   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'resource_combinedopaquetransparency_final_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-  end else begin
-   fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                 'resource_forwardrendering_color',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-  end;
- end;
+ fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
  fResourceOutput:=AddImageOutput('resourcetype_depthoffield',
                                  'resource_depthoffield_prepare_data',

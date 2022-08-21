@@ -267,6 +267,7 @@ type { TpvScene3DRendererInstance }
        fTAAEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
        fPasses:TObject;
+       fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -333,6 +334,8 @@ type { TpvScene3DRendererInstance }
       public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
+      public
+       property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;

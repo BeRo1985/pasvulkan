@@ -145,7 +145,12 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- if fInstance.Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.DIRECT,
+ fResourceCurrentColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                                      fInstance.LastOutputResource.Resource.Name,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+
+{if fInstance.Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.DIRECT,
                                             TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
                                             TpvScene3DRendererTransparencyMode.INTERLOCKOIT,
                                             TpvScene3DRendererTransparencyMode.LOOPOIT,
@@ -162,7 +167,7 @@ begin
                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                       );
- end;
+ end;}
 
  fResourceCurrentDepth:=AddImageInput('resourcetype_depth',
                                       'resource_depth_data',
@@ -183,6 +188,8 @@ begin
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                  );
+
+ fInstance.LastOutputResource:=fResourceSurface;
 
 end;
 

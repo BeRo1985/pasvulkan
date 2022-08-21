@@ -132,10 +132,15 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_depthoffield',
+ fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+
+{fResourceColor:=AddImageInput('resourcetype_depthoffield',
                                'resource_depthoffield_final',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);}
 
 {if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
