@@ -28,7 +28,7 @@ void main(){
 
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 	
-  vec4 colorA = fma(textureLod(uTextureInputs[0], uvw, 0.0), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
+  vec4 colorA = textureLod(uTextureInputs[0], uvw, 0.0);
   //vec4 colorB = fma(textureLod(uTextureInputs[1], uvw, 0.0), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
 
   float CoC = colorA.w;

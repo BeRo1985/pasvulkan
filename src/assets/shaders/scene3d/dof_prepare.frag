@@ -49,6 +49,7 @@ void main(){
   vec4 color = subpassLoad(uSubpassColor);
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
   float depth = clamp(linearizeDepth(rawDepth), 0.0, 4096.0);
+#if 0
   {
     float luminance = dot(color.xyz, vec3(0.299, 0.587, 0.114));
     float luminanceThreshold = 0.5;
@@ -57,6 +58,7 @@ void main(){
       color.xyz *= isinf(depth) ? 1.0 : max(0.0, (1.0 - f) + (f * 2.0)); 
     }
   }
+#endif
   float CoC = 0.0;
   {
     // f = Focal length (where light starts getting in focus)
@@ -86,5 +88,5 @@ void main(){
     CoC = (((d0 * f) / (d0 - f)) - ((z * f) / (z - f))) * (D * ((z - f) / (z * f)));
 #endif
   }
-  outFragColor = vec4(color.xyz, clamp(fma(clamp(CoC / pushConstants.sensorSizeY, -1.0, 1.0), 0.5, 0.5), 0.0, 1.0));
+  outFragColor = vec4(color.xyz, clamp(CoC / pushConstants.sensorSizeY, -1.0, 1.0));
 }

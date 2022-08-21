@@ -25,7 +25,7 @@ void main(){
   vec4 redSamples = textureGather(uTextureInput, uvw, 0);
   vec4 greenSamples = textureGather(uTextureInput, uvw, 1);
   vec4 blueSamples = textureGather(uTextureInput, uvw, 2);
-  vec4 CoCs = clamp(fma(textureGather(uTextureInput, uvw, 3), vec4(2.0), vec4(-1.0)), vec4(-pushConstants.maxCoC), vec4(pushConstants.maxCoC));
+  vec4 CoCs = clamp(textureGather(uTextureInput, uvw, 3), vec4(-pushConstants.maxCoC), vec4(pushConstants.maxCoC));
 
   vec4 c0 = vec4(redSamples.x, greenSamples.x, blueSamples.x, 1.0);
   vec4 c1 = vec4(redSamples.y, greenSamples.y, blueSamples.y, 1.0);

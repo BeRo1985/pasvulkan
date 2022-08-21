@@ -31,7 +31,7 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
 											 const in vec2 inputTextureSize, 
 											 inout vec4 color){
 	
-  vec4 sampleColor = fma(textureLod(inputTexture, uvw, LOD), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
+  vec4 sampleColor = textureLod(inputTexture, uvw, LOD);
 
 	// CoC < 0.0 means the pixel is in front of the focal plane.
 	bool blurNear = sampleColor.w < 0.0;
@@ -42,7 +42,6 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
 	// Check if the CoC of the sampled pixel is big enough to scatter here, and
 	// the sampled pixel is in front of the focal plane or
 	// this pixel is behind the focal plane and the sampled pixel isn't too far behind it.
-//if((absoluteCoC > stepDistance) && (blurNear || ((baseCoC > 0.0)))){
   if((absoluteCoC > stepDistance) && (blurNear || ((baseCoC > 0.0) && (absoluteCoC < (baseCoC * 2.0))))){
 		// Sort out the CoC of the blurred image, by taking to biggest CoC to maintain the
 		// hexagon shape in the second pass.
@@ -63,7 +62,6 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
 		}
 		// Now accumulate the color. Allow partial sampling at the pixel boundary for smoothness.
 		sampleFraction = clamp((absoluteCoC - stepDistance) * inputTextureSize.y, 0.0, 1.0);
-//	sampleFraction = 1.0 - clamp((absoluteCoC - stepDistance) * inputTextureSize.y, 0.0, 1.0);
 		color.xyz += sampleColor.xyz * sampleFraction;
 	}
   
@@ -81,7 +79,7 @@ void main(){
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 	
   // Start by sampling at the center of the blur.
-  vec4 baseColor = fma(textureLod(uTextureInput, uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
+  vec4 baseColor = textureLod(uTextureInput, uvw, float(LOD));
 
   // Final color and CoC size will be accumulated in the output.
   vec4 outputA = vec4(vec3(0.0), baseColor.w);
@@ -113,8 +111,8 @@ void main(){
     outputB.w = outputA.w;
   }
   
-	outFragColor0 = vec4(outputA.xyz, clamp(fma(clamp(outputA.w, -1.0, 1.0), 0.5, 0.5), 0.0, 1.0));                                               
-	outFragColor1 = vec4(outputB.xyz, clamp(fma(clamp(outputB.w, -1.0, 1.0), 0.5, 0.5), 0.0, 1.0));                                               
+	outFragColor0 = vec4(outputA.xyz, clamp(outputA.w, -1.0, 1.0));
+	outFragColor1 = vec4(outputB.xyz, clamp(outputB.w, -1.0, 1.0));
 #else
 	vec2 inputTextureSize = textureSize(uTextureInputs[0], LOD).xy; 
 
@@ -123,7 +121,7 @@ void main(){
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
 
   // Use the combined output as the base for the second pass.
-  vec4 baseColor = fma(textureLod(uTextureInputs[1], uvw, float(LOD)), vec2(1.0, 2.0).xxxy, vec2(0.0, -1.0).xxxy);
+  vec4 baseColor = textureLod(uTextureInputs[1], uvw, float(LOD));
 
 	// Two sets of colour to accumulate this time.
 	vec4 outputA = vec4(vec3(0.0), baseColor.w);
@@ -150,6 +148,6 @@ void main(){
 	outputB.xyz = (sampleCountB > 0.0) ? (outputB.xyz / sampleCountB) : baseColor.xyz;
 	
 	// Combine and divide by three (outputB is double brightness). Use a max for the blurriness, no accumulation done here.
-  outFragColor = vec4(vec3((outputA.xyz + outputB.xyz) / 3.0), clamp(fma(clamp((abs(outputA.w) < abs(outputB.w)) ? outputB.w : outputA.w, -1.0, 1.0), 0.5, 0.5), 0.0, 1.0));                     
+  outFragColor = vec4(vec3((outputA.xyz + outputB.xyz) / 3.0), clamp((abs(outputA.w) < abs(outputB.w)) ? outputB.w : outputA.w, -1.0, 1.0));                     
 #endif
 }

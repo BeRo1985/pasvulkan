@@ -49,18 +49,20 @@ void main(){
 
   int countSquaredRootSamples = pushConstants.blurKernelSize,
       countSamples = countSquaredRootSamples * countSquaredRootSamples;
+      
   for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
-#if 0
-    vec2 offset = sin(vec2(float(sampleIndex) * 2.39996322973) + 
-                      vec2(0.0, 1.57079632679)) *
-                  (float(sampleIndex) / float(countSamples - 1)) * pushConstants.maxCoC;
-#else
+#define UseDynamicBokehTaps
+#ifdef UseDynamicBokehTaps
     vec2 offset = getBokehTapSampleCoord(vec2(ivec2(sampleIndex / countSquaredRootSamples, 
                                                     sampleIndex % countSquaredRootSamples)) / float(countSquaredRootSamples - 1), 
                                          pushConstants.fFactor, 
                                          pushConstants.ngon,
                                          halfPI) * pushConstants.maxCoC;
+#else
+    vec2 offset = sin(vec2(float(sampleIndex) * 2.39996322973) + 
+                      vec2(0.0, 1.57079632679)) *
+                  (float(sampleIndex) / float(countSamples - 1)) * pushConstants.maxCoC;
 #endif       
      
      float offsetDistance = max(1e-7, length(offset));
@@ -68,25 +70,20 @@ void main(){
      offset.x *= aspectRatio;
 
      vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
-     
-     float farCoC = max(min(centerSample.w, sampleTexel.w), 0.0); 
-     
-     float farWeight = clamp(((farCoC - offsetDistance) + margin) / margin, 0.0, 1.0);
-     float nearWeight = clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(inverseInputTextureSize.y * pushConstants.downSampleFactor, -sampleTexel.w);
+         
+     farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
 
-     farSum += vec4(sampleTexel.xyz, 1.0) * farWeight;
-     nearSum += vec4(sampleTexel.xyz, 1.0) * nearWeight;
+     nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(inverseInputTextureSize.y * pushConstants.downSampleFactor, -sampleTexel.w);
 
   }
 
   farSum.xyz /= ((farSum.w < 1e-7) ? 1.0 : farSum.w);
   nearSum.xyz /= ((nearSum.w < 1e-7) ? 1.0 : nearSum.w);
 
-  //farSum.w = smoothstep(inverseInputTextureSize.y, inverseInputTextureSize.y * 2.0, centerSample.w);
+//farSum.w = smoothstep(inverseInputTextureSize.y, inverseInputTextureSize.y * 2.0, centerSample.w);
+//nearSum.w *= PI / float(countSamples);
 
-  nearSum.w *= PI / float(countSamples);
-
-  float alpha = clamp(nearSum.w, 0.0, 1.0);
+  float alpha = clamp(nearSum.w * (PI / float(countSamples)), 0.0, 1.0);
 
   outFragOutput = vec4(mix(farSum.xyz, nearSum.xyz, alpha), alpha);
 
