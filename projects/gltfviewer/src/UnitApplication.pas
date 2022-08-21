@@ -45,6 +45,7 @@ type TApplication=class(TpvApplication)
        fShadowMapSize:TpvInt32;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
+       fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
@@ -77,6 +78,7 @@ type TApplication=class(TpvApplication)
        property ShadowMapSize:TpvInt32 read fShadowMapSize;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode;
+       property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode;
      end;
 
@@ -110,6 +112,7 @@ begin
  fShadowMapSize:=2048;
  fTransparencyMode:=TpvScene3DRendererTransparencyMode.Auto;
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
+ fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
  AcceptDragDropFiles:=true;
@@ -220,6 +223,21 @@ begin
      fShadowMode:=TpvScene3DRendererShadowMode.MSM;
     end else begin
      fShadowMode:=TpvScene3DRendererShadowMode.Auto;
+    end;
+   end;
+  end else if (Parameter='--depth-of-field-mode') or
+              (Parameter='/depth-of-field-mode') then begin
+   if Index<=ParamCount then begin
+    Parameter:=LowerCase(trim(ParamStr(Index)));
+    inc(Index);
+    if Parameter='none' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
+    end else if Parameter='hexagon' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+    end else if Parameter='flexible' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
+    end else begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
     end;
    end;
   end else begin
