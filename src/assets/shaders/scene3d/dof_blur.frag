@@ -68,7 +68,7 @@ void main(){
 
 #else
 
-  float marginEx = inverseInputTextureSize.y * pushConstants.downSampleFactor;
+  float marginEx = inverseInputTextureSize.y;// * pushConstants.downSampleFactor;
 
   float margin = marginEx * 2.0;
 
@@ -89,7 +89,7 @@ void main(){
          
     farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
 
-    nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * step(marginEx, -sampleTexel.w);
+    nearSum += vec4(sampleTexel.xyz, 1.0) * clamp((((-sampleTexel.w) - offsetDistance) + margin) / margin, 0.0, 1.0) * smoothstep(marginEx * 0.5, marginEx, -sampleTexel.w);
 
   }
 
