@@ -123,6 +123,7 @@ type TpvScene3DRenderer=class;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
+       fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
@@ -170,6 +171,7 @@ type TpvScene3DRenderer=class;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
+       property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA write fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
@@ -312,6 +314,8 @@ begin
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
 
  fTransparencyMode:=TpvScene3DRendererTransparencyMode.Auto;
+
+ fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
 
  fMaxMSAA:=0;
 
@@ -675,6 +679,35 @@ begin
     end else begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
     end;
+   end;
+  end;
+ end;
+
+ if fDepthOfFieldMode=TpvScene3DRendererDepthOfFieldMode.Auto then begin
+  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+    end else begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
+    end;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+    end else begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
+   end else begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+    end;
+   end;
+   else begin
+    fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
    end;
   end;
  end;
