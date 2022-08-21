@@ -702,7 +702,7 @@ begin
    TpvVulkanVendorID.Intel:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
-   end else begin
+    end else begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
     end;
    end;
