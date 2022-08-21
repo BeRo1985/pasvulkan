@@ -369,7 +369,7 @@ begin
  PushConstants.MaxCoC:=fInstance.CameraPreset.MaxCoC;
  PushConstants.FFactor:=fInstance.CameraPreset.FNumber;
  PushConstants.Ngon:=fInstance.CameraPreset.Ngon;
- PushConstants.DownSampleFactor:=2.0;
+ PushConstants.DownSampleFactor:=0.5;
  PushConstants.BlurKernelSize:=fInstance.CameraPreset.BlurKernelSize;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
