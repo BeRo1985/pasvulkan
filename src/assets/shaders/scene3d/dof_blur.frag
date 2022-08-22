@@ -84,7 +84,7 @@ void main(){
 
     int countSamples = countBokehShapeTaps;
         
-    vec2 nearFarSum = vec2(0.0);
+    float nearSum = 0.0;
 
     for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
@@ -103,11 +103,11 @@ void main(){
 
       color += vec4(mix(color.xyz / color.w, sampleTexel.xyz, weight), 1.0);         
       
-      nearFarSum += vec2(float(sampleTexel.w < 0.0), float(sampleTexel.w > 0.0)) * weight;
+      nearSum += float(sampleTexel.w < 0.0) * weight;
 
     }
 
-    outFragOutput = vec4(color.xyz / color.w, clamp(nearFarSum.x * (PI / float(countSamples)), 0.0, 1.0));
+    outFragOutput = vec4(color.xyz / color.w, clamp(nearSum * (PI / float(countSamples)), 0.0, 1.0));
 
   }
 
