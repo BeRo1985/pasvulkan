@@ -687,23 +687,23 @@ begin
   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
    TpvVulkanVendorID.AMD:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.FullResHexagon;
     end else begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce;
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.FullResHexagon;
     end else begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce;
     end;
    end;
    TpvVulkanVendorID.Intel:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
     end else begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.FullResHexagon;
     end;
    end;
    else begin

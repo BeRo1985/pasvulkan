@@ -142,21 +142,13 @@ begin
 
  case fInstance.Renderer.DepthOfFieldMode of
 
-  TpvScene3DRendererDepthOfFieldMode.Flexible:begin
+  TpvScene3DRendererDepthOfFieldMode.HalfResSeparateNearFar,
+  TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce:begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+{  fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
-
-   fResourceColor1:=AddImageInput('resourcetype_color_posteffect',
-                                  'resource_depthoffield_combined',
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
-
-  end;
-
-  TpvScene3DRendererDepthOfFieldMode.Bruteforce:begin
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);}
 
    fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_combined',
@@ -167,7 +159,18 @@ begin
 
   end;
 
-  else {TpvScene3DRendererDepthOfFieldMode.Hexagon:}begin
+  TpvScene3DRendererDepthOfFieldMode.FullResBruteforce:begin
+
+   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+                                  'resource_depthoffield_combined',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+
+   fResourceColor1:=fResourceColor0;
+
+  end;
+
+  else {TpvScene3DRendererDepthOfFieldMode.FullResHexagon:}begin
 
    fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
                                   'resource_depthoffield_prepare_data',

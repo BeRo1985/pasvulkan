@@ -164,6 +164,7 @@ end;
 
 procedure TpvScene3DRendererPassesDepthOfFieldBlurRenderPass.AcquirePersistentResources;
 var Stream:TStream;
+    SeparateNearFarProcessing:TVkBool32;
 begin
 
  inherited AcquirePersistentResources;
@@ -188,7 +189,15 @@ begin
 
  fVulkanPipelineShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVulkanVertexShaderModule,'main');
 
+ if fInstance.Renderer.DepthOfFieldMode=TpvScene3DRendererDepthOfFieldMode.HalfResSeparateNearFar then begin
+  SeparateNearFarProcessing:=VK_TRUE;
+ end else begin
+  SeparateNearFarProcessing:=VK_FALSE;
+ end;
+
  fVulkanPipelineShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fVulkanFragmentShaderModule,'main');
+ fVulkanPipelineShaderStageFragment.AddSpecializationMapEntry(0,0,SizeOf(TVkBool32));
+ fVulkanPipelineShaderStageFragment.AddSpecializationDataFromMemory(@SeparateNearFarProcessing,SizeOf(TVkBool32),true);
 
  fVulkanGraphicsPipeline:=nil;
 

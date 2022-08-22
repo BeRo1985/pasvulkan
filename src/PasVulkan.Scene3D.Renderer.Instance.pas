@@ -1227,7 +1227,8 @@ begin
 
   case Renderer.DepthOfFieldMode of
 
-   TpvScene3DRendererDepthOfFieldMode.Flexible:begin
+   TpvScene3DRendererDepthOfFieldMode.HalfResSeparateNearFar,
+   TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce:begin
 
     TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBokehComputePass:=TpvScene3DRendererPassesDepthOfFieldBokehComputePass.Create(fFrameGraph,self);
 
@@ -1242,7 +1243,7 @@ begin
 
    end;
 
-   TpvScene3DRendererDepthOfFieldMode.Bruteforce:begin
+   TpvScene3DRendererDepthOfFieldMode.FullResBruteforce:begin
 
     TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldBokehComputePass:=TpvScene3DRendererPassesDepthOfFieldBokehComputePass.Create(fFrameGraph,self);
 
@@ -1251,7 +1252,7 @@ begin
 
    end;
 
-   else begin
+   else {TpvScene3DRendererDepthOfFieldMode.FullResHexagon:}begin
 
     TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldGatherPass1RenderPass:=TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass.Create(fFrameGraph,self);
 

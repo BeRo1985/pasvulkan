@@ -4,6 +4,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+layout (constant_id = 0) const bool PremultiplyWithCoC = true;
+
 layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outFragOutput;
@@ -52,7 +54,9 @@ void main(){
   float CoC = ((-minMaxCoC.x) > minMaxCoC.y) ? minMaxCoC.x : minMaxCoC.y;
 
   // Premultiply with CoC   
-  average *= smoothstep(0.0, inverseInputTextureSize.y * 2.0, abs(CoC));
+  if(PremultiplyWithCoC){
+    average *= smoothstep(0.0, inverseInputTextureSize.y * 2.0, abs(CoC));
+  }
 
   outFragOutput = vec4(average, CoC);
 

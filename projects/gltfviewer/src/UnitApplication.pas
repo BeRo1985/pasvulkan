@@ -232,12 +232,14 @@ begin
     inc(Index);
     if Parameter='none' then begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
-    end else if Parameter='hexagon' then begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Hexagon;
-    end else if Parameter='flexible' then begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Flexible;
-    end else if Parameter='bruteforce' then begin
-     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Bruteforce;
+    end else if Parameter='halfresseparatenearfar' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.HalfResSeparateNearFar;
+    end else if Parameter='halfresbruteforce' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce;
+    end else if Parameter='fullreshexagon' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.FullResHexagon;
+    end else if Parameter='fullresbruteforce' then begin
+     fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.FullResBruteforce;
     end else begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
     end;
