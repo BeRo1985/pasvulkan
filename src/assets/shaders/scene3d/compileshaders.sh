@@ -47,6 +47,8 @@ compileshaderarguments=(
   
   '-V bloom_upsample.comp -DR11G11B10F -o bloom_upsample_r11g11b10f_comp.spv'
   '-V bloom_upsample.comp -DRGBA16F -o bloom_upsample_rgba16f_comp.spv'
+  '-V bloom_upsample.comp -DR11G11B10F -DMULTIVIEW -o bloom_upsample_r11g11b10f_multiview_comp.spv'
+  '-V bloom_upsample.comp -DRGBA16F -DMULTIVIEW -o bloom_upsample_rgba16f_multiview_comp.spv'
   
   '-V mesh.comp -o mesh_comp.spv'
 
