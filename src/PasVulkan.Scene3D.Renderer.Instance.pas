@@ -1286,6 +1286,9 @@ begin
 
   end;
 
+  else begin
+  end;
+
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
