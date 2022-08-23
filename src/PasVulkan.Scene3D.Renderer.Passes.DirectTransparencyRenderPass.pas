@@ -399,7 +399,7 @@ begin
                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                       fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        fInstance.ForwardMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
+                                                                        fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].ArrayDescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
