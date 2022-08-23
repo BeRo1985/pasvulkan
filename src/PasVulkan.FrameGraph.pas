@@ -2954,13 +2954,37 @@ begin
 end;
 
 procedure TpvFrameGraph.TPass.AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+const LabelInfoColors:array[0..15,0..3] of TVkFloat=
+       (
+        (0.0,0.0,0.0,1.0),
+        (1.0,0.0,0.0,1.0),
+        (0.0,1.0,0.0,1.0),
+        (0.0,0.0,1.0,1.0),
+        (1.0,0.0,1.0,1.0),
+        (1.0,1.0,1.0,1.0),
+        (1.0,1.0,0.0,1.0),
+        (0.0,1.0,1.0,1.0),
+        (0.5,0.8,0.5,1.0),
+        (0.5,0.5,0.5,1.0),
+        (0.5,1.0,0.5,1.0),
+        (0.5,0.5,1.0,1.0),
+        (1.0,0.5,1.0,1.0),
+        (0.8,0.8,1.0,1.0),
+        (1.0,1.0,0.5,1.0),
+        (0.5,1.0,1.0,1.0)
+       );
 var LabelInfo:TVkDebugUtilsLabelEXT;
 begin
  if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   FillChar(LabelInfo,SizeOf(TVkDebugUtilsLabelEXT),#0);
   LabelInfo.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  LabelInfo.pNext:=nil;
   LabelInfo.pLabelName:=PAnsiChar(fName);
+  LabelInfo.color[0]:=LabelInfoColors[fIndex and $f,0];
+  LabelInfo.color[1]:=LabelInfoColors[fIndex and $f,1];
+  LabelInfo.color[2]:=LabelInfoColors[fIndex and $f,2];
+  LabelInfo.color[3]:=LabelInfoColors[fIndex and $f,3];
   aCommandBuffer.Device.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@LabelInfo);
  end;
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
