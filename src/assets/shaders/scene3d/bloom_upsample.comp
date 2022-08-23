@@ -73,7 +73,7 @@ void main() {
 #endif
   {
     vec4 color = imageLoad(uDestinationTexture, invocationPosition);
-#if 0
+#if 1
     ivec2 sourceXY = invocationPosition.xy >> ivec2(1);
   	color += ((getNearestSource(sourceXY, ivec2(-1, -1)) + //
                getNearestSource(sourceXY, ivec2( 1, -1)) + //
