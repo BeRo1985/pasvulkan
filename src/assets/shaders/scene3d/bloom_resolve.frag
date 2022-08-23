@@ -16,8 +16,8 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureBloom;
 
-//layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
-
 void main(){
-  outFragColor = fma(vec4(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0)), vec4(pushConstants.factor), vec4(subpassLoad(uSubpassScene)));
+  outFragColor = mix(subpassLoad(uSubpassScene), 
+                     textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0),
+                     pushConstants.factor);
 }
