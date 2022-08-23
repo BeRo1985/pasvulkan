@@ -81,11 +81,8 @@ type { TpvScene3DRendererPassesBloomUpsampleComputePass }
      TpvScene3DRendererPassesBloomUpsampleComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
-       fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
-       fInputFormat:TVkFormat;
        fUpsampleComputeShaderModule:TpvVulkanShaderModule;
        fVulkanSampler:TpvVulkanSampler;
-       fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanPipelineShaderStageUpsampleCompute:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -115,14 +112,6 @@ begin
 
  Name:='BloomUpsampleComputePass';
 
- fResourceInput:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
-                               fInstance.LastOutputResource.Resource.Name,
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                              );
-
- fInputFormat:=TpvFrameGraph.TImageResourceType(fInstance.LastOutputResource.ResourceType).Format;
-
 end;
 
 destructor TpvScene3DRendererPassesBloomUpsampleComputePass.Destroy;
@@ -151,9 +140,9 @@ begin
  end;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('upsample_'+Format+'_multiview_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bloom_upsample_'+Format+'_multiview_comp.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('upsample_'+Format+'_comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bloom_upsample_'+Format+'_comp.spv');
  end;
  try
   fUpsampleComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -198,9 +187,9 @@ begin
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       fInstance.Renderer.CountInFlightFrames*fInstance.SceneMipmappedArray2DImages[0].MipMapLevels);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*fInstance.SceneMipmappedArray2DImages[0].MipMapLevels);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*fInstance.SceneMipmappedArray2DImages[0].MipMapLevels);
+                                                       fInstance.Renderer.CountInFlightFrames*(fInstance.SceneMipmappedArray2DImages[0].MipMapLevels-1));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*(fInstance.SceneMipmappedArray2DImages[0].MipMapLevels-1));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(fInstance.SceneMipmappedArray2DImages[0].MipMapLevels-1));
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -235,54 +224,26 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                   fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                   ImageViewType,
-                                                                   TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                   0,
-                                                                   1,
-                                                                   0,
-                                                                   fInstance.CountSurfaceViews
-                                                                  );
-  for MipMapLevelIndex:=0 to fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-1 do begin
+  for MipMapLevelIndex:=0 to fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-2 do begin
    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                                              fVulkanDescriptorSetLayout);
-   if MipMapLevelIndex=0 then begin
-    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(0,
-                                                                                    0,
-                                                                                    1,
-                                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                                   fVulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                                   fResourceInput.ResourceTransition.Layout)],
-                                                                                    [],
-                                                                                    [],
-                                                                                    false
-                                                                                   );
-   end else begin
-    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(0,
-                                                                                    0,
-                                                                                    1,
-                                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanMipMapSampler.Handle,
-                                                                                                                   fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[MipMapLevelIndex-1].imageView,
-                                                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                                                    [],
-                                                                                    [],
-                                                                                    false
-                                                                                   );
-   end;
+   fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(0,
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                   [TVkDescriptorImageInfo.Create(fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanMipMapSampler.Handle,
+                                                                                                                  fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[MipMapLevelIndex].imageView,
+                                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                   [],
+                                                                                   [],
+                                                                                   false
+                                                                                  );
    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(1,
                                                                                    0,
                                                                                    1,
                                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                                    [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                                  fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[MipMapLevelIndex].imageView,
+                                                                                                                  fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].DescriptorImageInfos[MipMapLevelIndex+1].imageView,
                                                                                                                   VK_IMAGE_LAYOUT_GENERAL)],
                                                                                    [],
                                                                                    [],
@@ -300,10 +261,9 @@ begin
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  for MipMapLevelIndex:=0 to fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-1 do begin
+  for MipMapLevelIndex:=0 to fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-2 do begin
    FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex]);
   end;
-  FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
@@ -326,32 +286,32 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
- FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
- ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
- ImageMemoryBarrier.pNext:=nil;
- ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
- ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
- ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
- ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.image:=fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanImage.Handle;
- ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
- ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
- ImageMemoryBarrier.subresourceRange.levelCount:=fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels;
- ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
- ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
- aCommandBuffer.CmdPipelineBarrier(fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   0,
-                                   0,nil,
-                                   0,nil,
-                                   1,@ImageMemoryBarrier);
-
  Pipeline:=fPipeline;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
 
  for MipMapLevelIndex:=fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-2 downto 0 do begin
+
+  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarrier.pNext:=nil;
+  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.image:=fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanImage.Handle;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=MipMapLevelIndex;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  aCommandBuffer.CmdPipelineBarrier(fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                        fPipelineLayout.Handle,
@@ -380,7 +340,7 @@ begin
   ImageMemoryBarrier.subresourceRange.levelCount:=1;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
-  if (MipMapLevelIndex+1)<fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels then begin
+  if MipMapLevelIndex>0 then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
