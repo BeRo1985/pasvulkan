@@ -405,6 +405,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.BloomDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.BloomUpsampleComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.BloomResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -462,6 +463,7 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
        fBloomDownsampleComputePass:TpvScene3DRendererPassesBloomDownsampleComputePass;
        fBloomUpsampleComputePass:TpvScene3DRendererPassesBloomUpsampleComputePass;
+       fBloomResolveRenderPass:TpvScene3DRendererPassesBloomResolveRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
@@ -1277,10 +1279,12 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass:=TpvScene3DRendererPassesBloomUpsampleComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass);
 
+  TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass:=TpvScene3DRendererPassesBloomResolveRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass);
+
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
- TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass);
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingTAAPostCustomPass);
