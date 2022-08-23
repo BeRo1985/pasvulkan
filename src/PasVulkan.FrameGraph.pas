@@ -2956,7 +2956,7 @@ end;
 procedure TpvFrameGraph.TPass.AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
 const LabelInfoColors:array[0..15,0..3] of TVkFloat=
        (
-        (0.0,0.0,0.0,1.0),
+        (1.0,0.8,0.5,1.0),
         (1.0,0.0,0.0,1.0),
         (0.0,1.0,0.0,1.0),
         (0.0,0.0,1.0,1.0),
