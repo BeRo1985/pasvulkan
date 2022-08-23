@@ -904,6 +904,9 @@ type EpvFrameGraph=class(Exception);
               fDstStageMask:TVkPipelineStageFlags;
             end;
             TExplicitPassNameDependencyList=TpvObjectGenericList<TExplicitPassNameDependency>;
+
+            { TPass }
+
             TPass=class
              public
               type TFlag=
@@ -1017,6 +1020,8 @@ type EpvFrameGraph=class(Exception);
                                          const aBufferSubresourceRange:TBufferSubresourceRange;
                                          const aResourceInstanceType:TResourceInstanceType;
                                          const aExternalBufferData:TExternalBufferData):TResourceTransition; overload;
+              procedure AddDebugStartMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AddDebugEndMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -2948,6 +2953,26 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
+procedure TpvFrameGraph.TPass.AddDebugStartMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+var LabelInfo:TVkDebugUtilsLabelEXT;
+begin
+ if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
+  FillChar(LabelInfo,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  LabelInfo.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  LabelInfo.pLabelName:=PAnsiChar(fName);
+  aCommandBuffer.Device.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@LabelInfo);
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.AddDebugEndMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
+  aCommandBuffer.Device.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
+ end;
+end;
+
 function TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
                                            const aResourceName:TpvRawByteString;
                                            const aLayout:TVkImageLayout;
@@ -3569,6 +3594,7 @@ begin
  end else begin
   fComputePass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
  end;
+ fComputePass.AddDebugStartMarker(aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3577,6 +3603,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fComputePass.AddDebugEndMarker(aCommandBuffer);
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
   fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
  end;
@@ -3636,6 +3663,7 @@ begin
  end else begin
   fTransferPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
  end;
+ fTransferPass.AddDebugStartMarker(aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3644,6 +3672,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fTransferPass.AddDebugEndMarker(aCommandBuffer);
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
   fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
  end;
@@ -3703,6 +3732,7 @@ begin
  end else begin
   fCustomPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
  end;
+ fCustomPass.AddDebugStartMarker(aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3711,6 +3741,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fCustomPass.AddDebugEndMarker(aCommandBuffer);
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
   fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
  end;
@@ -4107,7 +4138,9 @@ begin
    end else begin
     Subpass.fRenderPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
    end;
+   Subpass.fRenderPass.AddDebugStartMarker(aCommandBuffer);
    Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
+   Subpass.fRenderPass.AddDebugEndMarker(aCommandBuffer);
    if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
     fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
    end;

@@ -6249,6 +6249,9 @@ begin
       end;
      end;
 {$ifend}
+     if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+     end;
     end;
    end else begin
     fVulkanDebuggingEnabled:=false;
