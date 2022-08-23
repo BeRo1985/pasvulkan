@@ -1272,15 +1272,19 @@ begin
 
  end;
 
- begin
+ case Renderer.BloomMode of
 
-  TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass:=TpvScene3DRendererPassesBloomDownsampleComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererBloomMode.DownUpsample:begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass:=TpvScene3DRendererPassesBloomUpsampleComputePass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass:=TpvScene3DRendererPassesBloomDownsampleComputePass.Create(fFrameGraph,self);
 
-  TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass:=TpvScene3DRendererPassesBloomResolveRenderPass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass:=TpvScene3DRendererPassesBloomUpsampleComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass);
+
+   TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass:=TpvScene3DRendererPassesBloomResolveRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass);
+
+  end;
 
  end;
 
