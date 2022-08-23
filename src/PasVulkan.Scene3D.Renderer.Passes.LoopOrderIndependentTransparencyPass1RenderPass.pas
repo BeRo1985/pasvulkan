@@ -124,7 +124,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='LoopOrderIndependentTransparencyPass1Rendering';
+ Name:='LoopOrderIndependentTransparencyPass1RenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

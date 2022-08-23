@@ -127,7 +127,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='MomentBasedOrderIndependentTransparencyTransmittance';
+ Name:='MomentBasedOrderIndependentTransparencyTransmittanceRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

@@ -129,7 +129,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='ForwardRendering';
+ Name:='ForwardRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

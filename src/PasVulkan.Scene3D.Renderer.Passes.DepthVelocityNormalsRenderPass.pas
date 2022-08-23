@@ -120,7 +120,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='DepthVelocityNormalsRendering';
+ Name:='DepthVelocityNormalsRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

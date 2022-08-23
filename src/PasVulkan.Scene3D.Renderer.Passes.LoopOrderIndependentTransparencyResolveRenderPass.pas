@@ -117,7 +117,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='LoopOrderIndependentTransparencyResolve';
+ Name:='LoopOrderIndependentTransparencyResolveRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

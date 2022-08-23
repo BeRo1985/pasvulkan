@@ -118,7 +118,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingSMAAWeights';
+ Name:='AntialiasingSMAAWeightsRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

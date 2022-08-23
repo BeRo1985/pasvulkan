@@ -124,7 +124,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='SSAO';
+ Name:='SSAORenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

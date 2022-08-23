@@ -126,7 +126,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='MomentBasedOrderIndependentTransparencyAbsorbance';
+ Name:='MomentBasedOrderIndependentTransparencyAbsorbanceRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

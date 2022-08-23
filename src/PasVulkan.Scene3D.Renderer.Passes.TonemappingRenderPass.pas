@@ -116,7 +116,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='Tonemapping';
+ Name:='TonemappingRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

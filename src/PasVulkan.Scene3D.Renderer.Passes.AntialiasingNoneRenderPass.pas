@@ -118,7 +118,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingNone';
+ Name:='AntialiasingNoneRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

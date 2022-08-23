@@ -124,7 +124,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='LockOrderIndependentTransparencyRendering';
+ Name:='LockOrderIndependentTransparencyRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

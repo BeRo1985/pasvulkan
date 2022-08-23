@@ -119,7 +119,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='Dithering';
+ Name:='DitheringRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

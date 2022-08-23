@@ -118,7 +118,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='LockOrderIndependentTransparencyResolve';
+ Name:='LockOrderIndependentTransparencyResolveRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

@@ -119,7 +119,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingSMAABlend';
+ Name:='AntialiasingSMAABlendRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

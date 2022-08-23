@@ -126,7 +126,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='WeightBlendedOrderIndependentTransparency';
+ Name:='WeightBlendedOrderIndependentTransparencyRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

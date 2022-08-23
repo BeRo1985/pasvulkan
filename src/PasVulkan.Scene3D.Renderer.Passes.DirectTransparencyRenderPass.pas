@@ -125,7 +125,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='DirectTransparencyRendering';
+ Name:='DirectTransparencyRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

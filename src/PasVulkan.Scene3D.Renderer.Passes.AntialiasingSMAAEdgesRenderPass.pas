@@ -118,7 +118,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingSMAAEdges';
+ Name:='AntialiasingSMAAEdgesRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

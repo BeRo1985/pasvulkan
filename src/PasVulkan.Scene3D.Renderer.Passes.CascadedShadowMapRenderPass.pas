@@ -120,7 +120,7 @@ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='CascadedShadowMap';
+ Name:='CascadedShadowMapRenderPass';
 
  MultiviewMask:=0;
  for Index:=0 to TpvScene3DRendererInstance.CountCascadedShadowMapCascades-1 do begin

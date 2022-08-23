@@ -118,7 +118,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='DirectTransparencyResolve';
+ Name:='DirectTransparencyResolveRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 

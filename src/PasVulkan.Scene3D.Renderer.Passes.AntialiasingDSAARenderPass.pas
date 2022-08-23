@@ -119,7 +119,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='AntialiasingDSAA';
+ Name:='AntialiasingDSAARenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
