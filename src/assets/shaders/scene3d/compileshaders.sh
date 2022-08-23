@@ -45,6 +45,9 @@ compileshaderarguments=(
   '-V lightclustergridbuild.comp -DREVERSEDZ -o lightclustergridbuild_reversedz_comp.spv'
   '-V lightclusterassign.comp -o lightclusterassign_comp.spv'
   
+  '-V bloom_upsample.comp -DR11G11B10F -o bloom_upsample_r11g11b10f_comp.spv'
+  '-V bloom_upsample.comp -DRGBA16F -o bloom_upsample_rgba16f_comp.spv'
+  
   '-V mesh.comp -o mesh_comp.spv'
 
   '-V mesh.vert -o mesh_vert.spv'

@@ -1,0 +1,115 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+// A bilinear 13-tap 2x downsampler (equals to a 36-tap non-bilinear 2x downsampler)
+// Idea is of the http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare slides
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture; // Source mipmap level texture
+
+#if defined(RGBA16F)
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#elif defined(R11G11B10F)
+layout(set = 0, binding = 1, r11f_g11f_b10f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+#else
+ #error "RGBA16F or R11G11B10F needed!"
+#endif
+#else
+layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level texture
+
+#if defined(RGBA16F)
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#elif defined(R11G11B10F)
+layout(set = 0, binding = 1, r11f_g11f_b10f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+#else
+ #error "RGBA16F or R11G11B10F needed!"
+#endif
+#endif
+
+/* clang-format on */
+
+#ifdef MULTIVIEW
+int viewIndex = int(gl_GlobalInvocationID.z); 
+#endif
+
+ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
+
+vec2 invSourceSize = vec2(1.0) / vec2(sourceSize);
+
+#if MIPMAPLEVEL == 0
+vec4 getNearestSource(const in ivec2 uv, const in ivec2 offset) {
+#ifdef MULTIVIEW
+  return texelFetch(uSourceTexture, ivec3(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)), viewIndex), 0);
+#else
+  return texelFetch(uSourceTexture, ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))), 0);
+#endif
+}
+#endif
+
+#if MIPMAPLEVEL != 0
+vec4 getBilinearSource(const in ivec2 uv, const in ivec2 offset) {
+#if 0
+  // Just for as reference 
+  return (getNearestSource(uv, offset + ivec2(0, 0)) +  //
+          getNearestSource(uv, offset + ivec2(1, 0)) +  //
+          getNearestSource(uv, offset + ivec2(1, 1)) +  //
+          getNearestSource(uv, offset + ivec2(0, 1))) *
+         0.25;
+#else
+#ifdef MULTIVIEW
+  return textureLod(uSourceTexture, vec3((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize, viewIndex), 0);
+#else  
+  return textureLod(uSourceTexture, vec2((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize), 0);
+#endif
+#endif
+}
+#endif
+
+#if MIPMAPLEVEL == 0
+vec4 Median(const in vec4 pA, const in vec4 pB, const in vec4 pC) {       //
+  return ((pA + pB + pC) - min(min(pA, pB), pC)) - max(max(pA, pB), pC);  //
+}
+#endif
+
+#if MIPMAPLEVEL == 1
+vec4 KarisAverage(const in vec4 pColorA, const in vec4 pColorB, const in vec4 pColorC, const in vec4 pColorD) {
+  const vec3 lLuma = vec3(0.299, 0.587, 0.114);
+  vec4 lWeights = vec4(1.0) / (vec4(1.0) + vec4(dot(pColorA.rgb, lLuma), dot(pColorB.rgb, lLuma), dot(pColorC.rgb, lLuma), dot(pColorD.rgb, lLuma)));
+  return ((pColorA * lWeights.x) +  //
+          (pColorB * lWeights.y) +  //
+          (pColorC * lWeights.z) +  //
+          (pColorD * lWeights.w)) /
+         dot(lWeights, vec4(1.0));
+}
+#endif
+
+void main() {
+#ifdef MULTIVIEW
+  ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
+  ivec2 xy = invocationPosition.xy;
+  ivec3 destinationTextureSize = imageSize(uDestinationTexture);
+  if (all(greaterThanEqual(invocationPosition, ivec3(0))) && all(lessThan(invocationPosition, destinationTextureSize))) 
+#else
+  ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 xy = invocationPosition.xy;
+  ivec2 destinationTextureSize = imageSize(uDestinationTexture);
+  if (all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, destinationTextureSize))) 
+#endif
+  {
+    vec4 color;
+    vec4 offsets = vec3(0.5, -0.5, 0.0).xxyz / textureSize(uSourceTexture, 0).xyxy; 
+    vec3 uvw = vec3(vec2(invocationPosition.xy) / vec2(destinationTextureSize), invocationPosition.z); 
+    colot = (textureLod(uSourceTexture, uvw - vec3(offsets.xy, 0.0), 0.0) + //
+             textureLod(uSourceTexture, uvw - vec3(offsets.zy, 0.0), 0.0) + //
+             textureLod(uSourceTexture, uvw + vec3(offsets.zy, 0.0), 0.0) + //
+             textureLod(uSourceTexture, uvw + vec3(offsets.xy, 0.0), 0.0)) * 0.25;
+    imageStore(uDestinationTexture, invocationPosition, color);
+  }
+}
