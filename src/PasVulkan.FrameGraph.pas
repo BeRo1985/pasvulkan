@@ -1020,8 +1020,8 @@ type EpvFrameGraph=class(Exception);
                                          const aBufferSubresourceRange:TBufferSubresourceRange;
                                          const aResourceInstanceType:TResourceInstanceType;
                                          const aExternalBufferData:TExternalBufferData):TResourceTransition; overload;
-              procedure AddStartMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
-              procedure AddEndMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -2953,7 +2953,7 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
-procedure TpvFrameGraph.TPass.AddStartMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TPass.AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
 var LabelInfo:TVkDebugUtilsLabelEXT;
 begin
  if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
@@ -2963,10 +2963,18 @@ begin
   LabelInfo.pLabelName:=PAnsiChar(fName);
   aCommandBuffer.Device.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@LabelInfo);
  end;
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(aQueue.fPhysicalQueue,aCommandBuffer,fName);
+ end else begin
+  fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+ end;
 end;
 
-procedure TpvFrameGraph.TPass.AddEndMarker(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TPass.AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(aQueue.fPhysicalQueue,aCommandBuffer);
+ end;
  if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   aCommandBuffer.Device.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
@@ -3589,12 +3597,7 @@ end;
 procedure TpvFrameGraph.TPhysicalComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fComputePass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fComputePass.fName);
- end else begin
-  fComputePass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
- end;
- fComputePass.AddStartMarker(aCommandBuffer);
+ fComputePass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3603,10 +3606,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
- fComputePass.AddEndMarker(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
- end;
+ fComputePass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalTransferPass }
@@ -3658,12 +3658,7 @@ end;
 procedure TpvFrameGraph.TPhysicalTransferPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fTransferPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fTransferPass.fName);
- end else begin
-  fTransferPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
- end;
- fTransferPass.AddStartMarker(aCommandBuffer);
+ fTransferPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3672,10 +3667,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
- fTransferPass.AddEndMarker(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
- end;
+ fTransferPass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalCustomPass }
@@ -3727,12 +3719,7 @@ end;
 procedure TpvFrameGraph.TPhysicalCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fCustomPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,fCustomPass.fName);
- end else begin
-  fCustomPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
- end;
- fCustomPass.AddStartMarker(aCommandBuffer);
+ fCustomPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
@@ -3741,10 +3728,7 @@ begin
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
- fCustomPass.AddEndMarker(aCommandBuffer);
- if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
- end;
+ fCustomPass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalRenderPass.TSubpass }
@@ -4133,17 +4117,9 @@ begin
  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
   Subpass:=fSubpasses[SubpassIndex];
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-   if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-    Subpass.fRenderPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(fQueue.fPhysicalQueue,aCommandBuffer,Subpass.fRenderPass.fName);
-   end else begin
-    Subpass.fRenderPass.fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
-   end;
-   Subpass.fRenderPass.AddStartMarker(aCommandBuffer);
+   Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
    Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
-   Subpass.fRenderPass.AddEndMarker(aCommandBuffer);
-   if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
-    fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(fQueue.fPhysicalQueue,aCommandBuffer);
-   end;
+   Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
   end;
   if (SubpassIndex+1)<fSubpasses.Count then begin
    aCommandBuffer.CmdNextSubpass(SubpassContents);
