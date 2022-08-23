@@ -186,7 +186,7 @@ begin
 
  end;
 
- fResourceOutput:=AddImageOutput('resourcetype_color_posteffect',
+ fResourceOutput:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                  'resource_depthoffield_final',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
