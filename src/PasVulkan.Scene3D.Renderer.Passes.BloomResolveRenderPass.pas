@@ -356,7 +356,7 @@ procedure TpvScene3DRendererPassesBloomResolveRenderPass.Execute(const aCommandB
 var Factor:TpvFloat;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- Factor:=0.01;
+ Factor:=0.015625;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
