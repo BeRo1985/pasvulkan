@@ -973,6 +973,7 @@ begin
                                                             true,
                                                             true,
                                                             false);
+        fLensColorTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
        end;
@@ -992,6 +993,7 @@ begin
                                                            true,
                                                            true,
                                                            false);
+        fLensDirtTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
        end;
@@ -1011,6 +1013,7 @@ begin
                                                            true,
                                                            true,
                                                            false);
+        fLensStarTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
        end;
