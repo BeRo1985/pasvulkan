@@ -85,7 +85,10 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.EnvMapCubeMaps,
      PasVulkan.Scene3D.Renderer.Charlie.BRDF,
-     PasVulkan.Scene3D.Renderer.GGX.BRDF;
+     PasVulkan.Scene3D.Renderer.GGX.BRDF,
+     PasVulkan.Scene3D.Renderer.Lens.Color,
+     PasVulkan.Scene3D.Renderer.Lens.Dirt,
+     PasVulkan.Scene3D.Renderer.Lens.Star;
 
 type TpvScene3DRenderer=class;
 
@@ -144,6 +147,9 @@ type TpvScene3DRenderer=class;
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
+       fLensColor:TpvScene3DRendererLensColor;
+       fLensDirt:TpvScene3DRendererLensDirt;
+       fLensStar:TpvScene3DRendererLensStar;
        fImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps;
        fSheenELUT:TpvVulkanTexture;
        fShadowMapSampler:TpvVulkanSampler;
@@ -197,6 +203,9 @@ type TpvScene3DRenderer=class;
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
        property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
        property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
+       property LensColor:TpvScene3DRendererLensColor read fLensColor write fLensColor;
+       property LensDirt:TpvScene3DRendererLensDirt read fLensDirt write fLensDirt;
+       property LensStar:TpvScene3DRendererLensStar read fLensStar write fLensStar;
        property ImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps read fImageBasedLightingEnvMapCubeMaps;
        property SheenELUT:TpvVulkanTexture read fSheenELUT;
        property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
@@ -773,6 +782,12 @@ begin
 
  fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
+ fLensColor:=TpvScene3DRendererLensColor.Create(fVulkanDevice,fVulkanPipelineCache);
+
+ fLensDirt:=TpvScene3DRendererLensDirt.Create(fVulkanDevice,fVulkanPipelineCache);
+
+ fLensStar:=TpvScene3DRendererLensStar.Create(fVulkanDevice,fVulkanPipelineCache);
+
  fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
  case fShadowMode of
@@ -1100,6 +1115,12 @@ begin
  FreeAndNil(fLensStarTexture);
 
  FreeAndNil(fSheenELUT);
+
+ FreeAndNil(fLensColor);
+
+ FreeAndNil(fLensDirt);
+
+ FreeAndNil(fLensStar);
 
  FreeAndNil(fCharlieBRDF);
 
