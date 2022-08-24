@@ -227,7 +227,7 @@ begin
  // optimized to:
  fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MonusLog1d25OverLog2);
 
- fPushConstants.Factor:=fFactor*1.0;
+ fPushConstants.Factor:=fFactor*0.1;
  fPushConstants.BloomFactor:=1.0;
  fPushConstants.LensflaresFactor:=1.0;
  fPushConstants.BloomLensflaresFactor:=0.1;
