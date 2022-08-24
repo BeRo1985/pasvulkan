@@ -33,11 +33,11 @@ vec4 getLensColor(float x){
 }
 
 vec4 getLensDirt(vec2 p){
-  return textureLod(uTextureLensTextures[1], p, 0);
+  return vec4(textureLod(uTextureLensTextures[1], p, 0).xxx, 1.0);
 }
 
 vec4 getLensStar(vec2 p){
-  return textureLod(uTextureLensTextures[2], p, 0);
+  return vec4(textureLod(uTextureLensTextures[2], p, 0).xxx, 1.0);
 }
 
 vec4 textureLimited(const in vec2 texCoord){

@@ -76,7 +76,7 @@ type { TpvScene3DRendererLensDirt }
       public
        const Width=2048;
              Height=2048;
-             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+             ImageFormat=TVkFormat(VK_FORMAT_R8_UNORM);
       private
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;

@@ -76,7 +76,7 @@ type { TpvScene3DRendererLensStar }
       public
        const Width=2048;
              Height=2048;
-             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+             ImageFormat=TVkFormat(VK_FORMAT_R16_SFLOAT);
       private
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;

@@ -76,7 +76,7 @@ type { TpvScene3DRendererLensColor }
       public
        const Width=1024;
              Height=1;
-             ImageFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+             ImageFormat=TVkFormat(VK_FORMAT_R8G8B8A8_SRGB);
       private
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
