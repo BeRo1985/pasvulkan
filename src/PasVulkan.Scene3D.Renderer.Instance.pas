@@ -837,7 +837,7 @@ begin
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_color',
-                                  true,
+                                  false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
