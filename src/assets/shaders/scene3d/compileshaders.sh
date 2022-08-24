@@ -50,6 +50,10 @@ compileshaderarguments=(
   '-V lens_upsample.comp -DR11G11B10F -DMULTIVIEW -o lens_upsample_r11g11b10f_multiview_comp.spv'
   '-V lens_upsample.comp -DRGBA16F -DMULTIVIEW -o lens_upsample_rgba16f_multiview_comp.spv'
   '-V lens_resolve.frag -o lens_resolve_frag.spv'
+
+  '-V lens_color.frag -o lens_color_frag.spv'
+  '-V lens_dirt.frag -o lens_dirt_frag.spv'
+  '-V lens_star.frag -o lens_star_frag.spv'
   
   '-V mesh.comp -o mesh_comp.spv'
 
