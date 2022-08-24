@@ -107,6 +107,8 @@ type { TpvScene3DRendererPassesBloomDownsampleComputePass }
        procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+      published
+       property ResourceInput:TpvFrameGraph.TPass.TUsedImageResource read fResourceInput;
      end;
 
 implementation

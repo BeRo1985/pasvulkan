@@ -148,8 +148,8 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceScene:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                               'resource_forwardrendering_color',
+ fResourceScene:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
@@ -378,7 +378,7 @@ procedure TpvScene3DRendererPassesBloomResolveRenderPass.Execute(const aCommandB
 var PushConstants:TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.Factor:=fFactor*0.1;
+ PushConstants.Factor:=fFactor*1.0;
  PushConstants.BloomFactor:=1.0;
  PushConstants.LensflaresFactor:=1.0;
  PushConstants.BloomLensflaresFactor:=0.1;
