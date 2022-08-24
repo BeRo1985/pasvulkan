@@ -134,12 +134,12 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_color_posteffect_halfres',
+ fResourceColor:=AddImageInput('resourcetype_color_halfres',
                                'resource_depthoffield_blur_halfres_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []);
 
- fResourceOutput:=AddImageOutput('resourcetype_color_posteffect_halfres',
+ fResourceOutput:=AddImageOutput('resourcetype_color_halfres',
                                  'resource_depthoffield_postblur_halfres_data',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,

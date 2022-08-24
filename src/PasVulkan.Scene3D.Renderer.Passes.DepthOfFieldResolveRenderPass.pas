@@ -145,12 +145,12 @@ begin
   TpvScene3DRendererDepthOfFieldMode.HalfResSeparateNearFar,
   TpvScene3DRendererDepthOfFieldMode.HalfResBruteforce:begin
 
-{  fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+{  fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);}
 
-   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+   fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
@@ -161,7 +161,7 @@ begin
 
   TpvScene3DRendererDepthOfFieldMode.FullResBruteforce:begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+   fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
@@ -172,12 +172,12 @@ begin
 
   else {TpvScene3DRendererDepthOfFieldMode.FullResHexagon:}begin
 
-   fResourceColor0:=AddImageInput('resourcetype_color_posteffect',
+   fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
-   fResourceColor1:=AddImageInput('resourcetype_color_posteffect',
+   fResourceColor1:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_pass2',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);

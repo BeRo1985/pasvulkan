@@ -5273,6 +5273,7 @@ type TEventBeforeAfter=(Event,Before,After);
         ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Max(ResourceAliasGroup.fMaximumPhysicalPassStepIndex,OtherResource.fMaximumPhysicalPassStepIndex);
         ResourceAliasGroup.fResources.Add(OtherResource);
         OtherResource.fResourceAliasGroup:=Resource.fResourceAliasGroup;
+        //writeln(Resource.fName,' ',OtherResource.fName);
        end;
       end;
      end;
