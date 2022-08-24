@@ -188,7 +188,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bloom_resolve_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lens_resolve_frag.spv');
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
