@@ -403,9 +403,9 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.BloomDownsampleComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.BloomUpsampleComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.BloomResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
@@ -461,9 +461,9 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldGatherPass1RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass;
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
-       fBloomDownsampleComputePass:TpvScene3DRendererPassesBloomDownsampleComputePass;
-       fBloomUpsampleComputePass:TpvScene3DRendererPassesBloomUpsampleComputePass;
-       fBloomResolveRenderPass:TpvScene3DRendererPassesBloomResolveRenderPass;
+       fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
+       fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
+       fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
@@ -1276,13 +1276,13 @@ begin
 
   TpvScene3DRendererBloomMode.DownUpsample:begin
 
-   TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass:=TpvScene3DRendererPassesBloomDownsampleComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fLensDownsampleComputePass:=TpvScene3DRendererPassesLensDownsampleComputePass.Create(fFrameGraph,self);
 
-   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass:=TpvScene3DRendererPassesBloomUpsampleComputePass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomDownsampleComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fLensUpsampleComputePass:=TpvScene3DRendererPassesLensUpsampleComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fLensUpsampleComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLensDownsampleComputePass);
 
-   TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass:=TpvScene3DRendererPassesBloomResolveRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fBloomResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fBloomUpsampleComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fLensResolveRenderPass:=TpvScene3DRendererPassesLensResolveRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fLensResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLensUpsampleComputePass);
 
   end;
 

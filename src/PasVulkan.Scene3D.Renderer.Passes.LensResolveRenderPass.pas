@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.BloomResolveRenderPass;
+unit PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererPassesBloomResolveRenderPass }
-     TpvScene3DRendererPassesBloomResolveRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesLensResolveRenderPass }
+     TpvScene3DRendererPassesLensResolveRenderPass=class(TpvFrameGraph.TRenderPass)
       public
        type TPushConstants=record
              Factor:TpvFloat;
@@ -123,16 +123,16 @@ type { TpvScene3DRendererPassesBloomResolveRenderPass }
 
 implementation
 
-{ TpvScene3DRendererPassesBloomResolveRenderPass }
+{ TpvScene3DRendererPassesLensResolveRenderPass }
 
-constructor TpvScene3DRendererPassesBloomResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesLensResolveRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='BloomResolveRenderPass';
+ Name:='LensResolveRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
@@ -155,7 +155,7 @@ begin
                               );
 
  fResourceOutput:=AddImageOutput('resourcetype_color_optimized_non_alpha',
-                                 'resource_bloom_final_color',
+                                 'resource_lens_final_color',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -166,12 +166,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererPassesBloomResolveRenderPass.Destroy;
+destructor TpvScene3DRendererPassesLensResolveRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesLensResolveRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
@@ -203,7 +203,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesLensResolveRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -214,7 +214,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesLensResolveRenderPass.AcquireVolatileResources;
 const MonusLog1d25OverLog2=-0.32192809488736235;
 var InFlightFrameIndex:TpvSizeInt;
 begin
@@ -278,7 +278,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -348,7 +348,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesLensResolveRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -369,13 +369,13 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesLensResolveRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesBloomResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PushConstants:TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants;
+procedure TpvScene3DRendererPassesLensResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var PushConstants:TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  PushConstants.Factor:=fFactor*1.0;
@@ -392,7 +392,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants),
+                                 SizeOf(TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants),
                                  @PushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
