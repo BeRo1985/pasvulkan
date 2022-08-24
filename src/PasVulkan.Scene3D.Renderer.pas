@@ -151,6 +151,9 @@ type TpvScene3DRenderer=class;
        fSSAOSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
+       fLensColorTexture:TpvVulkanTexture;
+       fLensDirtTexture:TpvVulkanTexture;
+       fLensStarTexture:TpvVulkanTexture;
        fVulkanFlushQueue:TpvVulkanQueue;
        fVulkanFlushCommandPool:TpvVulkanCommandPool;
        fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
@@ -201,12 +204,16 @@ type TpvScene3DRenderer=class;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
+       property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
+       property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
+       property LensStarTexture:TpvVulkanTexture read fLensStarTexture;
      end;
 
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Instance;
+uses PasVulkan.Scene3D.Assets,
+     PasVulkan.Scene3D.Renderer.Instance;
 
 { TpvScene3DRendererBaseObject }
 
@@ -947,6 +954,74 @@ begin
       end;
      end;
 
+     case fLensMode of
+
+      TpvScene3DRendererLensMode.DownUpsample:begin
+
+       Stream:=TMemoryStream.Create;
+       try
+        Stream.Write(Scene3DLensColorData,Scene3DLensColorDataSize);
+        Stream.Seek(0,soBeginning);
+        fLensColorTexture:=TpvVulkanTexture.CreateFromImage(fVulkanDevice,
+                                                            UniversalQueue,
+                                                            UniversalCommandBuffer,
+                                                            UniversalFence,
+                                                            UniversalQueue,
+                                                            UniversalCommandBuffer,
+                                                            UniversalFence,
+                                                            Stream,
+                                                            true,
+                                                            true,
+                                                            false);
+       finally
+        FreeAndNil(Stream);
+       end;
+
+       Stream:=TMemoryStream.Create;
+       try
+        Stream.Write(Scene3DLensDirtData,Scene3DLensDirtDataSize);
+        Stream.Seek(0,soBeginning);
+        fLensDirtTexture:=TpvVulkanTexture.CreateFromImage(fVulkanDevice,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           Stream,
+                                                           true,
+                                                           true,
+                                                           false);
+       finally
+        FreeAndNil(Stream);
+       end;
+
+       Stream:=TMemoryStream.Create;
+       try
+        Stream.Write(Scene3DLensStarData,Scene3DLensStarDataSize);
+        Stream.Seek(0,soBeginning);
+        fLensStarTexture:=TpvVulkanTexture.CreateFromImage(fVulkanDevice,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           UniversalQueue,
+                                                           UniversalCommandBuffer,
+                                                           UniversalFence,
+                                                           Stream,
+                                                           true,
+                                                           true,
+                                                           false);
+       finally
+        FreeAndNil(Stream);
+       end;
+
+      end;
+
+      else begin
+      end;
+
+     end;
+
      fSheenELUT:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                    UniversalQueue,
                                                    UniversalCommandBuffer,
@@ -1004,6 +1079,10 @@ begin
 
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
+
+ FreeAndNil(fLensColorTexture);
+ FreeAndNil(fLensDirtTexture);
+ FreeAndNil(fLensStarTexture);
 
  FreeAndNil(fSheenELUT);
 
