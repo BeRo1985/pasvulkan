@@ -1272,9 +1272,9 @@ begin
 
  end;
 
- case Renderer.BloomMode of
+ case Renderer.LensMode of
 
-  TpvScene3DRendererBloomMode.DownUpsample:begin
+  TpvScene3DRendererLensMode.DownUpsample:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fLensDownsampleComputePass:=TpvScene3DRendererPassesLensDownsampleComputePass.Create(fFrameGraph,self);
 

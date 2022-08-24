@@ -124,7 +124,7 @@ type TpvScene3DRenderer=class;
        fShadowMode:TpvScene3DRendererShadowMode;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
-       fBloomMode:TpvScene3DRendererBloomMode;
+       fLensMode:TpvScene3DRendererLensMode;
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
@@ -174,7 +174,7 @@ type TpvScene3DRenderer=class;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
-       property BloomMode:TpvScene3DRendererBloomMode read fBloomMode write fBloomMode;
+       property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA write fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
@@ -321,7 +321,7 @@ begin
 
  fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
 
- fBloomMode:=TpvScene3DRendererBloomMode.Auto;
+ fLensMode:=TpvScene3DRendererLensMode.Auto;
 
  fMaxMSAA:=0;
 
@@ -720,31 +720,31 @@ begin
   end;
  end;
 
- if fBloomMode=TpvScene3DRendererBloomMode.Auto then begin
+ if fLensMode=TpvScene3DRendererLensMode.Auto then begin
   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
    TpvVulkanVendorID.AMD:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end else begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end else begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end;
    end;
    TpvVulkanVendorID.Intel:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end else begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end;
    end;
    else begin
-    fBloomMode:=TpvScene3DRendererBloomMode.None;
+    fLensMode:=TpvScene3DRendererLensMode.None;
    end;
   end;
  end;

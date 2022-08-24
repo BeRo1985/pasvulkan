@@ -47,7 +47,7 @@ type TApplication=class(TpvApplication)
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fShadowMode:TpvScene3DRendererShadowMode;
-       fBloomMode:TpvScene3DRendererBloomMode;
+       fLensMode:TpvScene3DRendererLensMode;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
       public
@@ -81,7 +81,7 @@ type TApplication=class(TpvApplication)
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode;
-       property BloomMode:TpvScene3DRendererBloomMode read fBloomMode;
+       property LensMode:TpvScene3DRendererLensMode read fLensMode;
      end;
 
 var Application:TApplication=nil;
@@ -116,7 +116,7 @@ begin
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
  fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
- fBloomMode:=TpvScene3DRendererBloomMode.Auto;
+ fLensMode:=TpvScene3DRendererLensMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
  AcceptDragDropFiles:=true;
 {$if not (defined(Android) or defined(iOS))}
@@ -247,17 +247,17 @@ begin
      fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
     end;
    end;
-  end else if (Parameter='--bloom-mode') or
-              (Parameter='/bloom-mode') then begin
+  end else if (Parameter='--lens-mode') or
+              (Parameter='/lens-mode') then begin
    if Index<=ParamCount then begin
     Parameter:=LowerCase(trim(ParamStr(Index)));
     inc(Index);
     if Parameter='none' then begin
-     fBloomMode:=TpvScene3DRendererBloomMode.None;
+     fLensMode:=TpvScene3DRendererLensMode.None;
     end else if Parameter='downupsample' then begin
-     fBloomMode:=TpvScene3DRendererBloomMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end else begin
-     fBloomMode:=TpvScene3DRendererBloomMode.Auto;
+     fLensMode:=TpvScene3DRendererLensMode.Auto;
     end;
    end;
   end else begin

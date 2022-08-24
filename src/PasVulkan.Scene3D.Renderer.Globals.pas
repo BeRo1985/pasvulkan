@@ -123,14 +123,14 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererDepthOfFieldMode=^TpvScene3DRendererDepthOfFieldMode;
 
-     TpvScene3DRendererBloomMode=
+     TpvScene3DRendererLensMode=
       (
        Auto=0,
        None,
        DownUpsample
       );
 
-     PpvScene3DRendererBloomMode=^TpvScene3DRendererBloomMode;
+     PpvScene3DRendererLensMode=^TpvScene3DRendererLensMode;
 
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 
