@@ -95,6 +95,7 @@ type { TpvScene3DRendererPassesBloomResolveRenderPass }
         fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
         fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
         fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+        fFactor:TpvScalar;
        public
         constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
         destructor Destroy; override;
@@ -203,6 +204,12 @@ procedure TpvScene3DRendererPassesBloomResolveRenderPass.AcquireVolatileResource
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
+
+  // fFactor:=1.0/pow(1.25,Log2(Min(fResourceOutput.Width,fResourceOutput.Height)));
+ // optimized to:
+ // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),-0.321928);
+ // optimized to:
+ fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*-0.321928);
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -356,11 +363,7 @@ procedure TpvScene3DRendererPassesBloomResolveRenderPass.Execute(const aCommandB
 var Factor:TpvFloat;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- // Factor:=1.0/pow(1.25,Log2(Min(fResourceOutput.Width,fResourceOutput.Height)));
- // optimized to:
- // Factor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),-0.321928);
- // optimized to:
- Factor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*-0.321928);
+ Factor:=fFactor*0.1;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
