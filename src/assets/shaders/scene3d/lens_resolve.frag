@@ -26,6 +26,22 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureBloom;
 
+#if 1
+layout(set = 0, binding = 2) uniform sampler2D uTextureLensTextures[];
+
+vec4 getLensColor(float x){
+  return textureLod(uTextureLensTextures[0], vec2(x, 0.5), 0);
+}
+
+vec4 getLensDirt(vec2 p){
+  return textureLod(uTextureLensTextures[1], p, 0);
+}
+
+vec4 getLensStar(vec2 p){
+  return textureLod(uTextureLensTextures[2], p, 0);
+}
+
+#else
 float noise(vec2 p){
   vec2 f = fract(p);
   f = (f * f) * (3.0 - (2.0 * f));    
@@ -66,17 +82,6 @@ vec4 getLensColor(float x){
                     1.0);
 }
 
-vec4 getLensStar(vec2 p){
-  // just be creative to create your own procedural lens star textures :)
-  vec2 pp = (p - vec2(0.5)) * 2.0;
-  float a = atan(pp.y, pp.x);
-  vec4 cp = vec4(sin(a * 1.0), length(pp), sin(a * 13.0), sin(a * 53.0));
-  float d = sin(clamp(pow(length(vec2(0.5) - p) * 2.0, 5.0), 0.0, 1.0) * 3.14159);
-  vec3 c = vec3(d) * vec3(fbm(cp.xy * 16.0) * fbm(cp.zw * 9.0) * max(max(max(max(0.5, sin(a * 1.0)), sin(a * 3.0) * 0.8), sin(a * 7.0) * 0.8), sin(a * 9.0) * 0.6));
-  c *= vec3(mix(1.0, (sin(length(pp.xy) * 256.0) * 0.5) + 0.5, sin((clamp((length(pp.xy) - 0.875) / 0.1, 0.0, 1.0) + 0.0) * 2.0 * 3.14159) * 0.5) + 0.5) * 0.3275;
-  return vec4(vec3(c * 4.0), d);	
-}
-
 vec4 getLensDirt(vec2 p){
   // just be creative to create your own procedural lens dirt textures :)
   p.xy += vec2(fbm(p.yx * 3.0), fbm(p.yx * 6.0)) * 0.0625;
@@ -91,6 +96,19 @@ vec4 getLensDirt(vec2 p){
   o += vec3(max(fbm(p * 64.0) - 0.75, 0.0)) * 0.5;
   return vec4(clamp(o, vec3(0.0), vec3(1.0)), 1.0);	
 }
+
+vec4 getLensStar(vec2 p){
+  // just be creative to create your own procedural lens star textures :)
+  vec2 pp = (p - vec2(0.5)) * 2.0;
+  float a = atan(pp.y, pp.x);
+  vec4 cp = vec4(sin(a * 1.0), length(pp), sin(a * 13.0), sin(a * 53.0));
+  float d = sin(clamp(pow(length(vec2(0.5) - p) * 2.0, 5.0), 0.0, 1.0) * 3.14159);
+  vec3 c = vec3(d) * vec3(fbm(cp.xy * 16.0) * fbm(cp.zw * 9.0) * max(max(max(max(0.5, sin(a * 1.0)), sin(a * 3.0) * 0.8), sin(a * 7.0) * 0.8), sin(a * 9.0) * 0.6));
+  c *= vec3(mix(1.0, (sin(length(pp.xy) * 256.0) * 0.5) + 0.5, sin((clamp((length(pp.xy) - 0.875) / 0.1, 0.0, 1.0) + 0.0) * 2.0 * 3.14159) * 0.5) + 0.5) * 0.3275;
+  return vec4(vec3(c * 4.0), d);	
+}
+
+#endif
 
 vec4 textureLimited(const in vec2 texCoord){
 	if(((texCoord.x < 0.0) || (texCoord.y < 0.0)) || ((texCoord.x > 1.0) || (texCoord.y > 1.0))){
