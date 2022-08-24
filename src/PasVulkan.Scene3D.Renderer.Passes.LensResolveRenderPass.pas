@@ -295,9 +295,9 @@ begin
                                                                  0,
                                                                  3,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [fInstance.Renderer.LensColorTexture.DescriptorImageInfo,
-                                                                  fInstance.Renderer.LensDirtTexture.DescriptorImageInfo,
-                                                                  fInstance.Renderer.LensStarTexture.DescriptorImageInfo],
+                                                                 [fInstance.Renderer.LensColor.DescriptorImageInfo,
+                                                                  fInstance.Renderer.LensDirt.DescriptorImageInfo,
+                                                                  fInstance.Renderer.LensStar.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false

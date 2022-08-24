@@ -157,9 +157,9 @@ type TpvScene3DRenderer=class;
        fSSAOSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
-       fLensColorTexture:TpvVulkanTexture;
+{      fLensColorTexture:TpvVulkanTexture;
        fLensDirtTexture:TpvVulkanTexture;
-       fLensStarTexture:TpvVulkanTexture;
+       fLensStarTexture:TpvVulkanTexture;}
        fVulkanFlushQueue:TpvVulkanQueue;
        fVulkanFlushCommandPool:TpvVulkanCommandPool;
        fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
@@ -213,9 +213,9 @@ type TpvScene3DRenderer=class;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
-       property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
+{      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
-       property LensStarTexture:TpvVulkanTexture read fLensStarTexture;
+       property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
      end;
 
 
@@ -969,7 +969,7 @@ begin
       end;
      end;
 
-     case fLensMode of
+{    case fLensMode of
 
       TpvScene3DRendererLensMode.DownUpsample:begin
 
@@ -1047,7 +1047,7 @@ begin
       else begin
       end;
 
-     end;
+     end;//}
 
      fSheenELUT:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                    UniversalQueue,
@@ -1110,9 +1110,9 @@ begin
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
 
- FreeAndNil(fLensColorTexture);
+{FreeAndNil(fLensColorTexture);
  FreeAndNil(fLensDirtTexture);
- FreeAndNil(fLensStarTexture);
+ FreeAndNil(fLensStarTexture);}
 
  FreeAndNil(fSheenELUT);
 
