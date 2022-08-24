@@ -110,6 +110,7 @@ type { TpvScene3DRendererPassesLensResolveRenderPass }
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fFactor:TpvScalar;
+       fPushConstants:TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -225,6 +226,18 @@ begin
  // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),MonusLog1d25OverLog2);
  // optimized to:
  fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MonusLog1d25OverLog2);
+
+ fPushConstants.Factor:=fFactor*1.0;
+ fPushConstants.BloomFactor:=1.0;
+ fPushConstants.LensflaresFactor:=1.0;
+ fPushConstants.BloomLensflaresFactor:=0.1;
+ fPushConstants.CountGhosts:=8;
+ fPushConstants.LensStarRotationAngle:=0.0;
+ fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
+ fPushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
+ fPushConstants.Dispersal:=0.3;
+ fPushConstants.HaloWidth:=0.5;
+ fPushConstants.Distortion:=1.5;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -375,25 +388,16 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesLensResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PushConstants:TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants;
+var Matrix:TpvMatrix4x4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.Factor:=fFactor*1.0;
- PushConstants.BloomFactor:=1.0;
- PushConstants.LensflaresFactor:=1.0;
- PushConstants.BloomLensflaresFactor:=0.1;
- PushConstants.CountGhosts:=8;
- PushConstants.LensStarRotationAngle:=pi;
- PushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
- PushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
- PushConstants.Dispersal:=0.3;
- PushConstants.HaloWidth:=0.5;
- PushConstants.Distortion:=1.5;
+ Matrix:=fInstance.Renderer.Scene3D.Views.Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
+ fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants),
-                                 @PushConstants);
+                                 @fPushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
