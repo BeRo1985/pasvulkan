@@ -459,6 +459,8 @@ begin
   fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
  end;
 
+ fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+
  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.ImgTec,
   TpvVulkanVendorID.ARM,
