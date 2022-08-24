@@ -79,32 +79,46 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesBloomResolveRenderPass }
      TpvScene3DRendererPassesBloomResolveRenderPass=class(TpvFrameGraph.TRenderPass)
-       private
-        fInstance:TpvScene3DRendererInstance;
-        fVulkanRenderPass:TpvVulkanRenderPass;
-        fResourceScene:TpvFrameGraph.TPass.TUsedImageResource;
-        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
-        fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
-        fVulkanTransferCommandBufferFence:TpvVulkanFence;
-        fVulkanVertexShaderModule:TpvVulkanShaderModule;
-        fVulkanFragmentShaderModule:TpvVulkanShaderModule;
-        fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
-        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
-        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-        fFactor:TpvScalar;
-       public
-        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
-        destructor Destroy; override;
-        procedure AcquirePersistentResources; override;
-        procedure ReleasePersistentResources; override;
-        procedure AcquireVolatileResources; override;
-        procedure ReleaseVolatileResources; override;
-        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
-        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+      public
+       type TPushConstants=record
+             Factor:TpvFloat;
+             BloomFactor:TpvFloat;
+             LensflaresFactor:TpvFloat;
+             BloomLensflaresFactor:TpvFloat;
+             CountGhosts:TpvInt32;
+             LensStarRotationAngle:TpvFloat;
+             AspectRatio:TpvFloat;
+             InverseAspectRatio:TpvFloat;
+             Dispersal:TpvFloat;
+             HaloWidth:TpvFloat;
+             Distortion:TpvFloat;
+            end;
+      private
+       fInstance:TpvScene3DRendererInstance;
+       fVulkanRenderPass:TpvVulkanRenderPass;
+       fResourceScene:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
+       fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanTransferCommandBufferFence:TpvVulkanFence;
+       fVulkanVertexShaderModule:TpvVulkanShaderModule;
+       fVulkanFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
+       fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+       fFactor:TpvScalar;
+      public
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       destructor Destroy; override;
+       procedure AcquirePersistentResources; override;
+       procedure ReleasePersistentResources; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
+       procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
+       procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
 
 implementation
@@ -264,7 +278,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvFloat));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -361,15 +375,25 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesBloomResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var Factor:TpvFloat;
+var PushConstants:TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- Factor:=fFactor*0.1;
+ PushConstants.Factor:=fFactor*0.1;
+ PushConstants.BloomFactor:=1.0;
+ PushConstants.LensflaresFactor:=1.0;
+ PushConstants.BloomLensflaresFactor:=0.1;
+ PushConstants.CountGhosts:=8;
+ PushConstants.LensStarRotationAngle:=pi;
+ PushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
+ PushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
+ PushConstants.Dispersal:=0.3;
+ PushConstants.HaloWidth:=0.5;
+ PushConstants.Distortion:=1.5;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvFloat),
-                                 @Factor);
+                                 SizeOf(TpvScene3DRendererPassesBloomResolveRenderPass.TPushConstants),
+                                 @PushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
