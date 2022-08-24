@@ -25,6 +25,7 @@ void main(){
   float aspectRatio = inputTextureSize.y / inputTextureSize.x;
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
   vec4 centerSample = textureLod(uTextureInput, uvw, 0);
+  centerSample.xyz = clamp(centerSample.xyz, vec3(0.0), vec3(32768.0));
   vec4 color = vec4(centerSample.xyz, 1.0);
   float halfMargin = 0.5 * inverseInputTextureSize.y;
   for(int sampleIndex = 0, countSamples = countBokehShapeTaps; sampleIndex < countSamples; sampleIndex++){            
@@ -32,6 +33,7 @@ void main(){
     float offsetDistance = max(1e-7, length(offset));
     offset.x *= aspectRatio;
     vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
+    sampleTexel.xyz = clamp(sampleTexel.xyz, vec3(0.0), vec3(32768.0));
     float weight = smoothstep(offsetDistance - halfMargin, 
                               offsetDistance + halfMargin,
                               (centerSample.w < sampleTexel.w) ? clamp(abs(sampleTexel.w), 0.0, abs(centerSample.w) * 2.0) : abs(sampleTexel.w)

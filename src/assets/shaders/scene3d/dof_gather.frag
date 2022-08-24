@@ -32,6 +32,7 @@ float doGatherAndApply(const in sampler2DArray inputTexture,
                        inout vec4 color){
   
   vec4 sampleColor = textureLod(inputTexture, uvw, LOD);
+  sampleColor.xyz = clamp(sampleColor.xyz, vec3(0.0), vec3(32768.0));
 
   // CoC < 0.0 means the pixel is in front of the focal plane.
   bool blurNear = sampleColor.w < 0.0;
@@ -80,6 +81,7 @@ void main(){
   
   // Start by sampling at the center of the blur.
   vec4 baseColor = textureLod(uTextureInput, uvw, float(LOD));
+  baseColor.xyz = clamp(baseColor.xyz, vec3(0.0), vec3(32768.0));
 
   // Final color and CoC size will be accumulated in the output.
   vec4 outputA = vec4(vec3(0.0), baseColor.w);
@@ -122,6 +124,7 @@ void main(){
 
   // Use the combined output as the base for the second pass.
   vec4 baseColor = textureLod(uTextureInputs[1], uvw, float(LOD));
+  baseColor.xyz = clamp(baseColor.xyz, vec3(0.0), vec3(32768.0));
 
   // Two sets of colour to accumulate this time.
   vec4 outputA = vec4(vec3(0.0), baseColor.w);

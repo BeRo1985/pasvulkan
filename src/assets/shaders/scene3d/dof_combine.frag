@@ -19,9 +19,11 @@ void main(){
   vec2 inverseInputTextureSize = vec2(1.0) / inputTextureSize; 
   vec3 uvw = vec3(inTexCoord.xy, gl_ViewIndex); 
   vec4 inFocus = textureLod(uTextureInputs[0], uvw, 0.0);
+  inFocus.xyz = clamp(inFocus.xyz, vec3(0.0), vec3(32768.0));
   float CoC = clamp(inFocus.w, -pushConstants.maxCoC, pushConstants.maxCoC);
   float farFieldAlpha = smoothstep(inverseInputTextureSize.y * 2.0, inverseInputTextureSize.y * 4.0, CoC);
   vec4 blurredDepthOfField = textureLod(uTextureInputs[1], uvw, 0);
+  blurredDepthOfField.xyz = clamp(blurredDepthOfField.xyz, vec3(0.0), vec3(32768.0));
   float alpha = max(max(blurredDepthOfField.x, blurredDepthOfField.y), blurredDepthOfField.z);
 #if 0
   vec4 color = mix(mix(inFocus, blurredDepthOfField, farFieldAlpha), blurredDepthOfField, blurredDepthOfField.w);

@@ -107,7 +107,7 @@ vec4 textureDistorted(const in vec2 texCoord, const in vec2 direction, const in 
 							  textureLimited((texCoord + (direction * distortion.b))).b,
                 1.0),
            vec4(0.0),
-           vec4(16384.0)
+           vec4(32768.0)
           );
 }
 

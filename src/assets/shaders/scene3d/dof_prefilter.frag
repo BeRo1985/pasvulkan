@@ -34,6 +34,11 @@ void main(){
   vec4 c2 = vec4(redSamples.z, greenSamples.z, blueSamples.z, 1.0);
   vec4 c3 = vec4(redSamples.w, greenSamples.w, blueSamples.w, 1.0);
 
+  c0.xyz = clamp(c0.xyz, vec3(0.0), vec3(32768.0));
+  c1.xyz = clamp(c1.xyz, vec3(0.0), vec3(32768.0));
+  c2.xyz = clamp(c2.xyz, vec3(0.0), vec3(32768.0));
+  c3.xyz = clamp(c3.xyz, vec3(0.0), vec3(32768.0));
+
   // Weights for bleeding and flickering reducation
   vec4 weights = vec4( //
     abs(CoCs.x) / ((max(max(c0.x, c0.y), c0.z) + 1.0) * pushConstants.maxCoC), //
@@ -57,6 +62,8 @@ void main(){
   if(PremultiplyWithCoC){
     average *= smoothstep(0.0, inverseInputTextureSize.y * 2.0, abs(CoC));
   }
+
+  average.xyz = clamp(average.xyz, vec3(0.0), vec3(32768.0));
 
   outFragOutput = vec4(average, CoC);
 

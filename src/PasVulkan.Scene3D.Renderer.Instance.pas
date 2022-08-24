@@ -1227,6 +1227,7 @@ begin
 
  end;
 
+(**)
  if (Renderer.DepthOfFieldMode<>TpvScene3DRendererDepthOfFieldMode.None) and not assigned(VirtualReality) then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldPrepareRenderPass:=TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Create(fFrameGraph,self);
@@ -1270,7 +1271,7 @@ begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDepthOfFieldResolveRenderPass:=TpvScene3DRendererPassesDepthOfFieldResolveRenderPass.Create(fFrameGraph,self);
 
- end;
+ end; //*)
 
  if not assigned(VirtualReality) then begin
 

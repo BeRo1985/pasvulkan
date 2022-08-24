@@ -22,14 +22,14 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;d:\GLTF\EmissiveStrengthTest.glb&quot; /force-use-validation-layers /depth-of-field-mode halfresbruteforce"/>
+        <CommandLineParams Value="&quot;d:\GLTF\AnimateAllTheThings.glb&quot; /force-use-validation-layers /depth-of-field-mode halfresbruteforce"/>
         <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;d:\GLTF\EmissiveStrengthTest.glb&quot; /force-use-validation-layers /depth-of-field-mode halfresbruteforce"/>
+            <CommandLineParams Value="&quot;d:\GLTF\AnimateAllTheThings.glb&quot; /force-use-validation-layers /depth-of-field-mode halfresbruteforce"/>
             <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
           </local>
         </Mode0>
