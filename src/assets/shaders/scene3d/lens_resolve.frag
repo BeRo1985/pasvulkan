@@ -93,7 +93,7 @@ vec4 getLensDirt(vec2 p){
 }
 
 vec4 textureLimited(const in vec2 texCoord){
-	if(((texCoord.x < 0.) || (texCoord.y < 0.)) || ((texCoord.x > 1.) || (texCoord.y > 1.))){
+	if(((texCoord.x < 0.0) || (texCoord.y < 0.0)) || ((texCoord.x > 1.0) || (texCoord.y > 1.0))){
 	 	return vec4(0.0);
 	}else{
 	 	return textureLod(uTextureBloom, vec3(texCoord, gl_ViewIndex), 0.0);// * pow(1.0 - (length(texCoord.y - vec2(0.5)) * 2.0), 4.0);
@@ -101,10 +101,14 @@ vec4 textureLimited(const in vec2 texCoord){
 }
 
 vec4 textureDistorted(const in vec2 texCoord, const in vec2 direction, const in vec3 distortion) {
-  return vec4(textureLimited((texCoord + (direction * distortion.r))).r,
-              textureLimited((texCoord + (direction * distortion.g))).g,
-							textureLimited((texCoord + (direction * distortion.b))).b,
-              1.0);
+  return clamp(
+           vec4(textureLimited((texCoord + (direction * distortion.r))).r,
+                textureLimited((texCoord + (direction * distortion.g))).g,
+							  textureLimited((texCoord + (direction * distortion.b))).b,
+                1.0),
+           vec4(0.0),
+           vec4(16384.0)
+          );
 }
 
 vec4 getLensFlare(){
@@ -119,16 +123,16 @@ vec4 getLensFlare(){
   vec4 c = vec4(0.0);
   for (int i = 0, j = pushConstants.countGhosts; i < j; i++) {
     vec2 offset = texCoord + (ghostVec * float(i));
-    c += textureDistorted(offset, ghostVecAspectNormalized, distortion) * pow(max(0.0, 1.0 - (length(vec2(0.5) - offset) / length(vec2(0.5)))), 10.0);
+    c += textureDistorted(offset, ghostVecAspectNormalized, distortion) * clamp(pow(max(0.0, 1.0 - (length(vec2(0.5) - offset) / length(vec2(0.5)))), 10.0), 0.0, 16.0);
   }                       
   vec2 haloOffset = texCoord + haloVecAspectNormalized; 
   return (c * getLensColor((length(vec2(0.5) - aspectTexCoord) / length(vec2(0.5))))) + 
-         (textureDistorted(haloOffset, ghostVecAspectNormalized, distortion) * pow(max(0.0, 1.0 - (length(vec2(0.5) - haloOffset) / length(vec2(0.5)))), 10.0));
+         (textureDistorted(haloOffset, ghostVecAspectNormalized, distortion) * clamp(pow(max(0.0, 1.0 - (length(vec2(0.5) - haloOffset) / length(vec2(0.5)))), 10.0), 0.0, 16.0));
 } 
 
 
 void main(){
-  vec4 bloom = textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0);  
+  vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(32768.0));  
   vec4 lensflares = vec4(0.0);
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
   if(pushConstants.lensflaresFactor > 1e-7){
@@ -136,7 +140,7 @@ void main(){
     lensflares = getLensFlare() * mix(vec4(2.0), getLensStar(lensStarTexCoord), 0.5) * pushConstants.lensflaresFactor;
   }
   vec4 lensDirt = getLensDirt(inTexCoord);
-  outFragColor = mix(subpassLoad(uSubpassScene), 
+  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(32768.0)), 
                      mix(bloom * pushConstants.bloomFactor, lensflares, pushConstants.bloomLensflaresFactor) * lensDirt,
                      pushConstants.factor);
 }

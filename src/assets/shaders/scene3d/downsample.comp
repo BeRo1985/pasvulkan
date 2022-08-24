@@ -46,9 +46,9 @@ vec2 invSourceSize = vec2(1.0) / vec2(sourceSize);
 #if MIPMAPLEVEL == 0
 vec4 getNearestSource(const in ivec2 uv, const in ivec2 offset) {
 #ifdef MULTIVIEW
-  return texelFetch(uSourceTexture, ivec3(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)), viewIndex), 0);
+  return clamp(texelFetch(uSourceTexture, ivec3(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1)), viewIndex), 0), vec4(0.0), vec4(32768.0));
 #else
-  return texelFetch(uSourceTexture, ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))), 0);
+  return clamp(texelFetch(uSourceTexture, ivec2(clamp(uv + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))), 0), vec4(0.0), vec4(32768.0));
 #endif
 }
 #endif
@@ -64,9 +64,9 @@ vec4 getBilinearSource(const in ivec2 uv, const in ivec2 offset) {
          0.25;
 #else
 #ifdef MULTIVIEW
-  return textureLod(uSourceTexture, vec3((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize, viewIndex), 0);
+  return clamp(textureLod(uSourceTexture, vec3((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize, viewIndex), 0), vec4(0.0), vec4(32768.0));
 #else  
-  return textureLod(uSourceTexture, vec2((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize), 0);
+  return clamp(textureLod(uSourceTexture, vec2((vec2(ivec2(clamp(uv + vec2(1.0) + offset, ivec2(0), ivec2(sourceSize) - ivec2(1))))) * invSourceSize), 0), vec4(0.0), vec4(32768.0));
 #endif
 #endif
 }
@@ -86,7 +86,7 @@ vec4 KarisAverage(const in vec4 pColorA, const in vec4 pColorB, const in vec4 pC
           (pColorB * lWeights.y) +  //
           (pColorC * lWeights.z) +  //
           (pColorD * lWeights.w)) /
-         dot(lWeights, vec4(1.0));
+         max(dot(lWeights, vec4(1.0)), 1e-5);
 }
 #endif
 
@@ -146,6 +146,6 @@ void main() {
             ((lTap6 + lTap7 + lTap11 + lTap12) * (0.125 / 4.0));   //
 #endif
 #endif
-    imageStore(uDestinationTexture, invocationPosition, color);
+    imageStore(uDestinationTexture, invocationPosition, clamp(color, vec4(0.0), vec4(32768.0)));
   }
 }
