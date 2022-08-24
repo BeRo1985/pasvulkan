@@ -201,15 +201,16 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesBloomResolveRenderPass.AcquireVolatileResources;
+const MonusLog1d25OverLog2=-0.32192809488736235;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
 
   // fFactor:=1.0/pow(1.25,Log2(Min(fResourceOutput.Width,fResourceOutput.Height)));
  // optimized to:
- // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),-0.321928);
+ // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),MonusLog1d25OverLog2);
  // optimized to:
- fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*-0.321928);
+ fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MonusLog1d25OverLog2);
 
  fVulkanRenderPass:=VulkanRenderPass;
 
