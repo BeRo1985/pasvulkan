@@ -5700,6 +5700,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
     // Then add the remaining Subpass dependencies
     for ResourceTransitionIndex:=0 to Pass.fResourceTransitions.Count-1 do begin
+
      ResourceTransition:=Pass.fResourceTransitions[ResourceTransitionIndex];
 
      Assert(ResourceTransition.Pass=Pass);
