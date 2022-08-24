@@ -26,19 +26,19 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureBloom;
 
-#if 1
+#if 0
 layout(set = 0, binding = 2) uniform sampler2D uTextureLensTextures[];
 
 vec4 getLensColor(float x){
-  return textureLod(uTextureLensTextures[0], vec2(x, 0.5), 0);
+  return textureLod(uTextureLensTextures[0], vec2(clamp(x, 0.0, 1.0), 0.5), 0);
 }
 
 vec4 getLensDirt(vec2 p){
-  return textureLod(uTextureLensTextures[1], p, 0);
+  return textureLod(uTextureLensTextures[1], p, 0) * vec2(1.0, 1.0).xxxy;
 }
 
 vec4 getLensStar(vec2 p){
-  return textureLod(uTextureLensTextures[2], p, 0);
+  return textureLod(uTextureLensTextures[2], p, 0) * vec2(32.0, 1.0).xxxy;
 }
 
 #else

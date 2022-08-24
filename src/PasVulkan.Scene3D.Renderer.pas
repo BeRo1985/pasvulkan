@@ -970,9 +970,12 @@ begin
                                                             UniversalCommandBuffer,
                                                             UniversalFence,
                                                             Stream,
-                                                            true,
+                                                            false,
                                                             true,
                                                             false);
+        fLensColorTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensColorTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensColorTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
         fLensColorTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
@@ -990,9 +993,12 @@ begin
                                                            UniversalCommandBuffer,
                                                            UniversalFence,
                                                            Stream,
-                                                           true,
+                                                           false,
                                                            true,
                                                            false);
+        fLensDirtTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensDirtTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensDirtTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
         fLensDirtTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
@@ -1010,9 +1016,12 @@ begin
                                                            UniversalCommandBuffer,
                                                            UniversalFence,
                                                            Stream,
-                                                           true,
+                                                           false,
                                                            true,
                                                            false);
+        fLensStarTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensStarTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
+        fLensStarTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
         fLensStarTexture.UpdateSampler;
        finally
         FreeAndNil(Stream);
@@ -1051,6 +1060,9 @@ begin
                                                    0,
                                                    true,
                                                    false);
+     fSheenELUT.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
+     fSheenELUT.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
+     fSheenELUT.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
      fSheenELUT.UpdateSampler;
 
     finally
