@@ -73,17 +73,22 @@ void main() {
 #endif
   {
     vec4 color = imageLoad(uDestinationTexture, invocationPosition);
-#if 0
-    ivec2 sourceXY = invocationPosition.xy >> ivec2(1);
-  	color += ((getNearestSource(sourceXY, ivec2(-1, -1)) + //
-               getNearestSource(sourceXY, ivec2( 1, -1)) + //
-               getNearestSource(sourceXY, ivec2(-1,  1)) + //
-               getNearestSource(sourceXY, ivec2( 1,  1))) * 0.0625) + //
-             ((getNearestSource(sourceXY, ivec2( 0, -1)) + //
-               getNearestSource(sourceXY, ivec2(-1,  0)) + //
-               getNearestSource(sourceXY, ivec2( 0,  1)) + //
-               getNearestSource(sourceXY, ivec2( 1,  0))) * 0.125) + //
-              (getNearestSource(sourceXY, ivec2( 0,  0)) * 0.25);              
+#if 1
+    vec4 offsets = vec3(1.0, -1.0, 0.0).xxyz * invSourceSize.xyxy * 1.5; 
+    vec2 uv = (vec2(invocationPosition.xy) + vec2(0.5)) / vec2(destinationTextureSize); 
+  	color += clamp(
+              ((getBilinearSource(uv, -offsets.xy) + //
+                getBilinearSource(uv, -offsets.zy) + //
+                getBilinearSource(uv,  offsets.zy) + //
+                getBilinearSource(uv,  offsets.xy)) * 0.0625) + //
+              ((getBilinearSource(uv, -offsets.wy) + //
+                getBilinearSource(uv,  offsets.zw) + //
+                getBilinearSource(uv,  offsets.xw) + //
+                getBilinearSource(uv,  offsets.wy)) * 0.125) + //
+               (getBilinearSource(uv,  offsets.ww) * 0.25),
+              vec4(0.0),
+               vec4(32768.0)
+              );              
 #else
     vec4 offsets = vec3(0.5, -0.5, 0.0).xxyz * invSourceSize.xyxy; 
     vec2 uv = (vec2(invocationPosition.xy) + vec2(0.5)) / vec2(destinationTextureSize); 
@@ -93,7 +98,7 @@ void main() {
               getBilinearSource(uv, offsets.zy) + //
               getBilinearSource(uv, offsets.xy), //
               vec4(0.0),
-              vec4(16384.0)
+              vec4(32768.0)
              ) * 0.25;
 #endif
     imageStore(uDestinationTexture, invocationPosition, color);

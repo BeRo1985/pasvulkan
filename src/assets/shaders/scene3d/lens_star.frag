@@ -38,5 +38,5 @@ vec4 getLensStar(vec2 p){
 }
 
 void main(){
-  outFragColor = getLensStar(inTexCoord.xy);
+  outFragColor = mix(vec4(2.0), getLensStar(inTexCoord.xy), 0.5);
 }

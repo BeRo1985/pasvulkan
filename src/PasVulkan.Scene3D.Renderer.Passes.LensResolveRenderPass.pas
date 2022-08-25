@@ -216,21 +216,21 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesLensResolveRenderPass.AcquireVolatileResources;
-const MonusLog1d25OverLog2=-0.32192809488736235;
+const MinusLog1d25OverLog2=-0.32192809488736235;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
 
   // fFactor:=1.0/pow(1.25,Log2(Min(fResourceOutput.Width,fResourceOutput.Height)));
  // optimized to:
- // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),MonusLog1d25OverLog2);
+ // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),MinusLog1d25OverLog2);
  // optimized to:
- fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MonusLog1d25OverLog2);
+ fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MinusLog1d25OverLog2);
 
- fPushConstants.Factor:=fFactor*0.1;
- fPushConstants.BloomFactor:=1.0;
- fPushConstants.LensflaresFactor:=1.0;
- fPushConstants.BloomLensflaresFactor:=0.1;
+ fPushConstants.Factor:=fFactor*0.4;
+ fPushConstants.BloomFactor:=0.9;
+ fPushConstants.LensflaresFactor:=1.0-fPushConstants.BloomFactor;
+ fPushConstants.BloomLensflaresFactor:=1.0;
  fPushConstants.CountGhosts:=8;
  fPushConstants.LensStarRotationAngle:=0.0;
  fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;

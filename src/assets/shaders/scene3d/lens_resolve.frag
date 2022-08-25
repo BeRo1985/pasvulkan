@@ -85,10 +85,10 @@ void main(){
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
   if(pushConstants.lensflaresFactor > 1e-7){
     vec2 lensStarTexCoord = (mat2(cos(pushConstants.lensStarRotationAngle), -sin(pushConstants.lensStarRotationAngle), sin(pushConstants.lensStarRotationAngle), cos(pushConstants.lensStarRotationAngle)) * (texCoord - vec2(0.5))) + vec2(0.5);
-    lensflares = getLensFlare() * mix(vec4(2.0), getLensStar(lensStarTexCoord), 0.5) * pushConstants.lensflaresFactor;
+    lensflares = getLensFlare() * getLensStar(lensStarTexCoord);
   }
   vec4 lensDirt = getLensDirt(inTexCoord);
   outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(32768.0)), 
-                     mix(bloom * pushConstants.bloomFactor, lensflares, pushConstants.bloomLensflaresFactor) * lensDirt,
+                     ((bloom * pushConstants.bloomFactor) + (lensflares * pushConstants.lensflaresFactor)) * lensDirt,
                      pushConstants.factor);
 }
