@@ -82,13 +82,18 @@ vec4 getLensFlare(){
 void main(){
   vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(32768.0));  
   vec4 lensflares = vec4(0.0);
+  vec4 lensStar = vec4(0.0);
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
   if(pushConstants.lensflaresFactor > 1e-7){
     vec2 lensStarTexCoord = (mat2(cos(pushConstants.lensStarRotationAngle), -sin(pushConstants.lensStarRotationAngle), sin(pushConstants.lensStarRotationAngle), cos(pushConstants.lensStarRotationAngle)) * (texCoord - vec2(0.5))) + vec2(0.5);
-    lensflares = getLensFlare() * getLensStar(lensStarTexCoord);
+    lensflares = getLensFlare();
+    lensStar = getLensStar(lensStarTexCoord);
   }
   vec4 lensDirt = getLensDirt(inTexCoord);
   outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(32768.0)), 
-                     ((bloom * pushConstants.bloomFactor) + (lensflares * pushConstants.lensflaresFactor)) * lensDirt,
+                     (
+                      ((bloom * lensDirt) * pushConstants.bloomFactor) + 
+                      ((lensflares * (lensDirt + lensStar)) * pushConstants.lensflaresFactor)
+                     ),
                      pushConstants.factor);
 }
