@@ -9792,7 +9792,11 @@ var CullFace,Blend:TPasGLTFInt32;
               (aAnimationChannel^.OutputScalarArray[aTimeIndex1]*aFactor);
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     aScalar:=aAnimationChannel^.OutputScalarArray[aTimeIndex0];
+     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+      aScalar:=aAnimationChannel^.OutputScalarArray[aTimeIndex1];
+     end else begin
+      aScalar:=aAnimationChannel^.OutputScalarArray[aTimeIndex0];
+     end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
      SqrFactor:=sqr(aFactor);
@@ -9821,7 +9825,11 @@ var CullFace,Blend:TPasGLTFInt32;
                (aAnimationChannel^.OutputVector2Array[aTimeIndex1]*aFactor);
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     aVector2:=aAnimationChannel^.OutputVector2Array[aTimeIndex0];
+     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+      aVector2:=aAnimationChannel^.OutputVector2Array[aTimeIndex1];
+     end else begin
+      aVector2:=aAnimationChannel^.OutputVector2Array[aTimeIndex0];
+     end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
      SqrFactor:=sqr(aFactor);
@@ -9850,7 +9858,11 @@ var CullFace,Blend:TPasGLTFInt32;
                (aAnimationChannel^.OutputVector3Array[aTimeIndex1]*aFactor);
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     aVector3:=aAnimationChannel^.OutputVector3Array[aTimeIndex0];
+     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+      aVector3:=aAnimationChannel^.OutputVector3Array[aTimeIndex1];
+     end else begin
+      aVector3:=aAnimationChannel^.OutputVector3Array[aTimeIndex0];
+     end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
      SqrFactor:=sqr(aFactor);
@@ -9885,7 +9897,11 @@ var CullFace,Blend:TPasGLTFInt32;
      end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     aVector4:=aAnimationChannel^.OutputVector4Array[aTimeIndex0];
+     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+      aVector4:=aAnimationChannel^.OutputVector4Array[aTimeIndex1];
+     end else begin
+      aVector4:=aAnimationChannel^.OutputVector4Array[aTimeIndex0];
+     end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
      SqrFactor:=sqr(aFactor);
@@ -9921,8 +9937,14 @@ var CullFace,Blend:TPasGLTFInt32;
      end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     for WeightIndex:=0 to CountWeights-1 do begin
-      aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel^.OutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex];
+     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+      for WeightIndex:=0 to CountWeights-1 do begin
+       aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel^.OutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex];
+      end;
+     end else begin
+      for WeightIndex:=0 to CountWeights-1 do begin
+       aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel^.OutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex];
+      end;
      end;
     end;
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
