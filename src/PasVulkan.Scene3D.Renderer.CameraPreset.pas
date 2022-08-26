@@ -185,7 +185,7 @@ begin
  fHighlightThreshold:=0.25;
  fHighlightGain:=1.0;
  fBokehChromaticAberration:=0.7;
- fAutoFocus:=false;
+ fAutoFocus:=true;
 end;
 
 destructor TpvScene3DRendererCameraPreset.Destroy;
