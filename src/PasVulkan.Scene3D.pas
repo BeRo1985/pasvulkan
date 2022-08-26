@@ -3430,132 +3430,6 @@ procedure TpvScene3D.TMaterial.Remove;
 begin
  if fAdded then begin
   try
-   if assigned(fData.EmissiveTexture.Texture) then begin
-    try
-     fData.EmissiveTexture.Texture.DecRef;
-    finally
-     fData.EmissiveTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.NormalTexture.Texture) then begin
-    try
-     fData.NormalTexture.Texture.DecRef;
-    finally
-     fData.NormalTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.OcclusionTexture.Texture) then begin
-    try
-     fData.OcclusionTexture.Texture.DecRef;
-    finally
-     fData.OcclusionTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    try
-     fData.PBRMetallicRoughness.BaseColorTexture.Texture.DecRef;
-    finally
-     fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-    try
-     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.DecRef;
-    finally
-     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
-    try
-     fData.PBRMetallicRoughness.SpecularTexture.Texture.DecRef;
-    finally
-     fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
-    try
-     fData.PBRMetallicRoughness.SpecularColorTexture.Texture.DecRef;
-    finally
-     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-    try
-     fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
-    finally
-     fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-    try
-     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.DecRef;
-    finally
-     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
-    try
-     fData.PBRSheen.ColorTexture.Texture.DecRef;
-    finally
-     fData.PBRSheen.ColorTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
-    try
-     fData.PBRSheen.RoughnessTexture.Texture.DecRef;
-    finally
-     fData.PBRSheen.RoughnessTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRClearCoat.Texture.Texture) then begin
-    try
-     fData.PBRClearCoat.Texture.Texture.DecRef;
-    finally
-     fData.PBRClearCoat.Texture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
-    try
-     fData.PBRClearCoat.RoughnessTexture.Texture.DecRef;
-    finally
-     fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
-    try
-     fData.PBRClearCoat.NormalTexture.Texture.DecRef;
-    finally
-     fData.PBRClearCoat.NormalTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.Iridescence.Texture.Texture) then begin
-    try
-     fData.Iridescence.Texture.Texture.DecRef;
-    finally
-     fData.Iridescence.Texture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
-    try
-     fData.Iridescence.ThicknessTexture.Texture.DecRef;
-    finally
-     fData.Iridescence.ThicknessTexture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.Transmission.Texture.Texture) then begin
-    try
-     fData.Transmission.Texture.Texture.DecRef;
-    finally
-     fData.Transmission.Texture.Texture:=nil;
-    end;
-   end;
-   if assigned(fData.Volume.ThicknessTexture.Texture) then begin
-    try
-     fData.Volume.ThicknessTexture.Texture.DecRef;
-    finally
-     fData.Volume.ThicknessTexture.Texture:=nil;
-    end;
-   end;
    fSceneInstance.fMaterialListLock.Acquire;
    try
     fSceneInstance.fMaterials.Remove(self);
@@ -3571,6 +3445,132 @@ begin
      end;
      fSceneInstance.fMaterialIDManager.FreeID(fID);
      fID:=0;
+    end;
+    if assigned(fData.EmissiveTexture.Texture) then begin
+     try
+      fData.EmissiveTexture.Texture.DecRef;
+     finally
+      fData.EmissiveTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.NormalTexture.Texture) then begin
+     try
+      fData.NormalTexture.Texture.DecRef;
+     finally
+      fData.NormalTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.OcclusionTexture.Texture) then begin
+     try
+      fData.OcclusionTexture.Texture.DecRef;
+     finally
+      fData.OcclusionTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+     try
+      fData.PBRMetallicRoughness.BaseColorTexture.Texture.DecRef;
+     finally
+      fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+     try
+      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.DecRef;
+     finally
+      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+     try
+      fData.PBRMetallicRoughness.SpecularTexture.Texture.DecRef;
+     finally
+      fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+     try
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture.DecRef;
+     finally
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+     try
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture.DecRef;
+     finally
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+     try
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.DecRef;
+     finally
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+     try
+      fData.PBRSheen.ColorTexture.Texture.DecRef;
+     finally
+      fData.PBRSheen.ColorTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+     try
+      fData.PBRSheen.RoughnessTexture.Texture.DecRef;
+     finally
+      fData.PBRSheen.RoughnessTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+     try
+      fData.PBRClearCoat.Texture.Texture.DecRef;
+     finally
+      fData.PBRClearCoat.Texture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+     try
+      fData.PBRClearCoat.RoughnessTexture.Texture.DecRef;
+     finally
+      fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+     try
+      fData.PBRClearCoat.NormalTexture.Texture.DecRef;
+     finally
+      fData.PBRClearCoat.NormalTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.Iridescence.Texture.Texture) then begin
+     try
+      fData.Iridescence.Texture.Texture.DecRef;
+     finally
+      fData.Iridescence.Texture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+     try
+      fData.Iridescence.ThicknessTexture.Texture.DecRef;
+     finally
+      fData.Iridescence.ThicknessTexture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.Transmission.Texture.Texture) then begin
+     try
+      fData.Transmission.Texture.Texture.DecRef;
+     finally
+      fData.Transmission.Texture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+     try
+      fData.Volume.ThicknessTexture.Texture.DecRef;
+     finally
+      fData.Volume.ThicknessTexture.Texture:=nil;
+     end;
     end;
     fSceneInstance.NewMaterialDataGeneration;
    finally
