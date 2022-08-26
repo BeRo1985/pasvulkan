@@ -2984,20 +2984,6 @@ begin
  if fAdded then begin
   try
    HashData:=GetHashData;
-   if assigned(fImage) then begin
-    try
-     fImage.DecRef;
-    finally
-     fImage:=nil;
-    end;
-   end;
-   if assigned(fSampler) then begin
-    try
-     fSampler.DecRef;
-    finally
-     fSampler:=nil;
-    end;
-   end;
    fSceneInstance.fTextureListLock.Acquire;
    try
     fSceneInstance.fTextures.Remove(self);
@@ -3012,6 +2998,20 @@ begin
      fID:=0;
     end;
     fSceneInstance.NewImageDescriptorGeneration;
+    if assigned(fImage) then begin
+     try
+      fImage.DecRef;
+     finally
+      fImage:=nil;
+     end;
+    end;
+    if assigned(fSampler) then begin
+     try
+      fSampler.DecRef;
+     finally
+      fSampler:=nil;
+     end;
+    end;
    finally
     fSceneInstance.fTextureListLock.Release;
    end;
