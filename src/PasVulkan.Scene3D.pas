@@ -411,6 +411,31 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
+              const CountRayCheckTapPoints=17;
+                    RayCheckTapPoints:array[0..CountRayCheckTapPoints-1] of TpvVector3=
+                     (
+
+                      (x:0.5;y:0.5;z:0.5),
+
+                      (x:0.015625;y:0.015625;z:0.015625),
+                      (x:0.984375;y:0.015625;z:0.015625),
+                      (x:0.015625;y:0.984375;z:0.015625),
+                      (x:0.984375;y:0.984375;z:0.015625),
+                      (x:0.015625;y:0.015625;z:0.984375),
+                      (x:0.984375;y:0.015625;z:0.984375),
+                      (x:0.015625;y:0.984375;z:0.984375),
+                      (x:0.984375;y:0.984375;z:0.984375),
+
+                      (x:0.25;y:0.25;z:0.25),
+                      (x:0.75;y:0.25;z:0.25),
+                      (x:0.25;y:0.75;z:0.25),
+                      (x:0.75;y:0.75;z:0.25),
+                      (x:0.25;y:0.25;z:0.75),
+                      (x:0.75;y:0.25;z:0.75),
+                      (x:0.25;y:0.75;z:0.75),
+                      (x:0.75;y:0.75;z:0.75)
+
+                     );
               type TNodeIndexPair=TpvUInt64; // Hi 32-bit second pair index + Lo 32-bit first pair index
                    PNodeIndexPair=^TNodeIndexPair;
                    TNodeIndexPairList=class(TpvDynamicArrayList<TNodeIndexPair>);
