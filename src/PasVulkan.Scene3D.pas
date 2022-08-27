@@ -2562,6 +2562,7 @@ begin
      fStaticTriangleBVH.KDTreeMode:=true;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
      if assigned(fStaticTriangleBVH.Root) then begin
+//      fStaticTriangleBVH.Root.AABB;
      end;
     finally
      fStaticTriangleBVHTriangles:=nil;

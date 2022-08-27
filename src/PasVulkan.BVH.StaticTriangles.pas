@@ -155,7 +155,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
      TpvStaticTriangleBVH=class;
 
      TpvStaticTriangleBVHNode=class
-      public
+      private
        fOwner:TpvStaticTriangleBVH;
        fNodeIndex:TpvInt32;
        fTriangleIndex:TpvInt32;
@@ -169,6 +169,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        fSkipToNode:TpvUInt32;
        fCountAllContainingNodes:TpvUInt32;
        fCountAllContainingTriangles:TpvUInt32;
+      public
        constructor Create(AOwner:TpvStaticTriangleBVH);
        destructor Destroy; override;
        function CountChildren:TpvInt32;
@@ -179,6 +180,24 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        procedure UpdateAABB;
        procedure AssignIndex(var NodeIndex,TriangleIndex:TpvInt32);
        procedure UpdateIndex;
+      published
+       property Owner:TpvStaticTriangleBVH read fOwner write fOwner;
+       property NodeIndex:TpvInt32 read fNodeIndex write fNodeIndex;
+       property TriangleIndex:TpvInt32 read fTriangleIndex write fTriangleIndex;
+       property Left:TpvStaticTriangleBVHNode read fLeft write fLeft;
+       property Right:TpvStaticTriangleBVHNode read fRight write fRight;
+      public
+       property TriangleIndices:TpvStaticTriangleBVHTriangleIndices read fTriangleIndices write fTriangleIndices;
+      published
+       property CountTriangleIndices:TpvInt32 read fCountTriangleIndices write fCountTriangleIndices;
+      public
+       property AABB:TpvAABB read fAABB write fAABB;
+      published
+       property Axis:TpvInt32 read fAxis write fAxis;
+       property Flags:TpvUInt32 read fFlags write fFlags;
+       property SkipToNode:TpvUInt32 read fSkipToNode write fSkipToNode;
+       property CountAllContainingNodes:TpvUInt32 read fCountAllContainingNodes write fCountAllContainingNodes;
+       property CountAllContainingTriangles:TpvUInt32 read fCountAllContainingTriangles write fCountAllContainingTriangles;
      end;
 
      TpvStaticTriangleBVHNodes=array of TpvStaticTriangleBVHNode;
