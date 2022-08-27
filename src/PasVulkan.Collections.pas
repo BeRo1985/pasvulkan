@@ -213,6 +213,7 @@ type TpvDynamicArray<T>=record
        procedure SetCount(const pNewCount:TpvSizeInt);
        function GetItem(const pIndex:TpvSizeInt):T;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
+       function GetPointerToItems:pointer;
       public
        constructor Create;
        destructor Destroy; override;
@@ -229,6 +230,7 @@ type TpvDynamicArray<T>=record
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
        property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
+       property PointerToItems:pointer read GetPointerToItems;
      end;
 
      TpvObjectList=TpvObjectGenericList<TObject>;
@@ -1619,6 +1621,11 @@ begin
   raise ERangeError.Create('Out of index range');
  end;
  fItems[pIndex]:=pItem;
+end;
+
+function TpvObjectGenericList<T>.GetPointerToItems:pointer;
+begin
+ result:=@fItems[0];
 end;
 
 function TpvObjectGenericList<T>.IndexOf(const pItem:T):TpvSizeInt;
