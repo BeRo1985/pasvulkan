@@ -389,7 +389,7 @@ type EpvScene3D=class(Exception);
                           TFlags=set of TFlag;
                           PFlags=^TFlags;
                     public
-                     Vertices:array[0..2] of TpvVector3;
+                     Positions:array[0..2] of TpvVector3;
                      Normals:array[0..2] of TpvVector3;
                      Normal:TpvVector3;
                      Flags:TFlags;
@@ -411,8 +411,9 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              private
-              fStaticTriangleBVH:TpvStaticTriangleBVH;
               fBakedMesh:TpvScene3D.TBakedMesh;
+              fStaticTriangleBVH:TpvStaticTriangleBVH;
+              fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -2477,7 +2478,7 @@ end;
 
 procedure TpvScene3D.TBakedMesh.TTriangle.Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
 begin
- Vertices:=aFrom.Vertices;
+ Positions:=aFrom.Positions;
  Normals:=aFrom.Normals;
  Normal:=aFrom.Normal;
  Flags:=aFrom.Flags;
@@ -2533,13 +2534,35 @@ begin
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh);
+var TriangleIndex:TpvSizeInt;
+    BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
+    StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
 begin
  if assigned(aBakedMesh) then begin
   fBakedMesh:=aBakedMesh;
   try
    fStaticTriangleBVH:=TpvStaticTriangleBVH.Create;
    try
-
+    fStaticTriangleBVHTriangles:=nil;
+    try
+     SetLength(fStaticTriangleBVHTriangles,fBakedMesh.Triangles.Count);
+     for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
+      BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
+      StaticTriangleBVHTriangle:=@fStaticTriangleBVHTriangles[TriangleIndex];
+      FillChar(StaticTriangleBVHTriangle^,SizeOf(TpvStaticTriangleBVHTriangle),#0);
+      StaticTriangleBVHTriangle^.Vertices[0].Position:=BakedTriangle.Positions[0];
+      StaticTriangleBVHTriangle^.Vertices[1].Position:=BakedTriangle.Positions[1];
+      StaticTriangleBVHTriangle^.Vertices[2].Position:=BakedTriangle.Positions[2];
+      StaticTriangleBVHTriangle^.Vertices[0].Normal:=BakedTriangle.Normals[0];
+      StaticTriangleBVHTriangle^.Vertices[1].Normal:=BakedTriangle.Normals[1];
+      StaticTriangleBVHTriangle^.Vertices[2].Normal:=BakedTriangle.Normals[2];
+      StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
+      StaticTriangleBVHTriangle^.Initialize;
+     end;
+     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
+    finally
+     fStaticTriangleBVHTriangles:=nil;
+    end;
    finally
     FreeAndNil(fStaticTriangleBVH);
    end;
@@ -11865,17 +11888,17 @@ var BakedMesh:TpvScene3D.TBakedMesh;
            BakedTriangle:=TpvScene3D.TBakedMesh.TTriangle.Create;
            try
             if SideIndex>0 then begin
-             BakedTriangle.Vertices[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
-             BakedTriangle.Vertices[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
-             BakedTriangle.Vertices[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
+             BakedTriangle.Positions[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
+             BakedTriangle.Positions[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
+             BakedTriangle.Positions[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
              BakedTriangle.Normals[0]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal;
              BakedTriangle.Normals[1]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal;
              BakedTriangle.Normals[2]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal;
              BakedTriangle.Normal:=-(BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal).Normalize;
             end else begin
-             BakedTriangle.Vertices[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
-             BakedTriangle.Vertices[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
-             BakedTriangle.Vertices[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
+             BakedTriangle.Positions[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
+             BakedTriangle.Positions[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
+             BakedTriangle.Positions[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
              BakedTriangle.Normals[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal;
              BakedTriangle.Normals[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal;
              BakedTriangle.Normals[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal;

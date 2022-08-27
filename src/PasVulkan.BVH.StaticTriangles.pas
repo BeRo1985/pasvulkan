@@ -107,21 +107,24 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
 
      PpvStaticTriangleBVHTriangle=^TpvStaticTriangleBVHTriangle;
      TpvStaticTriangleBVHTriangle=record
-      Vertices:TpvStaticTriangleBVHTriangleVertices;
-      Planes:array[0..2] of TpvPlane;
-      Plane:TpvPlane;
-      B:TpvVector3;
-      C:TpvVector3;
-      Normal:TpvVector3;
-      Sphere:TpvSphere;
-      U:TpvInt32;
-      V:TpvInt32;
-      BarycentricDivide:TpvFloat;
-      WholeArea:TpvFloat;
-      Material:TpvUInt32;
-      Flags:TpvUInt32;
-      Tag:TpvUInt32;
-      AvoidSelfShadowingTag:TpvUInt32;
+      public
+       Vertices:TpvStaticTriangleBVHTriangleVertices;
+       Planes:array[0..2] of TpvPlane;
+       Plane:TpvPlane;
+       B:TpvVector3;
+       C:TpvVector3;
+       Normal:TpvVector3;
+       Sphere:TpvSphere;
+       U:TpvInt32;
+       V:TpvInt32;
+       BarycentricDivide:TpvFloat;
+       WholeArea:TpvFloat;
+       Material:TpvUInt32;
+       Flags:TpvUInt32;
+       Tag:TpvUInt32;
+       AvoidSelfShadowingTag:TpvUInt32;
+      public
+       procedure Initialize;
      end;
 
      TpvStaticTriangleBVHTriangles=array of TpvStaticTriangleBVHTriangle;
@@ -267,7 +270,7 @@ const BARY_EPSILON=0.01;
       NEAR_SHADOW_EPSILON=1.5;
       SELF_SHADOW_EPSILON=0.5;
 
-procedure TriangleInitialize(var Triangle:TpvStaticTriangleBVHTriangle);
+procedure TpvStaticTriangleBVHTriangle.Initialize;
 const ModuloThree:array[0..5] of TpvInt32=(0,1,2,0,1,2);
 var TempVertex:TpvStaticTriangleBVHTriangleVertex;
     n,Cross:TpvVector3;
@@ -275,34 +278,34 @@ var TempVertex:TpvStaticTriangleBVHTriangleVertex;
     f:double;
 begin
  for Pass:=0 to 1 do begin
-  Triangle.B:=Triangle.Vertices[2].Position-Triangle.Vertices[0].Position;
-  Triangle.C:=Triangle.Vertices[1].Position-Triangle.Vertices[0].Position;
-  Cross:=Triangle.C.Cross(Triangle.B);
-  Triangle.Normal:=Cross.Normalize;
-  Triangle.WholeArea:=Triangle.Normal.Dot(Cross);
-  if abs(Triangle.Normal.x)>abs(Triangle.Normal.y) then begin
-   if abs(Triangle.Normal.x)>abs(Triangle.Normal.z) then begin
+  B:=Vertices[2].Position-Vertices[0].Position;
+  C:=Vertices[1].Position-Vertices[0].Position;
+  Cross:=C.Cross(B);
+  Normal:=Cross.Normalize;
+  WholeArea:=Normal.Dot(Cross);
+  if abs(Normal.x)>abs(Normal.y) then begin
+   if abs(Normal.x)>abs(Normal.z) then begin
     DominantAxis:=0;
    end else begin
     DominantAxis:=2;
    end;
   end else begin
-   if abs(Triangle.Normal.y)>abs(Triangle.Normal.z) then begin
+   if abs(Normal.y)>abs(Normal.z) then begin
     DominantAxis:=1;
    end else begin
     DominantAxis:=2;
    end;
   end;
-  Triangle.U:=ModuloThree[DominantAxis+1];
-  Triangle.V:=ModuloThree[DominantAxis+2];
+  U:=ModuloThree[DominantAxis+1];
+  V:=ModuloThree[DominantAxis+2];
   if Pass=0 then begin
-   if ((Triangle.Vertices[1].Position.xyz[Triangle.V]-Triangle.Vertices[2].Position.xyz[Triangle.V])*
-       (Triangle.Vertices[1].Position.xyz[Triangle.U]-Triangle.Vertices[0].Position.xyz[Triangle.U]))<
-      ((Triangle.Vertices[1].Position.xyz[Triangle.U]-Triangle.Vertices[2].Position.xyz[Triangle.U])*
-       (Triangle.Vertices[1].Position.xyz[Triangle.V]-Triangle.Vertices[0].Position.xyz[Triangle.V])) then begin
-    TempVertex:=Triangle.Vertices[0];
-    Triangle.Vertices[0]:=Triangle.Vertices[2];
-    Triangle.Vertices[2]:=TempVertex;
+   if ((Vertices[1].Position.xyz[V]-Vertices[2].Position.xyz[V])*
+       (Vertices[1].Position.xyz[U]-Vertices[0].Position.xyz[U]))<
+      ((Vertices[1].Position.xyz[U]-Vertices[2].Position.xyz[U])*
+       (Vertices[1].Position.xyz[V]-Vertices[0].Position.xyz[V])) then begin
+    TempVertex:=Vertices[0];
+    Vertices[0]:=Vertices[2];
+    Vertices[2]:=TempVertex;
    end else begin
     break;
    end;
@@ -311,27 +314,27 @@ begin
   end;
  end;
 
- f:=((Triangle.B.xyz[Triangle.U]*Triangle.C.xyz[Triangle.V])-(Triangle.B.xyz[Triangle.V]*Triangle.C.xyz[Triangle.U]));
+ f:=((B.xyz[U]*C.xyz[V])-(B.xyz[V]*C.xyz[U]));
  if IsZero(f) then begin
-  Triangle.BarycentricDivide:=0.0;
+  BarycentricDivide:=0.0;
  end else begin
-  Triangle.BarycentricDivide:=1.0/f;
+  BarycentricDivide:=1.0/f;
  end;
 
- Triangle.Sphere.Center.x:=(Triangle.Vertices[0].Position.x+Triangle.Vertices[1].Position.x+Triangle.Vertices[2].Position.x)/3;
- Triangle.Sphere.Center.y:=(Triangle.Vertices[0].Position.y+Triangle.Vertices[1].Position.y+Triangle.Vertices[2].Position.y)/3;
- Triangle.Sphere.Center.z:=(Triangle.Vertices[0].Position.z+Triangle.Vertices[1].Position.z+Triangle.Vertices[2].Position.z)/3;
- Triangle.Sphere.Radius:=(Triangle.Sphere.Center-Triangle.Vertices[0].Position).Length;
- Triangle.Sphere.Radius:=Max(Triangle.Sphere.Radius,(Triangle.Sphere.Center-Triangle.Vertices[1].Position).Length);
- Triangle.Sphere.Radius:=Max(Triangle.Sphere.Radius,(Triangle.Sphere.Center-Triangle.Vertices[2].Position).Length);
+ Sphere.Center.x:=(Vertices[0].Position.x+Vertices[1].Position.x+Vertices[2].Position.x)/3;
+ Sphere.Center.y:=(Vertices[0].Position.y+Vertices[1].Position.y+Vertices[2].Position.y)/3;
+ Sphere.Center.z:=(Vertices[0].Position.z+Vertices[1].Position.z+Vertices[2].Position.z)/3;
+ Sphere.Radius:=(Sphere.Center-Vertices[0].Position).Length;
+ Sphere.Radius:=Max(Sphere.Radius,(Sphere.Center-Vertices[1].Position).Length);
+ Sphere.Radius:=Max(Sphere.Radius,(Sphere.Center-Vertices[2].Position).Length);
 
- Triangle.Plane:=TpvPlane.Create(Triangle.Normal,-Triangle.Normal.Dot(Triangle.Vertices[0].Position));
- n:=(Triangle.Plane.Normal.Cross(Triangle.Vertices[0].Position-Triangle.Vertices[2].Position)).Normalize;
- Triangle.Planes[0]:=TpvPlane.Create(n,-n.Dot(Triangle.Vertices[0].Position));
- n:=(Triangle.Plane.Normal.Cross(Triangle.Vertices[1].Position-Triangle.Vertices[0].Position)).Normalize;
- Triangle.Planes[1]:=TpvPlane.Create(n,-n.Dot(Triangle.Vertices[1].Position));
- n:=(Triangle.Plane.Normal.Cross(Triangle.Vertices[2].Position-Triangle.Vertices[1].Position)).Normalize;
- Triangle.Planes[2]:=TpvPlane.Create(n,-n.Dot(Triangle.Vertices[2].Position));
+ Plane:=TpvPlane.Create(Normal,-Normal.Dot(Vertices[0].Position));
+ n:=(Plane.Normal.Cross(Vertices[0].Position-Vertices[2].Position)).Normalize;
+ Planes[0]:=TpvPlane.Create(n,-n.Dot(Vertices[0].Position));
+ n:=(Plane.Normal.Cross(Vertices[1].Position-Vertices[0].Position)).Normalize;
+ Planes[1]:=TpvPlane.Create(n,-n.Dot(Vertices[1].Position));
+ n:=(Plane.Normal.Cross(Vertices[2].Position-Vertices[1].Position)).Normalize;
+ Planes[2]:=TpvPlane.Create(n,-n.Dot(Vertices[2].Position));
 end;
 
 function TriangleGetExtremeAxisPointsForAABB(const Triangle:TpvStaticTriangleBVHTriangle;const AABB:TpvAABB;const Axis:TpvInt32;var PMin,PMax:TpvFloat):boolean;
@@ -1706,7 +1709,7 @@ begin
   Triangle:=@fTriangles[fRoot.fTriangleIndices[i]];
   fRoot.fFlags:=fRoot.fFlags or Triangle^.Flags;
   if not Initialized then begin
-   TriangleInitialize(Triangle^);
+   Triangle^.Initialize;
   end;
   for j:=0 to 2 do begin
    if (i=0) and (j=0) then begin
