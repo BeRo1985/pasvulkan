@@ -980,9 +980,10 @@ end;
 
 function CanInsertTriangle(const Triangle:TpvStaticTriangleBVHTriangle;const AABB:TpvAABB):boolean;
 begin
- result:=AABB.TriangleIntersection(TpvTriangle.Create(Triangle.Vertices[0].Position,
+ result:=AABB.Contains(GetTriangleAABB(Triangle));
+{result:=AABB.TriangleIntersection(TpvTriangle.Create(Triangle.Vertices[0].Position,
                                                       Triangle.Vertices[1].Position,
-                                                      Triangle.Vertices[2].Position));
+                                                      Triangle.Vertices[2].Position));}
 end;
 
 function TpvStaticTriangleBVH.SearchBestSplitPlane(CurrentNode:TpvStaticTriangleBVHNode;var BestSplitAxis:TpvInt32;var BestSplitPosition:TpvFloat;var BestLeftCount,BestRightCount:TpvInt32):boolean;
@@ -1169,9 +1170,10 @@ begin
         Triangle:=@fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]];
         if CanInsertTriangle(Triangle^,LeftAABB) then begin
          inc(LeftCount);
-        end;
-        if CanInsertTriangle(Triangle^,RightAABB) then begin
+        end else if CanInsertTriangle(Triangle^,RightAABB) then begin
          inc(RightCount);
+        end else begin
+         inc(ParentCount);
         end;
        end;
       end else begin
@@ -1297,9 +1299,10 @@ begin
        Triangle:=@fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]];
        if CanInsertTriangle(Triangle^,LeftAABB) then begin
         inc(LeftCount);
-       end;
-       if CanInsertTriangle(Triangle^,RightAABB) then begin
+       end else if CanInsertTriangle(Triangle^,RightAABB) then begin
         inc(RightCount);
+       end else begin
+        inc(ParentCount);
        end;
       end;
      end else begin
@@ -1436,9 +1439,10 @@ begin
          CurrentTriangle:=Triangles[TriangleIndex];
          if CanInsertTriangle(fTriangles[CurrentTriangle],LeftNode.fAABB) then begin
           LeftNode.InsertTriangle(CurrentTriangle);
-         end;
-         if CanInsertTriangle(fTriangles[CurrentTriangle],RightNode.fAABB) then begin
+         end else if CanInsertTriangle(fTriangles[CurrentTriangle],RightNode.fAABB) then begin
           RightNode.InsertTriangle(CurrentTriangle);
+         end else begin
+          CurrentNode.InsertTriangle(CurrentTriangle);
          end;
         end;
        end else begin
