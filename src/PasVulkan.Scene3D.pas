@@ -498,9 +498,11 @@ type EpvScene3D=class(Exception);
               procedure Load(const aStream:TStream);
               procedure Write(const aStream:TStream);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
+              function GetNodeIndexByPosition(const aPosition:TpvVector3):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
              public
               property AABB:TpvAABB read fAABB;
              public
+              property Nodes:TpvScene3D.TPotentiallyVisibleSet.TNodes read fNodes;
               property NodeVisibility[const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex]:boolean read GetNodeVisibility write SetNodeVisibility; default;
              published
               property Root:TpvScene3D.TPotentiallyVisibleSet.TNode read fRoot;
@@ -2747,7 +2749,9 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
+procedure TpvScene3D.TPotentiallyVisibleSet.Build(
+ const aBakedMesh: TpvScene3D.TBakedMesh; const aMaxDepth: TpvInt32;
+ const aPasMPInstance: TPasMP);
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
@@ -2917,6 +2921,28 @@ begin
 
  end;
 
+end;
+
+function TpvScene3D.TPotentiallyVisibleSet.GetNodeIndexByPosition(const aPosition:TpvVector3):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+var Index,Count:TpvUInt32;
+    Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
+begin
+ result:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+ Index:=0;
+ Count:=fNodes.Count;
+ while Index<Count do begin
+  Node:=fNodes[Index];
+  if Node.fAABB.Contains(aPosition) then begin
+   result:=Index;
+   inc(Index);
+  end else begin
+   if Node.fSkipCount>0 then begin
+    inc(Index,Node.fSkipCount);
+   end else begin
+    break;
+   end;
+  end;
+ end;
 end;
 
 { TpvScene3D.TImage }
