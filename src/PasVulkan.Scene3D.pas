@@ -390,6 +390,7 @@ type EpvScene3D=class(Exception);
                           PFlags=^TFlags;
                     public
                      Vertices:array[0..2] of TpvVector3;
+                     Normals:array[0..2] of TpvVector3;
                      Normal:TpvVector3;
                      Flags:TFlags;
                      MetaFlags:TpvUInt32;
@@ -2462,6 +2463,7 @@ end;
 procedure TpvScene3D.TBakedMesh.TTriangle.Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
 begin
  Vertices:=aFrom.Vertices;
+ Normals:=aFrom.Normals;
  Normal:=aFrom.Normal;
  Flags:=aFrom.Flags;
  MetaFlags:=aFrom.MetaFlags;
@@ -11698,7 +11700,7 @@ var BakedMesh:TpvScene3D.TBakedMesh;
       PBakedVertex=^TBakedVertex;
       TBakedVertices=array of TBakedVertex;
       TTemporaryTriangleIndices=array of TpvSizeInt;
- var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex:TpvSizeInt;
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex,SideIndex:TpvSizeInt;
      MorphTargetVertexIndex:TpvUInt32;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
@@ -11710,6 +11712,7 @@ var BakedMesh:TpvScene3D.TBakedMesh;
      MorphTargetVertex:TpvScene3D.TGroup.PMorphTargetVertex;
      BakedVertices:TBakedVertices;
      BakedVertex:PBakedVertex;
+     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
      TemporaryTriangleIndices:TTemporaryTriangleIndices;
  begin
   BakedVertices:=nil;
@@ -11728,81 +11731,107 @@ var BakedMesh:TpvScene3D.TBakedMesh;
     end;
     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-     case Primitive^.PrimitiveMode of
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
-       SetLength(BakedVertices,Primitive^.CountVertices);
-       for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
-        Vertex:=@Group.fVertices.Items[VertexIndex];
-        BakedVertex:=@BakedVertices[VertexIndex-Primitive^.StartBufferVertexOffset];
-        Position:=Vertex^.Position;
-        Normal:=OctDecode(Vertex^.Normal);
-        MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-        while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-         MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
-         Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-         Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-         MorphTargetVertexIndex:=MorphTargetVertex^.Next;
-        end;
-        Normal:=Normal.Normalize;
-        ModelNodeMatrix:=ModelNodeMatrixEx;
-        if Vertex^.CountJointBlocks>0 then begin
-         Matrix:=TpvMatrix4x4.Identity;
-         for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
-          JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
-          for JointIndex:=0 to 3 do begin
-           Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
-          end;
+     if assigned(Primitive^.Material) then begin
+      case Primitive^.PrimitiveMode of
+       VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+       VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+       VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
+        SetLength(BakedVertices,Primitive^.CountVertices);
+        for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+         Vertex:=@Group.fVertices.Items[VertexIndex];
+         BakedVertex:=@BakedVertices[VertexIndex-Primitive^.StartBufferVertexOffset];
+         Position:=Vertex^.Position;
+         Normal:=OctDecode(Vertex^.Normal);
+         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+          MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+          Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+          Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
          end;
-         ModelNodeMatrix:=Matrix*ModelNodeMatrix;
-        end;
-        BakedVertex^.Position:=ModelNodeMatrix.MulHomogen(Position);
-        BakedVertex^.Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
-       end;
-       TemporaryTriangleIndices:=nil;
-       try
-        case Primitive^.PrimitiveMode of
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:begin
-          SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
-          for IndexIndex:=Primitive^.StartBufferIndexOffset to (Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
-           TemporaryTriangleIndices[IndexIndex-Primitive^.StartBufferIndexOffset]:=Group.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset;
-          end;
-         end;
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:begin
-          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
-          for IndexIndex:=0 to Primitive^.CountIndices-3 do begin
-           if (IndexIndex and 1)<>0 then begin
-            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
-           end else begin
-            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
+         Normal:=Normal.Normalize;
+         ModelNodeMatrix:=ModelNodeMatrixEx;
+         if Vertex^.CountJointBlocks>0 then begin
+          Matrix:=TpvMatrix4x4.Identity;
+          for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+           JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+           for JointIndex:=0 to 3 do begin
+            Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
            end;
           end;
+          ModelNodeMatrix:=Matrix*ModelNodeMatrix;
          end;
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
-          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
-          for IndexIndex:=2 to Primitive^.CountIndices-1 do begin
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+0]-Primitive^.StartBufferVertexOffset;
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=Group.fIndices.Items[(Primitive^.StartBufferIndexOffset+IndexIndex)-1]-Primitive^.StartBufferVertexOffset;
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex]-Primitive^.StartBufferVertexOffset;
+         BakedVertex^.Position:=ModelNodeMatrix.MulHomogen(Position);
+         BakedVertex^.Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
+        end;
+        TemporaryTriangleIndices:=nil;
+        try
+         case Primitive^.PrimitiveMode of
+          VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:begin
+           SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
+           for IndexIndex:=Primitive^.StartBufferIndexOffset to (Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
+            TemporaryTriangleIndices[IndexIndex-Primitive^.StartBufferIndexOffset]:=Group.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset;
+           end;
+          end;
+          VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:begin
+           SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+           for IndexIndex:=0 to Primitive^.CountIndices-3 do begin
+            if (IndexIndex and 1)<>0 then begin
+             TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
+             TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
+             TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
+            end else begin
+             TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
+             TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
+             TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
+            end;
+           end;
+          end;
+          VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
+           SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+           for IndexIndex:=2 to Primitive^.CountIndices-1 do begin
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+0]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=Group.fIndices.Items[(Primitive^.StartBufferIndexOffset+IndexIndex)-1]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex]-Primitive^.StartBufferVertexOffset;
+           end;
+          end;
+          else begin
           end;
          end;
-         else begin
+         IndexIndex:=0;
+         while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
+          for SideIndex:=0 to ord(Primitive^.Material.fData.DoubleSided) and 1 do begin
+           BakedTriangle:=TpvScene3D.TBakedMesh.TTriangle.Create;
+           try
+            if SideIndex>0 then begin
+             BakedTriangle.Vertices[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
+             BakedTriangle.Vertices[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
+             BakedTriangle.Vertices[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
+             BakedTriangle.Normals[0]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal;
+             BakedTriangle.Normals[1]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal;
+             BakedTriangle.Normals[2]:=-BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal;
+             BakedTriangle.Normal:=-(BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal).Normalize;
+            end else begin
+             BakedTriangle.Vertices[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Position;
+             BakedTriangle.Vertices[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Position;
+             BakedTriangle.Vertices[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
+             BakedTriangle.Normals[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal;
+             BakedTriangle.Normals[1]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal;
+             BakedTriangle.Normals[2]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal;
+             BakedTriangle.Normal:=(BakedVertices[TemporaryTriangleIndices[IndexIndex+0]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+1]].Normal+BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Normal).Normalize;
+            end;
+           finally
+            BakedMesh.fTriangles.Add(BakedTriangle);
+           end;
+          end;
+          inc(IndexIndex,3);
          end;
+        finally
+         TemporaryTriangleIndices:=nil;
         end;
-        IndexIndex:=0;
-        while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
-         inc(IndexIndex,3);
-        end;
-       finally
-        TemporaryTriangleIndices:=nil;
        end;
-      end;
-      else begin
+       else begin
+       end;
       end;
      end;
     end;
