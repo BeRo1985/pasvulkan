@@ -411,7 +411,8 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
-              const CountRayCheckTapPoints=17;
+              const NoNodeIndex=TpvUInt32($ffffffff);
+                    CountRayCheckTapPoints=17;
                     RayCheckTapPoints:array[0..CountRayCheckTapPoints-1] of TpvVector3=
                      (
 
@@ -499,6 +500,8 @@ type EpvScene3D=class(Exception);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
              public
               property AABB:TpvAABB read fAABB;
+             public
+              property NodeVisibility[const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex]:boolean read GetNodeVisibility write SetNodeVisibility; default;
              published
               property Root:TpvScene3D.TPotentiallyVisibleSet.TNode read fRoot;
             end;
@@ -2693,8 +2696,8 @@ end;
 function TpvScene3D.TPotentiallyVisibleSet.GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
 var BitIndex:TpvUInt64;
 begin
- BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
- if BitIndex<fBitmapSize then begin
+ if (aNodeAIndex<fBitmapOneDimensionSize) and (aNodeBIndex<fBitmapOneDimensionSize) then begin
+  BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
   result:=(fBitmap[BitIndex shr 5] and (TpvUInt32(1) shl (BitIndex and 31)))<>0;
  end else begin
   result:=true;
@@ -2704,8 +2707,8 @@ end;
 procedure TpvScene3D.TPotentiallyVisibleSet.SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
 var BitIndex:TpvUInt64;
 begin
- BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
- if BitIndex<fBitmapSize then begin
+ if (aNodeAIndex<fBitmapOneDimensionSize) and (aNodeBIndex<fBitmapOneDimensionSize) then begin
+  BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
   if aVisibility then begin
    TPasMPInterlocked.BitwiseOr(fBitmap[BitIndex shr 5],TpvUInt32(1) shl (BitIndex and 31));
   end else begin
