@@ -2847,6 +2847,13 @@ begin
 
       fNodes.SortByIndex;
 
+      fBitmapOneDimensionSize:=fNodes.Count;
+      fBitmapSize:=fBitmapOneDimensionSize*fBitmapOneDimensionSize;
+      SetLength(fBitmap,(fBitmapSize+31) shr 5);
+      if length(fBitmap)>0 then begin
+       FillChar(fBitmap[0],length(fBitmap)*SizeOf(TpVUInt32),#0);
+      end;
+
       NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList.Create;
       try
        for Index:=0 to fNodes.Count-1 do begin
