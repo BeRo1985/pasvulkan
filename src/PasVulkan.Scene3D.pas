@@ -414,12 +414,15 @@ type EpvScene3D=class(Exception);
               fBakedMesh:TpvScene3D.TBakedMesh;
               fStaticTriangleBVH:TpvStaticTriangleBVH;
               fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
+              fAABB:TpvAABB;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure Load(const aStream:TStream);
               procedure Write(const aStream:TStream);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh);
+             public
+              property AABB:TpvAABB read fAABB;
             end;
             TGroup=class;
             TBaseGroupObject=class(TBaseObject)
@@ -2562,7 +2565,7 @@ begin
      fStaticTriangleBVH.KDTreeMode:=true;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
      if assigned(fStaticTriangleBVH.Root) then begin
-//      fStaticTriangleBVH.Root.AABB;
+      fAABB:=fStaticTriangleBVH.Root.AABB;
      end;
     finally
      fStaticTriangleBVHTriangles:=nil;
