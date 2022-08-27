@@ -12007,7 +12007,9 @@ var BakedMesh:TpvScene3D.TBakedMesh;
        ((not aWithDynamicMeshs) and
         ((not assigned(aNode.Skin)) and
          (length(aNode.fWeights)=0) and
-         (aInstanceNode^.CountOverwrites=0)))) then begin
+         ((aInstanceNode^.CountOverwrites=0) or
+          ((aInstanceNode^.CountOverwrites=1) and
+           ((aInstanceNode^.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults]))))))) then begin
     Skin:=aNode.fSkin;
     if assigned(Skin) then begin
      InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
@@ -12163,7 +12165,10 @@ begin
     if ((aRootNodeIndex>=0) and
         (NodeIndex=aRootNodeIndex)) or
        (aWithDynamicMeshs or
-        ((not aWithDynamicMeshs) and (GroupInstanceNode^.CountOverwrites=0))) then begin
+        ((not aWithDynamicMeshs) and
+         ((GroupInstanceNode^.CountOverwrites=0) or
+          ((GroupInstanceNode^.CountOverwrites=1) and
+           ((GroupInstanceNode^.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TOverwriteFlag.Defaults])))))) then begin
      for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
       NodeStack.Push(GroupNode.fChildren[Index].fIndex);
      end;
