@@ -2634,7 +2634,7 @@ type TStackItem=record
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
-var TriangleIndex,NodeIndexCounter:TpvSizeInt;
+var TriangleIndex,NodeIndexCounter,Index:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
     StackItem,NewStackItem:TStackItem;
@@ -2737,6 +2737,9 @@ begin
        Stack.Finalize;
       end;
       fNodes.SortByIndex;
+      for Index:=0 to fNodes.Count-1 do begin
+
+      end;
      end;
     finally
      fStaticTriangleBVHTriangles:=nil;
