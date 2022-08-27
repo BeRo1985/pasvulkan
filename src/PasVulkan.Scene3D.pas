@@ -489,8 +489,10 @@ type EpvScene3D=class(Exception);
               fBitmapOneDimensionSize:TpvUInt32;
               fBitmapSize:TpvUInt32;
               fBitmap:TBitmap;
+              fPasMPInstance:TPasMP;
               function GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
               procedure SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
+              procedure NodePairVisibilityCheckRayParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
               procedure NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
              public
               constructor Create; reintroduce;
@@ -2719,6 +2721,35 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckRayParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index,TapAIndex,TapBIndex:TPasMPNativeInt;
+    NodeIndexPair:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair;
+    NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+    NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
+    TapA,TapB:TpvVector3;
+begin
+ NodeIndexPair:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair(aData^);
+ NodeAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
+ NodeBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
+ if not (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
+  NodeA:=fNodes[NodeAIndex];
+  NodeB:=fNodes[NodeBIndex];
+  for Index:=aFromIndex to aToIndex do begin
+   TapAIndex:=Index div TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints;
+   TapBIndex:=Index-(TapAIndex*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints);
+   TapA:=NodeA.fAABB.Min+((NodeA.fAABB.Max-NodeA.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapAIndex]);
+   TapB:=NodeB.fAABB.Min+((NodeB.fAABB.Max-NodeB.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapBIndex]);
+   if fStaticTriangleBVH.LineIntersection(TapA,TapB) then begin
+    SetNodeVisibility(NodeAIndex,NodeBIndex,true);
+    SetNodeVisibility(NodeBIndex,NodeAIndex,true);
+    break;
+   end else if GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex) then begin
+    break;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
     NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -2737,7 +2768,8 @@ begin
    NodeB:=fNodes[NodeBIndex];
    MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
    if not MutuallyVisible then begin
-    // TODO: Ray checks
+    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+    MutuallyVisible:=GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex);
    end;
    if MutuallyVisible then begin
     SetNodeVisibility(NodeAIndex,NodeBIndex,true);
@@ -2749,9 +2781,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TPotentiallyVisibleSet.Build(
- const aBakedMesh: TpvScene3D.TBakedMesh; const aMaxDepth: TpvInt32;
- const aPasMPInstance: TPasMP);
+procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32;const aPasMPInstance:TPasMP);
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
@@ -2765,7 +2795,6 @@ var TriangleIndex,NodeIndexCounter,Index,OtherIndex:TpvSizeInt;
     StackItem,NewStackItem:TStackItem;
     Stack:TStack;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
-    PasMPInstance:TPasMP;
 begin
 
  fNodes.Clear;
@@ -2896,11 +2925,11 @@ begin
        end;
        if NodeIndexPairList.Count>0 then begin
         if assigned(aPasMPInstance) then begin
-         PasMPInstance:=aPasMPInstance;
+         fPasMPInstance:=aPasMPInstance;
         end else begin
-         PasMPInstance:=TPasMP.GetGlobalInstance;
+         fPasMPInstance:=TPasMP.GetGlobalInstance;
         end;
-        PasMPInstance.Invoke(PasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+        fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0));
        end;
       finally
        FreeAndNil(NodeIndexPairList);
