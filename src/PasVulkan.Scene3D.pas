@@ -411,17 +411,15 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
-              type TNode=class;
-                   TNodes=class(TpvObjectGenericList<TNode>)
-                   end;
-                   { TNode }
+              type { TNode }
                    TNode=class
                     private
                      fOwner:TPotentiallyVisibleSet;
                      fParent:TNode;
                      fLevel:TpvUInt32;
                      fAABB:TpvAABB;
-                     fChildren:TpvScene3D.TPotentiallyVisibleSet.TNodes;
+                     fLeft:TpvScene3D.TPotentiallyVisibleSet.TNode;
+                     fRight:TpvScene3D.TPotentiallyVisibleSet.TNode;
                     public
                      constructor Create(const aOwner:TPotentiallyVisibleSet;const aParent:TpvScene3D.TPotentiallyVisibleSet.TNode); reintroduce;
                      destructor Destroy; override;
@@ -429,10 +427,11 @@ type EpvScene3D=class(Exception);
                      property Owner:TPotentiallyVisibleSet read fOwner;
                      property Parent:TNode read fParent;
                      property Level:TpvUInt32 read fLevel;
+                     property Left:TNode read fLeft;
+                     property Right:TNode read fRight;
                     public
                      property AABB:TpvAABB read fAABB;
                     published
-                     property Children:TpvScene3D.TPotentiallyVisibleSet.TNodes read fChildren;
                    end;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
@@ -2555,13 +2554,12 @@ begin
  end else begin
   fLevel:=0;
  end;
- fChildren:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
- fChildren.OwnsObjects:=true;
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.TNode.Destroy;
 begin
- FreeAndNil(fChildren);
+ FreeAndNil(fRight);
+ FreeAndNil(fLeft);
  inherited Destroy;
 end;
 
@@ -2592,6 +2590,7 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;co
 type TStackItem=record
       Parent:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
+      LeftRight:boolean;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
@@ -2631,6 +2630,7 @@ begin
       try
        NewStackItem.Parent:=nil;
        NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
+       NewStackItem.LeftRight:=false;
        Stack.Push(NewStackItem);
        while Stack.Pop(StackItem) do begin
         if (not assigned(StackItem.Parent)) or (StackItem.Parent.fLevel<aMaxDepth) then begin
@@ -2638,13 +2638,22 @@ begin
          if not assigned(fRoot) then begin
           fRoot:=NewStackItem.Parent;
          end;
+         if assigned(StackItem.Parent) then begin
+          if StackItem.LeftRight then begin
+           StackItem.Parent.fRight:=NewStackItem.Parent;
+          end else begin
+           StackItem.Parent.fLeft:=NewStackItem.Parent;
+          end;
+         end;
          NewStackItem.Parent.fAABB:=StackItem.StaticTriangleBVHNode.AABB;
          if assigned(StackItem.StaticTriangleBVHNode.Right) then begin
           NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Right;
+          NewStackItem.LeftRight:=true;
           Stack.Push(NewStackItem);
          end;
          if assigned(StackItem.StaticTriangleBVHNode.Left) then begin
           NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Left;
+          NewStackItem.LeftRight:=false;
           Stack.Push(NewStackItem);
          end;
         end;
