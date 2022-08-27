@@ -2559,6 +2559,7 @@ begin
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
       StaticTriangleBVHTriangle^.Initialize;
      end;
+     fStaticTriangleBVH.fKDTreeMode:=true;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
     finally
      fStaticTriangleBVHTriangles:=nil;
