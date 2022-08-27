@@ -2732,9 +2732,12 @@ var Index,TapAIndex,TapBIndex:TPasMPNativeInt;
     Time:TpvScalar;
     Hit:boolean;
 begin
+
  NodeIndexPair:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair(aData^);
+
  NodeAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
  NodeBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
+
  if not (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
 
   NodeA:=fNodes[NodeAIndex];
@@ -2790,27 +2793,39 @@ var Index:TPasMPNativeInt;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
     MutuallyVisible:boolean;
 begin
+
  NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList(aData);
+
  for Index:=aFromIndex to aToIndex do begin
+
   NodeIndexPair:=NodeIndexPairList[Index];
+
   NodeAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
   NodeBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
+
   if not (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
+
    NodeA:=fNodes[NodeAIndex];
    NodeB:=fNodes[NodeBIndex];
+
    MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
+
    if not MutuallyVisible then begin
     fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0));
     MutuallyVisible:=GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex);
    end;
+
    if MutuallyVisible then begin
     SetNodeVisibility(NodeAIndex,NodeBIndex,true);
     SetNodeVisibility(NodeBIndex,NodeAIndex,true);
     NodeA.AddVisibleNodeIndex(NodeBIndex);
     NodeB.AddVisibleNodeIndex(NodeAIndex);
    end;
+
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32;const aPasMPInstance:TPasMP);
