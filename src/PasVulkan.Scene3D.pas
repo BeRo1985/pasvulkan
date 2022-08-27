@@ -11689,12 +11689,66 @@ begin
 end;
 
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
+var BakedMesh:TpvScene3D.TBakedMesh;
+ procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
+     MorphTargetVertexIndex:TpvUInt32;
+     Mesh:TpvScene3D.TGroup.TMesh;
+     Skin:TpvScene3D.TGroup.TSkin;
+     InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
+     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+     Vertex:TpvScene3D.PVertex;
+     Position,Normal:TpvVector3;
+     JointBlock:PJointBlock;
+     MorphTargetVertex:TpvScene3D.TGroup.PMorphTargetVertex;
+ begin
+  Mesh:=aNode.fMesh;
+  if assigned(Mesh) then begin
+   Skin:=aNode.fSkin;
+   if assigned(Skin) then begin
+    InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
+   end else begin
+    InverseMatrix:=TpvMatrix4x4.Identity;
+   end;
+   ModelNodeMatrixEx:=aInstanceNode^.WorkMatrix*fModelMatrix;
+   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+    for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+     Vertex:=@Group.fVertices.Items[VertexIndex];
+     Position:=Vertex^.Position;
+     Normal:=OctDecode(Vertex^.Normal);
+     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+      MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+      Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+      Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+      MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+     end;
+     Normal:=Normal.Normalize;
+     ModelNodeMatrix:=ModelNodeMatrixEx;
+     if Vertex^.CountJointBlocks>0 then begin
+      Matrix:=TpvMatrix4x4.Identity;
+      for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+       JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+       for JointIndex:=0 to 3 do begin
+        Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+       end;
+      end;
+      ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+     end;
+     Position:=ModelNodeMatrix.MulHomogen(Position);
+     Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
+
+    end;
+   end;
+  end;
+ end;
 type TNodeStack=TpvDynamicStack<TpvSizeInt>;
 var Index,NodeIndex:TpvSizeInt;
-    BakedMesh:TpvScene3D.TBakedMesh;
     NodeStack:TNodeStack;
     GroupScene:TpvScene3D.TGroup.TScene;
     GroupNode:TpvScene3D.TGroup.TNode;
+    GroupInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
  BakedMesh:=TpvScene3D.TBakedMesh.Create;
  try
@@ -11720,6 +11774,10 @@ begin
     GroupNode:=fGroup.fNodes[NodeIndex];
     for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
      NodeStack.Push(GroupNode.fChildren[Index].fIndex);
+    end;
+    if assigned(GroupNode.fMesh) then begin
+     GroupInstanceNode:=@fNodes[NodeIndex];
+     ProcessMorphSkinNode(GroupNode,GroupInstanceNode);
     end;
    end;
   finally
