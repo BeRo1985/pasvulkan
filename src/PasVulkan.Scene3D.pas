@@ -1756,6 +1756,7 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+                     function GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
                      function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                         out aCameraMatrix:TpvMatrix4x4;
                                         out aViewMatrix:TpvMatrix4x4;
@@ -11685,6 +11686,48 @@ begin
 
  end;
 
+end;
+
+function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
+type TNodeStack=TpvDynamicStack<TpvSizeInt>;
+var Index,NodeIndex:TpvSizeInt;
+    BakedMesh:TpvScene3D.TBakedMesh;
+    NodeStack:TNodeStack;
+    GroupScene:TpvScene3D.TGroup.TScene;
+    GroupNode:TpvScene3D.TGroup.TNode;
+begin
+ BakedMesh:=TpvScene3D.TBakedMesh.Create;
+ try
+  NodeStack.Initialize;
+  try
+   if (aRootNodeIndex>=0) and (aRootNodeIndex<fGroup.fNodes.Count) then begin
+    NodeStack.Push(aRootNodeIndex);
+   end else begin
+    if (fScene>=0) and (fScene<fGroup.fScenes.Count) then begin
+     GroupScene:=fGroup.fScenes[fScene];
+    end else if fGroup.fScenes.Count>0 then begin
+     GroupScene:=fGroup.fScenes[0];
+    end else begin
+     GroupScene:=nil;
+    end;
+    if assigned(GroupScene) then begin
+     for Index:=GroupScene.fNodes.Count-1 downto 0 do begin
+      NodeStack.Push(GroupScene.fNodes[Index].fIndex);
+     end;
+    end;
+   end;
+   while NodeStack.Pop(NodeIndex) do begin
+    GroupNode:=fGroup.fNodes[NodeIndex];
+    for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
+     NodeStack.Push(GroupNode.fChildren[Index].fIndex);
+    end;
+   end;
+  finally
+   NodeStack.Finalize;
+  end;
+ finally
+  result:=BakedMesh;
+ end;
 end;
 
 function TpvScene3D.TGroup.TInstance.GetCamera(const aNodeIndex:TPasGLTFSizeInt;
