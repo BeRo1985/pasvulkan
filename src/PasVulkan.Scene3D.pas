@@ -437,12 +437,15 @@ type EpvScene3D=class(Exception);
                      property Index:TpvUInt32 read fIndex;
                      property SkipCount:TpvUInt32 read fSkipCount;
                    end;
+                   TNodes=class(TpvObjectGenericList<TpvScene3D.TPotentiallyVisibleSet.TNode>)
+                   end;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
               fStaticTriangleBVH:TpvStaticTriangleBVH;
               fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
               fAABB:TpvAABB;
               fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
+              fNodes:TpvScene3D.TPotentiallyVisibleSet.TNodes;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -2555,6 +2558,7 @@ begin
  fParent:=aParent;
  if assigned(fParent) then begin
   fLevel:=fParent.fLevel+1;
+  fOwner.fNodes.Add(self);
  end else begin
   fLevel:=0;
  end;
@@ -2562,8 +2566,19 @@ end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.TNode.Destroy;
 begin
- FreeAndNil(fRight);
- FreeAndNil(fLeft);
+ if assigned(fParent) then begin
+  if fParent.fLeft=self then begin
+   fParent.fLeft:=nil;
+  end else if fParent.fRight=self then begin
+   fParent.fRight:=nil;
+  end;
+ end;
+ if assigned(fLeft) then begin
+  fLeft.fParent:=nil;
+ end;
+ if assigned(fRight) then begin
+  fRight.fParent:=nil;
+ end;
  inherited Destroy;
 end;
 
@@ -2573,17 +2588,21 @@ constructor TpvScene3D.TPotentiallyVisibleSet.Create;
 begin
  inherited Create;
  fRoot:=nil;
+ fNodes:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
+ fNodes.OwnsObjects:=true;
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
 begin
- FreeAndNil(fRoot);
+ FreeAndNil(fNodes);
+ fRoot:=nil;
  inherited Destroy;
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Load(const aStream:TStream);
 begin
- FreeAndNil(fRoot);
+ fNodes.Clear;
+ fRoot:=nil;
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
@@ -2604,7 +2623,8 @@ var TriangleIndex,NodeIndexCounter:TpvSizeInt;
     StackItem,NewStackItem:TStackItem;
     Stack:TStack;
 begin
- FreeAndNil(fRoot);
+ fNodes.Clear;
+ fRoot:=nil;
  if assigned(aBakedMesh) then begin
   fBakedMesh:=aBakedMesh;
   try
