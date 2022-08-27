@@ -417,6 +417,7 @@ type EpvScene3D=class(Exception);
                    TNodeIndex=TpvUInt32;
                    PNodeIndex=^TNodeIndex;
                    TNodeIndexList=class(TpvDynamicArrayList<TNodeIndex>);
+                   TBitmap=array of TpvUInt32;
                    { TNode }
                    TNode=class
                     private
@@ -459,6 +460,11 @@ type EpvScene3D=class(Exception);
               fAABB:TpvAABB;
               fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
               fNodes:TpvScene3D.TPotentiallyVisibleSet.TNodes;
+              fBitmapOneDimensionSize:TpvUInt32;
+              fBitmapSize:TpvUInt32;
+              fBitmap:TBitmap;
+              function GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
+              procedure SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
               procedure NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
              public
               constructor Create; reintroduce;
@@ -2634,6 +2640,9 @@ constructor TpvScene3D.TPotentiallyVisibleSet.Create;
 begin
  inherited Create;
  fRoot:=nil;
+ fBitmapOneDimensionSize:=0;
+ fBitmapSize:=0;
+ fBitmap:=nil;
  fNodes:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
  fNodes.OwnsObjects:=true;
 end;
@@ -2642,6 +2651,7 @@ destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
 begin
  FreeAndNil(fNodes);
  fRoot:=nil;
+ fBitmap:=nil;
  inherited Destroy;
 end;
 
@@ -2655,9 +2665,33 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
 begin
 end;
 
+function TpvScene3D.TPotentiallyVisibleSet.GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
+var BitIndex:TpvUInt64;
+begin
+ BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
+ if BitIndex<fBitmapSize then begin
+  result:=(fBitmap[BitIndex shr 5] and (TpvUInt32(1) shl (BitIndex and 31)))<>0;
+ end else begin
+  result:=true;
+ end;
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
+var BitIndex:TpvUInt64;
+begin
+ BitIndex:=(aNodeAIndex*fBitmapOneDimensionSize)+aNodeBIndex;
+ if BitIndex<fBitmapSize then begin
+  if aVisibility then begin
+   TPasMPInterlocked.BitwiseOr(fBitmap[BitIndex shr 5],TpvUInt32(1) shl (BitIndex and 31));
+  end else begin
+   TPasMPInterlocked.BitwiseAnd(fBitmap[BitIndex shr 5],not TpvUInt32(TpvUInt32(1) shl (BitIndex and 31)));
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
-    PairAIndex,PairBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+    NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
     NodeIndexPair:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
@@ -2666,17 +2700,21 @@ begin
  NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList(aData);
  for Index:=aFromIndex to aToIndex do begin
   NodeIndexPair:=NodeIndexPairList[Index];
-  PairAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
-  PairBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
-  NodeA:=fNodes[PairAIndex];
-  NodeB:=fNodes[PairBIndex];
-  MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
-  if not MutuallyVisible then begin
-   // TODO: Ray checks
-  end;
-  if MutuallyVisible then begin
-   NodeA.AddVisibleNodeIndex(PairBIndex);
-   NodeB.AddVisibleNodeIndex(PairAIndex);
+  NodeAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
+  NodeBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
+  if not (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
+   NodeA:=fNodes[NodeAIndex];
+   NodeB:=fNodes[NodeBIndex];
+   MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
+   if not MutuallyVisible then begin
+    // TODO: Ray checks
+   end;
+   if MutuallyVisible then begin
+    SetNodeVisibility(NodeAIndex,NodeBIndex,true);
+    SetNodeVisibility(NodeBIndex,NodeAIndex,true);
+    NodeA.AddVisibleNodeIndex(NodeBIndex);
+    NodeB.AddVisibleNodeIndex(NodeAIndex);
+   end;
   end;
  end;
 end;
@@ -2697,16 +2735,24 @@ var TriangleIndex,NodeIndexCounter,Index,OtherIndex:TpvSizeInt;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
     PasMPInstance:TPasMP;
 begin
+
  fNodes.Clear;
+
  fRoot:=nil;
+
  if assigned(aBakedMesh) then begin
+
   fBakedMesh:=aBakedMesh;
   try
+
    fStaticTriangleBVH:=TpvStaticTriangleBVH.Create;
    try
+
     fStaticTriangleBVHTriangles:=nil;
     try
+
      SetLength(fStaticTriangleBVHTriangles,fBakedMesh.Triangles.Count);
+
      for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
       BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
       StaticTriangleBVHTriangle:=@fStaticTriangleBVHTriangles[TriangleIndex];
@@ -2720,10 +2766,14 @@ begin
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
       StaticTriangleBVHTriangle^.Initialize;
      end;
+
      fStaticTriangleBVH.KDTreeMode:=false;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true,64);
+
      if assigned(fStaticTriangleBVH.Root) then begin
+
       fAABB:=fStaticTriangleBVH.Root.AABB;
+
       Stack.Initialize;
       try
        NewStackItem.Node:=nil;
@@ -2759,6 +2809,7 @@ begin
       finally
        Stack.Finalize;
       end;
+
       Stack.Initialize;
       try
        NodeIndexCounter:=0;
@@ -2793,7 +2844,9 @@ begin
       finally
        Stack.Finalize;
       end;
+
       fNodes.SortByIndex;
+
       NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList.Create;
       try
        for Index:=0 to fNodes.Count-1 do begin
@@ -2812,17 +2865,23 @@ begin
       finally
        FreeAndNil(NodeIndexPairList);
       end;
+
      end;
+
     finally
      fStaticTriangleBVHTriangles:=nil;
     end;
+
    finally
     FreeAndNil(fStaticTriangleBVH);
    end;
+
   finally
    fBakedMesh:=nil;
   end;
+
  end;
+
 end;
 
 { TpvScene3D.TImage }
