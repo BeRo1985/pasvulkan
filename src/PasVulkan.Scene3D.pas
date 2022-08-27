@@ -11882,7 +11882,10 @@ begin
    while NodeStack.Pop(NodeIndex) do begin
     GroupNode:=fGroup.fNodes[NodeIndex];
     GroupInstanceNode:=@fNodes[NodeIndex];
-    if aWithDynamicMeshs or ((not aWithDynamicMeshs) and (GroupInstanceNode^.CountOverwrites=0)) then begin
+    if ((aRootNodeIndex>=0) and
+        (NodeIndex=aRootNodeIndex)) or
+       (aWithDynamicMeshs or
+        ((not aWithDynamicMeshs) and (GroupInstanceNode^.CountOverwrites=0))) then begin
      for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
       NodeStack.Push(GroupNode.fChildren[Index].fIndex);
      end;
