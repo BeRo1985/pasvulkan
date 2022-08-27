@@ -1758,6 +1758,7 @@ type EpvScene3D=class(Exception);
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                      function GetBakedMesh(const aRelative:boolean;
+                                           const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
                      function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
@@ -11693,6 +11694,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative:boolean;
+                                                  const aWithDynamicMeshs:boolean=false;
                                                   const aRootNodeIndex:TpvSizeInt=-1;
                                                   const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
 var BakedMesh:TpvScene3D.TBakedMesh;
@@ -11722,7 +11724,8 @@ var BakedMesh:TpvScene3D.TBakedMesh;
   BakedVertices:=nil;
   try
    Mesh:=aNode.fMesh;
-   if assigned(Mesh) then begin
+   if assigned(Mesh) and
+      (aWithDynamicMeshs or ((not aWithDynamicMeshs) and (not assigned(aNode.Skin)) and (length(aNode.fWeights)=0))) then begin
     Skin:=aNode.fSkin;
     if assigned(Skin) then begin
      InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
@@ -11735,7 +11738,8 @@ var BakedMesh:TpvScene3D.TBakedMesh;
     end;
     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-     if assigned(Primitive^.Material) and (Primitive^.Material.fData.AlphaMode in aMaterialAlphaModes) then begin
+     if assigned(Primitive^.Material) and
+        (Primitive^.Material.fData.AlphaMode in aMaterialAlphaModes) then begin
       case Primitive^.PrimitiveMode of
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
