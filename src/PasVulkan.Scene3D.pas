@@ -2634,11 +2634,18 @@ end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
+    PairAIndex,PairBIndex:TpvUInt32;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
+    NodeIndexPair:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair;
+    NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
 begin
  NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList(aData);
  for Index:=aFromIndex to aToIndex do begin
-
+  NodeIndexPair:=NodeIndexPairList[Index];
+  PairAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
+  PairBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
+  NodeA:=fNodes[PairAIndex];
+  NodeB:=fNodes[PairBIndex];
  end;
 end;
 
