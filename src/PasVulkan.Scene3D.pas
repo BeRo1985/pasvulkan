@@ -410,11 +410,32 @@ type EpvScene3D=class(Exception);
             end;
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
+             public
+              type TNode=class;
+                   TNodes=class(TpvObjectGenericList<TNode>)
+                   end;
+                   { TNode }
+                   TNode=class
+                    private
+                     fOwner:TPotentiallyVisibleSet;
+                     fAABB:TpvAABB;
+                     fChildren:TpvScene3D.TPotentiallyVisibleSet.TNodes;
+                    public
+                     constructor Create; reintroduce;
+                     destructor Destroy; override;
+                    published
+                     property Owner:TPotentiallyVisibleSet read fOwner;
+                    public
+                     property AABB:TpvAABB read fAABB;
+                    published
+                     property Children:TpvScene3D.TPotentiallyVisibleSet.TNodes read fChildren;
+                   end;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
               fStaticTriangleBVH:TpvStaticTriangleBVH;
               fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
               fAABB:TpvAABB;
+              fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -423,6 +444,8 @@ type EpvScene3D=class(Exception);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh);
              public
               property AABB:TpvAABB read fAABB;
+             published
+              property Root:TpvScene3D.TPotentiallyVisibleSet.TNode read fRoot;
             end;
             TGroup=class;
             TBaseGroupObject=class(TBaseObject)
@@ -2516,20 +2539,38 @@ begin
  end;
 end;
 
+{ TpvScene3D.TPotentiallyVisibleSet.TNode }
+
+constructor TpvScene3D.TPotentiallyVisibleSet.TNode.Create;
+begin
+ inherited Create;
+ fChildren:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
+ fChildren.OwnsObjects:=true;
+end;
+
+destructor TpvScene3D.TPotentiallyVisibleSet.TNode.Destroy;
+begin
+ FreeAndNil(fChildren);
+ inherited Destroy;
+end;
+
 { TpvScene3D.TPotentiallyVisibleSet }
 
 constructor TpvScene3D.TPotentiallyVisibleSet.Create;
 begin
  inherited Create;
+ fRoot:=nil;
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
 begin
+ FreeAndNil(fRoot);
  inherited Destroy;
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Load(const aStream:TStream);
 begin
+ FreeAndNil(fRoot);
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
@@ -2541,6 +2582,7 @@ var TriangleIndex:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
 begin
+ FreeAndNil(fRoot);
  if assigned(aBakedMesh) then begin
   fBakedMesh:=aBakedMesh;
   try
