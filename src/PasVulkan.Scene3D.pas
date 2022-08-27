@@ -1757,7 +1757,9 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-                     function GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
+                     function GetBakedMesh(const aRelative:boolean;
+                                           const aRootNodeIndex:TpvSizeInt=-1;
+                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
                      function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                         out aCameraMatrix:TpvMatrix4x4;
                                         out aViewMatrix:TpvMatrix4x4;
@@ -11690,7 +11692,9 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
+function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative:boolean;
+                                                  const aRootNodeIndex:TpvSizeInt=-1;
+                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
 var BakedMesh:TpvScene3D.TBakedMesh;
  procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
  type TBakedVertex=record
@@ -11731,7 +11735,7 @@ var BakedMesh:TpvScene3D.TBakedMesh;
     end;
     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-     if assigned(Primitive^.Material) then begin
+     if assigned(Primitive^.Material) and (Primitive^.Material.fData.AlphaMode in aMaterialAlphaModes) then begin
       case Primitive^.PrimitiveMode of
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
