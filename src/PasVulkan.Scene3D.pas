@@ -86,6 +86,7 @@ uses {$ifdef Windows}
      PasVulkan.BVH.DynamicAABBTree,
      PasVulkan.BVH.StaticAABBTree,
      PasVulkan.BVH.StaticTriangles,
+     PasVulkan.PooledObject,
      PasVulkan.Frustum;
 
 type EpvScene3D=class(Exception);
@@ -370,6 +371,38 @@ type EpvScene3D=class(Exception);
               property ReferenceCounter:Int32 read fReferenceCounter;
             end;
             TBaseObjects=TpvObjectGenericList<TBaseObject>;
+            { TBakedMesh }
+            TBakedMesh=class
+             public
+              type TTriangle=class(TpvPooledObject)
+                    public
+                     type TFlag=
+                           (
+                            DoubleSided,
+                            Opaque,
+                            Transparent,
+                            Static,
+                            Animated
+                           );
+                          PFlag=^TFlag;
+                          TFlags=set of TFlag;
+                          PFlags=^TFlags;
+                    public
+                     Vertices:array[0..2] of TpvVector3;
+                     Normal:TpvVector3;
+                     Flags:TFlags;
+                     MetaFlags:TpvUInt32;
+                   end;
+                   TTriangles=class(TpvObjectGenericList<TTriangle>)
+                   end;
+             private
+              fTriangles:TTriangles;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+             published
+              property Triangles:TTriangles read fTriangles;
+            end;
             TGroup=class;
             TBaseGroupObject=class(TBaseObject)
              private
@@ -2417,6 +2450,21 @@ begin
    DeferredFree;
   end;
  end;
+end;
+
+{ TpvScene3D.TBakedMesh }
+
+constructor TpvScene3D.TBakedMesh.Create;
+begin
+ inherited Create;
+ fTriangles:=TpvScene3D.TBakedMesh.TTriangles.Create;
+ fTriangles.OwnsObjects:=true;
+end;
+
+destructor TpvScene3D.TBakedMesh.Destroy;
+begin
+ FreeAndNil(fTriangles);
+ inherited Destroy;
 end;
 
 { TpvScene3D.TImage }
