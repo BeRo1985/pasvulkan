@@ -11691,7 +11691,14 @@ end;
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative,aOpaque,aTransparent:boolean;const aRootNodeIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
 var BakedMesh:TpvScene3D.TBakedMesh;
  procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
- var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
+ type TBakedVertex=record
+       Position:TpvVector3;
+       Normal:TpvVector3;
+      end;
+      PBakedVertex=^TBakedVertex;
+      TBakedVertices=array of TBakedVertex;
+      TTemporaryTriangleIndices=array of TpvSizeInt;
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex:TpvSizeInt;
      MorphTargetVertexIndex:TpvUInt32;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
@@ -11701,46 +11708,107 @@ var BakedMesh:TpvScene3D.TBakedMesh;
      Position,Normal:TpvVector3;
      JointBlock:PJointBlock;
      MorphTargetVertex:TpvScene3D.TGroup.PMorphTargetVertex;
+     BakedVertices:TBakedVertices;
+     BakedVertex:PBakedVertex;
+     TemporaryTriangleIndices:TTemporaryTriangleIndices;
  begin
-  Mesh:=aNode.fMesh;
-  if assigned(Mesh) then begin
-   Skin:=aNode.fSkin;
-   if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
-   end else begin
-    InverseMatrix:=TpvMatrix4x4.Identity;
-   end;
-   ModelNodeMatrixEx:=aInstanceNode^.WorkMatrix*fModelMatrix;
-   for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
-    Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
-    for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
-     Vertex:=@Group.fVertices.Items[VertexIndex];
-     Position:=Vertex^.Position;
-     Normal:=OctDecode(Vertex^.Normal);
-     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-      MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
-      Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-      Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-      MorphTargetVertexIndex:=MorphTargetVertex^.Next;
-     end;
-     Normal:=Normal.Normalize;
-     ModelNodeMatrix:=ModelNodeMatrixEx;
-     if Vertex^.CountJointBlocks>0 then begin
-      Matrix:=TpvMatrix4x4.Identity;
-      for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
-       JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
-       for JointIndex:=0 to 3 do begin
-        Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+  BakedVertices:=nil;
+  try
+   Mesh:=aNode.fMesh;
+   if assigned(Mesh) then begin
+    Skin:=aNode.fSkin;
+    if assigned(Skin) then begin
+     InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
+    end else begin
+     InverseMatrix:=TpvMatrix4x4.Identity;
+    end;
+    ModelNodeMatrixEx:=aInstanceNode^.WorkMatrix;
+    if not aRelative then begin
+     ModelNodeMatrixEx:=ModelNodeMatrixEx*fModelMatrix;
+    end;
+    for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+     Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+     case Primitive^.PrimitiveMode of
+      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
+       SetLength(BakedVertices,Primitive^.CountVertices);
+       for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+        Vertex:=@Group.fVertices.Items[VertexIndex];
+        BakedVertex:=@BakedVertices[VertexIndex-Primitive^.StartBufferVertexOffset];
+        Position:=Vertex^.Position;
+        Normal:=OctDecode(Vertex^.Normal);
+        MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+        while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+         MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+         Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+         Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+         MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+        end;
+        Normal:=Normal.Normalize;
+        ModelNodeMatrix:=ModelNodeMatrixEx;
+        if Vertex^.CountJointBlocks>0 then begin
+         Matrix:=TpvMatrix4x4.Identity;
+         for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+          JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+          for JointIndex:=0 to 3 do begin
+           Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+          end;
+         end;
+         ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+        end;
+        BakedVertex^.Position:=ModelNodeMatrix.MulHomogen(Position);
+        BakedVertex^.Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
+       end;
+       TemporaryTriangleIndices:=nil;
+       try
+        case Primitive^.PrimitiveMode of
+         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:begin
+          SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
+          for IndexIndex:=Primitive^.StartBufferIndexOffset to (Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
+           TemporaryTriangleIndices[IndexIndex-Primitive^.StartBufferIndexOffset]:=Group.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset;
+          end;
+         end;
+         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:begin
+          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+          for IndexIndex:=0 to Primitive^.CountIndices-3 do begin
+           if (IndexIndex and 1)<>0 then begin
+            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
+           end else begin
+            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
+            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
+           end;
+          end;
+         end;
+         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
+          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+          for IndexIndex:=2 to Primitive^.CountIndices-1 do begin
+           TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+0]-Primitive^.StartBufferVertexOffset;
+           TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=Group.fIndices.Items[(Primitive^.StartBufferIndexOffset+IndexIndex)-1]-Primitive^.StartBufferVertexOffset;
+           TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex]-Primitive^.StartBufferVertexOffset;
+          end;
+         end;
+         else begin
+         end;
+        end;
+        IndexIndex:=0;
+        while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
+         inc(IndexIndex,3);
+        end;
+       finally
+        TemporaryTriangleIndices:=nil;
        end;
       end;
-      ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+      else begin
+      end;
      end;
-     Position:=ModelNodeMatrix.MulHomogen(Position);
-     Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
-
     end;
    end;
+  finally
+   BakedVertices:=nil;
   end;
  end;
 type TNodeStack=TpvDynamicStack<TpvSizeInt>;
