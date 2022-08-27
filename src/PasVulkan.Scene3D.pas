@@ -2727,27 +2727,59 @@ var Index,TapAIndex,TapBIndex:TPasMPNativeInt;
     NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
     TapA,TapB:TpvVector3;
+    Ray:TpvStaticTriangleBVHRay;
+    Intersection:TpvStaticTriangleBVHIntersection;
+    Time:TpvScalar;
+    Hit:boolean;
 begin
  NodeIndexPair:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair(aData^);
  NodeAIndex:=TpvUInt32(NodeIndexPair and TpvUInt32($ffffffff));
  NodeBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
  if not (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
+
   NodeA:=fNodes[NodeAIndex];
   NodeB:=fNodes[NodeBIndex];
+
   for Index:=aFromIndex to aToIndex do begin
+
    TapAIndex:=Index div TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints;
    TapBIndex:=Index-(TapAIndex*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints);
+
    TapA:=NodeA.fAABB.Min+((NodeA.fAABB.Max-NodeA.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapAIndex]);
    TapB:=NodeB.fAABB.Min+((NodeB.fAABB.Max-NodeB.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapBIndex]);
-   if fStaticTriangleBVH.LineIntersection(TapA,TapB) then begin
-    SetNodeVisibility(NodeAIndex,NodeBIndex,true);
-    SetNodeVisibility(NodeBIndex,NodeAIndex,true);
-    break;
-   end else if GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex) then begin
+
+   Ray.Origin:=TapA;
+   Ray.Direction:=(TapB-TapA).Normalize;
+   if NodeB.fAABB.RayIntersection(Ray.Origin,Ray.Direction,Time) then begin
+    Intersection.Time:=Infinity;
+    Hit:=fStaticTriangleBVH.FastRayIntersection(Ray,Intersection);
+    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+     SetNodeVisibility(NodeAIndex,NodeBIndex,true);
+     SetNodeVisibility(NodeBIndex,NodeAIndex,true);
+     break;
+    end;
+   end;
+
+   Ray.Origin:=TapB;
+   Ray.Direction:=(TapA-TapB).Normalize;
+   if NodeA.fAABB.RayIntersection(Ray.Origin,Ray.Direction,Time) then begin
+    Intersection.Time:=Infinity;
+    Hit:=fStaticTriangleBVH.FastRayIntersection(Ray,Intersection);
+    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+     SetNodeVisibility(NodeAIndex,NodeBIndex,true);
+     SetNodeVisibility(NodeBIndex,NodeAIndex,true);
+     break;
+    end;
+   end;
+
+   if (GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex)) then begin
     break;
    end;
+
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
