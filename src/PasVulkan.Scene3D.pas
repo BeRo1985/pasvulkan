@@ -2888,6 +2888,7 @@ begin
 
       NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList.Create;
       try
+       //Count:=((fNodes.Count*fNodes.Count) shr 1)-(fNodes.Count shr 1);
        for Index:=0 to fNodes.Count-1 do begin
         for OtherIndex:=Index+1 to fNodes.Count-1 do begin
          NodeIndexPairList.Add((TpvUInt64(OtherIndex) shl 32) or TpvUInt64(Index));
