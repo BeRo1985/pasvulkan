@@ -408,6 +408,18 @@ type EpvScene3D=class(Exception);
              published
               property Triangles:TTriangles read fTriangles;
             end;
+            { TPotentiallyVisibleSet }
+            TPotentiallyVisibleSet=class
+             private
+              fStaticTriangleBVH:TpvStaticTriangleBVH;
+              fBakedMesh:TpvScene3D.TBakedMesh;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure Load(const aStream:TStream);
+              procedure Write(const aStream:TStream);
+              procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh);
+            end;
             TGroup=class;
             TBaseGroupObject=class(TBaseObject)
              private
@@ -2496,6 +2508,43 @@ begin
    fTriangles.Add(SrcTriangle);
   finally
    FreeAndNil(NewTriangle);
+  end;
+ end;
+end;
+
+{ TpvScene3D.TPotentiallyVisibleSet }
+
+constructor TpvScene3D.TPotentiallyVisibleSet.Create;
+begin
+ inherited Create;
+end;
+
+destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.Load(const aStream:TStream);
+begin
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
+begin
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh);
+begin
+ if assigned(aBakedMesh) then begin
+  fBakedMesh:=aBakedMesh;
+  try
+   fStaticTriangleBVH:=TpvStaticTriangleBVH.Create;
+   try
+
+   finally
+    FreeAndNil(fStaticTriangleBVH);
+   end;
+  finally
+   fBakedMesh:=nil;
   end;
  end;
 end;
