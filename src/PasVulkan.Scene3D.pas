@@ -445,7 +445,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure Load(const aStream:TStream);
               procedure Write(const aStream:TStream);
-              procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh);
+              procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8);
              public
               property AABB:TpvAABB read fAABB;
              published
@@ -2588,10 +2588,18 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
 begin
 end;
 
-procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh);
+procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;const aMaxDepth:TpvInt32=8);
+type TStackItem=record
+      Parent:TpvScene3D.TPotentiallyVisibleSet.TNode;
+      StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicStack<TStackItem>;
 var TriangleIndex:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
+    StackItem,NewStackItem:TStackItem;
+    Stack:TStack;
 begin
  FreeAndNil(fRoot);
  if assigned(aBakedMesh) then begin
@@ -2619,6 +2627,31 @@ begin
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
      if assigned(fStaticTriangleBVH.Root) then begin
       fAABB:=fStaticTriangleBVH.Root.AABB;
+      Stack.Initialize;
+      try
+       NewStackItem.Parent:=nil;
+       NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
+       Stack.Push(NewStackItem);
+       while Stack.Pop(StackItem) do begin
+        if (not assigned(StackItem.Parent)) or (StackItem.Parent.fLevel<aMaxDepth) then begin
+         NewStackItem.Parent:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Parent);
+         if not assigned(fRoot) then begin
+          fRoot:=NewStackItem.Parent;
+         end;
+         NewStackItem.Parent.fAABB:=StackItem.StaticTriangleBVHNode.AABB;
+         if assigned(StackItem.StaticTriangleBVHNode.Right) then begin
+          NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Right;
+          Stack.Push(NewStackItem);
+         end;
+         if assigned(StackItem.StaticTriangleBVHNode.Left) then begin
+          NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Left;
+          Stack.Push(NewStackItem);
+         end;
+        end;
+       end;
+      finally
+       Stack.Finalize;
+      end;
      end;
     finally
      fStaticTriangleBVHTriangles:=nil;
