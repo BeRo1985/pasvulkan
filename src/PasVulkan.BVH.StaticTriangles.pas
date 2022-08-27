@@ -234,7 +234,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        fSweepEvents:array of TpvStaticTriangleBVHSweepEvent;
        function SearchBestSplitPlane(CurrentNode:TpvStaticTriangleBVHNode;var BestSplitAxis:TpvInt32;var BestSplitPosition:TpvFloat;var BestLeftCount,BestRightCount:TpvInt32):boolean;
        procedure BuildFromRoot(MaxDepth:TpvInt32);
-      public
+      private
        fRoot:TpvStaticTriangleBVHNode;
        fNodes:TpvStaticTriangleBVHNodes;
        fTriangles:TpvStaticTriangleBVHTriangles;
@@ -244,6 +244,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        fSkipListNodes:TpvStaticTriangleBVHSkipListNodes;
        fCountLeafs:TpvInt32;
        fKDTreeMode:longbool;
+      public
        constructor Create;
        destructor Destroy; override;
        function CountNodes:TpvInt32;
@@ -258,6 +259,20 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        function IsOpenSpacePerEvenOddRule(const Position:TpvVector3;var NearestNormal,NearestNormalPosition:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
        function IsOpenSpacePerNormals(const Position:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
        function IsOpenSpacePerNormals(const Position:TpvVector3;var NearestNormal,NearestNormalPosition:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
+      published
+       property Root:TpvStaticTriangleBVHNode read fRoot write fRoot;
+      public
+       property Nodes:TpvStaticTriangleBVHNodes read fNodes write fNodes;
+       property Triangles:TpvStaticTriangleBVHTriangles read fTriangles write fTriangles;
+      published
+       property CountTriangles:TpvInt32 read fCountTriangles write fCountTriangles;
+      public
+       property SkipListTriangles:TpvStaticTriangleBVHSkipListTriangles read fSkipListTriangles write fSkipListTriangles;
+       property SkipListTriangleIndices:TpvStaticTriangleBVHSkipListTriangleIndices read fSkipListTriangleIndices write fSkipListTriangleIndices;
+       property SkipListNodes:TpvStaticTriangleBVHSkipListNodes read fSkipListNodes write fSkipListNodes;
+      published
+       property CountLeafs:TpvInt32 read fCountLeafs write fCountLeafs;
+       property KDTreeMode:longbool read fKDTreeMode write fKDTreeMode;
      end;
 
 implementation
