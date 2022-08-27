@@ -2663,7 +2663,7 @@ begin
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
       StaticTriangleBVHTriangle^.Initialize;
      end;
-     fStaticTriangleBVH.KDTreeMode:=true;
+     fStaticTriangleBVH.KDTreeMode:=false;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
      if assigned(fStaticTriangleBVH.Root) then begin
       fAABB:=fStaticTriangleBVH.Root.AABB;
