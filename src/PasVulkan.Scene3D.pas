@@ -411,7 +411,10 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
-              type { TNode }
+              type TNodeIndexPair=TpvUInt64; // Hi 32-bit second pair index + Lo 32-bit first pair index
+                   PNodeIndexPair=^TNodeIndexPair;
+                   TNodeIndexPairList=class(TpvDynamicArrayList<TNodeIndexPair>);
+                   { TNode }
                    TNode=class
                     private
                      fOwner:TPotentiallyVisibleSet;
@@ -449,12 +452,13 @@ type EpvScene3D=class(Exception);
               fAABB:TpvAABB;
               fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
               fNodes:TpvScene3D.TPotentiallyVisibleSet.TNodes;
+              procedure NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure Load(const aStream:TStream);
               procedure Write(const aStream:TStream);
-              procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8);
+              procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
              public
               property AABB:TpvAABB read fAABB;
              published
@@ -2628,7 +2632,17 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
 begin
 end;
 
-procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;const aMaxDepth:TpvInt32=8);
+procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
+begin
+ NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList(aData);
+ for Index:=aFromIndex to aToIndex do begin
+
+ end;
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
@@ -2641,6 +2655,8 @@ var TriangleIndex,NodeIndexCounter,Index,OtherIndex:TpvSizeInt;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
     StackItem,NewStackItem:TStackItem;
     Stack:TStack;
+    NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
+    PasMPInstance:TPasMP;
 begin
  fNodes.Clear;
  fRoot:=nil;
@@ -2739,10 +2755,23 @@ begin
        Stack.Finalize;
       end;
       fNodes.SortByIndex;
-      for Index:=0 to fNodes.Count-1 do begin
-       for OtherIndex:=Index+1 to fNodes.Count-1 do begin
-
+      NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList.Create;
+      try
+       for Index:=0 to fNodes.Count-1 do begin
+        for OtherIndex:=Index+1 to fNodes.Count-1 do begin
+         NodeIndexPairList.Add((TpvUInt64(OtherIndex) shl 32) or TpvUInt64(Index));
+        end;
        end;
+       if NodeIndexPairList.Count>0 then begin
+        if assigned(aPasMPInstance) then begin
+         PasMPInstance:=aPasMPInstance;
+        end else begin
+         PasMPInstance:=TPasMP.GetGlobalInstance;
+        end;
+        PasMPInstance.Invoke(PasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+       end;
+      finally
+       FreeAndNil(NodeIndexPairList);
       end;
      end;
     finally
