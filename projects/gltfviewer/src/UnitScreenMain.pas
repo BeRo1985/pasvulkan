@@ -765,7 +765,6 @@ procedure TScreenMain.OnFinish(const aResource:TpvResource;const aSuccess:boolea
 var Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
     BakedMesh:TpvScene3D.TBakedMesh;
-    PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
 begin
 
  if assigned(aResource) and (aResource is TpvScene3D.TGroup) then begin
@@ -784,20 +783,15 @@ begin
 
   fGroupInstance:=fGroup.CreateInstance;
 
-{ fGroupInstance.Update(-1);
+  fGroupInstance.Update(-1);
   BakedMesh:=fGroupInstance.GetBakedMesh(false,false,-1,[TpvScene3D.TMaterial.TAlphaMode.Opaque]);
   try
    if assigned(BakedMesh) then begin
-    PotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.Create;
-    try
-     PotentiallyVisibleSet.Build(BakedMesh);
-    finally
-     FreeAndNil(PotentiallyVisibleSet);
-    end;
+    fScene3D.PotentiallyVisibleSet.Build(BakedMesh);
    end;
   finally
    FreeAndNil(BakedMesh);
-  end;}
+  end;
 
   fCameraIndex:=-1;
 

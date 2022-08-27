@@ -1971,6 +1971,7 @@ type EpvScene3D=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
+       fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
        fBufferStreamingMode:TBufferStreamingMode;
        fDefaultSampler:TSampler;
        fWhiteImage:TImage;
@@ -2133,6 +2134,7 @@ type EpvScene3D=class(Exception);
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
       published
+       property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -12639,6 +12641,8 @@ begin
 
  fHasTransmission:=false;
 
+ fPotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.Create;
+
  for Index:=0 to fCountInFlightFrames-1 do begin
   fVulkanBufferCopyBatchItemArrays[Index].Initialize;
  end;
@@ -12991,6 +12995,8 @@ begin
  FreeAndNil(fImageDescriptorGenerationLock);
 
  FreeAndNil(fMaterialDataGenerationLock);
+
+ FreeAndNil(fPotentiallyVisibleSet);
 
  FreeAndNil(fLock);
 
