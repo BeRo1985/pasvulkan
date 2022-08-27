@@ -437,7 +437,10 @@ type EpvScene3D=class(Exception);
                      property Index:TpvUInt32 read fIndex;
                      property SkipCount:TpvUInt32 read fSkipCount;
                    end;
+                   { TNodes }
                    TNodes=class(TpvObjectGenericList<TpvScene3D.TPotentiallyVisibleSet.TNode>)
+                    public
+                     procedure SortByIndex;
                    end;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
@@ -2582,6 +2585,13 @@ begin
  inherited Destroy;
 end;
 
+{ TpvScene3D.TPotentiallyVisibleSet.TNodes }
+
+procedure TpvScene3D.TPotentiallyVisibleSet.TNodes.SortByIndex;
+begin
+
+end;
+
 { TpvScene3D.TPotentiallyVisibleSet }
 
 constructor TpvScene3D.TPotentiallyVisibleSet.Create;
@@ -2719,6 +2729,7 @@ begin
       finally
        Stack.Finalize;
       end;
+      fNodes.SortByIndex;
      end;
     finally
      fStaticTriangleBVHTriangles:=nil;
