@@ -9663,6 +9663,10 @@ begin
 
  fMorphTargetVertexWeights:=nil;
 
+ SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
+
+ SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
  end;
@@ -9836,9 +9840,9 @@ begin
 
       try
 
-       SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
+{      SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
 
-       SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+       SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));}
 
        for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
         fVulkanDatas[Index].Upload;
@@ -10008,8 +10012,8 @@ begin
      for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
       fVulkanDatas[Index].Unload;
      end;
-     fNodeMatrices:=nil;
-     fMorphTargetVertexWeights:=nil;
+{    fNodeMatrices:=nil;
+     fMorphTargetVertexWeights:=nil;}
     finally
      fUploaded:=false;
     end;
@@ -11636,26 +11640,28 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
   end;
   Dirty:=Dirty or (assigned(Node.fSkin) or (length(Node.fWeights)>0));
-  if assigned(Node.fLight) then begin
-   InstanceLight:=fLights[Node.fLight.fIndex];
-   if assigned(InstanceNode^.Light) then begin
-    Light:=InstanceNode^.Light;
-    if (Light.fMatrix<>Matrix) or (Light.fDataPointer<>InstanceLight.fEffectiveData) then begin
-     Light.fMatrix:=Matrix;
-     Light.fDataPointer:=InstanceLight.fEffectiveData;
-     Light.Update;
-    end;
-   end else begin
-    Light:=TpvScene3D.TLight.Create(fSceneInstance);
-    try
-     Light.fLight:=Node.fLight;
-     Light.fInstanceLight:=InstanceLight;
-     Light.fData:=Node.fLight.fData;
-     Light.fDataPointer:=InstanceLight.fEffectiveData;
-     Light.fMatrix:=Matrix;
-     Light.Update;
-    finally
-     InstanceNode^.Light:=Light;
+  if aInFlightFrameIndex>=0 then begin
+   if assigned(Node.fLight) then begin
+    InstanceLight:=fLights[Node.fLight.fIndex];
+    if assigned(InstanceNode^.Light) then begin
+     Light:=InstanceNode^.Light;
+     if (Light.fMatrix<>Matrix) or (Light.fDataPointer<>InstanceLight.fEffectiveData) then begin
+      Light.fMatrix:=Matrix;
+      Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.Update;
+     end;
+    end else begin
+     Light:=TpvScene3D.TLight.Create(fSceneInstance);
+     try
+      Light.fLight:=Node.fLight;
+      Light.fInstanceLight:=InstanceLight;
+      Light.fData:=Node.fLight.fData;
+      Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.fMatrix:=Matrix;
+      Light.Update;
+     finally
+      InstanceNode^.Light:=Light;
+     end;
     end;
    end;
   end;
@@ -11783,9 +11789,14 @@ var Index:TPasGLTFSizeInt;
     HasMaterialUpdate:boolean;
 begin
 
- Upload;
+ if aInFlightFrameIndex>=0 then begin
 
- fActives[aInFlightFrameIndex]:=fActive;
+  Upload;
+
+  fActives[aInFlightFrameIndex]:=fActive;
+
+ end;
+
 
  if fActive then begin
 
@@ -11793,7 +11804,9 @@ begin
 
   if assigned(Scene) then begin
 
-   fScenes[aInFlightFrameIndex]:=Scene;
+   if aInFlightFrameIndex>=0 then begin
+    fScenes[aInFlightFrameIndex]:=Scene;
+   end;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
 
@@ -11830,12 +11843,16 @@ begin
     end;
    end;
 
-   for Index:=0 to fLights.Count-1 do begin
-    fLights[Index].Update;
-   end;
+   if aInFlightFrameIndex>=0 then begin
 
-   for Index:=0 to fCameras.Count-1 do begin
-    fCameras[Index].Update;
+    for Index:=0 to fLights.Count-1 do begin
+     fLights[Index].Update;
+    end;
+
+    for Index:=0 to fCameras.Count-1 do begin
+     fCameras[Index].Update;
+    end;
+
    end;
 
    HasMaterialUpdate:=false;
@@ -11854,10 +11871,12 @@ begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,false);
    end;
 
-   for Index:=0 to length(fNodes)-1 do begin
-    if not fNodes[Index].Processed then begin
-     if assigned(fNodes[Index].Light) then begin
-      FreeAndNil(fNodes[Index].Light);
+   if aInFlightFrameIndex>=0 then begin
+    for Index:=0 to length(fNodes)-1 do begin
+     if not fNodes[Index].Processed then begin
+      if assigned(fNodes[Index].Light) then begin
+       FreeAndNil(fNodes[Index].Light);
+      end;
      end;
     end;
    end;
@@ -11875,35 +11894,41 @@ begin
     end;
    end;
 
-   for Index:=0 to fGroup.fNodes.Count-1 do begin
-    Node:=fGroup.fNodes[Index];
-    InstanceNode:=@fNodes[Index];
-    if assigned(Node.fMesh) then begin
-    {if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
-      ProcessMorphSkinNode(Node,InstanceNode);
-     end else}begin
-      InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
-      InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
-     end;
-    end else begin
-     InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-     InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=false;
-    end;
-   end;
+   if aInFlightFrameIndex>=0 then begin
 
-   for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessBoundingBoxNode(Scene.fNodes[Index].Index);
+    for Index:=0 to fGroup.fNodes.Count-1 do begin
+     Node:=fGroup.fNodes[Index];
+     InstanceNode:=@fNodes[Index];
+     if assigned(Node.fMesh) then begin
+     {if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
+       ProcessMorphSkinNode(Node,InstanceNode);
+      end else}begin
+       InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
+       InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+      end;
+     end else begin
+      InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+      InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=false;
+     end;
+    end;
+
+    for Index:=0 to Scene.fNodes.Count-1 do begin
+     ProcessBoundingBoxNode(Scene.fNodes[Index].Index);
+    end;
+
    end;
 
   end;
 
-  fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
-  if assigned(fVulkanData) then begin
-   fVulkanData.Update(aInFlightFrameIndex);
+  if aInFlightFrameIndex>=0 then begin
+   fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
+   if assigned(fVulkanData) then begin
+    fVulkanData.Update(aInFlightFrameIndex);
+   end;
   end;
 
   fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
-  if assigned(Scene) then begin
+  if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
