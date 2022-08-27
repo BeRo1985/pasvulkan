@@ -418,13 +418,17 @@ type EpvScene3D=class(Exception);
                    TNode=class
                     private
                      fOwner:TPotentiallyVisibleSet;
+                     fParent:TNode;
+                     fLevel:TpvUInt32;
                      fAABB:TpvAABB;
                      fChildren:TpvScene3D.TPotentiallyVisibleSet.TNodes;
                     public
-                     constructor Create; reintroduce;
+                     constructor Create(const aOwner:TPotentiallyVisibleSet;const aParent:TpvScene3D.TPotentiallyVisibleSet.TNode); reintroduce;
                      destructor Destroy; override;
                     published
                      property Owner:TPotentiallyVisibleSet read fOwner;
+                     property Parent:TNode read fParent;
+                     property Level:TpvUInt32 read fLevel;
                     public
                      property AABB:TpvAABB read fAABB;
                     published
@@ -2541,9 +2545,16 @@ end;
 
 { TpvScene3D.TPotentiallyVisibleSet.TNode }
 
-constructor TpvScene3D.TPotentiallyVisibleSet.TNode.Create;
+constructor TpvScene3D.TPotentiallyVisibleSet.TNode.Create(const aOwner:TPotentiallyVisibleSet;const aParent:TpvScene3D.TPotentiallyVisibleSet.TNode);
 begin
  inherited Create;
+ fOwner:=aOwner;
+ fParent:=aParent;
+ if assigned(fParent) then begin
+  fLevel:=fParent.fLevel+1;
+ end else begin
+  fLevel:=0;
+ end;
  fChildren:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
  fChildren.OwnsObjects:=true;
 end;
