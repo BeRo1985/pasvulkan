@@ -2587,9 +2587,16 @@ end;
 
 { TpvScene3D.TPotentiallyVisibleSet.TNodes }
 
+function TpvScene3D_TPotentiallyVisibleSet_TNodes_SortByIndex_CompareFunc(const a,b:TpvPointer):TpvInt32;
+begin
+ result:=TpvScene3D.TPotentiallyVisibleSet.TNode(a).fIndex-TpvScene3D.TPotentiallyVisibleSet.TNode(b).fIndex;
+end;
+
 procedure TpvScene3D.TPotentiallyVisibleSet.TNodes.SortByIndex;
 begin
-
+ if Count>1 then begin
+  IndirectIntroSort(PointerToItems,0,Count-1,TpvScene3D_TPotentiallyVisibleSet_TNodes_SortByIndex_CompareFunc);
+ end;
 end;
 
 { TpvScene3D.TPotentiallyVisibleSet }
