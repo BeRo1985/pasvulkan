@@ -374,7 +374,8 @@ type EpvScene3D=class(Exception);
             { TBakedMesh }
             TBakedMesh=class
              public
-              type TTriangle=class(TpvPooledObject)
+              type { TTriangle }
+                   TTriangle=class(TpvPooledObject)
                     public
                      type TFlag=
                            (
@@ -392,14 +393,17 @@ type EpvScene3D=class(Exception);
                      Normal:TpvVector3;
                      Flags:TFlags;
                      MetaFlags:TpvUInt32;
+                    public
+                     procedure Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
                    end;
-                   TTriangles=class(TpvObjectGenericList<TTriangle>)
+                   TTriangles=class(TpvObjectGenericList<TpvScene3D.TBakedMesh.TTriangle>)
                    end;
              private
-              fTriangles:TTriangles;
+              fTriangles:TpvScene3D.TBakedMesh.TTriangles;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
+              procedure Combine(const aWith:TBakedMesh);
              published
               property Triangles:TTriangles read fTriangles;
             end;
@@ -2452,6 +2456,16 @@ begin
  end;
 end;
 
+{ TpvScene3D.TBakedMesh.TTriangle }
+
+procedure TpvScene3D.TBakedMesh.TTriangle.Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
+begin
+ Vertices:=aFrom.Vertices;
+ Normal:=aFrom.Normal;
+ Flags:=aFrom.Flags;
+ MetaFlags:=aFrom.MetaFlags;
+end;
+
 { TpvScene3D.TBakedMesh }
 
 constructor TpvScene3D.TBakedMesh.Create;
@@ -2465,6 +2479,19 @@ destructor TpvScene3D.TBakedMesh.Destroy;
 begin
  FreeAndNil(fTriangles);
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TBakedMesh.Combine(const aWith:TBakedMesh);
+var SrcTriangle,NewTriangle:TpvScene3D.TBakedMesh.TTriangle;
+begin
+ for SrcTriangle in aWith.fTriangles do begin
+  NewTriangle:=TpvScene3D.TBakedMesh.TTriangle.Create;
+  try
+   fTriangles.Add(SrcTriangle);
+  finally
+   FreeAndNil(NewTriangle);
+  end;
+ end;
 end;
 
 { TpvScene3D.TImage }
