@@ -11725,7 +11725,11 @@ var BakedMesh:TpvScene3D.TBakedMesh;
   try
    Mesh:=aNode.fMesh;
    if assigned(Mesh) and
-      (aWithDynamicMeshs or ((not aWithDynamicMeshs) and (not assigned(aNode.Skin)) and (length(aNode.fWeights)=0))) then begin
+      (aWithDynamicMeshs or
+       ((not aWithDynamicMeshs) and
+        ((not assigned(aNode.Skin)) and
+         (length(aNode.fWeights)=0) and
+         (aInstanceNode^.CountOverwrites=0)))) then begin
     Skin:=aNode.fSkin;
     if assigned(Skin) then begin
      InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
@@ -11877,12 +11881,14 @@ begin
    end;
    while NodeStack.Pop(NodeIndex) do begin
     GroupNode:=fGroup.fNodes[NodeIndex];
-    for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
-     NodeStack.Push(GroupNode.fChildren[Index].fIndex);
-    end;
-    if assigned(GroupNode.fMesh) then begin
-     GroupInstanceNode:=@fNodes[NodeIndex];
-     ProcessMorphSkinNode(GroupNode,GroupInstanceNode);
+    GroupInstanceNode:=@fNodes[NodeIndex];
+    if aWithDynamicMeshs or ((not aWithDynamicMeshs) and (GroupInstanceNode^.CountOverwrites=0)) then begin
+     for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
+      NodeStack.Push(GroupNode.fChildren[Index].fIndex);
+     end;
+     if assigned(GroupNode.fMesh) then begin
+      ProcessMorphSkinNode(GroupNode,GroupInstanceNode);
+     end;
     end;
    end;
   finally
