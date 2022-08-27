@@ -420,6 +420,8 @@ type EpvScene3D=class(Exception);
                      fAABB:TpvAABB;
                      fLeft:TpvScene3D.TPotentiallyVisibleSet.TNode;
                      fRight:TpvScene3D.TPotentiallyVisibleSet.TNode;
+                     fIndex:TpvUInt32;
+                     fSkipCount:TpvUInt32;
                     public
                      constructor Create(const aOwner:TPotentiallyVisibleSet;const aParent:TpvScene3D.TPotentiallyVisibleSet.TNode); reintroduce;
                      destructor Destroy; override;
@@ -432,6 +434,8 @@ type EpvScene3D=class(Exception);
                     public
                      property AABB:TpvAABB read fAABB;
                     published
+                     property Index:TpvUInt32 read fIndex;
+                     property SkipCount:TpvUInt32 read fSkipCount;
                    end;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
@@ -2588,13 +2592,13 @@ end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TBakedMesh;const aMaxDepth:TpvInt32=8);
 type TStackItem=record
-      Parent:TpvScene3D.TPotentiallyVisibleSet.TNode;
+      Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
-      LeftRight:boolean;
+      MetaData:TpvInt32;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
-var TriangleIndex:TpvSizeInt;
+var TriangleIndex,NodeIndexCounter:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
     StackItem,NewStackItem:TStackItem;
@@ -2628,33 +2632,67 @@ begin
       fAABB:=fStaticTriangleBVH.Root.AABB;
       Stack.Initialize;
       try
-       NewStackItem.Parent:=nil;
+       NewStackItem.Node:=nil;
        NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
-       NewStackItem.LeftRight:=false;
+       NewStackItem.MetaData:=0;
        Stack.Push(NewStackItem);
        while Stack.Pop(StackItem) do begin
-        if (not assigned(StackItem.Parent)) or (StackItem.Parent.fLevel<aMaxDepth) then begin
-         NewStackItem.Parent:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Parent);
+        if (not assigned(StackItem.Node)) or (StackItem.Node.fLevel<aMaxDepth) then begin
+         NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
          if not assigned(fRoot) then begin
-          fRoot:=NewStackItem.Parent;
+          fRoot:=NewStackItem.Node;
          end;
-         if assigned(StackItem.Parent) then begin
-          if StackItem.LeftRight then begin
-           StackItem.Parent.fRight:=NewStackItem.Parent;
+         if assigned(StackItem.Node) then begin
+          if StackItem.MetaData>0 then begin
+           StackItem.Node.fRight:=NewStackItem.Node;
           end else begin
-           StackItem.Parent.fLeft:=NewStackItem.Parent;
+           StackItem.Node.fLeft:=NewStackItem.Node;
           end;
          end;
-         NewStackItem.Parent.fAABB:=StackItem.StaticTriangleBVHNode.AABB;
+         NewStackItem.Node.fAABB:=StackItem.StaticTriangleBVHNode.AABB;
          if assigned(StackItem.StaticTriangleBVHNode.Right) then begin
           NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Right;
-          NewStackItem.LeftRight:=true;
+          NewStackItem.MetaData:=1;
           Stack.Push(NewStackItem);
          end;
          if assigned(StackItem.StaticTriangleBVHNode.Left) then begin
           NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Left;
-          NewStackItem.LeftRight:=false;
+          NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
+         end;
+        end;
+       end;
+      finally
+       Stack.Finalize;
+      end;
+      Stack.Initialize;
+      try
+       NodeIndexCounter:=0;
+       NewStackItem.Node:=fRoot;
+       NewStackItem.MetaData:=0;
+       Stack.Push(NewStackItem);
+       while Stack.Pop(StackItem) do begin
+        case StackItem.MetaData of
+         0:begin
+          StackItem.Node.fIndex:=NodeIndexCounter;
+          StackItem.Node.fSkipCount:=0;
+          inc(NodeIndexCounter);
+          NewStackItem.Node:=StackItem.Node;
+          NewStackItem.MetaData:=1;
+          Stack.Push(NewStackItem);
+          if assigned(StackItem.Node.fRight) then begin
+           NewStackItem.Node:=StackItem.Node.fRight;
+           NewStackItem.MetaData:=0;
+           Stack.Push(NewStackItem);
+          end;
+          if assigned(StackItem.Node.fLeft) then begin
+           NewStackItem.Node:=StackItem.Node.fLeft;
+           NewStackItem.MetaData:=0;
+           Stack.Push(NewStackItem);
+          end;
+         end;
+         1:begin
+          StackItem.Node.fSkipCount:=NodeIndexCounter-StackItem.Node.fIndex;
          end;
         end;
        end;
