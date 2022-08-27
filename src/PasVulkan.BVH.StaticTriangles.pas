@@ -268,7 +268,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
        destructor Destroy; override;
        function CountNodes:TpvInt32;
        procedure Clear;
-       procedure Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean);
+       procedure Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean;const aMaxDepth:TpvInt32);
        function RayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;FastCheck,Exact:boolean;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
        function ExactRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
        function FastRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
@@ -1729,7 +1729,7 @@ begin
  end;
 end;
 
-procedure TpvStaticTriangleBVH.Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean);
+procedure TpvStaticTriangleBVH.Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean;const aMaxDepth:TpvInt32);
 var i,j,k:TpvInt32;
     TriangleIndex:TpvUInt32;
     SkipListNode:PpvStaticTriangleBVHSkipListNode;
@@ -1777,7 +1777,7 @@ begin
    end;
   end;
  end;
- BuildFromRoot(64);
+ BuildFromRoot(aMaxDepth);
  begin
   SetLength(fSkipListTriangles,length(Triangles));
   TriangleIndex:=0;

@@ -2664,7 +2664,7 @@ begin
       StaticTriangleBVHTriangle^.Initialize;
      end;
      fStaticTriangleBVH.KDTreeMode:=false;
-     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
+     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true,aMaxDepth+2);
      if assigned(fStaticTriangleBVH.Root) then begin
       fAABB:=fStaticTriangleBVH.Root.AABB;
       Stack.Initialize;
