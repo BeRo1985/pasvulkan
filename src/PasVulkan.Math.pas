@@ -13785,7 +13785,7 @@ begin
 end;
 
 function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
- function FindMin(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+ function FindMin(const a,b,c:TpvScalar):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result>b then begin
@@ -13795,7 +13795,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
    result:=c;
   end;
  end;
- function FindMax(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+ function FindMax(const a,b,c:TpvScalar):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result<b then begin
@@ -13805,7 +13805,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
    result:=c;
   end;
  end;
- function PlaneBoxOverlap(const Normal:TpvVector3;d:TpvFloat;MaxBox:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+ function PlaneBoxOverlap(const Normal:TpvVector3;d:TpvFloat;MaxBox:TpvVector3):boolean; //{$ifdef CAN_INLINE}inline;{$endif}
  var vmin,vmax:TpvVector3;
  begin
   if Normal.x>0 then begin
@@ -13838,7 +13838,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
   end;
  end;
 var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TpvVector3;
-    fex,fey,fez:TpvFloat;
+    fex,fey,fez,Distance,r:TpvFloat;
  function AxisTestX01(a,b,fa,fb:TpvFloat):boolean;
  var p0,p2,pmin,pmax,Radius:TpvFloat;
  begin
@@ -13983,7 +13983,9 @@ begin
   exit;
  end;
  Normal:=e0.Cross(e1);
- result:=PlaneBoxOverlap(Normal,-Normal.Dot(v0),BoxHalfSize);
+ Distance:=abs(Normal.Dot(v0));
+ r:=(BoxHalfSize.x*abs(Normal.x))+(BoxHalfSize.y*abs(Normal.y))+(BoxHalfSize.z*abs(Normal.z));
+ result:=Distance<=r;//PlaneBoxOverlap(Normal,-Normal.Dot(v0),BoxHalfSize);
 end;
 
 function TpvAABB.Transform(const Transform:TpvMatrix3x3):TpvAABB;

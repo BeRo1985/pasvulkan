@@ -2558,10 +2558,10 @@ constructor TpvScene3D.TPotentiallyVisibleSet.TNode.Create(const aOwner:TPotenti
 begin
  inherited Create;
  fOwner:=aOwner;
+ fOwner.fNodes.Add(self);
  fParent:=aParent;
  if assigned(fParent) then begin
   fLevel:=fParent.fLevel+1;
-  fOwner.fNodes.Add(self);
  end else begin
   fLevel:=0;
  end;
@@ -2589,7 +2589,7 @@ end;
 
 function TpvScene3D_TPotentiallyVisibleSet_TNodes_SortByIndex_CompareFunc(const a,b:TpvPointer):TpvInt32;
 begin
- result:=TpvScene3D.TPotentiallyVisibleSet.TNode(a).fIndex-TpvScene3D.TPotentiallyVisibleSet.TNode(b).fIndex;
+ result:=Sign(TpvInt64(TpvScene3D.TPotentiallyVisibleSet.TNode(a).fIndex)-TpvInt64(TpvScene3D.TPotentiallyVisibleSet.TNode(b).fIndex));
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.TNodes.SortByIndex;
@@ -2663,7 +2663,7 @@ begin
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
       StaticTriangleBVHTriangle^.Initialize;
      end;
-     fStaticTriangleBVH.KDTreeMode:=true;
+     fStaticTriangleBVH.KDTreeMode:=false;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true);
      if assigned(fStaticTriangleBVH.Root) then begin
       fAABB:=fStaticTriangleBVH.Root.AABB;

@@ -980,7 +980,9 @@ end;
 
 function CanInsertTriangle(const Triangle:TpvStaticTriangleBVHTriangle;const AABB:TpvAABB):boolean;
 begin
- result:=AABB.TriangleIntersection(TpvTriangle.Create(Triangle.Vertices[0].Position,Triangle.Vertices[1].Position,Triangle.Vertices[2].Position));
+ result:=AABB.TriangleIntersection(TpvTriangle.Create(Triangle.Vertices[0].Position,
+                                                      Triangle.Vertices[1].Position,
+                                                      Triangle.Vertices[2].Position));
 end;
 
 function TpvStaticTriangleBVH.SearchBestSplitPlane(CurrentNode:TpvStaticTriangleBVHNode;var BestSplitAxis:TpvInt32;var BestSplitPosition:TpvFloat;var BestLeftCount,BestRightCount:TpvInt32):boolean;
