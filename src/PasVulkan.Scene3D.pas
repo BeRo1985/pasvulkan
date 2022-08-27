@@ -414,6 +414,9 @@ type EpvScene3D=class(Exception);
               type TNodeIndexPair=TpvUInt64; // Hi 32-bit second pair index + Lo 32-bit first pair index
                    PNodeIndexPair=^TNodeIndexPair;
                    TNodeIndexPairList=class(TpvDynamicArrayList<TNodeIndexPair>);
+                   TNodeIndex=TpvUInt32;
+                   PNodeIndex=^TNodeIndex;
+                   TNodeIndexList=class(TpvDynamicArrayList<TNodeIndex>);
                    { TNode }
                    TNode=class
                     private
@@ -425,15 +428,19 @@ type EpvScene3D=class(Exception);
                      fRight:TpvScene3D.TPotentiallyVisibleSet.TNode;
                      fIndex:TpvUInt32;
                      fSkipCount:TpvUInt32;
+                     fVisibleNodeList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexList;
+                     fMultipleReaderSingleWriterLockState:TPasMPInt32;
                     public
                      constructor Create(const aOwner:TPotentiallyVisibleSet;const aParent:TpvScene3D.TPotentiallyVisibleSet.TNode); reintroduce;
                      destructor Destroy; override;
+                     procedure AddVisibleNodeIndex(const aNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex);
                     published
                      property Owner:TPotentiallyVisibleSet read fOwner;
                      property Parent:TNode read fParent;
                      property Level:TpvUInt32 read fLevel;
                      property Left:TNode read fLeft;
                      property Right:TNode read fRight;
+                     property VisibleNodeList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexList read fVisibleNodeList;
                     public
                      property AABB:TpvAABB read fAABB;
                     published
@@ -2571,6 +2578,8 @@ begin
  end else begin
   fLevel:=0;
  end;
+ fVisibleNodeList:=nil;
+ fMultipleReaderSingleWriterLockState:=0;
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.TNode.Destroy;
@@ -2588,7 +2597,21 @@ begin
  if assigned(fRight) then begin
   fRight.fParent:=nil;
  end;
+ FreeAndNil(fVisibleNodeList);
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TPotentiallyVisibleSet.TNode.AddVisibleNodeIndex(const aNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex);
+begin
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ try
+  if not assigned(fVisibleNodeList) then begin
+   fVisibleNodeList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexList.Create;
+  end;
+  fVisibleNodeList.Add(aNodeIndex);
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 { TpvScene3D.TPotentiallyVisibleSet.TNodes }
@@ -2634,10 +2657,11 @@ end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
-    PairAIndex,PairBIndex:TpvUInt32;
+    PairAIndex,PairBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
     NodeIndexPair:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
+    MutuallyVisible:boolean;
 begin
  NodeIndexPairList:=TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList(aData);
  for Index:=aFromIndex to aToIndex do begin
@@ -2646,6 +2670,14 @@ begin
   PairBIndex:=TpvUInt32((NodeIndexPair shr 32) and TpvUInt32($ffffffff));
   NodeA:=fNodes[PairAIndex];
   NodeB:=fNodes[PairBIndex];
+  MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
+  if not MutuallyVisible then begin
+   // TODO: Ray checks
+  end;
+  if MutuallyVisible then begin
+   NodeA.AddVisibleNodeIndex(PairBIndex);
+   NodeB.AddVisibleNodeIndex(PairAIndex);
+  end;
  end;
 end;
 
