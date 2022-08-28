@@ -179,6 +179,9 @@ type { TpvBVHDynamicAABBTree }
        function GetHeight:TpvSizeInt;
        function GetAreaRatio:TpvDouble;
        function GetMaxBalance:TpvSizeInt;
+       function ValidateStructure:boolean;
+       function ValidateMetrics:boolean;
+       function Validate:boolean;
        procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
      end;
 
@@ -633,24 +636,29 @@ var Stack:TStack;
 begin
  result:=0;
  if (NodeCount>0) and (Root>=0) then begin
-  NewStackItem.NodeID:=Root;
-  NewStackItem.Height:=1;
-  Stack.Push(NewStackItem);
-  while Stack.Pop(StackItem) do begin
-   Node:=@Nodes[StackItem.NodeID];
-   if result<StackItem.Height then begin
-    result:=StackItem.Height;
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   NewStackItem.Height:=1;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if result<StackItem.Height then begin
+     result:=StackItem.Height;
+    end;
+    if Node^.Children[1]>=0 then begin
+     NewStackItem.NodeID:=Node^.Children[1];
+     NewStackItem.Height:=StackItem.Height+1;
+     Stack.Push(NewStackItem);
+    end;
+    if Node^.Children[0]>=0 then begin
+     NewStackItem.NodeID:=Node^.Children[0];
+     NewStackItem.Height:=StackItem.Height+1;
+     Stack.Push(NewStackItem);
+    end;
    end;
-   if Node^.Children[1]>=0 then begin
-    NewStackItem.NodeID:=Node^.Children[1];
-    NewStackItem.Height:=StackItem.Height+1;
-    Stack.Push(NewStackItem);
-   end;
-   if Node^.Children[0]>=0 then begin
-    NewStackItem.NodeID:=Node^.Children[0];
-    NewStackItem.Height:=StackItem.Height+1;
-    Stack.Push(NewStackItem);
-   end;
+  finally
+   Stack.Finalize;
   end;
  end;
 end;
@@ -693,6 +701,107 @@ begin
     if result<Balance then begin
      result:=Balance;
     end;
+   end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.ValidateStructure:boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+      Parent:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=true;
+ if (NodeCount>0) and (Root>=0) and (Root<NodeCount) then begin
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   NewStackItem.Parent:=TpvBVHDynamicAABBTree.NULLNODE;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.Parent<>StackItem.Parent then begin
+     result:=false;
+     break;
+    end else begin
+     if (Node^.Children[1]>=0) and (Node^.Children[1]<NodeCount) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      NewStackItem.Parent:=StackItem.NodeID;
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) and (Node^.Children[0]<NodeCount) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      NewStackItem.Parent:=StackItem.NodeID;
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.ValidateMetrics:boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=true;
+ if (NodeCount>0) and (Root>=0) and (Root<NodeCount) then begin
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if (((Node^.Children[0]<0) or (Node^.Children[0]>=NodeCount)) or
+        ((Node^.Children[1]<0) or (Node^.Children[1]>=NodeCount))) or
+       (Node^.Height<>(1+Max(Nodes[Node^.Children[0]].Height,Nodes[Node^.Children[1]].Height))) then begin
+     result:=false;
+     break;
+    end else begin
+     if (Node^.Children[1]>=0) and (Node^.Children[1]<NodeCount) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) and (Node^.Children[0]<NodeCount) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.Validate:boolean;
+var NodeID,FreeCount:TpvSizeInt;
+begin
+ result:=ValidateStructure;
+ if result then begin
+  result:=ValidateMetrics;
+  if result then begin
+   result:=ComputeHeight=GetHeight;
+   if result then begin
+    NodeID:=FreeList;
+    FreeCount:=0;
+    while NodeID>=0 do begin
+     NodeID:=Nodes[NodeID].Next;
+     inc(FreeCount);
+    end;
+    result:=(NodeCount+FreeCount)=NodeCapacity;
    end;
   end;
  end;
