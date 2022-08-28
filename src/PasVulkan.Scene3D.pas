@@ -482,6 +482,7 @@ type EpvScene3D=class(Exception);
                      fRight:TpvScene3D.TPotentiallyVisibleSet.TNode;
                      fIndex:TpvUInt32;
                      fSkipCount:TpvUInt32;
+                     fTag:TpvPtrInt;
                      fVisibleNodeList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexList;
                      fMultipleReaderSingleWriterLockState:TPasMPInt32;
                     public
@@ -3125,6 +3126,7 @@ begin
               (fSubdivisonMode<>TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH) or
               (StackItem.Node.fLevel<aMaxDepth) then begin
             NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
+            NewStackItem.Node.fTag:=StackItem.StaticAABBTreeNode^.Proxies;
             if not assigned(fRoot) then begin
              fRoot:=NewStackItem.Node;
             end;

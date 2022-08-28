@@ -101,7 +101,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections;
 
-type TpvBVHDynamicAABBTree=class
+type { TpvBVHDynamicAABBTree }
+     TpvBVHDynamicAABBTree=class
       public
        const NULLNODE=-1;
              AABBMULTIPLIER=2.0;
@@ -173,6 +174,8 @@ type TpvBVHDynamicAABBTree=class
        procedure DestroyProxy(const aNodeID:TpvSizeInt);
        function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
        procedure Rebalance(const aIterations:TpvSizeInt);
+       procedure Rebuild;
+       function ComputeHeight:TpvSizeInt;
        procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
      end;
 
@@ -543,8 +546,115 @@ begin
  end;
 end;
 
+procedure TpvBVHDynamicAABBTree.Rebuild;
+var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint;
+    NewNodes:array of TpvSizeInt;
+    Children:array[0..1] of TpvBVHDynamicAABBTree.PTreeNode;
+    Parent:TpvBVHDynamicAABBTree.PTreeNode;
+    MinCost,Cost:TpvScalar;
+    AABBa,AABBb:PpvAABB;
+    AABB:TpvAABB;
+    First:boolean;
+begin
+ if NodeCount>0 then begin
+  NewNodes:=nil;
+  try
+   SetLength(NewNodes,NodeCount);
+   FillChar(NewNodes[0],NodeCount*SizeOf(TpvSizeint),#0);
+   Count:=0;
+   for IndexA:=0 to NodeCapacity-1 do begin
+    if Nodes[IndexA].Height>=0 then begin
+     if Nodes[IndexA].Children[0]<0 then begin
+      Nodes[IndexA].Parent:=TpvBVHDynamicAABBTree.NULLNODE;
+      NewNodes[Count]:=IndexA;
+      inc(Count);
+     end else begin
+      FreeNode(IndexA);
+     end;
+    end;
+   end;
+   while Count>1 do begin
+    First:=true;
+    MinCost:=MAX_SCALAR;
+    IndexAMin:=-1;
+    IndexBMin:=-1;
+  {}/////////////////TOOPTIMIZE///////////////////
+  {}for IndexA:=0 to Count-1 do begin           //
+  {} AABBa:=@Nodes[NewNodes[IndexA]].AABB;      //
+  {} for IndexB:=IndexA+1 to Count-1 do begin   //
+  {}  AABBb:=@Nodes[NewNodes[IndexB]].AABB;     //
+  {}  AABB:=AABBa^.Combine(AABBb^);             //
+  {}  Cost:=AABB.Cost;                          //
+  {}  if First or (Cost<MinCost) then begin     //
+  {}   First:=false;                            //
+  {}   MinCost:=Cost;                           //
+  {}   IndexAMin:=IndexA;                       //
+  {}   IndexBMin:=IndexB;                       //
+  {}  end;                                      //
+  {} end;                                       //
+  {}end;                                        //
+  {}/////////////////TOOPTIMIZE///////////////////
+    Index1:=NewNodes[IndexAMin];
+    Index2:=NewNodes[IndexBMin];
+    Children[0]:=@Nodes[Index1];
+    Children[1]:=@Nodes[Index2];
+    ParentIndex:=AllocateNode;
+    Parent:=@Nodes[ParentIndex];
+    Parent^.Children[0]:=Index1;
+    Parent^.Children[1]:=Index2;
+    Parent^.Height:=1+Max(Children[0]^.Height,Children[1]^.Height);
+    Parent^.AABB:=Children[0]^.AABB.Combine(Children[1]^.AABB);
+    Parent^.Parent:=TpvBVHDynamicAABBTree.NULLNODE;
+    Children[0]^.Parent:=ParentIndex;
+    Children[1]^.Parent:=ParentIndex;
+    NewNodes[IndexBMin]:=NewNodes[Count-1];
+    NewNodes[IndexAMin]:=ParentIndex;
+    dec(Count);
+   end;
+   Root:=NewNodes[0];
+  finally
+   NewNodes:=nil;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.ComputeHeight:TpvSizeInt;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+      Height:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=0;
+ if (NodeCount>0) and (Root>=0) then begin
+  NewStackItem.NodeID:=Root;
+  NewStackItem.Height:=1;
+  Stack.Push(NewStackItem);
+  while Stack.Pop(StackItem) do begin
+   Node:=@Nodes[StackItem.NodeID];
+   if result<StackItem.Height then begin
+    result:=StackItem.Height;
+   end;
+   if Node^.Children[1]>=0 then begin
+    NewStackItem.NodeID:=Node^.Children[1];
+    NewStackItem.Height:=StackItem.Height+1;
+    Stack.Push(NewStackItem);
+   end;
+   if Node^.Children[0]>=0 then begin
+    NewStackItem.NodeID:=Node^.Children[0];
+    NewStackItem.Height:=StackItem.Height+1;
+    Stack.Push(NewStackItem);
+   end;
+  end;
+
+ end;
+end;
+
 procedure TpvBVHDynamicAABBTree.GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
-const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
+//const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
 var StackItem,NewStackItem:TGPUSkipListNodeStackItem;
     Node:PTreeNode;
     GPUSkipListNode:TGPUSkipListNode;
