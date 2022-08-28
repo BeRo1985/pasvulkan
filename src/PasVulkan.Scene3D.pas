@@ -1860,6 +1860,8 @@ type EpvScene3D=class(Exception);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRenderPassIndex:TpvSizeInt;
+                                       const aViewBaseIndex:TpvSizeInt;
+                                       const aCountViews:TpvSizeInt;
                                        const aFrustums:TpvFrustumDynamicArray);
                      procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                                     const aInFlightFrameIndex:TpvSizeInt;
@@ -1976,6 +1978,8 @@ type EpvScene3D=class(Exception);
               procedure ConstructDrawChoreographyBatchItems;
               procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                 const aRenderPassIndex:TpvSizeInt;
+                                const aViewBaseIndex:TpvSizeInt;
+                                const aCountViews:TpvSizeInt;
                                 const aFrustums:TpvFrustumDynamicArray);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
@@ -8970,12 +8974,16 @@ end;
 
 procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
+                                    const aViewBaseIndex:TpvSizeInt;
+                                    const aCountViews:TpvSizeInt;
                                     const aFrustums:TpvFrustumDynamicArray);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
   Instance.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
+                   aViewBaseIndex,
+                   aCountViews,
                    aFrustums);
  end;
 end;
@@ -12740,6 +12748,8 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRenderPassIndex:TpvSizeInt;
+                                              const aViewBaseIndex:TpvSizeInt;
+                                              const aCountViews:TpvSizeInt;
                                               const aFrustums:TpvFrustumDynamicArray);
 var VisibleBit:TpvUInt32;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
@@ -14817,6 +14827,8 @@ begin
     if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
      Group.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
+                   aViewBaseIndex,
+                   aCountViews,
                    Frustums);
     end;
    end;
