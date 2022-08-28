@@ -128,6 +128,7 @@ type { TpvBVHDynamicAABBTree }
              Root:TpvSizeInt;
             end;
             PState=^TState;
+            TUserDataArray=array of TpvPtrInt;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
             TGPUSkipListNode=packed record
@@ -150,6 +151,7 @@ type { TpvBVHDynamicAABBTree }
             PGPUSkipListNodeStackItem=^TGPUSkipListNodeStackItem;
             TGPUSkipListNodeStack=TpvDynamicStack<TGPUSkipListNodeStackItem>;
             TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32 of object;
+            TRayCastUserData=function(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat):boolean of object;
       private
        fGPUSkipListNodeLock:TPasMPSpinLock;
        fGPUSkipListNodeArray:TGPUSkipListNodeArray;
@@ -182,7 +184,10 @@ type { TpvBVHDynamicAABBTree }
        function ValidateStructure:boolean;
        function ValidateMetrics:boolean;
        function Validate:boolean;
-       procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
+       function IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+       function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+       function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+       procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
      end;
 
 implementation
@@ -807,7 +812,126 @@ begin
  end;
 end;
 
-procedure TpvBVHDynamicAABBTree.GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
+function TpvBVHDynamicAABBTree.IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=nil;
+ if (NodeCount>0) and (Root>=0) then begin
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.AABB.Intersect(aAABB) then begin
+     if Node^.UserData<>0 then begin
+      result:=result+[Node^.UserData];
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=nil;
+ if (NodeCount>0) and (Root>=0) then begin
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.AABB.Contains(aAABB) then begin
+     if Node^.UserData<>0 then begin
+      result:=result+[Node^.UserData];
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+    Time:TpvFloat;
+begin
+ result:=false;
+ if assigned(aRayCastUserData) and (NodeCount>0) and (Root>=0) then begin
+  aTime:=Infinity;
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection) then begin
+     if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time) then begin
+      if (not result) or (Time<aTime) then begin
+       aTime:=Time;
+       result:=true;
+       if aStopAtFirstHit then begin
+        break;
+       end;
+      end;
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+procedure TpvBVHDynamicAABBTree.GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
 //const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
 var StackItem,NewStackItem:TGPUSkipListNodeStackItem;
     Node:PTreeNode;
