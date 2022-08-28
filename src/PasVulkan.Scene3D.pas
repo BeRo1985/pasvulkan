@@ -1851,6 +1851,7 @@ type EpvScene3D=class(Exception);
                      fVulkanComputeDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                      fScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
+                     fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
                      fVisibleBitmap:TPasMPUInt32;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
@@ -10092,6 +10093,7 @@ begin
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
+  fPotentiallyVisibleSetNodeIndices[Index]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
  end;
 
  fAABBTreeProxy:=-1;
@@ -12374,6 +12376,14 @@ begin
    end;
   end;
 
+  if aInFlightFrameIndex>=0 then begin
+   if (fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+      ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+       fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(fBoundingBox)) then begin
+    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
+   end;
+  end;
+
   if fAABBTreeProxy<0 then begin
    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
@@ -12401,6 +12411,8 @@ begin
     FreeAndNil(fNodes[Index].Light);
    end;
   end;
+
+  fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fSceneInstance.fPotentiallyVisibleSet.NoNodeIndex;
 
   fPreviousActive:=false;
 
