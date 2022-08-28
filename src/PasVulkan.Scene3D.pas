@@ -3048,7 +3048,8 @@ begin
       case fSubdivisonMode of
 
        TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid,
-       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
+       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones,
+       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:begin
 
         StaticAABBTree:=TpvBVHStaticAABBTree.Create;
         try
@@ -3069,18 +3070,35 @@ begin
              end;
             end;
            end;
+
+           StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
+
           end;
 
           TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
 
+           StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
+
           end;
 
-          else begin
+          else {TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:}begin
+
+           for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
+            BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
+            TemporaryAABB.Min.x:=Min(Min(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
+            TemporaryAABB.Min.y:=Min(Min(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
+            TemporaryAABB.Min.z:=Min(Min(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
+            TemporaryAABB.Max.x:=Max(Max(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
+            TemporaryAABB.Max.y:=Max(Max(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
+            TemporaryAABB.Max.z:=Max(Max(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
+            StaticAABBTree.CreateProxy(TemporaryAABB,TriangleIndex);
+           end;
+
+           StaticAABBTree.Build(8,64,false);
+
           end;
 
          end;
-
-         StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
 
          Stack.Initialize;
          try
@@ -3089,7 +3107,9 @@ begin
           NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
           while Stack.Pop(StackItem) do begin
-           if (not assigned(StackItem.Node)) {or (StackItem.Node.fLevel<aMaxDepth)} then begin
+           if (not assigned(StackItem.Node)) or
+              (fSubdivisonMode<>TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH) or
+              (StackItem.Node.fLevel<aMaxDepth) then begin
             NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
             if not assigned(fRoot) then begin
              fRoot:=NewStackItem.Node;
