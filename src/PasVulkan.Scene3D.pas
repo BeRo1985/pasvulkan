@@ -1862,7 +1862,8 @@ type EpvScene3D=class(Exception);
                                        const aRenderPassIndex:TpvSizeInt;
                                        const aViewBaseIndex:TpvSizeInt;
                                        const aCountViews:TpvSizeInt;
-                                       const aFrustums:TpvFrustumDynamicArray);
+                                       const aFrustums:TpvFrustumDynamicArray;
+                                       const aPotentiallyVisibleSetCulling:boolean);
                      procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                                     const aInFlightFrameIndex:TpvSizeInt;
                                                     const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -1980,7 +1981,8 @@ type EpvScene3D=class(Exception);
                                 const aRenderPassIndex:TpvSizeInt;
                                 const aViewBaseIndex:TpvSizeInt;
                                 const aCountViews:TpvSizeInt;
-                                const aFrustums:TpvFrustumDynamicArray);
+                                const aFrustums:TpvFrustumDynamicArray;
+                                const aPotentiallyVisibleSetCulling:boolean);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRenderPassIndex:TpvSizeInt;
@@ -2181,7 +2183,8 @@ type EpvScene3D=class(Exception);
                          const aViewPortWidth:TpvInt32;
                          const aViewPortHeight:TpvInt32;
                          const aLights:boolean=true;
-                         const aFrustumCulling:boolean=true);
+                         const aFrustumCulling:boolean=true;
+                         const aPotentiallyVisibleSetCulling:boolean=true);
        procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -8976,7 +8979,8 @@ procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aViewBaseIndex:TpvSizeInt;
                                     const aCountViews:TpvSizeInt;
-                                    const aFrustums:TpvFrustumDynamicArray);
+                                    const aFrustums:TpvFrustumDynamicArray;
+                                    const aPotentiallyVisibleSetCulling:boolean);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
@@ -8984,7 +8988,8 @@ begin
                    aRenderPassIndex,
                    aViewBaseIndex,
                    aCountViews,
-                   aFrustums);
+                   aFrustums,
+                   aPotentiallyVisibleSetCulling);
  end;
 end;
 
@@ -12750,7 +12755,8 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aRenderPassIndex:TpvSizeInt;
                                               const aViewBaseIndex:TpvSizeInt;
                                               const aCountViews:TpvSizeInt;
-                                              const aFrustums:TpvFrustumDynamicArray);
+                                              const aFrustums:TpvFrustumDynamicArray;
+                                              const aPotentiallyVisibleSetCulling:boolean);
 var VisibleBit:TpvUInt32;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
  var Index,NodeIndex,ViewIndex:TpvSizeInt;
@@ -12763,19 +12769,23 @@ var VisibleBit:TpvUInt32;
   if aNodeIndex>=0 then begin
    InstanceNode:=@fNodes[aNodeIndex];
    Mask:=aMask;
-   PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-   if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-    OK:=true;
-   end else begin
-    OK:=false;
-    for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-     ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
-     if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-        fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-      OK:=true;
-      break;
+   if aPotentiallyVisibleSetCulling then begin
+    PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+    if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+     OK:=true;
+    end else begin
+     OK:=false;
+     for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+      ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+      if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+         fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+       OK:=true;
+       break;
+      end;
      end;
     end;
+   end else begin
+    OK:=true;
    end;
    if OK then begin
     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
@@ -12812,25 +12822,29 @@ var NodeIndex,ViewIndex:TpvSizeInt;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
-  if length(aFrustums)>0 then begin
+  if (length(aFrustums)>0) or aPotentiallyVisibleSetCulling then begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
    end;
    Scene:=fScenes[aInFlightFrameIndex];
    if assigned(Scene) then begin
-    PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-    if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-     OK:=true;
-    end else begin
-     OK:=false;
-     for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-      ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
-      if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-         fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-       OK:=true;
-       break;
+    if aPotentiallyVisibleSetCulling then begin
+     PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+     if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+      OK:=true;
+     end else begin
+      OK:=false;
+      for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+       if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+        OK:=true;
+        break;
+       end;
       end;
      end;
+    end else begin
+     OK:=true;
     end;
     if OK then begin
      for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
@@ -14816,7 +14830,8 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
                              const aViewPortHeight:TpvInt32;
                              const aLights:boolean=true;
-                             const aFrustumCulling:boolean=true);
+                             const aFrustumCulling:boolean=true;
+                             const aPotentiallyVisibleSetCulling:boolean=true);
 var Index:TpvSizeInt;
     VisibleBit:TPasMPUInt32;
     Frustums:TpvFrustumDynamicArray;
@@ -14864,7 +14879,8 @@ begin
                    aRenderPassIndex,
                    aViewBaseIndex,
                    aCountViews,
-                   Frustums);
+                   Frustums,
+                   aPotentiallyVisibleSetCulling);
     end;
    end;
 
