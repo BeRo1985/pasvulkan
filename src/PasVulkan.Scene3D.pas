@@ -2955,7 +2955,7 @@ end;
 procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32;const aPasMPInstance:TPasMP);
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
-      StaticTriangleBVHNode:TpvStaticTriangleBVHNode;
+      StaticTriangleBVHSkipListNode:PpvStaticTriangleBVHSkipListNode;
       MetaData:TpvInt32;
      end;
      PStackItem=^TStackItem;
@@ -3010,7 +3010,7 @@ begin
       Stack.Initialize;
       try
        NewStackItem.Node:=nil;
-       NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
+       NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[0];
        NewStackItem.MetaData:=0;
        Stack.Push(NewStackItem);
        while Stack.Pop(StackItem) do begin
@@ -3026,14 +3026,15 @@ begin
            StackItem.Node.fLeft:=NewStackItem.Node;
           end;
          end;
-         NewStackItem.Node.fAABB:=StackItem.StaticTriangleBVHNode.AABB;
-         if assigned(StackItem.StaticTriangleBVHNode.Right) then begin
-          NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Right;
+         NewStackItem.Node.fAABB.Min:=StackItem.StaticTriangleBVHSkipListNode^.AABBMin;
+         NewStackItem.Node.fAABB.Max:=StackItem.StaticTriangleBVHSkipListNode^.AABBMax;
+         if StackItem.StaticTriangleBVHSkipListNode^.Right<>TpvUInt32($ffffffff) then begin
+          NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Right];
           NewStackItem.MetaData:=1;
           Stack.Push(NewStackItem);
          end;
-         if assigned(StackItem.StaticTriangleBVHNode.Left) then begin
-          NewStackItem.StaticTriangleBVHNode:=StackItem.StaticTriangleBVHNode.Left;
+         if StackItem.StaticTriangleBVHSkipListNode^.Left<>TpvUInt32($ffffffff) then begin
+          NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Left];
           NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
          end;
