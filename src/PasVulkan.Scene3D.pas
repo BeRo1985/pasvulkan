@@ -1543,6 +1543,7 @@ type EpvScene3D=class(Exception);
                                  POverwrite=^TOverwrite;
                                  TOverwrites=array of TOverwrite;
                            public
+                            PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             Processed:LongBool;
                             Overwrites:TOverwrites;
                             CountOverwrites:TpvSizeInt;
@@ -10026,6 +10027,7 @@ begin
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   InstanceNode:=@fNodes[Index];
   Node:=fGroup.fNodes[Index];
+  InstanceNode^.PotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
   InstanceNode^.Processed:=false;
   SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
