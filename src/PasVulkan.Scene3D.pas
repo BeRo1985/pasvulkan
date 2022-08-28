@@ -12753,7 +12753,8 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aFrustums:TpvFrustumDynamicArray);
 var VisibleBit:TpvUInt32;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
- var Index,NodeIndex:TpvSizeInt;
+ var Index,NodeIndex,ViewIndex:TpvSizeInt;
+     PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
      Mask:TpvUInt32;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      Node:TpvScene3D.TGroup.TNode;
@@ -12762,27 +12763,43 @@ var VisibleBit:TpvUInt32;
   if aNodeIndex>=0 then begin
    InstanceNode:=@fNodes[aNodeIndex];
    Mask:=aMask;
-   if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-    if length(aFrustums)>0 then begin
-     if length(aFrustums)=1 then begin
-      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
-     end else begin
-      OK:=false;
-      for Index:=0 to length(aFrustums)-1 do begin
-       if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-        OK:=true;
-        break;
+   PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+   if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+    OK:=true;
+   end else begin
+    OK:=false;
+    for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+     ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+     if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+        fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+      OK:=true;
+      break;
+     end;
+    end;
+   end;
+   if OK then begin
+    if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+     if length(aFrustums)>0 then begin
+      if length(aFrustums)=1 then begin
+       OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
+      end else begin
+       OK:=false;
+       for Index:=0 to length(aFrustums)-1 do begin
+        if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+         OK:=true;
+         break;
+        end;
        end;
       end;
+     end else begin
+      OK:=true;
      end;
-    end else begin
-     OK:=true;
-    end;
-    if OK then begin
-     TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
-     Node:=fGroup.fNodes[aNodeIndex];
-     for NodeIndex:=0 to Node.fChildren.Count-1 do begin
-      ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+     if OK then begin
+      TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+      Node:=fGroup.fNodes[aNodeIndex];
+      for NodeIndex:=0 to Node.fChildren.Count-1 do begin
+       ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+      end;
      end;
     end;
    end;
