@@ -141,7 +141,8 @@ type TpvStaticTriangleBVHTriangleVertex=record
       SkipCount:TpvUInt32;
       FirstTriangleIndex:TpvUInt32;
       CountTriangleIndices:TpvUInt32;
-      MetaData:TpvUInt32;
+      Left:TpvUInt32;
+      Right:TpvUInt32;
      end;
      PpvStaticTriangleBVHSkipListNode=^TpvStaticTriangleBVHSkipListNode;
 
@@ -1722,6 +1723,16 @@ begin
    SkipListNode^.Flags:=Node.fFlags;
    SkipListNode^.AABBMax:=Node.fAABB.Max;
    SkipListNode^.SkipCount:=Node.fSkipToNode-Node.fNodeIndex;
+   if assigned(Node.fLeft) then begin
+    SkipListNode^.Left:=Node.fLeft.fNodeIndex;
+   end else begin
+    SkipListNode^.Left:=TpvUInt32($ffffffff);
+   end;
+   if assigned(Node.fRight) then begin
+    SkipListNode^.Right:=Node.fRight.fNodeIndex;
+   end else begin
+    SkipListNode^.Right:=TpvUInt32($ffffffff);
+   end;
    if Node.fCountTriangleIndices>0 then begin
     SkipListNode^.FirstTriangleIndex:=TriangleIndex;
     SkipListNode^.CountTriangleIndices:=Node.fCountTriangleIndices;
