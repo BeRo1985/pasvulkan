@@ -524,6 +524,7 @@ type EpvScene3D=class(Exception);
               procedure Save(const aStream:TStream);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
               function GetNodeIndexByPosition(const aPosition:TpvVector3):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+              function GetNodeIndexByAABB(const aAABB:TpvAABB):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
              public
               property AABB:TpvAABB read fAABB;
              public
@@ -1543,7 +1544,6 @@ type EpvScene3D=class(Exception);
                                  POverwrite=^TOverwrite;
                                  TOverwrites=array of TOverwrite;
                            public
-                            PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             Processed:LongBool;
                             Overwrites:TOverwrites;
                             CountOverwrites:TpvSizeInt;
@@ -1554,6 +1554,7 @@ type EpvScene3D=class(Exception);
                             Light:TpvScene3D.TLight;
                             BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[0..MaxInFlightFrames-1] of boolean;
+                            PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             CacheVerticesGeneration:TpvUInt64;
                             CacheVerticesDirtyCounter:TpvUInt32;
@@ -3140,6 +3141,28 @@ begin
  while Index<Count do begin
   Node:=fNodes[Index];
   if Node.fAABB.Contains(aPosition) then begin
+   result:=Index;
+   inc(Index);
+  end else begin
+   if Node.fSkipCount>0 then begin
+    inc(Index,Node.fSkipCount);
+   end else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
+function TpvScene3D.TPotentiallyVisibleSet.GetNodeIndexByAABB(const aAABB:TpvAABB):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+var Index,Count:TpvUInt32;
+    Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
+begin
+ result:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+ Index:=0;
+ Count:=fNodes.Count;
+ while Index<Count do begin
+  Node:=fNodes[Index];
+  if Node.fAABB.Contains(aAABB) then begin
    result:=Index;
    inc(Index);
   end else begin
@@ -10027,7 +10050,6 @@ begin
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   InstanceNode:=@fNodes[Index];
   Node:=fGroup.fNodes[Index];
-  InstanceNode^.PotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
   InstanceNode^.Processed:=false;
   SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
@@ -10036,6 +10058,7 @@ begin
    SetLength(InstanceNode^.Overwrites[OtherIndex].Weights,length(Node.fWeights));
   end;
   for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+   InstanceNode^.PotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
    InstanceNode^.CacheVerticesGenerations[OtherIndex]:=0;
   end;
   InstanceNode^.CacheVerticesGeneration:=1;
@@ -12314,6 +12337,20 @@ begin
 
     for Index:=0 to Scene.fNodes.Count-1 do begin
      ProcessBoundingBoxNode(Scene.fNodes[Index].Index);
+    end;
+
+    for Index:=0 to fGroup.fNodes.Count-1 do begin
+     Node:=fGroup.fNodes[Index];
+     InstanceNode:=@fNodes[Index];
+     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+      if (InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+         ((InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+          fSceneInstance.fPotentiallyVisibleSet.fNodes[InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])) then begin
+       InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(InstanceNode^.BoundingBoxes[aInFlightFrameIndex]);
+      end;
+     end else begin
+      InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+     end;
     end;
 
    end;
