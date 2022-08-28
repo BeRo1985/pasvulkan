@@ -465,6 +465,12 @@ type EpvScene3D=class(Exception);
                    PNodeIndex=^TNodeIndex;
                    TNodeIndexList=class(TpvDynamicArrayList<TNodeIndex>);
                    TBitmap=array of TpvUInt32;
+                   TSubdivisonMode=
+                    (
+                     MeshBVH,
+                     UniformGrid,
+                     ManualZones
+                    );
                    { TNode }
                    TNode=class(TpvPooledObject)
                     private
@@ -502,6 +508,8 @@ type EpvScene3D=class(Exception);
                    end;
                    TViewNodeIndices=array[0..MaxViews-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
              private
+              fSubdivisonMode:TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode;
+              fSubdivisonOneDimensionSize:TpvSizeInt;
               fBakedMesh:TpvScene3D.TBakedMesh;
               fStaticTriangleBVH:TpvStaticTriangleBVH;
               fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
@@ -525,6 +533,9 @@ type EpvScene3D=class(Exception);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
               function GetNodeIndexByPosition(const aPosition:TpvVector3):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
               function GetNodeIndexByAABB(const aAABB:TpvAABB):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+             published
+              property SubdivisonMode:TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode read fSubdivisonMode write fSubdivisonMode;
+              property SubdivisonOneDimensionSize:TpvSizeInt read fSubdivisonOneDimensionSize write fSubdivisonOneDimensionSize;
              public
               property AABB:TpvAABB read fAABB;
              public
@@ -2704,13 +2715,24 @@ end;
 constructor TpvScene3D.TPotentiallyVisibleSet.Create;
 begin
  inherited Create;
+
  fRoot:=nil;
+
+ fSubdivisonMode:=TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid;
+
+ fSubdivisonOneDimensionSize:=16;
+
  fBitmapOneDimensionSize:=0;
+
  fBitmapSize:=0;
+
  fBitmap:=nil;
+
  fNodes:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
  fNodes.OwnsObjects:=true;
+
  FillChar(fViewNodeIndices,SizeOf(TViewNodeIndices),#$ff);
+
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
