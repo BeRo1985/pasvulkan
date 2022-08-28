@@ -500,6 +500,7 @@ type EpvScene3D=class(Exception);
                     public
                      procedure SortByIndex;
                    end;
+                   TViewNodeIndices=array[0..MaxViews-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
              private
               fBakedMesh:TpvScene3D.TBakedMesh;
               fStaticTriangleBVH:TpvStaticTriangleBVH;
@@ -511,6 +512,7 @@ type EpvScene3D=class(Exception);
               fBitmapSize:TpvUInt32;
               fBitmap:TBitmap;
               fPasMPInstance:TPasMP;
+              fViewNodeIndices:TViewNodeIndices;
               function GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
               procedure SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
               procedure NodePairVisibilityCheckRayParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
@@ -2698,6 +2700,7 @@ begin
  fBitmap:=nil;
  fNodes:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
  fNodes.OwnsObjects:=true;
+ FillChar(fViewNodeIndices,SizeOf(TViewNodeIndices),#$ff);
 end;
 
 destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
@@ -14631,8 +14634,12 @@ begin
 end;
 
 procedure TpvScene3D.UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
+var ViewIndex:TpvSizeInt;
 begin
  if fViews.Count>0 then begin
+  for ViewIndex:=0 to fViews.Count-1 do begin
+   fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex]:=fPotentiallyVisibleSet.GetNodeIndexByPosition(Views.Items[ViewIndex].InverseViewMatrix.Translation.xyz);
+  end;
   Move(fViews.Items[0],
        fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
        fViews.Count*SizeOf(TpvScene3D.TView));
