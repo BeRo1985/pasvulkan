@@ -188,6 +188,7 @@ type { TpvBVHDynamicAABBTree }
        function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+       function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
      end;
 
@@ -946,6 +947,56 @@ begin
     if Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection) then begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time) then begin
       if (not result) or (Time<aTime) then begin
+       aTime:=Time;
+       result:=true;
+       if aStopAtFirstHit then begin
+        break;
+       end;
+      end;
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+    Time,RayLength:TpvFloat;
+    RayOrigin,RayDirection:TpvVector3;
+begin
+ result:=false;
+ if assigned(aRayCastUserData) and (NodeCount>0) and (Root>=0) then begin
+  aTime:=Infinity;
+  RayOrigin:=aFrom;
+  RayDirection:=(aTo-aFrom).Normalize;
+  RayLength:=(aTo-aFrom).Length;
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.AABB.RayIntersection(RayOrigin,RayDirection,Time) and
+       ((Time>=0.0) and (Time<=RayLength)) then begin
+     if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time) then begin
+      if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
        aTime:=Time;
        result:=true;
        if aStopAtFirstHit then begin
