@@ -2874,11 +2874,10 @@ begin
       StaticTriangleBVHTriangle^.Vertices[2].Normal:=BakedTriangle.Normals[2];
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
       StaticTriangleBVHTriangle^.Flags:=$ffffffff;
-      StaticTriangleBVHTriangle^.Initialize;
      end;
 
      fStaticTriangleBVH.KDTreeMode:=false;
-     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,true,64);
+     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,64);
 
      if assigned(fStaticTriangleBVH.Root) then begin
 

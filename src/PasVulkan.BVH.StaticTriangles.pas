@@ -91,7 +91,12 @@ unit PasVulkan.BVH.StaticTriangles;
 
 interface
 
-uses SysUtils,Classes,Math,PasVulkan.Types,PasVulkan.Math;
+uses SysUtils,
+     Classes,
+     Math,
+     PasVulkan.Types,
+     PasVulkan.Math,
+     PasVulkan.Collections;
 
 type TpvStaticTriangleBVHTriangleVertex=record
       Position:TpvVector3;
@@ -108,22 +113,11 @@ type TpvStaticTriangleBVHTriangleVertex=record
      TpvStaticTriangleBVHTriangle=record
       public
        Vertices:TpvStaticTriangleBVHTriangleVertices;
-       Planes:array[0..2] of TpvPlane;
-       Plane:TpvPlane;
-       B:TpvVector3;
-       C:TpvVector3;
        Normal:TpvVector3;
-       Sphere:TpvSphere;
-       U:TpvInt32;
-       V:TpvInt32;
-       BarycentricDivide:TpvFloat;
-       WholeArea:TpvFloat;
        Material:TpvUInt32;
        Flags:TpvUInt32;
        Tag:TpvUInt32;
        AvoidSelfShadowingTag:TpvUInt32;
-      public
-       procedure Initialize;
      end;
      PpvStaticTriangleBVHTriangle=^TpvStaticTriangleBVHTriangle;
 
@@ -215,7 +209,6 @@ type TpvStaticTriangleBVHTriangleVertex=record
        destructor Destroy; override;
        function CountChildren:TpvInt32;
        function GetArea:TpvFloat;
-       function CheckRay(const Ray:TpvStaticTriangleBVHRay):boolean;
        function IsLeaf:boolean;
        procedure InsertTriangle(const TriangleIndex:TpvStaticTriangleBVHTriangleIndex);
        procedure UpdateAABB;
@@ -270,7 +263,7 @@ type TpvStaticTriangleBVHTriangleVertex=record
        destructor Destroy; override;
        function CountNodes:TpvInt32;
        procedure Clear;
-       procedure Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean;const aMaxDepth:TpvInt32);
+       procedure Build(const Triangles:TpvStaticTriangleBVHTriangles;const aMaxDepth:TpvInt32);
        function RayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;FastCheck,Exact:boolean;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
        function ExactRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
        function FastRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
@@ -306,74 +299,7 @@ const BARY_EPSILON=0.01;
       NEAR_SHADOW_EPSILON=1.5;
       SELF_SHADOW_EPSILON=0.5;
 
-procedure TpvStaticTriangleBVHTriangle.Initialize;
-const ModuloThree:array[0..5] of TpvInt32=(0,1,2,0,1,2);
-var TempVertex:TpvStaticTriangleBVHTriangleVertex;
-    n,Cross:TpvVector3;
-    Pass,DominantAxis:TpvInt32;
-    f:double;
-begin
- for Pass:=0 to 1 do begin
-  B:=Vertices[2].Position-Vertices[0].Position;
-  C:=Vertices[1].Position-Vertices[0].Position;
-  Cross:=C.Cross(B);
-  Normal:=Cross.Normalize;
-  WholeArea:=Normal.Dot(Cross);
-  if abs(Normal.x)>abs(Normal.y) then begin
-   if abs(Normal.x)>abs(Normal.z) then begin
-    DominantAxis:=0;
-   end else begin
-    DominantAxis:=2;
-   end;
-  end else begin
-   if abs(Normal.y)>abs(Normal.z) then begin
-    DominantAxis:=1;
-   end else begin
-    DominantAxis:=2;
-   end;
-  end;
-  U:=ModuloThree[DominantAxis+1];
-  V:=ModuloThree[DominantAxis+2];
-  if Pass=0 then begin
-   if ((Vertices[1].Position.xyz[V]-Vertices[2].Position.xyz[V])*
-       (Vertices[1].Position.xyz[U]-Vertices[0].Position.xyz[U]))<
-      ((Vertices[1].Position.xyz[U]-Vertices[2].Position.xyz[U])*
-       (Vertices[1].Position.xyz[V]-Vertices[0].Position.xyz[V])) then begin
-    TempVertex:=Vertices[0];
-    Vertices[0]:=Vertices[2];
-    Vertices[2]:=TempVertex;
-   end else begin
-    break;
-   end;
-  end else begin
-   break;
-  end;
- end;
-
- f:=((B.xyz[U]*C.xyz[V])-(B.xyz[V]*C.xyz[U]));
- if IsZero(f) then begin
-  BarycentricDivide:=0.0;
- end else begin
-  BarycentricDivide:=1.0/f;
- end;
-
- Sphere.Center.x:=(Vertices[0].Position.x+Vertices[1].Position.x+Vertices[2].Position.x)/3;
- Sphere.Center.y:=(Vertices[0].Position.y+Vertices[1].Position.y+Vertices[2].Position.y)/3;
- Sphere.Center.z:=(Vertices[0].Position.z+Vertices[1].Position.z+Vertices[2].Position.z)/3;
- Sphere.Radius:=(Sphere.Center-Vertices[0].Position).Length;
- Sphere.Radius:=Max(Sphere.Radius,(Sphere.Center-Vertices[1].Position).Length);
- Sphere.Radius:=Max(Sphere.Radius,(Sphere.Center-Vertices[2].Position).Length);
-
- Plane:=TpvPlane.Create(Normal,-Normal.Dot(Vertices[0].Position));
- n:=(Plane.Normal.Cross(Vertices[0].Position-Vertices[2].Position)).Normalize;
- Planes[0]:=TpvPlane.Create(n,-n.Dot(Vertices[0].Position));
- n:=(Plane.Normal.Cross(Vertices[1].Position-Vertices[0].Position)).Normalize;
- Planes[1]:=TpvPlane.Create(n,-n.Dot(Vertices[1].Position));
- n:=(Plane.Normal.Cross(Vertices[2].Position-Vertices[1].Position)).Normalize;
- Planes[2]:=TpvPlane.Create(n,-n.Dot(Vertices[2].Position));
-end;
-
-function TriangleGetExtremeAxisPointsForAABB(const Triangle:TpvStaticTriangleBVHTriangle;const AABB:TpvAABB;const Axis:TpvInt32;var PMin,PMax:TpvFloat):boolean;
+function TriangleGetExtremeAxisPointsForAABB(const Triangle:TpvStaticTriangleBVHTriangle;const aAABBMin,aAABBMax:TpvVector3;const Axis:TpvInt32;var PMin,PMax:TpvFloat):boolean;
 var EdgeIndex:TpvInt32;
     TimeMin,TimeMax,Len,TempMin,TempMax,Temp:TpvFloat;
     v0,v1,InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
@@ -405,12 +331,12 @@ begin
   end else begin
    InvDirection.z:=1.0/Ray.Direction.z;
   end;
-  a.x:=(AABB.Min.x-Ray.Origin.x)*InvDirection.x;
-  a.y:=(AABB.Min.y-Ray.Origin.y)*InvDirection.y;
-  a.z:=(AABB.Min.z-Ray.Origin.z)*InvDirection.z;
-  b.x:=(AABB.Max.x-Ray.Origin.x)*InvDirection.x;
-  b.y:=(AABB.Max.y-Ray.Origin.y)*InvDirection.y;
-  b.z:=(AABB.Max.z-Ray.Origin.z)*InvDirection.z;
+  a.x:=(aAABBMin.x-Ray.Origin.x)*InvDirection.x;
+  a.y:=(aAABBMin.y-Ray.Origin.y)*InvDirection.y;
+  a.z:=(aAABBMin.z-Ray.Origin.z)*InvDirection.z;
+  b.x:=(aAABBMax.x-Ray.Origin.x)*InvDirection.x;
+  b.y:=(aAABBMax.y-Ray.Origin.y)*InvDirection.y;
+  b.z:=(aAABBMax.z-Ray.Origin.z)*InvDirection.z;
   if a.x<b.x then begin
    AABBMin.x:=a.x;
    AABBMax.x:=b.x;
@@ -490,87 +416,6 @@ begin
    end;
    result:=true;
   end;
- end;
-end;
-
-function AABBRayIntersection(const AABB:TpvAABB;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
-var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
-    TimeMin,TimeMax:TpvFloat;
-begin
- if IsZero(Ray.Direction.x) then begin
-  InvDirection.x:=0.0;
- end else begin
-  InvDirection.x:=1.0/Ray.Direction.x;
- end;
- if IsZero(Ray.Direction.y) then begin
-  InvDirection.y:=0.0;
- end else begin
-  InvDirection.y:=1.0/Ray.Direction.y;
- end;
- if IsZero(Ray.Direction.z) then begin
-  InvDirection.z:=0.0;
- end else begin
-  InvDirection.z:=1.0/Ray.Direction.z;
- end;
- a.x:=(AABB.Min.x-Ray.Origin.x)*InvDirection.x;
- a.y:=(AABB.Min.y-Ray.Origin.y)*InvDirection.y;
- a.z:=(AABB.Min.z-Ray.Origin.z)*InvDirection.z;
- b.x:=(AABB.Max.x-Ray.Origin.x)*InvDirection.x;
- b.y:=(AABB.Max.y-Ray.Origin.y)*InvDirection.y;
- b.z:=(AABB.Max.z-Ray.Origin.z)*InvDirection.z;
- if a.x<b.x then begin
-  AABBMin.x:=a.x;
-  AABBMax.x:=b.x;
- end else begin
-  AABBMin.x:=b.x;
-  AABBMax.x:=a.x;
- end;
- if a.y<b.y then begin
-  AABBMin.y:=a.y;
-  AABBMax.y:=b.y;
- end else begin
-  AABBMin.y:=b.y;
-  AABBMax.y:=a.y;
- end;
- if a.z<b.z then begin
-  AABBMin.z:=a.z;
-  AABBMax.z:=b.z;
- end else begin
-  AABBMin.z:=b.z;
-  AABBMax.z:=a.z;
- end;
- if AABBMin.x<AABBMin.y then begin
-  if AABBMin.y<AABBMin.z then begin
-   TimeMin:=AABBMin.z;
-  end else begin
-   TimeMin:=AABBMin.y;
-  end;
- end else begin
-  if AABBMin.x<AABBMin.z then begin
-   TimeMin:=AABBMin.z;
-  end else begin
-   TimeMin:=AABBMin.x;
-  end;
- end;
- if AABBMax.x<AABBMax.y then begin
-  if AABBMax.x<AABBMax.z then begin
-   TimeMax:=AABBMax.x;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end else begin
-  if AABBMax.y<AABBMax.z then begin
-   TimeMax:=AABBMax.y;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end;
- if (TimeMax<0) or (TimeMin>TimeMax) then begin
-  Time:=TimeMax;
-  result:=false;
- end else begin
-  Time:=TimeMin;
-  result:=true;
  end;
 end;
 
@@ -655,15 +500,15 @@ begin
  end;
 end;
 
-function AABBRayIntersection(const AABB:TpvAABB;const Ray:TpvStaticTriangleBVHRay):boolean; overload;
+function AABBRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Ray:TpvStaticTriangleBVHRay):boolean; overload;
 var Center,Extents,Diff:TpvVector3;
 begin
- Center.x:=(AABB.Min.x+AABB.Max.x)*0.5;
- Center.y:=(AABB.Min.y+AABB.Max.z)*0.5;
- Center.z:=(AABB.Min.z+AABB.Max.z)*0.5;
- Extents.x:=Center.x-AABB.Min.x;
- Extents.y:=Center.y-AABB.Min.y;
- Extents.z:=Center.z-AABB.Min.z;
+ Center.x:=(aAABBMin.x+aAABBMax.x)*0.5;
+ Center.y:=(aAABBMin.y+aAABBMax.z)*0.5;
+ Center.z:=(aAABBMin.z+aAABBMax.z)*0.5;
+ Extents.x:=Center.x-aAABBMin.x;
+ Extents.y:=Center.y-aAABBMin.y;
+ Extents.z:=Center.z-aAABBMin.z;
  Diff.x:=Ray.Origin.x-Center.x;
  Diff.y:=Ray.Origin.y-Center.y;
  Diff.z:=Ray.Origin.z-Center.z;
@@ -673,26 +518,6 @@ begin
          ((abs((Ray.Direction.y*Diff.z)-(Ray.Direction.z*Diff.y))<=((Extents.y*abs(Ray.Direction.z))+(Extents.z*abs(Ray.Direction.y)))) and
           (abs((Ray.Direction.z*Diff.x)-(Ray.Direction.x*Diff.z))<=((Extents.x*abs(Ray.Direction.z))+(Extents.z*abs(Ray.Direction.x)))) and
           (abs((Ray.Direction.x*Diff.y)-(Ray.Direction.y*Diff.x))<=((Extents.x*abs(Ray.Direction.y))+(Extents.y*abs(Ray.Direction.x)))));
-end;
-
-function TriangleRayIntersectionWithPlaneCheck(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;var Time:TpvFloat):boolean;
-var d:TpvFloat;
-    p:TpvVector3;
-begin
- result:=false;
- d:=Triangle.Plane.Normal.Dot(Ray.Direction);
- if abs(d)>EPSILON then begin
-  d:=(-Triangle.Plane.DistanceTo(TpvVector4.InlineableCreate(Ray.Origin,1.0)))/d;
-  if d>=0.0 then begin
-   p:=Ray.Origin+(Ray.Direction*d);
-   if (Triangle.Planes[0].DistanceTo(p)>0.0) and
-      (Triangle.Planes[1].DistanceTo(p)>0.0) and
-      (Triangle.Planes[2].DistanceTo(p)>0.0) then begin
-    Time:=d;
-    result:=true;
-   end;
-  end;
- end;
 end;
 
 function TriangleRayIntersectionExact(const Triangle:TpvStaticTriangleBVHSkipListTriangle;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
@@ -713,28 +538,6 @@ begin
   Beta:=((Triangle.Vertices[0].Position.w*h.v)-(Triangle.Vertices[1].Position.w*h.u))*BarycentricDivide;
   if Beta>=0.0 then begin
    Gamma:=((Triangle.Vertices[1].Normal.w*h.u)-(Triangle.Vertices[0].Normal.w*h.v))*BarycentricDivide;
-   result:=(Gamma>=0.0) and ((Beta+Gamma)<=1.0);
-  end;
- end;
-end;
-
-function TriangleRayIntersectionExact(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
-var h:TpvVector2;
-    Beta,Gamma:TpvFloat;
-begin
- result:=false;
- Time:=(((Triangle.Vertices[0].Position.x-Ray.Origin.x)*Triangle.Normal.x)+
-        ((Triangle.Vertices[0].Position.y-Ray.Origin.y)*Triangle.Normal.y)+
-        ((Triangle.Vertices[0].Position.z-Ray.Origin.z)*Triangle.Normal.z))/
-       ((Ray.Direction.x*Triangle.Normal.x)+
-        (Ray.Direction.y*Triangle.Normal.y)+
-        (Ray.Direction.z*Triangle.Normal.z));
- if Time>1e-9 then begin
-  h.u:=(Ray.Origin.xyz[Triangle.U]+(Time*Ray.Direction.xyz[Triangle.U]))-Triangle.Vertices[0].Position.xyz[Triangle.U];
-  h.v:=(Ray.Origin.xyz[Triangle.V]+(Time*Ray.Direction.xyz[Triangle.V]))-Triangle.Vertices[0].Position.xyz[Triangle.V];
-  Beta:=((Triangle.B.xyz[Triangle.U]*h.v)-(Triangle.B.xyz[Triangle.V]*h.u))*Triangle.BarycentricDivide;
-  if Beta>=0.0 then begin
-   Gamma:=((Triangle.C.xyz[Triangle.V]*h.u)-(Triangle.C.xyz[Triangle.U]*h.v))*Triangle.BarycentricDivide;
    result:=(Gamma>=0.0) and ((Beta+Gamma)<=1.0);
   end;
  end;
@@ -764,55 +567,6 @@ begin
    end;
   end;
  end;
-end;
-
-function TriangleRayIntersectionLazy(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;out Time,Beta,Gamma:TpvFloat):boolean; overload;
-var h:TpvVector2;
-    Det:TpvFloat;
-begin
- result:=false;
- Det:=(Ray.Direction.x*Triangle.Normal.x)+
-      (Ray.Direction.y*Triangle.Normal.y)+
-      (Ray.Direction.z*Triangle.Normal.z);
- if abs(Det)>=COPLANAR_EPSILON then begin
-  Time:=(((Triangle.Vertices[0].Position.x-Ray.Origin.x)*Triangle.Normal.x)+
-         ((Triangle.Vertices[0].Position.y-Ray.Origin.y)*Triangle.Normal.y)+
-         ((Triangle.Vertices[0].Position.z-Ray.Origin.z)*Triangle.Normal.z))/Det;
-  if Time>1e-9 then begin
-   h.u:=(Ray.Origin.xyz[Triangle.U]+(Time*Ray.Direction.xyz[Triangle.U]))-Triangle.Vertices[0].Position.xyz[Triangle.U];
-   h.v:=(Ray.Origin.xyz[Triangle.V]+(Time*Ray.Direction.xyz[Triangle.V]))-Triangle.Vertices[0].Position.xyz[Triangle.V];
-   Beta:=((Triangle.B.xyz[Triangle.U]*h.v)-(Triangle.B.xyz[Triangle.V]*h.u))*Triangle.BarycentricDivide;
-   if (Beta>=-BARY_EPSILON) and (Beta<=(1.0+BARY_EPSILON)) then begin
-    Gamma:=((Triangle.C.xyz[Triangle.V]*h.u)-(Triangle.C.xyz[Triangle.U]*h.v))*Triangle.BarycentricDivide;
-    if (Gamma>=-BARY_EPSILON) and ((Beta+Gamma)<=(1.0+BARY_EPSILON)) then begin
-     result:=true;
-    end;
-   end;
-  end;
- end;
-end;
-
-procedure TriangleInterpolation(const Triangle:TpvStaticTriangleBVHTriangle;const HitPoint:TpvVector3;out Barycentrics,Normal,Tangent,Bitangent:TpvVector3;out TexCoord:TpvVector2); overload;
-var TempNormal,Cross:TpvVector3;
-    WholeArea:TpvFloat;
-begin
- Cross:=(Triangle.Vertices[1].Position-Triangle.Vertices[0].Position).Cross(Triangle.Vertices[2].Position-Triangle.Vertices[0].Position);
- TempNormal:=Cross.Normalize;
- WholeArea:=TempNormal.Dot(Cross);
- Barycentrics.x:=TempNormal.Dot((Triangle.Vertices[1].Position-HitPoint).Cross(Triangle.Vertices[2].Position-HitPoint))/WholeArea;
- Barycentrics.y:=TempNormal.Dot((Triangle.Vertices[2].Position-HitPoint).Cross(Triangle.Vertices[0].Position-HitPoint))/WholeArea;
- Barycentrics.z:=(1.0-Barycentrics.x)-Barycentrics.y;
- Normal.x:=(Triangle.Vertices[0].Normal.x*Barycentrics.x)+(Triangle.Vertices[1].Normal.x*Barycentrics.y)+(Triangle.Vertices[2].Normal.x*Barycentrics.z);
- Normal.y:=(Triangle.Vertices[0].Normal.y*Barycentrics.x)+(Triangle.Vertices[1].Normal.y*Barycentrics.y)+(Triangle.Vertices[2].Normal.y*Barycentrics.z);
- Normal.z:=(Triangle.Vertices[0].Normal.z*Barycentrics.x)+(Triangle.Vertices[1].Normal.z*Barycentrics.y)+(Triangle.Vertices[2].Normal.z*Barycentrics.z);
- Tangent.x:=(Triangle.Vertices[0].Tangent.x*Barycentrics.x)+(Triangle.Vertices[1].Tangent.x*Barycentrics.y)+(Triangle.Vertices[2].Tangent.x*Barycentrics.z);
- Tangent.y:=(Triangle.Vertices[0].Tangent.y*Barycentrics.x)+(Triangle.Vertices[1].Tangent.y*Barycentrics.y)+(Triangle.Vertices[2].Tangent.y*Barycentrics.z);
- Tangent.z:=(Triangle.Vertices[0].Tangent.z*Barycentrics.x)+(Triangle.Vertices[1].Tangent.z*Barycentrics.y)+(Triangle.Vertices[2].Tangent.z*Barycentrics.z);
- Bitangent.x:=(Triangle.Vertices[0].Bitangent.x*Barycentrics.x)+(Triangle.Vertices[1].Bitangent.x*Barycentrics.y)+(Triangle.Vertices[2].Bitangent.x*Barycentrics.z);
- Bitangent.y:=(Triangle.Vertices[0].Bitangent.y*Barycentrics.x)+(Triangle.Vertices[1].Bitangent.y*Barycentrics.y)+(Triangle.Vertices[2].Bitangent.y*Barycentrics.z);
- Bitangent.z:=(Triangle.Vertices[0].Bitangent.z*Barycentrics.x)+(Triangle.Vertices[1].Bitangent.z*Barycentrics.y)+(Triangle.Vertices[2].Bitangent.z*Barycentrics.z);
- TexCoord.x:=(Triangle.Vertices[0].TexCoord.x*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.x*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.x*Barycentrics.z);
- TexCoord.y:=(Triangle.Vertices[0].TexCoord.y*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.y*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.y*Barycentrics.z);
 end;
 
 procedure TriangleInterpolation(const Triangle:TpvStaticTriangleBVHSkipListTriangle;const HitPoint:TpvVector3;out Barycentrics,Normal,Tangent,Bitangent:TpvVector3;out TexCoord:TpvVector2); overload;
@@ -889,11 +643,6 @@ end;
 function TpvStaticTriangleBVHNode.GetArea:TpvFloat;
 begin
  result:=fAABB.Area;
-end;
-
-function TpvStaticTriangleBVHNode.CheckRay(const Ray:TpvStaticTriangleBVHRay):boolean;
-begin
- result:=fAABB.FastRayIntersection(Ray.Origin,Ray.Direction);
 end;
 
 function TpvStaticTriangleBVHNode.IsLeaf:boolean;
@@ -992,7 +741,7 @@ destructor TpvStaticTriangleBVH.Destroy;
 begin
  FreeAndNil(fRoot);
  SetLength(fNodes,0);
- SetLength(fTriangles,0); 
+ SetLength(fTriangles,0);
  SetLength(fSkipListTriangles,0);
  SetLength(fSkipListTriangleIndices,0);
  SetLength(fSkipListNodes,0);
@@ -1184,7 +933,7 @@ begin
    for TriangleIndex:=0 to CurrentNode.fCountTriangleIndices-1 do begin
     c0:=0.0;
     c1:=0.0;
-    if TriangleGetExtremeAxisPointsForAABB(fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]],CurrentNode.fAABB,AxisIndex,c0,c1) then begin
+    if TriangleGetExtremeAxisPointsForAABB(fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]],CurrentNode.fAABB.Min,CurrentNode.fAABB.Max,AxisIndex,c0,c1) then begin
      fSweepEvents[CountSweepEvents].Position:=Max(CurrentNode.fAABB.Min.xyz[AxisIndex],c0);
      fSweepEvents[CountSweepEvents].Index:=TriangleIndex;
      fSweepEvents[CountSweepEvents].Start:=true;
@@ -1424,7 +1173,7 @@ begin
    for TriangleIndex:=0 to CurrentNode.fCountTriangleIndices-1 do begin
     c0:=0.0;
     c1:=0.0;
-    if TriangleGetExtremeAxisPointsForAABB(fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]],CurrentNode.fAABB,AxisIndex,c0,c1) then begin
+    if TriangleGetExtremeAxisPointsForAABB(fTriangles[CurrentNode.fTriangleIndices[TriangleIndex]],CurrentNode.fAABB.Min,CurrentNode.fAABB.Max,AxisIndex,c0,c1) then begin
      fSweepEvents[CountSweepEvents].Position:=Max(CurrentNode.fAABB.Min.xyz[AxisIndex],c0);
      fSweepEvents[CountSweepEvents].Index:=TriangleIndex;
      fSweepEvents[CountSweepEvents].Start:=true;
@@ -1529,380 +1278,322 @@ begin
 end;
 
 procedure TpvStaticTriangleBVH.BuildFromRoot(MaxDepth:TpvInt32);
-type PStackItem=^TStackItem;
-     TStackItem=record
+type TStackItem=record
       Node:TpvStaticTriangleBVHNode;
       Parent:TpvStaticTriangleBVHNode;
       Depth:TpvInt32;
      end;
-var Stack:array of TStackItem;
-    StackPointer,CurrentDepth,CurrentSplitAxis,CurrentLeftCount,CurrentRightCount,TriangleIndex,NodeIndex,CountTriangles:TpvInt32;
-    StackItem:PStackItem;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    CurrentDepth,CurrentSplitAxis,CurrentLeftCount,CurrentRightCount,TriangleIndex,NodeIndex,CountTriangles:TpvInt32;
+    StackItem:TStackItem;
     CurrentNode,LeftNode,RightNode:TpvStaticTriangleBVHNode;
     CurrentAxisSplitPosition,MinPosition,MaxPosition:TpvFloat;
     TryAgain,OK:boolean;
     CurrentTriangle:TpvStaticTriangleBVHTriangleIndex;
     Triangles:TpvStaticTriangleBVHTriangleIndices;
 begin
- Stack:=nil;
- fSweepEvents:=nil;
- Triangles:=nil;
+ Stack.Initialize;
  try
-  fRoot.fAxis:=-1;
-  fRoot.UpdateAABB;
-  SetLength(Stack,MaxDepth*2);
-  StackPointer:=0;
-  StackItem:=@Stack[StackPointer];
-  inc(StackPointer);
-  StackItem^.Node:=fRoot;
-  StackItem^.Depth:=MaxDepth;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   StackItem:=@Stack[StackPointer];
-   CurrentNode:=StackItem^.Node;
-   CurrentDepth:=StackItem^.Depth;
-   while assigned(CurrentNode) do begin
-    if CurrentDepth>0 then begin
-     CurrentSplitAxis:=0;
-     CurrentAxisSplitPosition:=0.0;
-     CurrentLeftCount:=0;
-     CurrentRightCount:=0;
-     if SearchBestSplitPlane(CurrentNode,CurrentSplitAxis,CurrentAxisSplitPosition,CurrentLeftCount,CurrentRightCount) then begin
-      if (CurrentLeftCount=CurrentNode.fCountTriangleIndices) and (CurrentRightCount=0) then begin
-       if fKDTreeMode then begin
-        CurrentNode.fAABB.Max.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
-        CurrentNode.fAxis:=CurrentSplitAxis;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        continue;
-       end else begin
-        CurrentNode.UpdateAABB;
-       end;
-      end else if (CurrentLeftCount=0) and (CurrentRightCount=CurrentNode.fCountTriangleIndices) then begin
-       if fKDTreeMode then begin
-        CurrentNode.fAABB.Min.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
-        CurrentNode.fAxis:=CurrentSplitAxis;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        continue;
-       end else begin
-        CurrentNode.UpdateAABB;
-       end;
-      end else if (CurrentLeftCount>0) or (CurrentRightCount>0) then begin
-       LeftNode:=TpvStaticTriangleBVHNode.Create(self);
-       RightNode:=TpvStaticTriangleBVHNode.Create(self);
-       LeftNode.fAABB:=CurrentNode.fAABB;
-       RightNode.fAABB:=CurrentNode.fAABB;
-       LeftNode.fAABB.Max.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
-       RightNode.fAABB.Min.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
-       LeftNode.fAxis:=CurrentSplitAxis;
-       RightNode.fAxis:=CurrentSplitAxis;
-       Triangles:=CurrentNode.fTriangleIndices;
-       CountTriangles:=CurrentNode.fCountTriangleIndices;
-       CurrentNode.fTriangleIndices:=nil;
-       CurrentNode.fCountTriangleIndices:=0;
-       if fKDTreeMode then begin
-        for TriangleIndex:=0 to CountTriangles-1 do begin
-         CurrentTriangle:=Triangles[TriangleIndex];
-         if CanInsertTriangle(fTriangles[CurrentTriangle],LeftNode.fAABB) then begin
-          LeftNode.InsertTriangle(CurrentTriangle);
-         end else if CanInsertTriangle(fTriangles[CurrentTriangle],RightNode.fAABB) then begin
-          RightNode.InsertTriangle(CurrentTriangle);
+  fSweepEvents:=nil;
+  try
+   Triangles:=nil;
+   try
+    fRoot.fAxis:=-1;
+    fRoot.UpdateAABB;
+    StackItem.Node:=fRoot;
+    StackItem.Depth:=MaxDepth;
+    Stack.Push(StackItem);
+    while Stack.Pop(StackItem) do begin
+     CurrentNode:=StackItem.Node;
+     CurrentDepth:=StackItem.Depth;
+     while assigned(CurrentNode) do begin
+      if CurrentDepth>0 then begin
+       CurrentSplitAxis:=0;
+       CurrentAxisSplitPosition:=0.0;
+       CurrentLeftCount:=0;
+       CurrentRightCount:=0;
+       if SearchBestSplitPlane(CurrentNode,CurrentSplitAxis,CurrentAxisSplitPosition,CurrentLeftCount,CurrentRightCount) then begin
+        if (CurrentLeftCount=CurrentNode.fCountTriangleIndices) and (CurrentRightCount=0) then begin
+         if fKDTreeMode then begin
+          CurrentNode.fAABB.Max.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
+          CurrentNode.fAxis:=CurrentSplitAxis;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          continue;
          end else begin
-          CurrentNode.InsertTriangle(CurrentTriangle);
+          CurrentNode.UpdateAABB;
+         end;
+        end else if (CurrentLeftCount=0) and (CurrentRightCount=CurrentNode.fCountTriangleIndices) then begin
+         if fKDTreeMode then begin
+          CurrentNode.fAABB.Min.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
+          CurrentNode.fAxis:=CurrentSplitAxis;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          continue;
+         end else begin
+          CurrentNode.UpdateAABB;
+         end;
+        end else if (CurrentLeftCount>0) or (CurrentRightCount>0) then begin
+         LeftNode:=TpvStaticTriangleBVHNode.Create(self);
+         RightNode:=TpvStaticTriangleBVHNode.Create(self);
+         LeftNode.fAABB:=CurrentNode.fAABB;
+         RightNode.fAABB:=CurrentNode.fAABB;
+         LeftNode.fAABB.Max.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
+         RightNode.fAABB.Min.xyz[CurrentSplitAxis]:=CurrentAxisSplitPosition;
+         LeftNode.fAxis:=CurrentSplitAxis;
+         RightNode.fAxis:=CurrentSplitAxis;
+         Triangles:=CurrentNode.fTriangleIndices;
+         CountTriangles:=CurrentNode.fCountTriangleIndices;
+         CurrentNode.fTriangleIndices:=nil;
+         CurrentNode.fCountTriangleIndices:=0;
+         if fKDTreeMode then begin
+          for TriangleIndex:=0 to CountTriangles-1 do begin
+           CurrentTriangle:=Triangles[TriangleIndex];
+           if CanInsertTriangle(fTriangles[CurrentTriangle],LeftNode.fAABB) then begin
+            LeftNode.InsertTriangle(CurrentTriangle);
+           end else if CanInsertTriangle(fTriangles[CurrentTriangle],RightNode.fAABB) then begin
+            RightNode.InsertTriangle(CurrentTriangle);
+           end else begin
+            CurrentNode.InsertTriangle(CurrentTriangle);
+           end;
+          end;
+         end else begin
+          for TriangleIndex:=0 to CountTriangles-1 do begin
+           CurrentTriangle:=Triangles[TriangleIndex];
+           if GetTriangleMidAxisPoint(fTriangles[CurrentTriangle],CurrentSplitAxis)<CurrentAxisSplitPosition then begin
+            LeftNode.InsertTriangle(CurrentTriangle);
+           end else begin
+            RightNode.InsertTriangle(CurrentTriangle);
+           end;
+          end;
+         end;
+         SetLength(Triangles,0);
+         if LeftNode.fCountTriangleIndices=0 then begin
+          FreeAndNil(LeftNode);
+         end else if not fKDTreeMode then begin
+          LeftNode.UpdateAABB;
+         end;
+         if RightNode.fCountTriangleIndices=0 then begin
+          FreeAndNil(RightNode);
+         end else if not fKDTreeMode then begin
+          RightNode.UpdateAABB;
+         end;
+         CurrentNode.fLeft:=LeftNode;
+         CurrentNode.fRight:=RightNode;
+         if assigned(RightNode) then begin
+          StackItem.Node:=RightNode;
+          StackItem.Depth:=CurrentDepth-1;
+          Stack.Push(StackItem);
+         end;
+         if assigned(LeftNode) then begin
+          StackItem.Node:=LeftNode;
+          StackItem.Depth:=CurrentDepth-1;
+          Stack.Push(StackItem);
          end;
         end;
-       end else begin
-        for TriangleIndex:=0 to CountTriangles-1 do begin
-         CurrentTriangle:=Triangles[TriangleIndex];
-         if GetTriangleMidAxisPoint(fTriangles[CurrentTriangle],CurrentSplitAxis)<CurrentAxisSplitPosition then begin
-          LeftNode.InsertTriangle(CurrentTriangle);
-         end else begin
-          RightNode.InsertTriangle(CurrentTriangle);
+       end;
+      end;
+      CurrentNode:=nil;
+     end;
+    end;
+    repeat
+     TryAgain:=false;
+     StackItem.Node:=fRoot;
+     StackItem.Parent:=nil;
+     StackItem.Depth:=1;
+     Stack.Push(StackItem);
+     while Stack.Pop(StackItem) do begin
+      CurrentNode:=StackItem.Node;
+      if assigned(CurrentNode) then begin
+       if assigned(CurrentNode.fLeft) and not assigned(CurrentNode.fRight) then begin
+        if assigned(StackItem.Parent) then begin
+         if StackItem.Parent.fLeft=CurrentNode then begin
+          StackItem.Parent.fLeft:=CurrentNode.fLeft;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          FreeAndNil(CurrentNode);
+         end else if StackItem.Parent.fRight=CurrentNode then begin
+          StackItem.Parent.fRight:=CurrentNode.fLeft;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          FreeAndNil(CurrentNode);
          end;
+        end else begin
+         fRoot.fLeft:=nil;
+         fRoot.fRight:=nil;
+         FreeAndNil(fRoot);
+         fRoot:=CurrentNode.fLeft;
+         CurrentNode.fLeft:=nil;
+         CurrentNode.fRight:=nil;
+         FreeAndNil(CurrentNode);
+        end;
+        TryAgain:=true;
+       end else if assigned(CurrentNode.fRight) and not assigned(CurrentNode.fLeft) then begin
+        if assigned(StackItem.Parent) then begin
+         if StackItem.Parent.fLeft=CurrentNode then begin
+          StackItem.Parent.fLeft:=CurrentNode.fRight;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          FreeAndNil(CurrentNode);
+         end else if StackItem.Parent.fRight=CurrentNode then begin
+          StackItem.Parent.fRight:=CurrentNode.fRight;
+          CurrentNode.fLeft:=nil;
+          CurrentNode.fRight:=nil;
+          FreeAndNil(CurrentNode);
+         end;
+        end else begin
+         fRoot.fLeft:=nil;
+         fRoot.fRight:=nil;
+         FreeAndNil(fRoot);
+         fRoot:=CurrentNode.fRight;
+         CurrentNode.fLeft:=nil;
+         CurrentNode.fRight:=nil;
+         FreeAndNil(CurrentNode);
+        end;
+        TryAgain:=true;
+       end;
+       if assigned(CurrentNode) then begin
+        if assigned(CurrentNode.fRight) then begin
+         StackItem.Node:=CurrentNode.fRight;
+         StackItem.Parent:=CurrentNode;
+         Stack.Push(StackItem);
+        end;
+        if assigned(CurrentNode.fLeft) then begin
+         StackItem.Node:=CurrentNode.fLeft;
+         StackItem.Parent:=CurrentNode;
+         Stack.Push(StackItem);
         end;
        end;
-       SetLength(Triangles,0);
-       if LeftNode.fCountTriangleIndices=0 then begin
-        FreeAndNil(LeftNode);
-       end else if not fKDTreeMode then begin
-        LeftNode.UpdateAABB;
-       end;
-       if RightNode.fCountTriangleIndices=0 then begin
-        FreeAndNil(RightNode);
-       end else if not fKDTreeMode then begin
-        RightNode.UpdateAABB;
-       end;
-       CurrentNode.fLeft:=LeftNode;
-       CurrentNode.fRight:=RightNode;
-       if assigned(RightNode) then begin
-        if length(Stack)<(StackPointer+1) then begin
-         SetLength(Stack,(StackPointer+1)*2);
+      end;
+     end;
+    until not TryAgain;
+    begin
+     NodeIndex:=0;
+     TriangleIndex:=0;
+     StackItem.Node:=fRoot;
+     StackItem.Depth:=1;
+     Stack.Push(StackItem);
+     while Stack.Pop(StackItem) do begin
+      CurrentNode:=StackItem.Node;
+      CurrentDepth:=StackItem.Depth;
+      if assigned(CurrentNode) then begin
+       if CurrentDepth>0 then begin
+        CurrentNode.fNodeIndex:=NodeIndex;
+        inc(NodeIndex);
+        CurrentNode.fTriangleIndex:=TriangleIndex;
+        inc(TriangleIndex,CurrentNode.fCountTriangleIndices);
+        begin
+         StackItem.Node:=CurrentNode;
+         StackItem.Depth:=-1;
+         Stack.Push(StackItem);
         end;
-        StackItem:=@Stack[StackPointer];
-        inc(StackPointer);
-        StackItem^.Node:=RightNode;
-        StackItem^.Depth:=CurrentDepth-1;
-       end;
-       if assigned(LeftNode) then begin
-        if length(Stack)<(StackPointer+1) then begin
-         SetLength(Stack,(StackPointer+1)*2);
+        if assigned(CurrentNode.fRight) then begin
+         StackItem.Node:=CurrentNode.fRight;
+         StackItem.Depth:=1;
+         Stack.Push(StackItem);
         end;
-        StackItem:=@Stack[StackPointer];
-        inc(StackPointer);
-        StackItem^.Node:=LeftNode;
-        StackItem^.Depth:=CurrentDepth-1;
-       end;
-      end;
-     end;
-    end;
-    CurrentNode:=nil;
-   end;
-  end;
-  repeat
-   TryAgain:=false;
-   StackPointer:=0;
-   StackItem:=@Stack[StackPointer];
-   inc(StackPointer);
-   StackItem^.Node:=fRoot;
-   StackItem^.Parent:=nil;
-   StackItem^.Depth:=1;
-   while StackPointer>0 do begin
-    dec(StackPointer);
-    StackItem:=@Stack[StackPointer];
-    CurrentNode:=StackItem^.Node;
-    if assigned(CurrentNode) then begin
-     if assigned(CurrentNode.fLeft) and not assigned(CurrentNode.fRight) then begin
-      if assigned(StackItem^.Parent) then begin
-       if StackItem^.Parent.fLeft=CurrentNode then begin
-        StackItem^.Parent.fLeft:=CurrentNode.fLeft;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        FreeAndNil(CurrentNode);
-       end else if StackItem^.Parent.fRight=CurrentNode then begin
-        StackItem^.Parent.fRight:=CurrentNode.fLeft;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        FreeAndNil(CurrentNode);
-       end;
-      end else begin
-       fRoot.fLeft:=nil;
-       fRoot.fRight:=nil;
-       FreeAndNil(fRoot);
-       fRoot:=CurrentNode.fLeft;
-       CurrentNode.fLeft:=nil;
-       CurrentNode.fRight:=nil;
-       FreeAndNil(CurrentNode);
-      end;
-      TryAgain:=true;
-     end else if assigned(CurrentNode.fRight) and not assigned(CurrentNode.fLeft) then begin
-      if assigned(StackItem^.Parent) then begin
-       if StackItem^.Parent.fLeft=CurrentNode then begin
-        StackItem^.Parent.fLeft:=CurrentNode.fRight;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        FreeAndNil(CurrentNode);
-       end else if StackItem^.Parent.fRight=CurrentNode then begin
-        StackItem^.Parent.fRight:=CurrentNode.fRight;
-        CurrentNode.fLeft:=nil;
-        CurrentNode.fRight:=nil;
-        FreeAndNil(CurrentNode);
-       end;
-      end else begin
-       fRoot.fLeft:=nil;
-       fRoot.fRight:=nil;
-       FreeAndNil(fRoot);
-       fRoot:=CurrentNode.fRight;
-       CurrentNode.fLeft:=nil;
-       CurrentNode.fRight:=nil;
-       FreeAndNil(CurrentNode);
-      end;
-      TryAgain:=true;
-     end;
-     if assigned(CurrentNode) then begin
-      if assigned(CurrentNode.fRight) then begin
-       if length(Stack)<(StackPointer+1) then begin
-        SetLength(Stack,(StackPointer+1)*2);
-       end;
-       StackItem:=@Stack[StackPointer];
-       inc(StackPointer);
-       StackItem^.Node:=CurrentNode.fRight;
-       StackItem^.Parent:=CurrentNode;
-      end;
-      if assigned(CurrentNode.fLeft) then begin
-       if length(Stack)<(StackPointer+1) then begin
-        SetLength(Stack,(StackPointer+1)*2);
-       end;
-       StackItem:=@Stack[StackPointer];
-       inc(StackPointer);
-       StackItem^.Node:=CurrentNode.fLeft;
-       StackItem^.Parent:=CurrentNode;
-      end;
-     end;
-    end;
-   end;
-  until not TryAgain;
-  begin
-   NodeIndex:=0;
-   TriangleIndex:=0;
-   StackPointer:=0;
-   StackItem:=@Stack[StackPointer];
-   inc(StackPointer);
-   StackItem^.Node:=fRoot;
-   StackItem^.Depth:=1;
-   while StackPointer>0 do begin
-    dec(StackPointer);
-    StackItem:=@Stack[StackPointer];
-    CurrentNode:=StackItem^.Node;
-    CurrentDepth:=StackItem^.Depth;
-    if assigned(CurrentNode) then begin
-     if CurrentDepth>0 then begin
-      CurrentNode.fNodeIndex:=NodeIndex;
-      inc(NodeIndex);
-      CurrentNode.fTriangleIndex:=TriangleIndex;
-      inc(TriangleIndex,CurrentNode.fCountTriangleIndices);
-      begin
-       if length(Stack)<(StackPointer+1) then begin
-        SetLength(Stack,(StackPointer+1)*2);
-       end;
-       StackItem:=@Stack[StackPointer];
-       inc(StackPointer);
-       StackItem^.Node:=CurrentNode;
-       StackItem^.Depth:=-1;
-      end;
-      if assigned(CurrentNode.fRight) then begin
-       if length(Stack)<(StackPointer+1) then begin
-        SetLength(Stack,(StackPointer+1)*2);
-       end;
-       StackItem:=@Stack[StackPointer];
-       inc(StackPointer);
-       StackItem^.Node:=CurrentNode.fRight;
-       StackItem^.Depth:=1;
-      end;
-      if assigned(CurrentNode.fLeft) then begin
-       if length(Stack)<(StackPointer+1) then begin
-        SetLength(Stack,(StackPointer+1)*2);
-       end;
-       StackItem:=@Stack[StackPointer];
-       inc(StackPointer);
-       StackItem^.Node:=CurrentNode.fLeft;
-       StackItem^.Depth:=1;
-      end;
-     end else begin
-      CurrentNode.fSkipToNode:=NodeIndex;
-      CurrentNode.fCountAllContainingNodes:=NodeIndex-CurrentNode.fNodeIndex;
-      CurrentNode.fCountAllContainingTriangles:=TriangleIndex-CurrentNode.fTriangleIndex;
-     end;
-    end;
-   end;
-   SetLength(fNodes,NodeIndex);
-  end;
-  begin
-   fCountLeafs:=0;
-   StackPointer:=0;
-   StackItem:=@Stack[StackPointer];
-   inc(StackPointer);
-   StackItem^.Node:=fRoot;
-   StackItem^.Depth:=1;
-   while StackPointer>0 do begin
-    dec(StackPointer);
-    StackItem:=@Stack[StackPointer];
-    CurrentNode:=StackItem^.Node;
-    if assigned(CurrentNode) then begin
-     if not (assigned(CurrentNode.fLeft) or assigned(CurrentNode.fRight)) then begin
-      inc(fCountLeafs);
-     end;           
-     fNodes[CurrentNode.fNodeIndex]:=CurrentNode;
-     if assigned(CurrentNode.fRight) then begin
-      if length(Stack)<(StackPointer+1) then begin
-       SetLength(Stack,(StackPointer+1)*2);
-      end;
-      StackItem:=@Stack[StackPointer];
-      inc(StackPointer);
-      StackItem^.Node:=CurrentNode.fRight;
-      StackItem^.Depth:=1;
-     end;
-     if assigned(CurrentNode.fLeft) then begin
-      if length(Stack)<(StackPointer+1) then begin
-       SetLength(Stack,(StackPointer+1)*2);
-      end;
-      StackItem:=@Stack[StackPointer];
-      inc(StackPointer);
-      StackItem^.Node:=CurrentNode.fLeft;
-      StackItem^.Depth:=1;
-     end;
-    end;
-   end;
-  end;
-  begin      
-   StackPointer:=0;
-   StackItem:=@Stack[StackPointer];
-   inc(StackPointer);
-   StackItem^.Node:=fRoot;
-   StackItem^.Depth:=1;
-   while StackPointer>0 do begin
-    dec(StackPointer);
-    StackItem:=@Stack[StackPointer];
-    CurrentNode:=StackItem^.Node;
-    CurrentDepth:=StackItem^.Depth;
-    if assigned(CurrentNode) then begin
-     if CurrentDepth>0 then begin
-      CurrentNode.UpdateAABB;
-      if assigned(CurrentNode.fLeft) or assigned(CurrentNode.fRight) then begin
-       begin
-        if length(Stack)<(StackPointer+1) then begin
-         SetLength(Stack,(StackPointer+1)*2);
+        if assigned(CurrentNode.fLeft) then begin
+         StackItem.Node:=CurrentNode.fLeft;
+         StackItem.Depth:=1;
+         Stack.Push(StackItem);
         end;
-        StackItem:=@Stack[StackPointer];
-        inc(StackPointer);
-        StackItem^.Node:=CurrentNode;
-        StackItem^.Depth:=-1;
+       end else begin
+        CurrentNode.fSkipToNode:=NodeIndex;
+        CurrentNode.fCountAllContainingNodes:=NodeIndex-CurrentNode.fNodeIndex;
+        CurrentNode.fCountAllContainingTriangles:=TriangleIndex-CurrentNode.fTriangleIndex;
        end;
+      end;
+     end;
+     SetLength(fNodes,NodeIndex);
+    end;
+    begin
+     fCountLeafs:=0;
+     StackItem.Node:=fRoot;
+     StackItem.Depth:=1;
+     Stack.Push(StackItem);
+     while Stack.Pop(StackItem) do begin
+      CurrentNode:=StackItem.Node;
+      if assigned(CurrentNode) then begin
+       if not (assigned(CurrentNode.fLeft) or assigned(CurrentNode.fRight)) then begin
+        inc(fCountLeafs);
+       end;
+       fNodes[CurrentNode.fNodeIndex]:=CurrentNode;
        if assigned(CurrentNode.fRight) then begin
-        if length(Stack)<(StackPointer+1) then begin
-         SetLength(Stack,(StackPointer+1)*2);
-        end;
-        StackItem:=@Stack[StackPointer];
-        inc(StackPointer);
-        StackItem^.Node:=CurrentNode.fRight;
-        StackItem^.Depth:=1;
+        StackItem.Node:=CurrentNode.fRight;
+        StackItem.Depth:=1;
+        Stack.Push(StackItem);
        end;
        if assigned(CurrentNode.fLeft) then begin
-        if length(Stack)<(StackPointer+1) then begin
-         SetLength(Stack,(StackPointer+1)*2);
-        end;
-        StackItem:=@Stack[StackPointer];
-        inc(StackPointer);
-        StackItem^.Node:=CurrentNode.fLeft;
-        StackItem^.Depth:=1;
+        StackItem.Node:=CurrentNode.fLeft;
+        StackItem.Depth:=1;
+        Stack.Push(StackItem);
        end;
       end;
      end;
-    end else begin
-     if assigned(CurrentNode.fLeft) and assigned(CurrentNode.fRight) then begin
-      CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fLeft.fAABB.Combine(CurrentNode.fRight.fAABB)));
-     end else if assigned(CurrentNode.fLeft) then begin
-      CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fLeft.fAABB));
-     end else if assigned(CurrentNode.fRight) then begin
-      CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fRight.fAABB));
+    end;
+    begin
+     StackItem.Node:=fRoot;
+     StackItem.Depth:=1;
+     Stack.Push(StackItem);
+     while Stack.Pop(StackItem) do begin
+      CurrentNode:=StackItem.Node;
+      CurrentDepth:=StackItem.Depth;
+      if assigned(CurrentNode) then begin
+       if CurrentDepth>0 then begin
+        CurrentNode.UpdateAABB;
+        if assigned(CurrentNode.fLeft) or assigned(CurrentNode.fRight) then begin
+         begin
+          StackItem.Node:=CurrentNode;
+          StackItem.Depth:=-1;
+          Stack.Push(StackItem);
+         end;
+         if assigned(CurrentNode.fRight) then begin
+          StackItem.Node:=CurrentNode.fRight;
+          StackItem.Depth:=1;
+          Stack.Push(StackItem);
+         end;
+         if assigned(CurrentNode.fLeft) then begin
+          StackItem.Node:=CurrentNode.fLeft;
+          StackItem.Depth:=1;
+          Stack.Push(StackItem);
+         end;
+        end;
+       end;
+      end else begin
+       if assigned(CurrentNode.fLeft) and assigned(CurrentNode.fRight) then begin
+        CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fLeft.fAABB.Combine(CurrentNode.fRight.fAABB)));
+       end else if assigned(CurrentNode.fLeft) then begin
+        CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fLeft.fAABB));
+       end else if assigned(CurrentNode.fRight) then begin
+        CurrentNode.fAABB:=CurrentNode.fAABB.GetIntersection(CurrentNode.fAABB.Combine(CurrentNode.fRight.fAABB));
+       end;
+      end;
      end;
     end;
+   finally
+    Triangles:=nil;
    end;
+  finally
+   fSweepEvents:=nil;
   end;
  finally
-  SetLength(fSweepEvents,0);
-  SetLength(Stack,0);
-  SetLength(Triangles,0);
+  Stack.Finalize;
  end;
 end;
 
-procedure TpvStaticTriangleBVH.Build(const Triangles:TpvStaticTriangleBVHTriangles;Initialized:boolean;const aMaxDepth:TpvInt32);
-var i,j,k:TpvInt32;
-    TriangleIndex:TpvUInt32;
+procedure TpvStaticTriangleBVH.Build(const Triangles:TpvStaticTriangleBVHTriangles;const aMaxDepth:TpvInt32);
+const ModuloThree:array[0..5] of TpvInt32=(0,1,2,0,1,2);
+var i,j,k,Pass,U,V:TpvInt32;
+    TriangleIndex,DominantAxis:TpvUInt32;
     SkipListNode:PpvStaticTriangleBVHSkipListNode;
     SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
+    B,C,Cross,Normal:TpvVector3;
+    WholeArea,BarycentricDivide:TpvScalar;
+    TempVertex:TpvStaticTriangleBVHTriangleVertex;
 begin
  FreeAndNil(fRoot);
  fTriangles:=copy(Triangles);
@@ -1916,9 +1607,6 @@ begin
   fRoot.fTriangleIndices[i]:=i;
   Triangle:=@fTriangles[fRoot.fTriangleIndices[i]];
   fRoot.fFlags:=fRoot.fFlags or Triangle^.Flags;
-  if not Initialized then begin
-   Triangle^.Initialize;
-  end;
   for j:=0 to 2 do begin
    if (i=0) and (j=0) then begin
     fRoot.fAABB.Min:=Triangle^.Vertices[j].Position;
@@ -1955,11 +1643,53 @@ begin
    end;
    Triangle:=@fTriangles[i];
    SkipListTriangle:=@fSkipListTriangles[TriangleIndex];
-   SkipListTriangle^.Vertices[0].Position:=TpvVector4.Create(Triangle^.Vertices[0].Position,Triangle.B[Triangle^.U]);
-   SkipListTriangle^.Vertices[1].Position:=TpvVector4.Create(Triangle^.Vertices[1].Position,Triangle.B[Triangle^.V]);
+   for Pass:=0 to 1 do begin
+    B:=Triangle^.Vertices[2].Position-Triangle^.Vertices[0].Position;
+    C:=Triangle^.Vertices[1].Position-Triangle^.Vertices[0].Position;
+    Cross:=C.Cross(B);
+    Normal:=Cross.Normalize;
+    WholeArea:=Normal.Dot(Cross);
+    if abs(Normal.x)>abs(Normal.y) then begin
+     if abs(Normal.x)>abs(Normal.z) then begin
+      DominantAxis:=0;
+     end else begin
+      DominantAxis:=2;
+     end;
+    end else begin
+     if abs(Normal.y)>abs(Normal.z) then begin
+      DominantAxis:=1;
+     end else begin
+      DominantAxis:=2;
+     end;
+    end;
+    U:=ModuloThree[DominantAxis+1];
+    V:=ModuloThree[DominantAxis+2];
+    if Pass=0 then begin
+     if ((Triangle^.Vertices[1].Position.xyz[V]-Triangle^.Vertices[2].Position.xyz[V])*
+         (Triangle^.Vertices[1].Position.xyz[U]-Triangle^.Vertices[0].Position.xyz[U]))<
+        ((Triangle^.Vertices[1].Position.xyz[U]-Triangle^.Vertices[2].Position.xyz[U])*
+         (Triangle^.Vertices[1].Position.xyz[V]-Triangle^.Vertices[0].Position.xyz[V])) then begin
+      TempVertex:=Triangle^.Vertices[0];
+      Triangle^.Vertices[0]:=Triangle^.Vertices[2];
+      Triangle^.Vertices[2]:=TempVertex;
+     end else begin
+      break;
+     end;
+    end else begin
+     break;
+    end;
+   end;
+   BarycentricDivide:=((B.xyz[U]*C.xyz[V])-(B.xyz[V]*C.xyz[U]));
+   if IsZero(BarycentricDivide) then begin
+    BarycentricDivide:=0.0;
+   end else begin
+    BarycentricDivide:=1.0/BarycentricDivide;
+   end;
+   SkipListTriangle^.Vertices[0].Position:=TpvVector4.Create(Triangle^.Vertices[0].Position,B[U]);
+   SkipListTriangle^.Vertices[1].Position:=TpvVector4.Create(Triangle^.Vertices[1].Position,B[V]);
    SkipListTriangle^.Vertices[2].Position:=TpvVector4.Create(Triangle^.Vertices[2].Position,0.0);
-   SkipListTriangle^.Vertices[0].Normal:=TpvVector4.Create(Triangle^.Vertices[0].Normal,Triangle.C[Triangle^.U]);
-   SkipListTriangle^.Vertices[1].Normal:=TpvVector4.Create(Triangle^.Vertices[1].Normal,Triangle.C[Triangle^.V]);
+   SkipListTriangle^.Vertices[0].Normal:=TpvVector4.Create(Triangle^.Vertices[0].Normal,C[U]);
+   SkipListTriangle^.Vertices[1].Normal:=TpvVector4.Create(Triangle^.Vertices[1].Normal,C[V]);
    SkipListTriangle^.Vertices[2].Normal:=TpvVector4.Create(Triangle^.Vertices[2].Normal,0.0);
    SkipListTriangle^.Vertices[0].Tangent:=TpvVector4.Create(Triangle^.Vertices[0].Tangent,0.0);
    SkipListTriangle^.Vertices[1].Tangent:=TpvVector4.Create(Triangle^.Vertices[1].Tangent,0.0);
@@ -1972,8 +1702,8 @@ begin
     end;
    end;
    SkipListTriangle^.Vertices[0].TexCoord:=TpvVector4.Create(Triangle^.Vertices[0].TexCoord,0.0,Triangle^.Normal.x);
-   TpvUInt32(pointer(@SkipListTriangle^.Vertices[0].TexCoord.z)^):=(Triangle^.U shl 16) or (Triangle^.V and $ffff);
-   SkipListTriangle^.Vertices[1].TexCoord:=TpvVector4.Create(Triangle^.Vertices[1].TexCoord,Triangle.BarycentricDivide,Triangle^.Normal.y);
+   TpvUInt32(pointer(@SkipListTriangle^.Vertices[0].TexCoord.z)^):=(U shl 16) or (V and $ffff);
+   SkipListTriangle^.Vertices[1].TexCoord:=TpvVector4.Create(Triangle^.Vertices[1].TexCoord,BarycentricDivide,Triangle^.Normal.y);
    SkipListTriangle^.Vertices[2].TexCoord:=TpvVector4.Create(Triangle^.Vertices[2].TexCoord,0.0,Triangle^.Normal.z);
    SkipListTriangle^.Material:=Triangle^.Material;
    SkipListTriangle^.Flags:=Triangle^.Flags;
@@ -2009,6 +1739,9 @@ begin
   end;
   SetLength(fSkipListTriangleIndices,TriangleIndex);
  end;
+ FreeAndNil(fRoot);
+ SetLength(fNodes,0);
+ SetLength(fTriangles,0);
 end;
 
 function TpvStaticTriangleBVH.RayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;FastCheck,Exact:boolean;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
@@ -2064,71 +1797,6 @@ begin
   end;
  end;
 end;
-{var StackPointer,Index:TpvInt32;
-    Node:TpvStaticTriangleBVHNode;
-    Triangle:PpvStaticTriangleBVHTriangle;
-    Time,u,v:TpvFloat;
-    OK:boolean;
-    Stack:array[0..63] of TpvStaticTriangleBVHNode;
-begin
- result:=false;
- if assigned(fRoot) then begin
-  Stack[0]:=fRoot;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   Node:=Stack[StackPointer];
-   repeat
-    if AABBRayIntersection(Node.fAABB,Ray,Time) then begin
-     if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-      for Index:=0 to Node.fCountTriangleIndices-1 do begin
-       Triangle:=@fTriangles[Node.fTriangleIndices[Index]];
-       if (Triangle^.Tag<>AvoidTag) and (Triangle^.Tag<>AvoidOtherTag) and ((Triangle^.Flags and Flags)<>0) then begin
-        if Exact then begin
-         OK:=TriangleRayIntersectionExact(Triangle^,Ray,Time);
-        end else begin
-         OK:=TriangleRayIntersectionLazy(Triangle^,Ray,Time,u,v);
-         if OK and
-            (((u<(-ASLF_EPSILON)) or (u>(1.0+ASLF_EPSILON)) or
-              (v<(-ASLF_EPSILON)) or ((u+v)>(1.0+ASLF_EPSILON))) or
-             ((fTriangles[Node.fTriangleIndices[Index]].AvoidSelfShadowingTag=AvoidSelfShadowingTag) and
-              (Time<=SELF_SHADOW_EPSILON))
-            ) then begin
-          OK:=false;
-         end;
-        end;
-        if OK then begin
-         if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-          result:=true;
-          Intersection.Time:=Time;
-          if FastCheck then begin
-           exit;
-          end;
-          Intersection.Triangle:=Triangle;
-          Intersection.HitPoint:=Ray.Origin+(Ray.Direction*Time);
-          TriangleInterpolation(Intersection.Triangle^,Intersection.HitPoint,Intersection.Barycentrics,Intersection.Normal,Intersection.Tangent,Intersection.Bitangent,Intersection.TexCoord);
-         end;
-        end;
-       end;
-      end;
-      if assigned(Node.fLeft) then begin
-       if assigned(Node.fRight) then begin
-        Stack[StackPointer]:=Node.fRight;
-        inc(StackPointer);
-       end;
-       Node:=Node.fLeft;
-       continue;
-      end else if assigned(Node.fRight) then begin
-       Node:=Node.fRight;
-       continue;
-      end;
-     end;
-    end;
-    break;
-   until false;
-  end;
- end;
-end;    }
 
 function TpvStaticTriangleBVH.ExactRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
 var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
@@ -2167,54 +1835,6 @@ begin
   end;
  end;
 end;
-{var StackPointer,Index:TpvInt32;
-    Node:TpvStaticTriangleBVHNode;
-    Triangle:PpvStaticTriangleBVHTriangle;
-    Time:TpvFloat;
-    Stack:array[0..63] of TpvStaticTriangleBVHNode;
-begin
- result:=false;
- if assigned(fRoot) then begin
-  Stack[0]:=fRoot;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   Node:=Stack[StackPointer];
-   repeat
-    if AABBRayIntersection(Node.fAABB,Ray,Time) then begin
-     if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-      for Index:=0 to Node.fCountTriangleIndices-1 do begin
-       Triangle:=@fTriangles[Node.fTriangleIndices[Index]];
-       if ((Triangle^.Tag<>AvoidTag) and (Triangle^.Tag<>AvoidOtherTag)) and (Triangle^.AvoidSelfShadowingTag<>AvoidSelfShadowingTag) and ((Triangle^.Flags and Flags)<>0) then begin
-        if TriangleRayIntersectionExact(Triangle^,Ray,Time) then begin
-         if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-          Intersection.Time:=Time;
-          Intersection.Triangle:=Triangle;
-          Intersection.HitPoint:=Ray.Origin+(Ray.Direction*Time);
-          TriangleInterpolation(Intersection.Triangle^,Intersection.HitPoint,Intersection.Barycentrics,Intersection.Normal,Intersection.Tangent,Intersection.Bitangent,Intersection.TexCoord);
-          result:=true;
-         end;
-        end;
-       end;
-      end;
-      if assigned(Node.fLeft) then begin
-       if assigned(Node.fRight) then begin
-        Stack[StackPointer]:=Node.fRight;
-        inc(StackPointer);
-       end;
-       Node:=Node.fLeft;
-       continue;
-      end else if assigned(Node.fRight) then begin
-       Node:=Node.fRight;
-       continue;
-      end;
-     end;
-    end;
-    break;
-   until false;
-  end;
- end;
-end;     }
 
 function TpvStaticTriangleBVH.FastRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
 var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
@@ -2250,52 +1870,6 @@ begin
   end;
  end;
 end;
-{var StackPointer,Index:TpvInt32;
-    Node:TpvStaticTriangleBVHNode;
-    Triangle:PpvStaticTriangleBVHTriangle;
-    Time:TpvFloat;
-    Stack:array[0..63] of TpvStaticTriangleBVHNode;
-begin
- result:=false;
- if assigned(fRoot) then begin
-  Stack[0]:=fRoot;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   Node:=Stack[StackPointer];
-   repeat
-    if AABBRayIntersection(Node.fAABB,Ray,Time) then begin
-     if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-      for Index:=0 to Node.fCountTriangleIndices-1 do begin
-       Triangle:=@fTriangles[Node.fTriangleIndices[Index]];
-       if ((Triangle^.Tag<>AvoidTag) and (Triangle^.Tag<>AvoidOtherTag)) and (Triangle^.AvoidSelfShadowingTag<>AvoidSelfShadowingTag) and ((Triangle^.Flags and Flags)<>0) then begin
-        if TriangleRayIntersectionExact(Triangle^,Ray,Time) then begin
-         if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
-          result:=true;
-          Intersection.Time:=Time;
-          exit;
-         end;
-        end;
-       end;
-      end;
-      if assigned(Node.fLeft) then begin
-       if assigned(Node.fRight) then begin
-        Stack[StackPointer]:=Node.fRight;
-        inc(StackPointer);
-       end;
-       Node:=Node.fLeft;
-       continue;
-      end else if assigned(Node.fRight) then begin
-       Node:=Node.fRight;
-       continue;
-      end;
-     end;
-    end;
-    break;
-   until false;
-  end;
- end;
-end;}
 
 function TpvStaticTriangleBVH.CountRayIntersections(const Ray:TpvStaticTriangleBVHRay;const Flags:TpvUInt32=$ffffffff):TpvInt32;
 var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
@@ -2325,44 +1899,6 @@ begin
   end;
  end;
 end;
-{var StackPointer,Index:TpvInt32;
-    Node:TpvStaticTriangleBVHNode;
-    Triangle:PpvStaticTriangleBVHTriangle;
-    Time:TpvFloat;
-    Stack:array[0..63] of TpvStaticTriangleBVHNode;
-begin
- result:=0;
- if assigned(fRoot) then begin
-  Stack[0]:=fRoot;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   Node:=Stack[StackPointer];
-   repeat
-    if AABBRayIntersection(Node.fAABB,Ray,Time) then begin
-     for Index:=0 to Node.fCountTriangleIndices-1 do begin
-      Triangle:=@fTriangles[Node.fTriangleIndices[Index]];
-      if TriangleRayIntersectionExact(Triangle^,Ray,Time) then begin
-       inc(result);
-      end;
-     end;
-     if assigned(Node.fLeft) then begin
-      if assigned(Node.fRight) then begin
-       Stack[StackPointer]:=Node.fRight;
-       inc(StackPointer);
-      end;
-      Node:=Node.fLeft;
-      continue;
-     end else if assigned(Node.fRight) then begin
-      Node:=Node.fRight;
-      continue;
-     end;
-    end;
-    break;
-   until false;
-  end;
- end;
-end;}
 
 function TpvStaticTriangleBVH.LineIntersection(const v0,v1:TpvVector3;const Exact:boolean=true;const Flags:TpvUInt32=$ffffffff):boolean;
 var Ray:TpvStaticTriangleBVHRay;
