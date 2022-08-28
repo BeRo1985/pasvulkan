@@ -944,7 +944,7 @@ begin
    Stack.Push(NewStackItem);
    while Stack.Pop(StackItem) do begin
     Node:=@Nodes[StackItem.NodeID];
-    if Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection) then begin
+    if Node^.AABB.Contains(aRayOrigin) or Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection) then begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time) then begin
       if (not result) or (Time<aTime) then begin
        aTime:=Time;
@@ -993,8 +993,7 @@ begin
    Stack.Push(NewStackItem);
    while Stack.Pop(StackItem) do begin
     Node:=@Nodes[StackItem.NodeID];
-    if Node^.AABB.RayIntersection(RayOrigin,RayDirection,Time) and
-       ((Time>=0.0) and (Time<=RayLength)) then begin
+    if Node^.AABB.LineIntersection(aFrom,aTo) then begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time) then begin
       if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
        aTime:=Time;
