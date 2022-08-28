@@ -741,7 +741,7 @@ begin
       NewStackItem.Parent:=StackItem.NodeID;
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) and (Node^.Children[0]<NodeCount) then begin
+     if (Node^.Children[0]>=0) and (Node^.Children[0]<NodeCount) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       NewStackItem.Parent:=StackItem.NodeID;
       Stack.Push(NewStackItem);
@@ -781,7 +781,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) and (Node^.Children[0]<NodeCount) then begin
+     if (Node^.Children[0]>=0) and (Node^.Children[0]<NodeCount) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
@@ -839,7 +839,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) then begin
+     if (Node^.Children[0]>=0) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
@@ -876,7 +876,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) then begin
+     if (Node^.Children[0]>=0) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
@@ -913,7 +913,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) then begin
+     if (Node^.Children[0]>=0) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
@@ -965,7 +965,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) then begin
+     if (Node^.Children[0]>=0) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
@@ -1019,7 +1019,7 @@ begin
       NewStackItem.NodeID:=Node^.Children[1];
       Stack.Push(NewStackItem);
      end;
-     if (Node^.Children[1]>=0) then begin
+     if (Node^.Children[0]>=0) then begin
       NewStackItem.NodeID:=Node^.Children[0];
       Stack.Push(NewStackItem);
      end;
