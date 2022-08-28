@@ -12805,8 +12805,10 @@ var VisibleBit:TpvUInt32;
    end;
   end;
  end;
-var NodeIndex:TpvSizeInt;
+var NodeIndex,ViewIndex:TpvSizeInt;
+    PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Scene:TpvScene3D.TGroup.TScene;
+    OK:boolean;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
@@ -12816,8 +12818,24 @@ begin
    end;
    Scene:=fScenes[aInFlightFrameIndex];
    if assigned(Scene) then begin
-    for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
-     ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+    PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+    if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+     OK:=true;
+    end else begin
+     OK:=false;
+     for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+      ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+      if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+         fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+       OK:=true;
+       break;
+      end;
+     end;
+    end;
+    if OK then begin
+     for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
+      ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+     end;
     end;
    end;
   end else begin
