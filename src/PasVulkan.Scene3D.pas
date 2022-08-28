@@ -2991,16 +2991,19 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TB
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHSkipListNode:PpvStaticTriangleBVHSkipListNode;
+      StaticAABBTreeNode:TpvBVHStaticAABBTree.PTreeNode;
       MetaData:TpvInt32;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
-var TriangleIndex,NodeIndexCounter,Index,OtherIndex:TpvSizeInt;
+var TriangleIndex,NodeIndexCounter,Index,OtherIndex,x,y,z:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
     StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
     StackItem,NewStackItem:TStackItem;
     Stack:TStack;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
+    TemporaryAABB:TpvAABB;
+    StaticAABBTree:TpvBVHStaticAABBTree;
 begin
 
  fNodes.Clear;
@@ -3042,41 +3045,125 @@ begin
       fAABB.Min:=fStaticTriangleBVH.SkipListNodes[0].AABBMin;
       fAABB.Max:=fStaticTriangleBVH.SkipListNodes[0].AABBMax;
 
-      Stack.Initialize;
-      try
-       NewStackItem.Node:=nil;
-       NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[0];
-       NewStackItem.MetaData:=0;
-       Stack.Push(NewStackItem);
-       while Stack.Pop(StackItem) do begin
-        if (not assigned(StackItem.Node)) or (StackItem.Node.fLevel<aMaxDepth) then begin
-         NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
-         if not assigned(fRoot) then begin
-          fRoot:=NewStackItem.Node;
-         end;
-         if assigned(StackItem.Node) then begin
-          if StackItem.MetaData>0 then begin
-           StackItem.Node.fRight:=NewStackItem.Node;
-          end else begin
-           StackItem.Node.fLeft:=NewStackItem.Node;
+      case fSubdivisonMode of
+
+       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid,
+       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
+
+        StaticAABBTree:=TpvBVHStaticAABBTree.Create;
+        try
+
+         case fSubdivisonMode of
+
+          TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid:begin
+           for z:=0 to fSubdivisonOneDimensionSize-1 do begin
+            TemporaryAABB.Min.z:=FloatLerp(fAABB.Min.z,fAABB.Max.z,z/fSubdivisonOneDimensionSize);
+            TemporaryAABB.Max.z:=FloatLerp(fAABB.Min.z,fAABB.Max.z,(z+1)/fSubdivisonOneDimensionSize);
+            for y:=0 to fSubdivisonOneDimensionSize-1 do begin
+             TemporaryAABB.Min.y:=FloatLerp(fAABB.Min.y,fAABB.Max.y,y/fSubdivisonOneDimensionSize);
+             TemporaryAABB.Max.y:=FloatLerp(fAABB.Min.y,fAABB.Max.y,(y+1)/fSubdivisonOneDimensionSize);
+             for x:=0 to fSubdivisonOneDimensionSize-1 do begin
+              TemporaryAABB.Min.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,z/fSubdivisonOneDimensionSize);
+              TemporaryAABB.Max.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,(z+1)/fSubdivisonOneDimensionSize);
+              StaticAABBTree.CreateProxy(TemporaryAABB,0);
+             end;
+            end;
+           end;
           end;
+
+          TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
+
+          end;
+
+          else begin
+          end;
+
          end;
-         NewStackItem.Node.fAABB.Min:=StackItem.StaticTriangleBVHSkipListNode^.AABBMin;
-         NewStackItem.Node.fAABB.Max:=StackItem.StaticTriangleBVHSkipListNode^.AABBMax;
-         if StackItem.StaticTriangleBVHSkipListNode^.Right<>TpvUInt32($ffffffff) then begin
-          NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Right];
-          NewStackItem.MetaData:=1;
-          Stack.Push(NewStackItem);
-         end;
-         if StackItem.StaticTriangleBVHSkipListNode^.Left<>TpvUInt32($ffffffff) then begin
-          NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Left];
+
+         StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
+
+         Stack.Initialize;
+         try
+          NewStackItem.Node:=nil;
+          NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StaticAABBTree.Root];
           NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
+          while Stack.Pop(StackItem) do begin
+           if (not assigned(StackItem.Node)) {or (StackItem.Node.fLevel<aMaxDepth)} then begin
+            NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
+            if not assigned(fRoot) then begin
+             fRoot:=NewStackItem.Node;
+            end;
+            if assigned(StackItem.Node) then begin
+             if StackItem.MetaData>0 then begin
+              StackItem.Node.fRight:=NewStackItem.Node;
+             end else begin
+              StackItem.Node.fLeft:=NewStackItem.Node;
+             end;
+            end;
+            NewStackItem.Node.fAABB:=StackItem.StaticAABBTreeNode^.AABB;
+            if StackItem.StaticAABBTreeNode^.Children[1]>=0 then begin
+             NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StackItem.StaticAABBTreeNode^.Children[1]];
+             NewStackItem.MetaData:=1;
+             Stack.Push(NewStackItem);
+            end;
+            if StackItem.StaticAABBTreeNode^.Children[0]>=0 then begin
+             NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StackItem.StaticAABBTreeNode^.Children[0]];
+             NewStackItem.MetaData:=0;
+             Stack.Push(NewStackItem);
+            end;
+           end;
+          end;
+         finally
+          Stack.Finalize;
          end;
+
+        finally
+         FreeAndNil(StaticAABBTree);
         end;
+
        end;
-      finally
-       Stack.Finalize;
+
+       else {TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:}begin
+
+        Stack.Initialize;
+        try
+         NewStackItem.Node:=nil;
+         NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[0];
+         NewStackItem.MetaData:=0;
+         Stack.Push(NewStackItem);
+         while Stack.Pop(StackItem) do begin
+          if (not assigned(StackItem.Node)) or (StackItem.Node.fLevel<aMaxDepth) then begin
+           NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
+           if not assigned(fRoot) then begin
+            fRoot:=NewStackItem.Node;
+           end;
+           if assigned(StackItem.Node) then begin
+            if StackItem.MetaData>0 then begin
+             StackItem.Node.fRight:=NewStackItem.Node;
+            end else begin
+             StackItem.Node.fLeft:=NewStackItem.Node;
+            end;
+           end;
+           NewStackItem.Node.fAABB.Min:=StackItem.StaticTriangleBVHSkipListNode^.AABBMin;
+           NewStackItem.Node.fAABB.Max:=StackItem.StaticTriangleBVHSkipListNode^.AABBMax;
+           if StackItem.StaticTriangleBVHSkipListNode^.Right<>TpvUInt32($ffffffff) then begin
+            NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Right];
+            NewStackItem.MetaData:=1;
+            Stack.Push(NewStackItem);
+           end;
+           if StackItem.StaticTriangleBVHSkipListNode^.Left<>TpvUInt32($ffffffff) then begin
+            NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Left];
+            NewStackItem.MetaData:=0;
+            Stack.Push(NewStackItem);
+           end;
+          end;
+         end;
+        finally
+         Stack.Finalize;
+        end;
+
+       end;
       end;
 
       Stack.Initialize;
