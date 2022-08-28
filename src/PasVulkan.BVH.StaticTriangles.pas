@@ -273,11 +273,11 @@ type TpvStaticTriangleBVHTriangleVertex=record
        function IsOpenSpacePerEvenOddRule(const Position:TpvVector3;var NearestNormal,NearestNormalPosition:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
        function IsOpenSpacePerNormals(const Position:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
        function IsOpenSpacePerNormals(const Position:TpvVector3;var NearestNormal,NearestNormalPosition:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean; overload;
-      published
+{     published
        property Root:TpvStaticTriangleBVHNode read fRoot write fRoot;
       public
        property Nodes:TpvStaticTriangleBVHNodes read fNodes write fNodes;
-       property Triangles:TpvStaticTriangleBVHTriangles read fTriangles write fTriangles;
+       property Triangles:TpvStaticTriangleBVHTriangles read fTriangles write fTriangles;}
       published
        property CountTriangles:TpvInt32 read fCountTriangles write fCountTriangles;
       public

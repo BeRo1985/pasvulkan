@@ -2879,11 +2879,12 @@ begin
      fStaticTriangleBVH.KDTreeMode:=false;
      fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,64);
 
-     if assigned(fStaticTriangleBVH.Root) then begin
+     if length(fStaticTriangleBVH.SkipListNodes)>0 then begin
 
-      fAABB:=fStaticTriangleBVH.Root.AABB;
+      fAABB.Min:=fStaticTriangleBVH.SkipListNodes[0].AABBMin;
+      fAABB.Max:=fStaticTriangleBVH.SkipListNodes[0].AABBMax;
 
-      Stack.Initialize;
+{     Stack.Initialize;
       try
        NewStackItem.Node:=nil;
        NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
@@ -2917,7 +2918,7 @@ begin
        end;
       finally
        Stack.Finalize;
-      end;
+      end;}
 
       Stack.Initialize;
       try
