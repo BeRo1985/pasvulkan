@@ -176,6 +176,9 @@ type { TpvBVHDynamicAABBTree }
        procedure Rebalance(const aIterations:TpvSizeInt);
        procedure Rebuild;
        function ComputeHeight:TpvSizeInt;
+       function GetHeight:TpvSizeInt;
+       function GetAreaRatio:TpvDouble;
+       function GetMaxBalance:TpvSizeInt;
        procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TGetUserDataIndex);
      end;
 
@@ -649,7 +652,49 @@ begin
     Stack.Push(NewStackItem);
    end;
   end;
+ end;
+end;
 
+function TpvBVHDynamicAABBTree.GetHeight:TpvSizeInt;
+begin
+ if Root>=0 then begin
+  result:=Nodes[Root].Height;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.GetAreaRatio:TpvDouble;
+var NodeID:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=0.0;
+ if Root>=0 then begin
+  for NodeID:=0 to NodeCount-1 do begin
+   Node:=@Nodes[NodeID];
+   if Node^.Height>=0 then begin
+    result:=result+Node^.AABB.Cost;
+   end;
+  end;
+  result:=result/Nodes[Root].AABB.Cost;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.GetMaxBalance:TpvSizeInt;
+var NodeID,Balance:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+begin
+ result:=0;
+ if Root>=0 then begin
+  for NodeID:=0 to NodeCount-1 do begin
+   Node:=@Nodes[NodeID];
+   if (Node^.Height>1) and (Node^.Children[0]>=0) and (Node^.Children[1]>=0) then begin
+    Balance:=abs(Nodes[Node^.Children[0]].Height-Nodes[Node^.Children[1]].Height);
+    if result<Balance then begin
+     result:=Balance;
+    end;
+   end;
+  end;
  end;
 end;
 
