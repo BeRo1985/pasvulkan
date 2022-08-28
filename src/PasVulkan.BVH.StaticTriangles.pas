@@ -2385,11 +2385,11 @@ end;
 
 function TpvStaticTriangleBVH.IsOpenSpacePerEvenOddRule(const Position:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean;
 const Directions:array[0..5] of TpvVector3=((x:-1.0;y:0.0;z:0.0),
-                                          (x:1.0;y:0.0;z:0.0),
-                                          (x:0.0;y:1.0;z:0.0),
-                                          (x:0.0;y:-1.0;z:0.0),
-                                          (x:0.0;y:0.0;z:1.0),
-                                          (x:0.0;y:0.0;z:-1.0));
+                                            (x:1.0;y:0.0;z:0.0),
+                                            (x:0.0;y:1.0;z:0.0),
+                                            (x:0.0;y:-1.0;z:0.0),
+                                            (x:0.0;y:0.0;z:1.0),
+                                            (x:0.0;y:0.0;z:-1.0));
 var DirectionIndex,Count:TpvInt32;
     Ray:TpvStaticTriangleBVHRay;
 begin
@@ -2406,11 +2406,11 @@ end;
 
 function TpvStaticTriangleBVH.IsOpenSpacePerEvenOddRule(const Position:TpvVector3;var NearestNormal,NearestNormalPosition:TpvVector3;const Flags:TpvUInt32=$ffffffff):boolean;
 const Directions:array[0..5] of TpvVector3=((x:-1.0;y:0.0;z:0.0),
-                                          (x:1.0;y:0.0;z:0.0),
-                                          (x:0.0;y:1.0;z:0.0),
-                                          (x:0.0;y:-1.0;z:0.0),
-                                          (x:0.0;y:0.0;z:1.0),
-                                          (x:0.0;y:0.0;z:-1.0));
+                                            (x:1.0;y:0.0;z:0.0),
+                                            (x:0.0;y:1.0;z:0.0),
+                                            (x:0.0;y:-1.0;z:0.0),
+                                            (x:0.0;y:0.0;z:1.0),
+                                            (x:0.0;y:0.0;z:-1.0));
 var DirectionIndex,Count:TpvInt32;
     Ray:TpvStaticTriangleBVHRay;
     Intersection:TpvStaticTriangleBVHIntersection;

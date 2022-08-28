@@ -2873,6 +2873,7 @@ begin
       StaticTriangleBVHTriangle^.Vertices[1].Normal:=BakedTriangle.Normals[1];
       StaticTriangleBVHTriangle^.Vertices[2].Normal:=BakedTriangle.Normals[2];
       StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
+      StaticTriangleBVHTriangle^.Flags:=$ffffffff;
       StaticTriangleBVHTriangle^.Initialize;
      end;
 
