@@ -2884,7 +2884,7 @@ begin
       fAABB.Min:=fStaticTriangleBVH.SkipListNodes[0].AABBMin;
       fAABB.Max:=fStaticTriangleBVH.SkipListNodes[0].AABBMax;
 
-{     Stack.Initialize;
+      Stack.Initialize;
       try
        NewStackItem.Node:=nil;
        NewStackItem.StaticTriangleBVHNode:=fStaticTriangleBVH.Root;
@@ -2918,7 +2918,7 @@ begin
        end;
       finally
        Stack.Finalize;
-      end;}
+      end;
 
       Stack.Initialize;
       try
