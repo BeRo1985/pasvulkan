@@ -93,19 +93,18 @@ interface
 
 uses SysUtils,Classes,Math,PasVulkan.Types,PasVulkan.Math;
 
-type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
-     TpvStaticTriangleBVHTriangleVertex=record
+type TpvStaticTriangleBVHTriangleVertex=record
       Position:TpvVector3;
       Normal:TpvVector3;
       Tangent:TpvVector3;
       Bitangent:TpvVector3;
       TexCoord:TpvVector2;
      end;
+     PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
 
-     PpvStaticTriangleBVHTriangleVertices=^TpvStaticTriangleBVHTriangleVertices;
      TpvStaticTriangleBVHTriangleVertices=array[0..2] of TpvStaticTriangleBVHTriangleVertex;
+     PpvStaticTriangleBVHTriangleVertices=^TpvStaticTriangleBVHTriangleVertices;
 
-     PpvStaticTriangleBVHTriangle=^TpvStaticTriangleBVHTriangle;
      TpvStaticTriangleBVHTriangle=record
       public
        Vertices:TpvStaticTriangleBVHTriangleVertices;
@@ -126,24 +125,65 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
       public
        procedure Initialize;
      end;
+     PpvStaticTriangleBVHTriangle=^TpvStaticTriangleBVHTriangle;
 
      TpvStaticTriangleBVHTriangles=array of TpvStaticTriangleBVHTriangle;
 
-     PpvStaticTriangleBVHTriangleIndex=^TpvStaticTriangleBVHTriangleIndex;
      TpvStaticTriangleBVHTriangleIndex=TpvUInt32;
+     PpvStaticTriangleBVHTriangleIndex=^TpvStaticTriangleBVHTriangleIndex;
 
      TpvStaticTriangleBVHTriangleIndices=array of TpvStaticTriangleBVHTriangleIndex;
 
-     PpvStaticTriangleBVHRay=^TpvStaticTriangleBVHRay;
      TpvStaticTriangleBVHRay=record
       Origin:TpvVector3;
       Direction:TpvVector3;
      end;
+     PpvStaticTriangleBVHRay=^TpvStaticTriangleBVHRay;
 
-     PpvStaticTriangleBVHIntersection=^TpvStaticTriangleBVHIntersection;
+     TpvStaticTriangleBVHSkipListNode=packed record
+      AABBMin:TpvVector3;
+      Flags:TpvUInt32;
+      AABBMax:TpvVector3;
+      SkipCount:TpvUInt32;
+      FirstTriangleIndex:TpvUInt32;
+      CountTriangleIndices:TpvUInt32;
+      MetaData:TpvUInt32;
+     end;
+     PpvStaticTriangleBVHSkipListNode=^TpvStaticTriangleBVHSkipListNode;
+
+     TpvStaticTriangleBVHSkipListNodes=array of TpvStaticTriangleBVHSkipListNode;
+
+     TpvStaticTriangleBVHSkipListTriangleVertex=packed record
+      Position:TpvVector4;
+      Normal:TpvVector4;
+      Tangent:TpvVector4;
+      TexCoord:TpvVector4;
+     end;
+     PpvStaticTriangleBVHSkipListTriangleVertex=^TpvStaticTriangleBVHSkipListTriangleVertex;
+
+     TpvStaticTriangleBVHSkipListTriangleVertices=array[0..2] of TpvStaticTriangleBVHSkipListTriangleVertex;
+     PpvStaticTriangleBVHSkipListTriangleVertices=^TpvStaticTriangleBVHSkipListTriangleVertex;
+
+     TpvStaticTriangleBVHSkipListTriangle=packed record
+      Vertices:TpvStaticTriangleBVHSkipListTriangleVertices;
+      Material:TpvUInt32;
+      Flags:TpvUInt32;
+      Tag:TpvUInt32;
+      AvoidSelfShadowingTag:TpvUInt32;
+     end;
+     PpvStaticTriangleBVHSkipListTriangle=^TpvStaticTriangleBVHSkipListTriangle;
+
+     TpvStaticTriangleBVHSkipListTriangles=array of TpvStaticTriangleBVHSkipListTriangle;
+
+     PpvStaticTriangleBVHSkipListTriangleIndex=^TpvStaticTriangleBVHSkipListTriangleIndex;
+     TpvStaticTriangleBVHSkipListTriangleIndex=TpvUInt32;
+
+     TpvStaticTriangleBVHSkipListTriangleIndices=array of TpvStaticTriangleBVHSkipListTriangleIndex;
+
      TpvStaticTriangleBVHIntersection=record
       Time:TpvFloat;
       Triangle:PpvStaticTriangleBVHTriangle;
+      SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
       HitPoint:TpvVector3;
       Barycentrics:TpvVector3;
       Normal:TpvVector3;
@@ -151,6 +191,7 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
       Bitangent:TpvVector3;
       TexCoord:TpvVector2;
      end;
+     PpvStaticTriangleBVHIntersection=^TpvStaticTriangleBVHIntersection;
 
      TpvStaticTriangleBVH=class;
 
@@ -202,51 +243,12 @@ type PpvStaticTriangleBVHTriangleVertex=^TpvStaticTriangleBVHTriangleVertex;
 
      TpvStaticTriangleBVHNodes=array of TpvStaticTriangleBVHNode;
 
-     PpvStaticTriangleBVHSkipListNode=^TpvStaticTriangleBVHSkipListNode;
-     TpvStaticTriangleBVHSkipListNode=packed record // 48 bytes
-      AABBMin:TpvVector4;
-      AABBMax:TpvVector4;
-      Flags:TpvUInt32;
-      SkipToNode:TpvUInt32;
-      FirstTriangleIndex:TpvUInt32;
-      CountTriangleIndices:TpvUInt32;
-     end;
-
-     TpvStaticTriangleBVHSkipListNodes=array of TpvStaticTriangleBVHSkipListNode;
-
-     PpvStaticTriangleBVHSkipListTriangleVertex=^TpvStaticTriangleBVHSkipListTriangleVertex;
-     TpvStaticTriangleBVHSkipListTriangleVertex=packed record // 64 bytes
-      Position:TpvVector4;
-      Normal:TpvVector4;
-      Tangent:TpvVector4;
-      TexCoord:TpvVector4;
-     end;
-
-     PpvStaticTriangleBVHSkipListTriangleVertices=^TpvStaticTriangleBVHSkipListTriangleVertex;
-     TpvStaticTriangleBVHSkipListTriangleVertices=array[0..2] of TpvStaticTriangleBVHSkipListTriangleVertex;
-
-     PpvStaticTriangleBVHSkipListTriangle=^TpvStaticTriangleBVHSkipListTriangle;
-     TpvStaticTriangleBVHSkipListTriangle=packed record           // 80 bytes
-      Vertices:TpvStaticTriangleBVHSkipListTriangleVertices;      
-      Material:TpvUInt32;
-      Flags:TpvUInt32;
-      Tag:TpvUInt32;
-      AvoidSelfShadowingTag:TpvUInt32;
-     end;
-
-     TpvStaticTriangleBVHSkipListTriangles=array of TpvStaticTriangleBVHSkipListTriangle;
-
-     PpvStaticTriangleBVHSkipListTriangleIndex=^TpvStaticTriangleBVHSkipListTriangleIndex;
-     TpvStaticTriangleBVHSkipListTriangleIndex=TpvUInt32;
-
-     TpvStaticTriangleBVHSkipListTriangleIndices=array of TpvStaticTriangleBVHSkipListTriangleIndex;
-
-     PpvStaticTriangleBVHSweepEvent=^TpvStaticTriangleBVHSweepEvent;
      TpvStaticTriangleBVHSweepEvent=record
       Position:TpvFloat;
       Index:TpvInt32;
       Start:longbool;
      end;           
+     PpvStaticTriangleBVHSweepEvent=^TpvStaticTriangleBVHSweepEvent;
 
      TpvStaticTriangleBVH=class
       private
@@ -491,7 +493,7 @@ begin
  end;
 end;
 
-function AABBRayIntersection(const AABB:TpvAABB;const Ray:TpvStaticTriangleBVHRay;var Time:TpvFloat):boolean; overload;
+function AABBRayIntersection(const AABB:TpvAABB;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
 var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
     TimeMin,TimeMax:TpvFloat;
 begin
@@ -516,6 +518,87 @@ begin
  b.x:=(AABB.Max.x-Ray.Origin.x)*InvDirection.x;
  b.y:=(AABB.Max.y-Ray.Origin.y)*InvDirection.y;
  b.z:=(AABB.Max.z-Ray.Origin.z)*InvDirection.z;
+ if a.x<b.x then begin
+  AABBMin.x:=a.x;
+  AABBMax.x:=b.x;
+ end else begin
+  AABBMin.x:=b.x;
+  AABBMax.x:=a.x;
+ end;
+ if a.y<b.y then begin
+  AABBMin.y:=a.y;
+  AABBMax.y:=b.y;
+ end else begin
+  AABBMin.y:=b.y;
+  AABBMax.y:=a.y;
+ end;
+ if a.z<b.z then begin
+  AABBMin.z:=a.z;
+  AABBMax.z:=b.z;
+ end else begin
+  AABBMin.z:=b.z;
+  AABBMax.z:=a.z;
+ end;
+ if AABBMin.x<AABBMin.y then begin
+  if AABBMin.y<AABBMin.z then begin
+   TimeMin:=AABBMin.z;
+  end else begin
+   TimeMin:=AABBMin.y;
+  end;
+ end else begin
+  if AABBMin.x<AABBMin.z then begin
+   TimeMin:=AABBMin.z;
+  end else begin
+   TimeMin:=AABBMin.x;
+  end;
+ end;
+ if AABBMax.x<AABBMax.y then begin
+  if AABBMax.x<AABBMax.z then begin
+   TimeMax:=AABBMax.x;
+  end else begin
+   TimeMax:=AABBMax.z;
+  end;
+ end else begin
+  if AABBMax.y<AABBMax.z then begin
+   TimeMax:=AABBMax.y;
+  end else begin
+   TimeMax:=AABBMax.z;
+  end;
+ end;
+ if (TimeMax<0) or (TimeMin>TimeMax) then begin
+  Time:=TimeMax;
+  result:=false;
+ end else begin
+  Time:=TimeMin;
+  result:=true;
+ end;
+end;
+
+function AABBRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
+var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+    TimeMin,TimeMax:TpvFloat;
+begin
+ if IsZero(Ray.Direction.x) then begin
+  InvDirection.x:=0.0;
+ end else begin
+  InvDirection.x:=1.0/Ray.Direction.x;
+ end;
+ if IsZero(Ray.Direction.y) then begin
+  InvDirection.y:=0.0;
+ end else begin
+  InvDirection.y:=1.0/Ray.Direction.y;
+ end;
+ if IsZero(Ray.Direction.z) then begin
+  InvDirection.z:=0.0;
+ end else begin
+  InvDirection.z:=1.0/Ray.Direction.z;
+ end;
+ a.x:=(aAABBMin.x-Ray.Origin.x)*InvDirection.x;
+ a.y:=(aAABBMin.y-Ray.Origin.y)*InvDirection.y;
+ a.z:=(aAABBMin.z-Ray.Origin.z)*InvDirection.z;
+ b.x:=(aAABBMax.x-Ray.Origin.x)*InvDirection.x;
+ b.y:=(aAABBMax.y-Ray.Origin.y)*InvDirection.y;
+ b.z:=(aAABBMax.z-Ray.Origin.z)*InvDirection.z;
  if a.x<b.x then begin
   AABBMin.x:=a.x;
   AABBMax.x:=b.x;
@@ -612,7 +695,30 @@ begin
  end;
 end;
 
-function TriangleRayIntersectionExact(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;var Time:TpvFloat):boolean;
+function TriangleRayIntersectionExact(const Triangle:TpvStaticTriangleBVHSkipListTriangle;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
+var U,V:TpvUInt32;
+    Normal:TpvVector3;
+    h:TpvVector2;
+    BarycentricDivide,Beta,Gamma:TpvFloat;
+begin
+ result:=false;
+ Normal:=TpvVector3.InlineableCreate(Triangle.Vertices[0].TexCoord.w,Triangle.Vertices[1].TexCoord.w,Triangle.Vertices[2].TexCoord.w);
+ Time:=((Triangle.Vertices[0].Position.xyz-Ray.Origin)*Normal).Dot(TpvVector3.AllAxis)/(Ray.Direction*Normal).Dot(TpvVector3.AllAxis);
+ if Time>1e-9 then begin
+  U:=TpvUInt32(pointer(@Triangle.Vertices[0].TexCoord.z)^) shr 16;
+  V:=TpvUInt32(pointer(@Triangle.Vertices[0].TexCoord.z)^) and $ffff;
+  BarycentricDivide:=Triangle.Vertices[1].TexCoord.z;
+  h.u:=(Ray.Origin.xyz[U]+(Time*Ray.Direction.xyz[U]))-Triangle.Vertices[0].Position.xyz[U];
+  h.v:=(Ray.Origin.xyz[V]+(Time*Ray.Direction.xyz[V]))-Triangle.Vertices[0].Position.xyz[V];
+  Beta:=((Triangle.Vertices[0].Position.w*h.v)-(Triangle.Vertices[1].Position.w*h.u))*BarycentricDivide;
+  if Beta>=0.0 then begin
+   Gamma:=((Triangle.Vertices[1].Normal.w*h.u)-(Triangle.Vertices[0].Normal.w*h.v))*BarycentricDivide;
+   result:=(Gamma>=0.0) and ((Beta+Gamma)<=1.0);
+  end;
+ end;
+end;
+
+function TriangleRayIntersectionExact(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;out Time:TpvFloat):boolean; overload;
 var h:TpvVector2;
     Beta,Gamma:TpvFloat;
 begin
@@ -634,7 +740,33 @@ begin
  end;
 end;
 
-function TriangleRayIntersectionLazy(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;var Time,Beta,Gamma:TpvFloat):boolean;
+function TriangleRayIntersectionLazy(const Triangle:TpvStaticTriangleBVHSkipListTriangle;const Ray:TpvStaticTriangleBVHRay;out Time,Beta,Gamma:TpvFloat):boolean; overload;
+var U,V:TpvUInt32;
+    Normal:TpvVector3;
+    h:TpvVector2;
+    Det,BarycentricDivide:TpvFloat;
+begin
+ result:=false;
+ Normal:=TpvVector3.InlineableCreate(Triangle.Vertices[0].TexCoord.w,Triangle.Vertices[1].TexCoord.w,Triangle.Vertices[2].TexCoord.w);
+ Det:=(Ray.Direction*Normal).Dot(TpvVector3.AllAxis);
+ if abs(Det)>=COPLANAR_EPSILON then begin
+  Time:=((Triangle.Vertices[0].Position.xyz-Ray.Origin)*Normal).Dot(TpvVector3.AllAxis)/Det;
+  if Time>1e-9 then begin
+   U:=TpvUInt32(pointer(@Triangle.Vertices[0].TexCoord.z)^) shr 16;
+   V:=TpvUInt32(pointer(@Triangle.Vertices[0].TexCoord.z)^) and $ffff;
+   BarycentricDivide:=Triangle.Vertices[1].TexCoord.z;
+   h.u:=(Ray.Origin.xyz[U]+(Time*Ray.Direction.xyz[U]))-Triangle.Vertices[0].Position.xyz[U];
+   h.v:=(Ray.Origin.xyz[V]+(Time*Ray.Direction.xyz[V]))-Triangle.Vertices[0].Position.xyz[V];
+   Beta:=((Triangle.Vertices[0].Position.w*h.v)-(Triangle.Vertices[1].Position.w*h.u))*BarycentricDivide;
+   if (Beta>=-BARY_EPSILON) and (Beta<=(1.0+BARY_EPSILON)) then begin
+    Gamma:=((Triangle.Vertices[1].Normal.w*h.u)-(Triangle.Vertices[0].Normal.w*h.v))*BarycentricDivide;
+    result:=(Gamma>=-BARY_EPSILON) and ((Beta+Gamma)<=(1.0+BARY_EPSILON));
+   end;
+  end;
+ end;
+end;
+
+function TriangleRayIntersectionLazy(const Triangle:TpvStaticTriangleBVHTriangle;const Ray:TpvStaticTriangleBVHRay;out Time,Beta,Gamma:TpvFloat):boolean; overload;
 var h:TpvVector2;
     Det:TpvFloat;
 begin
@@ -660,7 +792,7 @@ begin
  end;
 end;
 
-procedure TriangleInterpolation(const Triangle:TpvStaticTriangleBVHTriangle;const HitPoint:TpvVector3;var Barycentrics,Normal,Tangent,Bitangent:TpvVector3;var TexCoord:TpvVector2);
+procedure TriangleInterpolation(const Triangle:TpvStaticTriangleBVHTriangle;const HitPoint:TpvVector3;out Barycentrics,Normal,Tangent,Bitangent:TpvVector3;out TexCoord:TpvVector2); overload;
 var TempNormal,Cross:TpvVector3;
     WholeArea:TpvFloat;
 begin
@@ -681,6 +813,41 @@ begin
  Bitangent.z:=(Triangle.Vertices[0].Bitangent.z*Barycentrics.x)+(Triangle.Vertices[1].Bitangent.z*Barycentrics.y)+(Triangle.Vertices[2].Bitangent.z*Barycentrics.z);
  TexCoord.x:=(Triangle.Vertices[0].TexCoord.x*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.x*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.x*Barycentrics.z);
  TexCoord.y:=(Triangle.Vertices[0].TexCoord.y*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.y*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.y*Barycentrics.z);
+end;
+
+procedure TriangleInterpolation(const Triangle:TpvStaticTriangleBVHSkipListTriangle;const HitPoint:TpvVector3;out Barycentrics,Normal,Tangent,Bitangent:TpvVector3;out TexCoord:TpvVector2); overload;
+var TempNormal,Cross:TpvVector3;
+    Bitangents:array[0..2] of TpvVector3;
+    WholeArea:TpvFloat;
+begin
+ Cross:=(Triangle.Vertices[1].Position.xyz-Triangle.Vertices[0].Position.xyz).Cross(Triangle.Vertices[2].Position.xyz-Triangle.Vertices[0].Position.xyz);
+ TempNormal:=Cross.Normalize;
+ WholeArea:=TempNormal.Dot(Cross);
+ Barycentrics.x:=TempNormal.Dot((Triangle.Vertices[1].Position.xyz-HitPoint).Cross(Triangle.Vertices[2].Position.xyz-HitPoint))/WholeArea;
+ Barycentrics.y:=TempNormal.Dot((Triangle.Vertices[2].Position.xyz-HitPoint).Cross(Triangle.Vertices[0].Position.xyz-HitPoint))/WholeArea;
+ Barycentrics.z:=(1.0-Barycentrics.x)-Barycentrics.y;
+ Normal:=TpvVector3.InlineableCreate(
+  (Triangle.Vertices[0].Normal.x*Barycentrics.x)+(Triangle.Vertices[1].Normal.x*Barycentrics.y)+(Triangle.Vertices[2].Normal.x*Barycentrics.z),
+  (Triangle.Vertices[0].Normal.y*Barycentrics.x)+(Triangle.Vertices[1].Normal.y*Barycentrics.y)+(Triangle.Vertices[2].Normal.y*Barycentrics.z),
+  (Triangle.Vertices[0].Normal.z*Barycentrics.x)+(Triangle.Vertices[1].Normal.z*Barycentrics.y)+(Triangle.Vertices[2].Normal.z*Barycentrics.z)
+ ).Normalize;
+ Tangent:=TpvVector3.InlineableCreate(
+  (Triangle.Vertices[0].Tangent.x*Barycentrics.x)+(Triangle.Vertices[1].Tangent.x*Barycentrics.y)+(Triangle.Vertices[2].Tangent.x*Barycentrics.z),
+  (Triangle.Vertices[0].Tangent.y*Barycentrics.x)+(Triangle.Vertices[1].Tangent.y*Barycentrics.y)+(Triangle.Vertices[2].Tangent.y*Barycentrics.z),
+  (Triangle.Vertices[0].Tangent.z*Barycentrics.x)+(Triangle.Vertices[1].Tangent.z*Barycentrics.y)+(Triangle.Vertices[2].Tangent.z*Barycentrics.z)
+ ).Normalize;
+ Bitangents[0]:=Triangle.Vertices[0].Normal.xyz.Cross(Triangle.Vertices[0].Tangent.xyz).Normalize*Triangle.Vertices[0].Tangent.w;
+ Bitangents[1]:=Triangle.Vertices[1].Normal.xyz.Cross(Triangle.Vertices[1].Tangent.xyz).Normalize*Triangle.Vertices[1].Tangent.w;
+ Bitangents[2]:=Triangle.Vertices[2].Normal.xyz.Cross(Triangle.Vertices[2].Tangent.xyz).Normalize*Triangle.Vertices[2].Tangent.w;
+ Bitangent:=TpvVector3.InlineableCreate(
+  (Bitangents[0].x*Barycentrics.x)+(Bitangents[1].x*Barycentrics.y)+(Bitangents[2].x*Barycentrics.z),
+  (Bitangents[0].y*Barycentrics.x)+(Bitangents[1].y*Barycentrics.y)+(Bitangents[2].y*Barycentrics.z),
+  (Bitangents[0].z*Barycentrics.x)+(Bitangents[1].z*Barycentrics.y)+(Bitangents[2].z*Barycentrics.z)
+ ).Normalize;
+ TexCoord:=TpvVector2.InlineableCreate(
+  (Triangle.Vertices[0].TexCoord.x*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.x*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.x*Barycentrics.z),
+  (Triangle.Vertices[0].TexCoord.y*Barycentrics.x)+(Triangle.Vertices[1].TexCoord.y*Barycentrics.y)+(Triangle.Vertices[2].TexCoord.y*Barycentrics.z)
+ );
 end;
 
 constructor TpvStaticTriangleBVHNode.Create(AOwner:TpvStaticTriangleBVH);
@@ -1733,6 +1900,7 @@ procedure TpvStaticTriangleBVH.Build(const Triangles:TpvStaticTriangleBVHTriangl
 var i,j,k:TpvInt32;
     TriangleIndex:TpvUInt32;
     SkipListNode:PpvStaticTriangleBVHSkipListNode;
+    SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
 begin
@@ -1786,29 +1954,31 @@ begin
     SetLength(fSkipListTriangles,(TriangleIndex+1)*2);
    end;
    Triangle:=@fTriangles[i];
-   fSkipListTriangles[TriangleIndex].Vertices[0].Position:=TpvVector4.Create(Triangle^.Vertices[0].Position,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[1].Position:=TpvVector4.Create(Triangle^.Vertices[1].Position,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[2].Position:=TpvVector4.Create(Triangle^.Vertices[2].Position,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[0].Normal:=TpvVector4.Create(Triangle^.Vertices[0].Normal,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[1].Normal:=TpvVector4.Create(Triangle^.Vertices[1].Normal,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[2].Normal:=TpvVector4.Create(Triangle^.Vertices[2].Normal,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[0].Tangent:=TpvVector4.Create(Triangle^.Vertices[0].Tangent,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[1].Tangent:=TpvVector4.Create(Triangle^.Vertices[1].Tangent,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[2].Tangent:=TpvVector4.Create(Triangle^.Vertices[2].Tangent,0.0);
+   SkipListTriangle:=@fSkipListTriangles[TriangleIndex];
+   SkipListTriangle^.Vertices[0].Position:=TpvVector4.Create(Triangle^.Vertices[0].Position,Triangle.B[Triangle^.U]);
+   SkipListTriangle^.Vertices[1].Position:=TpvVector4.Create(Triangle^.Vertices[1].Position,Triangle.B[Triangle^.V]);
+   SkipListTriangle^.Vertices[2].Position:=TpvVector4.Create(Triangle^.Vertices[2].Position,0.0);
+   SkipListTriangle^.Vertices[0].Normal:=TpvVector4.Create(Triangle^.Vertices[0].Normal,Triangle.C[Triangle^.U]);
+   SkipListTriangle^.Vertices[1].Normal:=TpvVector4.Create(Triangle^.Vertices[1].Normal,Triangle.C[Triangle^.V]);
+   SkipListTriangle^.Vertices[2].Normal:=TpvVector4.Create(Triangle^.Vertices[2].Normal,0.0);
+   SkipListTriangle^.Vertices[0].Tangent:=TpvVector4.Create(Triangle^.Vertices[0].Tangent,0.0);
+   SkipListTriangle^.Vertices[1].Tangent:=TpvVector4.Create(Triangle^.Vertices[1].Tangent,0.0);
+   SkipListTriangle^.Vertices[2].Tangent:=TpvVector4.Create(Triangle^.Vertices[2].Tangent,0.0);
    for k:=0 to 2 do begin
     if (Triangle^.Vertices[k].Normal.Cross(Triangle^.Vertices[k].Tangent).Normalize).Dot(Triangle^.Vertices[k].Bitangent)<0.0 then begin
-     fSkipListTriangles[TriangleIndex].Vertices[k].Tangent.w:=-1.0;
+     SkipListTriangle^.Vertices[k].Tangent.w:=-1.0;
     end else begin
-     fSkipListTriangles[TriangleIndex].Vertices[k].Tangent.w:=1.0;
+     SkipListTriangle^.Vertices[k].Tangent.w:=1.0;
     end;
    end;
-   fSkipListTriangles[TriangleIndex].Vertices[0].TexCoord:=TpvVector4.Create(Triangle^.Vertices[0].TexCoord,0.0,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[1].TexCoord:=TpvVector4.Create(Triangle^.Vertices[1].TexCoord,0.0,0.0);
-   fSkipListTriangles[TriangleIndex].Vertices[2].TexCoord:=TpvVector4.Create(Triangle^.Vertices[2].TexCoord,0.0,0.0);
-   fSkipListTriangles[TriangleIndex].Material:=Triangle^.Material;
-   fSkipListTriangles[TriangleIndex].Flags:=Triangle^.Flags;
-   fSkipListTriangles[TriangleIndex].Tag:=Triangle^.Tag;
-   fSkipListTriangles[TriangleIndex].AvoidSelfShadowingTag:=Triangle^.AvoidSelfShadowingTag;
+   SkipListTriangle^.Vertices[0].TexCoord:=TpvVector4.Create(Triangle^.Vertices[0].TexCoord,0.0,Triangle^.Normal.x);
+   TpvUInt32(pointer(@SkipListTriangle^.Vertices[0].TexCoord.z)^):=(Triangle^.U shl 16) or (Triangle^.V and $ffff);
+   SkipListTriangle^.Vertices[1].TexCoord:=TpvVector4.Create(Triangle^.Vertices[1].TexCoord,Triangle.BarycentricDivide,Triangle^.Normal.y);
+   SkipListTriangle^.Vertices[2].TexCoord:=TpvVector4.Create(Triangle^.Vertices[2].TexCoord,0.0,Triangle^.Normal.z);
+   SkipListTriangle^.Material:=Triangle^.Material;
+   SkipListTriangle^.Flags:=Triangle^.Flags;
+   SkipListTriangle^.Tag:=Triangle^.Tag;
+   SkipListTriangle^.AvoidSelfShadowingTag:=Triangle^.AvoidSelfShadowingTag;
    inc(TriangleIndex);
   end;
   SetLength(fSkipListTriangles,TriangleIndex);
@@ -1818,10 +1988,10 @@ begin
   for i:=0 to length(fNodes)-1 do begin
    Node:=fNodes[i];
    SkipListNode:=@fSkipListNodes[Node.fNodeIndex];
-   SkipListNode^.AABBMin:=TpvVector4.Create(Node.fAABB.Min,0.0);//Node.fFlags and $ffff);
-   SkipListNode^.AABBMax:=TpvVector4.Create(Node.fAABB.Max,0.0);//Node.fFlags shr 16);
+   SkipListNode^.AABBMin:=Node.fAABB.Min;
    SkipListNode^.Flags:=Node.fFlags;
-   SkipListNode^.SkipToNode:=Node.fSkipToNode;
+   SkipListNode^.AABBMax:=Node.fAABB.Max;
+   SkipListNode^.SkipCount:=Node.fSkipToNode-Node.fNodeIndex;
    if Node.fCountTriangleIndices>0 then begin
     SkipListNode^.FirstTriangleIndex:=TriangleIndex;
     SkipListNode^.CountTriangleIndices:=Node.fCountTriangleIndices;
@@ -1842,7 +2012,59 @@ begin
 end;
 
 function TpvStaticTriangleBVH.RayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;FastCheck,Exact:boolean;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
-var StackPointer,Index:TpvInt32;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvStaticTriangleBVHSkipListNode;
+    SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
+    Time,u,v:TpvFloat;
+    OK:boolean;
+begin
+ result:=false;
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=length(fSkipListNodes);
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if AABBRayIntersection(SkipListNode^.AABBMin,SkipListNode^.AABBMax,Ray,Time) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangleIndices)-1 do begin
+    SkipListTriangle:=@fSkipListTriangles[fSkipListTriangleIndices[TriangleIndex]];
+    if ((SkipListTriangle^.Tag<>AvoidTag) and (SkipListTriangle^.Tag<>AvoidOtherTag)) and (SkipListTriangle^.AvoidSelfShadowingTag<>AvoidSelfShadowingTag) and ((SkipListTriangle^.Flags and Flags)<>0) then begin
+     if Exact then begin
+      OK:=TriangleRayIntersectionExact(SkipListTriangle^,Ray,Time);
+     end else begin
+      OK:=TriangleRayIntersectionLazy(SkipListTriangle^,Ray,Time,u,v);
+      if OK and
+         (((u<(-ASLF_EPSILON)) or (u>(1.0+ASLF_EPSILON)) or
+           (v<(-ASLF_EPSILON)) or ((u+v)>(1.0+ASLF_EPSILON))) or
+          ((SkipListTriangle^.AvoidSelfShadowingTag=AvoidSelfShadowingTag) and
+           (Time<=SELF_SHADOW_EPSILON))
+         ) then begin
+       OK:=false;
+      end;
+     end;
+     if OK then begin
+      if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
+       result:=true;
+       Intersection.Time:=Time;
+       if FastCheck then begin
+        exit;
+       end;
+       Intersection.SkipListTriangle:=SkipListTriangle;
+       Intersection.HitPoint:=Ray.Origin+(Ray.Direction*Time);
+       TriangleInterpolation(Intersection.SkipListTriangle^,Intersection.HitPoint,Intersection.Barycentrics,Intersection.Normal,Intersection.Tangent,Intersection.Bitangent,Intersection.TexCoord);
+      end;
+     end;
+    end;
+   end;
+   inc(SkipListNodeIndex);
+  end else begin
+   if SkipListNode^.SkipCount=0 then begin
+    break;
+   end else begin
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
+   end;
+  end;
+ end;
+end;
+{var StackPointer,Index:TpvInt32;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
     Time,u,v:TpvFloat;
@@ -1906,10 +2128,46 @@ begin
    until false;
   end;
  end;
-end;
+end;    }
 
 function TpvStaticTriangleBVH.ExactRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
-var StackPointer,Index:TpvInt32;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvStaticTriangleBVHSkipListNode;
+    SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
+    Time:TpvFloat;
+begin
+ result:=false;
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=length(fSkipListNodes);
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if AABBRayIntersection(SkipListNode^.AABBMin,SkipListNode^.AABBMax,Ray,Time) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangleIndices)-1 do begin
+    SkipListTriangle:=@fSkipListTriangles[fSkipListTriangleIndices[TriangleIndex]];
+    if ((SkipListTriangle^.Tag<>AvoidTag) and (SkipListTriangle^.Tag<>AvoidOtherTag)) and (SkipListTriangle^.AvoidSelfShadowingTag<>AvoidSelfShadowingTag) and ((SkipListTriangle^.Flags and Flags)<>0) then begin
+     if TriangleRayIntersectionExact(SkipListTriangle^,Ray,Time) then begin
+      if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
+       result:=true;
+       Intersection.Time:=Time;
+       Intersection.SkipListTriangle:=SkipListTriangle;
+       Intersection.HitPoint:=Ray.Origin+(Ray.Direction*Time);
+       TriangleInterpolation(Intersection.SkipListTriangle^,Intersection.HitPoint,Intersection.Barycentrics,Intersection.Normal,Intersection.Tangent,Intersection.Bitangent,Intersection.TexCoord);
+       exit;
+      end;
+     end;
+    end;
+   end;
+   inc(SkipListNodeIndex);
+  end else begin
+   if SkipListNode^.SkipCount=0 then begin
+    break;
+   end else begin
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
+   end;
+  end;
+ end;
+end;
+{var StackPointer,Index:TpvInt32;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
     Time:TpvFloat;
@@ -1956,10 +2214,43 @@ begin
    until false;
   end;
  end;
-end;
+end;     }
 
 function TpvStaticTriangleBVH.FastRayIntersection(const Ray:TpvStaticTriangleBVHRay;var Intersection:TpvStaticTriangleBVHIntersection;const AvoidTag:TpvUInt32=$ffffffff;const AvoidOtherTag:TpvUInt32=$ffffffff;const AvoidSelfShadowingTag:TpvUInt32=$ffffffff;const Flags:TpvUInt32=$ffffffff):boolean;
-var StackPointer,Index:TpvInt32;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvStaticTriangleBVHSkipListNode;
+    SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
+    Time:TpvFloat;
+begin
+ result:=false;
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=length(fSkipListNodes);
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if AABBRayIntersection(SkipListNode^.AABBMin,SkipListNode^.AABBMax,Ray,Time) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangleIndices)-1 do begin
+    SkipListTriangle:=@fSkipListTriangles[fSkipListTriangleIndices[TriangleIndex]];
+    if ((SkipListTriangle^.Tag<>AvoidTag) and (SkipListTriangle^.Tag<>AvoidOtherTag)) and (SkipListTriangle^.AvoidSelfShadowingTag<>AvoidSelfShadowingTag) and ((SkipListTriangle^.Flags and Flags)<>0) then begin
+     if TriangleRayIntersectionExact(SkipListTriangle^,Ray,Time) then begin
+      if IsInfinite(Intersection.Time) or (Time<Intersection.Time) then begin
+       result:=true;
+       Intersection.Time:=Time;
+       exit;
+      end;
+     end;
+    end;
+   end;
+   inc(SkipListNodeIndex);
+  end else begin
+   if SkipListNode^.SkipCount=0 then begin
+    break;
+   end else begin
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
+   end;
+  end;
+ end;
+end;
+{var StackPointer,Index:TpvInt32;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
     Time:TpvFloat;
@@ -2004,10 +2295,37 @@ begin
    until false;
   end;
  end;
-end;
+end;}
 
 function TpvStaticTriangleBVH.CountRayIntersections(const Ray:TpvStaticTriangleBVHRay;const Flags:TpvUInt32=$ffffffff):TpvInt32;
-var StackPointer,Index:TpvInt32;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvStaticTriangleBVHSkipListNode;
+    SkipListTriangle:PpvStaticTriangleBVHSkipListTriangle;
+    Time:TpvFloat;
+begin
+ result:=0;
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=length(fSkipListNodes);
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if AABBRayIntersection(SkipListNode^.AABBMin,SkipListNode^.AABBMax,Ray,Time) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangleIndices)-1 do begin
+    SkipListTriangle:=@fSkipListTriangles[fSkipListTriangleIndices[TriangleIndex]];
+    if TriangleRayIntersectionExact(SkipListTriangle^,Ray,Time) then begin
+     inc(result);
+    end;
+   end;
+   inc(SkipListNodeIndex);
+  end else begin
+   if SkipListNode^.SkipCount=0 then begin
+    break;
+   end else begin
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
+   end;
+  end;
+ end;
+end;
+{var StackPointer,Index:TpvInt32;
     Node:TpvStaticTriangleBVHNode;
     Triangle:PpvStaticTriangleBVHTriangle;
     Time:TpvFloat;
@@ -2044,7 +2362,7 @@ begin
    until false;
   end;
  end;
-end;
+end;}
 
 function TpvStaticTriangleBVH.LineIntersection(const v0,v1:TpvVector3;const Exact:boolean=true;const Flags:TpvUInt32=$ffffffff):boolean;
 var Ray:TpvStaticTriangleBVHRay;

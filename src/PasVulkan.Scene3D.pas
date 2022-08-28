@@ -69,6 +69,7 @@ uses {$ifdef Windows}
      Classes,
      Math,
      Vulkan,
+     Kraft,
      PasMP,
      PasJSON,
      PasGLTF,
