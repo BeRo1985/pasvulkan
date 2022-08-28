@@ -412,7 +412,27 @@ type EpvScene3D=class(Exception);
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
-              const NoNodeIndex=TpvUInt32($ffffffff);
+              type TFileSignature=array[0..3] of AnsiChar;
+                   TFileHeader=packed record
+                    Signature:TFileSignature;
+                    Version:TpvUInt32;
+                    BitmapOneDimensionSize:TpvUInt32;
+                    BitmapSize:TpvUInt32;
+                    BitmapDataSize:TpvUInt32;
+                    CountNodes:TpvUInt32;
+                   end;
+                   PFileHeader=^TFileHeader;
+                   TFileNode=packed record
+                    AABB:TpvAABB;
+                    Left:TpvInt32;
+                    Right:TpvInt32;
+                    SkipCount:TpvInt32;
+                   end;
+                   PFileNode=^TFileNode;
+                   TFileNodes=array of TFileNode;
+              const FileSignature:TpvScene3D.TPotentiallyVisibleSet.TFileSignature='PVS'#0;
+                    FileVersion:TpvUInt32=TpvUInt32($00000001);
+                    NoNodeIndex=TpvUInt32($ffffffff);
                     CountRayCheckTapPoints=17;
                     RayCheckTapPoints:array[0..CountRayCheckTapPoints-1] of TpvVector3=
                      (
@@ -446,7 +466,7 @@ type EpvScene3D=class(Exception);
                    TNodeIndexList=class(TpvDynamicArrayList<TNodeIndex>);
                    TBitmap=array of TpvUInt32;
                    { TNode }
-                   TNode=class
+                   TNode=class(TpvPooledObject)
                     private
                      fOwner:TPotentiallyVisibleSet;
                      fParent:TNode;
@@ -2689,13 +2709,116 @@ begin
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Load(const aStream:TStream);
+var NodeIndex,OtherNodeIndex:TpvSizeInt;
+    MemoryStream:TMemoryStream;
+    FileHeader:TpvScene3D.TPotentiallyVisibleSet.TFileHeader;
+    FileNode:TpvScene3D.TPotentiallyVisibleSet.TFileNode;
+    Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
 begin
  fNodes.Clear;
  fRoot:=nil;
+ fBitmapOneDimensionSize:=0;
+ fBitmapSize:=0;
+ fBitmap:=nil;
+ MemoryStream:=TMemoryStream.Create;
+ try
+
+  MemoryStream.CopyFrom(aStream,aStream.Size-aStream.Position);
+  MemoryStream.Seek(0,soBeginning);
+
+  MemoryStream.ReadBuffer(FileHeader,SizeOf(TpvScene3D.TPotentiallyVisibleSet.TFileHeader));
+  if (FileHeader.Signature=TpvScene3D.TPotentiallyVisibleSet.FileSignature) and
+     (FileHeader.Version=TpvScene3D.TPotentiallyVisibleSet.FileVersion) and
+     (FileHeader.CountNodes>0) then begin
+
+   fBitmapOneDimensionSize:=FileHeader.BitmapOneDimensionSize;
+
+   fBitmapSize:=FileHeader.BitmapSize;
+
+   SetLength(fBitmap,FileHeader.BitmapDataSize);
+
+   MemoryStream.ReadBuffer(fBitmap[0],length(fBitmap)*SizeOf(TpvUInt32));
+
+   for NodeIndex:=0 to FileHeader.CountNodes-1 do begin
+    fNodes.Add(TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,nil));
+   end;
+
+   for NodeIndex:=0 to FileHeader.CountNodes-1 do begin
+    MemoryStream.ReadBuffer(FileNode,SizeOf(TpvScene3D.TPotentiallyVisibleSet.TFileNode));
+    Node:=fNodes[NodeIndex];
+    Node.fAABB:=FileNode.AABB;
+    if FileNode.Left>=0 then begin
+     Node.fLeft:=fNodes[FileNode.Left];
+     Node.fLeft.fParent:=Node;
+    end;
+    if FileNode.Right>=0 then begin
+     Node.fRight:=fNodes[FileNode.Right];
+     Node.fRight.fParent:=Node;
+    end;
+    Node.fSkipCount:=FileNode.SkipCount;
+   end;
+
+   fAABB:=fNodes[0].fAABB;
+
+   for NodeIndex:=0 to FileHeader.CountNodes-1 do begin
+    for OtherNodeIndex:=NodeIndex+1 to FileHeader.CountNodes-1 do begin
+     if GetNodeVisibility(NodeIndex,OtherNodeIndex) then begin
+      fNodes[NodeIndex].AddVisibleNodeIndex(OtherNodeIndex);
+      fNodes[OtherNodeIndex].AddVisibleNodeIndex(NodeIndex);
+     end;
+    end;
+   end;
+
+  end;
+
+ finally
+  FreeAndNil(MemoryStream);
+ end;
 end;
 
 procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
+var NodeIndex:TpvSizeInt;
+    MemoryStream:TMemoryStream;
+    FileHeader:TpvScene3D.TPotentiallyVisibleSet.TFileHeader;
+    FileNode:TpvScene3D.TPotentiallyVisibleSet.TFileNode;
+    Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
 begin
+ MemoryStream:=TMemoryStream.Create;
+ try
+
+  FileHeader.Signature:=TpvScene3D.TPotentiallyVisibleSet.FileSignature;
+  FileHeader.Version:=TpvScene3D.TPotentiallyVisibleSet.FileVersion;
+  FileHeader.BitmapOneDimensionSize:=fBitmapOneDimensionSize;
+  FileHeader.BitmapSize:=fBitmapSize;
+  FileHeader.BitmapDataSize:=length(fBitmap);
+  FileHeader.CountNodes:=fNodes.Count;
+  MemoryStream.WriteBuffer(FileHeader,SizeOf(TpvScene3D.TPotentiallyVisibleSet.TFileHeader));
+
+  MemoryStream.WriteBuffer(fBitmap[0],length(fBitmap)*SizeOf(TpvUInt32));
+
+  for NodeIndex:=0 to fNodes.Count-1 do begin
+   Node:=fNodes[NodeIndex];
+   FileNode.AABB:=Node.AABB;
+   if assigned(Node.fLeft) then begin
+    FileNode.Left:=Node.fLeft.fIndex;
+   end else begin
+    FileNode.Left:=-1;
+   end;
+   if assigned(Node.fRight) then begin
+    FileNode.Right:=Node.fRight.fIndex;
+   end else begin
+    FileNode.Right:=-1;
+   end;
+   FileNode.SkipCount:=Node.fSkipCount;
+   MemoryStream.WriteBuffer(FileNode,SizeOf(TpvScene3D.TPotentiallyVisibleSet.TFileNode));
+  end;
+
+  MemoryStream.Seek(0,soBeginning);
+  aStream.CopyFrom(MemoryStream,MemoryStream.Size);
+
+ finally
+  FreeAndNil(MemoryStream);
+ end;
 end;
 
 function TpvScene3D.TPotentiallyVisibleSet.GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
