@@ -933,24 +933,30 @@ type TStackItem=record
 var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
+    RayEnd:TpvVector3;
     Time:TpvFloat;
 begin
  result:=false;
  if assigned(aRayCastUserData) and (NodeCount>0) and (Root>=0) then begin
   aTime:=Infinity;
+  RayEnd:=aRayOrigin;
   Stack.Initialize;
   try
    NewStackItem.NodeID:=Root;
    Stack.Push(NewStackItem);
    while Stack.Pop(StackItem) do begin
     Node:=@Nodes[StackItem.NodeID];
-    if Node^.AABB.Contains(aRayOrigin) or Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection) then begin
+    if ((not result) and
+        (Node^.AABB.Contains(aRayOrigin) or Node^.AABB.FastRayIntersection(aRayOrigin,aRayDirection))) or
+       (result and Node^.AABB.LineIntersection(aRayOrigin,RayEnd)) then begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time) then begin
       if (not result) or (Time<aTime) then begin
        aTime:=Time;
        result:=true;
        if aStopAtFirstHit then begin
         break;
+       end else begin
+        RayEnd:=aRayOrigin+(aRayDirection*Time);
        end;
       end;
      end;
@@ -979,27 +985,31 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
     Time,RayLength:TpvFloat;
-    RayOrigin,RayDirection:TpvVector3;
+    RayOrigin,RayDirection,RayEnd:TpvVector3;
 begin
  result:=false;
  if assigned(aRayCastUserData) and (NodeCount>0) and (Root>=0) then begin
   aTime:=Infinity;
   RayOrigin:=aFrom;
-  RayDirection:=(aTo-aFrom).Normalize;
-  RayLength:=(aTo-aFrom).Length;
+  RayEnd:=aTo;
+  RayDirection:=(RayEnd-RayOrigin).Normalize;
+  RayLength:=(RayEnd-RayOrigin).Length;
   Stack.Initialize;
   try
    NewStackItem.NodeID:=Root;
    Stack.Push(NewStackItem);
    while Stack.Pop(StackItem) do begin
     Node:=@Nodes[StackItem.NodeID];
-    if Node^.AABB.LineIntersection(aFrom,aTo) then begin
+    if Node^.AABB.LineIntersection(RayOrigin,RayEnd) then begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time) then begin
       if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
        aTime:=Time;
        result:=true;
        if aStopAtFirstHit then begin
         break;
+       end else begin
+        RayEnd:=RayOrigin+(RayDirection*Time);
+        RayLength:=Time;
        end;
       end;
      end;
