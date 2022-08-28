@@ -765,6 +765,7 @@ procedure TScreenMain.OnFinish(const aResource:TpvResource;const aSuccess:boolea
 var Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
     BakedMesh:TpvScene3D.TBakedMesh;
+    FileStream:TFileStream;
 begin
 
  if assigned(aResource) and (aResource is TpvScene3D.TGroup) then begin
@@ -788,6 +789,12 @@ begin
   if assigned(BakedMesh) then begin
    try
     fScene3D.PotentiallyVisibleSet.Build(BakedMesh);
+    FileStream:=TFileStream.Create(ChangeFileExt(aResource.FileName,'.pvs'),fmCreate);
+    try
+     fScene3D.PotentiallyVisibleSet.Save(FileStream);
+    finally
+     FreeAndNil(FileStream);
+    end;
    finally
     FreeAndNil(BakedMesh);
    end;

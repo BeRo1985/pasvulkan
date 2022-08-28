@@ -519,7 +519,7 @@ type EpvScene3D=class(Exception);
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure Load(const aStream:TStream);
-              procedure Write(const aStream:TStream);
+              procedure Save(const aStream:TStream);
               procedure Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32=8;const aPasMPInstance:TPasMP=nil);
               function GetNodeIndexByPosition(const aPosition:TpvVector3):TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
              public
@@ -2776,7 +2776,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TPotentiallyVisibleSet.Write(const aStream:TStream);
+procedure TpvScene3D.TPotentiallyVisibleSet.Save(const aStream:TStream);
 var NodeIndex:TpvSizeInt;
     MemoryStream:TMemoryStream;
     FileHeader:TpvScene3D.TPotentiallyVisibleSet.TFileHeader;
