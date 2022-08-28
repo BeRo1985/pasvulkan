@@ -507,6 +507,7 @@ type EpvScene3D=class(Exception);
                      procedure SortByIndex;
                    end;
                    TViewNodeIndices=array[0..MaxViews-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+                   TManualBoundingBoxes=class(TpvDynamicArrayList<TpvAABB>);
              private
               fSubdivisonMode:TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode;
               fSubdivisonOneDimensionSize:TpvSizeInt;
@@ -516,6 +517,7 @@ type EpvScene3D=class(Exception);
               fAABB:TpvAABB;
               fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
               fNodes:TpvScene3D.TPotentiallyVisibleSet.TNodes;
+              fManualBoundingBoxes:TpvScene3D.TPotentiallyVisibleSet.TManualBoundingBoxes;
               fBitmapOneDimensionSize:TpvUInt32;
               fBitmapSize:TpvUInt32;
               fBitmap:TBitmap;
@@ -536,6 +538,7 @@ type EpvScene3D=class(Exception);
              published
               property SubdivisonMode:TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode read fSubdivisonMode write fSubdivisonMode;
               property SubdivisonOneDimensionSize:TpvSizeInt read fSubdivisonOneDimensionSize write fSubdivisonOneDimensionSize;
+              property ManualBoundingBoxes:TpvScene3D.TPotentiallyVisibleSet.TManualBoundingBoxes read fManualBoundingBoxes;
              public
               property AABB:TpvAABB read fAABB;
              public
@@ -2722,6 +2725,8 @@ begin
 
  fSubdivisonOneDimensionSize:=16;
 
+ fManualBoundingBoxes:=TpvScene3D.TPotentiallyVisibleSet.TManualBoundingBoxes.Create;
+
  fBitmapOneDimensionSize:=0;
 
  fBitmapSize:=0;
@@ -2738,6 +2743,7 @@ end;
 destructor TpvScene3D.TPotentiallyVisibleSet.Destroy;
 begin
  FreeAndNil(fNodes);
+ FreeAndNil(fManualBoundingBoxes);
  fRoot:=nil;
  fBitmap:=nil;
  inherited Destroy;
@@ -3057,6 +3063,9 @@ begin
          case fSubdivisonMode of
 
           TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid:begin
+
+           Index:=0;
+
            for z:=0 to fSubdivisonOneDimensionSize-1 do begin
             TemporaryAABB.Min.z:=FloatLerp(fAABB.Min.z,fAABB.Max.z,z/fSubdivisonOneDimensionSize);
             TemporaryAABB.Max.z:=FloatLerp(fAABB.Min.z,fAABB.Max.z,(z+1)/fSubdivisonOneDimensionSize);
@@ -3066,7 +3075,8 @@ begin
              for x:=0 to fSubdivisonOneDimensionSize-1 do begin
               TemporaryAABB.Min.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,z/fSubdivisonOneDimensionSize);
               TemporaryAABB.Max.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,(z+1)/fSubdivisonOneDimensionSize);
-              StaticAABBTree.CreateProxy(TemporaryAABB,0);
+              StaticAABBTree.CreateProxy(TemporaryAABB,Index);
+              inc(Index);
              end;
             end;
            end;
@@ -3077,7 +3087,11 @@ begin
 
           TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
 
-           StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
+           for Index:=0 to fManualBoundingBoxes.Count-1 do begin
+            StaticAABBTree.CreateProxy(fManualBoundingBoxes.Items[Index],Index);
+           end;
+
+           StaticAABBTree.Build(1,fManualBoundingBoxes.Count*2,false);
 
           end;
 
