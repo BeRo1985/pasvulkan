@@ -640,11 +640,11 @@ type TLeafNodes=array of TpvSizeInt;
       LeafNodes:TLeafNodes;
      end;
      TStack=TpvDynamicStack<TStackItem>;
-var Count,Index,OtherIndex,MinPerSubTree,ParentIndex,NodeIndex,SplitAxis,TempIndex,
+var Count,Index,MinPerSubTree,ParentIndex,NodeIndex,SplitAxis,TempIndex,
     LeftIndex,RightIndex,LeftCount,RightCount:TpvSizeint;
     LeafNodes:TLeafNodes;
     SplitValue:TpvScalar;
-    AABB,LeftAABB,RightAABB:TpvAABB;
+    AABB:TpvAABB;
     Center:TpvVector3;
     VarianceX,VarianceY,VarianceZ,MeanX,MeanY,MeanZ:Double;
     Stack:TStack;
@@ -681,7 +681,7 @@ begin
 
      NewStackItem.Parent:=TpvBVHDynamicAABBTree.NULLNODE;
      NewStackItem.Height:=1;
-     NewStackItem.LeafNodes:=copy(LeafNodes);
+     NewStackItem.LeafNodes:=copy(LeafNodes,0,Count);
 
      Stack.Push(NewStackItem);
 
@@ -778,11 +778,6 @@ begin
          end;
         end;
 
-        LeftAABB:=AABB;
-        RightAABB:=AABB;
-        LeftAABB.Max[SplitAxis]:=SplitValue;
-        RightAABB.Min[SplitAxis]:=SplitValue;
-
         LeftIndex:=0;
         RightIndex:=length(StackItem.LeafNodes);
         LeftCount:=0;
@@ -801,7 +796,7 @@ begin
          end;
         end;
 
-        MinPerSubTree:=(length(StackItem.LeafNodes)+1) div 3;
+        MinPerSubTree:=(TpvInt64(length(StackItem.LeafNodes)+1)*341) shr 10;
         if (LeftCount=0) or
            (RightCount=0) or
            (LeftCount<=MinPerSubTree) or
@@ -822,6 +817,8 @@ begin
          NewStackItem.LeafNodes:=copy(StackItem.LeafNodes,RightIndex,length(StackItem.LeafNodes)-RightIndex);
          Stack.Push(NewStackItem);
         end;
+
+        StackItem.LeafNodes:=nil;
 
        end;
       end;
