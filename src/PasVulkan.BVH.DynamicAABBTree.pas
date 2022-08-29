@@ -152,6 +152,21 @@ type { TpvBVHDynamicAABBTree }
             TSkipListNodeStack=TpvDynamicStack<TSkipListNodeStackItem>;
             TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32 of object;
             TRayCastUserData=function(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean of object;
+            { TSkipList }
+            TSkipList=class
+             private
+              fNodeArray:TSkipListNodeArray;
+             public
+              constructor Create(const aFrom:TpvBVHDynamicAABBTree;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex); reintroduce;
+              destructor Destroy; override;
+              function IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+              function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray; overload;
+              function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
+              function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+              function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+             public
+              property NodeArray:TSkipListNodeArray read fNodeArray;
+            end;
       private
        fSkipListNodeLock:TPasMPSpinLock;
        fSkipListNodeMap:TSkipListNodeMap;
@@ -194,6 +209,183 @@ type { TpvBVHDynamicAABBTree }
      end;
 
 implementation
+
+{ TpvBVHDynamicAABBTree.TSkipList }
+
+constructor TpvBVHDynamicAABBTree.TSkipList.Create(const aFrom:TpvBVHDynamicAABBTree;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
+begin
+ fNodeArray.Initialize;
+ aFrom.GetSkipListNodes(fNodeArray,aGetUserDataIndex);
+end;
+
+destructor TpvBVHDynamicAABBTree.TSkipList.Destroy;
+begin
+ fNodeArray.Finalize;
+ inherited Destroy;
+end;
+
+function TpvBVHDynamicAABBTree.TSkipList.IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+var Index,Count:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PSkipListNode;
+begin
+ result:=nil;
+ Count:=fNodeArray.Count;
+ if Count>0 then begin
+  Index:=0;
+  while Index<Count do begin
+   Node:=@fNodeArray.Items[Index];
+   if TpvAABB.Intersect(Node^.AABBMin,Node^.AABBMax,aAABB) then begin
+    if Node^.UserData<>0 then begin
+     result:=result+[Node^.UserData];
+    end;
+    inc(Index);
+   end else begin
+    if Node^.SkipCount>0 then begin
+     inc(Index,Node^.SkipCount);
+    end else begin
+     break;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.TSkipList.ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
+var Index,Count:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PSkipListNode;
+begin
+ result:=nil;
+ Count:=fNodeArray.Count;
+ if Count>0 then begin
+  Index:=0;
+  while Index<Count do begin
+   Node:=@fNodeArray.Items[Index];
+   if TpvAABB.Contains(Node^.AABBMin,Node^.AABBMax,aAABB) then begin
+    if Node^.UserData<>0 then begin
+     result:=result+[Node^.UserData];
+    end;
+    inc(Index);
+   end else begin
+    if Node^.SkipCount>0 then begin
+     inc(Index,Node^.SkipCount);
+    end else begin
+     break;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.TSkipList.ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray;
+var Index,Count:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PSkipListNode;
+begin
+ result:=nil;
+ Count:=fNodeArray.Count;
+ if Count>0 then begin
+  Index:=0;
+  while Index<Count do begin
+   Node:=@fNodeArray.Items[Index];
+   if TpvAABB.Contains(Node^.AABBMin,Node^.AABBMax,aPoint) then begin
+    if Node^.UserData<>0 then begin
+     result:=result+[Node^.UserData];
+    end;
+    inc(Index);
+   end else begin
+    if Node^.SkipCount>0 then begin
+     inc(Index,Node^.SkipCount);
+    end else begin
+     break;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.TSkipList.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+var Index,Count:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PSkipListNode;
+    RayEnd:TpvVector3;
+    Time:TpvScalar;
+    Stop:boolean;
+begin
+ result:=false;
+ Count:=fNodeArray.Count;
+ if assigned(aRayCastUserData) and (Count>0) then begin
+  aTime:=Infinity;
+  RayEnd:=aRayOrigin;
+  Index:=0;
+  while Index<Count do begin
+   Node:=@fNodeArray.Items[Index];
+   if ((not result) and
+       (TpvAABB.Contains(Node^.AABBMin,Node^.AABBMax,aRayOrigin) or
+        TpvAABB.FastRayIntersection(Node^.AABBMin,Node^.AABBMax,aRayOrigin,aRayDirection))) or
+      (result and TpvAABB.LineIntersection(Node^.AABBMin,Node^.AABBMax,aRayOrigin,RayEnd)) then begin
+    if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time,Stop) then begin
+     if (not result) or (Time<aTime) then begin
+      aTime:=Time;
+      result:=true;
+      if aStopAtFirstHit or Stop then begin
+       break;
+      end else begin
+       RayEnd:=aRayOrigin+(aRayDirection*Time);
+      end;
+     end;
+    end;
+    inc(Index);
+   end else begin
+    if Node^.SkipCount>0 then begin
+     inc(Index,Node^.SkipCount);
+    end else begin
+     break;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicAABBTree.TSkipList.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+var Index,Count:TpvSizeInt;
+    Node:TpvBVHDynamicAABBTree.PSkipListNode;
+    Time,RayLength:TpvFloat;
+    RayOrigin,RayDirection,RayEnd:TpvVector3;
+    Stop:boolean;
+begin
+ result:=false;
+ Count:=fNodeArray.Count;
+ if assigned(aRayCastUserData) and (Count>0) then begin
+  aTime:=Infinity;
+  RayOrigin:=aFrom;
+  RayEnd:=aTo;
+  RayDirection:=(RayEnd-RayOrigin).Normalize;
+  RayLength:=(RayEnd-RayOrigin).Length;
+  Index:=0;
+  while Index<Count do begin
+   Node:=@fNodeArray.Items[Index];
+   if TpvAABB.LineIntersection(Node^.AABBMin,Node^.AABBMax,RayOrigin,RayEnd) then begin
+    if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time,Stop) then begin
+     if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
+      aTime:=Time;
+      result:=true;
+      if aStopAtFirstHit or Stop then begin
+       break;
+      end else begin
+       RayEnd:=RayOrigin+(RayDirection*Time);
+       RayLength:=Time;
+      end;
+     end;
+    end;
+    inc(Index);
+   end else begin
+    if Node^.SkipCount>0 then begin
+     inc(Index,Node^.SkipCount);
+    end else begin
+     break;
+    end;
+   end;
+  end;
+ end;
+end;
 
 { TpvBVHDynamicAABBTree }
 

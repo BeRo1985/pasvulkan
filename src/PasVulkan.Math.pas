@@ -1063,15 +1063,21 @@ type PpvScalar=^TpvScalar;
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
+       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean;
+       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload;
+       class function RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; static; overload;
+       function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; overload;
+       class function LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean; static; overload;
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix3x3):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13540,6 +13546,13 @@ begin
          (((Max.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((Min.z-Threshold)<=(WithAABB.Max.z+Threshold)));
 end;
 
+class function TpvAABB.Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=(((aAABBMax.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((aAABBMin.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
+         (((aAABBMax.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((aAABBMin.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
+         (((aAABBMax.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((aAABBMin.z-Threshold)<=(WithAABB.Max.z+Threshold)));
+end;
+
 function TpvAABB.Contains(const AABB:TpvAABB):boolean;
 begin
  result:=((Min.x-EPSILON)<=(AABB.Min.x+EPSILON)) and ((Min.y-EPSILON)<=(AABB.Min.y+EPSILON)) and ((Min.z-EPSILON)<=(AABB.Min.z+EPSILON)) and
@@ -13548,11 +13561,26 @@ begin
          ((Max.x+EPSILON)>=(AABB.Max.x-EPSILON)) and ((Max.y+EPSILON)>=(AABB.Max.y-EPSILON)) and ((Max.z+EPSILON)>=(AABB.Max.z-EPSILON));
 end;
 
+class function TpvAABB.Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean;
+begin
+ result:=((aAABBMin.x-EPSILON)<=(aAABB.Min.x+EPSILON)) and ((aAABBMin.y-EPSILON)<=(aAABB.Min.y+EPSILON)) and ((aAABBMin.z-EPSILON)<=(aAABB.Min.z+EPSILON)) and
+         ((aAABBMax.x+EPSILON)>=(aAABB.Min.x+EPSILON)) and ((aAABBMax.y+EPSILON)>=(aAABB.Min.y+EPSILON)) and ((aAABBMax.z+EPSILON)>=(aAABB.Min.z+EPSILON)) and
+         ((aAABBMin.x-EPSILON)<=(aAABB.Max.x-EPSILON)) and ((aAABBMin.y-EPSILON)<=(aAABB.Max.y-EPSILON)) and ((aAABBMin.z-EPSILON)<=(aAABB.Max.z-EPSILON)) and
+         ((aAABBMax.x+EPSILON)>=(aAABB.Max.x-EPSILON)) and ((aAABBMax.y+EPSILON)>=(aAABB.Max.y-EPSILON)) and ((aAABBMax.z+EPSILON)>=(aAABB.Max.z-EPSILON));
+end;
+
 function TpvAABB.Contains(const Vector:TpvVector3):boolean;
 begin
  result:=((Vector.x>=(Min.x-EPSILON)) and (Vector.x<=(Max.x+EPSILON))) and
          ((Vector.y>=(Min.y-EPSILON)) and (Vector.y<=(Max.y+EPSILON))) and
          ((Vector.z>=(Min.z-EPSILON)) and (Vector.z<=(Max.z+EPSILON)));
+end;
+
+class function TpvAABB.Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean;
+begin
+ result:=((aVector.x>=(aAABBMin.x-EPSILON)) and (aVector.x<=(aAABBMax.x+EPSILON))) and
+         ((aVector.y>=(aAABBMin.y-EPSILON)) and (aVector.y<=(aAABBMax.y+EPSILON))) and
+         ((aVector.z>=(aAABBMin.z-EPSILON)) and (aVector.z<=(aAABBMax.z+EPSILON)));
 end;
 
 function TpvAABB.Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean;
@@ -13577,6 +13605,20 @@ var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(Min+Max)*0.5;
  BoxExtents:=Center-Min;
+ Diff:=Origin-Center;
+ result:=not ((((abs(Diff.x)>BoxExtents.x) and ((Diff.x*Direction.x)>=0)) or
+               ((abs(Diff.y)>BoxExtents.y) and ((Diff.y*Direction.y)>=0)) or
+               ((abs(Diff.z)>BoxExtents.z) and ((Diff.z*Direction.z)>=0))) or
+              ((abs((Direction.y*Diff.z)-(Direction.z*Diff.y))>((BoxExtents.y*abs(Direction.z))+(BoxExtents.z*abs(Direction.y)))) or
+               (abs((Direction.z*Diff.x)-(Direction.x*Diff.z))>((BoxExtents.x*abs(Direction.z))+(BoxExtents.z*abs(Direction.x)))) or
+               (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
+end;
+
+class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var Center,BoxExtents,Diff:TpvVector3;
+begin
+ Center:=(aAABBMin+aAABBMax)*0.5;
+ BoxExtents:=Center-aAABBMin;
  Diff:=Origin-Center;
  result:=not ((((abs(Diff.x)>BoxExtents.x) and ((Diff.x*Direction.x)>=0)) or
                ((abs(Diff.y)>BoxExtents.y) and ((Diff.y*Direction.y)>=0)) or
@@ -13751,6 +13793,87 @@ begin
  end;
 end;
 
+class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+    TimeMin,TimeMax:TpvScalar;
+begin
+ if Direction.x<>0.0 then begin
+  InvDirection.x:=1.0/Direction.x;
+ end else begin
+  InvDirection.x:=0.0;
+ end;
+ if Direction.y<>0.0 then begin
+  InvDirection.y:=1.0/Direction.y;
+ end else begin
+  InvDirection.y:=0.0;
+ end;
+ if Direction.z<>0.0 then begin
+  InvDirection.z:=1.0/Direction.z;
+ end else begin
+  InvDirection.z:=0.0;
+ end;
+ a.x:=(aAABBMin.x-Origin.x)*InvDirection.x;
+ a.y:=(aAABBMin.y-Origin.y)*InvDirection.y;
+ a.z:=(aAABBMin.z-Origin.z)*InvDirection.z;
+ b.x:=(aAABBMax.x-Origin.x)*InvDirection.x;
+ b.y:=(aAABBMax.y-Origin.y)*InvDirection.y;
+ b.z:=(aAABBMax.z-Origin.z)*InvDirection.z;
+ if a.x<b.x then begin
+  AABBMin.x:=a.x;
+  AABBMax.x:=b.x;
+ end else begin
+  AABBMin.x:=b.x;
+  AABBMax.x:=a.x;
+ end;
+ if a.y<b.y then begin
+  AABBMin.y:=a.y;
+  AABBMax.y:=b.y;
+ end else begin
+  AABBMin.y:=b.y;
+  AABBMax.y:=a.y;
+ end;
+ if a.z<b.z then begin
+  AABBMin.z:=a.z;
+  AABBMax.z:=b.z;
+ end else begin
+  AABBMin.z:=b.z;
+  AABBMax.z:=a.z;
+ end;
+ if AABBMin.x<AABBMin.y then begin
+  if AABBMin.x<AABBMin.z then begin
+   TimeMin:=AABBMin.x;
+  end else begin
+   TimeMin:=AABBMin.z;
+  end;
+ end else begin
+  if AABBMin.y<AABBMin.z then begin
+   TimeMin:=AABBMin.y;
+  end else begin
+   TimeMin:=AABBMin.z;
+  end;
+ end;
+ if AABBMax.x>AABBMax.y then begin
+  if AABBMax.x>AABBMax.z then begin
+   TimeMax:=AABBMax.x;
+  end else begin
+   TimeMax:=AABBMax.z;
+  end;
+ end else begin
+  if AABBMax.y>AABBMax.z then begin
+   TimeMax:=AABBMax.y;
+  end else begin
+   TimeMax:=AABBMax.z;
+  end;
+ end;
+ if (TimeMax<0) or (TimeMin>TimeMax) then begin
+  Time:=TimeMax;
+  result:=false;
+ end else begin
+  Time:=TimeMin;
+  result:=true;
+ end;
+end;
+
 function TpvAABB.LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean;
 var Direction,InvDirection,a,b:TpvVector3;
     Len,TimeMin,TimeMax:TpvScalar;
@@ -13784,6 +13907,45 @@ begin
   b.x:=((Max.x+EPSILON)-StartPoint.x)*InvDirection.x;
   b.y:=((Max.y+EPSILON)-StartPoint.y)*InvDirection.y;
   b.z:=((Max.z+EPSILON)-StartPoint.z)*InvDirection.z;
+  TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
+  TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
+  result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));
+ end;
+end;
+
+class function TpvAABB.LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean;
+var Direction,InvDirection,a,b:TpvVector3;
+    Len,TimeMin,TimeMax:TpvScalar;
+begin
+ if TpvAABB.Contains(aAABBMin,aAABBMax,StartPoint) or TpvAABB.Contains(aAABBMin,aAABBMax,EndPoint) then begin
+  result:=true;
+ end else begin
+  Direction:=EndPoint-StartPoint;
+  Len:=Direction.Length;
+  if Len<>0.0 then begin
+   Direction:=Direction/Len;
+  end;
+  if Direction.x<>0.0 then begin
+   InvDirection.x:=1.0/Direction.x;
+  end else begin
+   InvDirection.x:=Infinity;
+  end;
+  if Direction.y<>0.0 then begin
+   InvDirection.y:=1.0/Direction.y;
+  end else begin
+   InvDirection.y:=Infinity;
+  end;
+  if Direction.z<>0.0 then begin
+   InvDirection.z:=1.0/Direction.z;
+  end else begin
+   InvDirection.z:=Infinity;
+  end;
+  a.x:=((aAABBMin.x-EPSILON)-StartPoint.x)*InvDirection.x;
+  a.y:=((aAABBMin.y-EPSILON)-StartPoint.y)*InvDirection.y;
+  a.z:=((aAABBMin.z-EPSILON)-StartPoint.z)*InvDirection.z;
+  b.x:=((aAABBMax.x+EPSILON)-StartPoint.x)*InvDirection.x;
+  b.y:=((aAABBMax.y+EPSILON)-StartPoint.y)*InvDirection.y;
+  b.z:=((aAABBMax.z+EPSILON)-StartPoint.z)*InvDirection.z;
   TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
   TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
   result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));
