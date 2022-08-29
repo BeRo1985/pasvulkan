@@ -131,7 +131,7 @@ type { TpvBVHDynamicAABBTree }
             TUserDataArray=array of TpvPtrInt;
             TSizeIntArray=array[0..65535] of TpvSizeInt;
             PSizeIntArray=^TSizeIntArray;
-            TGPUSkipListNode=packed record
+            TSkipListNode=packed record // <= GPU-compatible with 32 bytes per node
              public
               // (u)vec4 aabbMinSkipCount
               AABBMin:TpvVector3;
@@ -140,23 +140,23 @@ type { TpvBVHDynamicAABBTree }
               AABBMax:TpvVector3;
               UserData:TpvUInt32;
             end;
-            PGPUSkipListNode=^TGPUSkipListNode;
-            TGPUSkipListNodes=array of TGPUSkipListNode;
-            TGPUSkipListNodeArray=TpvDynamicArray<TGPUSkipListNode>;
-            TGPUSkipListNodeMap=array of TpvSizeUInt;
-            TGPUSkipListNodeStackItem=record
+            PSkipListNode=^TSkipListNode;
+            TSkipListNodes=array of TSkipListNode;
+            TSkipListNodeArray=TpvDynamicArray<TSkipListNode>;
+            TSkipListNodeMap=array of TpvSizeUInt;
+            TSkipListNodeStackItem=record
              Pass:TpvSizeInt;
              Node:TpvSizeInt;
             end;
-            PGPUSkipListNodeStackItem=^TGPUSkipListNodeStackItem;
-            TGPUSkipListNodeStack=TpvDynamicStack<TGPUSkipListNodeStackItem>;
+            PSkipListNodeStackItem=^TSkipListNodeStackItem;
+            TSkipListNodeStack=TpvDynamicStack<TSkipListNodeStackItem>;
             TGetUserDataIndex=function(const aUserData:TpvPtrInt):TpvUInt32 of object;
             TRayCastUserData=function(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean of object;
       private
-       fGPUSkipListNodeLock:TPasMPSpinLock;
-       fGPUSkipListNodeArray:TGPUSkipListNodeArray;
-       fGPUSkipListNodeMap:TGPUSkipListNodeMap;
-       fGPUSkipListNodeStack:TGPUSkipListNodeStack;
+       fSkipListNodeLock:TPasMPSpinLock;
+       fSkipListNodeArray:TSkipListNodeArray;
+       fSkipListNodeMap:TSkipListNodeMap;
+       fSkipListNodeStack:TSkipListNodeStack;
       public
        Root:TpvSizeInt;
        Nodes:TTreeNodes;
@@ -191,7 +191,7 @@ type { TpvBVHDynamicAABBTree }
        function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
-       procedure GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
+       procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
      end;
 
 implementation
@@ -217,18 +217,18 @@ begin
  FreeList:=0;
  Path:=0;
  InsertionCount:=0;
- fGPUSkipListNodeLock:=TPasMPSpinLock.Create;
- fGPUSkipListNodeArray.Initialize;
- fGPUSkipListNodeMap:=nil;
- fGPUSkipListNodeStack.Initialize;
+ fSkipListNodeLock:=TPasMPSpinLock.Create;
+ fSkipListNodeArray.Initialize;
+ fSkipListNodeMap:=nil;
+ fSkipListNodeStack.Initialize;
 end;
 
 destructor TpvBVHDynamicAABBTree.Destroy;
 begin
- fGPUSkipListNodeStack.Finalize;
- fGPUSkipListNodeMap:=nil;
- fGPUSkipListNodeArray.Finalize;
- FreeAndNil(fGPUSkipListNodeLock);
+ fSkipListNodeStack.Finalize;
+ fSkipListNodeMap:=nil;
+ fSkipListNodeArray.Finalize;
+ FreeAndNil(fSkipListNodeLock);
  Nodes:=nil;
  inherited Destroy;
 end;
@@ -1277,24 +1277,24 @@ begin
  end;
 end;
 
-procedure TpvBVHDynamicAABBTree.GetGPUSkipListNodes(var aGPUSkipListNodeArray:TGPUSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
+procedure TpvBVHDynamicAABBTree.GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
 //const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
-var StackItem,NewStackItem:TGPUSkipListNodeStackItem;
+var StackItem,NewStackItem:TSkipListNodeStackItem;
     Node:PTreeNode;
-    GPUSkipListNode:TGPUSkipListNode;
+    GPUSkipListNode:TSkipListNode;
     GPUSkipListNodeIndex:TpvSizeInt;
 begin
- fGPUSkipListNodeLock.Acquire;
+ fSkipListNodeLock.Acquire;
  try
   if Root>=0 then begin
-   if length(fGPUSkipListNodeMap)<length(Nodes) then begin
-    SetLength(fGPUSkipListNodeMap,(length(Nodes)*3) shr 1);
+   if length(fSkipListNodeMap)<length(Nodes) then begin
+    SetLength(fSkipListNodeMap,(length(Nodes)*3) shr 1);
    end;
-   aGPUSkipListNodeArray.Count:=0;
+   aSkipListNodeArray.Count:=0;
    NewStackItem.Pass:=0;
    NewStackItem.Node:=Root;
-   fGPUSkipListNodeStack.Push(NewStackItem);
-   while fGPUSkipListNodeStack.Pop(StackItem) do begin
+   fSkipListNodeStack.Push(NewStackItem);
+   while fSkipListNodeStack.Pop(StackItem) do begin
     case StackItem.Pass of
      0:begin
       if StackItem.Node>=0 then begin
@@ -1311,34 +1311,34 @@ begin
        end else begin
         GPUSkipListNode.UserData:=High(TpvUInt32);
        end;
-       GPUSkipListNodeIndex:=aGPUSkipListNodeArray.Add(GPUSkipListNode);
-       fGPUSkipListNodeMap[StackItem.Node]:=GPUSkipListNodeIndex;
+       GPUSkipListNodeIndex:=aSkipListNodeArray.Add(GPUSkipListNode);
+       fSkipListNodeMap[StackItem.Node]:=GPUSkipListNodeIndex;
        NewStackItem.Pass:=1;
        NewStackItem.Node:=StackItem.Node;
-       fGPUSkipListNodeStack.Push(NewStackItem);
+       fSkipListNodeStack.Push(NewStackItem);
        if Node^.Children[1]>=0 then begin
         NewStackItem.Pass:=0;
         NewStackItem.Node:=Node^.Children[1];
-        fGPUSkipListNodeStack.Push(NewStackItem);
+        fSkipListNodeStack.Push(NewStackItem);
        end;
        if Node^.Children[0]>=0 then begin
         NewStackItem.Pass:=0;
         NewStackItem.Node:=Node^.Children[0];
-        fGPUSkipListNodeStack.Push(NewStackItem);
+        fSkipListNodeStack.Push(NewStackItem);
        end;
       end;
      end;
      1:begin
       if StackItem.Node>=0 then begin
-       GPUSkipListNodeIndex:=fGPUSkipListNodeMap[StackItem.Node];
-       aGPUSkipListNodeArray.Items[GPUSkipListNodeIndex].SkipCount:=aGPUSkipListNodeArray.Count-GPUSkipListNodeIndex;
+       GPUSkipListNodeIndex:=fSkipListNodeMap[StackItem.Node];
+       aSkipListNodeArray.Items[GPUSkipListNodeIndex].SkipCount:=aSkipListNodeArray.Count-GPUSkipListNodeIndex;
       end;
      end;
     end;
    end;
   end;
  finally
-  fGPUSkipListNodeLock.Release;
+  fSkipListNodeLock.Release;
  end;
 end;
 
