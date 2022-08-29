@@ -1053,6 +1053,7 @@ type PpvScalar=^TpvScalar;
        function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Volume:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Center:TpvVector3;
        function Flip:TpvAABB;
        function SquareMagnitude:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Resize(const f:TpvScalar):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13446,6 +13447,11 @@ begin
  result:=2.0*((abs(Max.x-Min.x)*abs(Max.y-Min.y))+
               (abs(Max.y-Min.y)*abs(Max.z-Min.z))+
               (abs(Max.x-Min.x)*abs(Max.z-Min.z)));
+end;
+
+function TpvAABB.Center:TpvVector3;
+begin
+ result:=(Min+Max)*0.5;
 end;
 
 function TpvAABB.Flip:TpvAABB;

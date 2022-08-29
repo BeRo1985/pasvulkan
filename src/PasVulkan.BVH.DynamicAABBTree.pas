@@ -640,9 +640,9 @@ type TLeafNodes=array of TpvSizeInt;
       LeafNodes:TLeafNodes;
      end;
      TStack=TpvDynamicStack<TStackItem>;
-var Count,IndexA,IndexB,MinPerSubTree,ParentIndex,NodeIndex,SpliAxis,TempIndex:TpvSizeint;
-    LeafNodes,LeftLeafNodes,RightLeafNodes:TLeafNodes;
-    Parent:TpvBVHDynamicAABBTree.PTreeNode;
+var Count,Index,OtherIndex,MinPerSubTree,ParentIndex,NodeIndex,SplitAxis,TempIndex,
+    LeftIndex,RightIndex,LeftCount,RightCount:TpvSizeint;
+    LeafNodes:TLeafNodes;
     SplitValue:TpvScalar;
     AABB,LeftAABB,RightAABB:TpvAABB;
     Center:TpvVector3;
@@ -660,14 +660,14 @@ begin
    FillChar(LeafNodes[0],NodeCount*SizeOf(TpvSizeint),#0);
 
    Count:=0;
-   for IndexA:=0 to NodeCapacity-1 do begin
-    if Nodes[IndexA].Height>=0 then begin
-     if Nodes[IndexA].Children[0]<0 then begin
-      Nodes[IndexA].Parent:=TpvBVHDynamicAABBTree.NULLNODE;
-      LeafNodes[Count]:=IndexA;
+   for Index:=0 to NodeCapacity-1 do begin
+    if Nodes[Index].Height>=0 then begin
+     if Nodes[Index].Children[0]<0 then begin
+      Nodes[Index].Parent:=TpvBVHDynamicAABBTree.NULLNODE;
+      LeafNodes[Count]:=Index;
       inc(Count);
      end else begin
-      FreeNode(IndexA);
+      FreeNode(Index);
      end;
     end;
    end;
@@ -734,15 +734,14 @@ begin
         end;
 
         AABB:=Nodes[StackItem.LeafNodes[0]].AABB;
-        for IndexA:=1 to length(StackItem.LeafNodes)-1 do begin
-         AABB:=AABB.Combine(Nodes[StackItem.LeafNodes[IndexA]].AABB);
+        for Index:=1 to length(StackItem.LeafNodes)-1 do begin
+         AABB:=AABB.Combine(Nodes[StackItem.LeafNodes[Index]].AABB);
         end;
 
         Nodes[NodeIndex].AABB:=AABB;
 
-        for IndexA:=0 to length(StackItem.LeafNodes)-1 do begin
-         AABB:=Nodes[StackItem.LeafNodes[IndexA]].AABB;
-         Center:=(AABB.Min+AABB.Max)*0.5;
+        for Index:=0 to length(StackItem.LeafNodes)-1 do begin
+         Center:=Nodes[StackItem.LeafNodes[Index]].AABB.Center;
          MeanX:=MeanX+Center.x;
          MeanY:=MeanY+Center.y;
          MeanZ:=MeanZ+Center.z;
@@ -751,9 +750,8 @@ begin
         MeanY:=MeanY/length(StackItem.LeafNodes);
         MeanZ:=MeanZ/length(StackItem.LeafNodes);
 
-        for IndexA:=0 to length(StackItem.LeafNodes)-1 do begin
-         AABB:=Nodes[StackItem.LeafNodes[IndexA]].AABB;
-         Center:=(AABB.Min+AABB.Max)*0.5;
+        for Index:=0 to length(StackItem.LeafNodes)-1 do begin
+         Center:=Nodes[StackItem.LeafNodes[Index]].AABB.Center;
          VarianceX:=VarianceX+sqr(Center.x-MeanX);
          VarianceY:=VarianceY+sqr(Center.y-MeanY);
          VarianceZ:=VarianceZ+sqr(Center.z-MeanZ);
@@ -764,79 +762,64 @@ begin
 
         if VarianceX<VarianceY then begin
          if VarianceY<VarianceZ then begin
-          SpliAxis:=2;
+          SplitAxis:=2;
           SplitValue:=MeanZ;
          end else begin
-          SpliAxis:=1;
+          SplitAxis:=1;
           SplitValue:=MeanY;
          end;
         end else begin
          if VarianceX<VarianceZ then begin
-          SpliAxis:=2;
+          SplitAxis:=2;
           SplitValue:=MeanZ;
          end else begin
-          SpliAxis:=0;
+          SplitAxis:=0;
           SplitValue:=MeanX;
          end;
         end;
 
         LeftAABB:=AABB;
         RightAABB:=AABB;
-        LeftAABB.Max[SpliAxis]:=SplitValue;
-        RightAABB.Min[SpliAxis]:=SplitValue;
+        LeftAABB.Max[SplitAxis]:=SplitValue;
+        RightAABB.Min[SplitAxis]:=SplitValue;
 
-        LeftLeafNodes:=nil;
-        RightLeafNodes:=nil;
-
-        for IndexA:=0 to length(StackItem.LeafNodes)-1 do begin
-         if Nodes[StackItem.LeafNodes[IndexA]].AABB.Max[SpliAxis]<SplitValue then begin
-          LeftLeafNodes:=LeftLeafNodes+[StackItem.LeafNodes[IndexA]];
+        LeftIndex:=0;
+        RightIndex:=length(StackItem.LeafNodes);
+        LeftCount:=0;
+        RightCount:=0;
+        while LeftIndex<RightIndex do begin
+         Center:=Nodes[StackItem.LeafNodes[LeftIndex]].AABB.Center;
+         if Center[SplitAxis]<=SplitValue then begin
+          inc(LeftIndex);
+          inc(LeftCount);
          end else begin
-          RightLeafNodes:=RightLeafNodes+[StackItem.LeafNodes[IndexA]];
+          dec(RightIndex);
+          inc(RightCount);
+          TempIndex:=StackItem.LeafNodes[LeftIndex];
+          StackItem.LeafNodes[LeftIndex]:=StackItem.LeafNodes[RightIndex];
+          StackItem.LeafNodes[RightIndex]:=TempIndex;
          end;
         end;
 
         MinPerSubTree:=(length(StackItem.LeafNodes)+1) div 3;
-        if (length(LeftLeafNodes)=0) or
-           (length(RightLeafNodes)=0) or
-           ((length(LeftLeafNodes)+MinPerSubTree)>=length(RightLeafNodes)) or
-           ((length(RightLeafNodes)+MinPerSubTree)>=length(LeftLeafNodes)) then begin
-         IndexB:=0;
-         Count:=length(StackItem.LeafNodes);
-         while (IndexB+1)<Count do begin
-          if (Nodes[StackItem.LeafNodes[IndexB+1]].AABB.Min[SpliAxis]<Nodes[StackItem.LeafNodes[IndexB]].AABB.Min[SpliAxis]) or
-             ((Nodes[StackItem.LeafNodes[IndexB+1]].AABB.Min[SpliAxis]=Nodes[StackItem.LeafNodes[IndexB]].AABB.Min[SpliAxis]) and
-              (Nodes[StackItem.LeafNodes[IndexB+1]].AABB.Max[SpliAxis]<Nodes[StackItem.LeafNodes[IndexB]].AABB.Max[SpliAxis])) then begin
-           TempIndex:=StackItem.LeafNodes[IndexB];
-           StackItem.LeafNodes[IndexB]:=StackItem.LeafNodes[IndexB+1];
-           StackItem.LeafNodes[IndexB+1]:=TempIndex;
-           if IndexB>0 then begin
-            dec(IndexB);
-           end else begin
-            inc(IndexB);
-           end;
-          end else begin
-           inc(IndexB);
-          end;
-         end;
-         Count:=(Count+1) shr 1;
-         LeftLeafNodes:=copy(StackItem.LeafNodes,0,Count);
-         RightLeafNodes:=copy(StackItem.LeafNodes,Count,length(StackItem.LeafNodes)-Count);
+        if (LeftCount=0) or
+           (RightCount=0) or
+           (LeftCount<=MinPerSubTree) or
+           (RightCount<=MinPerSubTree) then begin
+         RightIndex:=(length(StackItem.LeafNodes)+1) shr 1;
         end;
 
         begin
          NewStackItem.Parent:=NodeIndex;
          NewStackItem.Height:=StackItem.Height+1;
-         NewStackItem.LeafNodes:=LeftLeafNodes;
-         LeftLeafNodes:=nil;
+         NewStackItem.LeafNodes:=copy(StackItem.LeafNodes,0,RightIndex);
          Stack.Push(NewStackItem);
         end;
 
         begin
          NewStackItem.Parent:=NodeIndex;
          NewStackItem.Height:=StackItem.Height+1;
-         NewStackItem.LeafNodes:=RightLeafNodes;
-         RightLeafNodes:=nil;
+         NewStackItem.LeafNodes:=copy(StackItem.LeafNodes,RightIndex,length(StackItem.LeafNodes)-RightIndex);
          Stack.Push(NewStackItem);
         end;
 
