@@ -321,7 +321,7 @@ begin
        (TpvAABB.Contains(Node^.AABBMin,Node^.AABBMax,aRayOrigin) or
         TpvAABB.FastRayIntersection(Node^.AABBMin,Node^.AABBMax,aRayOrigin,aRayDirection))) or
       (result and TpvAABB.LineIntersection(Node^.AABBMin,Node^.AABBMax,aRayOrigin,RayEnd)) then begin
-    if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time,Stop) then begin
+    if (Node^.UserData<>High(TpvUInt32)) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time,Stop) then begin
      if (not result) or (Time<aTime) then begin
       aTime:=Time;
       aUserData:=Node^.UserData;
@@ -364,7 +364,7 @@ begin
   while Index<Count do begin
    Node:=@fNodeArray.Items[Index];
    if TpvAABB.LineIntersection(Node^.AABBMin,Node^.AABBMax,RayOrigin,RayEnd) then begin
-    if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time,Stop) then begin
+    if (Node^.UserData<>High(TpvUInt32)) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time,Stop) then begin
      if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
       aTime:=Time;
       aUserData:=Node^.UserData;
@@ -921,6 +921,9 @@ begin
 
         Nodes[NodeIndex].AABB:=AABB;
 
+        MeanX:=0.0;
+        MeanY:=0.0;
+        MeanZ:=0.0;
         for Index:=0 to length(FillStackItem.LeafNodes)-1 do begin
          Center:=Nodes[FillStackItem.LeafNodes[Index]].AABB.Center;
          MeanX:=MeanX+Center.x;
@@ -931,6 +934,9 @@ begin
         MeanY:=MeanY/length(FillStackItem.LeafNodes);
         MeanZ:=MeanZ/length(FillStackItem.LeafNodes);
 
+        VarianceX:=0.0;
+        VarianceY:=0.0;
+        VarianceZ:=0.0;
         for Index:=0 to length(FillStackItem.LeafNodes)-1 do begin
          Center:=Nodes[FillStackItem.LeafNodes[Index]].AABB.Center;
          VarianceX:=VarianceX+sqr(Center.x-MeanX);

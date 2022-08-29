@@ -2943,7 +2943,7 @@ end;
 function TpvScene3D.TPotentiallyVisibleSet.RayCastTriangle(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean;
 var u,v:TpvScalar;
 begin
- if aUserData>0 then begin
+ if (aUserData>0) and (aUserData<=fBakedMesh.fTriangles.Count) and (TpvUInt32(aUserData)<>High(TpvUInt32)) then begin
   result:=fBakedMesh.fTriangles[aUserData-1].RayIntersection(aRayOrigin,aRayDirection,aTime,u,v);
  end else begin
   result:=false;

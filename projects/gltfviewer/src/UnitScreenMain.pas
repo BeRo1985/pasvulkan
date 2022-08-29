@@ -784,7 +784,7 @@ begin
 
   fGroupInstance:=fGroup.CreateInstance;
 
-{ fGroupInstance.Update(-1);
+{}fGroupInstance.Update(-1);
   BakedMesh:=fGroupInstance.GetBakedMesh(false,false,-1,[TpvScene3D.TMaterial.TAlphaMode.Opaque]);
   if assigned(BakedMesh) then begin
    try
