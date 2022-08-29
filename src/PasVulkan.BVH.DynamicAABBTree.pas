@@ -176,8 +176,9 @@ type { TpvBVHDynamicAABBTree }
        procedure DestroyProxy(const aNodeID:TpvSizeInt);
        function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
        procedure Rebalance(const aIterations:TpvSizeInt);
-       procedure RebuildBruteforceBottomUp;
+       procedure RebuildBottomUp;
        procedure RebuildTopDown;
+       procedure Rebuild;
        function ComputeHeight:TpvSizeInt;
        function GetHeight:TpvSizeInt;
        function GetAreaRatio:TpvDouble;
@@ -560,7 +561,7 @@ begin
  end;
 end;
 
-procedure TpvBVHDynamicAABBTree.RebuildBruteforceBottomUp;
+procedure TpvBVHDynamicAABBTree.RebuildBottomUp;
 var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint;
     NewNodes:array of TpvSizeInt;
     Children:array[0..1] of TpvBVHDynamicAABBTree.PTreeNode;
@@ -838,6 +839,15 @@ begin
 
  end;
 
+end;
+
+procedure TpvBVHDynamicAABBTree.Rebuild;
+begin
+ if NodeCount<128 then begin
+  RebuildBottomUp;
+ end else begin
+  RebuildTopDown;
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.ComputeHeight:TpvSizeInt;
