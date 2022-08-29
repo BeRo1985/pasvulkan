@@ -85,7 +85,6 @@ uses {$ifdef Windows}
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.BVH.DynamicAABBTree,
-     PasVulkan.BVH.StaticTriangles,
      PasVulkan.PooledObject,
      PasVulkan.Frustum;
 
@@ -396,6 +395,7 @@ type EpvScene3D=class(Exception);
                      MetaFlags:TpvUInt32;
                     public
                      procedure Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
+                     function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,v:TpvScalar):boolean;
                    end;
                    TTriangles=class(TpvObjectGenericList<TpvScene3D.TBakedMesh.TTriangle>)
                    end;
@@ -512,8 +512,8 @@ type EpvScene3D=class(Exception);
               fSubdivisonMode:TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode;
               fSubdivisonOneDimensionSize:TpvSizeInt;
               fBakedMesh:TpvScene3D.TBakedMesh;
-              fStaticTriangleBVH:TpvStaticTriangleBVH;
-              fStaticTriangleBVHTriangles:TpvStaticTriangleBVHTriangles;
+              fTriangleDynamicAABBTree:TpvBVHDynamicAABBTree;
+              fTriangleDynamicAABBTreeSkipList:TpvBVHDynamicAABBTree.TSkipList;
               fAABB:TpvAABB;
               fRoot:TpvScene3D.TPotentiallyVisibleSet.TNode;
               fNodes:TpvScene3D.TPotentiallyVisibleSet.TNodes;
@@ -525,6 +525,7 @@ type EpvScene3D=class(Exception);
               fViewNodeIndices:TViewNodeIndices;
               function GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
               procedure SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
+              function RayCastTriangle(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean;
               procedure NodePairVisibilityCheckRayParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
               procedure NodePairVisibilityCheckParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
              public
@@ -2622,6 +2623,59 @@ begin
  MetaFlags:=aFrom.MetaFlags;
 end;
 
+function TpvScene3D.TBakedMesh.TTriangle.RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,v:TpvScalar):boolean;
+var e0,e1,p,t,q:TpvVector3;
+    Determinant,InverseDeterminant:TpvScalar;
+begin
+ result:=false;
+
+ e0.x:=Positions[1].x-Positions[0].x;
+ e0.y:=Positions[1].y-Positions[0].y;
+ e0.z:=Positions[1].z-Positions[0].z;
+ e1.x:=Positions[2].x-Positions[0].x;
+ e1.y:=Positions[2].y-Positions[0].y;
+ e1.z:=Positions[2].z-Positions[0].z;
+
+ p.x:=(aRayDirection.y*e1.z)-(aRayDirection.z*e1.y);
+ p.y:=(aRayDirection.z*e1.x)-(aRayDirection.x*e1.z);
+ p.z:=(aRayDirection.x*e1.y)-(aRayDirection.y*e1.x);
+
+ Determinant:=(e0.x*p.x)+(e0.y*p.y)+(e0.z*p.z);
+ if Determinant<EPSILON then begin
+  exit;
+ end;
+
+ t.x:=aRayOrigin.x-Positions[0].x;
+ t.y:=aRayOrigin.y-Positions[0].y;
+ t.z:=aRayOrigin.z-Positions[0].z;
+
+ aU:=(t.x*p.x)+(t.y*p.y)+(t.z*p.z);
+ if (aU<0.0) or (aU>Determinant) then begin
+  exit;
+ end;
+
+ q.x:=(t.y*e0.z)-(t.z*e0.y);
+ q.y:=(t.z*e0.x)-(t.x*e0.z);
+ q.z:=(t.x*e0.y)-(t.y*e0.x);
+
+ v:=(aRayDirection.x*q.x)+(aRayDirection.y*q.y)+(aRayDirection.z*q.z);
+ if (v<0.0) or ((aU+v)>Determinant) then begin
+  exit;
+ end;
+
+ aTime:=(e1.x*q.x)+(e1.y*q.y)+(e1.z*q.z);
+ if abs(Determinant)<EPSILON then begin
+  Determinant:=0.01;
+ end;
+ InverseDeterminant:=1.0/Determinant;
+ aTime:=aTime*InverseDeterminant;
+ aU:=aU*InverseDeterminant;
+ v:=v*InverseDeterminant;
+
+ result:=true;
+end;
+
+
 { TpvScene3D.TBakedMesh }
 
 constructor TpvScene3D.TBakedMesh.Create;
@@ -2886,15 +2940,24 @@ begin
  end;
 end;
 
+function TpvScene3D.TPotentiallyVisibleSet.RayCastTriangle(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean;
+var u,v:TpvScalar;
+begin
+ if aUserData>0 then begin
+  result:=fBakedMesh.fTriangles[aUserData-1].RayIntersection(aRayOrigin,aRayDirection,aTime,u,v);
+ end else begin
+  result:=false;
+ end;
+end;
+
 procedure TpvScene3D.TPotentiallyVisibleSet.NodePairVisibilityCheckRayParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index,TapAIndex,TapBIndex:TPasMPNativeInt;
     NodeIndexPair:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPair;
     NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
-    TapA,TapB:TpvVector3;
-    Ray:TpvStaticTriangleBVHRay;
-    Intersection:TpvStaticTriangleBVHIntersection;
-    Time:TpvScalar;
+    TapA,TapB,RayOrigin,RayDirection:TpvVector3;
+    Time,HitTime:TpvScalar;
+    HitUserData:TpvUInt32;
     Hit:boolean;
 begin
 
@@ -2916,24 +2979,22 @@ begin
    TapA:=NodeA.fAABB.Min+((NodeA.fAABB.Max-NodeA.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapAIndex]);
    TapB:=NodeB.fAABB.Min+((NodeB.fAABB.Max-NodeB.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapBIndex]);
 
-   Ray.Origin:=TapA;
-   Ray.Direction:=(TapB-TapA).Normalize;
-   if NodeB.fAABB.RayIntersection(Ray.Origin,Ray.Direction,Time) then begin
-    Intersection.Time:=Infinity;
-    Hit:=fStaticTriangleBVH.FastRayIntersection(Ray,Intersection);
-    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+   RayOrigin:=TapA;
+   RayDirection:=(TapB-TapA).Normalize;
+   if NodeB.fAABB.RayIntersection(RayOrigin,RayDirection,Time) then begin
+    Hit:=fTriangleDynamicAABBTreeSkipList.RayCast(RayOrigin,RayDirection,HitTime,HitUserData,true,RayCastTriangle);
+    if (Hit and (HitTime>=(Time-EPSILON))) or not Hit then begin
      SetNodeVisibility(NodeAIndex,NodeBIndex,true);
      SetNodeVisibility(NodeBIndex,NodeAIndex,true);
      break;
     end;
    end;
 
-   Ray.Origin:=TapB;
-   Ray.Direction:=(TapA-TapB).Normalize;
-   if NodeA.fAABB.RayIntersection(Ray.Origin,Ray.Direction,Time) then begin
-    Intersection.Time:=Infinity;
-    Hit:=fStaticTriangleBVH.FastRayIntersection(Ray,Intersection);
-    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+   RayOrigin:=TapB;
+   RayDirection:=(TapA-TapB).Normalize;
+   if NodeA.fAABB.RayIntersection(RayOrigin,RayDirection,Time) then begin
+    Hit:=fTriangleDynamicAABBTreeSkipList.RayCast(RayOrigin,RayDirection,HitTime,HitUserData,true,RayCastTriangle);
+    if (Hit and (HitTime>=(Time-EPSILON))) or not Hit then begin
      SetNodeVisibility(NodeAIndex,NodeBIndex,true);
      SetNodeVisibility(NodeBIndex,NodeAIndex,true);
      break;
@@ -2996,15 +3057,13 @@ end;
 procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TBakedMesh;const aMaxDepth:TpvInt32;const aPasMPInstance:TPasMP);
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
-      StaticTriangleBVHSkipListNode:PpvStaticTriangleBVHSkipListNode;
-      DynamicAABBTreeNode:TpvSizeInt;
+      NodeIndex:TpvSizeInt;
       MetaData:TpvInt32;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
 var TriangleIndex,NodeIndexCounter,Index,OtherIndex,x,y,z:TpvSizeInt;
     BakedTriangle:TpvScene3D.TBakedMesh.TTriangle;
-    StaticTriangleBVHTriangle:PpvStaticTriangleBVHTriangle;
     StackItem,NewStackItem:TStackItem;
     Stack:TStack;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
@@ -3021,41 +3080,34 @@ begin
   fBakedMesh:=aBakedMesh;
   try
 
-   fStaticTriangleBVH:=TpvStaticTriangleBVH.Create;
+   fTriangleDynamicAABBTree:=TpvBVHDynamicAABBTree.Create;
    try
 
-    fStaticTriangleBVHTriangles:=nil;
+    for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
+     BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
+     TemporaryAABB.Min.x:=Min(Min(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
+     TemporaryAABB.Min.y:=Min(Min(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
+     TemporaryAABB.Min.z:=Min(Min(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
+     TemporaryAABB.Max.x:=Max(Max(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
+     TemporaryAABB.Max.y:=Max(Max(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
+     TemporaryAABB.Max.z:=Max(Max(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
+     fTriangleDynamicAABBTree.CreateProxy(TemporaryAABB,TriangleIndex+1);
+    end;
+
+    fTriangleDynamicAABBTree.Rebuild;
+
+    fTriangleDynamicAABBTreeSkipList:=TpvBVHDynamicAABBTree.TSkipList.Create(fTriangleDynamicAABBTree,nil);
     try
 
-     SetLength(fStaticTriangleBVHTriangles,fBakedMesh.Triangles.Count);
+     if fTriangleDynamicAABBTreeSkipList.NodeArray.Count>0 then begin
 
-     for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
-      BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
-      StaticTriangleBVHTriangle:=@fStaticTriangleBVHTriangles[TriangleIndex];
-      FillChar(StaticTriangleBVHTriangle^,SizeOf(TpvStaticTriangleBVHTriangle),#0);
-      StaticTriangleBVHTriangle^.Vertices[0].Position:=BakedTriangle.Positions[0];
-      StaticTriangleBVHTriangle^.Vertices[1].Position:=BakedTriangle.Positions[1];
-      StaticTriangleBVHTriangle^.Vertices[2].Position:=BakedTriangle.Positions[2];
-      StaticTriangleBVHTriangle^.Vertices[0].Normal:=BakedTriangle.Normals[0];
-      StaticTriangleBVHTriangle^.Vertices[1].Normal:=BakedTriangle.Normals[1];
-      StaticTriangleBVHTriangle^.Vertices[2].Normal:=BakedTriangle.Normals[2];
-      StaticTriangleBVHTriangle^.Normal:=BakedTriangle.Normal;
-      StaticTriangleBVHTriangle^.Flags:=$ffffffff;
-     end;
-
-     fStaticTriangleBVH.KDTreeMode:=false;
-     fStaticTriangleBVH.Build(fStaticTriangleBVHTriangles,64);
-
-     if length(fStaticTriangleBVH.SkipListNodes)>0 then begin
-
-      fAABB.Min:=fStaticTriangleBVH.SkipListNodes[0].AABBMin;
-      fAABB.Max:=fStaticTriangleBVH.SkipListNodes[0].AABBMax;
+      fAABB.Min:=fTriangleDynamicAABBTreeSkipList.NodeArray.Items[0].AABBMin;
+      fAABB.Max:=fTriangleDynamicAABBTreeSkipList.NodeArray.Items[0].AABBMax;
 
       case fSubdivisonMode of
 
        TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid,
-       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones,
-       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:begin
+       TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
 
         DynamicAABBTree:=TpvBVHDynamicAABBTree.Create;
         try
@@ -3095,20 +3147,7 @@ begin
 
           end;
 
-          else {TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:}begin
-
-           for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
-            BakedTriangle:=fBakedMesh.Triangles[TriangleIndex];
-            TemporaryAABB.Min.x:=Min(Min(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
-            TemporaryAABB.Min.y:=Min(Min(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
-            TemporaryAABB.Min.z:=Min(Min(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
-            TemporaryAABB.Max.x:=Max(Max(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
-            TemporaryAABB.Max.y:=Max(Max(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
-            TemporaryAABB.Max.z:=Max(Max(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
-            DynamicAABBTree.CreateProxy(TemporaryAABB,TriangleIndex+1);
-           end;
-
-           DynamicAABBTree.Rebuild;
+          else begin
 
           end;
 
@@ -3117,7 +3156,7 @@ begin
          Stack.Initialize;
          try
           NewStackItem.Node:=nil;
-          NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Root;
+          NewStackItem.NodeIndex:=DynamicAABBTree.Root;
           NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
           while Stack.Pop(StackItem) do begin
@@ -3125,7 +3164,7 @@ begin
               (fSubdivisonMode<>TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH) or
               (StackItem.Node.fLevel<aMaxDepth) then begin
             NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
-            NewStackItem.Node.fTag:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].UserData-1;
+            NewStackItem.Node.fTag:=DynamicAABBTree.Nodes[StackItem.NodeIndex].UserData-1;
             if not assigned(fRoot) then begin
              fRoot:=NewStackItem.Node;
             end;
@@ -3136,14 +3175,14 @@ begin
               StackItem.Node.fLeft:=NewStackItem.Node;
              end;
             end;
-            NewStackItem.Node.fAABB:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].AABB;
-            if DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[1]>=0 then begin
-             NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[1];
+            NewStackItem.Node.fAABB:=DynamicAABBTree.Nodes[StackItem.NodeIndex].AABB;
+            if DynamicAABBTree.Nodes[StackItem.NodeIndex].Children[1]>=0 then begin
+             NewStackItem.NodeIndex:=DynamicAABBTree.Nodes[StackItem.NodeIndex].Children[1];
              NewStackItem.MetaData:=1;
              Stack.Push(NewStackItem);
             end;
-            if DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[0]>=0 then begin
-             NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[0];
+            if DynamicAABBTree.Nodes[StackItem.NodeIndex].Children[0]>=0 then begin
+             NewStackItem.NodeIndex:=DynamicAABBTree.Nodes[StackItem.NodeIndex].Children[0];
              NewStackItem.MetaData:=0;
              Stack.Push(NewStackItem);
             end;
@@ -3164,12 +3203,13 @@ begin
         Stack.Initialize;
         try
          NewStackItem.Node:=nil;
-         NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[0];
+         NewStackItem.NodeIndex:=fTriangleDynamicAABBTree.Root;
          NewStackItem.MetaData:=0;
          Stack.Push(NewStackItem);
          while Stack.Pop(StackItem) do begin
           if (not assigned(StackItem.Node)) or (StackItem.Node.fLevel<aMaxDepth) then begin
            NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
+           NewStackItem.Node.fTag:=fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].UserData-1;
            if not assigned(fRoot) then begin
             fRoot:=NewStackItem.Node;
            end;
@@ -3180,15 +3220,14 @@ begin
              StackItem.Node.fLeft:=NewStackItem.Node;
             end;
            end;
-           NewStackItem.Node.fAABB.Min:=StackItem.StaticTriangleBVHSkipListNode^.AABBMin;
-           NewStackItem.Node.fAABB.Max:=StackItem.StaticTriangleBVHSkipListNode^.AABBMax;
-           if StackItem.StaticTriangleBVHSkipListNode^.Right<>TpvUInt32($ffffffff) then begin
-            NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Right];
+           NewStackItem.Node.fAABB:=fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].AABB;
+           if fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].Children[1]>=0 then begin
+            NewStackItem.NodeIndex:=fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].Children[1];
             NewStackItem.MetaData:=1;
             Stack.Push(NewStackItem);
            end;
-           if StackItem.StaticTriangleBVHSkipListNode^.Left<>TpvUInt32($ffffffff) then begin
-            NewStackItem.StaticTriangleBVHSkipListNode:=@fStaticTriangleBVH.SkipListNodes[StackItem.StaticTriangleBVHSkipListNode^.Left];
+           if fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].Children[0]>=0 then begin
+            NewStackItem.NodeIndex:=fTriangleDynamicAABBTree.Nodes[StackItem.NodeIndex].Children[0];
             NewStackItem.MetaData:=0;
             Stack.Push(NewStackItem);
            end;
@@ -3268,11 +3307,11 @@ begin
      end;
 
     finally
-     fStaticTriangleBVHTriangles:=nil;
+     FreeAndNil(fTriangleDynamicAABBTreeSkipList);
     end;
 
    finally
-    FreeAndNil(fStaticTriangleBVH);
+    FreeAndNil(fTriangleDynamicAABBTree);
    end;
 
   finally
