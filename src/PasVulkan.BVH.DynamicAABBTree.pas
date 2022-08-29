@@ -162,8 +162,8 @@ type { TpvBVHDynamicAABBTree }
               function IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
               function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray; overload;
               function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
-              function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
-              function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+              function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+              function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
              public
               property NodeArray:TSkipListNodeArray read fNodeArray;
             end;
@@ -203,8 +203,8 @@ type { TpvBVHDynamicAABBTree }
        function IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
        function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
-       function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
-       function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+       function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+       function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
      end;
 
@@ -302,7 +302,7 @@ begin
  end;
 end;
 
-function TpvBVHDynamicAABBTree.TSkipList.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+function TpvBVHDynamicAABBTree.TSkipList.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
 var Index,Count:TpvSizeInt;
     Node:TpvBVHDynamicAABBTree.PSkipListNode;
     RayEnd:TpvVector3;
@@ -324,6 +324,7 @@ begin
     if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time,Stop) then begin
      if (not result) or (Time<aTime) then begin
       aTime:=Time;
+      aUserData:=Node^.UserData;
       result:=true;
       if aStopAtFirstHit or Stop then begin
        break;
@@ -344,7 +345,7 @@ begin
  end;
 end;
 
-function TpvBVHDynamicAABBTree.TSkipList.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+function TpvBVHDynamicAABBTree.TSkipList.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
 var Index,Count:TpvSizeInt;
     Node:TpvBVHDynamicAABBTree.PSkipListNode;
     Time,RayLength:TpvFloat;
@@ -366,6 +367,7 @@ begin
     if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time,Stop) then begin
      if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
       aTime:=Time;
+      aUserData:=Node^.UserData;
       result:=true;
       if aStopAtFirstHit or Stop then begin
        break;
@@ -1360,7 +1362,7 @@ begin
  end;
 end;
 
-function TpvBVHDynamicAABBTree.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+function TpvBVHDynamicAABBTree.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
 type TStackItem=record
       NodeID:TpvSizeInt;
      end;
@@ -1388,6 +1390,7 @@ begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,aRayOrigin,aRayDirection,Time,Stop) then begin
       if (not result) or (Time<aTime) then begin
        aTime:=Time;
+       aUserData:=Node^.UserData;
        result:=true;
        if aStopAtFirstHit or Stop then begin
         break;
@@ -1412,7 +1415,7 @@ begin
  end;
 end;
 
-function TpvBVHDynamicAABBTree.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+function TpvBVHDynamicAABBTree.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
 type TStackItem=record
       NodeID:TpvSizeInt;
      end;
@@ -1441,6 +1444,7 @@ begin
      if (Node^.UserData<>0) and aRayCastUserData(Node^.UserData,RayOrigin,RayDirection,Time,Stop) then begin
       if ((Time>=0.0) and (Time<=RayLength)) and ((not result) or (Time<aTime)) then begin
        aTime:=Time;
+       aUserData:=Node^.UserData;
        result:=true;
        if aStopAtFirstHit or Stop then begin
         break;
