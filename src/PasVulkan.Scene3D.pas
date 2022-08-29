@@ -2775,7 +2775,7 @@ begin
 
  fRoot:=nil;
 
- fSubdivisonMode:=TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.UniformGrid;
+ fSubdivisonMode:=TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH;
 
  fSubdivisonOneDimensionSize:=16;
 
