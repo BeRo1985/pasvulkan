@@ -2998,7 +2998,7 @@ procedure TpvScene3D.TPotentiallyVisibleSet.Build(const aBakedMesh:TpvScene3D.TB
 type TStackItem=record
       Node:TpvScene3D.TPotentiallyVisibleSet.TNode;
       StaticTriangleBVHSkipListNode:PpvStaticTriangleBVHSkipListNode;
-      StaticAABBTreeNode:TpvBVHStaticAABBTree.PTreeNode;
+      DynamicAABBTreeNode:TpvSizeInt;
       MetaData:TpvInt32;
      end;
      PStackItem=^TStackItem;
@@ -3010,7 +3010,7 @@ var TriangleIndex,NodeIndexCounter,Index,OtherIndex,x,y,z:TpvSizeInt;
     Stack:TStack;
     NodeIndexPairList:TpvScene3D.TPotentiallyVisibleSet.TNodeIndexPairList;
     TemporaryAABB:TpvAABB;
-    StaticAABBTree:TpvBVHStaticAABBTree;
+    DynamicAABBTree:TpvBVHDynamicAABBTree;
 begin
 
  fNodes.Clear;
@@ -3058,7 +3058,7 @@ begin
        TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones,
        TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH:begin
 
-        StaticAABBTree:=TpvBVHStaticAABBTree.Create;
+        DynamicAABBTree:=TpvBVHDynamicAABBTree.Create;
         try
 
          case fSubdivisonMode of
@@ -3076,23 +3076,23 @@ begin
              for x:=0 to fSubdivisonOneDimensionSize-1 do begin
               TemporaryAABB.Min.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,z/fSubdivisonOneDimensionSize);
               TemporaryAABB.Max.x:=FloatLerp(fAABB.Min.x,fAABB.Max.x,(z+1)/fSubdivisonOneDimensionSize);
-              StaticAABBTree.CreateProxy(TemporaryAABB,Index);
+              DynamicAABBTree.CreateProxy(TemporaryAABB,Index+1);
               inc(Index);
              end;
             end;
            end;
 
-           StaticAABBTree.Build(1,fSubdivisonOneDimensionSize*2,false);
+           DynamicAABBTree.Rebuild;
 
           end;
 
           TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.ManualZones:begin
 
            for Index:=0 to fManualBoundingBoxes.Count-1 do begin
-            StaticAABBTree.CreateProxy(fManualBoundingBoxes.Items[Index],Index);
+            DynamicAABBTree.CreateProxy(fManualBoundingBoxes.Items[Index],Index+1);
            end;
 
-           StaticAABBTree.Build(1,fManualBoundingBoxes.Count*2,false);
+           DynamicAABBTree.Rebuild;
 
           end;
 
@@ -3106,10 +3106,10 @@ begin
             TemporaryAABB.Max.x:=Max(Max(BakedTriangle.Positions[0].x,BakedTriangle.Positions[1].x),BakedTriangle.Positions[2].x);
             TemporaryAABB.Max.y:=Max(Max(BakedTriangle.Positions[0].y,BakedTriangle.Positions[1].y),BakedTriangle.Positions[2].y);
             TemporaryAABB.Max.z:=Max(Max(BakedTriangle.Positions[0].z,BakedTriangle.Positions[1].z),BakedTriangle.Positions[2].z);
-            StaticAABBTree.CreateProxy(TemporaryAABB,TriangleIndex);
+            DynamicAABBTree.CreateProxy(TemporaryAABB,TriangleIndex+1);
            end;
 
-           StaticAABBTree.Build(8,64,false);
+           DynamicAABBTree.Rebuild;
 
           end;
 
@@ -3118,7 +3118,7 @@ begin
          Stack.Initialize;
          try
           NewStackItem.Node:=nil;
-          NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StaticAABBTree.Root];
+          NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Root;
           NewStackItem.MetaData:=0;
           Stack.Push(NewStackItem);
           while Stack.Pop(StackItem) do begin
@@ -3126,7 +3126,7 @@ begin
               (fSubdivisonMode<>TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH) or
               (StackItem.Node.fLevel<aMaxDepth) then begin
             NewStackItem.Node:=TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,StackItem.Node);
-            NewStackItem.Node.fTag:=StackItem.StaticAABBTreeNode^.Proxies;
+            NewStackItem.Node.fTag:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].UserData-1;
             if not assigned(fRoot) then begin
              fRoot:=NewStackItem.Node;
             end;
@@ -3137,14 +3137,14 @@ begin
               StackItem.Node.fLeft:=NewStackItem.Node;
              end;
             end;
-            NewStackItem.Node.fAABB:=StackItem.StaticAABBTreeNode^.AABB;
-            if StackItem.StaticAABBTreeNode^.Children[1]>=0 then begin
-             NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StackItem.StaticAABBTreeNode^.Children[1]];
+            NewStackItem.Node.fAABB:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].AABB;
+            if DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[1]>=0 then begin
+             NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[1];
              NewStackItem.MetaData:=1;
              Stack.Push(NewStackItem);
             end;
-            if StackItem.StaticAABBTreeNode^.Children[0]>=0 then begin
-             NewStackItem.StaticAABBTreeNode:=@StaticAABBTree.Nodes[StackItem.StaticAABBTreeNode^.Children[0]];
+            if DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[0]>=0 then begin
+             NewStackItem.DynamicAABBTreeNode:=DynamicAABBTree.Nodes[StackItem.DynamicAABBTreeNode].Children[0];
              NewStackItem.MetaData:=0;
              Stack.Push(NewStackItem);
             end;
@@ -3155,7 +3155,7 @@ begin
          end;
 
         finally
-         FreeAndNil(StaticAABBTree);
+         FreeAndNil(DynamicAABBTree);
         end;
 
        end;
