@@ -1281,8 +1281,8 @@ procedure TpvBVHDynamicAABBTree.GetSkipListNodes(var aSkipListNodeArray:TSkipLis
 //const ThresholdVector:TpvVector3=(x:1e-7;y:1e-7;z:1e-7);
 var StackItem,NewStackItem:TSkipListNodeStackItem;
     Node:PTreeNode;
-    GPUSkipListNode:TSkipListNode;
-    GPUSkipListNodeIndex:TpvSizeInt;
+    SkipListNode:TSkipListNode;
+    SkipListNodeIndex:TpvSizeInt;
 begin
  fSkipListNodeLock.Acquire;
  try
@@ -1299,20 +1299,20 @@ begin
      0:begin
       if StackItem.Node>=0 then begin
        Node:=@Nodes[StackItem.Node];
-       GPUSkipListNode.AABBMin:=Node^.AABB.Min;
-       GPUSkipListNode.AABBMax:=Node^.AABB.Max;
-       GPUSkipListNode.SkipCount:=0;
+       SkipListNode.AABBMin:=Node^.AABB.Min;
+       SkipListNode.AABBMax:=Node^.AABB.Max;
+       SkipListNode.SkipCount:=0;
        if Node^.UserData<>0 then begin
         if assigned(aGetUserDataIndex) then begin
-         GPUSkipListNode.UserData:=aGetUserDataIndex(Node^.UserData);
+         SkipListNode.UserData:=aGetUserDataIndex(Node^.UserData);
         end else begin
-         GPUSkipListNode.UserData:=Node^.UserData;
+         SkipListNode.UserData:=Node^.UserData;
         end;
        end else begin
-        GPUSkipListNode.UserData:=High(TpvUInt32);
+        SkipListNode.UserData:=High(TpvUInt32);
        end;
-       GPUSkipListNodeIndex:=aSkipListNodeArray.Add(GPUSkipListNode);
-       fSkipListNodeMap[StackItem.Node]:=GPUSkipListNodeIndex;
+       SkipListNodeIndex:=aSkipListNodeArray.Add(SkipListNode);
+       fSkipListNodeMap[StackItem.Node]:=SkipListNodeIndex;
        NewStackItem.Pass:=1;
        NewStackItem.Node:=StackItem.Node;
        fSkipListNodeStack.Push(NewStackItem);
@@ -1330,8 +1330,8 @@ begin
      end;
      1:begin
       if StackItem.Node>=0 then begin
-       GPUSkipListNodeIndex:=fSkipListNodeMap[StackItem.Node];
-       aSkipListNodeArray.Items[GPUSkipListNodeIndex].SkipCount:=aSkipListNodeArray.Count-GPUSkipListNodeIndex;
+       SkipListNodeIndex:=fSkipListNodeMap[StackItem.Node];
+       aSkipListNodeArray.Items[SkipListNodeIndex].SkipCount:=aSkipListNodeArray.Count-SkipListNodeIndex;
       end;
      end;
     end;
