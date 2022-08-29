@@ -154,7 +154,6 @@ type { TpvBVHDynamicAABBTree }
             TRayCastUserData=function(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean of object;
       private
        fSkipListNodeLock:TPasMPSpinLock;
-       fSkipListNodeArray:TSkipListNodeArray;
        fSkipListNodeMap:TSkipListNodeMap;
        fSkipListNodeStack:TSkipListNodeStack;
       public
@@ -218,7 +217,6 @@ begin
  Path:=0;
  InsertionCount:=0;
  fSkipListNodeLock:=TPasMPSpinLock.Create;
- fSkipListNodeArray.Initialize;
  fSkipListNodeMap:=nil;
  fSkipListNodeStack.Initialize;
 end;
@@ -227,7 +225,6 @@ destructor TpvBVHDynamicAABBTree.Destroy;
 begin
  fSkipListNodeStack.Finalize;
  fSkipListNodeMap:=nil;
- fSkipListNodeArray.Finalize;
  FreeAndNil(fSkipListNodeLock);
  Nodes:=nil;
  inherited Destroy;
