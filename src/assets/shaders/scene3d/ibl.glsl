@@ -24,6 +24,9 @@ vec3 getCubeMapDirection(in vec2 uv,
 /* clang-format on */
 
 vec2 Hammersley(const in int index, const in int numSamples) {
+#if 1
+  return vec2(fract(float(index) / float(numSamples)), float(bitfieldReverse(uint(index))) * 2.3283064365386963e-10);
+#else
   uint reversedIndex = uint(index);
   reversedIndex = (reversedIndex << 16u) | (reversedIndex >> 16u);
   reversedIndex = ((reversedIndex & 0x00ff00ffu) << 8u) | ((reversedIndex & 0xff00ff00u) >> 8u);
@@ -31,6 +34,7 @@ vec2 Hammersley(const in int index, const in int numSamples) {
   reversedIndex = ((reversedIndex & 0x33333333u) << 2u) | ((reversedIndex & 0xccccccccu) >> 2u);
   reversedIndex = ((reversedIndex & 0x55555555u) << 1u) | ((reversedIndex & 0xaaaaaaaau) >> 1u);
   return vec2(fract(float(index) / float(numSamples)), float(reversedIndex) * 2.3283064365386963e-10);
+#endif
 }
 
 mat3 generateTBN(const in vec3 normal) {
