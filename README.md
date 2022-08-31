@@ -1,6 +1,6 @@
 # pasvulkan
 
-Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.1.1 FPC SVN revision 33196 and Delphi >= 2009)
+Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.3.1 FPC trunk and any recent current Delphi version)
 
 The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter) is and stays also compatible with the old Delphi 7 version, but the PasVulkan.*.pas framework units are no more Delphi 7 compatible, because they are using new Object Pascal syntax features, as such as generics, operator overloading, advanced records and so on, which for these the old Delphi 7 compiler version have no support for.
 
