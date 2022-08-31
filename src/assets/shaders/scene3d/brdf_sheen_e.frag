@@ -115,7 +115,7 @@ float analyticDirectionalAlbedoSheenLuT(float NdotV, float roughness)
 
 void main(){
   float nDotV = inTexCoord.x;
-  float roughness = inTexCoord.y;
+  float roughness = 1.0 - inTexCoord.y;
   float linearRoughness = roughness * roughness;
   outFragColor = vec4(DFV_Charlie_Uniform(nDotV, linearRoughness, numSamples), 0.0, 0.0, 1.0);
 }
