@@ -361,7 +361,9 @@ compileshaderarguments=(
 
   '-V brdf_charlie.frag -o brdf_charlie_frag.spv'
   '-V brdf_ggx.frag -o brdf_ggx_frag.spv'
+  
   '-V brdf_sheen_e.frag -o brdf_sheen_e_frag.spv'
+  '-V brdf_sheen_e.frag -DFAST -o brdf_sheen_e_fast_frag.spv'
     
   '-V fullscreen.vert -o fullscreen_vert.spv'
   

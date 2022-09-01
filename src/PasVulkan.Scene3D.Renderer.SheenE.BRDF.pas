@@ -139,7 +139,15 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('brdf_sheen_e_frag.spv');
+case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
+  TpvVulkanVendorID.AMD,
+  TpvVulkanVendorID.NVIDIA:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('brdf_sheen_e_frag.spv');
+  end;
+  else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('brdf_sheen_e_fast_frag.spv');
+  end;
+ end;
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(aVulkanDevice,Stream);
  finally
