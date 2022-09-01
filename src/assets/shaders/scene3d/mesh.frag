@@ -639,7 +639,7 @@ vec3 transmissionOutput = vec3(0.0);
 float albedoSheenScaling = 1.0;
 
 float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessFactor) {
-  return texture(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor)).x;  //
+  return textureLod(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor), 0.0).x;  //
 }
 
 float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
@@ -647,27 +647,30 @@ float getSpecularOcclusion(const in float NdotV, const in float ao, const in flo
 } 
 
 void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec3 sheenColor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
-  vec3 halfVector = normalize(viewDirection + lightDirection);
   float nDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
   float nDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
-  float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
-  vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-  diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
-  specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
-  if ((flags & (1u << 7u)) != 0u) {
-    float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
-    albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), 1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
-    sheenOutput += BRDF_specularSheen(sheenColor, sheenRoughness, nDotL, nDotV, nDotH) * lit;
-  }
-  if ((flags & (1u << 8u)) != 0u) {
-    float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
-    float nDotV = clamp(abs(dot(clearcoatNormal, viewDirection)) + 1e-5, 0.0, 1.0);
-    float nDotH = clamp(dot(clearcoatNormal, halfVector), 0.0, 1.0);
+  if((nDotL > 0.0) || (nDotV > 0.0)){
+    vec3 halfVector = normalize(viewDirection + lightDirection);
+    float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
+    float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
     vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-    clearcoatOutput += F_Schlick(clearcoatF0, vec3(1.0), vDotH) *  //
-                       D_GGX(nDotH, clearcoatRoughness) *          //
-                       V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * specularOcclusion * lit;
+    diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
+    specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
+    if ((flags & (1u << 7u)) != 0u) {
+      float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
+      albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), //
+                               1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
+      sheenOutput += BRDF_specularSheen(sheenColor, sheenRoughness, nDotL, nDotV, nDotH) * lit;
+    }
+    if ((flags & (1u << 8u)) != 0u) {
+      float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
+      float nDotV = clamp(abs(dot(clearcoatNormal, viewDirection)) + 1e-5, 0.0, 1.0);
+      float nDotH = clamp(dot(clearcoatNormal, halfVector), 0.0, 1.0);
+      vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
+      clearcoatOutput += F_Schlick(clearcoatF0, vec3(1.0), vDotH) *  //
+                        D_GGX(nDotH, clearcoatRoughness) *          //
+                        V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * specularOcclusion * lit;
+    }
   }
 }
 
@@ -680,8 +683,8 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
-  vec2 f_ab = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).rg;
-  vec3 irradiance = texture(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
+  vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).rg;
+  vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
   vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
   vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
   vec3 k_S = mixedF0 + (Fr * pow(1.0 - NdotV, 5.0));
@@ -699,7 +702,7 @@ vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in 
       ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
-  vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
+  vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
   return (texture(uImageBasedLightingEnvMaps[0],  //
                   reflectionVector,               //
                   roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
@@ -723,7 +726,7 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
                  roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie))
              .xyz *    //
          sheenColor *  //
-         texture(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
+         textureLod(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
          ao;
 }
 
@@ -798,7 +801,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
   // Sample GGX LUT to get the specular component.
   float NdotV = clamp(dot(n, v), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
-  vec2 brdf = texture(uImageBasedLightingBRDFTextures[0], brdfSamplePoint).xy;
+  vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
   vec3 specularColor = (f0 * brdf.x) + (f90 * brdf.y);
 
   return (1.0 - specularColor) * attenuatedColor * baseColor;
@@ -1716,7 +1719,7 @@ void main() {
                 break;
               }
             }
-            if (lightAttenuation > 0.0) {
+            if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
                             lightDirection,                                     //

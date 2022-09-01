@@ -887,7 +887,7 @@ type EpvScene3D=class(Exception);
                      SpecularFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                      EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      MetallicRoughnessNormalScaleOcclusionStrengthFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
-                     SheenColorFactorSheenRoughnessFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
+                     SheenColorFactorSheenRoughnessFactor:(x:0.0;y:0.0;z:0.0;w:0.0);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
                      IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:(x:400.0;y:0.0;z:0.0;w:Infinity);
@@ -4938,15 +4938,15 @@ begin
    JSONObject:=TPasJSONItemObject(JSONItem);
    fVisible:=true;
    fData.PBRSheen.Active:=true;
-   fData.PBRSheen.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['roughnessFactor'],TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],1.0)));
-   JSONItem:=JSONObject.Properties['colorFactor'];
+   fData.PBRSheen.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['sheenRoughnessFactor'],TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],0.0)));
+   JSONItem:=JSONObject.Properties['sheenColorFactor'];
    if not assigned(JSONItem) then begin
     JSONItem:=JSONObject.Properties['sheenColor'];
    end;
    if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
-    fData.PBRSheen.ColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],1.0);
-    fData.PBRSheen.ColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
-    fData.PBRSheen.ColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
+    fData.PBRSheen.ColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],0.0);
+    fData.PBRSheen.ColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],0.0);
+    fData.PBRSheen.ColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],0.0);
    end;
    JSONItem:=JSONObject.Properties['sheenColorTexture'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
