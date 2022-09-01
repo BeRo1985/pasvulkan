@@ -324,7 +324,7 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                        [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
                                                                         fInstance.Renderer.CharlieBRDF.DescriptorImageInfo,
-                                                                        fInstance.Renderer.SheenELUT.DescriptorImageInfo],
+                                                                        fInstance.Renderer.SheenEBRDF.DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
