@@ -6719,12 +6719,14 @@ begin
     {$if true}
           Area:=(t2t0[0]*t1t0[1])-(t1t0[0]*t2t0[1]);
           if IsZero(Area) then begin
-           Tangent[0]:=0.0;
-           Tangent[1]:=1.0;
-           Tangent[2]:=0.0;
-           Bitangent[0]:=1.0;
-           Bitangent[1]:=0.0;
-           Bitangent[2]:=0.0;
+           Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]));
+           Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]));
+           Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]));
+           Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]));
+           Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]));
+           Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]));
+           Tangent:=Tangent.Normalize;
+           Bitangent:=Bitangent.Normalize;
           end else begin
            Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]))/Area;
            Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]))/Area;
