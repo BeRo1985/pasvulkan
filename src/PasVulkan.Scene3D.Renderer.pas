@@ -754,7 +754,7 @@ begin
    end;
    TpvVulkanVendorID.Intel:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
+     fLensMode:=TpvScene3DRendererLensMode.None;
     end else begin
      fLensMode:=TpvScene3DRendererLensMode.DownUpsample;
     end;
