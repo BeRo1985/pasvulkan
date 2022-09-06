@@ -263,11 +263,13 @@ type TpvEntityComponentSystem=class
                     TFlags=set of TFlag;
              private
               fID:TEntityID;
+              fUUID:TpvUUID;
               fFlags:TFlags;
               function GetActive:boolean; inline;
               procedure SetActive(const aActive:boolean); inline;
              public
               property ID:TEntityID read fID write fID;
+              property UUID:TpvUUID read fUUID write fUUID;
               property Flags:TFlags read fFlags write fFlags;
               property Active:boolean read GetActive write SetActive;
             end;
