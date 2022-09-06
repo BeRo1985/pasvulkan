@@ -2201,11 +2201,13 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.GetEntityByID(const aEntityID:TpvEntityComponentSystem.TEntityID):TpvEntityComponentSystem.PEntity;
+var EntityIndex:TpvInt32;
 begin
- if (aEntityID.Index>=0) and
-    (aEntityID.Index<=fMaxEntityIndex) and
-    ((fEntityUsedBitmap[aEntityID.Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID.Index and 31)))<>0) then begin
-  result:=@fEntities[aEntityID.Index];
+ EntityIndex:=aEntityID.Index;
+ if (EntityIndex>=0) and
+    (EntityIndex<=fMaxEntityIndex) and
+    ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) then begin
+  result:=@fEntities[EntityIndex];
   if result^.fID<>aEntityID then begin
    result:=nil;
   end;
@@ -2523,27 +2525,31 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.HasEntity(const aEntityID:TpvEntityComponentSystem.TEntityID):boolean;
+var EntityIndex:TpvInt32;
 begin
+ EntityIndex:=aEntityID.Index;
  fLock.AcquireRead;
  try
-  result:=(aEntityID.Index>=0) and
-          (aEntityID.Index<=fMaxEntityIndex) and
-          ((fEntityUsedBitmap[aEntityID.Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID.Index and 31)))<>0) and
-          (fEntities[aEntityID.Index].fID=aEntityID);
+  result:=(EntityIndex>=0) and
+          (EntityIndex<=fMaxEntityIndex) and
+          ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) and
+          (fEntities[EntityIndex].fID=aEntityID);
  finally
   fLock.ReleaseRead;
  end;
 end;
 
 function TpvEntityComponentSystem.TWorld.IsEntityActive(const aEntityID:TpvEntityComponentSystem.TEntityID):boolean;
+var EntityIndex:TpvInt32;
 begin
+ EntityIndex:=aEntityID.Index;
  fLock.AcquireRead;
  try
-  result:=(aEntityID.Index>=0) and
-          (aEntityID.Index<=fMaxEntityIndex) and
-          ((fEntityUsedBitmap[aEntityID.Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID.Index and 31)))<>0) and
-          (fEntities[aEntityID.Index].fID=aEntityID) and
-          (TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[aEntityID.Index].fFlags);
+  result:=(EntityIndex>=0) and
+          (EntityIndex<=fMaxEntityIndex) and
+          ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) and
+          (fEntities[EntityIndex].fID=aEntityID) and
+          (TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[EntityIndex].fFlags);
  finally
   fLock.ReleaseRead;
  end;
@@ -2594,14 +2600,16 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.HasEntityComponent(const aEntityID:TEntityID;const aComponentID:TComponentID):boolean;
+var EntityIndex:TpvInt32;
 begin
+ EntityIndex:=aEntityID.Index;
  fLock.AcquireRead;
  try
-  result:=(aEntityID.Index>=0) and
-          (aEntityID.Index<=fMaxEntityIndex) and
-          ((fEntityUsedBitmap[aEntityID.Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID.Index and 31)))<>0) and
-          (fEntities[aEntityID.Index].fID=aEntityID) and
-          fComponents[aComponentID].IsComponentInEntityIndex(aEntityID);
+  result:=(EntityIndex>=0) and
+          (EntityIndex<=fMaxEntityIndex) and
+          ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) and
+          (fEntities[EntityIndex].fID=aEntityID) and
+          fComponents[aComponentID].IsComponentInEntityIndex(EntityIndex);
  finally
   fLock.ReleaseRead;
  end;
