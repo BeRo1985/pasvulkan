@@ -39,7 +39,8 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.SkyCubeMap;
+     PasVulkan.Scene3D.Renderer.SkyCubeMap,
+     PasVulkan.EntityComponentSystem;
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)

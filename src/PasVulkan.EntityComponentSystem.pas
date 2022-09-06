@@ -277,7 +277,7 @@ type TpvEntityComponentSystem=class
             TWorld=class
              public
               type TEntityIndexFreeList=TpvGenericList<TpvSizeInt>;
-                   TEntityGenerationList=TpvDynamicArraList<TpvUInt8>;
+                   TEntityGenerationList=TpvDynamicArrayList<TpvUInt8>;
                    TUsedBitmap=array of TpvUInt32;
              private
               fComponents:TComponentList;
@@ -593,7 +593,7 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
    TRegisteredComponentType.TField.TElementType.FloatingPoint:begin
     case aField^.ElementSize of
      2:begin
-      FloatValue:=PpvHalfFloat(Data)^;
+      FloatValue:=PpvHalfFloat(Data)^.ToFloat;
      end;
      4:begin
       FloatValue:=PpvFloat(Data)^;
