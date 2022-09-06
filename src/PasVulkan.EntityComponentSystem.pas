@@ -70,7 +70,9 @@ uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,Variants,TypInfo,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Base64,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.DataStructures.LinkedList,
+     PasVulkan.Value;
 
 type TpvEntityComponentSystem=class
       public
@@ -88,6 +90,11 @@ type TpvEntityComponentSystem=class
             TComponentIDDynamicArray=array of TComponentID;
 
             TWorld=class;
+
+            TSystem=class;
+
+            TSystemList=class(TpvObjectGenericList<TSystem>)
+            end;
 
             PEntityID=^TEntityID;
             TEntityID=type TpvUInt32;
@@ -161,7 +168,7 @@ type TpvEntityComponentSystem=class
                    PField=^TField;
                    TFields=array of TField;
              private
-              fID:TpvSizeInt;
+              fID:TComponentID;
               fName:TpvUTF8String;
               fDisplayName:TpvUTF8String;
               fPath:TPath;
@@ -193,7 +200,7 @@ type TpvEntityComponentSystem=class
               property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
               property Path:TPath read fPath;
              published
-              property ID:TpvSizeInt read fID;
+              property ID:TComponentID read fID;
               property Size:TpvSizeInt read fSize;
               property Default:TpvUInt8DynamicArray read fDefault;
             end;
@@ -206,6 +213,7 @@ type TpvEntityComponentSystem=class
                    TUsedBitmap=array of TpvUInt32;
                    TPointers=array of TpvPointer;
              private
+              fWorld:TWorld;
               fRegisteredComponentType:TRegisteredComponentType;
               fComponentPoolIndexToEntityIndex:TIndexMapArray;
               fEntityIndexToComponentPoolIndex:TIndexMapArray;
@@ -228,7 +236,7 @@ type TpvEntityComponentSystem=class
               function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer; inline;
               procedure SetMaxEntities(const aCount:TpvSizeInt);
              public
-              constructor Create(const aRegisteredComponentType:TRegisteredComponentType); reintroduce;
+              constructor Create(const aWorld:TWorld;const aRegisteredComponentType:TRegisteredComponentType); reintroduce;
               destructor Destroy; override;
               procedure Defragment;
               procedure DefragmentIfNeeded;
@@ -251,6 +259,55 @@ type TpvEntityComponentSystem=class
 
             TComponentList=TpvObjectGenericList<TComponent>;
 
+            TEventParameter=TpvValue;
+            PEventParameter=^TEventParameter;
+
+            TEventParameters=array of TEventParameter;
+            PEventParameters=^TEventParameters;
+
+            TEvent=record
+             LinkedListHead:TpvLinkedListHead;
+             TimeStamp:TpvTime;
+             RemainingTime:TpvTime;
+             EventID:TEventID;
+             EntityID:TEntityID;
+             CountParameters:TpvInt32;
+             Parameters:TEventParameters;
+            end;
+            PEvent=^TEvent;
+
+            TEventHandler=procedure(const Event:TEvent) of object;
+
+            TEventHandlers=array of TEventHandler;
+
+            TEventRegistration=class
+             private
+              fEventID:TEventID;
+              fName:TpvUTF8String;
+              fActive:longbool;
+              fLock:TPasMPMultipleReaderSingleWriterLock;
+              fSystemList:TSystemList;
+              fEventHandlers:TEventHandlers;
+              fCountEventHandlers:TpvInt32;
+             public
+              constructor Create(const aEventID:TEventID;const aName:TpvUTF8String);
+              destructor Destroy; override;
+              procedure Clear;
+              procedure AddSystem(const aSystem:TSystem);
+              procedure RemoveSystem(const aSystem:TSystem);
+              procedure AddEventHandler(const aEventHandler:TEventHandler);
+              procedure RemoveEventHandler(const aEventHandler:TEventHandler);
+              property EventID:TEventID read fEventID;
+              property Name:TpvUTF8String read fName;
+              property Active:longbool read fActive;
+              property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
+              property SystemList:TSystemList read fSystemList;
+              property EventHandlers:TEventHandlers read fEventHandlers;
+              property CountEventHandlers:TpvInt32 read fCountEventHandlers;
+            end;
+
+            TSystemEvents=array of PEvent;
+
             PEntity=^TEntity;
             TEntity=record
              public
@@ -262,12 +319,14 @@ type TpvEntityComponentSystem=class
                     );
                     TFlags=set of TFlag;
              private
+              fWorld:TWorld;
               fID:TEntityID;
               fUUID:TpvUUID;
               fFlags:TFlags;
               function GetActive:boolean; inline;
               procedure SetActive(const aActive:boolean); inline;
              public
+              property World:TWorld read fWorld write fWorld;
               property ID:TEntityID read fID write fID;
               property UUID:TpvUUID read fUUID write fUUID;
               property Flags:TFlags read fFlags write fFlags;
@@ -275,6 +334,40 @@ type TpvEntityComponentSystem=class
             end;
 
             TpvEntities=array of TEntity;
+
+            TSystem=class
+             private
+              fWorld:TWorld;
+            end;
+
+            TDelayedManagementEventType=(
+             None,
+             CreateEntity,
+             ActivateEntity,
+             DeactivateEntity,
+             KillEntity,
+             AddComponentToEntity,
+             RemoveComponentFromEntity,
+             AddSystem,
+             RemoveSystem
+            );
+            PDelayedManagementEventType=^TDelayedManagementEventType;
+
+            TDelayedManagementEventData=array of TpvUInt8;
+
+            PDelayedManagementEvent=^TDelayedManagementEvent;
+            TDelayedManagementEvent=record
+             EventType:TDelayedManagementEventType;
+             EntityID:TEntityID;
+             ComponentID:TComponentID;
+             System:TSystem;
+             UUID:TpvUUID;
+             Data:TDelayedManagementEventData;
+             DataSize:TpvInt32;
+             DataString:TpvRawByteString;
+            end;
+
+            TDelayedManagementEventQueue=TpvDynamicQueue<TDelayedManagementEvent>;
 
             TWorld=class
              public
@@ -344,7 +437,7 @@ begin
  DisplayName:=aDisplayName;
 end;
 
-{ TpvRegisteredComponentType }
+{ TpvEntityComponentSystem.TRegisteredComponent }
 
 constructor TpvEntityComponentSystem.TRegisteredComponentType.Create(const aName:TpvUTF8String;
                                                                      const aDisplayName:TpvUTF8String;
@@ -463,7 +556,7 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
       raise ERegisteredComponentType.Create('Internal error 2018-09-04-23-58-0000');
      end;
     end;
-    if abs(SignedInteger)<TpvInt64($0010000000000000) then begin
+    if UnsignedInteger<TpvUInt64($0010000000000000) then begin
      result:=TPasJSONItemNumber.Create(UnsignedInteger);
     end else begin
      result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
@@ -858,6 +951,8 @@ procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(
     end else if aJSONItemValue is TPasJSONItemString then begin
      FloatValue:=0.0;
      Val(TPasJSONItemString(aJSONItemValue).Value,FloatValue,Code);
+     if Code<>0 then begin
+     end;
     end else if aJSONItemValue is TPasJSONItemBoolean then begin
      FloatValue:=ord(TPasJSONItemBoolean(aJSONItemValue).Value) and 1;
     end else begin
@@ -980,11 +1075,13 @@ begin
  end;
 end;
 
-{ TpvComponentType }
+{ TpvEntityComponentSystem.TComponent }
 
-constructor TpvEntityComponentSystem.TComponent.Create(const aRegisteredComponentType:TRegisteredComponentType);
+constructor TpvEntityComponentSystem.TComponent.Create(const aWorld:TWorld;const aRegisteredComponentType:TRegisteredComponentType);
 begin
  inherited Create;
+
+ fWorld:=aWorld;
 
  fRegisteredComponentType:=aRegisteredComponentType;
 
@@ -1481,6 +1578,138 @@ begin
  end;
 end;
 
+{ TpvEntityComponentSystem.TEventRegistration }
+
+constructor TpvEntityComponentSystem.TEventRegistration.Create(const aEventID:TpvEntityComponentSystem.TEventID;const aName:TpvUTF8String);
+begin
+ inherited Create;
+ fEventID:=aEventID;
+ fName:=aName;
+ fActive:=false;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fSystemList:=TSystemList.Create;
+ fSystemList.OwnsObjects:=false;
+ fEventHandlers:=nil;
+ fCountEventHandlers:=0;
+end;
+
+destructor TpvEntityComponentSystem.TEventRegistration.Destroy;
+begin
+ fName:='';
+ fEventHandlers:=nil;
+ FreeAndNil(fSystemList);
+ FreeAndNil(fLock);
+ inherited Destroy;
+end;
+
+procedure TpvEntityComponentSystem.TEventRegistration.Clear;
+begin
+ fLock.AcquireWrite;
+ try
+  fName:='';
+  fActive:=false;
+  fSystemList.Clear;
+  fEventHandlers:=nil;
+  fCountEventHandlers:=0;
+ finally
+  fLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEventRegistration.AddSystem(const aSystem:TSystem);
+begin
+ fLock.AcquireRead;
+ try
+  if fSystemList.IndexOf(aSystem)<0 then begin
+   fLock.ReadToWrite;
+   try
+    fSystemList.Add(aSystem);
+   finally
+    fLock.WriteToRead;
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEventRegistration.RemoveSystem(const aSystem:TSystem);
+var Index:TpvSizeInt;
+begin
+ fLock.AcquireRead;
+ try
+  Index:=fSystemList.IndexOf(aSystem);
+  if Index>=0 then begin
+   fLock.ReadToWrite;
+   try
+    fSystemList.Delete(Index);
+   finally
+    fLock.WriteToRead;
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEventRegistration.AddEventHandler(const aEventHandler:TEventHandler);
+var Index:TpvSizeInt;
+    Found:boolean;
+begin
+ Found:=false;
+ fLock.AcquireRead;
+ try
+  for Index:=0 to fCountEventHandlers-1 do begin
+   if (TMethod(fEventHandlers[Index]).Code=TMethod(aEventHandler).Code) and
+      (TMethod(fEventHandlers[Index]).Data=TMethod(aEventHandler).Data) then begin
+    Found:=true;
+    break;
+   end;
+  end;
+  if not Found then begin
+   fLock.ReadToWrite;
+   try
+    Index:=fCountEventHandlers;
+    inc(fCountEventHandlers);
+    if length(fEventHandlers)<fCountEventHandlers then begin
+     SetLength(fEventHandlers,fCountEventHandlers*2);
+    end;
+    fEventHandlers[Index]:=aEventHandler;
+   finally
+    fLock.WriteToRead;
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEventRegistration.RemoveEventHandler(const aEventHandler:TEventHandler);
+var Index:TpvSizeInt;
+begin
+ fLock.AcquireRead;
+ try
+  for Index:=0 to fCountEventHandlers-1 do begin
+   if (TMethod(fEventHandlers[Index]).Code=TMethod(aEventHandler).Code) and
+      (TMethod(fEventHandlers[Index]).Data=TMethod(aEventHandler).Data) then begin
+    fLock.ReadToWrite;
+    try
+     dec(fCountEventHandlers);
+     if fCountEventHandlers>0 then begin
+      Move(fEventHandlers[Index+1],fEventHandlers[Index],fCountEventHandlers*SizeOf(TEventHandler)); // for to be keep the ordering
+//    fEventHandlers[Index]:=fEventHandlers[fCountEventHandlers]; // for to be faster, but with changing the ordering of the last item to the deleted item position
+     end;
+    finally
+     fLock.WriteToRead;
+    end;
+    break;
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
 { TpvEntityComponentSystem.TWorld }
 
 constructor TpvEntityComponentSystem.TWorld.Create;
@@ -1493,7 +1722,7 @@ begin
  fComponents.OwnsObjects:=true;
 
  for Index:=0 to RegisteredComponentTypeList.Count-1 do begin
-  fComponents.Add(TpvEntityComponentSystem.TComponent.Create(RegisteredComponentTypeList.Items[Index]));
+  fComponents.Add(TpvEntityComponentSystem.TComponent.Create(self,RegisteredComponentTypeList.Items[Index]));
  end;
 
  fEntities:=nil;
