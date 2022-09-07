@@ -262,7 +262,7 @@ type TpvEntityComponentSystem=class
               property RegisteredComponentType:TRegisteredComponentType read fRegisteredComponentType;
             end;
 
-            TComponentList=TpvObjectGenericList<TComponent>;
+            TComponentList=TpvObjectGenericList<TpvEntityComponentSystem.TComponent>;
 
             TComponentIDList=class(TpvGenericList<TComponentID>)
             end;
@@ -350,14 +350,14 @@ type TpvEntityComponentSystem=class
               procedure AddComponent(const aComponentID:TComponentID); inline;
               procedure RemoveComponent(const aComponentID:TComponentID); inline;
               function HasComponent(const aComponentID:TComponentID):boolean; inline;
-              function GetComponent(const aComponentID:TComponentID):TComponent; inline;
+              function GetComponent(const aComponentID:TComponentID):TpvEntityComponentSystem.TComponent; inline;
              public
               property World:TWorld read fWorld write fWorld;
               property ID:TEntityID read fID write fID;
               property UUID:TpvUUID read fUUID write fUUID;
               property Flags:TFlags read fFlags write fFlags;
               property Active:boolean read GetActive write SetActive;
-              property Components[const aComponentID:TComponentID]:TComponent read GetComponent;
+              property Components[const aComponentID:TComponentID]:TpvEntityComponentSystem.TComponent read GetComponent;
             end;
 
             PEntity=^TEntity;
@@ -1869,7 +1869,7 @@ begin
  result:=assigned(fWorld) and World.HasEntityComponent(fID,aComponentID);
 end;
 
-function TpvEntityComponentSystem.TEntity.GetComponent(const aComponentID:TComponentID):TComponent;
+function TpvEntityComponentSystem.TEntity.GetComponent(const aComponentID:TComponentID):TpvEntityComponentSystem.TComponent;
 begin
  if assigned(fWorld) and World.HasEntityComponent(fID,aComponentID) then begin
   result:=fWorld.fComponents[aComponentID];
@@ -3612,7 +3612,7 @@ var EntityIndex,ComponentIndex:TpvInt32;
     BitPosition:TpvInt64;
     EntityID:TEntityID;
     Entity:PEntity;
-    Component:TComponent;
+    Component:TpvEntityComponentSystem.TComponent;
     BufferedStream:TStream;
  procedure WriteBit(const aValue:boolean);
  var OldPosition:TpvInt64;
@@ -3727,8 +3727,7 @@ var ComponentID:TComponentID;
     BitTag,Generation:TpvUInt8;
     EntityID:TEntityID;
     Entity:PEntity;
-    Component:TComponent;
-    ComponentClass:TComponentClass;
+    Component:TpvEntityComponentSystem.TComponent;
     BufferedStream:TStream;
     TempUUID:TpvUUID;
     HasNewEntity,IsActive,HasNewComponent:boolean;
