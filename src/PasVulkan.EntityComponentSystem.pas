@@ -358,6 +358,54 @@ type TpvEntityComponentSystem=class
 
             TEntities=array of TEntity;
 
+            { TSystemChoreography }
+
+            TSystemChoreography=class
+             public
+              type TSystemChoreographyStepSystems=array of TSystem;
+                   TSystemChoreographyStepJobs=array of PPasMPJob;
+                   PSystemChoreographyStep=^TSystemChoreographyStep;
+                   TSystemChoreographyStep=record
+                    Systems:TSystemChoreographyStepSystems;
+                    Jobs:TSystemChoreographyStepJobs;
+                    Count:TpvInt32;
+                   end;
+                   TSystemChoreographySteps=array of TSystemChoreographyStep;
+                   PSystemChoreographyStepProcessEventsJobData=^TSystemChoreographyStepProcessEventsJobData;
+                   TSystemChoreographyStepProcessEventsJobData=record
+                    ChoreographyStep:PSystemChoreographyStep;
+                   end;
+                   PSystemChoreographyStepUpdateEntitiesJobData=^TSystemChoreographyStepUpdateEntitiesJobData;
+                   TSystemChoreographyStepUpdateEntitiesJobData=record
+                    ChoreographyStep:PSystemChoreographyStep;
+                   end;
+             private
+              fWorld:TWorld;
+              fPasMP:TPasMP;
+              fChoreographySteps:TSystemChoreographySteps;
+              fChoreographyStepJobs:TSystemChoreographyStepJobs;
+              fCountChoreographySteps:TpvInt32;
+              fSortedSystemList:TSystemList;
+              function CreateProcessEventsJob(const aSystem:TSystem;const aFirstEventIndex,aLastEventIndex:TPasMPSizeInt;const aParentJob:PPasMPJob):PPasMPJob;
+              procedure ProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+              procedure ChoreographyStepProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+              procedure ChoreographyProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+              function CreateUpdateEntitiesJob(const aSystem:TSystem;const aFirstEntityIndex,aLastEntityIndex:TPasMPSizeInt;const aParentJob:PPasMPJob):PPasMPJob;
+              procedure UpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+              procedure ChoreographyStepUpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+              procedure ChoreographyUpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+             public
+              constructor Create(const aWorld:TWorld);
+              destructor Destroy; override;
+              procedure Build;
+              procedure ProcessEvents;
+              procedure InitializeUpdate;
+              procedure Update;
+              procedure FinalizeUpdate;
+            end;
+
+            { TSystem }
+
             TSystem=class
              public
               type TFlag=
@@ -467,6 +515,9 @@ type TpvEntityComponentSystem=class
               fLock:TPasMPMultipleReaderSingleWriterLock;
               fComponents:TComponentList;
               fEntities:TEntities;
+              fSystems:TSystemList;
+              fSystemChoreography:TSystemChoreography;
+              fSystemChoreographyNeedToRebuild:TPasMPInt32;
               fEntityLock:TPasMPMultipleReaderSingleWriterLock;
               fEntityIndexFreeList:TEntityIndexFreeList;
               fEntityGenerationList:TEntityGenerationList;
@@ -1903,6 +1954,294 @@ begin
  end;
 end;
 
+{ TpvEntityComponentSystem.TSystemChoreography }
+
+constructor TpvEntityComponentSystem.TSystemChoreography.Create(const aWorld:TWorld);
+begin
+ inherited Create;
+ fWorld:=aWorld;
+// fPasMP:=ApplicationInstance.PasMPInstance;
+ fChoreographySteps:=nil;
+ fChoreographyStepJobs:=nil;
+ fCountChoreographySteps:=0;
+ fSortedSystemList:=TSystemList.Create;
+ fSortedSystemList.OwnsObjects:=false;
+end;
+
+destructor TpvEntityComponentSystem.TSystemChoreography.Destroy;
+begin
+ fChoreographySteps:=nil;
+ fChoreographyStepJobs:=nil;
+ FreeAndNil(fSortedSystemList);
+ inherited Destroy;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.Build;
+var Systems:TSystemList;
+    Index,OtherIndex,SystemIndex:TpvInt32;
+    Done,Stop:boolean;
+    System,OtherSystem:TSystem;
+    ChoreographyStep:PSystemChoreographyStep;
+begin
+ Systems:=fSortedSystemList;
+
+ Systems.Clear;
+
+ // Fill in
+ for Index:=0 to fWorld.fSystems.Count-1 do begin
+  Systems.Add(fWorld.fSystems.Items[Index]);
+ end;
+
+ // Resolve dependencies with "stable" topological sorting a la naive bubble sort with a bad
+ // execution time (but that fact does not matter at so few systems), and not with Kahn's or
+ // Tarjan's algorithms, because the result must be in a stable sort order
+ repeat
+  Done:=true;
+  for Index:=0 to Systems.Count-1 do begin
+   System:=Systems.Items[Index];
+   for OtherIndex:=0 to Index-1 do begin
+    OtherSystem:=Systems.Items[OtherIndex];
+    if OtherSystem.HaveDependencyOnSystem(System) then begin
+     if OtherSystem.HaveCircularDependencyWithSystem(System) then begin
+      raise ESystemCircularDependency.Create(System.ClassName+' have circular dependency with '+OtherSystem.ClassName);
+     end else begin
+      Systems.Exchange(Index,OtherIndex);
+      Done:=false;
+      break;
+     end;
+    end;
+   end;
+   if not Done then begin
+    break;
+   end;
+  end;
+ until Done;
+
+ // Construct dependency conflict-free choreography
+ fCountChoreographySteps:=0;
+ Index:=0;
+ while Index<Systems.Count do begin
+  System:=Systems.Items[Index];
+  inc(Index);
+  inc(fCountChoreographySteps);
+  if fCountChoreographySteps>length(fChoreographySteps) then begin
+   SetLength(fChoreographySteps,fCountChoreographySteps*2);
+  end;
+  ChoreographyStep:=@fChoreographySteps[fCountChoreographySteps-1];
+  ChoreographyStep^.Count:=1;
+  SetLength(ChoreographyStep^.Systems,ChoreographyStep^.Count);
+  SetLength(ChoreographyStep^.Jobs,ChoreographyStep^.Count);
+  ChoreographyStep^.Systems[0]:=System;
+  while Index<Systems.Count do begin
+   OtherSystem:=Systems.Items[Index];
+   Stop:=TpvEntityComponentSystem.TSystem.TFlag.Secluded in OtherSystem.fFlags;
+   if not Stop then begin
+    for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
+     System:=ChoreographyStep^.Systems[SystemIndex];
+     if System.HaveDependencyOnSystemOrViceVersa(OtherSystem) or
+        System.HaveConflictWithSystemOrViceVersa(OtherSystem) then begin
+      Stop:=true;
+      break;
+     end;
+    end;
+   end;
+   if Stop then begin
+    break;
+   end else begin
+    inc(Index);
+    inc(ChoreographyStep^.Count);
+    if ChoreographyStep^.Count>length(ChoreographyStep^.Systems) then begin
+     SetLength(ChoreographyStep^.Systems,ChoreographyStep^.Count*2);
+    end;
+    ChoreographyStep^.Systems[ChoreographyStep^.Count-1]:=OtherSystem;
+   end;
+  end;
+ end;
+ SetLength(fChoreographyStepJobs,fCountChoreographySteps);
+
+end;
+
+type PSystemChoreographyProcessEventsJobData=^TSystemChoreographyProcessEventsJobData;
+     TSystemChoreographyProcessEventsJobData=record
+      System:TpvEntityComponentSystem.TSystem;
+      FirstEventIndex:TPasMPSizeInt;
+      LastEventIndex:TPasMPSizeInt;
+     end;
+
+function TpvEntityComponentSystem.TSystemChoreography.CreateProcessEventsJob(const aSystem:TSystem;const aFirstEventIndex,aLastEventIndex:TPasMPSizeInt;const aParentJob:PPasMPJob):PPasMPJob;
+var Data:PSystemChoreographyProcessEventsJobData;
+begin
+ result:=fPasMP.Acquire(ProcessEventsJobFunction,nil,nil);
+ Data:=PSystemChoreographyProcessEventsJobData(pointer(@result^.Data));
+ Data^.System:=aSystem;
+ Data^.FirstEventIndex:=aFirstEventIndex;
+ Data^.LastEventIndex:=aFirstEventIndex;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var Data:PSystemChoreographyProcessEventsJobData;
+    MidEventIndex,Count:TpvSizeInt;
+begin
+ Data:=@aJob^.Data;
+ if Data^.FirstEventIndex<=Data^.LastEventIndex then begin
+  Count:=Data^.LastEventIndex-Data^.FirstEventIndex;
+  if (fPasMP.CountJobWorkerThreads<2) or
+     (not (TpvEntityComponentSystem.TSystem.TFlag.ParallelProcessing in Data.System.fFlags)) or
+     ((Count<=Data^.System.fEventGranularity) or (Count<4)) then begin
+   Data^.System.ProcessEvents(Data^.FirstEventIndex,Data^.LastEventIndex);
+  end else begin
+   MidEventIndex:=Data^.FirstEventIndex+((Data^.LastEventIndex-Data^.FirstEventIndex) shr 1);
+   fPasMP.Invoke([CreateProcessEventsJob(Data^.System,Data^.FirstEventIndex,MidEventIndex-1,aJob),
+                  CreateProcessEventsJob(Data^.System,MidEventIndex,Data^.LastEventIndex,aJob)]);
+  end;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ChoreographyStepProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var Data:PSystemChoreographyStepProcessEventsJobData;
+    ChoreographyStep:PSystemChoreographyStep;
+    SystemIndex:TpvSizeInt;
+    System:TpvEntityComponentSystem.TSystem;
+begin
+ Data:=@aJob^.Data;
+ ChoreographyStep:=Data^.ChoreographyStep;
+ for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
+  System:=ChoreographyStep^.Systems[SystemIndex];
+  if System.fEventsCanBeParallelProcessed then begin
+   ChoreographyStep^.Jobs[SystemIndex]:=CreateProcessEventsJob(System,0,System.fCountEvents-1,aJob);
+  end else begin
+   ChoreographyStep^.Jobs[SystemIndex]:=nil;
+  end;
+ end;
+ fPasMP.Invoke(ChoreographyStep^.Jobs);
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ChoreographyProcessEventsJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var ChoreographyStepJob:PPasMPJob;
+    ChoreographyStepJobData:PSystemChoreographyStepProcessEventsJobData;
+    StepIndex:TpvSizeInt;
+    ChoreographyStep:PSystemChoreographyStep;
+begin
+ for StepIndex:=0 to fCountChoreographySteps-1 do begin
+  ChoreographyStep:=@fChoreographySteps[StepIndex];
+  ChoreographyStepJob:=fPasMP.Acquire(ChoreographyStepProcessEventsJobFunction,nil,nil);
+  ChoreographyStepJobData:=PSystemChoreographyStepProcessEventsJobData(pointer(@ChoreographyStepJob^.Data));
+  ChoreographyStepJobData^.ChoreographyStep:=ChoreographyStep;
+  fChoreographyStepJobs[StepIndex]:=ChoreographyStepJob;
+  fPasMP.Invoke(fChoreographyStepJobs[StepIndex]);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ProcessEvents;
+begin
+ fPasMP.Invoke(fPasMP.Acquire(ChoreographyProcessEventsJobFunction,nil,nil));
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.InitializeUpdate;
+var StepIndex,SystemIndex:TpvSizeInt;
+    ChoreographyStep:PSystemChoreographyStep;
+    System:TSystem;
+begin
+ for StepIndex:=0 to fCountChoreographySteps-1 do begin
+  ChoreographyStep:=@fChoreographySteps[StepIndex];
+  for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
+   System:=ChoreographyStep^.Systems[SystemIndex];
+   System.InitializeUpdate;
+  end;
+ end;
+end;
+
+type PSystemChoreographyUpdateEntitiesJobData=^TSystemChoreographyUpdateEntitiesJobData;
+     TSystemChoreographyUpdateEntitiesJobData=record
+      System:TpvEntityComponentSystem.TSystem;
+      FirstEntityIndex:TpvSizeInt;
+      LastEntityIndex:TpvSizeInt;
+     end;
+
+function TpvEntityComponentSystem.TSystemChoreography.CreateUpdateEntitiesJob(const aSystem:TSystem;const aFirstEntityIndex,aLastEntityIndex:TPasMPSizeInt;const aParentJob:PPasMPJob):PPasMPJob;
+var Data:PSystemChoreographyUpdateEntitiesJobData;
+begin
+ result:=fPasMP.Acquire(UpdateEntitiesJobFunction,nil,nil);
+ Data:=PSystemChoreographyUpdateEntitiesJobData(pointer(@result^.Data));
+ Data^.System:=aSystem;
+ Data^.FirstEntityIndex:=aFirstEntityIndex;
+ Data^.LastEntityIndex:=aLastEntityIndex;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.UpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var Data:PSystemChoreographyUpdateEntitiesJobData;
+    MidEntityIndex,Count:TpvSizeInt;
+begin
+ Data:=@aJob^.Data;
+ if Data^.FirstEntityIndex<=Data^.LastEntityIndex then begin
+  Count:=Data^.LastEntityIndex-Data^.FirstEntityIndex;
+  if (TpvEntityComponentSystem.TSystem.TFlag.OwnUpdate in Data.System.fFlags) or
+     (not (TpvEntityComponentSystem.TSystem.TFlag.ParallelProcessing in Data.System.fFlags)) or
+     (fPasMP.CountJobWorkerThreads<2) or
+     ((Count<=Data^.System.fEntityGranularity) or (Count<4)) then begin
+   if TpvEntityComponentSystem.TSystem.TFlag.OwnUpdate in Data.System.fFlags then begin
+    Data^.System.Update;
+   end else begin
+    Data^.System.UpdateEntities(Data^.FirstEntityIndex,Data^.LastEntityIndex);
+   end;
+  end else begin
+   MidEntityIndex:=Data^.FirstEntityIndex+((Data^.LastEntityIndex-Data^.FirstEntityIndex) shr 1);
+   fPasMP.Invoke([CreateUpdateEntitiesJob(Data^.System,Data^.FirstEntityIndex,MidEntityIndex-1,aJob),
+                  CreateUpdateEntitiesJob(Data^.System,MidEntityIndex,Data^.LastEntityIndex,aJob)]);
+  end;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ChoreographyStepUpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var Data:PSystemChoreographyStepUpdateEntitiesJobData;
+    ChoreographyStep:PSystemChoreographyStep;
+    SystemIndex:TpvSizeInt;
+    System:TSystem;
+begin
+ Data:=@aJob^.Data;
+ ChoreographyStep:=Data^.ChoreographyStep;
+ for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
+  System:=ChoreographyStep^.Systems[SystemIndex];
+  ChoreographyStep^.Jobs[SystemIndex]:=CreateUpdateEntitiesJob(System,0,System.fCountEntities-1,aJob);
+ end;
+ fPasMP.Invoke(ChoreographyStep^.Jobs);
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.ChoreographyUpdateEntitiesJobFunction(const aJob:PPasMPJob;const aThreadIndex:TpvInt32);
+var ChoreographyStepJob:PPasMPJob;
+    ChoreographyStepJobData:PSystemChoreographyStepUpdateEntitiesJobData;
+    StepIndex:TpvSizeInt;
+    ChoreographyStep:PSystemChoreographyStep;
+begin
+ for StepIndex:=0 to fCountChoreographySteps-1 do begin
+  ChoreographyStep:=@fChoreographySteps[StepIndex];
+  ChoreographyStepJob:=fPasMP.Acquire(ChoreographyStepUpdateEntitiesJobFunction,nil,nil);
+  ChoreographyStepJobData:=PSystemChoreographyStepUpdateEntitiesJobData(pointer(@ChoreographyStepJob^.Data));
+  ChoreographyStepJobData^.ChoreographyStep:=ChoreographyStep;
+  fChoreographyStepJobs[StepIndex]:=ChoreographyStepJob;
+  fPasMP.Invoke(fChoreographyStepJobs[StepIndex]);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.Update;
+begin
+ fPasMP.Invoke(fPasMP.Acquire(ChoreographyUpdateEntitiesJobFunction,nil,nil));
+end;
+
+procedure TpvEntityComponentSystem.TSystemChoreography.FinalizeUpdate;
+var StepIndex,SystemIndex:TpvSizeInt;
+    ChoreographyStep:PSystemChoreographyStep;
+    System:TSystem;
+begin
+ for StepIndex:=0 to fCountChoreographySteps-1 do begin
+  ChoreographyStep:=@fChoreographySteps[StepIndex];
+  for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
+   System:=ChoreographyStep^.Systems[SystemIndex];
+   System.FinalizeUpdate;
+  end;
+ end;
+end;
+
 { TpvEntityComponentSystem.TSystem }
 
 constructor TpvEntityComponentSystem.TSystem.Create(const aWorld:TWorld);
@@ -2186,6 +2525,13 @@ begin
 
  fMaxEntityIndex:=-1;
 
+ fSystems:=TSystemList.Create;
+ fSystems.OwnsObjects:=false;
+
+ fSystemChoreography:=TSystemChoreography.Create(self);
+
+ fSystemChoreographyNeedToRebuild:=0;
+
  fEventInProcessing:=false;
 
  fEventRegistrationLock:=TPasMPMultipleReaderSingleWriterLock.Create;
@@ -2220,6 +2566,10 @@ begin
  FreeAndNil(fEventRegistrationLock);
 
  FreeAndNil(fEventRegistrationStringIntegerPairHashMap);
+
+ FreeAndNil(fSystemChoreography);
+
+ FreeAndNil(fSystems);
 
  FreeAndNil(fComponents);
 
