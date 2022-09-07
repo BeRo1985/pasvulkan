@@ -7903,11 +7903,13 @@ begin
 
     if fInput.fLastTextInput<>fInput.fTextInput then begin
      fInput.fLastTextInput:=fInput.fTextInput;
+{$if defined(PasVulkanUseSDL2)}
      if fInput.fTextInput then begin
       SDL_StartTextInput;
      end else begin
       SDL_StopTextInput;
      end;
+{$ifend}
     end;
 
    fInput.fEventCount:=0;
