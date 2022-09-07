@@ -3766,6 +3766,7 @@ begin
       end;
      end;
     end;
+    DeactivateEntity(EntityID);
     if IsActive then begin
      ActivateEntity(EntityID);
     end;
