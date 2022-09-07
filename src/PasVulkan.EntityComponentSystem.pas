@@ -3580,7 +3580,6 @@ var EntityIndex,ComponentIndex:TpvInt32;
    raise EInOutError.Create('Stream write error');
   end;
  end;
-var WorldUUID:TpvUUID;
 begin
  Refresh;
  BufferedStream:=TMemoryStream.Create;
@@ -3588,8 +3587,7 @@ begin
   BitTag:=0;
   BitCounter:=8;
   BitPosition:=-1;
-  WorldUUID:=fUUID;
-  if BufferedStream.Write(WorldUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
+  if BufferedStream.Write(fUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
    raise EInOutError.Create('Stream write error');
   end;
   WriteInt32(fEntityIndexCounter);
