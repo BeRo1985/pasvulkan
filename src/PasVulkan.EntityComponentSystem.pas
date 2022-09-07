@@ -3845,8 +3845,14 @@ begin
     end else begin
      DeactivateEntity(EntityID);
     end;
-   end else if HasEntity(EntityID) then begin
-    KillEntity(EntityID);
+   end else begin
+    if (EntityIndex>=0) and
+       (EntityIndex<=fMaxEntityIndex) and
+       ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) then begin
+     Entity:=@fEntities[EntityIndex];
+     EntityID:=Entity^.ID;
+     KillEntity(EntityID);
+    end;
    end;
   end;
   Refresh;
