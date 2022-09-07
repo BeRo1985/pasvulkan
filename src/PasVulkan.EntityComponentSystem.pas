@@ -210,6 +210,9 @@ type TpvEntityComponentSystem=class
             TRegisteredComponentTypeList=class(TpvObjectGenericList<TRegisteredComponentType>)
             end;
 
+            TRegisteredComponentTypeNameHashMap=class(TpvStringHashMap<TRegisteredComponentType>)
+            end;
+
             TComponentIDBitmap=array of TpvUInt32;
 
             TComponent=class
@@ -610,6 +613,7 @@ type TpvEntityComponentSystem=class
      end;
 
 var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTypeList=nil;
+    RegisteredComponentTypeNameHashMap:TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap=nil;
 
 procedure InitializeEntityComponentSystemGlobals;
 
@@ -667,6 +671,7 @@ begin
  inherited Create;
  InitializeEntityComponentSystemGlobals;
  fID:=RegisteredComponentTypeList.Add(self);
+ RegisteredComponentTypeNameHashMap.Add(aName,self);
  fName:=aName;
  fDisplayName:=aDisplayName;
  SetLength(fPath,length(aPath));
@@ -3869,11 +3874,15 @@ begin
   RegisteredComponentTypeList:=TpvEntityComponentSystem.TRegisteredComponentTypeList.Create;
   RegisteredComponentTypeList.OwnsObjects:=true;
  end;
+ if not assigned(RegisteredComponentTypeNameHashMap) then begin
+  RegisteredComponentTypeNameHashMap:=TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap.Create(nil);
+ end;
 end;
 
 initialization
  InitializeEntityComponentSystemGlobals;
 finalization
  FreeAndNil(RegisteredComponentTypeList);
+ FreeAndNil(RegisteredComponentTypeNameHashMap);
 end.
 
