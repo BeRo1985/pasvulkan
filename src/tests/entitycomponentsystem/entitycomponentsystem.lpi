@@ -43,6 +43,11 @@
       <OtherUnitFiles Value="..\..;..\..\..\externals\pasmp\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasjson\src;..\..\..\externals\pasgltf\src;..\..\..\externals\kraft\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
+    </Linking>
   </CompilerOptions>
   <Debugging>
     <Exceptions>
