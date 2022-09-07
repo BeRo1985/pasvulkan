@@ -10,7 +10,9 @@ program entitycomponentsystem;
 
 uses
   SysUtils,
-  PasVulkan.Framework in '..\..\PasVulkan.Framework.pas';
+  PasVulkan.Types in '..\..\PasVulkan.Types.pas',
+  PasVulkan.Framework in '..\..\PasVulkan.Framework.pas',
+  PasVulkan.EntityComponentSystem in '..\..\PasVulkan.EntityComponentSystem.pas';
 
 begin
  try
