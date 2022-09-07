@@ -12,10 +12,18 @@ uses
   SysUtils,
   PasVulkan.Types in '..\..\PasVulkan.Types.pas',
   PasVulkan.Framework in '..\..\PasVulkan.Framework.pas',
-  PasVulkan.EntityComponentSystem in '..\..\PasVulkan.EntityComponentSystem.pas';
+  PasVulkan.EntityComponentSystem in '..\..\PasVulkan.EntityComponentSystem.pas',
+  PasVulkan.Components.Transform in '..\..\PasVulkan.Components.Transform.pas';
 
+var World:TpvEntityComponentSystem.TWorld;
 begin
  try
+  World:=TpvEntityComponentSystem.TWorld.Create;
+  try
+
+  finally
+   FreeAndNil(World);
+  end;
   readln;
  except
   on E:Exception do begin
