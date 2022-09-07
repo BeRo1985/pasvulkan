@@ -3821,8 +3821,8 @@ begin
       end;
       if assigned(Component) then begin
        if not Component.IsComponentInEntityIndex(EntityIndex) then begin
-        Component.AllocateComponentForEntityIndex(EntityIndex);
-        Entity^.AddComponentToEntity(ComponentID);
+        AddComponentToEntity(EntityID,ComponentID);
+        Refresh;
        end;
        BufferedStream.Read(Component.ComponentByEntityIndex[EntityIndex]^,Component.fSize);
       end;
@@ -3835,8 +3835,8 @@ begin
       end;
       if assigned(Component) then begin
        if Component.IsComponentInEntityIndex(EntityIndex) then begin
-        Component.FreeComponentFromEntityIndex(EntityIndex);
-        Entity^.RemoveComponentFromEntity(ComponentID);
+        RemoveComponentFromEntity(EntityID,ComponentID);
+        Refresh;
        end;
       end;
      end;
