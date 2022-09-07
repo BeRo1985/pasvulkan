@@ -3845,6 +3845,7 @@ begin
     end else begin
      DeactivateEntity(EntityID);
     end;
+    Refresh;
    end else begin
     if (EntityIndex>=0) and
        (EntityIndex<=fMaxEntityIndex) and
@@ -3852,6 +3853,7 @@ begin
      Entity:=@fEntities[EntityIndex];
      EntityID:=Entity^.ID;
      KillEntity(EntityID);
+     Refresh;
     end;
    end;
   end;
