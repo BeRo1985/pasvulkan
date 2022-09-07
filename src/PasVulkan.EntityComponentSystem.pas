@@ -105,14 +105,13 @@ type TpvEntityComponentSystem=class
             end;
 
             TEntityIDHelper=record helper for TEntityID
-             private
+             private // first 24 bits then 8 bits, so that it is still sortable by entity index
               const IndexBits=24; // when all these bits set, then => -1
                     GenerationBits=8;
-                    InverseIndexBits=32-IndexBits;
                     IndexBitsMinusOne=TpvUInt32(IndexBits-1);
                     IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
                     IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
-                    GenerationMask=TpvUInt32(not IndexMask);
+                    GenerationMask=TpvUInt32((TpvUInt32(1) shl GenerationBits)-1);
               function GetIndex:TpvInt32; inline;
               procedure SetIndex(const aIndex:TpvInt32); inline;
               function GetGeneration:TpvUInt8; inline;
@@ -616,23 +615,23 @@ uses PasVulkan.Components.Name,
 
 function TpvEntityComponentSystem.TEntityIDHelper.GetIndex:TpvInt32;
 begin
- result:=self and IndexMask;
+ result:=(self shr GenerationBits) and IndexMask;
  result:=result or (-(ord(result=IndexMask) and 1));
 end;
 
 procedure TpvEntityComponentSystem.TEntityIDHelper.SetIndex(const aIndex:TpvInt32);
 begin
- self:=(self and GenerationMask) or (TpvUInt32(aIndex) and IndexMask);
+ self:=(self and GenerationMask) or ((TpvUInt32(aIndex) and IndexMask) shl GenerationBits);
 end;
 
 function TpvEntityComponentSystem.TEntityIDHelper.GetGeneration:TpvUInt8;
 begin
- result:=self shr IndexBits;
+ result:=self and GenerationMask;
 end;
 
 procedure TpvEntityComponentSystem.TEntityIDHelper.SetGeneration(const aGeneration:TpvUInt8);
 begin
- self:=(self and IndexMask) or (aGeneration shl IndexBits);
+ self:=(self and not GenerationMask) or (aGeneration and GenerationMask);
 end;
 
 { TpvEntityComponentSystem.TpvRegisteredComponentType.TField.TEnumerationOrFlag }
