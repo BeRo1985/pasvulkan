@@ -208,7 +208,8 @@ type TpvEntityComponentSystem=class
               property Default:TpvUInt8DynamicArray read fDefault;
             end;
 
-            TRegisteredComponentTypeList=TpvObjectGenericList<TRegisteredComponentType>;
+            TRegisteredComponentTypeList=class(TpvObjectGenericList<TRegisteredComponentType>)
+            end;
 
             TComponent=class
              public
