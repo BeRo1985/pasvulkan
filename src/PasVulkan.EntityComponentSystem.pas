@@ -3841,9 +3841,10 @@ begin
       end;
      end;
     end;
-    DeactivateEntity(EntityID);
     if IsActive then begin
      ActivateEntity(EntityID);
+    end else begin
+     DeactivateEntity(EntityID);
     end;
    end else if HasEntity(EntityID) then begin
     KillEntity(EntityID);
