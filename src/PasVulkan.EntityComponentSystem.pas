@@ -317,6 +317,8 @@ type TpvEntityComponentSystem=class
 
             TSystemEvents=array of PEvent;
 
+            { TEntity }
+
             TEntity=record
              public
               type TFlag=
@@ -335,11 +337,21 @@ type TpvEntityComponentSystem=class
               function GetActive:boolean; inline;
               procedure SetActive(const aActive:boolean); inline;
              public
+              procedure SynchronizeToPrefab;
+              procedure Activate; inline;
+              procedure Deactivate; inline;
+              procedure Kill; inline;
+              procedure AddComponent(const aComponentID:TComponentID); inline;
+              procedure RemoveComponent(const aComponentID:TComponentID); inline;
+              function HasComponent(const aComponentID:TComponentID):boolean; inline;
+              function GetComponent(const aComponentID:TComponentID):TComponent; inline;
+             public
               property World:TWorld read fWorld write fWorld;
               property ID:TEntityID read fID write fID;
               property UUID:TpvUUID read fUUID write fUUID;
               property Flags:TFlags read fFlags write fFlags;
               property Active:boolean read GetActive write SetActive;
+              property Components[const aComponentID:TComponentID]:TComponent read GetComponent;
             end;
 
             PEntity=^TEntity;
@@ -1703,6 +1715,59 @@ begin
   end else begin
    Exclude(fFlags,TFlag.Active);
   end;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.SynchronizeToPrefab;
+begin
+end;
+
+procedure TpvEntityComponentSystem.TEntity.Activate;
+begin
+ if assigned(fWorld) then begin
+  fWorld.ActivateEntity(fID);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.Deactivate;
+begin
+ if assigned(fWorld) then begin
+  fWorld.DeactivateEntity(fID);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.Kill;
+begin
+ if assigned(fWorld) then begin
+  fWorld.KillEntity(fID);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComponentID);
+begin
+ if assigned(fWorld) then begin
+  fWorld.AddComponentToEntity(fID,aComponentID);
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.RemoveComponent(const aComponentID:TComponentID);
+begin
+ if assigned(fWorld) then begin
+  fWorld.RemoveComponentFromEntity(fID,aComponentID);
+ end;
+end;
+
+function TpvEntityComponentSystem.TEntity.HasComponent(const aComponentID:TComponentID):boolean;
+begin
+ result:=assigned(fWorld) and World.HasEntityComponent(fID,aComponentID);
+end;
+
+function TpvEntityComponentSystem.TEntity.GetComponent(const aComponentID:TComponentID):TComponent;
+begin
+ if assigned(fWorld) and World.HasEntityComponent(fID,aComponentID) then begin
+  result:=fWorld.fComponents[aComponentID];
+ end else begin
+  result:=nil;
  end;
 end;
 
