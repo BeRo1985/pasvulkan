@@ -333,9 +333,12 @@ type TpvEntityComponentSystem=class
               fID:TEntityID;
               fUUID:TpvUUID;
               fFlags:TFlags;
+              fComponents:TComponentIDDynamicArray;
               fUnknownData:TObject;
               function GetActive:boolean; inline;
               procedure SetActive(const aActive:boolean); inline;
+              procedure AddComponentToEntity(const aComponentID:TComponentID);
+              procedure RemoveComponentFromEntity(const aComponentID:TComponentID);
              public
               procedure SynchronizeToPrefab;
               procedure Activate; inline;
@@ -513,6 +516,7 @@ type TpvEntityComponentSystem=class
                    TUUIDEntityIDPairHashMap=class(TpvHashMap<TpvUUID,TpvEntityComponentSystem.TEntityID>);
                    TSystemBooleanPairHashMap=class(TpvHashMap<TpvEntityComponentSystem.TSystem,longbool>);
              private
+              fUUID:TpvUUID;
               fActive:longbool;
               fPasMPInstance:TPasMP;
               fLock:TPasMPMultipleReaderSingleWriterLock;
@@ -590,7 +594,10 @@ type TpvEntityComponentSystem=class
               procedure ClearEntities;
               procedure Activate;
               procedure Deactivate;
+              procedure MementoSerialize(const aStream:TStream);
+              procedure MementoUnserialize(const aStream:TStream);
              public
+              property UUID:TpvUUID read fUUID write fUUID;
               property Active:longbool read fActive write fActive;
               property Components:TComponentList read fComponents;
               property CurrentTime:TpvTime read fCurrentTime;
@@ -1765,6 +1772,7 @@ begin
   if fCountFrees>(fPoolIndexCounter shr 2) then begin
    fNeedToDefragment:=true;
   end;
+  result:=true;
  end;
 end;
 
@@ -1782,6 +1790,29 @@ begin
    Include(fFlags,TFlag.Active);
   end else begin
    Exclude(fFlags,TFlag.Active);
+  end;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.AddComponentToEntity(const aComponentID:TComponentID);
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to length(fComponents)-1 do begin
+  if fComponents[Index]=aComponentID then begin
+   exit;
+  end;
+ end;
+ fComponents:=fComponents+[aComponentID];
+//System.Insert(aComponentID,fComponents,length(fComponents));
+end;
+
+procedure TpvEntityComponentSystem.TEntity.RemoveComponentFromEntity(const aComponentID:TComponentID);
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to length(fComponents)-1 do begin
+  if fComponents[Index]=aComponentID then begin
+   System.Delete(fComponents,Index,1);
+   exit;
   end;
  end;
 end;
@@ -2513,6 +2544,8 @@ begin
 
  inherited Create;
 
+ fUUID:=TpvUUID.Create;
+
  if assigned(aPasMPInstance) then begin
   fPasMPInstance:=aPasMPInstance;
  end else begin
@@ -2738,6 +2771,8 @@ begin
       Entity^.fID:=0;
       Entity^.fFlags:=[];
       Entity^.fUUID:=TpvUUID.Null;
+      Entity^.fUnknownData:=nil;
+      Entity^.fComponents:=nil;
      end;
     end;
 
@@ -2770,6 +2805,7 @@ begin
    Entity^.fFlags:=[TEntity.TFlag.Used];
    Entity^.fUUID:=aEntityUUID;
    Entity^.fUnknownData:=nil;
+   Entity^.fComponents:=nil;
 
    fEntityUUIDHashMap.Add(aEntityUUID,aEntityID);
 
@@ -2815,6 +2851,7 @@ begin
     end;
     Entity^.Flags:=[];
     FreeAndNil(Entity^.fUnknownData);
+    Entity^.fComponents:=nil;
     fEntityLock.AcquireWrite;
     try
      fEntityIndexFreeList.Add(EntityIndex);
@@ -3216,8 +3253,8 @@ begin
       end else begin
        Component:=nil;
       end;
-      if assigned(Component) then begin
-       WasActive:=TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[EntityID].Flags;
+      if assigned(Component) and (not Component.IsComponentInEntityIndex(EntityIndex)) and Component.AllocateComponentForEntityIndex(EntityIndex) then begin
+       WasActive:=TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[EntityIndex].Flags;
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
          System:=fSystems.Items[Index];
@@ -3226,7 +3263,7 @@ begin
         end;
        end;
        Entity:=@fEntities[EntityIndex];
-       Entity^.AddComponent(DelayedManagementEvent^.ComponentID);
+       Entity^.AddComponentToEntity(DelayedManagementEvent^.ComponentID);
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
          System:=TSystem(fSystems.Items[Index]);
@@ -3250,8 +3287,8 @@ begin
       end else begin
        Component:=nil;
       end;
-      if assigned(Component) then begin
-       WasActive:=TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[EntityID].Flags;
+      if assigned(Component) and Component.IsComponentInEntityIndex(EntityIndex) and Component.FreeComponentFromEntityIndex(EntityIndex) then begin
+       WasActive:=TpvEntityComponentSystem.TEntity.TFlag.Active in fEntities[EntityIndex].Flags;
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
          System:=fSystems.Items[Index];
@@ -3260,7 +3297,7 @@ begin
         end;
        end;
        Entity:=@fEntities[EntityIndex];
-       Entity.RemoveComponent(DelayedManagementEvent^.ComponentID);
+       Entity^.RemoveComponentFromEntity(DelayedManagementEvent^.ComponentID);
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
          System:=TSystem(fSystems.Items[Index]);
@@ -3479,6 +3516,121 @@ end;
 procedure TpvEntityComponentSystem.TWorld.Deactivate;
 begin
  fActive:=false;
+end;
+
+procedure TpvEntityComponentSystem.TWorld.MementoSerialize(const aStream:TStream);
+var EntityIndex,ComponentIndex:TpvInt32;
+    ComponentID:TComponentID;
+    BitCounter:TpvInt32;
+    BitTag:TpvUInt8;
+    BitPosition:TpvInt64;
+    EntityID:TEntityID;
+    Entity:PEntity;
+    Component:TComponent;
+    BufferedStream:TStream;
+ procedure WriteBit(const aValue:boolean);
+ var OldPosition:TpvInt64;
+ begin
+  if BitCounter>=8 then begin
+   if BitPosition>=0 then begin
+    OldPosition:=BufferedStream.Position;
+    if BufferedStream.Seek(BitPosition,soBeginning)<>BitPosition then begin
+     raise EInOutError.Create('Stream seek error');
+    end;
+    if BufferedStream.Write(BitTag,SizeOf(TpvUInt8))<>SizeOf(TpvUInt8) then begin
+     raise EInOutError.Create('Stream write error');
+    end;
+    if BufferedStream.Seek(OldPosition,soBeginning)<>OldPosition then begin
+     raise EInOutError.Create('Stream seek error');
+    end;
+   end;
+   BitTag:=0;
+   BitCounter:=0;
+   BitPosition:=BufferedStream.Position;
+   if BufferedStream.Write(BitTag,SizeOf(TpvUInt8))<>SizeOf(TpvUInt8) then begin
+    raise EInOutError.Create('Stream write error');
+   end;
+  end;
+  if aValue then begin
+   BitTag:=BitTag or (TpvUInt8(1) shl BitCounter);
+  end else begin
+   BitTag:=BitTag and not (TpvUInt8(1) shl BitCounter);
+  end;
+  inc(BitCounter);
+ end;
+ procedure FlushBits;
+ var OldPosition:TpvInt64;
+ begin
+  if BitPosition>=0 then begin
+   OldPosition:=BufferedStream.Position;
+   if BufferedStream.Seek(BitPosition,soBeginning)<>BitPosition then begin
+    raise EInOutError.Create('Stream seek error');
+   end;
+   if BufferedStream.Write(BitTag,SizeOf(TpvUInt8))<>SizeOf(TpvUInt8) then begin
+    raise EInOutError.Create('Stream write error');
+   end;
+   if BufferedStream.Seek(OldPosition,soBeginning)<>OldPosition then begin
+    raise EInOutError.Create('Stream seek error');
+   end;
+  end;
+ end;
+ procedure WriteInt32(const aValue:TpvInt32);
+ begin
+  if BufferedStream.Write(aValue,SizeOf(TpvInt32))<>SizeOf(TpvInt32) then begin
+   raise EInOutError.Create('Stream write error');
+  end;
+ end;
+var WorldUUID:TpvUUID;
+begin
+ Refresh;
+ BufferedStream:=TMemoryStream.Create;
+ try
+  BitTag:=0;
+  BitCounter:=8;
+  BitPosition:=-1;
+  WorldUUID:=fUUID;
+  if BufferedStream.Write(WorldUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
+   raise EInOutError.Create('Stream write error');
+  end;
+  WriteInt32(fEntityIndexCounter);
+  for EntityIndex:=0 to fEntityIndexCounter-1 do begin
+   if (EntityIndex>=0) and
+      (EntityIndex<=fMaxEntityIndex) and
+      ((fEntityUsedBitmap[EntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityIndex and 31)))<>0) then begin
+    EntityID:=fEntities[EntityIndex].fID;
+    WriteBit(true);
+    Entity:=@fEntities[EntityID];
+    WriteBit(Entity^.Active);
+    BufferedStream.Write(Entity^.fUUID,SizeOf(TpvUUID));
+    WriteInt32(length(Entity^.fComponents));
+    for ComponentIndex:=0 to length(Entity^.fComponents)-1 do begin
+     ComponentID:=Entity.fComponents[ComponentIndex];
+     if{(DelayedManagementEvent^.ComponentID>=0) and}(ComponentID<fComponents.Count) then begin
+      Component:=fComponents[ComponentID];
+     end else begin
+      Component:=nil;
+     end;
+     if assigned(Component) then begin
+      WriteBit(true);
+      BufferedStream.Write(Component.ComponentByEntityIndex[EntityIndex]^,Component.fSize);
+     end else begin
+      WriteBit(false);
+     end;
+    end;
+   end else begin
+    WriteBit(false);
+   end;
+  end;
+  FlushBits;
+  BufferedStream.Seek(0,soBeginning);
+  aStream.CopyFrom(BufferedStream,BufferedStream.Size);
+ finally
+  BufferedStream.Free;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TWorld.MementoUnserialize(const aStream:TStream);
+begin
 end;
 
 procedure InitializeEntityComponentSystemGlobals;
