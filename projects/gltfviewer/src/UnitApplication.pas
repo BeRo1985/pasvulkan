@@ -319,7 +319,7 @@ begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
- Title:='PasVulkan GLTF Test';
+ Title:='PasVulkan GLTF Viewer';
  PathName:='gltftest.pasvulkan';
  StartScreen:=TScreenMain;
  VisibleMouseCursor:=true;
