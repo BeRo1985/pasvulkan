@@ -1063,21 +1063,21 @@ type PpvScalar=^TpvScalar;
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       class function FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
        function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
        function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean;
        function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload;
-       class function RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; static; overload;
+       class function RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload; static;
        function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; overload;
-       class function LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean; static; overload;
+       class function LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean; overload; static;
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix3x3):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13614,7 +13614,7 @@ begin
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
 end;
 
-class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(aAABBMin+aAABBMax)*0.5;
@@ -13793,7 +13793,7 @@ begin
  end;
 end;
 
-class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; static; overload; {$ifdef CAN_INLINE}inline;{$endif}
+class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin
