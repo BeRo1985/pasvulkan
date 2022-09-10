@@ -1843,6 +1843,7 @@ type EpvVulkanException=class(Exception);
        procedure GetScreenshot(out aScreenshot:TpvVulkanSwapChainScreenshot;const aSwapChainImage:TpvVulkanImage=nil);
        procedure SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95);
        procedure SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
+       procedure SaveScreenshotAsQOIToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
        property Images[const aImageIndex:TpvInt32]:TpvVulkanImage read GetImage; default;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -15078,6 +15079,32 @@ begin
      aStream.Seek(0,soBeginning);
     finally
      FreeMem(PNGData);
+    end;
+   end;
+  end;
+ finally
+  Finalize(SwapChainScreenshot);
+ end;
+end;
+
+procedure TpvVulkanSwapChain.SaveScreenshotAsQOIToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
+var SwapChainScreenshot:TpvVulkanSwapChainScreenshot;
+    QOIData:TpvPointer;
+    QOIDataSize:TpvUInt32;
+begin
+ Initialize(SwapChainScreenshot);
+ try
+  SwapChainScreenshot.Data:=nil;
+  GetScreenshot(SwapChainScreenshot,aSwapChainImage);
+  if length(SwapChainScreenshot.Data)>0 then begin
+   SaveQOIImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,QOIData,QOIDataSize,true);
+   if assigned(QOIData) then begin
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.WriteBuffer(QOIData^,QOIDataSize);
+     aStream.Seek(0,soBeginning);
+    finally
+     FreeMem(QOIData);
     end;
    end;
   end;

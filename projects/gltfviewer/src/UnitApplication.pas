@@ -50,6 +50,7 @@ type TApplication=class(TpvApplication)
        fLensMode:TpvScene3DRendererLensMode;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
+       fMakeScreenshotQOI:boolean;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -105,6 +106,7 @@ begin
  PasVulkan.Resources.AllowExternalResources:=true;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
+ fMakeScreenshotQOI:=false;
  ExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Allowed;
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
@@ -414,10 +416,13 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_F9:begin
+   KEYCODE_F8:begin
     if assigned(VirtualReality) then begin
      VirtualReality.ResetOrientation;
     end;
+   end;
+   KEYCODE_F9:begin
+    fMakeScreenshotQOI:=true;
    end;
    KEYCODE_F10:begin
     fMakeScreenshotJPEG:=true;
@@ -481,6 +486,18 @@ begin
    VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);
    try
     Stream.SaveToFile('screenshot.png');
+   except
+   end;
+  finally
+   Stream.Free;
+  end;
+ end else if fMakeScreenshotQOI then begin
+  fMakeScreenshotQOI:=false;
+  Stream:=TMemoryStream.Create;
+  try
+   VulkanSwapChain.SaveScreenshotAsQOIToStream(Stream);
+   try
+    Stream.SaveToFile('screenshot.qoi');
    except
    end;
   finally
