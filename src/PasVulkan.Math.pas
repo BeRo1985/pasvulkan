@@ -3014,13 +3014,13 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
 {$ifdef Windows}
- movss xmm0,dword ptr [ecx+0]
- movss xmm1,dword ptr [ecx+4]
- movss xmm2,dword ptr [ecx+8]
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
 {$else}
- movss xmm0,dword ptr [edi+0]
- movss xmm1,dword ptr [edi+4]
- movss xmm2,dword ptr [edi+8]
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
 {$endif}
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
