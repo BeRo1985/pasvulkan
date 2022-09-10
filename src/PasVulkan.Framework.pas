@@ -82,7 +82,8 @@ uses {$if defined(Windows)}
      PasVulkan.Image.BMP,
      PasVulkan.Image.JPEG,
      PasVulkan.Image.PNG,
-     PasVulkan.Image.TGA;
+     PasVulkan.Image.TGA,
+     PasVulkan.Image.QOI;
 
 var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 bytes memory chunk size as alignment
 
@@ -3155,6 +3156,17 @@ type EpvVulkanException=class(Exception);
                                  const aSRGB:boolean;
                                  const aAdditionalSRGB:boolean=false);
        constructor CreateFromTGA(const aDevice:TpvVulkanDevice;
+                                 const aGraphicsQueue:TpvVulkanQueue;
+                                 const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aGraphicsFence:TpvVulkanFence;
+                                 const aTransferQueue:TpvVulkanQueue;
+                                 const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aTransferFence:TpvVulkanFence;
+                                 const aStream:TStream;
+                                 const aMipMaps:boolean;
+                                 const aSRGB:boolean;
+                                 const aAdditionalSRGB:boolean=false);
+       constructor CreateFromQOI(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                  const aGraphicsFence:TpvVulkanFence;
@@ -21414,6 +21426,114 @@ begin
  end;
 end;
 
+constructor TpvVulkanTexture.CreateFromQOI(const aDevice:TpvVulkanDevice;
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream;
+                                           const aMipMaps:boolean;
+                                           const aSRGB:boolean;
+                                           const aAdditionalSRGB:boolean);
+var Data,ImageData:TpvPointer;
+    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y,Index:TpvInt32;
+    sRGB:boolean;
+    VulkanPixelFormat:TVkFormat;
+    p:PVkUInt8;
+    v:TVkFloat;
+begin
+ DataSize:=aStream.Size;
+ GetMem(Data,DataSize);
+ try
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
+   raise EpvVulkanTextureException.Create('Invalid QOI stream');
+  end;
+  ImageData:=nil;
+  ImageWidth:=0;
+  ImageHeight:=0;
+  try
+   if LoadQOIImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false,sRGB) then begin
+    VulkanPixelFormat:=TVkFormat(TVkInt32(IfThen(aSRGB,TVkInt32(VK_FORMAT_R8G8B8A8_SRGB),TVkInt32(VK_FORMAT_R8G8B8A8_UNORM))));
+    VulkanBytesPerPixel:=4;
+    if sRGB and not aSRGB then begin
+     // sRGB => Linear
+     p:=@ImageData;
+     Index:=0;
+     for y:=1 to ImageHeight do begin
+      for x:=1 to ImageWidth do begin
+       if (Index and 3)<>3 then begin
+        // Only convert the RGB color channels, but not the alpha channel
+        v:=p^/255.0;
+        if v<0.04045 then begin
+         v:=v/12.92;
+        end else begin
+         v:=Power((v+0.055)/1.055,2.4);
+        end;
+        p^:=Min(Max(Round(v*255.0),0),255);
+       end;
+       inc(p);
+       inc(Index);
+      end;
+     end;
+    end else if aSRGB and not sRGB then begin
+     // Linear => sRGB
+     p:=@ImageData;
+     Index:=0;
+     for y:=1 to ImageHeight do begin
+      for x:=1 to ImageWidth do begin
+       if (Index and 3)<>3 then begin
+        // Only convert the RGB color channels, but not the alpha channel
+        v:=p^/255.0;
+        if v<0.0031308 then begin
+         v:=v*12.92;
+        end else begin
+         v:=(Power(v,1.0/2.4)*1.055)-0.055;
+        end;
+        p^:=Min(Max(Round(v*255.0),0),255);
+       end;
+       inc(p);
+       inc(Index);
+      end;
+     end;
+    end;
+    CreateFromMemory(aDevice,
+                     aGraphicsQueue,
+                     aGraphicsCommandBuffer,
+                     aGraphicsFence,
+                     aTransferQueue,
+                     aTransferCommandBuffer,
+                     aTransferFence,
+                     VulkanPixelFormat,
+                     VK_SAMPLE_COUNT_1_BIT,
+                     Max(1,ImageWidth),
+                     Max(1,ImageHeight),
+                     0,
+                     0,
+                     1,
+                     MipMapLevels[aMipMaps],
+                     [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
+                     ImageData,
+                     ImageWidth*ImageHeight*VulkanBytesPerPixel,
+                     false,
+                     false,
+                     1,
+                     true,
+                     aAdditionalSRGB);
+   end else begin
+    raise EpvVulkanTextureException.Create('Invalid QOI stream');
+   end;
+  finally
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
+   end;
+  end;
+ finally
+  FreeMem(Data);
+ end;
+end;
+
 constructor TpvVulkanTexture.CreateFromPNG(const aDevice:TpvVulkanDevice;
                                            const aGraphicsQueue:TpvVulkanQueue;
                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -21713,7 +21833,19 @@ begin
                  aTransferFence,
                  aStream,
                  aAdditionalSRGB);
- end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
+ end else if (FirstBytes[0]=TpvUInt8(AnsiChar('q'))) and (FirstBytes[1]=TpvUInt8(AnsiChar('o'))) and (FirstBytes[2]=TpvUInt8(AnsiChar('i'))) and (FirstBytes[3]=TpvUInt8(AnsiChar('f'))) then begin
+  CreateFromQOI(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream,
+                aMipMaps,
+                aSRGB,
+                aAdditionalSRGB);
+  end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
   CreateFromPNG(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,

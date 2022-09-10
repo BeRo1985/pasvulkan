@@ -17215,7 +17215,7 @@ begin
   if aColor[ChannelIndex]<0.0031308 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+   result[ChannelIndex]:=(Power(aColor[ChannelIndex],InverseGamma)*1.055)-0.055;
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17230,7 +17230,7 @@ begin
   if aColor[ChannelIndex]<0.0031308 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+   result[ChannelIndex]:=(Power(aColor[ChannelIndex],InverseGamma)*1.055)-0.055;
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17246,7 +17246,7 @@ begin
   if aColor[ChannelIndex]<0.04045 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+   result[ChannelIndex]:=Power((aColor[ChannelIndex]+0.055)/1.055,2.4);
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17261,7 +17261,7 @@ begin
   if aColor[ChannelIndex]<0.04045 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+   result[ChannelIndex]:=Power((aColor[ChannelIndex]+0.055)/1.055,2.4);
   end else begin
    result[ChannelIndex]:=1.0;
   end;
