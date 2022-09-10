@@ -21486,7 +21486,7 @@ begin
     VulkanBytesPerPixel:=4;
     if sRGB and not aSRGB then begin
      // sRGB => Linear
-     p:=@ImageData;
+     p:=ImageData;
      Index:=0;
      for y:=1 to ImageHeight do begin
       for x:=1 to ImageWidth do begin
@@ -21506,7 +21506,7 @@ begin
      end;
     end else if aSRGB and not sRGB then begin
      // Linear => sRGB
-     p:=@ImageData;
+     p:=ImageData;
      Index:=0;
      for y:=1 to ImageHeight do begin
       for x:=1 to ImageWidth do begin
@@ -21601,7 +21601,7 @@ begin
       VulkanBytesPerPixel:=8;
       if aSRGB then begin
        // Because VK_FORMAT_R16G16B16A16_SRGB doesn't exist (yet), . . .
-       p:=@ImageData;
+       p:=ImageData;
        Index:=0;
        for y:=1 to ImageHeight do begin
         for x:=1 to ImageWidth do begin

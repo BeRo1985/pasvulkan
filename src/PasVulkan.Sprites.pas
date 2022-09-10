@@ -76,6 +76,7 @@ uses SysUtils,
      PasVulkan.Image.BMP,
      PasVulkan.Image.JPEG,
      PasVulkan.Image.PNG,
+     PasVulkan.Image.QOI,
      PasVulkan.Image.TGA;
 
 type EpvSpriteAtlas=class(Exception);
@@ -986,11 +987,13 @@ type PFirstBytes=^TFirstBytes;
       dwDepth:TpvUInt32;
       dwMipMapCount:TpvUInt32;
      end;
-var Index:TpvInt32;
+var Index,x,y:TpvInt32;
     p8:PpvUInt8;
     p16:PpvUInt16;
     PNGPixelFormat:TpvPNGPixelFormat;
     NewImageData:TpvPointer;
+    SRGB:boolean;
+    v:TpvFloat;
 begin
  result:=false;
  if (aDataSize>7) and (PFirstBytes(aDataPointer)^[0]=$89) and (PFirstBytes(aDataPointer)^[1]=$50) and (PFirstBytes(aDataPointer)^[2]=$4e) and (PFirstBytes(aDataPointer)^[3]=$47) and (PFirstBytes(aDataPointer)^[4]=$0d) and (PFirstBytes(aDataPointer)^[5]=$0a) and (PFirstBytes(aDataPointer)^[6]=$1a) and (PFirstBytes(aDataPointer)^[7]=$0a) then begin
@@ -1028,7 +1031,59 @@ begin
    end;
   end;
  end else begin
-  if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=TpvUInt8(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=TpvUInt8(AnsiChar('M'))) then begin
+  if (aDataSize>4) and (PFirstBytes(aDataPointer)^[0]=TpvUInt8(AnsiChar('q'))) and (PFirstBytes(aDataPointer)^[1]=TpvUInt8(AnsiChar('o'))) and (PFirstBytes(aDataPointer)^[2]=TpvUInt8(AnsiChar('i'))) and (PFirstBytes(aDataPointer)^[3]=TpvUInt8(AnsiChar('f'))) then begin
+   result:=LoadQOIImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false,SRGB);
+   if result and not SRGB then begin
+    if fDepth16Bit then begin
+     GetMem(NewImageData,aImageWidth*aImageHeight*8);
+     try
+      p8:=aImageData;
+      p16:=NewImageData;
+      Index:=0;
+      for y:=1 to aImageHeight do begin
+       for x:=1 to aImageWidth do begin
+        if (Index and 3)<>3 then begin
+         // Only convert the RGB color channels, but not the alpha channel
+         v:=p8^/255.0;
+         if v<0.0031308 then begin
+          v:=v*12.92;
+         end else begin
+          v:=(Power(v,1.0/2.4)*1.055)-0.055;
+         end;
+         p16^:=Min(Max(Round(v*65535.0),0),65535);
+        end;
+        inc(p8);
+        inc(p16);
+        inc(Index);
+       end;
+      end;
+     finally
+      FreeMem(aImageData);
+      aImageData:=NewImageData;
+     end;
+     exit;
+    end else begin
+     p8:=aImageData;
+     Index:=0;
+     for y:=1 to aImageHeight do begin
+      for x:=1 to aImageWidth do begin
+       if (Index and 3)<>3 then begin
+        // Only convert the RGB color channels, but not the alpha channel
+        v:=p8^/255.0;
+        if v<0.0031308 then begin
+         v:=v*12.92;
+        end else begin
+         v:=(Power(v,1.0/2.4)*1.055)-0.055;
+        end;
+        p8^:=Min(Max(Round(v*255.0),0),255);
+       end;
+       inc(p8);
+       inc(Index);
+      end;
+     end;
+    end;
+   end;
+  end else if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=TpvUInt8(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=TpvUInt8(AnsiChar('M'))) then begin
    result:=LoadBMPImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
   end else if (aDataSize>2) and (((PFirstBytes(aDataPointer)^[0] xor $ff) or (PFirstBytes(aDataPointer)^[1] xor $d8))=0) then begin
    result:=LoadJPEGImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
