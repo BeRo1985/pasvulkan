@@ -961,10 +961,10 @@ type EpvScene3D=class(Exception);
                    end;
              public
               case Type_:TCameraData.TType of
-               TCameraData.TType.Orthographic:(
+               TType.Orthographic:(
                 Orthographic:TOrthographic;
                );
-               TCameraData.TType.Perspective:(
+               TType.Perspective:(
                 Perspective:TPerspective;
                );
             end;
@@ -2149,7 +2149,7 @@ type EpvScene3D=class(Exception);
        fHasTransmission:boolean;
        fVulkanBufferCopyBatchItemArrays:array[0..MaxInFlightFrames-1] of TpvVulkanBufferCopyBatchItemArray;
        fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
-       fRenderPassIndexCounter:TpvSizeInt;
+       fRenderPassIndexCounter:TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -5492,9 +5492,12 @@ procedure TpvScene3D.TLightBuffer.Upload;
 begin
  if not fUploaded then begin
   try
+
    FreeAndNil(fLightItemsVulkanBuffer);
+
    FreeAndNil(fLightTreeVulkanBuffer);
-   FreeAndNil(fLightMetaInfos);
+
+// fLightMetaInfos:=nil;
 
    case fSceneInstance.fBufferStreamingMode of
 
@@ -7539,11 +7542,11 @@ var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
 begin
- if fCount>1 then begin
+ if Count>1 then begin
   StackItem:=@Stack[0];
   StackItem^.Left:=0;
-  StackItem^.Right:=fCount-1;
-  StackItem^.Depth:=IntLog2(fCount) shl 1;
+  StackItem^.Right:=Count-1;
+  StackItem^.Depth:=IntLog2(Count) shl 1;
   inc(StackItem);
   while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
    dec(StackItem);
@@ -13945,7 +13948,7 @@ begin
         end;
        end;
 
-       for Index:=0 to length(TMaterialBufferData)-1 do begin
+       for Index:=0 to length(fMaterialBufferData)-1 do begin
         fMaterialBufferData[Index]:=TMaterial.DefaultShaderData;
        end;
 
@@ -13959,7 +13962,7 @@ begin
 
        for Index:=0 to fMaterials.Count-1 do begin
         Material:=fMaterials[Index];
-        if (Material.ID>0) and (Material.ID<length(TMaterialBufferData)) then begin
+        if (Material.ID>0) and (Material.ID<length(fMaterialBufferData)) then begin
          fMaterialBufferData[Material.ID]:=Material.fShaderData;
          for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
           fMaterialDataGenerationMaterials[InFlightFrameIndex,Material.ID]:=Material;
@@ -14426,7 +14429,7 @@ begin
     MinMaterialID:=$ffff;
     MaxMaterialID:=0;
 
-    for Index:=0 to length(TMaterialBufferData)-1 do begin
+    for Index:=0 to length(fMaterialBufferData)-1 do begin
      Material:=fMaterialIDMap[Index];
      if (fMaterialDataGenerationMaterials[aInFlightFrameIndex,Index]<>Material) or
         (assigned(Material) and

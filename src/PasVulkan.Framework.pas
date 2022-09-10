@@ -10981,7 +10981,7 @@ constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                    const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
-                                   const aBufferFlags:TpvVulkanBufferFlags=[]);
+                                   const aBufferFlags:TpvVulkanBufferFlags);
 var Index:TpvInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;

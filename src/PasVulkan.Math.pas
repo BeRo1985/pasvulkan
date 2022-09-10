@@ -13614,7 +13614,7 @@ begin
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
 end;
 
-class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean;
 var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(aAABBMin+aAABBMax)*0.5;
@@ -13793,7 +13793,7 @@ begin
  end;
 end;
 
-class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
 var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin

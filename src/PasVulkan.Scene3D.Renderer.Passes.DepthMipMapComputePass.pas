@@ -453,7 +453,7 @@ begin
  ImageMemoryBarrier.subresourceRange.levelCount:=fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels;
  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
- aCommandBuffer.CmdPipelineBarrier(fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+ aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
@@ -532,7 +532,7 @@ begin
    BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                     fFrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                      0,
                                      0,nil,
                                      1,@BufferMemoryBarrier,

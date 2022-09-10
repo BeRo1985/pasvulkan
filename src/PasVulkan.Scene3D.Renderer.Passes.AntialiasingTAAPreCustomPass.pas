@@ -138,7 +138,7 @@ var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- PreviousInFlightFrameIndex:=fFrameGraph.DrawPreviousInFlightFrameIndex;
+ PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),

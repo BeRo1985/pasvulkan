@@ -460,12 +460,12 @@ begin
   fOnSetRenderPassResourcesDone:=false;
 
   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                  IfThen(aFrameIndex=0,aInFlightFrameIndex,fFrameGraph.DrawPreviousInFlightFrameIndex),
+                                  IfThen(aFrameIndex=0,aInFlightFrameIndex,FrameGraph.DrawPreviousInFlightFrameIndex),
                                   aInFlightFrameIndex,
                                   InFlightFrameState^.ViewRenderPassIndex,
                                   InFlightFrameState^.FinalViewIndex,
                                   InFlightFrameState^.CountViews,
-                                  fFrameGraph.DrawFrameIndex,
+                                  FrameGraph.DrawFrameIndex,
                                   aCommandBuffer,
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,

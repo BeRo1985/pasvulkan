@@ -190,7 +190,7 @@ begin
                                                  aInFlightFrameIndex,
                                                  aCommandBuffer,
                                                  fPipelineLayout);
- PreviousInFlightFrameIndex:=fFrameGraph.DrawPreviousInFlightFrameIndex;
+ PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
  if fEventReady[aInFlightFrameIndex] then begin
   Assert(false);

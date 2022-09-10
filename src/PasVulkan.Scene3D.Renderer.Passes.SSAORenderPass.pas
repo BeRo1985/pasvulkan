@@ -399,7 +399,7 @@ begin
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
  SSAOPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
  SSAOPushConstants.CountViews:=InFlightFrameState^.CountViews;
- SSAOPushConstants.FrameIndex:=fFrameGraph.DrawFrameIndex;
+ SSAOPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

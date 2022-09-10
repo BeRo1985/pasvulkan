@@ -184,7 +184,7 @@ begin
  fPrimaryDirectionalLight.Intensity:=1.0;
  fPrimaryDirectionalLight.Range:=0.0;
  fPrimaryDirectionalLight.CastShadows:=true;
- fPrimaryDirectionalLight.Data.Visible:=true;
+ fPrimaryDirectionalLight.DataPointer^.Visible:=true;
  fPrimaryDirectionalLight.Visible:=true;
  fPrimaryDirectionalLight.Update;
 
