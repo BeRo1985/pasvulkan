@@ -317,6 +317,8 @@ begin
 
    Run:=0;
 
+   PixelSize:=aImageWidth*aImageHeight*4;
+
    PixelPosition:=0;
    LastPixelPosition:=PixelSize-4;
    while PixelPosition<PixelSize do begin
