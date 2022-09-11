@@ -14564,7 +14564,7 @@ end;
 procedure TpvVulkanSwapChain.GetScreenshot(out aScreenshot:TpvVulkanSwapChainScreenshot;const aSwapChainImage:TpvVulkanImage=nil);
 type PBytes=^TBytes;
      TBytes=array[0..$7ffffffe] of TpvUInt8;
-var x,y:TpvInt32;
+var Index,y:TpvSizeInt;
     NeedTwoSteps,CopyOnly,BlitSupported,NeedColorSwizzle:boolean;
     SrcColorFormatProperties,
     DstColorFormatProperties:TVkFormatProperties;
@@ -14578,8 +14578,9 @@ var x,y:TpvInt32;
     ImageSubresource:TVkImageSubresource;
     SubresourceLayout:TVkSubresourceLayout;
     ImageData,p,pr,pp:PpvUInt8;
+    pu:PpvUInt32;
     PNGData:TpvPointer;
-    PNGDataSize:TpvUInt32;
+    PNGDataSize,Pixel:TpvUInt32;
     DestColorFormat:TVkFormat;
     SwapChainImageHandle:TVkImage;
     Queue:TpvVulkanQueue;
@@ -14984,25 +14985,16 @@ begin
        NeedColorSwizzle:=(not BlitSupported) and (fImageFormat in [VK_FORMAT_B8G8R8A8_SRGB,VK_FORMAT_B8G8R8A8_UNORM,VK_FORMAT_B8G8R8A8_SNORM]);
 
        try
+
         pp:=@aScreenshot.Data[0];
-        for y:=0 to fHeight-1 do begin
-         pr:=p;
-         for x:=0 to fWidth-1 do begin
-          if NeedColorSwizzle then begin
-           PBytes(TpvPointer(pp))^[0]:=PBytes(TpvPointer(pr))^[2];
-           PBytes(TpvPointer(pp))^[1]:=PBytes(TpvPointer(pr))^[1];
-           PBytes(TpvPointer(pp))^[2]:=PBytes(TpvPointer(pr))^[0];
-           PBytes(TpvPointer(pp))^[3]:=$ff;//PBytes(TpvPointer(pr))^[3];
-          end else begin
-           PBytes(TpvPointer(pp))^[0]:=PBytes(TpvPointer(pr))^[0];
-           PBytes(TpvPointer(pp))^[1]:=PBytes(TpvPointer(pr))^[1];
-           PBytes(TpvPointer(pp))^[2]:=PBytes(TpvPointer(pr))^[2];
-           PBytes(TpvPointer(pp))^[3]:=$ff;//PBytes(TpvPointer(pr))^[3];
-          end;
-          inc(pp,4);
-          inc(pr,4);
+        if SubresourceLayout.rowPitch=(fWidth*SizeOf(TpvUInt32)) then begin
+         Move(p^,pp^,fWidth*fHeight*SizeOf(TpvUInt32));
+        end else begin
+         for y:=0 to fHeight-1 do begin
+          Move(p^,pp^,fWidth*SizeOf(TpvUInt32));
+          inc(p,SubresourceLayout.rowPitch);
+          inc(pp,fWidth*SizeOf(TpvUInt32));
          end;
-         inc(p,SubresourceLayout.rowPitch);
         end;
 
        finally
@@ -15031,6 +15023,23 @@ begin
 
  finally
   FirstImage.Free;
+ end;
+
+ pu:=Pointer(@aScreenshot.Data[0]);
+ if NeedColorSwizzle then begin
+  for Index:=0 to (fWidth*fHeight)-1 do begin
+   Pixel:=pu^;
+   pu^:=((Pixel and $00ff0000) shr 16) or
+        ((Pixel and $000000ff) shl 16) or
+        (Pixel and $0000ff00) or
+        TpvUInt32($ff000000);
+   inc(pu);
+  end;
+ end else begin
+  for Index:=0 to (fWidth*fHeight)-1 do begin
+   pu^:=pu^ or TpvUInt32($ff000000);
+   inc(pu);
+  end;
  end;
 
 end;
