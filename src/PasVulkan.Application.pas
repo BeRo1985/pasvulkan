@@ -1371,6 +1371,8 @@ type EpvApplication=class(Exception)
 
        function WaitForReadyState:boolean;
 
+       procedure DrawBlackScreen(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
+
       public
 
        constructor Create; reintroduce; virtual;
@@ -8428,14 +8430,31 @@ begin
       while not AcquireVulkanBackBuffer do begin
       end;
 
-      if fVulkanSurfaceRecreated and (LastCountInFrameFrames=fCountInFlightFrames) then begin
-       fDrawInFlightFrameIndex:=LastDrawInFlightFrameIndex;
-       fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
-       fCurrentInFlightFrameIndex:=LastDrawInFlightFrameIndex;
-       fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
-       if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
-        fNextInFlightFrameIndex:=0;
+      if fVulkanSurfaceRecreated then begin
+
+       if LastCountInFrameFrames=fCountInFlightFrames then begin
+
+        fDrawInFlightFrameIndex:=LastDrawInFlightFrameIndex;
+
+        fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+        fCurrentInFlightFrameIndex:=LastDrawInFlightFrameIndex;
+
+        fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+        if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+         fNextInFlightFrameIndex:=0;
+        end;
+
+        fVulkanSurfaceRecreated:=false;
+
+       end else begin
+
+        DrawBlackScreen(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
+        PresentVulkanBackBuffer;
+
        end;
+
       end;
 
      end else begin
@@ -9315,38 +9334,43 @@ begin
  result:=assigned(fScreen) and fScreen.IsReadyForDrawOfInFlightFrameIndex(aInFlightFrameIndex);
 end;
 
-procedure TpvApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TpvApplication.DrawBlackScreen(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var VulkanCommandBuffer:TpvVulkanCommandBuffer;
+begin
+ VulkanCommandBuffer:=fVulkanBlankCommandBuffers[aSwapChainImageIndex];
+
+ VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+ VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+ fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                   fVulkanFrameBuffers[aSwapChainImageIndex],
+                                   VK_SUBPASS_CONTENTS_INLINE,
+                                   0,
+                                   0,
+                                   fVulkanSwapChain.Width,
+                                   fVulkanSwapChain.Height);
+
+ fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
+
+ VulkanCommandBuffer.EndRecording;
+
+ VulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                             aWaitSemaphore,
+                             fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex],
+                             aWaitFence,
+                             false);
+
+ aWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex];
+end;
+
+procedure TpvApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  if assigned(fScreen) then begin
   fScreen.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end else begin
-
-  VulkanCommandBuffer:=fVulkanBlankCommandBuffers[aSwapChainImageIndex];
-
-  VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
-  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
-  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    fVulkanFrameBuffers[aSwapChainImageIndex],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    fVulkanSwapChain.Width,
-                                    fVulkanSwapChain.Height);
-
-  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
-
-  VulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
-                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                              aWaitSemaphore,
-                              fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex],
-                              aWaitFence,
-                              false);
-
-  aWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex];
-
+  DrawBlackScreen(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
 end;
 
