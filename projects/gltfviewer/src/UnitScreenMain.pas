@@ -326,8 +326,6 @@ begin
 
  fRendererInstance.AcquireVolatileResources;
 
- pvApplication.SkipNextDrawFrame:=true;
-
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
@@ -393,7 +391,7 @@ begin
   pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
  end;
 
-//DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.DeltaTime);
+ DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter,pvApplication.DeltaTime);
 
 end;
 
@@ -546,7 +544,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
+//DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
