@@ -8361,7 +8361,7 @@ begin
 
   if fSkipNextDrawFrame or not
      ((not (CanBeParallelProcessed and (fCountInFlightFrames>1))) or
-      IsReadyForDrawOfInFlightFrameIndex(fNextInFlightFrameIndex)) then begin
+      IsReadyForDrawOfInFlightFrameIndex(fCurrentInFlightFrameIndex)) then begin
 
    fSkipNextDrawFrame:=false;
 
@@ -8492,16 +8492,13 @@ begin
 
        if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
-        fUpdateFrameCounter:=fFrameCounter;
-
         fDrawFrameCounter:=fFrameCounter-1;
 
-        fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
+        fUpdateFrameCounter:=fFrameCounter;
 
-        fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex+1;
-        if fUpdateInFlightFrameIndex>=fCountInFlightFrames then begin
-         dec(fUpdateInFlightFrameIndex,fCountInFlightFrames);
-        end;
+        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+        fUpdateInFlightFrameIndex:=fNextInFlightFrameIndex;
 
         Check(fUpdateDeltaTime);
 
