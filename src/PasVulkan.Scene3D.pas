@@ -1822,11 +1822,14 @@ type EpvScene3D=class(Exception);
                             fInstance:TInstance;
                             fNodeMatricesBuffer:TpvVulkanBuffer;
                             fMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
+                            fNodeMatrices:TNodeMatrices;
+                            fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                            public
                             constructor Create(const aInstance:TInstance); reintroduce;
                             destructor Destroy; override;
                             procedure Upload;
                             procedure Unload;
+                            procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                             procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property NodeMatricesBuffer:TpvVulkanBuffer read fNodeMatricesBuffer;
@@ -9930,11 +9933,15 @@ begin
  fInstance:=aInstance;
  fNodeMatricesBuffer:=nil;
  fMorphTargetVertexWeightsBuffer:=nil;
+ fNodeMatrices:=nil;
+ fMorphTargetVertexWeights:=nil;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TVulkanData.Destroy;
 begin
  Unload;
+ fNodeMatrices:=nil;
+ fMorphTargetVertexWeights:=nil;
  inherited Destroy;
 end;
 
@@ -10053,6 +10060,20 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if length(fNodeMatrices)=length(fInstance.fNodeMatrices) then begin
+  Move(fInstance.fNodeMatrices[0],fNodeMatrices[0],length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
+ end else begin
+  fNodeMatrices:=copy(fInstance.fNodeMatrices);
+ end;
+ if length(fMorphTargetVertexWeights)=length(fInstance.fMorphTargetVertexWeights) then begin
+  Move(fInstance.fMorphTargetVertexWeights[0],fMorphTargetVertexWeights[0],length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+ end else begin
+  fMorphTargetVertexWeights:=copy(fInstance.fMorphTargetVertexWeights);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TInstance.TVulkanData.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 begin
  Upload;
@@ -10062,30 +10083,30 @@ begin
 
    TBufferStreamingMode.Direct:begin
 
-    fNodeMatricesBuffer.UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
+    fNodeMatricesBuffer.UpdateData(fNodeMatrices[0],0,length(fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
 
-    fMorphTargetVertexWeightsBuffer.UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
+    fMorphTargetVertexWeightsBuffer.UpdateData(fMorphTargetVertexWeights[0],0,length(fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
 
    end;
 
    TBufferStreamingMode.Staging:begin
 
-    fInstance.fGroup.fVulkanNodeMatricesStagingBuffers[aInFlightFrameIndex].UpdateData(fInstance.fNodeMatrices[0],0,length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
+    fInstance.fGroup.fVulkanNodeMatricesStagingBuffers[aInFlightFrameIndex].UpdateData(fNodeMatrices[0],0,length(fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
 
     fNodeMatricesBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
                                  fInstance.fGroup.fVulkanNodeMatricesStagingBuffers[aInFlightFrameIndex],
                                  0,
                                  0,
-                                 length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
+                                 length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
 
 
-    fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffers[aInFlightFrameIndex].UpdateData(fInstance.fMorphTargetVertexWeights[0],0,length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
+    fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffers[aInFlightFrameIndex].UpdateData(fMorphTargetVertexWeights[0],0,length(fMorphTargetVertexWeights)*SizeOf(TpvFloat),FlushUpdateData);
 
     fMorphTargetVertexWeightsBuffer.CopyFrom(fInstance.fSceneInstance.fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
                                              fInstance.fGroup.fVulkanMorphTargetVertexWeightsStagingBuffers[aInFlightFrameIndex],
                                              0,
                                              0,
-                                             length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+                                             length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
 
    end;
 
@@ -12527,6 +12548,13 @@ begin
     fNodeMatrices[Node.Index+1]:=InstanceNode^.WorkMatrix;
     if length(InstanceNode^.WorkWeights)>0 then begin
      Move(InstanceNode^.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode^.WorkWeights)*SizeOf(TpvFloat));
+    end;
+   end;
+
+   if aInFlightFrameIndex>=0 then begin
+    fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
+    if assigned(fVulkanData) then begin
+     fVulkanData.Update(aInFlightFrameIndex);
     end;
    end;
 
