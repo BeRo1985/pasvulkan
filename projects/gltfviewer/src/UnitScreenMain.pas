@@ -505,6 +505,8 @@ begin
   fUpdateLock.Release;
  end;
 
+ fScene3D.PrepareGPUUpdate(InFlightFrameIndex);
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
  inherited Update(aDeltaTime);
@@ -527,7 +529,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- fScene3D.GPUUpdate(InFlightFrameIndex);
+ fScene3D.ExecuteGPUUpdate(InFlightFrameIndex);
 
  fScene3D.TransferViewsToPreviousViews;
 

@@ -1043,7 +1043,8 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure Upload;
               procedure Unload;
-              procedure GPUUpdate;
+              procedure PrepareGPUUpdate;
+              procedure ExecuteGPUUpdate;
              public
               property LightItems:TLightItems read fLightItems;
               property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
@@ -1830,8 +1831,8 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             procedure Upload;
                             procedure Unload;
-                            procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-                            procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+                            procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+                            procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property NodeMatricesBuffer:TpvVulkanBuffer read fNodeMatricesBuffer;
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
@@ -1906,7 +1907,8 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-                     procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+                     procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+                     procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                      function GetBakedMesh(const aRelative:boolean=false;
                                            const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
@@ -2032,7 +2034,8 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-              procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+              procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+              procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
@@ -2186,7 +2189,8 @@ type EpvScene3D=class(Exception);
        procedure ResetRenderPasses;
        function AcquireRenderPassIndex:TpvSizeInt;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-       procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+       procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+       procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure TransferViewsToPreviousViews;
        procedure ClearViews;
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
@@ -5630,7 +5634,11 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TLightBuffer.GPUUpdate;
+procedure TpvScene3D.TLightBuffer.PrepareGPUUpdate;
+begin
+end;
+
+procedure TpvScene3D.TLightBuffer.ExecuteGPUUpdate;
 const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
        (AABBMin:(x:0.0;y:0.0;z:0.0);
         SkipCount:0;
@@ -9171,11 +9179,19 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
-  Instance.GPUUpdate(aInFlightFrameIndex);
+  Instance.PrepareGPUUpdate(aInFlightFrameIndex);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.ExecuteGPUUpdate(aInFlightFrameIndex);
  end;
 end;
 
@@ -10062,7 +10078,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 begin
 
  if length(fNodeMatrices)<>length(fInstance.fNodeMatrices) then begin
@@ -10081,7 +10097,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TVulkanData.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 begin
  Upload;
  if fUploaded then begin
@@ -12559,13 +12575,6 @@ begin
    end;
 
    if aInFlightFrameIndex>=0 then begin
-    fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
-    if assigned(fVulkanData) then begin
-     fVulkanData.Update(aInFlightFrameIndex);
-    end;
-   end;
-
-   if aInFlightFrameIndex>=0 then begin
 
     for Index:=0 to fGroup.fNodes.Count-1 do begin
      Node:=fGroup.fNodes[Index];
@@ -12659,14 +12668,26 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
     assigned(fScenes[aInFlightFrameIndex]) then begin
   fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
   if assigned(fVulkanData) then begin
-   fVulkanData.GPUUpdate(aInFlightFrameIndex);
+   fVulkanData.PrepareGPUUpdate(aInFlightFrameIndex);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if (aInFlightFrameIndex>=0) and
+    fActives[aInFlightFrameIndex] and
+    assigned(fScenes[aInFlightFrameIndex]) then begin
+  fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
+  if assigned(fVulkanData) then begin
+   fVulkanData.ExecuteGPUUpdate(aInFlightFrameIndex);
   end;
  end;
 end;
@@ -14458,6 +14479,19 @@ begin
   fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
  end;
 
+end;
+
+procedure TpvScene3D.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+var OldGeneration,NewGeneration:TpvUInt64;
+    LightBuffer:TpvScene3D.TLightBuffer;
+    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    Group:TpvScene3D.TGroup;
+begin
+
+ for Group in fGroups do begin
+  Group.PrepareGPUUpdate(aInFlightFrameIndex);
+ end;
+
  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
  NewGeneration:=fLightAABBTreeGeneration;
  if (OldGeneration<>NewGeneration) and
@@ -14485,7 +14519,7 @@ begin
 
 end;
 
-procedure TpvScene3D.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
     Group:TpvScene3D.TGroup;
@@ -14499,7 +14533,7 @@ var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
 begin
 
  for Group in fGroups do begin
-  Group.GPUUpdate(aInFlightFrameIndex);
+  Group.ExecuteGPUUpdate(aInFlightFrameIndex);
  end;
 
  if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
@@ -14619,7 +14653,7 @@ begin
 
  end;
 
- LightBuffers[aInFlightFrameIndex].GPUUpdate;
+ LightBuffers[aInFlightFrameIndex].ExecuteGPUUpdate;
 
 end;
 
