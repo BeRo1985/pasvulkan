@@ -10062,16 +10062,21 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
- if length(fNodeMatrices)=length(fInstance.fNodeMatrices) then begin
-  Move(fInstance.fNodeMatrices[0],fNodeMatrices[0],length(fInstance.fNodeMatrices)*SizeOf(TpvMatrix4x4));
- end else begin
-  fNodeMatrices:=copy(fInstance.fNodeMatrices);
+
+ if length(fNodeMatrices)<>length(fInstance.fNodeMatrices) then begin
+  SetLength(fNodeMatrices,length(fInstance.fNodeMatrices));
  end;
- if length(fMorphTargetVertexWeights)=length(fInstance.fMorphTargetVertexWeights) then begin
-  Move(fInstance.fMorphTargetVertexWeights[0],fMorphTargetVertexWeights[0],length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat));
- end else begin
-  fMorphTargetVertexWeights:=copy(fInstance.fMorphTargetVertexWeights);
+ if length(fNodeMatrices)>0 then begin
+  Move(fInstance.fNodeMatrices[0],fNodeMatrices[0],length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
  end;
+
+ if length(fMorphTargetVertexWeights)<>length(fInstance.fMorphTargetVertexWeights) then begin
+  SetLength(fMorphTargetVertexWeights,length(fInstance.fMorphTargetVertexWeights));
+ end;
+ if length(fMorphTargetVertexWeights)>0 then begin
+  Move(fInstance.fMorphTargetVertexWeights[0],fMorphTargetVertexWeights[0],length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.TVulkanData.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
