@@ -346,11 +346,14 @@ const Directions:array[boolean,boolean] of TpvScalar=
         (0,1),
         (-1,0)
        );
-var RotationSpeed,MovementSpeed:TpvDouble;
+var InFlightFrameState:PInFlightFrameState;
+    RotationSpeed,MovementSpeed:TpvDouble;
     FPS:TpvInt32;
     FPSString:string;
     FrameTime:TpvDouble;
 begin
+
+ InFlightFrameState:=@fInFlightFrameStates[pvApplication.UpdateInFlightFrameIndex];
 
  RotationSpeed:=aDeltaTime*1.0;
  MovementSpeed:=aDeltaTime*1.0*fCameraSpeed;
@@ -391,9 +394,11 @@ begin
   pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
  end;
 
- if CanBeParallelProcessed then begin
+ TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
+
+{if CanBeParallelProcessed then begin
   DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter,pvApplication.DeltaTime);
- end;
+ end;}
 
 end;
 
@@ -523,7 +528,7 @@ begin
 
    fScene3D.UpdateViews(aInFlightFrameIndex);
 
-   TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
+// TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
    fTime:=fTime+pvApplication.DeltaTime;
 
@@ -546,9 +551,10 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- if not CanBeParallelProcessed then begin
+{if not CanBeParallelProcessed then begin
   DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
- end;
+ end;}
+ DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
