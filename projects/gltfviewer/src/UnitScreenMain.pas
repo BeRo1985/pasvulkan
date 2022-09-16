@@ -391,7 +391,9 @@ begin
   pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
  end;
 
- DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter,pvApplication.DeltaTime);
+ if CanBeParallelProcessed then begin
+  DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter,pvApplication.DeltaTime);
+ end;
 
 end;
 
@@ -544,7 +546,9 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
-//DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
+ if not CanBeParallelProcessed then begin
+  DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
+ end;
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
