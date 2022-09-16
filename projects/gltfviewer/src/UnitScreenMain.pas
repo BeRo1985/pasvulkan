@@ -121,8 +121,6 @@ type { TScreenMain }
 
        function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; override;
 
-       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
-
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
@@ -511,53 +509,11 @@ begin
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
-{if CanBeParallelProcessed then begin
-  DrawUpdate(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter,pvApplication.DeltaTime);
- end;}
-
 end;
 
 function TScreenMain.IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean;
 begin
  result:=TPasMPInterlocked.Read(fInFlightFrameStates[aInFlightFrameIndex].Ready);
-end;
-
-procedure TScreenMain.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
-var Index:TpvSizeInt;
-    CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
-    Center,Bounds:TpvVector3;
-    t0,t1:Double;
-    View:TpvScene3D.TView;
-    InFlightFrameState:PInFlightFrameState;
-    BlendFactor,Factor:single;
-begin
-
- InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
-
- begin
-
-  fScene3D.GPUUpdate(aInFlightFrameIndex);
-
-  fScene3D.TransferViewsToPreviousViews;
-
-  fScene3D.ClearViews;
-
-  fScene3D.ResetRenderPasses;
-
-  fRendererInstance.Reset;
-
-  fRendererInstance.CameraMatrix:=InFlightFrameState^.CameraMatrix;
-
-  if InFlightFrameState^.UseView then begin
-   fRendererInstance.AddView(InFlightFrameState^.View);
-  end;
-
-  fRendererInstance.DrawUpdate(aInFlightFrameIndex,aFrameCounter);
-
-  fScene3D.UpdateViews(aInFlightFrameIndex);
-
- end;
-
 end;
 
 procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -571,10 +527,25 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
-{if not CanBeParallelProcessed then begin
-  DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
- end;}
- DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter,pvApplication.DeltaTime);
+ fScene3D.GPUUpdate(InFlightFrameIndex);
+
+ fScene3D.TransferViewsToPreviousViews;
+
+ fScene3D.ClearViews;
+
+ fScene3D.ResetRenderPasses;
+
+ fRendererInstance.Reset;
+
+ fRendererInstance.CameraMatrix:=InFlightFrameState^.CameraMatrix;
+
+ if InFlightFrameState^.UseView then begin
+  fRendererInstance.AddView(InFlightFrameState^.View);
+ end;
+
+ fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
+
+ fScene3D.UpdateViews(InFlightFrameIndex);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
