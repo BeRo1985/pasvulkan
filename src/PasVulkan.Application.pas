@@ -7923,6 +7923,7 @@ var Index,Counter,Tries,
 {$else}
     Jobs:array[0..1] of PPasMPJob;
 {$ifend}
+    DoProcess:boolean;
 begin
 
  ProcessRunnables;
@@ -8407,51 +8408,67 @@ begin
 
   end else begin
 
-   // Based on a Sebastian Aaltonen tweet thread, which can found at
-   // https://twitter.com/SebAaltonen/status/1569608367618011136 .
-   // Reformulated summary:
-   // If instead of waiting for the GPU to finish with previous frame
-   // respectively the Minus-InFlightFrameCount frame at the beginning
-   // of the simulation, we consider waiting for the GPU to finish with
-   // the frame before the previous frame (-2 frame index), so we will
-   // have a lower overall latency (input lag) and only have to buffer
-   // twice the dynamic resources.
-   // This approach stabilizes latencies and results in up to three frames
-   // in flight, and furthermore the simulation can then also write directly
-   // to GPU buffer data pointers if desired.
-   // Indeed, in a GPU-bound scenario, this can have only marginally worse
-   // latency than waiting for idle, but however far higher throughput.
-   // Moreover, it seems to be the best compromise between latency and
-   // throughput.
-   // However, spiky CPU frames with variable length that happen to exceed
-   // the GPU budget could become a problem here. In this case, an extra
-   // frame for buffering would better hide the variable CPU cost, and
-   // now we get a GPU blast instead.
-   // Nevertheless, this problem only occurs when the CPU/GPU utilization
-   // is very close to 100%/100% and the frame costs fluctuate strongly.
-   // Normally, however, the CPU or GPU usually have a bit of headroom
-   // to hide the latency.
+   if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
 
-   PrepreviousFrameFrenceIndex:=(fVulkanFrameFenceCounter+(4-2)) and 3;
+    DoProcess:=true;
 
-   PrepreviousFrameFrenceMask:=TpvUInt32(1) shl PrepreviousFrameFrenceIndex;
+   end else begin
 
-   PrepreviousFrameFrence:=fVulkanFrameFences[PrepreviousFrameFrenceIndex];
+    // Based on a Sebastian Aaltonen tweet thread, which can found at
+    // https://twitter.com/SebAaltonen/status/1569608367618011136 .
+    // Reformulated summary:
+    // If instead of waiting for the GPU to finish with previous frame
+    // respectively the Minus-InFlightFrameCount frame at the beginning
+    // of the simulation, we consider waiting for the GPU to finish with
+    // the frame before the previous frame (-2 frame index), so we will
+    // have a lower overall latency (input lag) and only have to buffer
+    // twice the dynamic resources.
+    // This approach stabilizes latencies and results in up to three frames
+    // in flight, and furthermore the simulation can then also write directly
+    // to GPU buffer data pointers if desired.
+    // Indeed, in a GPU-bound scenario, this can have only marginally worse
+    // latency than waiting for idle, but however far higher throughput.
+    // Moreover, it seems to be the best compromise between latency and
+    // throughput.
+    // However, spiky CPU frames with variable length that happen to exceed
+    // the GPU budget could become a problem here. In this case, an extra
+    // frame for buffering would better hide the variable CPU cost, and
+    // now we get a GPU blast instead.
+    // Nevertheless, this problem only occurs when the CPU/GPU utilization
+    // is very close to 100%/100% and the frame costs fluctuate strongly.
+    // Normally, however, the CPU or GPU usually have a bit of headroom
+    // to hide the latency.
 
-   if fBlocking or
-      (((fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)=0) or
-       ((not assigned(PrepreviousFrameFrence)) or
-        (PrepreviousFrameFrence.GetStatus=VK_SUCCESS))) then begin
+    PrepreviousFrameFrenceIndex:=(fVulkanFrameFenceCounter+(4-2)) and 3;
 
-   if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
-    fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
-    if assigned(PrepreviousFrameFrence) then begin
-     if fBlocking then begin
-      PrepreviousFrameFrence.WaitFor;
+    PrepreviousFrameFrenceMask:=TpvUInt32(1) shl PrepreviousFrameFrenceIndex;
+
+    PrepreviousFrameFrence:=fVulkanFrameFences[PrepreviousFrameFrenceIndex];
+
+    DoProcess:=false;
+
+    if fBlocking or
+       (((fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)=0) or
+        ((not assigned(PrepreviousFrameFrence)) or
+         (PrepreviousFrameFrence.GetStatus=VK_SUCCESS))) then begin
+
+     if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
+      fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
+      if assigned(PrepreviousFrameFrence) then begin
+       if fBlocking then begin
+        PrepreviousFrameFrence.WaitFor;
+       end;
+       PrepreviousFrameFrence.Reset;
+      end;
      end;
-     PrepreviousFrameFrence.Reset;
+
+     DoProcess:=true;
+
     end;
+
    end;
+
+   if DoProcess then begin
 
 {$if true}
     if true then begin
