@@ -338,7 +338,7 @@ end;
 
 function TScreenMain.CanBeParallelProcessed:boolean;
 begin
- result:=false;
+ result:=true;
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
