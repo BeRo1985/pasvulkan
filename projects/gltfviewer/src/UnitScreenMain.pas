@@ -380,9 +380,7 @@ begin
                                                                              Directions[fKeyForwards,fKeyBackwards]))*MovementSpeed);
  end;
 
- inherited Update(aDeltaTime);
-
- fRendererInstance.Update(pvApplication.UpdateInFlightFrameIndex,pvApplication.UpdateFrameCounter);
+ fRendererInstance.Update(InFlightFrameIndex,pvApplication.UpdateFrameCounter);
 
  FPS:=round(pvApplication.FramesPerSecond*100.0);
  fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
@@ -508,6 +506,8 @@ begin
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
+
+ inherited Update(aDeltaTime);
 
 end;
 
