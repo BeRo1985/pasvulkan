@@ -1032,6 +1032,7 @@ type EpvScene3D=class(Exception);
               fUploaded:TPasMPBool32;
               fLightItems:TLightItems;
               fLightAABBTreeGeneration:TpvUInt64;
+              fNewLightAABBTreeGeneration:TpvUInt64;
               fLightTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
               fLightMetaInfos:TLightMetaInfos;
               fLightItemsVulkanBuffer:TpvVulkanBuffer;
@@ -5484,7 +5485,8 @@ begin
  fInFlightFrameIndex:=aInFlightFrameIndex;
  fUploaded:=false;
  fLightTree.Initialize;
- fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-2;
+ fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-3;
+ fNewLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration-2;
 end;
 
 destructor TpvScene3D.TLightBuffer.Destroy;
@@ -5638,9 +5640,9 @@ const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
 begin
  if fUploaded then begin
 
-  if fLightAABBTreeGeneration<>fSceneInstance.fLightAABBTreeGeneration then begin
+  if fLightAABBTreeGeneration<>fNewLightAABBTreeGeneration then begin
 
-   fLightAABBTreeGeneration:=fSceneInstance.fLightAABBTreeGeneration;
+   fLightAABBTreeGeneration:=fNewLightAABBTreeGeneration;
 
    case fSceneInstance.fBufferStreamingMode of
 
@@ -14456,6 +14458,31 @@ begin
   fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
  end;
 
+ OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
+ NewGeneration:=fLightAABBTreeGeneration;
+ if (OldGeneration<>NewGeneration) and
+    (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
+
+  LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
+
+  if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
+   if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
+    LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+   end else begin
+    Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   end;
+   LightAABBTreeState^.Root:=fLightAABBTree.Root;
+  end else begin
+   LightAABBTreeState^.Root:=-1;
+  end;
+
+  LightBuffer:=fLightBuffers[aInFlightFrameIndex];
+  CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
+  fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
+  LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
+
+ end;
+
 end;
 
 procedure TpvScene3D.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -14592,30 +14619,7 @@ begin
 
  end;
 
- OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
- NewGeneration:=fLightAABBTreeGeneration;
- if (OldGeneration<>NewGeneration) and
-    (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
-
-  LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
-
-  if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
-   if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
-    LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
-   end else begin
-    Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
-   end;
-   LightAABBTreeState^.Root:=fLightAABBTree.Root;
-  end else begin
-   LightAABBTreeState^.Root:=-1;
-  end;
-
-  LightBuffer:=fLightBuffers[aInFlightFrameIndex];
-  CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
-  fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
-  LightBuffer.GPUUpdate;
-
- end;
+ LightBuffers[aInFlightFrameIndex].GPUUpdate;
 
 end;
 
