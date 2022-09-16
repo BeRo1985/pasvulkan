@@ -1042,7 +1042,7 @@ type EpvScene3D=class(Exception);
               destructor Destroy; override;
               procedure Upload;
               procedure Unload;
-              procedure Update;
+              procedure GPUUpdate;
              public
               property LightItems:TLightItems read fLightItems;
               property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
@@ -1827,7 +1827,7 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             procedure Upload;
                             procedure Unload;
-                            procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+                            procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property NodeMatricesBuffer:TpvVulkanBuffer read fNodeMatricesBuffer;
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
@@ -1902,6 +1902,7 @@ type EpvScene3D=class(Exception);
                      procedure Unload; override;
                      procedure UpdateInvisible;
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+                     procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                      function GetBakedMesh(const aRelative:boolean=false;
                                            const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
@@ -2027,6 +2028,7 @@ type EpvScene3D=class(Exception);
               procedure Upload; override;
               procedure Unload; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+              procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
@@ -2180,6 +2182,7 @@ type EpvScene3D=class(Exception);
        procedure ResetRenderPasses;
        function AcquireRenderPassIndex:TpvSizeInt;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+       procedure GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure TransferViewsToPreviousViews;
        procedure ClearViews;
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
@@ -5622,7 +5625,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TLightBuffer.Update;
+procedure TpvScene3D.TLightBuffer.GPUUpdate;
 const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
        (AABBMin:(x:0.0;y:0.0;z:0.0);
         SkipCount:0;
@@ -9163,6 +9166,14 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.GPUUpdate(aInFlightFrameIndex);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aViewBaseIndex:TpvSizeInt;
@@ -10042,7 +10053,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TVulkanData.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.TVulkanData.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 begin
  Upload;
  if fUploaded then begin
@@ -12423,7 +12434,6 @@ begin
 
  end;
 
-
  if fActive then begin
 
   Scene:=GetScene;
@@ -12560,13 +12570,6 @@ begin
 
   end;
 
-  if aInFlightFrameIndex>=0 then begin
-   fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
-   if assigned(fVulkanData) then begin
-    fVulkanData.Update(aInFlightFrameIndex);
-   end;
-  end;
-
   fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
   if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
@@ -12619,6 +12622,18 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.TGroup.TInstance.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if (aInFlightFrameIndex>=0) and
+    fActives[aInFlightFrameIndex] and
+    assigned(fScenes[aInFlightFrameIndex]) then begin
+  fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
+  if assigned(fVulkanData) then begin
+   fVulkanData.GPUUpdate(aInFlightFrameIndex);
+  end;
+ end;
 end;
 
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative:boolean=false;
@@ -14378,6 +14393,55 @@ begin
   Group.Update(aInFlightFrameIndex);
  end;
 
+ AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+ if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+  end else begin
+   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+  end;
+  AABBTreeState^.Root:=fAABBTree.Root;
+ end else begin
+  AABBTreeState^.Root:=-1;
+ end;
+
+ First:=true;
+ fBoundingBox.Min:=TpvVector3.Origin;
+ fBoundingBox.Max:=TpvVector3.Origin;
+ for GroupInstance in fGroupInstances do begin
+  if GroupInstance.fActive then begin
+   if First then begin
+    First:=false;
+    fBoundingBox:=GroupInstance.fBoundingBox;
+   end else begin
+    fBoundingBox:=fBoundingBox.Combine(GroupInstance.fBoundingBox);
+   end;
+  end;
+ end;
+ if First or IsZero(fBoundingBox.Radius) then begin
+  fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
+  fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
+ end;
+
+end;
+
+procedure TpvScene3D.GPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
+var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+    MinMaterialID,MaxMaterialID:TpvInt32;
+    Group:TpvScene3D.TGroup;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    First:boolean;
+    OldGeneration,NewGeneration:TpvUInt64;
+    LightBuffer:TpvScene3D.TLightBuffer;
+    Texture:TpvScene3D.TTexture;
+    Material:TpvScene3D.TMaterial;
+begin
+
+ for Group in fGroups do begin
+  Group.GPUUpdate(aInFlightFrameIndex);
+ end;
+
  if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
 
   fImageDescriptorGenerationLock.Acquire;
@@ -14516,38 +14580,8 @@ begin
   LightBuffer:=fLightBuffers[aInFlightFrameIndex];
   CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
   fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
-  LightBuffer.Update;
+  LightBuffer.GPUUpdate;
 
- end;
-
- AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
- if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
-  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
-   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
-  end else begin
-   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
-  end;
-  AABBTreeState^.Root:=fAABBTree.Root;
- end else begin
-  AABBTreeState^.Root:=-1;
- end;
-
- First:=true;
- fBoundingBox.Min:=TpvVector3.Origin;
- fBoundingBox.Max:=TpvVector3.Origin;
- for GroupInstance in fGroupInstances do begin
-  if GroupInstance.fActive then begin
-   if First then begin
-    First:=false;
-    fBoundingBox:=GroupInstance.fBoundingBox;
-   end else begin
-    fBoundingBox:=fBoundingBox.Combine(GroupInstance.fBoundingBox);
-   end;
-  end;
- end;
- if First or IsZero(fBoundingBox.Radius) then begin
-  fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
-  fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
  end;
 
 end;

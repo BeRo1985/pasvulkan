@@ -468,6 +468,8 @@ begin
 
    fScene3D.Update(aInFlightFrameIndex);
 
+   fScene3D.GPUUpdate(aInFlightFrameIndex);
+
    fScene3D.TransferViewsToPreviousViews;
 
    fScene3D.ClearViews;
