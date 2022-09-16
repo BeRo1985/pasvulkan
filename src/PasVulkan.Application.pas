@@ -7904,8 +7904,6 @@ procedure TpvApplication.ProcessMessages;
 {-$define TpvApplicationUpdateJobOnMainThread}
 {$define TpvApplicationDrawJobOnMainThread}
 var Index,Counter,Tries,
-    LastDrawInFlightFrameIndex,
-    LastCountInFrameFrames,
     PrepreviousFrameFrenceIndex:TpvInt32;
     PrepreviousFrameFrenceMask:TpvUInt32;
     PrepreviousFrameFrence:TpvVulkanFence;
@@ -8505,10 +8503,6 @@ begin
          dec(fUpdateInFlightFrameIndex,fCountInFlightFrames);
         end;
 
-        LastDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-        LastCountInFrameFrames:=fCountInFlightFrames;
-
         Check(fUpdateDeltaTime);
 
         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
@@ -8520,10 +8514,6 @@ begin
         fUpdateFrameCounter:=fFrameCounter;
 
         fDrawFrameCounter:=fFrameCounter;
-
-        LastDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-        LastCountInFrameFrames:=fCountInFlightFrames;
 
         fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
 
