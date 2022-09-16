@@ -52,6 +52,9 @@ type { TScreenMain }
             { TInFlightFrameState }
             TInFlightFrameState=record
              Ready:TPasMPBool32;
+             UseView:TPasMPBool32;
+             CameraMatrix:TpvMatrix4x4;
+             View:TpvScene3D.TView;
             end;
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
@@ -346,14 +349,22 @@ const Directions:array[boolean,boolean] of TpvScalar=
         (0,1),
         (-1,0)
        );
-var InFlightFrameState:PInFlightFrameState;
+var InFlightFrameIndex,Index:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
     RotationSpeed,MovementSpeed:TpvDouble;
     FPS:TpvInt32;
     FPSString:string;
     FrameTime:TpvDouble;
+    ModelMatrix,CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
+    Center,Bounds:TpvVector3;
+    t0,t1:Double;
+    View:TpvScene3D.TView;
+    BlendFactor,Factor:single;
 begin
 
- InFlightFrameState:=@fInFlightFrameStates[pvApplication.UpdateInFlightFrameIndex];
+ InFlightFrameIndex:=pvApplication.UpdateInFlightFrameIndex;
+
+ InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
  RotationSpeed:=aDeltaTime*1.0;
  MovementSpeed:=aDeltaTime*1.0*fCameraSpeed;
@@ -394,6 +405,110 @@ begin
   pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
  end;
 
+ fUpdateLock.Acquire;
+ try
+
+  ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+
+  if assigned(fGroupInstance) then begin
+
+   fGroupInstance.ModelMatrix:=ModelMatrix;
+
+   begin
+    BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
+    for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
+     Factor:=fGroupInstance.Automations[Index].Factor;
+     if Index=fAnimationIndex then begin
+      if Factor<0.0 then begin
+       Factor:=0.0;
+       fGroupInstance.Automations[Index].ShadowTime:=0.0;
+      end;
+      Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
+     end else if Factor>0.0 then begin
+      Factor:=Factor*(1.0-BlendFactor);
+      if Factor<1e-5 then begin
+       Factor:=-1.0;
+      end;
+     end;
+     if Factor>0.0 then begin
+      if Index>=0 then begin
+       t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+       t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+       fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
+       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
+       fGroupInstance.Automations[Index].Complete:=true;
+      end else begin
+       fGroupInstance.Automations[Index].Time:=0.0;
+       fGroupInstance.Automations[Index].Complete:=false;
+      end;
+     end else begin
+      fGroupInstance.Automations[Index].Time:=0.0;
+     end;
+     fGroupInstance.Automations[Index].Factor:=Factor;
+    end;
+   end;
+
+  end;
+
+  fScene3D.Update(InFlightFrameIndex);
+
+  Center:=(fScene3D.BoundingBox.Min+fScene3D.BoundingBox.Max)*0.5;
+
+  Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
+
+  case fCameraMode of
+   TCameraMode.FirstPerson:begin
+    ViewMatrix:=fCameraMatrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
+   end;
+   else begin
+    ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
+                                                                    sin(-fCameraRotationY*PI*2.0),
+                                                                    cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
+                                                          (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
+                                          Center,
+                                          TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
+    fCameraMatrix:=ViewMatrix.SimpleInverse;
+   end;
+  end;
+
+  InFlightFrameState^.UseView:=false;
+
+  if assigned(fGroup) and
+     assigned(fGroupInstance) and
+     (fGroup.CameraNodeIndices.Count>0) and
+     (fCameraIndex>=0) and
+     (fCameraIndex<fGroup.CameraNodeIndices.Count) then begin
+   if fGroupInstance.GetCamera(fGroup.CameraNodeIndices[fCameraIndex],
+                               CameraMatrix,
+                               ViewMatrix,
+                               ProjectionMatrix,
+                               true,
+                               true,
+                               nil,
+                               nil,
+                               -(fRendererInstance.Width/fRendererInstance.Height)) then begin
+    InFlightFrameState^.CameraMatrix:=CameraMatrix;
+    if not assigned(UnitApplication.Application.VirtualReality) then begin
+     View.ViewMatrix:=ViewMatrix;
+     View.ProjectionMatrix:=ProjectionMatrix;
+     View.InverseViewMatrix:=ViewMatrix.Inverse;
+     View.InverseProjectionMatrix:=ProjectionMatrix.Inverse;
+     InFlightFrameState^.UseView:=true;
+     InFlightFrameState^.View:=View;
+    end;
+   end else begin
+    InFlightFrameState^.CameraMatrix:=fCameraMatrix;
+   end;
+  end else begin
+   InFlightFrameState^.CameraMatrix:=fCameraMatrix;
+  end;
+
+  fTime:=fTime+pvApplication.DeltaTime;
+
+ finally
+  fUpdateLock.Release;
+ end;
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
 {if CanBeParallelProcessed then begin
@@ -409,7 +524,7 @@ end;
 
 procedure TScreenMain.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
-    ModelMatrix,CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
+    CameraMatrix,ViewMatrix,ProjectionMatrix:TpvMatrix4x4;
     Center,Bounds:TpvVector3;
     t0,t1:Double;
     View:TpvScene3D.TView;
@@ -421,122 +536,25 @@ begin
 
  begin
 
-  fUpdateLock.Acquire;
-  try
+  fScene3D.GPUUpdate(aInFlightFrameIndex);
 
-   ModelMatrix:=TpvMatrix4x4.Identity; // TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+  fScene3D.TransferViewsToPreviousViews;
 
-   if assigned(fGroupInstance) then begin
+  fScene3D.ClearViews;
 
-    fGroupInstance.ModelMatrix:=ModelMatrix;
+  fScene3D.ResetRenderPasses;
 
-    begin
-     BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
-     for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
-      Factor:=fGroupInstance.Automations[Index].Factor;
-      if Index=fAnimationIndex then begin
-       if Factor<0.0 then begin
-        Factor:=0.0;
-        fGroupInstance.Automations[Index].ShadowTime:=0.0;
-       end;
-       Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
-      end else if Factor>0.0 then begin
-       Factor:=Factor*(1.0-BlendFactor);
-       if Factor<1e-5 then begin
-        Factor:=-1.0;
-       end;
-      end;
-      if Factor>0.0 then begin
-       if Index>=0 then begin
-        t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
-        t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-        fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-        fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
-        fGroupInstance.Automations[Index].Complete:=true;
-       end else begin
-        fGroupInstance.Automations[Index].Time:=0.0;
-        fGroupInstance.Automations[Index].Complete:=false;
-       end;
-      end else begin
-       fGroupInstance.Automations[Index].Time:=0.0;
-      end;
-      fGroupInstance.Automations[Index].Factor:=Factor;
-     end;
-    end;
+  fRendererInstance.Reset;
 
-   end;
+  fRendererInstance.CameraMatrix:=InFlightFrameState^.CameraMatrix;
 
-   fScene3D.Update(aInFlightFrameIndex);
-
-   fScene3D.GPUUpdate(aInFlightFrameIndex);
-
-   fScene3D.TransferViewsToPreviousViews;
-
-   fScene3D.ClearViews;
-
-   Center:=(fScene3D.BoundingBox.Min+fScene3D.BoundingBox.Max)*0.5;
-
-   Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
-
-   case fCameraMode of
-    TCameraMode.FirstPerson:begin
-     ViewMatrix:=fCameraMatrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
-    end;
-    else begin
-     ViewMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0),
-                                                                     sin(-fCameraRotationY*PI*2.0),
-                                                                     cos(fCameraRotationX*PI*2.0)*cos(-fCameraRotationY*PI*2.0)).Normalize*
-                                                           (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*fZoom)),
-                                           Center,
-                                           TpvVector3.Create(0.0,1.0,0.0));//*TpvMatrix4x4.FlipYClipSpace;
-     fCameraMatrix:=ViewMatrix.SimpleInverse;
-    end;
-   end;
-
-   fScene3D.ResetRenderPasses;
-
-   fRendererInstance.Reset;
-
-   if assigned(fGroup) and
-      assigned(fGroupInstance) and
-      (fGroup.CameraNodeIndices.Count>0) and
-      (fCameraIndex>=0) and
-      (fCameraIndex<fGroup.CameraNodeIndices.Count) then begin
-    if fGroupInstance.GetCamera(fGroup.CameraNodeIndices[fCameraIndex],
-                                CameraMatrix,
-                                ViewMatrix,
-                                ProjectionMatrix,
-                                true,
-                                true,
-                                nil,
-                                nil,
-                                -(fRendererInstance.Width/fRendererInstance.Height)) then begin
-     fRendererInstance.CameraMatrix:=CameraMatrix;
-     if not assigned(UnitApplication.Application.VirtualReality) then begin
-      View.ViewMatrix:=ViewMatrix;
-      View.ProjectionMatrix:=ProjectionMatrix;
-      View.InverseViewMatrix:=ViewMatrix.Inverse;
-      View.InverseProjectionMatrix:=ProjectionMatrix.Inverse;
-      fRendererInstance.AddView(View);
-     end;
-    end else begin
-     fRendererInstance.CameraMatrix:=fCameraMatrix;
-    end;
-   end else begin
-    fRendererInstance.CameraMatrix:=fCameraMatrix;
-   end;
-
-   fRendererInstance.DrawUpdate(aInFlightFrameIndex,aFrameCounter);
-
-   fScene3D.UpdateViews(aInFlightFrameIndex);
-
-// TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
-
-   fTime:=fTime+pvApplication.DeltaTime;
-
-  finally
-   fUpdateLock.Release;
+  if InFlightFrameState^.UseView then begin
+   fRendererInstance.AddView(InFlightFrameState^.View);
   end;
+
+  fRendererInstance.DrawUpdate(aInFlightFrameIndex,aFrameCounter);
+
+  fScene3D.UpdateViews(aInFlightFrameIndex);
 
  end;
 
