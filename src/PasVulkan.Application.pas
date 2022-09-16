@@ -8572,16 +8572,16 @@ begin
 
        if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
-        fUpdateFrameCounter:=fFrameCounter;
-
         fDrawFrameCounter:=fFrameCounter-1;
 
-        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+        fUpdateFrameCounter:=fFrameCounter;
 
-        fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex+1;
-        if fUpdateInFlightFrameIndex>=fCountInFlightFrames then begin
-         dec(fUpdateInFlightFrameIndex,fCountInFlightFrames);
+        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex-1;
+        if fDrawInFlightFrameIndex<0 then begin
+         inc(fDrawInFlightFrameIndex,fCountInFlightFrames);
         end;
+
+        fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
 
         Check(fUpdateDeltaTime);
 
