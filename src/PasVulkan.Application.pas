@@ -8457,29 +8457,29 @@ begin
 {$if true}
     if true then begin
 
-     if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
+     FrameDone:=false;
+     try
 
-      FrameDone:=false;
+      UpdateJob:=nil;
       try
 
-       UpdateJob:=nil;
-       try
+       if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
 
-        if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
+        fNowTime:=fHighResolutionTimer.GetTime;
+        if fHasLastTime then begin
+         fDeltaTime:=fNowTime-fLastTime;
+        end else begin
+         fDeltaTime:=0;
+        end;
+        fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+        fLastTime:=fNowTime;
+        fHasLastTime:=true;
 
-         fNowTime:=fHighResolutionTimer.GetTime;
-         if fHasLastTime then begin
-          fDeltaTime:=fNowTime-fLastTime;
-         end else begin
-          fDeltaTime:=0;
-         end;
-         fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-         fLastTime:=fNowTime;
-         fHasLastTime:=true;
+        UpdateFrameTimesHistory;
 
-         UpdateFrameTimesHistory;
+        fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
 
-         fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+        if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
          fUpdateFrameCounter:=fFrameCounter;
 
@@ -8537,117 +8537,78 @@ begin
          end;
 
         end else begin
-         fVulkanSurfaceRecreated:=false;
-        end;
 
-        if not fVulkanSurfaceRecreated then begin
-         try
-          BeginFrame(fUpdateDeltaTime);
-          DrawJobFunction(nil,0);
-         finally
-          FrameDone:=true;
+         fUpdateFrameCounter:=fFrameCounter;
+
+         fDrawFrameCounter:=fFrameCounter;
+
+         LastDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+         LastCountInFrameFrames:=fCountInFlightFrames;
+
+         fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+         fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+         Check(fUpdateDeltaTime);
+
+         UpdateJobFunction(nil,0);
+
+         while not AcquireVulkanBackBuffer do begin
+          TPasMP.Yield;
          end;
+
+         if fVulkanSurfaceRecreated then begin
+
+          if LastCountInFrameFrames=fCountInFlightFrames then begin
+
+           fDrawInFlightFrameIndex:=LastDrawInFlightFrameIndex;
+
+           fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+           fCurrentInFlightFrameIndex:=LastDrawInFlightFrameIndex;
+
+           fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+           if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+            fNextInFlightFrameIndex:=0;
+           end;
+
+           fVulkanSurfaceRecreated:=false;
+
+          end else begin
+
+           DrawBlackScreen(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
+           PresentVulkanBackBuffer;
+
+          end;
+
+         end;
+
         end;
 
-       finally
-        if assigned(UpdateJob) then begin
-         fPasMPInstance.WaitRelease(UpdateJob);
+       end else begin
+        fVulkanSurfaceRecreated:=false;
+       end;
+
+       if not fVulkanSurfaceRecreated then begin
+        try
+         BeginFrame(fUpdateDeltaTime);
+         DrawJobFunction(nil,0);
+        finally
+         FrameDone:=true;
         end;
        end;
 
       finally
-       if FrameDone then begin
-        try
-         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-        finally
-         try
-          PresentVulkanBackBuffer;
-         finally
-          PostPresent(fSwapChainImageIndex);
-         end;
-        end;
-        inc(fFrameCounter);
-        FrameRateLimiter;
+       if assigned(UpdateJob) then begin
+        fPasMPInstance.WaitRelease(UpdateJob);
        end;
       end;
 
-     end else begin
-
-      if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
-
-       fNowTime:=fHighResolutionTimer.GetTime;
-       if fHasLastTime then begin
-        fDeltaTime:=fNowTime-fLastTime;
-       end else begin
-        fDeltaTime:=0;
-       end;
-       fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-       fLastTime:=fNowTime;
-       fHasLastTime:=true;
-
-       UpdateFrameTimesHistory;
-
-       fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
-
-       fUpdateFrameCounter:=fFrameCounter;
-
-       fDrawFrameCounter:=fFrameCounter;
-
-       LastDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-       LastCountInFrameFrames:=fCountInFlightFrames;
-
-       fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-       fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
-
-       Check(fUpdateDeltaTime);
-
-       UpdateJobFunction(nil,0);
-
-       while not AcquireVulkanBackBuffer do begin
-        TPasMP.Yield;
-       end;
-
-       if fVulkanSurfaceRecreated then begin
-
-        if LastCountInFrameFrames=fCountInFlightFrames then begin
-
-         fDrawInFlightFrameIndex:=LastDrawInFlightFrameIndex;
-
-         fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
-
-         fCurrentInFlightFrameIndex:=LastDrawInFlightFrameIndex;
-
-         fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
-         if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
-          fNextInFlightFrameIndex:=0;
-         end;
-
-         fVulkanSurfaceRecreated:=false;
-
-        end else begin
-
-         DrawBlackScreen(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-
-         PresentVulkanBackBuffer;
-
-        end;
-
-       end;
-
-      end else begin
-       fVulkanSurfaceRecreated:=false;
-      end;
-
-      if not fVulkanSurfaceRecreated then begin
-
+     finally
+      if FrameDone then begin
        try
-
-        BeginFrame(fUpdateDeltaTime);
-
-        DrawJobFunction(nil,0);
-
         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
        finally
         try
@@ -8656,12 +8617,9 @@ begin
          PostPresent(fSwapChainImageIndex);
         end;
        end;
-
        inc(fFrameCounter);
-
        FrameRateLimiter;
       end;
-
      end;
 
     end else{$ifend}begin
