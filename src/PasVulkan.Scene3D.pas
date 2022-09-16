@@ -2071,6 +2071,7 @@ type EpvScene3D=class(Exception);
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
+            TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
       private
        fLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
@@ -2157,7 +2158,10 @@ type EpvScene3D=class(Exception);
        fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
        fVulkanBufferCopyBatchItemArrays:array[0..MaxInFlightFrames-1] of TpvVulkanBufferCopyBatchItemArray;
-       fImageInfos:array[0..65535] of TVkDescriptorImageInfo;
+       fImageInfos:TpvScene3D.TImageInfos;
+       fInFlightFrameImageInfos:array[0..MaxInFlightFrames-1] of TpvScene3D.TImageInfos;
+       fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+       fInFlightFrameImageInfoUploadImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fRenderPassIndexCounter:TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
        procedure NewImageDescriptorGeneration;
@@ -14235,6 +14239,12 @@ begin
        end;
 
        for Index:=0 to fCountInFlightFrames-1 do begin
+        fInFlightFrameImageInfos[Index]:=fImageInfos;
+        fInFlightFrameImageInfoImageDescriptorGenerations[Index]:=High(TpvUInt64)-2;
+        fInFlightFrameImageInfoUploadImageDescriptorGenerations[Index]:=High(TpvUInt64)-1;
+       end;
+
+       for Index:=0 to fCountInFlightFrames-1 do begin
         fGlobalVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
                                                                           fGlobalVulkanDescriptorSetLayout);
         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
@@ -14482,14 +14492,51 @@ begin
 end;
 
 procedure TpvScene3D.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
-var OldGeneration,NewGeneration:TpvUInt64;
+var Index:TpvSizeInt;
+    OldGeneration,NewGeneration:TpvUInt64;
     LightBuffer:TpvScene3D.TLightBuffer;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     Group:TpvScene3D.TGroup;
+    Texture:TpvScene3D.TTexture;
 begin
 
  for Group in fGroups do begin
   Group.PrepareGPUUpdate(aInFlightFrameIndex);
+ end;
+
+ if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
+
+  fImageDescriptorGenerationLock.Acquire;
+  try
+
+   if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
+
+    fImageDescriptorGenerations[aInFlightFrameIndex]:=fImageDescriptorGeneration;
+
+    fImageInfos[0]:=fWhiteTexture.GetDescriptorImageInfo(false);
+    for Index:=1 to length(fImageInfos)-1 do begin
+     fImageInfos[Index]:=fImageInfos[0];
+    end;
+
+    for Index:=0 to fTextures.Count-1 do begin
+     Texture:=fTextures[Index];
+     if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+      fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
+      fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
+     end;
+    end;
+
+    if fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGenerations[aInFlightFrameIndex] then begin
+     fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex]:=fImageDescriptorGenerations[aInFlightFrameIndex];
+     fInFlightFrameImageInfos[aInFlightFrameIndex]:=fImageInfos;
+    end;
+
+   end;
+
+  finally
+   fImageDescriptorGenerationLock.Release;
+  end;
+
  end;
 
  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
@@ -14528,7 +14575,6 @@ var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     First:boolean;
     OldGeneration,NewGeneration:TpvUInt64;
     LightBuffer:TpvScene3D.TLightBuffer;
-    Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
 begin
 
@@ -14536,43 +14582,23 @@ begin
   Group.ExecuteGPUUpdate(aInFlightFrameIndex);
  end;
 
- if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
-
+ if fInFlightFrameImageInfoUploadImageDescriptorGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
   fImageDescriptorGenerationLock.Acquire;
   try
-
-   if fImageDescriptorGenerations[aInFlightFrameIndex]<>fImageDescriptorGeneration then begin
-
-    fImageDescriptorGenerations[aInFlightFrameIndex]:=fImageDescriptorGeneration;
-
-    fImageInfos[0]:=fWhiteTexture.GetDescriptorImageInfo(false);
-    for Index:=1 to length(fImageInfos)-1 do begin
-     fImageInfos[Index]:=fImageInfos[0];
-    end;
-
-    for Index:=0 to fTextures.Count-1 do begin
-     Texture:=fTextures[Index];
-     if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
-      fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
-      fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
-     end;
-    end;
-
+   if fInFlightFrameImageInfoUploadImageDescriptorGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
+    fInFlightFrameImageInfoUploadImageDescriptorGenerations[aInFlightFrameIndex]:=fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex];
     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
                                                                           0,
-                                                                          length(fImageInfos),
+                                                                          length(fInFlightFrameImageInfos[aInFlightFrameIndex]),
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                          fImageInfos,
+                                                                          fInFlightFrameImageInfos[aInFlightFrameIndex],
                                                                           [],
                                                                           [],
                                                                           true);
-
    end;
-
   finally
    fImageDescriptorGenerationLock.Release;
   end;
-
  end;
 
  if fMaterialDataGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
