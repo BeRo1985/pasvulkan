@@ -264,7 +264,7 @@
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <Debugger_RunParams>&quot;d:\GLTF\AnimateAllTheThings.glb&quot; /antialiasing-mode msaa /max-msaa 8</Debugger_RunParams>
+        <Debugger_RunParams>&quot;d:\GLTF\hello_neighbor_2_neighbor_looking_at_blueprint.glb&quot; /antialiasing-mode msaa /max-msaa 8</Debugger_RunParams>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
