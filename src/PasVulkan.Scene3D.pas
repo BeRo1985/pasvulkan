@@ -8668,7 +8668,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
       CurrentImage:=Image;
       Image:=nil;
      end;
-     if assigned(CurrentImage) then begin
+     if assigned(CurrentImage) and (NewImages.IndexOf(CurrentImage)<0) then begin
       CurrentImage.IncRef;
       NewImages.Add(CurrentImage);
      end;
@@ -8706,7 +8706,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
       CurrentSampler:=Sampler;
       Sampler:=nil;
      end;
-     if assigned(CurrentSampler) then begin
+     if assigned(CurrentSampler) and (NewSamplers.IndexOf(CurrentSampler)<0) then begin
       CurrentSampler.IncRef;
       NewSamplers.Add(CurrentSampler);
      end;
@@ -8744,7 +8744,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
       CurrentTexture:=Texture;
       Texture:=nil;
      end;
-     if assigned(CurrentTexture) then begin
+     if assigned(CurrentTexture) and (NewTextures.IndexOf(CurrentTexture)<0) then begin
       CurrentTexture.IncRef;
       NewTextures.Add(CurrentTexture);
      end;
