@@ -7421,8 +7421,9 @@ function TpvApplication.PresentVulkanBackBuffer:boolean;
 begin
  result:=false;
 
- if (fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0 then begin
-  fVulkanFrameFences[fVulkanFrameFenceCounter].Reset;
+ if ((fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0) and
+    (fVulkanFrameFences[fVulkanFrameFenceCounter and 3].GetStatus=VK_SUCCESS) then begin
+  fVulkanFrameFences[fVulkanFrameFenceCounter and 3].Reset;
  end;
 
  fVulkanFrameFenceCommandBuffers[fSwapChainImageIndex,fVulkanFrameFenceCounter].Execute(fVulkanDevice.GraphicsQueue,
@@ -8453,10 +8454,12 @@ begin
      if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
       fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
       if assigned(PrepreviousFrameFrence) then begin
-       if fBlocking then begin
-        PrepreviousFrameFrence.WaitFor;
+       if fBlocking and (PrepreviousFrameFrence.GetStatus=VK_NOT_READY) then begin
+        PrepreviousFrameFrence.WaitFor(250*1000000); // maximal one quarter second (250ms) as timeout
        end;
-       PrepreviousFrameFrence.Reset;
+       if PrepreviousFrameFrence.GetStatus=VK_SUCCESS then begin
+        PrepreviousFrameFrence.Reset;
+       end;
       end;
      end;
 
