@@ -2114,22 +2114,22 @@ type EpvScene3D=class(Exception);
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fTechniques:TpvTechniques;
-       fImageListLock:TPasMPSlimReaderWriterLock;
+       fImageListLock:TPasMPCriticalSection;
        fImages:TImages;
        fImageIDManager:TIDManager;
        fImageIDHashMap:TImageIDHashMap;
        fImageHashMap:TImageHashMap;
-       fSamplerListLock:TPasMPSlimReaderWriterLock;
+       fSamplerListLock:TPasMPCriticalSection;
        fSamplers:TSamplers;
        fSamplerIDManager:TIDManager;
        fSamplerIDHashMap:TSamplerIDHashMap;
        fSamplerHashMap:TSamplerHashMap;
-       fTextureListLock:TPasMPSlimReaderWriterLock;
+       fTextureListLock:TPasMPCriticalSection;
        fTextures:TTextures;
        fTextureIDManager:TIDManager;
        fTextureIDHashMap:TTextureIDHashMap;
        fTextureHashMap:TTextureHashMap;
-       fMaterialListLock:TPasMPSlimReaderWriterLock;
+       fMaterialListLock:TPasMPCriticalSection;
        fMaterials:TMaterials;
        fMaterialIDManager:TIDManager;
        fMaterialIDHashMap:TMaterialIDHashMap;
@@ -3913,7 +3913,14 @@ begin
 
  if assigned(fImage) then begin
   try
-   fImage.DecRef;
+   if assigned(fSceneInstance) then begin
+    fSceneInstance.fImageListLock.Acquire;
+    try
+     fImage.DecRef;
+    finally
+     fSceneInstance.fImageListLock.Release;
+    end;
+   end;
   finally
    fImage:=nil;
   end;
@@ -3921,7 +3928,14 @@ begin
 
  if assigned(fSampler) then begin
   try
-   fSampler.DecRef;
+   if assigned(fSceneInstance) then begin
+    fSceneInstance.fSamplerListLock.Acquire;
+    try
+     fSampler.DecRef;
+    finally
+     fSceneInstance.fSamplerListLock.Release;
+    end;
+   end;
   finally
    fSampler:=nil;
   end;
@@ -3975,14 +3989,28 @@ begin
     fSceneInstance.NewImageDescriptorGeneration;
     if assigned(fImage) then begin
      try
-      fImage.DecRef;
+      if assigned(fSceneInstance) then begin
+       fSceneInstance.fImageListLock.Acquire;
+       try
+        fImage.DecRef;
+       finally
+        fSceneInstance.fImageListLock.Release;
+       end;
+      end;
      finally
       fImage:=nil;
      end;
     end;
     if assigned(fSampler) then begin
      try
-      fSampler.DecRef;
+      if assigned(fSceneInstance) then begin
+       fSceneInstance.fSamplerListLock.Acquire;
+       try
+        fSampler.DecRef;
+       finally
+        fSceneInstance.fSamplerListLock.Release;
+       end;
+      end;
      finally
       fSampler:=nil;
      end;
@@ -4058,11 +4086,28 @@ procedure TpvScene3D.TTexture.AssignFromWhiteTexture;
 begin
  fName:=#0+'WhiteTexture';
 
- fImage:=fSceneInstance.fWhiteImage;
- fImage.IncRef;
+ fSceneInstance.fTextureListLock.Acquire;
+ try
 
- fSampler:=fSceneInstance.fDefaultSampler;
- fSampler.IncRef;
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   fImage:=fSceneInstance.fWhiteImage;
+   fImage.IncRef;
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
+
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   fSampler:=fSceneInstance.fDefaultSampler;
+   fSampler.IncRef;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
+ end;
 
 end;
 
@@ -4071,11 +4116,28 @@ begin
 
  fName:=#0+'DefaultNormalMapTexture';
 
- fImage:=fSceneInstance.fDefaultNormalMapImage;
- fImage.IncRef;
+ fSceneInstance.fTextureListLock.Acquire;
+ try
 
- fSampler:=fSceneInstance.fDefaultSampler;
- fSampler.IncRef;
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   fImage:=fSceneInstance.fDefaultNormalMapImage;
+   fImage.IncRef;
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
+
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   fSampler:=fSceneInstance.fDefaultSampler;
+   fSampler.IncRef;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
+ end;
 
 end;
 
@@ -4084,24 +4146,42 @@ begin
 
  fName:=aSourceTexture.Name;
 
- if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
-  fImage:=aImageMap[aSourceTexture.Source];
- end else begin
-  fImage:=nil;
-//raise EPasGLTFInvalidDocument.Create('Image index out of range');
- end;
- if assigned(fImage) then begin
-  fImage.IncRef;
- end;
+ fSceneInstance.fTextureListLock.Acquire;
+ try
 
- if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
-  fSampler:=aSamplerMap[aSourceTexture.Sampler];
- end else begin
-  fSampler:=SceneInstance.fDefaultSampler;
-//raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
- end;
- if assigned(fSampler) then begin
-  fSampler.IncRef;
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
+    fImage:=aImageMap[aSourceTexture.Source];
+   end else begin
+    fImage:=nil;
+  //raise EPasGLTFInvalidDocument.Create('Image index out of range');
+   end;
+   if assigned(fImage) then begin
+    fImage.IncRef;
+   end;
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
+
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   if (aSourceTexture.Sampler>=0) and (aSourceTexture.Sampler<aSamplerMap.Count) then begin
+    fSampler:=aSamplerMap[aSourceTexture.Sampler];
+   end else begin
+    fSampler:=SceneInstance.fDefaultSampler;
+  //raise EPasGLTFInvalidDocument.Create('Sampler index out of range');
+   end;
+   if assigned(fSampler) then begin
+    fSampler.IncRef;
+   end;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
+
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
  end;
 
 end;
@@ -8537,13 +8617,17 @@ var LightMap:TpvScene3D.TGroup.TLights;
     ImageMap:TpvScene3D.TImages;
     SamplerMap:TpvScene3D.TSamplers;
     TextureMap:TpvScene3D.TTextures;
+    NewImages:TpvScene3D.TImages;
+    NewSamplers:TpvScene3D.TSamplers;
+    NewTextures:TpvScene3D.TTextures;
     //MaterialMap:TpvScene3D.TMaterials;
     HasLights:boolean;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
      Image,
-     HashedImage:TImage;
+     HashedImage,
+     CurrentImage:TImage;
      HashData:TImage.THashData;
  begin
   for Index:=0 to aSourceDocument.Images.Count-1 do begin
@@ -8557,11 +8641,17 @@ var LightMap:TpvScene3D.TGroup.TLights;
      HashedImage:=fSceneInstance.fImageHashMap[HashData];
      if assigned(HashedImage) then begin
       ImageMap.Add(HashedImage);
+      CurrentImage:=HashedImage;
      end else begin
       Image.fHashData:=HashData;
       fSceneInstance.fImageHashMap[HashData]:=Image;
       ImageMap.Add(Image);
+      CurrentImage:=Image;
       Image:=nil;
+     end;
+     if assigned(CurrentImage) then begin
+      CurrentImage.IncRef;
+      NewImages.Add(CurrentImage);
      end;
     finally
      fSceneInstance.fImageListLock.Release;
@@ -8575,7 +8665,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
  var Index:TpvSizeInt;
      SourceSampler:TPasGLTF.TSampler;
      Sampler,
-     HashedSampler:TSampler;
+     HashedSampler,
+     CurrentSampler:TSampler;
      HashData:TSampler.THashData;
  begin
   for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
@@ -8589,10 +8680,16 @@ var LightMap:TpvScene3D.TGroup.TLights;
      HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
      if assigned(HashedSampler) then begin
       SamplerMap.Add(HashedSampler);
+      CurrentSampler:=HashedSampler;
      end else begin
       fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
       SamplerMap.Add(Sampler);
+      CurrentSampler:=Sampler;
       Sampler:=nil;
+     end;
+     if assigned(CurrentSampler) then begin
+      CurrentSampler.IncRef;
+      NewSamplers.Add(CurrentSampler);
      end;
     finally
      fSceneInstance.fSamplerListLock.Release;
@@ -8606,7 +8703,8 @@ var LightMap:TpvScene3D.TGroup.TLights;
  var Index:TpvSizeInt;
      SourceTexture:TPasGLTF.TTexture;
      Texture,
-     HashedTexture:TTexture;
+     HashedTexture,
+     CurrentTexture:TTexture;
      HashData:TTexture.THashData;
  begin
   for Index:=0 to aSourceDocument.Textures.Count-1 do begin
@@ -8620,10 +8718,16 @@ var LightMap:TpvScene3D.TGroup.TLights;
      HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
      if assigned(HashedTexture) then begin
       TextureMap.Add(HashedTexture);
+      CurrentTexture:=HashedTexture;
      end else begin
       fSceneInstance.fTextureHashMap[HashData]:=Texture;
       TextureMap.Add(Texture);
+      CurrentTexture:=Texture;
       Texture:=nil;
+     end;
+     if assigned(CurrentTexture) then begin
+      CurrentTexture.IncRef;
+      NewTextures.Add(CurrentTexture);
      end;
     finally
      fSceneInstance.fTextureListLock.Release;
@@ -9073,6 +9177,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
    end;
   end;
  end;
+var Image:TpvScene3D.TImage;
+    Sampler:TpvScene3D.TSampler;
+    Texture:TpvScene3D.TTexture;
 begin
 
  HasLights:=aSourceDocument.ExtensionsUsed.IndexOf('KHR_lights_punctual')>=0;
@@ -9087,58 +9194,115 @@ begin
   ImageMap.OwnsObjects:=false;
   try
 
-   ProcessImages;
-
-   SamplerMap:=TpvScene3D.TSamplers.Create;
-   SamplerMap.OwnsObjects:=false;
+   NewImages:=TpvScene3D.TImages.Create;
+   NewImages.OwnsObjects:=false;
    try
 
-    ProcessSamplers;
+    ProcessImages;
 
-    TextureMap:=TpvScene3D.TTextures.Create;
-    TextureMap.OwnsObjects:=false;
+    SamplerMap:=TpvScene3D.TSamplers.Create;
+    SamplerMap.OwnsObjects:=false;
     try
 
-     ProcessTextures;
-
-{    MaterialMap:=TpvScene3D.TMaterials.Create;
-     MaterialMap.OwnsObjects:=false;}
+     NewSamplers:=TpvScene3D.TSamplers.Create;
+     NewSamplers.OwnsObjects:=false;
      try
 
-      ProcessMaterials;
+      ProcessSamplers;
 
-      ProcessAnimations;
+      TextureMap:=TpvScene3D.TTextures.Create;
+      TextureMap.OwnsObjects:=false;
+      try
 
-      ProcessCameras;
+       NewTextures:=TpvScene3D.TTextures.Create;
+       NewTextures.OwnsObjects:=false;
+       try
 
-      ProcessMeshes;
+        ProcessTextures;
 
-      ProcessSkins;
+   {    MaterialMap:=TpvScene3D.TMaterials.Create;
+        MaterialMap.OwnsObjects:=false;}
+        try
 
-      ProcessNodes;
+         ProcessMaterials;
 
-      ProcessScenes;
+         ProcessAnimations;
 
-      if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
-       fScene:=fScenes[aSourceDocument.Scene];
-      end else if fScenes.Count>0 then begin
-       fScene:=fScenes[0];
-      end else begin
-       fScene:=nil;
+         ProcessCameras;
+
+         ProcessMeshes;
+
+         ProcessSkins;
+
+         ProcessNodes;
+
+         ProcessScenes;
+
+         if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
+          fScene:=fScenes[aSourceDocument.Scene];
+         end else if fScenes.Count>0 then begin
+          fScene:=fScenes[0];
+         end else begin
+          fScene:=nil;
+         end;
+
+         CalculateBoundingBox;
+
+        finally
+   //    FreeAndNil(MaterialMap);
+        end;
+
+       finally
+        try
+         fSceneInstance.fTextureListLock.Acquire;
+         try
+          for Texture in NewTextures do begin
+           Texture.DecRef;
+          end;
+         finally
+          fSceneInstance.fTextureListLock.Release;
+         end;
+        finally
+         FreeAndNil(NewTextures);
+        end;
+       end;
+
+      finally
+       FreeAndNil(TextureMap);
       end;
 
-      CalculateBoundingBox;
-
      finally
-//    FreeAndNil(MaterialMap);
+      try
+       fSceneInstance.fSamplerListLock.Acquire;
+       try
+        for Sampler in NewSamplers do begin
+         Sampler.DecRef;
+        end;
+       finally
+        fSceneInstance.fSamplerListLock.Release;
+       end;
+      finally
+       FreeAndNil(NewSamplers);
+      end;
      end;
 
     finally
-     FreeAndNil(TextureMap);
+     FreeAndNil(SamplerMap);
     end;
 
    finally
-    FreeAndNil(SamplerMap);
+    try
+     fSceneInstance.fImageListLock.Acquire;
+     try
+      for Image in NewImages do begin
+       Image.DecRef;
+      end;
+     finally
+      fSceneInstance.fImageListLock.Release;
+     end;
+    finally
+     FreeAndNil(NewImages);
+    end;
    end;
 
   finally
@@ -13434,7 +13598,7 @@ begin
 
  fTechniques:=TpvTechniques.Create;
 
- fImageListLock:=TPasMPSlimReaderWriterLock.Create;
+ fImageListLock:=TPasMPCriticalSection.Create;
 
  fImages:=TImages.Create;
  fImages.OwnsObjects:=false;
@@ -13445,7 +13609,7 @@ begin
 
  fImageHashMap:=TImageHashMap.Create(nil);
 
- fSamplerListLock:=TPasMPSlimReaderWriterLock.Create;
+ fSamplerListLock:=TPasMPCriticalSection.Create;
 
  fSamplers:=TSamplers.Create;
  fSamplers.OwnsObjects:=false;
@@ -13456,7 +13620,7 @@ begin
 
  fSamplerHashMap:=TSamplerHashMap.Create(nil);
 
- fTextureListLock:=TPasMPSlimReaderWriterLock.Create;
+ fTextureListLock:=TPasMPCriticalSection.Create;
 
  fTextures:=TTextures.Create;
  fTextures.OwnsObjects:=false;
@@ -13467,7 +13631,7 @@ begin
 
  fTextureHashMap:=TTextureHashMap.Create(nil);
 
- fMaterialListLock:=TPasMPSlimReaderWriterLock.Create;
+ fMaterialListLock:=TPasMPCriticalSection.Create;
 
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
