@@ -7436,8 +7436,7 @@ begin
 
  try
 
-  if ((fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0) and
-     (fVulkanFrameFences[fVulkanFrameFenceCounter and 3].GetStatus=VK_SUCCESS) then begin
+  if (fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0 then begin
    fVulkanFrameFences[fVulkanFrameFenceCounter and 3].Reset;
   end;
 
@@ -8480,12 +8479,10 @@ begin
       if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
        fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
        if assigned(PrepreviousFrameFrence) then begin
-        if fBlocking and (PrepreviousFrameFrence.GetStatus=VK_NOT_READY) then begin
-         PrepreviousFrameFrence.WaitFor(250*1000000); // maximal one quarter second (250ms) as timeout
+        if fBlocking then begin
+         PrepreviousFrameFrence.WaitFor;
         end;
-        if PrepreviousFrameFrence.GetStatus=VK_SUCCESS then begin
-         PrepreviousFrameFrence.Reset;
-        end;
+        PrepreviousFrameFrence.Reset;
        end;
       end;
      except
