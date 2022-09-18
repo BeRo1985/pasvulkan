@@ -115,13 +115,17 @@
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <DCC_UsePackage>vcl;rtl;vclx;indy;vclie;xmlrtl;inetdbbde;inet;inetdbxpress;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;inetdb;bdertl;vcldbx;adortl;teeui;teedb;tee;ibxpress;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;Rave50CLX;Rave50VCL;dclOfficeXP;KHexEditor_D7R;acntD7_R;JclDeveloperTools;Jcl;JclVcl;JclContainers;JvCore;JvSystem;JvStdCtrls;JvAppFrm;JvBands;JvDB;JvDlgs;JvBDE;JvControls;JvCmp;JvCrypt;JvCustom;JvDocking;JvDotNetCtrls;JvGlobus;JvHMI;JvJans;JvManagedThreads;JvMM;JvNet;JvPageComps;JvPascalInterpreter;JvPluginSystem;JvPrintPreview;JvRuntimeDesign;JvTimeFramework;JvWizards;JvXPCtrls;$(DCC_UsePackage)</DCC_UsePackage>
         <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=;CFBundleName=</VerInfo_Keys>
-        <DCC_Define>PasVulkanPasMP;PasVulkanUseSDL2;PasVulkanUseSDL2WithVulkanSupport;$(DCC_Define)</DCC_Define>
+        <DCC_Define>PasVulkanPasMP;PasVulkanUseSDL2;PasVulkanUseSDL2WithVulkanSupport;PasVulkanUseJclDebug;$(DCC_Define)</DCC_Define>
         <DCC_UnitSearchPath>.\..\..\..\src;.\..\..\..\externals\kraft\src;.\..\..\..\externals\pasmp\src;.\..\..\..\externals\pasjson\src;.\..\..\..\externals\pucu\src;.\..\..\..\externals\pasdblstrutils\src;.\..\..\..\externals\rnl\src;.\..\..\..\externals\pasgltf\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_ConsoleTarget>false</DCC_ConsoleTarget>
         <DCC_ExeOutput>.\..\bin</DCC_ExeOutput>
         <DCC_DcuOutput>.\DelphiOutput\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_DcpOutput>.\DelphiOutput\$(Platform)\$(Config)</DCC_DcpOutput>
         <DCC_BplOutput>.\DelphiOutput\$(Platform)\$(Config)</DCC_BplOutput>
+        <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+        <DCC_LargeAddressAware>true</DCC_LargeAddressAware>
+        <DCC_MapFile>3</DCC_MapFile>
+        <ImageDebugInfo>true</ImageDebugInfo>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <Android_SplashImage960>$(BDS)\bin\Artwork\Android\FM_SplashImage_960x720.png</Android_SplashImage960>
@@ -230,6 +234,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>(None)</Manifest_File>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
@@ -291,10 +296,10 @@
                     <Source Name="MainSource">gltfviewer.dpr</Source>
                 </Source>
                 <Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k250.bpl">Embarcadero C++Builder Office 2000 Servers Package</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp250.bpl">Embarcadero C++Builder Office XP Servers Package</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k250.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp250.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k280.bpl">Embarcadero C++Builder Office 2000 Servers Package</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp280.bpl">Embarcadero C++Builder Office XP Servers Package</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k280.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp280.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>
             </Delphi.Personality>
             <Platforms>

@@ -36,9 +36,12 @@ uses
    cthreads,
    BaseUnix,
   {$elseif defined(Windows)}
+   {$ifdef PasVulkanUseJclDebug}
+    JclDebug,
+   {$endif}
    {$ifdef PasVulkanUseFastMM4}
     FastMM4,
-   {$endif} 
+   {$endif}
    Windows,
   {$ifend}
   SysUtils,
@@ -48,7 +51,7 @@ uses
   PasVulkan.Android,
   PasVulkan.SDL2,
   PasVulkan.Framework,
-  PasVulkan.Application,  
+  PasVulkan.Application,
   UnitApplication;
 
 // {$if defined(fpc) and defined(android)}
