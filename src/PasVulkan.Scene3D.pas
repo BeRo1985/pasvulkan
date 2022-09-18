@@ -14868,7 +14868,7 @@ begin
       if fMaterialDataProcessedMinChangedID[Index]>MinMaterialID then begin
        fMaterialDataProcessedMinChangedID[Index]:=MinMaterialID;
       end;
-      if fMaterialDataProcessedMinChangedID[Index]<MaxMaterialID then begin
+      if fMaterialDataProcessedMaxChangedID[Index]<MaxMaterialID then begin
        fMaterialDataProcessedMaxChangedID[Index]:=MaxMaterialID;
       end;
      end;
