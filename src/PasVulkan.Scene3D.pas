@@ -4821,9 +4821,70 @@ end;
 
 procedure TpvScene3D.TMaterial.Assign(const aFrom:TMaterial);
 begin
- fName:=aFrom.fName;
- fData:=aFrom.fData;
- fShaderData:=aFrom.fShaderData;
+ fSceneInstance.fTextureListLock.Acquire;
+ try
+  fName:=aFrom.fName;
+  fData:=aFrom.fData;
+  fShaderData:=aFrom.fShaderData;
+  begin
+   if assigned(fData.EmissiveTexture.Texture) then begin
+    fData.EmissiveTexture.Texture.IncRef;
+   end;
+   if assigned(fData.NormalTexture.Texture) then begin
+    fData.NormalTexture.Texture.IncRef;
+   end;
+   if assigned(fData.OcclusionTexture.Texture) then begin
+    fData.OcclusionTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+    fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+    fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+    fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+    fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+    fData.PBRSheen.ColorTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+    fData.PBRSheen.RoughnessTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+    fData.PBRClearCoat.Texture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+    fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
+   end;
+   if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+    fData.PBRClearCoat.NormalTexture.Texture.IncRef;
+   end;
+   if assigned(fData.Iridescence.Texture.Texture) then begin
+    fData.Iridescence.Texture.Texture.IncRef;
+   end;
+   if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+    fData.Iridescence.ThicknessTexture.Texture.IncRef;
+   end;
+   if assigned(fData.Transmission.Texture.Texture) then begin
+    fData.Transmission.Texture.Texture.IncRef;
+   end;
+   if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+    fData.Volume.ThicknessTexture.Texture.IncRef;
+   end;
+  end;
+ finally
+  fSceneInstance.fTextureListLock.Release;
+ end;
 end;
 
 procedure TpvScene3D.TMaterial.AssignFromEmpty;
@@ -4847,403 +4908,410 @@ begin
 
  fVisible:=true;
 
- begin
-  fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
-  case aSourceMaterial.AlphaMode of
-   TPasGLTF.TMaterial.TAlphaMode.Opaque:begin
-    fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
-   end;
-   TPasGLTF.TMaterial.TAlphaMode.Mask:begin
-    fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
-   end;
-   TPasGLTF.TMaterial.TAlphaMode.Blend:begin
-    fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
-   end;
-  end;
-  fData.DoubleSided:=aSourceMaterial.DoubleSided;
-  fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2],1.0);
-  if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
-   fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index];
-   if assigned(fData.EmissiveTexture.Texture) then begin
-    fData.EmissiveTexture.Texture.IncRef;
-   end;
-  end else begin
-   fData.EmissiveTexture.Texture:=nil;
-  end;
-  fData.EmissiveTexture.TexCoord:=aSourceMaterial.EmissiveTexture.TexCoord;
-  fData.EmissiveTexture.Transform.AssignFromGLTF(fData.EmissiveTexture,aSourceMaterial.EmissiveTexture.Extensions);
-  if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<aTextureMap.Count) then begin
-   fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index];
-   if assigned(fData.NormalTexture.Texture) then begin
-    fData.NormalTexture.Texture.IncRef;
-   end;
-  end else begin
-   fData.NormalTexture.Texture:=nil;
-  end;
-  fData.NormalTexture.TexCoord:=aSourceMaterial.NormalTexture.TexCoord;
-  fData.NormalTexture.Transform.AssignFromGLTF(fData.NormalTexture,aSourceMaterial.NormalTexture.Extensions);
-  fData.NormalTextureScale:=aSourceMaterial.NormalTexture.Scale;
-  if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<aTextureMap.Count) then begin
-   fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index];
-   if assigned(fData.OcclusionTexture.Texture) then begin
-    fData.OcclusionTexture.Texture.IncRef;
-   end;
-  end else begin
-   fData.OcclusionTexture.Texture:=nil;
-  end;
-  fData.OcclusionTexture.TexCoord:=aSourceMaterial.OcclusionTexture.TexCoord;
-  fData.OcclusionTexture.Transform.AssignFromGLTF(fData.OcclusionTexture,aSourceMaterial.OcclusionTexture.Extensions);
-  fData.OcclusionTextureStrength:=aSourceMaterial.OcclusionTexture.Strength;
- end;
+ fSceneInstance.fTextureListLock.Acquire;
+ try
 
- begin
-  fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[0],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[1],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[2],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[3]);
-  if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<aTextureMap.Count) then begin
-   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index];
-   if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-    fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
+  begin
+   fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
+   case aSourceMaterial.AlphaMode of
+    TPasGLTF.TMaterial.TAlphaMode.Opaque:begin
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
+    end;
+    TPasGLTF.TMaterial.TAlphaMode.Mask:begin
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
+    end;
+    TPasGLTF.TMaterial.TAlphaMode.Blend:begin
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
+    end;
    end;
-  end else begin
-   fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
-  end;
-  fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.TexCoord;
-  fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.BaseColorTexture,aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Extensions);
-  fData.PBRMetallicRoughness.RoughnessFactor:=aSourceMaterial.PBRMetallicRoughness.RoughnessFactor;
-  fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
-  if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index];
-   if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
+   fData.DoubleSided:=aSourceMaterial.DoubleSided;
+   fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2],1.0);
+   if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
+    fData.EmissiveTexture.Texture:=aTextureMap[aSourceMaterial.EmissiveTexture.Index];
+    if assigned(fData.EmissiveTexture.Texture) then begin
+     fData.EmissiveTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.EmissiveTexture.Texture:=nil;
    end;
-  end else begin
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+   fData.EmissiveTexture.TexCoord:=aSourceMaterial.EmissiveTexture.TexCoord;
+   fData.EmissiveTexture.Transform.AssignFromGLTF(fData.EmissiveTexture,aSourceMaterial.EmissiveTexture.Extensions);
+   if (aSourceMaterial.NormalTexture.Index>=0) and (aSourceMaterial.NormalTexture.Index<aTextureMap.Count) then begin
+    fData.NormalTexture.Texture:=aTextureMap[aSourceMaterial.NormalTexture.Index];
+    if assigned(fData.NormalTexture.Texture) then begin
+     fData.NormalTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.NormalTexture.Texture:=nil;
+   end;
+   fData.NormalTexture.TexCoord:=aSourceMaterial.NormalTexture.TexCoord;
+   fData.NormalTexture.Transform.AssignFromGLTF(fData.NormalTexture,aSourceMaterial.NormalTexture.Extensions);
+   fData.NormalTextureScale:=aSourceMaterial.NormalTexture.Scale;
+   if (aSourceMaterial.OcclusionTexture.Index>=0) and (aSourceMaterial.OcclusionTexture.Index<aTextureMap.Count) then begin
+    fData.OcclusionTexture.Texture:=aTextureMap[aSourceMaterial.OcclusionTexture.Index];
+    if assigned(fData.OcclusionTexture.Texture) then begin
+     fData.OcclusionTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.OcclusionTexture.Texture:=nil;
+   end;
+   fData.OcclusionTexture.TexCoord:=aSourceMaterial.OcclusionTexture.TexCoord;
+   fData.OcclusionTexture.Transform.AssignFromGLTF(fData.OcclusionTexture,aSourceMaterial.OcclusionTexture.Extensions);
+   fData.OcclusionTextureStrength:=aSourceMaterial.OcclusionTexture.Strength;
   end;
-  fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord;
-  fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.MetallicRoughnessTexture,aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Extensions);
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_specular'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fData.PBRMetallicRoughness.SpecularFactor:=TPasJSON.GetNumber(JSONObject.Properties['specularFactor'],1.0);
-   JSONItem:=JSONObject.Properties['specularTexture'];
+
+  begin
+   fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[0],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[1],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[2],aSourceMaterial.PBRMetallicRoughness.BaseColorFactor[3]);
+   if (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index<aTextureMap.Count) then begin
+    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Index];
+    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+     fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
+   end;
+   fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.TexCoord;
+   fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.BaseColorTexture,aSourceMaterial.PBRMetallicRoughness.BaseColorTexture.Extensions);
+   fData.PBRMetallicRoughness.RoughnessFactor:=aSourceMaterial.PBRMetallicRoughness.RoughnessFactor;
+   fData.PBRMetallicRoughness.MetallicFactor:=aSourceMaterial.PBRMetallicRoughness.MetallicFactor;
+   if (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index>=0) and (aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index<aTextureMap.Count) then begin
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=aTextureMap[aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Index];
+    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+   end;
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord;
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.MetallicRoughnessTexture,aSourceMaterial.PBRMetallicRoughness.MetallicRoughnessTexture.Extensions);
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_specular'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRMetallicRoughness.SpecularTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
-      fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
-     end;
-    end else begin
-     fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
-    end;
-    fData.PBRMetallicRoughness.SpecularTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularTexture.TexCoord);
-    fData.PBRMetallicRoughness.SpecularTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   JSONItem:=JSONObject.Properties['specularColorFactor'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
-    fData.PBRMetallicRoughness.SpecularColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.DiffuseFactor[0]);
-    fData.PBRMetallicRoughness.SpecularColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.DiffuseFactor[1]);
-    fData.PBRMetallicRoughness.SpecularColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.DiffuseFactor[2]);
-   end;
-   JSONItem:=JSONObject.Properties['specularColorTexture'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
-      fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
-     end;
-    end else begin
-     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
-    end;
-    fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord);
-    fData.PBRMetallicRoughness.SpecularColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-  end;
- end;
- JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_unlit'];
- if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-  fData.ShadingModel:=TMaterial.TShadingModel.Unlit;
-  if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
-   fVisible:=false;
-  end;
- end else begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_pbrSpecularGlossiness'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fData.ShadingModel:=TMaterial.TShadingModel.PBRSpecularGlossiness;
-   fData.PBRSpecularGlossiness.DiffuseFactor:=TpvVector4.InlineableCreate(TPasGLTF.TDefaults.IdentityVector4[0],TPasGLTF.TDefaults.IdentityVector4[1],TPasGLTF.TDefaults.IdentityVector4[2],TPasGLTF.TDefaults.IdentityVector4[3]);
-   fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
-   fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=0;
-   fData.PBRSpecularGlossiness.GlossinessFactor:=TPasGLTF.TDefaults.IdentityScalar;
-   fData.PBRSpecularGlossiness.SpecularFactor:=TpvVector3.InlineableCreate(TPasGLTF.TDefaults.IdentityVector3[0],TPasGLTF.TDefaults.IdentityVector3[1],TPasGLTF.TDefaults.IdentityVector3[2]);
-   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
-   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=0;
-   begin
-    JSONItem:=JSONObject.Properties['diffuseFactor'];
-    if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=4) then begin
-     fData.PBRSpecularGlossiness.DiffuseFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.DiffuseFactor[0]);
-     fData.PBRSpecularGlossiness.DiffuseFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.DiffuseFactor[1]);
-     fData.PBRSpecularGlossiness.DiffuseFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.DiffuseFactor[2]);
-     fData.PBRSpecularGlossiness.DiffuseFactor[3]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[3],fData.PBRSpecularGlossiness.DiffuseFactor[3]);
-    end;
-    JSONItem:=JSONObject.Properties['diffuseTexture'];
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.PBRMetallicRoughness.SpecularFactor:=TPasJSON.GetNumber(JSONObject.Properties['specularFactor'],1.0);
+    JSONItem:=JSONObject.Properties['specularTexture'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
-      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index];
-      if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-       fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
+      fData.PBRMetallicRoughness.SpecularTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+       fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
       end;
      end else begin
-      fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+      fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
      end;
-     fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord);
-     fData.PBRSpecularGlossiness.DiffuseTexture.Transform.AssignFromGLTF(fData.PBRSpecularGlossiness.DiffuseTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+     fData.PBRMetallicRoughness.SpecularTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularTexture.TexCoord);
+     fData.PBRMetallicRoughness.SpecularTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.PBRSpecularGlossiness.GlossinessFactor:=TPasJSON.GetNumber(JSONObject.Properties['glossinessFactor'],fData.PBRSpecularGlossiness.GlossinessFactor);
-    JSONItem:=JSONObject.Properties['specularFactor'];
+    JSONItem:=JSONObject.Properties['specularColorFactor'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
-     fData.PBRSpecularGlossiness.SpecularFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.SpecularFactor[0]);
-     fData.PBRSpecularGlossiness.SpecularFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.SpecularFactor[1]);
-     fData.PBRSpecularGlossiness.SpecularFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.SpecularFactor[2]);
+     fData.PBRMetallicRoughness.SpecularColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.DiffuseFactor[0]);
+     fData.PBRMetallicRoughness.SpecularColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.DiffuseFactor[1]);
+     fData.PBRMetallicRoughness.SpecularColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.DiffuseFactor[2]);
     end;
-    JSONItem:=JSONObject.Properties['specularGlossinessTexture'];
+    JSONItem:=JSONObject.Properties['specularColorTexture'];
     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
      if (Index>=0) and (Index<aTextureMap.Count) then begin
-      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index];
-      if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+       fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
       end;
      end else begin
-      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
      end;
-     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord);
-     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.AssignFromGLTF(fData.PBRSpecularGlossiness.SpecularGlossinessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+     fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord);
+     fData.PBRMetallicRoughness.SpecularColorTexture.Transform.AssignFromGLTF(fData.PBRMetallicRoughness.SpecularColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
    end;
-   if IsZero(fData.PBRSpecularGlossiness.DiffuseFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
-    fVisible:=false;
-   end;
-  end else begin
-   fData.ShadingModel:=TMaterial.TShadingModel.PBRMetallicRoughness;
+  end;
+  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_unlit'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   fData.ShadingModel:=TMaterial.TShadingModel.Unlit;
    if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
     fVisible:=false;
    end;
+  end else begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_pbrSpecularGlossiness'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.ShadingModel:=TMaterial.TShadingModel.PBRSpecularGlossiness;
+    fData.PBRSpecularGlossiness.DiffuseFactor:=TpvVector4.InlineableCreate(TPasGLTF.TDefaults.IdentityVector4[0],TPasGLTF.TDefaults.IdentityVector4[1],TPasGLTF.TDefaults.IdentityVector4[2],TPasGLTF.TDefaults.IdentityVector4[3]);
+    fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+    fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=0;
+    fData.PBRSpecularGlossiness.GlossinessFactor:=TPasGLTF.TDefaults.IdentityScalar;
+    fData.PBRSpecularGlossiness.SpecularFactor:=TpvVector3.InlineableCreate(TPasGLTF.TDefaults.IdentityVector3[0],TPasGLTF.TDefaults.IdentityVector3[1],TPasGLTF.TDefaults.IdentityVector3[2]);
+    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=0;
+    begin
+     JSONItem:=JSONObject.Properties['diffuseFactor'];
+     if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=4) then begin
+      fData.PBRSpecularGlossiness.DiffuseFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.DiffuseFactor[0]);
+      fData.PBRSpecularGlossiness.DiffuseFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.DiffuseFactor[1]);
+      fData.PBRSpecularGlossiness.DiffuseFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.DiffuseFactor[2]);
+      fData.PBRSpecularGlossiness.DiffuseFactor[3]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[3],fData.PBRSpecularGlossiness.DiffuseFactor[3]);
+     end;
+     JSONItem:=JSONObject.Properties['diffuseTexture'];
+     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+      if (Index>=0) and (Index<aTextureMap.Count) then begin
+       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=aTextureMap[Index];
+       if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+        fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
+       end;
+      end else begin
+       fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+      end;
+      fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord);
+      fData.PBRSpecularGlossiness.DiffuseTexture.Transform.AssignFromGLTF(fData.PBRSpecularGlossiness.DiffuseTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+     end;
+     fData.PBRSpecularGlossiness.GlossinessFactor:=TPasJSON.GetNumber(JSONObject.Properties['glossinessFactor'],fData.PBRSpecularGlossiness.GlossinessFactor);
+     JSONItem:=JSONObject.Properties['specularFactor'];
+     if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+      fData.PBRSpecularGlossiness.SpecularFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.PBRSpecularGlossiness.SpecularFactor[0]);
+      fData.PBRSpecularGlossiness.SpecularFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.PBRSpecularGlossiness.SpecularFactor[1]);
+      fData.PBRSpecularGlossiness.SpecularFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.PBRSpecularGlossiness.SpecularFactor[2]);
+     end;
+     JSONItem:=JSONObject.Properties['specularGlossinessTexture'];
+     if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+      Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+      if (Index>=0) and (Index<aTextureMap.Count) then begin
+       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=aTextureMap[Index];
+       if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+        fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
+       end;
+      end else begin
+       fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+      end;
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord);
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.AssignFromGLTF(fData.PBRSpecularGlossiness.SpecularGlossinessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+     end;
+    end;
+    if IsZero(fData.PBRSpecularGlossiness.DiffuseFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
+     fVisible:=false;
+    end;
+   end else begin
+    fData.ShadingModel:=TMaterial.TShadingModel.PBRMetallicRoughness;
+    if IsZero(fData.PBRMetallicRoughness.BaseColorFactor.w) and (fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) then begin
+     fVisible:=false;
+    end;
+   end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_emissive_strength'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fData.EmissiveFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['emissiveStrength'],1.0);
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_emissive_strength'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.EmissiveFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['emissiveStrength'],1.0);
+   end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_sheen'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fVisible:=true;
-   fData.PBRSheen.Active:=true;
-   fData.PBRSheen.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['sheenRoughnessFactor'],TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],0.0)));
-   JSONItem:=JSONObject.Properties['sheenColorFactor'];
-   if not assigned(JSONItem) then begin
-    JSONItem:=JSONObject.Properties['sheenColor'];
-   end;
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
-    fData.PBRSheen.ColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],0.0);
-    fData.PBRSheen.ColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],0.0);
-    fData.PBRSheen.ColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],0.0);
-   end;
-   JSONItem:=JSONObject.Properties['sheenColorTexture'];
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_sheen'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRSheen.ColorTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
-      fData.PBRSheen.ColorTexture.Texture.IncRef;
-     end;
-    end else begin
-     fData.PBRSheen.ColorTexture.Texture:=nil;
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fVisible:=true;
+    fData.PBRSheen.Active:=true;
+    fData.PBRSheen.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['sheenRoughnessFactor'],TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['sheenFactor'],0.0)));
+    JSONItem:=JSONObject.Properties['sheenColorFactor'];
+    if not assigned(JSONItem) then begin
+     JSONItem:=JSONObject.Properties['sheenColor'];
     end;
-    fData.PBRSheen.ColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRSheen.ColorTexture.Transform.AssignFromGLTF(fData.PBRSheen.ColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   JSONItem:=JSONObject.Properties['sheenRoughnessTexture'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRSheen.RoughnessTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
-      fData.PBRSheen.RoughnessTexture.Texture.IncRef;
-     end;
-    end else begin
-     fData.PBRSheen.RoughnessTexture.Texture:=nil;
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+     fData.PBRSheen.ColorFactor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],0.0);
+     fData.PBRSheen.ColorFactor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],0.0);
+     fData.PBRSheen.ColorFactor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],0.0);
     end;
-    fData.PBRSheen.RoughnessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRSheen.RoughnessTexture.Transform.AssignFromGLTF(fData.PBRSheen.RoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    JSONItem:=JSONObject.Properties['sheenColorTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRSheen.ColorTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+       fData.PBRSheen.ColorTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.PBRSheen.ColorTexture.Texture:=nil;
+     end;
+     fData.PBRSheen.ColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.PBRSheen.ColorTexture.Transform.AssignFromGLTF(fData.PBRSheen.ColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    end;
+    JSONItem:=JSONObject.Properties['sheenRoughnessTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRSheen.RoughnessTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+       fData.PBRSheen.RoughnessTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.PBRSheen.RoughnessTexture.Texture:=nil;
+     end;
+     fData.PBRSheen.RoughnessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.PBRSheen.RoughnessTexture.Transform.AssignFromGLTF(fData.PBRSheen.RoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    end;
    end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_clearcoat'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fVisible:=true;
-   fData.PBRClearCoat.Active:=true;
-   fData.PBRClearCoat.Factor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['clearcoatFactor'],fData.PBRClearCoat.Factor));
-   JSONItem:=JSONObject.Properties['clearcoatTexture'];
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_clearcoat'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.Texture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRClearCoat.Texture.Texture) then begin
-      fData.PBRClearCoat.Texture.Texture.IncRef;
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fVisible:=true;
+    fData.PBRClearCoat.Active:=true;
+    fData.PBRClearCoat.Factor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['clearcoatFactor'],fData.PBRClearCoat.Factor));
+    JSONItem:=JSONObject.Properties['clearcoatTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRClearCoat.Texture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+       fData.PBRClearCoat.Texture.Texture.IncRef;
+      end;
+     end else begin
+      fData.PBRClearCoat.Texture.Texture:=nil;
      end;
-    end else begin
-     fData.PBRClearCoat.Texture.Texture:=nil;
+     fData.PBRClearCoat.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.PBRClearCoat.Texture.Transform.AssignFromGLTF(fData.PBRClearCoat.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.PBRClearCoat.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRClearCoat.Texture.Transform.AssignFromGLTF(fData.PBRClearCoat.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   fData.PBRClearCoat.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['clearcoatRoughnessFactor'],fData.PBRClearCoat.RoughnessFactor));
-   JSONItem:=JSONObject.Properties['clearcoatRoughnessTexture'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.RoughnessTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
-      fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
+    fData.PBRClearCoat.RoughnessFactor:=TPasJSON.GetNumber(JSONObject.Properties['intensityFactor'],TPasJSON.GetNumber(JSONObject.Properties['clearcoatRoughnessFactor'],fData.PBRClearCoat.RoughnessFactor));
+    JSONItem:=JSONObject.Properties['clearcoatRoughnessTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRClearCoat.RoughnessTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+       fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
      end;
-    end else begin
-     fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
+     fData.PBRClearCoat.RoughnessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.PBRClearCoat.RoughnessTexture.Transform.AssignFromGLTF(fData.PBRClearCoat.RoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.PBRClearCoat.RoughnessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRClearCoat.RoughnessTexture.Transform.AssignFromGLTF(fData.PBRClearCoat.RoughnessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   JSONItem:=JSONObject.Properties['clearcoatNormalTexture'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.PBRClearCoat.NormalTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
-      fData.PBRClearCoat.NormalTexture.Texture.IncRef;
+    JSONItem:=JSONObject.Properties['clearcoatNormalTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.PBRClearCoat.NormalTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+       fData.PBRClearCoat.NormalTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.PBRClearCoat.NormalTexture.Texture:=nil;
      end;
-    end else begin
-     fData.PBRClearCoat.NormalTexture.Texture:=nil;
+     fData.PBRClearCoat.NormalTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.PBRClearCoat.NormalTexture.Transform.AssignFromGLTF(fData.PBRClearCoat.NormalTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.PBRClearCoat.NormalTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.PBRClearCoat.NormalTexture.Transform.AssignFromGLTF(fData.PBRClearCoat.NormalTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
    end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_ior'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   fData.IOR:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['ior'],1.5);
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_ior'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    fData.IOR:=TPasJSON.GetNumber(TPasJSONItemObject(JSONItem).Properties['ior'],1.5);
+   end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_iridescence'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fData.Iridescence.Active:=true;
-   fData.Iridescence.Factor:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceFactor'],0.0);
-   JSONItem:=JSONObject.Properties['iridescenceTexture'];
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_iridescence'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.Iridescence.Texture.Texture:=aTextureMap[Index];
-     if assigned(fData.Iridescence.Texture.Texture) then begin
-      fData.Iridescence.Texture.Texture.IncRef;
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.Iridescence.Active:=true;
+    fData.Iridescence.Factor:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceFactor'],0.0);
+    JSONItem:=JSONObject.Properties['iridescenceTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.Iridescence.Texture.Texture:=aTextureMap[Index];
+      if assigned(fData.Iridescence.Texture.Texture) then begin
+       fData.Iridescence.Texture.Texture.IncRef;
+      end;
+     end else begin
+      fData.Iridescence.Texture.Texture:=nil;
      end;
-    end else begin
-     fData.Iridescence.Texture.Texture:=nil;
+     fData.Iridescence.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.Iridescence.Texture.Transform.AssignFromGLTF(fData.Iridescence.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.Iridescence.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.Iridescence.Texture.Transform.AssignFromGLTF(fData.Iridescence.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   fData.Iridescence.Ior:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceIor'],1.3);
-   fData.Iridescence.ThicknessMinimum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMinimum'],100.0);
-   fData.Iridescence.ThicknessMaximum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMaximum'],400.0);
-   JSONItem:=JSONObject.Properties['iridescenceThicknessTexture'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.Iridescence.ThicknessTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
-      fData.Iridescence.ThicknessTexture.Texture.IncRef;
+    fData.Iridescence.Ior:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceIor'],1.3);
+    fData.Iridescence.ThicknessMinimum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMinimum'],100.0);
+    fData.Iridescence.ThicknessMaximum:=TPasJSON.GetNumber(JSONObject.Properties['iridescenceThicknessMaximum'],400.0);
+    JSONItem:=JSONObject.Properties['iridescenceThicknessTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.Iridescence.ThicknessTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+       fData.Iridescence.ThicknessTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.Iridescence.ThicknessTexture.Texture:=nil;
      end;
-    end else begin
-     fData.Iridescence.ThicknessTexture.Texture:=nil;
+     fData.Iridescence.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.Iridescence.ThicknessTexture.Transform.AssignFromGLTF(fData.Iridescence.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.Iridescence.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.Iridescence.ThicknessTexture.Transform.AssignFromGLTF(fData.Iridescence.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
    end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_transmission'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fSceneInstance.fHasTransmission:=true;
-   fData.Transmission.Active:=true;
-   if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
-    fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
-    fData.AlphaCutOff:=-1e-4;
-   end;
-   fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
-   JSONItem:=JSONObject.Properties['transmissionTexture'];
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_transmission'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.Transmission.Texture.Texture:=aTextureMap[Index];
-     if assigned(fData.Transmission.Texture.Texture) then begin
-      fData.Transmission.Texture.Texture.IncRef;
-     end;
-    end else begin
-     fData.Transmission.Texture.Texture:=nil;
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fSceneInstance.fHasTransmission:=true;
+    fData.Transmission.Active:=true;
+    if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
+     fData.AlphaCutOff:=-1e-4;
     end;
-    fData.Transmission.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.Transmission.Texture.Transform.AssignFromGLTF(fData.Transmission.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
+    JSONItem:=JSONObject.Properties['transmissionTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.Transmission.Texture.Texture:=aTextureMap[Index];
+      if assigned(fData.Transmission.Texture.Texture) then begin
+       fData.Transmission.Texture.Texture.IncRef;
+      end;
+     end else begin
+      fData.Transmission.Texture.Texture:=nil;
+     end;
+     fData.Transmission.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.Transmission.Texture.Transform.AssignFromGLTF(fData.Transmission.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    end;
    end;
   end;
- end;
 
- begin
-  JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_volume'];
-  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-   JSONObject:=TPasJSONItemObject(JSONItem);
-   fData.Volume.Active:=true;
-   fData.Volume.ThicknessFactor:=TPasJSON.GetNumber(JSONObject.Properties['thicknessFactor'],0.0);
-   JSONItem:=JSONObject.Properties['thicknessTexture'];
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_volume'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
-    Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
-    if (Index>=0) and (Index<aTextureMap.Count) then begin
-     fData.Volume.ThicknessTexture.Texture:=aTextureMap[Index];
-     if assigned(fData.Volume.ThicknessTexture.Texture) then begin
-      fData.Volume.ThicknessTexture.Texture.IncRef;
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.Volume.Active:=true;
+    fData.Volume.ThicknessFactor:=TPasJSON.GetNumber(JSONObject.Properties['thicknessFactor'],0.0);
+    JSONItem:=JSONObject.Properties['thicknessTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.Volume.ThicknessTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+       fData.Volume.ThicknessTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.Volume.ThicknessTexture.Texture:=nil;
      end;
-    end else begin
-     fData.Volume.ThicknessTexture.Texture:=nil;
+     fData.Volume.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.Volume.ThicknessTexture.Transform.AssignFromGLTF(fData.Volume.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
-    fData.Volume.ThicknessTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
-    fData.Volume.ThicknessTexture.Transform.AssignFromGLTF(fData.Volume.ThicknessTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
-   end;
-   fData.Volume.AttenuationDistance:=TPasJSON.GetNumber(JSONObject.Properties['attenuationDistance'],Infinity);
-   JSONItem:=JSONObject.Properties['attenuationColor'];
-   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
-    fData.Volume.AttenuationColor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],1.0);
-    fData.Volume.AttenuationColor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
-    fData.Volume.AttenuationColor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
+    fData.Volume.AttenuationDistance:=TPasJSON.GetNumber(JSONObject.Properties['attenuationDistance'],Infinity);
+    JSONItem:=JSONObject.Properties['attenuationColor'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+     fData.Volume.AttenuationColor[0]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],1.0);
+     fData.Volume.AttenuationColor[1]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
+     fData.Volume.AttenuationColor[2]:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
+    end;
    end;
   end;
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
  end;
 
  FillShaderData;
