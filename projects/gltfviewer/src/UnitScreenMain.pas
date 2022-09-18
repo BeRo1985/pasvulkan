@@ -117,6 +117,8 @@ type { TScreenMain }
 
        function CanBeParallelProcessed:boolean; override;
 
+       procedure Check(const aDeltaTime:TpvDouble); override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; override;
@@ -339,6 +341,12 @@ end;
 function TScreenMain.CanBeParallelProcessed:boolean;
 begin
  result:=true;
+end;
+
+procedure TScreenMain.Check(const aDeltaTime:TpvDouble);
+begin
+ inherited Check(aDeltaTime);
+ fScene3D.Check(pvApplication.UpdateInFlightFrameIndex);
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);

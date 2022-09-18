@@ -1906,6 +1906,7 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
+                     procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                      procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
                      procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -2033,6 +2034,7 @@ type EpvScene3D=class(Exception);
               procedure Remove; override;
               procedure Upload; override;
               procedure Unload; override;
+              procedure Check(const aInFlightFrameIndex:TpvSizeInt);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
               procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -2203,6 +2205,7 @@ type EpvScene3D=class(Exception);
        procedure Unload;
        procedure ResetRenderPasses;
        function AcquireRenderPassIndex:TpvSizeInt;
+       procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -9449,6 +9452,14 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.Check(const aInFlightFrameIndex:TpvSizeInt);
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.Check(aInFlightFrameIndex);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
@@ -10990,6 +11001,13 @@ begin
   if assigned(fNodes[Index].Light) then begin
    FreeAndNil(fNodes[Index].Light);
   end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Check(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if aInFlightFrameIndex>=0 then begin
+  Upload;
  end;
 end;
 
@@ -12749,8 +12767,6 @@ var Index:TPasGLTFSizeInt;
 begin
 
  if aInFlightFrameIndex>=0 then begin
-
-  Upload;
 
   fActives[aInFlightFrameIndex]:=fActive;
 
@@ -14724,6 +14740,14 @@ end;
 function TpvScene3D.AcquireRenderPassIndex:TpvSizeInt;
 begin
  result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter);
+end;
+
+procedure TpvScene3D.Check(const aInFlightFrameIndex:TpvSizeInt);
+var Group:TpvScene3D.TGroup;
+begin
+ for Group in fGroups do begin
+  Group.Check(aInFlightFrameIndex);
+ end;
 end;
 
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
