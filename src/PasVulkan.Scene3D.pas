@@ -6400,7 +6400,12 @@ begin
   if assigned(Primitive^.Material) then begin
    try
     if Primitive^.Material<>EmptyMaterial then begin
-     Primitive^.Material.DecRef;
+     fGroup.fSceneInstance.fMaterialListLock.Acquire;
+     try
+      Primitive^.Material.DecRef;
+     finally
+      fGroup.fSceneInstance.fMaterialListLock.Release;
+     end;
     end;
    finally
     Primitive^.Material:=nil;
@@ -6650,15 +6655,20 @@ begin
 
       DestinationMeshPrimitive:=@fPrimitives[PrimitiveIndex];
 
-      if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
-       DestinationMeshPrimitive^.MaterialID:=SourceMeshPrimitive.Material;
-       DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
-       if assigned(DestinationMeshPrimitive^.Material) then begin
-        DestinationMeshPrimitive^.Material.IncRef;
+      fGroup.fSceneInstance.fMaterialListLock.Acquire;
+      try
+       if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
+        DestinationMeshPrimitive^.MaterialID:=SourceMeshPrimitive.Material;
+        DestinationMeshPrimitive^.Material:=aMaterialMap[SourceMeshPrimitive.Material];
+        if assigned(DestinationMeshPrimitive^.Material) then begin
+         DestinationMeshPrimitive^.Material.IncRef;
+        end;
+       end else begin
+        DestinationMeshPrimitive^.MaterialID:=-1;
+        DestinationMeshPrimitive^.Material:=fGroup.fSceneInstance.fEmptyMaterial;
        end;
-      end else begin
-       DestinationMeshPrimitive^.MaterialID:=-1;
-       DestinationMeshPrimitive^.Material:=fGroup.fSceneInstance.fEmptyMaterial;
+      finally
+       fGroup.fSceneInstance.fMaterialListLock.Release;
       end;
 
       HasJoints:=false;
@@ -7932,8 +7942,17 @@ begin
 
  FreeAndNil(fObjects);
 
- for Material in fMaterials do begin
-  Material.DecRef;
+ if assigned(fSceneInstance) then begin
+  fSceneInstance.fMaterialListLock.Acquire;
+ end;
+ try
+  for Material in fMaterials do begin
+   Material.DecRef;
+  end;
+ finally
+  if assigned(fSceneInstance) then begin
+   fSceneInstance.fMaterialListLock.Release;
+  end;
  end;
  FreeAndNil(fMaterials);
 
@@ -8750,14 +8769,14 @@ var LightMap:TpvScene3D.TGroup.TLights;
 
   fMaterialMap[0]:=fSceneInstance.fEmptyMaterial.fID;
 
-  for Index:=0 to aSourceDocument.Materials.Count-1 do begin
+  fSceneInstance.fMaterialListLock.Acquire;
+  try
 
-   SourceMaterial:=aSourceDocument.Materials[Index];
+   for Index:=0 to aSourceDocument.Materials.Count-1 do begin
 
-   Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
-   try
+    SourceMaterial:=aSourceDocument.Materials[Index];
 
-    fSceneInstance.fMaterialListLock.Acquire;
+    Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
     try
 
      Material.AssignFromGLTF(aSourceDocument,SourceMaterial,TextureMap);
@@ -8774,32 +8793,32 @@ var LightMap:TpvScene3D.TGroup.TLights;
      end;
 
     finally
-     fSceneInstance.fMaterialListLock.Release;
+     FreeAndNil(Material);
     end;
 
-   finally
-    FreeAndNil(Material);
-   end;
+    Material:=fMaterials[Index];
+    try
 
-   Material:=fMaterials[Index];
-   try
+     fMaterialMap[Index+1]:=Material.fID;
 
-    fMaterialMap[Index+1]:=Material.fID;
+     MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+     if MaterialIDMapArrayIndex<0 then begin
+      MaterialIDMapArray:=TMaterialIDMapArray.Create;
+      MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
+      fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
+     end else begin
+      MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+     end;
+     MaterialIDMapArray.Add(Index);
 
-    MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
-    if MaterialIDMapArrayIndex<0 then begin
-     MaterialIDMapArray:=TMaterialIDMapArray.Create;
-     MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
-     fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
-    end else begin
-     MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+    finally
+     Material.IncRef;
     end;
-    MaterialIDMapArray.Add(Index);
 
-   finally
-    Material.IncRef;
    end;
 
+  finally
+   fSceneInstance.fMaterialListLock.Release;
   end;
 
  end;
@@ -8851,19 +8870,24 @@ var LightMap:TpvScene3D.TGroup.TLights;
             MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
             if MaterialIDMapArray.Count>0 then begin
              if MaterialIDMapArray.Count>=2 then begin
-              DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+              fSceneInstance.fMaterialListLock.Acquire;
               try
-               DuplicatedMaterial.Assign(Material);
-               Material.DecRef;
-               Material:=DuplicatedMaterial;
-               Material.IncRef;
-               MaterialIDMapArray.Remove(MaterialIndex);
-               MaterialIDMapArray:=TMaterialIDMapArray.Create;
-               fMaterialIDMapArrayIndexHashMap.Add(Material.fID,fMaterialIDMapArrays.Add(MaterialIDMapArray));
-               MaterialIDMapArray.Add(MaterialIndex);
+               DuplicatedMaterial:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+               try
+                DuplicatedMaterial.Assign(Material);
+                Material.DecRef;
+                Material:=DuplicatedMaterial;
+                Material.IncRef;
+                MaterialIDMapArray.Remove(MaterialIndex);
+                MaterialIDMapArray:=TMaterialIDMapArray.Create;
+                fMaterialIDMapArrayIndexHashMap.Add(Material.fID,fMaterialIDMapArrays.Add(MaterialIDMapArray));
+                MaterialIDMapArray.Add(MaterialIndex);
+               finally
+                fMaterials[MaterialIndex]:=Material;
+                fMaterialMap[Index+1]:=Material.fID;
+               end;
               finally
-               fMaterials[MaterialIndex]:=Material;
-               fMaterialMap[Index+1]:=Material.fID;
+               fSceneInstance.fMaterialListLock.Release;
               end;
              end;
              //Channel^.TargetIndex:=Material.fID;
