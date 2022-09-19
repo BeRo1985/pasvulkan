@@ -14540,7 +14540,7 @@ begin
        for Index:=0 to fCountInFlightFrames-1 do begin
         fInFlightFrameImageInfos[Index]:=fImageInfos;
         fInFlightFrameImageInfoImageDescriptorGenerations[Index]:=High(TpvUInt64)-2;
-        fInFlightFrameImageInfoImageDescriptorUploadedGenerations[Index]:=High(TpvUInt64)-1;
+        fInFlightFrameImageInfoImageDescriptorUploadedGenerations[Index]:=High(TpvUInt64)-4;
        end;
 
        for Index:=0 to fCountInFlightFrames-1 do begin

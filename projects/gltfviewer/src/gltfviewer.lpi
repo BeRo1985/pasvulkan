@@ -22,15 +22,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;d:\GLTF\test2.glb&quot; /antialiasing-mode taa /max-msaa 8 /force-use-validation-layers"/>
-        <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
+        <CommandLineParams Value="&quot;d:\GLTF\TextureTransformTest.glb&quot; /force-use-validation-layers"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;d:\GLTF\test2.glb&quot; /antialiasing-mode taa /max-msaa 8 /force-use-validation-layers"/>
-            <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
+            <CommandLineParams Value="&quot;d:\GLTF\TextureTransformTest.glb&quot; /force-use-validation-layers"/>
           </local>
         </Mode0>
       </Modes>
