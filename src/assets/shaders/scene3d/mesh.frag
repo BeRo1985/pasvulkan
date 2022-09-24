@@ -1249,6 +1249,10 @@ float getMSMShadowIntensity(vec4 moments, float depth, float depthBias, float mo
   return 1.0 - clamp((s.z + (s.w * ((((s.x * z.z) - (b.x * (s.x + z.z))) + b.y) / ((z.z - s.y) * (z.x - z.y))))), 0.0, 1.0); // * 1.03
 }
 
+float fastTanArcCos(const in float x){
+  return sqrt(-fma(x, x, -1.0)) / x; // tan(acos(x)); sqrt(1.0 - (x * x)) / x 
+}
+
 float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
   mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
   vec4 shadowNDC = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
@@ -1261,7 +1265,7 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
                         0.1549679261, 0.1394629426, 0.7963415838, -0.172282317,                                           //
                         0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811,                                          //
                         0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-    float depthBias = clamp(0.005 * tan(acos(clamp(dot(inNormal, -lightDirection), -1.0, 1.0))), 0.0, 0.1) * 0.15;
+    float depthBias = clamp(0.005 * fastTanArcCos(clamp(dot(inNormal, -lightDirection), -1.0, 1.0)), 0.0, 0.1) * 0.15;
     return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
   } else {
     return 1.0;
