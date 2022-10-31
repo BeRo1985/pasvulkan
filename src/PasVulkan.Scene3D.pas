@@ -1500,23 +1500,9 @@ type EpvScene3D=class(Exception);
                      type { TAnimation }
                           TAnimation=class
                            public
-                            type TChannel=class
-                                  public
-                                   type TType=
-                                         (
-                                          None,
-                                          Node,
-                                          Light,
-                                          Camera,
-                                          Material
-                                         );
-                                  private
-                                   fType:TType;
-                                   fTarget:Pointer;
-                                   fTargetSubIndex:TpvSizeInt;
-                                   fOverwrite:TpvSizeInt;
-                                 end;
-                                 TChannels=TpvObjectGenericList<TChannel>;
+                            type TChannelOverwrite=TpvSizeInt;
+                                 PChannelOverwrite=^TChannelOverwrite;
+                                 TChannelOverwrites=array of TChannelOverwrite;
                                  TLastIndices=array of TpvSizeInt;
                            private
                             fFactor:TpvFloat;
@@ -1524,7 +1510,7 @@ type EpvScene3D=class(Exception);
                             fLastIndices:TLastIndices;
                             fShadowTime:TpvDouble;
                             fComplete:LongBool;
-                            fChannels:TChannels;
+                            fChannelOverwrites:TChannelOverwrites;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -10482,8 +10468,7 @@ end;
 constructor TpvScene3D.TGroup.TInstance.TAnimation.Create;
 begin
  inherited Create;
- fChannels:=TChannels.Create;
- fChannels.OwnsObjects:=true;
+ fChannelOverwrites:=nil;
  fTime:=0.0;
  fLastIndices:=nil;
  fShadowTime:=0.0;
@@ -10493,7 +10478,7 @@ end;
 destructor TpvScene3D.TGroup.TInstance.TAnimation.Destroy;
 begin
  fLastIndices:=nil;
- FreeAndNil(fChannels);
+ fChannelOverwrites:=nil;
  inherited Destroy;
 end;
 
@@ -10663,9 +10648,7 @@ begin
    for OtherIndex:=0 to length(fAnimations[Index].fLastIndices)-1 do begin
     fAnimations[Index].fLastIndices[OtherIndex]:=0;
    end;
-   for OtherIndex:=0 to (length(Animation.fChannels)+length(Animation.fDefaultChannels))-1 do begin
-    fAnimations[Index].fChannels.Add(TpvScene3D.TGroup.TInstance.TAnimation.TChannel.Create);
-   end;
+   SetLength(fAnimations[Index].fChannelOverwrites,length(Animation.fChannels)+length(Animation.fDefaultChannels));
   end;
  end;
 
@@ -11338,7 +11321,7 @@ var CullFace,Blend:TPasGLTFInt32;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
      AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
      InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
-     InstanceAnimationChannel:TpvScene3D.TGroup.TInstance.TAnimation.TChannel;
+     InstanceAnimationChannelOverwrite:TpvScene3D.TGroup.TInstance.TAnimation.PChannelOverwrite;
      //Node:TpvScene3D.TGroup.TNode;
      Node:TpvScene3D.TGroup.TInstance.PNode;
      Time,Factor,Value,KeyDelta,v0,v1,a,b:TpvDouble;
@@ -11362,15 +11345,12 @@ var CullFace,Blend:TPasGLTFInt32;
   InstanceAnimation:=fAnimations[aAnimationIndex+1];
 
   if InstanceAnimation.Complete then begin
-   CountInstanceChannels:=InstanceAnimation.fChannels.Count;
+   CountInstanceChannels:=length(InstanceAnimation.fChannelOverwrites);
   end else begin
    CountInstanceChannels:=length(Animation.fChannels);
   end;
-  for InstanceChannelIndex:=0 to CountInstanceChannels-1 do begin
-   InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-   InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.None;
-   InstanceAnimationChannel.fTarget:=nil;
-   InstanceAnimationChannel.fOverwrite:=-1;
+  if length(InstanceAnimation.fChannelOverwrites)>0 then begin
+   FillChar(InstanceAnimation.fChannelOverwrites[0],length(InstanceAnimation.fChannelOverwrites)*SizeOf(TpvScene3D.TGroup.TInstance.TAnimation.TChannelOverwrite),$ff);
   end;
 
   CountInstanceChannels:=0;
@@ -11550,65 +11530,20 @@ var CullFace,Blend:TPasGLTFInt32;
 
        if aFactor>=-0.5 then begin
 
-{$if true}
         InstanceChannelIndex:=AnimationChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-          InstanceAnimationChannel.fTarget:=Node;
-          InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
           inc(Node.CountOverwrites);
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
           NodeOverwrite^.Flags:=[];
           NodeOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Node) then begin
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          NodeOverwrite:=nil;
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         NodeOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Node) then begin
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          NodeOverwrite:=nil;
-         end;
-        end else if assigned(Node) and
-                    (Node.CountOverwrites<length(Node.Overwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-         InstanceAnimationChannel.fTarget:=Node;
-         InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
-         inc(Node.CountOverwrites);
-         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-         NodeOverwrite^.Flags:=[];
-         NodeOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         NodeOverwrite:=nil;
-        end;
-{$ifend}
 
-        if assigned(NodeOverwrite) then begin
          case AnimationChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
@@ -11674,66 +11609,22 @@ var CullFace,Blend:TPasGLTFInt32;
 
           if aFactor>=-0.5 then begin
 
-{$if true}
            InstanceChannelIndex:=AnimationChannel^.TargetInstanceIndex;
-           if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-            InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-           end else begin
-            InstanceAnimationChannel:=nil;
-           end;
-           if assigned(InstanceAnimationChannel) then begin
-            if InstanceAnimationChannel.fOverwrite<0 then begin
-             InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-             InstanceAnimationChannel.fTarget:=Node;
-             InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
+           if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+            InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+            if InstanceAnimationChannelOverwrite^<0 then begin
+             InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
              inc(Node.CountOverwrites);
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
              NodeOverwrite^.Flags:=[];
              NodeOverwrite^.Factor:=Max(aFactor,0.0);
-            end;
-            if assigned(Node) then begin
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
             end else begin
-             NodeOverwrite:=nil;
+             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
             end;
-           end else begin
-            NodeOverwrite:=nil;
-           end;
-{$else}
-           InstanceAnimationChannel:=nil;
-           for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-            if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-               (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
-             InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-             break;
-            end;
-           end;
-           if assigned(InstanceAnimationChannel) then begin
-            if assigned(Node) then begin
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-            end else begin
-             NodeOverwrite:=nil;
-            end;
-           end else if assigned(Node) and
-                       (Node.CountOverwrites<length(Node.Overwrites)) and
-                       (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-            InstanceChannelIndex:=CountInstanceChannels;
-            inc(CountInstanceChannels);
-            InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-            InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-            InstanceAnimationChannel.fTarget:=Node;
-            InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
-            inc(Node.CountOverwrites);
-            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-            NodeOverwrite^.Flags:=[];
-            NodeOverwrite^.Factor:=Max(aFactor,0.0);
-           end else begin
-            NodeOverwrite:=nil;
-           end;
-{$ifend}
 
-           if assigned(NodeOverwrite) then begin
             ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+
            end;
 
           end;
@@ -11758,65 +11649,20 @@ var CullFace,Blend:TPasGLTFInt32;
 
        if aFactor>=-0.5 then begin
 
-{$if true}
         InstanceChannelIndex:=AnimationChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
-          InstanceAnimationChannel.fTarget:=Light;
-          InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
           inc(Light.fCountOverwrites);
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
           LightOverwrite^.Flags:=[];
           LightOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Light) then begin
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          LightOverwrite:=nil;
+          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         LightOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Light) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Light) then begin
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          LightOverwrite:=nil;
-         end;
-        end else if assigned(Light) and
-                    (Light.fCountOverwrites<length(Light.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
-         InstanceAnimationChannel.fTarget:=Light;
-         InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
-         inc(Light.fCountOverwrites);
-         LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         LightOverwrite^.Flags:=[];
-         LightOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         LightOverwrite:=nil;
-        end;
-{$ifend}
 
-        if assigned(LightOverwrite) then begin
          case AnimationChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -11867,65 +11713,20 @@ var CullFace,Blend:TPasGLTFInt32;
 
        if aFactor>=-0.5 then begin
 
-{$if true}
         InstanceChannelIndex:=AnimationChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera;
-          InstanceAnimationChannel.fTarget:=Camera;
-          InstanceAnimationChannel.fOverwrite:=Camera.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
           inc(Camera.fCountOverwrites);
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
           CameraOverwrite^.Flags:=[];
           CameraOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Camera) then begin
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          CameraOverwrite:=nil;
+          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         CameraOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Camera) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Camera) then begin
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          CameraOverwrite:=nil;
-         end;
-        end else if assigned(Camera) and
-                    (Camera.fCountOverwrites<length(Camera.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera;
-         InstanceAnimationChannel.fTarget:=Camera;
-         InstanceAnimationChannel.fOverwrite:=Camera.fCountOverwrites;
-         inc(Camera.fCountOverwrites);
-         CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         CameraOverwrite^.Flags:=[];
-         CameraOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         CameraOverwrite:=nil;
-        end;
-{$ifend}
 
-        if assigned(CameraOverwrite) then begin
          case AnimationChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -12011,70 +11812,21 @@ var CullFace,Blend:TPasGLTFInt32;
 
        if aFactor>=-0.5 then begin
 
-{$if true}
         InstanceChannelIndex:=AnimationChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
-          InstanceAnimationChannel.fTarget:=Material;
-          InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
-          InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
           inc(Material.fCountOverwrites);
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
           MaterialOverwrite^.Flags:=[];
           MaterialOverwrite^.SubIndex:=TargetSubIndex;
           MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Material) then begin
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          MaterialOverwrite:=nil;
+          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         MaterialOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTargetSubIndex=TargetSubIndex) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Material) then begin
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          MaterialOverwrite:=nil;
-         end;
-        end else if assigned(Material) and
-                    (Material.fCountOverwrites<length(Material.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
-         InstanceAnimationChannel.fTarget:=Material;
-         InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
-         InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
-         inc(Material.fCountOverwrites);
-         MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         MaterialOverwrite^.Flags:=[];
-         MaterialOverwrite^.SubIndex:=TargetSubIndex;
-         MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         MaterialOverwrite:=nil;
-        end;
-{$ifend}
 
-        if assigned(MaterialOverwrite) then begin
          case AnimationChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
            ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,false);
@@ -12247,57 +11999,18 @@ var CullFace,Blend:TPasGLTFInt32;
        Node:=@fNodes[AnimationDefaultChannel^.TargetIndex];
        NodeOverwrite:=nil;
        if aFactor>=-0.5 then begin
-{$if true}
         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-          InstanceAnimationChannel.fTarget:=Node;
-          InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
           inc(Node.CountOverwrites);
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
           NodeOverwrite^.Flags:=[];
           NodeOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Node) then begin
-          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          NodeOverwrite:=nil;
+          NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         NodeOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Node) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-        end else if (Node.CountOverwrites<length(Node.Overwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Node;
-         InstanceAnimationChannel.fTarget:=Node;
-         InstanceAnimationChannel.fOverwrite:=Node.CountOverwrites;
-         inc(Node.CountOverwrites);
-         NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannel.fOverwrite];
-         NodeOverwrite^.Flags:=[];
-         NodeOverwrite^.Factor:=Max(aFactor,0.0);
-        end;
-{$ifend}
-        if assigned(NodeOverwrite) then begin
          case AnimationDefaultChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
@@ -12334,64 +12047,18 @@ var CullFace,Blend:TPasGLTFInt32;
        Light:=fLights[AnimationDefaultChannel^.TargetIndex];
        LightOverwrite:=nil;
        if aFactor>=-0.5 then begin
-{$if true}
         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
-          InstanceAnimationChannel.fTarget:=Light;
-          InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
           inc(Light.fCountOverwrites);
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
           LightOverwrite^.Flags:=[];
           LightOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Light) then begin
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          LightOverwrite:=nil;
+          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         LightOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Light) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Light) then begin
-          LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          LightOverwrite:=nil;
-         end;
-        end else if assigned(Light) and
-                    (Light.fCountOverwrites<length(Light.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Light;
-         InstanceAnimationChannel.fTarget:=Light;
-         InstanceAnimationChannel.fOverwrite:=Light.fCountOverwrites;
-         inc(Light.fCountOverwrites);
-         LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         LightOverwrite^.Flags:=[];
-         LightOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         LightOverwrite:=nil;
-        end;
-{$ifend}
-        if assigned(LightOverwrite) then begin
          case AnimationDefaultChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TOverwriteFlag.DefaultColor,
@@ -12431,64 +12098,18 @@ var CullFace,Blend:TPasGLTFInt32;
        Camera:=fCameras[AnimationDefaultChannel^.TargetIndex];
        CameraOverwrite:=nil;
        if aFactor>=-0.5 then begin
-{$if true}
         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera;
-          InstanceAnimationChannel.fTarget:=Camera;
-          InstanceAnimationChannel.fOverwrite:=Camera.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
           inc(Camera.fCountOverwrites);
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
           CameraOverwrite^.Flags:=[];
           CameraOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Camera) then begin
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          CameraOverwrite:=nil;
+          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         CameraOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Camera) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Camera) then begin
-          CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          CameraOverwrite:=nil;
-         end;
-        end else if assigned(Camera) and
-                    (Camera.fCountOverwrites<length(Camera.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Camera;
-         InstanceAnimationChannel.fTarget:=Camera;
-         InstanceAnimationChannel.fOverwrite:=Camera.fCountOverwrites;
-         inc(Camera.fCountOverwrites);
-         CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         CameraOverwrite^.Flags:=[];
-         CameraOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         CameraOverwrite:=nil;
-        end;
-{$ifend}
-        if assigned(CameraOverwrite) then begin
          case AnimationDefaultChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TOverwriteFlag.DefaultOrthographicXMag,
@@ -12559,69 +12180,19 @@ var CullFace,Blend:TPasGLTFInt32;
        TargetSubIndex:=AnimationDefaultChannel^.TargetSubIndex;
        MaterialOverwrite:=nil;
        if aFactor>=-0.5 then begin
-{$if true}
         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
-        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<InstanceAnimation.fChannels.Count) then begin
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-        end else begin
-         InstanceAnimationChannel:=nil;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if InstanceAnimationChannel.fOverwrite<0 then begin
-          InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
-          InstanceAnimationChannel.fTarget:=Material;
-          InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
-          InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
           inc(Material.fCountOverwrites);
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
+          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
           MaterialOverwrite^.Flags:=[];
           MaterialOverwrite^.SubIndex:=TargetSubIndex;
           MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-         end;
-         if assigned(Material) then begin
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
          end else begin
-          MaterialOverwrite:=nil;
+          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
          end;
-        end else begin
-         MaterialOverwrite:=nil;
-        end;
-{$else}
-        InstanceAnimationChannel:=nil;
-        for InstanceChannelIndex:=CountInstanceChannels-1 downto 0 do begin
-         if (InstanceAnimation.fChannels[InstanceChannelIndex].fType=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTarget=Material) and
-            (InstanceAnimation.fChannels[InstanceChannelIndex].fTargetSubIndex=TargetSubIndex) then begin
-          InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-          break;
-         end;
-        end;
-        if assigned(InstanceAnimationChannel) then begin
-         if assigned(Material) then begin
-          MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         end else begin
-          MaterialOverwrite:=nil;
-         end;
-        end else if assigned(Material) and
-                    (Material.fCountOverwrites<length(Material.fOverwrites)) and
-                    (CountInstanceChannels<InstanceAnimation.fChannels.Count) then begin
-         InstanceChannelIndex:=CountInstanceChannels;
-         inc(CountInstanceChannels);
-         InstanceAnimationChannel:=InstanceAnimation.fChannels[InstanceChannelIndex];
-         InstanceAnimationChannel.fType:=TpvScene3D.TGroup.TInstance.TAnimation.TChannel.TType.Material;
-         InstanceAnimationChannel.fTarget:=Material;
-         InstanceAnimationChannel.fTargetSubIndex:=TargetSubIndex;
-         InstanceAnimationChannel.fOverwrite:=Material.fCountOverwrites;
-         inc(Material.fCountOverwrites);
-         MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannel.fOverwrite];
-         MaterialOverwrite^.Flags:=[];
-         MaterialOverwrite^.SubIndex:=TargetSubIndex;
-         MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-        end else begin
-         MaterialOverwrite:=nil;
-        end;
-{$ifend}
-        if assigned(MaterialOverwrite) then begin
          case AnimationDefaultChannel^.Target of
           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor,

@@ -22,13 +22,15 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;d:\GLTF\TextureTransformTest.glb&quot; /force-use-validation-layers"/>
+        <CommandLineParams Value="&quot;D:\GLTF\hello_neighbor_2_neighbor_looking_at_blueprint.glb&quot;"/>
+        <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;d:\GLTF\TextureTransformTest.glb&quot; /force-use-validation-layers"/>
+            <CommandLineParams Value="&quot;D:\GLTF\hello_neighbor_2_neighbor_looking_at_blueprint.glb&quot;"/>
+            <LaunchingApplication PathPlusParams="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
           </local>
         </Mode0>
       </Modes>
