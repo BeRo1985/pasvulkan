@@ -33,7 +33,7 @@ type TScreenExampleEmpty=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1,0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
@@ -105,7 +105,7 @@ begin
 end;
 
 procedure TScreenExampleEmpty.Show;
-var Index:TpvInt32;
+var Index,SwapChainImageIndex:TpvInt32;
 begin
  inherited Show;
 
@@ -113,7 +113,9 @@ begin
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxInFlightFrames-1 do begin
-  fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  end;
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
 
@@ -122,11 +124,13 @@ begin
 end;
 
 procedure TScreenExampleEmpty.Hide;
-var Index:TpvInt32;
+var Index,SwapChainImageIndex:TpvInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fVulkanRenderCommandBuffers[Index]);
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]);
+  end;
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
@@ -149,7 +153,7 @@ begin
 end;
 
 procedure TScreenExampleEmpty.AfterCreateSwapChain;
-var Index:TpvInt32;
+var Index,SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -214,23 +218,27 @@ begin
 
  for Index:=0 to pvApplication.CountInFlightFrames-1 do begin
 
-  fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
 
-  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[Index];
+   fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[Index,SwapChainImageIndex];
 
-  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    pvApplication.VulkanFrameBuffers[Index],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    pvApplication.VulkanSwapChain.Width,
-                                    pvApplication.VulkanSwapChain.Height);
+   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
-  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
+   fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                     pvApplication.VulkanFrameBuffers[SwapChainImageIndex],
+                                     VK_SUBPASS_CONTENTS_INLINE,
+                                     0,
+                                     0,
+                                     pvApplication.VulkanSwapChain.Width,
+                                     pvApplication.VulkanSwapChain.Height);
 
-  VulkanCommandBuffer.EndRecording;
+   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
+
+   VulkanCommandBuffer.EndRecording;
+
+  end;
 
  end;
 
@@ -334,7 +342,7 @@ end;
 
 function TScreenExampleEmpty.CanBeParallelProcessed:boolean;
 begin
- result:=true;
+ result:=false;
 end;
 
 procedure TScreenExampleEmpty.Update(const aDeltaTime:TpvDouble);
@@ -371,7 +379,7 @@ begin
 
   begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex,aSwapChainImageIndex];
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));

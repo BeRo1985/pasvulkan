@@ -175,7 +175,7 @@ end;
 
 function TScreenExit.CanBeParallelProcessed:boolean;
 begin
- result:=true;
+ result:=false;
 end;
 
 procedure TScreenExit.Update(const aDeltaTime:TpvDouble);
