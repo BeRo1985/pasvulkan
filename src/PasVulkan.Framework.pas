@@ -6578,19 +6578,74 @@ begin
 end;
 
 function TpvVulkanAllocationManager.AllocationCallback(const Size:TVkSize;const Alignment:TVkSize;const Scope:TVkSystemAllocationScope):PVkVoid;
+var Original,Aligned:pointer;
+    Mask:TpvPtrUInt;
+    Align,RealSize:TpvSizeUInt;
 begin
- GetMem(result,Size);
+ if Alignment<1 then begin
+  Align:=1;
+ end else begin
+  Align:=Alignment;
+ end;
+ if (Align and (Align-1))<>0 then begin
+  Align:=RoundUpToPowerOfTwoSizeUInt(Align);
+ end;
+ Mask:=Align-1;
+ RealSize:=Size+(Align shl 1)+SizeOf(Pointer)+(SizeOf(TpvSizeUInt)*2);
+ GetMem(Original,RealSize);
+ FillChar(Original^,RealSize,#0);
+ Aligned:=Pointer(TpvPtrUInt(TpvPtrUInt(Original)+SizeOf(Pointer)+(SizeOf(TpvSizeUInt)*2)));
+ if (Align>1) and ((TpvPtrUInt(Aligned) and Mask)<>0) then begin
+  inc(TpvPtrUInt(Aligned),TpvPtrUInt(TpvPtrUInt(Align)-(TpvPtrUInt(Aligned) and Mask)));
+ end;
+ Pointer(Pointer(TpvPtrUInt(TpvPtrUInt(Aligned)-SizeOf(Pointer)))^):=Original;
+ TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Aligned)-(SizeOf(Pointer)+SizeOf(TpvSizeUInt))))^):=Size;
+ TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Aligned)-(SizeOf(Pointer)+(SizeOf(TpvSizeUInt)*2))))^):=Align;
+ result:=Aligned;
 end;
 
 function TpvVulkanAllocationManager.ReallocationCallback(const Original:PVkVoid;const Size:TVkSize;const Alignment:TVkSize;const Scope:TVkSystemAllocationScope):PVkVoid;
+var pp:pointer;
+    OldSize,OldAlign,Align:TpvSizeUInt;
 begin
- result:=Original;
- ReallocMem(result,Size);
+ if assigned(Original) then begin
+  if Alignment<1 then begin
+   Align:=1;
+  end else begin
+   Align:=Alignment;
+  end;
+  if (Align and (Align-1))<>0 then begin
+   Align:=RoundUpToPowerOfTwoSizeUInt(Align);
+  end;
+  OldSize:=TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Original)-(SizeOf(Pointer)+SizeOf(TpvSizeUInt))))^);
+  OldAlign:=TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Original)-(SizeOf(Pointer)+(SizeOf(TpvSizeUInt)*2))))^);
+  if ((Align=OldAlign) or ((OldAlign and (Align-1))=0)) and (Size<=OldSize) then begin
+   TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Original)-(SizeOf(Pointer)+SizeOf(TpvSizeUInt))))^):=Size;
+   TpvSizeUInt(Pointer(TpvPtrUInt(TpvPtrUInt(Original)-(SizeOf(Pointer)+(SizeOf(TpvSizeUInt)*2))))^):=Align;
+   result:=Original;
+  end else begin
+   result:=AllocationCallback(Size,Alignment,Scope);
+   if Size<OldSize then begin
+    Move(Original^,result^,Size);
+   end else begin
+    Move(Original^,result^,OldSize);
+   end;
+   pp:=Pointer(Pointer(TpvPtrUInt(TpvPtrUInt(Original)-SizeOf(Pointer)))^);
+   FreeMem(pp);
+  end;
+ end else begin
+  result:=AllocationCallback(Size,Alignment,Scope);
+ end;
 end;
 
 procedure TpvVulkanAllocationManager.FreeCallback(const Memory:PVkVoid);
+var pp:pointer;
 begin
- FreeMem(Memory);
+ pp:=Memory;
+ if assigned(pp) then begin
+  pp:=Pointer(Pointer(TpvPtrUInt(TpvPtrUInt(pp)-SizeOf(Pointer)))^);
+  FreeMem(pp);
+ end;
 end;
 
 procedure TpvVulkanAllocationManager.InternalAllocationCallback(const Size:TVkSize;const Type_:TVkInternalAllocationType;const Scope:TVkSystemAllocationScope);
