@@ -14450,6 +14450,7 @@ begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
   end;
 
+{$ifdef Windows}
   if fExclusiveFullScreen then begin
 
    SwapChainCreateInfo.pNext:=@SurfaceFullScreenExclusiveInfoEXT;
@@ -14464,7 +14465,7 @@ begin
 
    end;
 
-  end else begin
+  end else{$endif}begin
 
    VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
 

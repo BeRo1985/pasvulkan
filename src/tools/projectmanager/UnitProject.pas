@@ -593,7 +593,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
         Parameters.Add('-Pi386');
        end;
        Parameters.Add('-CpPENTIUMM');
-       Parameters.Add('-CfX87');
+       Parameters.Add('-CfSSE2');
        Parameters.Add('-OpPENTIUMM');
        Parameters.Add('-O-');
        Parameters.Add('-O'+IntToStr(FPCOptimizationLevel));

@@ -225,6 +225,9 @@
 {$if defined(Win32) or defined(Win64)}
  {$define Windows}
 {$ifend}
+{$if defined(Android) and defined(cpu386)}
+ {$define PasVulkanPICCode}
+{$ifend}
 {$rangechecks off}
 {$extendedsyntax on}
 {$writeableconst on}
