@@ -3698,6 +3698,37 @@ const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
 
+procedure VulkanDebugLn(const What:TpvUTF8String);
+{$if defined(Windows)}
+{$if defined(Debug) or not defined(Release)}
+var StdOut:Windows.THandle;
+    TemporaryString:WideString;
+{$ifend}
+begin
+{$if defined(Debug) or not defined(Release)}
+ TemporaryString:=WideString(What);
+ OutputDebugStringW(PWideChar(TemporaryString));
+ StdOut:=GetStdHandle(Std_Output_Handle);
+//Win32Check(StdOut<>Invalid_Handle_Value);
+ if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
+  WriteLn(What);
+ end;
+{$ifend}
+end;
+{$elseif defined(fpc) and defined(android)}
+begin
+{$if defined(Debug) or not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
+{$ifend}
+end;
+{$else}
+begin
+{$if defined(Debug) or not defined(Release)}
+ WriteLn({$ifdef Windows}WideString(What){$else}What{$endif});
+{$ifend}
+end;
+{$ifend}
+
 function VulkanSwap16(x:TpvUInt16):TpvUInt16;
 {$if defined(cpu386)}assembler; register;
 asm
@@ -6278,8 +6309,15 @@ begin
 end;
 
 procedure VulkanCheckResult(const ResultCode:TVkResult);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+var s:TpvUTF8String;
+{$ifend}
 begin
  if ResultCode<>VK_SUCCESS then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  s:='Vulkan error ['+IntToStr(TpvInt64(ResultCode))+']: '+VulkanErrorToString(ResultCode);
+  __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(s));
+{$ifend}
   raise EpvVulkanResultException.Create(ResultCode);
  end;
 end;
@@ -7581,6 +7619,10 @@ begin
    VulkanCheckResult(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
   end;
 
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('GetSurfaceFormat, FormatCount: '+IntToStr(FormatCount));
+{$ifend}
+
   if FormatCount=0 then begin
 {$if defined(Android)}
    if aSRGB then begin
@@ -7622,6 +7664,11 @@ begin
    end;
    result:=SurfaceFormats[BestIndex];
   end;
+
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('GetSurfaceFormat, Format: '+IntToStr(TpvInt64(result.Format)));
+  VulkanDebugLn('GetSurfaceFormat, ColorSpace: '+IntToStr(TpvInt64(result.ColorSpace)));
+{$ifend}
 
  finally
   SetLength(SurfaceFormats,0);
@@ -8718,7 +8765,7 @@ end;
 
 procedure TpvVulkanDevice.WaitIdle;
 begin
- fDeviceVulkan.DeviceWaitIdle(fDeviceHandle);
+ VulkanCheckResult(fDeviceVulkan.DeviceWaitIdle(fDeviceHandle));
 end;
 
 constructor TpvVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TpvUInt32;const aQueuePriorities:array of TpvFloat);
@@ -14373,8 +14420,14 @@ begin
    end;
   end;
   if not Found then begin
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+   VulkanDebugLn('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
+{$ifend}
    raise EpvVulkanException.Create('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
   end;
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('CompositeAlpha: '+IntToStr(TpvInt64(SwapChainCreateInfo.compositeAlpha)));
+{$ifend}
 
   SurfacePresentModes:=nil;
   try
@@ -14438,6 +14491,10 @@ begin
    SetLength(SurfacePresentModes,0);
   end;
 
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('PresentMode: '+IntToStr(TpvInt64(SwapChainCreateInfo.presentMode)));
+{$ifend}
+
   if aClipped then begin
    SwapChainCreateInfo.clipped:=VK_TRUE;
   end else begin
@@ -14450,10 +14507,18 @@ begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
   end;
 
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('Creating swap chain...');
+{$ifend}
+
 {$ifdef Windows}
   if fExclusiveFullScreen then begin
 
    SwapChainCreateInfo.pNext:=@SurfaceFullScreenExclusiveInfoEXT;
+
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+   VulkanDebugLn('CreateSwapChainKHR[1]()...');
+{$ifend}
 
    if fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle)<>VK_SUCCESS then begin
 
@@ -14461,15 +14526,27 @@ begin
 
     fExclusiveFullScreen:=false;
 
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+    VulkanDebugLn('CreateSwapChainKHR[2]()...');
+{$ifend}
+
     VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
 
    end;
 
   end else{$endif}begin
 
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+   VulkanDebugLn('CreateSwapChainKHR()...');
+{$ifend}
+
    VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
 
   end;
+
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+  VulkanDebugLn('GetSwapchainImagesKHR()...');
+{$ifend}
 
   VulkanCheckResult(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,nil));
 
@@ -14503,6 +14580,9 @@ begin
   end;
 
   if fSwapChainHandle<>VK_NULL_HANDLE then begin
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+   VulkanDebugLn('DestroySwapChainKHR()...');
+{$ifend}
    fDevice.fDeviceVulkan.DestroySwapChainKHR(fDevice.fDeviceHandle,fSwapChainHandle,fDevice.fAllocationCallbacks);
    fSwapChainHandle:=VK_NULL_HANDLE;
   end;

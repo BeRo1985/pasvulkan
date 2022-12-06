@@ -5850,28 +5850,37 @@ end;
 procedure TpvApplication.VulkanWaitIdle;
 var Index,SubIndex:TpvInt32;
 begin
- if assigned(fVulkanDevice) then begin
-  fVulkanDevice.WaitIdle;
-  for Index:=0 to fCountSwapChainImages-1 do begin
-   if fVulkanPresentCompleteFencesReady[Index] then begin
-    fVulkanPresentCompleteFences[Index].WaitFor;
-    fVulkanPresentCompleteFences[Index].Reset;
-    fVulkanPresentCompleteFencesReady[Index]:=false;
-   end;
-   if fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
-    fVulkanWaitFences[Index].WaitFor;
-    fVulkanWaitFences[Index].Reset;
-    fVulkanWaitFencesReady[Index]:=false;
-   end;
-  end;
-  for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
-   for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
-    if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
-     fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.VulkanWaitIdle');
+{$ifend}
+ try
+  if assigned(fVulkanDevice) then begin
+   fVulkanDevice.WaitIdle;
+   for Index:=0 to fCountSwapChainImages-1 do begin
+    if fVulkanPresentCompleteFencesReady[Index] then begin
+     fVulkanPresentCompleteFences[Index].WaitFor;
+     fVulkanPresentCompleteFences[Index].Reset;
+     fVulkanPresentCompleteFencesReady[Index]:=false;
+    end;
+    if fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
+     fVulkanWaitFences[Index].WaitFor;
+     fVulkanWaitFences[Index].Reset;
+     fVulkanWaitFencesReady[Index]:=false;
     end;
    end;
+   for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
+    for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
+     if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
+      fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
+     end;
+    end;
+   end;
+   fVulkanDevice.WaitIdle;
   end;
-  fVulkanDevice.WaitIdle;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.VulkanWaitIdle');
+{$ifend}
  end;
 end;
 
