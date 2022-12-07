@@ -993,22 +993,46 @@ begin
 
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
 
- end else if CurrentTarget='fpc-allcpu-android' then begin
+ end else if (CurrentTarget='fpc-allcpu-android') or
+             (CurrentTarget='fpc-arm-android') or
+             (CurrentTarget='fpc-arm32-android') or
+             (CurrentTarget='fpc-arm64-android') or
+             (CurrentTarget='fpc-aarch64-android') or
+             (CurrentTarget='fpc-i386-android') or
+             (CurrentTarget='fpc-x86_32-android') or
+             (CurrentTarget='fpc-amd64-android') or
+             (CurrentTarget='fpc-x86_64-android') then begin
 
-  if not BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android) then begin
-   exit;
+  if (CurrentTarget='fpc-allcpu-android') or
+     (CurrentTarget='fpc-arm-android') or
+     (CurrentTarget='fpc-arm32-android') then begin
+   if not BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android) then begin
+    exit;
+   end;
   end;
 
-  if not BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Android) then begin
-   exit;
+  if (CurrentTarget='fpc-allcpu-android') or
+     (CurrentTarget='fpc-arm64-android') or
+     (CurrentTarget='fpc-aarch64-android') then begin
+   if not BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Android) then begin
+    exit;
+   end;
   end;
 
-  if not BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android) then begin
-   exit;
+  if (CurrentTarget='fpc-allcpu-android') or
+     (CurrentTarget='fpc-i386-android') or
+     (CurrentTarget='fpc-x86_32-android') then begin
+   if not BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android) then begin
+    exit;
+   end;
   end;
 
-  if not BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Android) then begin
-   exit;
+  if (CurrentTarget='fpc-allcpu-android') or
+     (CurrentTarget='fpc-amd64-android') or
+     (CurrentTarget='fpc-x86_64-android') then begin
+   if not BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Android) then begin
+    exit;
+   end;
   end;
 
   if BuildForAndroid then begin

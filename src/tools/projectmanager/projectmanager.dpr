@@ -72,6 +72,10 @@ begin
  WriteLn('          update [projectname]                 Update the project base files of an existent project');
  WriteLn;
  WriteLn('Supported targets: fpc-allcpu-android');
+ WriteLn('                   fpc-arm32-android');
+ WriteLn('                   fpc-aarch64-android');
+ WriteLn('                   fpc-x86_32-android');
+ WriteLn('                   fpc-x86_64-android');
  WriteLn('                   fpc-x86_32-linux');
  WriteLn('                   fpc-x86_64-linux');
  WriteLn('                   fpc-x86_32-windows');
