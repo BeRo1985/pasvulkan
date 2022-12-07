@@ -10,7 +10,7 @@ unit UnitVersion;
 
 interface
 
-const ProjectManagerVersion='1.00.2022.12.07.02.41.0000';
+const ProjectManagerVersion='1.00.2022.12.07.02.58.0000';
 
       ProjectManagerCopyright='Copyright (C) 2018-2022, Benjamin ''BeRo'' Rosseaux';
 

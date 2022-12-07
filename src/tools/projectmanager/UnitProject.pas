@@ -655,6 +655,54 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
       end;
      end;
      case aTargetCPU of
+      TTargetCPU.ARM_32:begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossarm'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcrossarm';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcarm'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcarm';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='fpc';
+       end;
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-PARMv7a');
+       end;
+       Parameters.Add('-CpARMv7A');
+       Parameters.Add('-CfVFPv3');
+       Parameters.Add('-OpARMv7a');
+       Parameters.Add('-O-');
+       Parameters.Add('-O'+IntToStr(FPCOptimizationLevel));
+       Parameters.Add('-o'+String(CurrentProjectName)+'_arm-linux');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'arm-linux');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'arm-linux');
+{      Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'armeabi-v7a');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'armeabi-v7a');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20linuxarm32');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20linuxarm32');}
+      end;
+      TTargetCPU.ARM_64:begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossa64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppcrossa64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppca64'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='ppca64';
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
+        FPCExecutable:='fpc';
+       end;
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Paarch64');
+       end;
+       Parameters.Add('-CpARMv8');
+       Parameters.Add('-CfVFP');
+       Parameters.Add('-OpARMv8');
+       Parameters.Add('-O-');
+       Parameters.Add('-O'+IntToStr(FPCOptimizationLevel));
+       Parameters.Add('-o'+String(CurrentProjectName)+'_aarch64-linux');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'aarch64-linux');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'aarch64-linux');
+{      Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'arm64-v8a');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'arm64-v8a');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20linuxarm64');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20linuxarm64');}
+      end;
       TTargetCPU.x86_32:begin
        if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcross386'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='ppcross386';
@@ -806,6 +854,26 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
       end;
       TTargetOS.Linux:begin
        case aTargetCPU of
+        TTargetCPU.ARM_32:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'arm-linux'+DirectorySeparator+CurrentProjectName+'_arm-linux',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_arm-linux');
+{$if defined(fpc) and defined(Unix)}
+         fpchmod(RawByteString(UTF8String(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_arm-linux')),
+                 S_IRUSR or S_IWUSR or S_IXUSR or
+                 S_IRGRP or S_IXGRP or
+                 S_IROTH or S_IXOTH);
+{$ifend}
+        end;
+        TTargetCPU.ARM_64:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'aarch64-linux'+DirectorySeparator+CurrentProjectName+'_aarch64-linux',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_aarch64-linux');
+{$if defined(fpc) and defined(Unix)}
+         fpchmod(RawByteString(UTF8String(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_aarch64-linux')),
+                 S_IRUSR or S_IWUSR or S_IXUSR or
+                 S_IRGRP or S_IXGRP or
+                 S_IROTH or S_IXOTH);
+{$ifend}
+        end;
         TTargetCPU.x86_32:begin
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-linux'+DirectorySeparator+CurrentProjectName+'_x86_32-linux',
                   ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-linux');
@@ -946,6 +1014,12 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
    WriteLn('Errors!');
   end;
  end;
+ procedure MkDirEx(const aPath:String);
+ begin
+  if not DirectoryExists(aPath) then begin
+   MkDir(aPath);
+  end;
+ end;
 begin
 
  result:=false;
@@ -977,35 +1051,54 @@ begin
     (CurrentTarget='delphi-amd64-windows') or
     (CurrentTarget='delphi-x86_64-windows') then begin
 
+  if (CurrentTarget='delphi-i386-windows') or
+     (CurrentTarget='delphi-x86_32-windows') then begin
+   MkDirEx(ProjectSourcePath+'DelphiOutput'+DirectorySeparator+'Win32');
+  end else begin
+   MkDirEx(ProjectSourcePath+'DelphiOutput'+DirectorySeparator+'Win64');
+  end;
+
   result:=BuildWithDelphi;
 
  end else if (CurrentTarget='fpc-i386-windows') or
              (CurrentTarget='fpc-x86_32-windows') then begin
+
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-windows');
 
   result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
 
  end else if (CurrentTarget='fpc-amd64-windows') or
              (CurrentTarget='fpc-x86_64-windows') then begin
 
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-windows');
+
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
 
  end else if (CurrentTarget='fpc-arm-linux') or
              (CurrentTarget='fpc-arm32-linux') then begin
+
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'arm-linux');
 
   result:=BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Linux);
 
  end else if (CurrentTarget='fpc-arm64-linux') or
              (CurrentTarget='fpc-aarch64-linux') then begin
 
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'aarch64-linux');
+
   result:=BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Linux);
 
  end else if (CurrentTarget='fpc-i386-linux') or
              (CurrentTarget='fpc-x86_32-linux') then begin
 
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-linux');
+
   result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Linux);
 
  end else if (CurrentTarget='fpc-amd64-linux') or
              (CurrentTarget='fpc-x86_64-linux') then begin
+
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-linux');
 
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
 
@@ -1022,6 +1115,7 @@ begin
   if (CurrentTarget='fpc-allcpu-android') or
      (CurrentTarget='fpc-arm-android') or
      (CurrentTarget='fpc-arm32-android') then begin
+   MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'arm-android');
    if not BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android) then begin
     exit;
    end;
@@ -1030,6 +1124,7 @@ begin
   if (CurrentTarget='fpc-allcpu-android') or
      (CurrentTarget='fpc-arm64-android') or
      (CurrentTarget='fpc-aarch64-android') then begin
+   MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'aarch64-android');
    if not BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Android) then begin
     exit;
    end;
@@ -1038,6 +1133,7 @@ begin
   if (CurrentTarget='fpc-allcpu-android') or
      (CurrentTarget='fpc-i386-android') or
      (CurrentTarget='fpc-x86_32-android') then begin
+   MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-android');
    if not BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android) then begin
     exit;
    end;
@@ -1046,6 +1142,7 @@ begin
   if (CurrentTarget='fpc-allcpu-android') or
      (CurrentTarget='fpc-amd64-android') or
      (CurrentTarget='fpc-x86_64-android') then begin
+   MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-android');
    if not BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Android) then begin
     exit;
    end;
