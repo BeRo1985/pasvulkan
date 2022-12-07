@@ -443,7 +443,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
   try
    DelphiBatchFile.Add('@echo off');
    DelphiBatchFile.Add('call rsvars.bat');
-   if CurrentTarget='delphi-x86_64-windows' then begin
+   if (CurrentTarget='delphi-amd64-windows') or (CurrentTarget='delphi-x86_64-windows') then begin
     Platform:='Win64';
    end else begin
     Platform:='Win32';
@@ -464,7 +464,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
 
   if ExecuteCommand(ProjectSourcePath,'cmd',['/c',DelphiBatchFileName]) then begin
    WriteLn('Successful!');
-   if CurrentTarget='delphi-x86_64-windows' then begin
+   if (CurrentTarget='delphi-amd64-windows') or (CurrentTarget='delphi-x86_64-windows') then begin
     DeleteFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
     RenameFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'.exe',
                ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
@@ -972,24 +972,40 @@ begin
 
  ProjectSourcePath:=IncludeTrailingPathDelimiter(ProjectPath+'src');
 
- if (CurrentTarget='delphi-x86_32-windows') or
+ if (CurrentTarget='delphi-i386-windows') or
+    (CurrentTarget='delphi-x86_32-windows') or
+    (CurrentTarget='delphi-amd64-windows') or
     (CurrentTarget='delphi-x86_64-windows') then begin
 
   result:=BuildWithDelphi;
 
- end else if CurrentTarget='fpc-x86_32-windows' then begin
+ end else if (CurrentTarget='fpc-i386-windows') or
+             (CurrentTarget='fpc-x86_32-windows') then begin
 
   result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
 
- end else if CurrentTarget='fpc-x86_64-windows' then begin
+ end else if (CurrentTarget='fpc-amd64-windows') or
+             (CurrentTarget='fpc-x86_64-windows') then begin
 
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
 
- end else if CurrentTarget='fpc-x86_32-linux' then begin
+ end else if (CurrentTarget='fpc-arm-linux') or
+             (CurrentTarget='fpc-arm32-linux') then begin
+
+  result:=BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Linux);
+
+ end else if (CurrentTarget='fpc-arm64-linux') or
+             (CurrentTarget='fpc-aarch64-linux') then begin
+
+  result:=BuildWithFPC(TTargetCPU.ARM_64,TTargetOS.Linux);
+
+ end else if (CurrentTarget='fpc-i386-linux') or
+             (CurrentTarget='fpc-x86_32-linux') then begin
 
   result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Linux);
 
- end else if CurrentTarget='fpc-x86_64-linux' then begin
+ end else if (CurrentTarget='fpc-amd64-linux') or
+             (CurrentTarget='fpc-x86_64-linux') then begin
 
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
 
