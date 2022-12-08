@@ -6950,6 +6950,9 @@ begin
   for i:=0 to fEnabledLayerNames.Count-1 do begin
    fEnabledLayerNameStrings[i]:=TpvVulkanCharString(fEnabledLayerNames.Strings[i]);
    fRawEnabledLayerNameStrings[i]:=PVkChar(fEnabledLayerNameStrings[i]);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('TpvVulkanInstance.Initialize EnabledLayer['+IntToStr(i)+']: '+TpvUTF8String(fEnabledLayerNameStrings[i]));
+{$ifend}
   end;
 
   SetLength(fEnabledExtensionNameStrings,fEnabledExtensionNames.Count);
@@ -6957,6 +6960,9 @@ begin
   for i:=0 to fEnabledExtensionNames.Count-1 do begin
    fEnabledExtensionNameStrings[i]:=TpvVulkanCharString(fEnabledExtensionNames.Strings[i]);
    fRawEnabledExtensionNameStrings[i]:=PVkChar(fEnabledExtensionNameStrings[i]);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('TpvVulkanInstance.Initialize EnabledExtension['+IntToStr(i)+']: '+TpvUTF8String(fEnabledExtensionNameStrings[i]));
+{$ifend}
   end;
 
   FillChar(InstanceCreateInfo,SizeOf(TVkInstanceCreateInfo),#0);

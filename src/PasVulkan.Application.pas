@@ -6197,6 +6197,9 @@ begin
      end;
      for i:=0 to CountExtensions-1 do begin
       fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[i]));
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+      VulkanDebugLn('Instance SDL2 extension: '+TpvUTF8String(Extensions[i]));
+{$ifend}
      end;
     finally
      Extensions:=nil;
@@ -6294,7 +6297,8 @@ begin
       end;
      end;
 {$ifend}
-     if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
+     if {$ifdef Android}(fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)<0) and{$endif}
+        (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0) then begin
       fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
      end;
     end;
@@ -6308,7 +6312,13 @@ begin
     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
    end;
    SetupVulkanInstance(fVulkanInstance);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('Calling TpvVulkanInstance.Initialize() . . .');
+{$ifend}
    fVulkanInstance.Initialize;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');
+{$ifend}
    if fVulkanDebuggingEnabled then begin
     fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
     fVulkanInstance.InstallDebugReportCallback;
