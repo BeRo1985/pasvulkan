@@ -1447,6 +1447,11 @@ type EpvApplication=class(Exception)
        fWin32AudioThread:TPasMPThread;
        fWin32HasFocus:Boolean;
        fWin32CountJoysticks:TpvInt32;
+       fWin32OldLeft:TpvInt32;
+       fWin32OldTop:TpvInt32;
+       fWin32OldWidth:TpvInt32;
+       fWin32OldHeight:TpvInt32;
+       fWin32Fullscreen:Boolean;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
 
@@ -8922,6 +8927,8 @@ var Index,Counter,Tries,
 {$else}
  {$if defined(Windows)}
     Msg:TMsg;
+    devMode:TDEVMODEW;
+    Rect:TRect;
  {$ifend}
     DoUpdateJoysticks:boolean;
 {$ifend}
@@ -9589,6 +9596,41 @@ begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
 {$ifend}
+{$elseif defined(Windows)}
+   if fFullScreen then begin
+    if (not fWin32Fullscreen) and GetWindowRect(fWin32Handle,Rect) then begin
+     fWin32OldLeft:=Rect.Left;
+     fWin32OldTop:=Rect.Top;
+     fWin32OldWidth:=fWidth;
+     fWin32OldHeight:=fHeight;
+     devMode.dmSize:=SizeOf(TDevModeW);
+     devMode.dmPelsWidth:=fScreenWidth;
+     devMode.dmPelsHeight:=fScreenHeight;
+     devMode.dmBitsPerPel:=32;
+     devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
+     if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      SetWindowPos(fWin32Handle,HWND_TOP,0,0,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
+      ShowWindow(fWin32Handle,SW_SHOW);
+      fWin32Fullscreen:=true;
+     end else begin
+      fFullscreen:=false;
+     end;
+    end else begin
+     fFullscreen:=false;
+    end;
+   end else if fWin32Fullscreen then begin
+    if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then begin
+     SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+     SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+     SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
+     ShowWindow(fWin32Handle,SW_SHOW);
+     fWin32Fullscreen:=false;
+    end else begin
+     fFullscreen:=true;
+    end;
+   end;
 {$else}
 {$ifend}
    continue;
@@ -10862,6 +10904,8 @@ begin
   if fWin32Handle=0 then begin
    raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
   end;
+
+  fWin32Fullscreen:=false;
 
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
