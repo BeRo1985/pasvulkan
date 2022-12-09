@@ -10324,7 +10324,7 @@ var NativeEvent:TpvApplicationNativeEvent;
   case aMsg of
    WM_LBUTTONDOWN,
    WM_LBUTTONUP:begin
-    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Right;
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Left;
     NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Left];
    end;
    WM_RBUTTONDOWN,
