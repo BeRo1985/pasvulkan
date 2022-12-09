@@ -182,13 +182,11 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
- for Index:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
-  FreeAndNil(fVulkanRenderCommandBuffers[Index]);
- end;
-
  for Index:=0 to pvApplication.CountInFlightFrames-1 do begin
 
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+
+   FreeAndNil(fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]);
 
    fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 

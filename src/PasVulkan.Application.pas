@@ -9564,7 +9564,7 @@ begin
      Joystick.Update;
     end;
    end;
-{$endif}
+{$ifend}
    fInput.ProcessEvents;
   finally
    fInput.fCriticalSection.Release;
