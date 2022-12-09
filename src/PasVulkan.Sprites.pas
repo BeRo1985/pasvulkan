@@ -1211,7 +1211,7 @@ end;
 
 function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex,Index:TpvInt32;
-    ArrayTexture:TpvSpriteAtlasArrayTexture;
+    ArrayTexture,TemporaryArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
     Sprite:TpvSprite;
     sp,dp:PpvUInt32;
@@ -1526,18 +1526,21 @@ begin
      end;
     end;
 
+    ArrayTexture:=nil;
+
     // Get free texture area
     for TextureIndex:=0 to fCountArrayTextures-1 do begin
-     ArrayTexture:=fArrayTextures[TextureIndex];
-     if not ArrayTexture.fSpecialSizedArrayTexture then begin
-      for LayerIndex:=0 to ArrayTexture.fLayers-1 do begin
-       if assigned(ArrayTexture.fLayerRootNodes[LayerIndex]) then begin
+     TemporaryArrayTexture:=fArrayTextures[TextureIndex];
+     if not TemporaryArrayTexture.fSpecialSizedArrayTexture then begin
+      for LayerIndex:=0 to TemporaryArrayTexture.fLayers-1 do begin
+       if assigned(TemporaryArrayTexture.fLayerRootNodes[LayerIndex]) then begin
         // Including 2px texel bilinear interpolation protection border pixels
-        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],
+        Node:=InsertTextureRectNode(TemporaryArrayTexture.fLayerRootNodes[LayerIndex],
                                     TrimmedImageWidth+TotalPadding,
                                     TrimmedImageHeight+TotalPadding,
                                     (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
-        if assigned(ArrayTexture) and assigned(Node) then begin
+        if assigned(TemporaryArrayTexture) and assigned(Node) then begin
+         ArrayTexture:=TemporaryArrayTexture;
          Layer:=LayerIndex;
          break;
         end;
@@ -1556,19 +1559,21 @@ begin
     // array texture in width and height, or for external imported sprite atlases
     if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
      for TextureIndex:=0 to fCountArrayTextures-1 do begin
-      ArrayTexture:=fArrayTextures[TextureIndex];
-      if ((TrimmedImageWidth+TotalPadding)<=ArrayTexture.fWidth) and
-         ((TrimmedImageHeight+TotalPadding)<=ArrayTexture.fHeight) and
-         (ArrayTexture.fLayers<fMaximumCountArrayLayers) and
-         not ArrayTexture.fSpecialSizedArrayTexture then begin
-       LayerIndex:=ArrayTexture.fLayers;
-       ArrayTexture.Resize(ArrayTexture.fWidth,ArrayTexture.fHeight,LayerIndex+1);
-       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],
+      TemporaryArrayTexture:=fArrayTextures[TextureIndex];
+      if ((TrimmedImageWidth+TotalPadding)<=TemporaryArrayTexture.fWidth) and
+         ((TrimmedImageHeight+TotalPadding)<=TemporaryArrayTexture.fHeight) and
+         (TemporaryArrayTexture.fLayers<fMaximumCountArrayLayers) and
+         not TemporaryArrayTexture.fSpecialSizedArrayTexture then begin
+       LayerIndex:=TemporaryArrayTexture.fLayers;
+       TemporaryArrayTexture.Resize(TemporaryArrayTexture.fWidth,TemporaryArrayTexture.fHeight,LayerIndex+1);
+       Node:=InsertTextureRectNode(TemporaryArrayTexture.fLayerRootNodes[LayerIndex],
                                    TrimmedImageWidth+TotalPadding,
                                    TrimmedImageHeight+TotalPadding,
                                    (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
        if assigned(Node) then begin
+        TemporaryArrayTexture:=ArrayTexture;
         Layer:=LayerIndex;
+        break;
        end;
       end;
      end;
@@ -1600,9 +1605,9 @@ begin
      end;
     end;
 
-    Assert((Layer>=0) and (assigned(ArrayTexture) and assigned(Node)));
+    Assert((Layer>=0) and (assigned(ArrayTexture) and (Layer<ArrayTexture.fLayers) and assigned(Node)));
 
-    if not ((Layer>=0) and (assigned(ArrayTexture) and assigned(Node))) then begin
+    if not ((Layer>=0) and (assigned(ArrayTexture) and (Layer<ArrayTexture.fLayers) and assigned(Node))) then begin
      raise EpvSpriteAtlas.Create('Can''t load raw sprite');
     end;
 
