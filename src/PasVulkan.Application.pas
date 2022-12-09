@@ -9541,6 +9541,14 @@ begin
      end;
     end;
    end;
+{$if not defined(PasVulkanUseSDL2)}
+   for Counter:=0 to fWin32CountJoysticks-1 do begin
+    Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+    if assigned(Joystick) then begin
+     Joystick.Update;
+    end;
+   end;
+{$endif}
    fInput.ProcessEvents;
   finally
    fInput.fCriticalSection.Release;
