@@ -725,6 +725,12 @@ type EpvApplication=class(Exception)
        Quit,
        Close,
        Destroy,
+       LowMemory,
+       WillEnterBackground,
+       DidEnterBackground,
+       WillEnterForeground,
+       DidEnterForeground,
+       GraphicsReset,
        DropFile,
        TextInput,
        KeyDown,
@@ -9130,6 +9136,7 @@ begin
       DeinitializeGraphics;
       Terminate;
      end else begin
+      fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.Quit;
       fInput.AddEvent(fEvent);
      end;
     end;
@@ -9140,6 +9147,52 @@ begin
       DeinitializeGraphics;
       Terminate;
      end;
+    end;
+    TpvApplicationNativeEventKind.LowMemory:begin
+     LowMemory;
+    end;
+    TpvApplicationNativeEventKind.WillEnterBackground:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
+{$ifend}
+     fActive:=false;
+     VulkanWaitIdle;
+     Pause;
+     DeinitializeGraphics;
+     fHasLastTime:=false;
+    end;
+    TpvApplicationNativeEventKind.DidEnterBackground:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
+{$ifend}
+    end;
+    TpvApplicationNativeEventKind.WillEnterForeground:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
+{$ifend}
+    end;
+    TpvApplicationNativeEventKind.DidEnterForeground:begin
+     InitializeGraphics;
+     Resume;
+     fActive:=true;
+     fHasLastTime:=false;
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
+{$ifend}
+    end;
+    TpvApplicationNativeEventKind.GraphicsReset:begin
+     VulkanWaitIdle;
+     if fActive then begin
+      Pause;
+     end;
+     if fGraphicsReady then begin
+      DeinitializeGraphics;
+      InitializeGraphics;
+     end;
+     if fActive then begin
+      Resume;
+     end;
+     fHasLastTime:=false;
     end;
     TpvApplicationNativeEventKind.KeyDown:begin
      OK:=true;
