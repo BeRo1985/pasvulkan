@@ -1095,6 +1095,9 @@ type EpvApplication=class(Exception)
               RecreateSurface,
               RecreateDevice
              );
+             TWin32TouchIDFreeList=TpvDynamicQueue<TpvUInt32>;
+             TWin32TouchIDHashMap=class(TpvHashMap<TpvUInt32,TpvUInt32>)
+             end;
        const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFORelaxed] of TVkPresentModeKHR=
               (
                VK_PRESENT_MODE_IMMEDIATE_KHR,
@@ -1477,8 +1480,11 @@ type EpvApplication=class(Exception)
        fWin32LowSurrogate:TpvUInt32;
        fWin32TouchActive:Boolean;
        fWin32TouchInputs:array of TpvApplicationTOUCHINPUT;
-       fWin32TouchLastX:array[0..$ffff] of TpvDouble;
-       fWin32TouchLastY:array[0..$ffff] of TpvDouble;
+       fWin32TouchIDHashMap:TWin32TouchIDHashMap;
+       fWin32TouchIDFreeList:TWin32TouchIDFreeList;
+       fWin32TouchIDCounter:TpvUInt32;
+       fWin32TouchLastX:array[0..$1fff] of TpvDouble;
+       fWin32TouchLastY:array[0..$1fff] of TpvDouble;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -10127,7 +10133,8 @@ begin
 end;
 
 function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
-var Index,FileNameLength,DroppedFileCount,CountInputs:TpvSizeInt;
+var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
+    TouchID:TpvUInt32;
     NativeEvent:TpvApplicationNativeEvent;
     Rect:TRect;
     DropHandle:HDROP;
@@ -10752,24 +10759,40 @@ begin
          if ScreenToClient(fWin32Handle,Point) then begin
           x:=Point.x+frac(x);
           y:=Point.y+frac(y);
-          if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
-           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerDown;
-           fWin32TouchLastX[TouchInput^.dwID and $ffff]:=0;
-           fWin32TouchLastY[TouchInput^.dwID and $ffff]:=0;
-          end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
-           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerUp;
-          end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
-           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerMotion;
+          TouchID:=$ffffffff;
+          if not fWin32TouchIDHashMap.TryGet(TouchInput^.dwID,TouchID) then begin
+           if not fWin32TouchIDFreeList.Dequeue(TouchID) then begin
+            repeat
+             TouchID:=fWin32TouchIDCounter;
+             inc(fWin32TouchIDCounter);
+            until TouchID=0;
+           end;
+           fWin32TouchIDHashMap.Add(TouchInput^.dwID,TouchID);
           end;
-          NativeEvent.FingerID:=TouchInput^.dwID+1; // +1 because 0 = mouse
-          NativeEvent.FingerX:=x;
-          NativeEvent.FingerY:=y;
-          NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchInput^.dwID and $ffff];
-          NativeEvent.FingerDeltaY:=y-fWin32TouchLastY[TouchInput^.dwID and $ffff];
-          NativeEvent.FingerPressure:=1.0; // <= TODO
-          fWin32TouchLastX[TouchInput^.dwID and $ffff]:=x;
-          fWin32TouchLastY[TouchInput^.dwID and $ffff]:=y;
-          fNativeEventQueue.Enqueue(NativeEvent);
+          if (TouchID<>$ffffffff) and
+             (TpvSizeInt(TouchID)<length(fWin32TouchLastX)) and
+             (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
+           if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerDown;
+            fWin32TouchLastX[TouchID]:=0;
+            fWin32TouchLastY[TouchID]:=0;
+           end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerUp;
+            fWin32TouchIDHashMap.Delete(TouchInput^.dwID);
+            fWin32TouchIDFreeList.Enqueue(TouchID);
+           end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerMotion;
+           end;
+           NativeEvent.FingerID:=TouchID;
+           NativeEvent.FingerX:=x;
+           NativeEvent.FingerY:=y;
+           NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchID];
+           NativeEvent.FingerDeltaY:=y-fWin32TouchLastY[TouchID];
+           NativeEvent.FingerPressure:=1.0; // <= TODO
+           fWin32TouchLastX[TouchID]:=x;
+           fWin32TouchLastY[TouchID]:=y;
+           fNativeEventQueue.Enqueue(NativeEvent);
+          end;
          end;
         end;
        end;
@@ -11215,6 +11238,12 @@ begin
 
   fWin32TouchInputs:=nil;
 
+  fWin32TouchIDHashMap:=TWin32TouchIDHashMap.Create(0);
+
+  fWin32TouchIDFreeList.Initialize;
+
+  fWin32TouchIDCounter:=0;
+
   if fWin32TouchActive then begin
    SetPropA(fWin32Handle,
             'MicrosoftTabletPenServiceProperty',
@@ -11436,6 +11465,11 @@ begin
    end;
 
    fWin32TouchInputs:=nil;
+
+   FreeAndNil(fWin32TouchIDHashMap);
+
+   fWin32TouchIDFreeList.Finalize;
+
 
    if assigned(fWin32Callback) then begin
 
