@@ -74,7 +74,7 @@ uses {$if defined(Unix)}
       {$if not defined(PasVulkanUseSDL2)}Messages,{$ifend}
       MMSystem,
       Registry,
-      {$if not defined(PasVulkanUseSDL2)}MultiMon,{$ifend}
+      {$if not defined(PasVulkanUseSDL2)}MultiMon,ShellAPI,{$ifend}
      {$ifend}
      SysUtils,
      Classes,
@@ -10423,7 +10423,7 @@ begin
     FileName:='';
     try
      try
-      DragQueryPoint(DropHandle,@DropPoint);
+      DragQueryPoint(DropHandle,{$ifdef fpc}@DropPoint{$else}DropPoint{$endif});
       DroppedFileCount:=DragQueryFile(DropHandle,$ffffffff,nil,0);
       for Index:=0 to DroppedFileCount-1 do begin
        FileNameLength:=DragQueryFileW(DropHandle,Index,nil,0);
