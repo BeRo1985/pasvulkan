@@ -10713,7 +10713,7 @@ begin
 
    end else begin
 
-    CloseHandle(fWin32Handle);
+    DestroyWindow(fWin32Handle);
 
     UnregisterClassW(Win32WindowClass.lpszClassName,fWin32HInstance);
 
