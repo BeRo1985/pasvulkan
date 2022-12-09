@@ -780,7 +780,7 @@ type EpvApplication=class(Exception)
         KeyRepeat:Boolean;
        );
        TpvApplicationNativeEventKind.UnicodeCharTyped:(
-        CharVal:WCHAR;
+        CharVal:TPUCUUTF32Char;
        );
        TpvApplicationNativeEventKind.MouseButtonDown,
        TpvApplicationNativeEventKind.MouseButtonUp,
@@ -843,9 +843,9 @@ type EpvApplication=class(Exception)
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TpvApplicationInputProcessor;
        fEvents:array of TpvApplicationEvent;
-       fEventTimes:array of int64;
+       fEventTimes:array of TpvInt64;
        fEventCount:TpvInt32;
-       fCurrentEventTime:int64;
+       fCurrentEventTime:TpvInt64;
        fKeyDown:array[0..$ffff] of boolean;
        fKeyDownCount:TpvInt32;
        fJustKeyDown:array[0..$ffff] of boolean;
@@ -1454,8 +1454,10 @@ type EpvApplication=class(Exception)
        fWin32OldWidth:TpvInt32;
        fWin32OldHeight:TpvInt32;
        fWin32Fullscreen:Boolean;
+       fWin32HighSurrogate:TpvUInt32;
+       fWin32LowSurrogate:TpvUInt32;
 
-       function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
+       function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
 {$ifend}
 
@@ -4842,7 +4844,7 @@ begin
      end;
      TpvApplicationNativeEventKind.UnicodeCharTyped:begin
       KeyModifiers:=[];
-      KeyCode:=Ord(NativeEvent^.CharVal);
+      KeyCode:=NativeEvent^.CharVal;
       if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
        fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
       end;
@@ -5381,7 +5383,7 @@ procedure TpvApplicationInput.GetRotationMatrix(const aMatrix3x3:pointer);
 begin
 end;
 
-function TpvApplicationInput.GetCurrentEventTime:int64;
+function TpvApplicationInput.GetCurrentEventTime:TpvInt64;
 begin
  result:=fCurrentEventTime;
 end;
@@ -9976,6 +9978,7 @@ end;
 function TpvApplicationWin32WndProc(aHWnd:HWND;uMsg:UINT;wParam:WParam;lParam:LParam):LRESULT; {$ifdef cpu386}stdcall;{$endif}
 var WindowPtr:LONG_PTR;
     Application:TpvApplication;
+    ResultCode:TpvInt64;
 begin
  if aHWnd<>0 then begin
   if uMsg=WM_CREATE then begin
@@ -9987,7 +9990,11 @@ begin
   Application:=nil;
  end;
  if assigned(Application) then begin
-  Application.Win32ProcessEvent(uMsg,wParam,lParam);
+  ResultCode:=Application.Win32ProcessEvent(uMsg,wParam,lParam);
+  if ResultCode>=0 then begin
+   result:=ResultCode;
+   exit;
+  end;
   if assigned(Application.fWin32Callback) then begin
    result:=CallWindowProcW(Application.fWin32Callback,aHWnd,uMsg,wParam,lParam);
    exit;
@@ -10004,7 +10011,7 @@ begin
  end;
 end;
 
-function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
+function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 var NativeEvent:TpvApplicationNativeEvent;
     Rect:TRect;
  procedure TranslateKeyEvent;
@@ -10373,7 +10380,7 @@ var NativeEvent:TpvApplicationNativeEvent;
   end;
  end;
 begin
- result:=0;
+ result:=-1;
  case aMsg of
   WM_SIZE:begin
    if GetClientRect(fWin32Handle,Rect) then begin
@@ -10410,15 +10417,45 @@ begin
    TranslateKeyEvent;
    fNativeEventQueue.Enqueue(NativeEvent);
   end;
-  WM_CHAR:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
-   NativeEvent.CharVal:=WideChar(TpvUInt16(aWParam));
-   if NativeEvent.CharVal=#8 then begin
-   end else if NativeEvent.CharVal=#9 then begin
-   end else if NativeEvent.CharVal=#10 then begin
-   end else if NativeEvent.CharVal=#13 then begin
+  WM_INPUTLANGCHANGE:begin
+
+  end;
+  WM_UNICHAR:begin
+   if aWParam=$ffff{UNICODE_NOCHAR} then begin
+    result:=1;
    end else begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=aWParam;
+    if NativeEvent.CharVal=8 then begin
+    end else if NativeEvent.CharVal=9 then begin
+    end else if NativeEvent.CharVal=10 then begin
+    end else if NativeEvent.CharVal=13 then begin
+    end else begin
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_CHAR:begin
+   if (TpvUInt16(aWParam)>=$d800) and (TpvUInt16(aWParam)<=$dbff) then begin
+    fWin32HighSurrogate:=TpvUInt16(aWParam);
+   end else if ((TpvUInt16(fWin32HighSurrogate)>=$d800) and (TpvUInt16(fWin32HighSurrogate)<=$dbff)) and
+               ((TpvUInt16(aWParam)>=$dc00) and (TpvUInt16(aWParam)<=$dfff)) then begin
+    fWin32LowSurrogate:=TpvUInt16(aWParam);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=(TPUCUUTF32Char(TPUCUUTF32Char(fWin32HighSurrogate) shl 10) or
+                          TPUCUUTF32Char(TPUCUUInt16(fWin32LowSurrogate) and $3ff))+$10000;
     fNativeEventQueue.Enqueue(NativeEvent);
+    fWin32HighSurrogate:=0;
+   end else begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=TPUCUUTF32Char(TpvUInt16(aWParam));
+    if NativeEvent.CharVal=8 then begin
+    end else if NativeEvent.CharVal=9 then begin
+    end else if NativeEvent.CharVal=10 then begin
+    end else if NativeEvent.CharVal=13 then begin
+    end else begin
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
    end;
   end;
   WM_RBUTTONDOWN,
