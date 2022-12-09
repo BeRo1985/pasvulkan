@@ -766,9 +766,9 @@ type EpvApplication=class(Exception)
        MouseMoved,
        MouseEnter,
        MouseLeave,
-       FingerDown,
-       FingerUp,
-       FingerMotion
+       TouchDown,
+       TouchUp,
+       TouchMotion
       );
 
      PpvApplicationNativeEventKind=^TpvApplicationNativeEventKind;
@@ -823,15 +823,16 @@ type EpvApplication=class(Exception)
           MouseButton:TpvApplicationInputPointerButton;
          );
        );
-       TpvApplicationNativeEventKind.FingerDown,
-       TpvApplicationNativeEventKind.FingerUp,
-       TpvApplicationNativeEventKind.FingerMotion:(
-        FingerID:TpvUInt16;
-        FingerX:TpvDouble;
-        FingerY:TpvDouble;
-        FingerDeltaX:TpvDouble;
-        FingerDeltaY:TpvDouble;
-        FingerPressure:TpvDouble;
+       TpvApplicationNativeEventKind.TouchDown,
+       TpvApplicationNativeEventKind.TouchUp,
+       TpvApplicationNativeEventKind.TouchMotion:(
+        TouchID:TpvUInt16;
+        TouchX:TpvDouble;
+        TouchY:TpvDouble;
+        TouchDeltaX:TpvDouble;
+        TouchDeltaY:TpvDouble;
+        TouchPressure:TpvDouble;
+        TouchPen:Boolean;
        );
      end;
 
@@ -1908,6 +1909,11 @@ const Win32ClassName='PasVulkanWindow';
       TOUCHEVENTF_MOVE=$0001;
       TOUCHEVENTF_DOWN=$0002;
       TOUCHEVENTF_UP=$0004;
+      TOUCHEVENTF_INRANGE=$0008;
+      TOUCHEVENTF_PRIMARY=$0010;
+      TOUCHEVENTF_NOCOALESCE=$0020;
+      TOUCHEVENTF_PEN=$0040;
+      TOUCHEVENTF_PALM=$0080;
 
 var Win32WindowClass:TWNDCLASSW=(
      style:0;
@@ -5049,29 +5055,29 @@ begin
        fProcessor.Scrolled(TpvVector2.Create(NativeEvent^.MouseScrollOffsetX,NativeEvent^.MouseScrollOffsetY));
       end;
      end;
-     TpvApplicationNativeEventKind.FingerMotion:begin
+     TpvApplicationNativeEventKind.TouchMotion:begin
       KeyModifiers:=GetKeyModifiers;
-      PointerID:=NativeEvent^.FingerID and $ffff;
+      PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
        fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
-     TpvApplicationNativeEventKind.FingerDown:begin
+     TpvApplicationNativeEventKind.TouchDown:begin
       KeyModifiers:=GetKeyModifiers;
       inc(fPointerDownCount);
-      PointerID:=NativeEvent^.FingerID and $ffff;
+      PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
       Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       fJustTouched:=true;
@@ -5079,18 +5085,18 @@ begin
        fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
-     TpvApplicationNativeEventKind.FingerUp:begin
+     TpvApplicationNativeEventKind.TouchUp:begin
       KeyModifiers:=GetKeyModifiers;
       if fPointerDownCount>0 then begin
        dec(fPointerDownCount);
       end;
-      PointerID:=NativeEvent^.FingerID and $ffff;
+      PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
       Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
@@ -9621,13 +9627,13 @@ begin
      TpvApplicationNativeEventKind.MouseLeave:begin
       fInput.AddEvent(fEvent);
      end;
-     TpvApplicationNativeEventKind.FingerDown:begin
+     TpvApplicationNativeEventKind.TouchDown:begin
       fInput.AddEvent(fEvent);
      end;
-     TpvApplicationNativeEventKind.FingerUp:begin
+     TpvApplicationNativeEventKind.TouchUp:begin
       fInput.AddEvent(fEvent);
      end;
-     TpvApplicationNativeEventKind.FingerMotion:begin
+     TpvApplicationNativeEventKind.TouchMotion:begin
       fInput.AddEvent(fEvent);
      end;
      else begin
@@ -10773,22 +10779,23 @@ begin
              (TpvSizeInt(TouchID)<length(fWin32TouchLastX)) and
              (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
            if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
-            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerDown;
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
             fWin32TouchLastX[TouchID]:=0;
             fWin32TouchLastY[TouchID]:=0;
            end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
-            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerUp;
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
             fWin32TouchIDHashMap.Delete(TouchInput^.dwID);
             fWin32TouchIDFreeList.Enqueue(TouchID);
            end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
-            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerMotion;
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
            end;
-           NativeEvent.FingerID:=TouchID;
-           NativeEvent.FingerX:=x;
-           NativeEvent.FingerY:=y;
-           NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchID];
-           NativeEvent.FingerDeltaY:=y-fWin32TouchLastY[TouchID];
-           NativeEvent.FingerPressure:=1.0; // <= TODO
+           NativeEvent.TouchID:=TouchID;
+           NativeEvent.TouchX:=x;
+           NativeEvent.TouchY:=y;
+           NativeEvent.TouchDeltaX:=x-fWin32TouchLastX[TouchID];
+           NativeEvent.TouchDeltaY:=y-fWin32TouchLastY[TouchID];
+           NativeEvent.TouchPressure:=1.0; // <= TODO
+           NativeEvent.TouchPen:=(TouchInput^.dwFlags and TOUCHEVENTF_PEN)<>0;
            fWin32TouchLastX[TouchID]:=x;
            fWin32TouchLastY[TouchID]:=y;
            fNativeEventQueue.Enqueue(NativeEvent);
