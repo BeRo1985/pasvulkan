@@ -8345,6 +8345,7 @@ begin
  fApplication:=aApplication;
  fAudio:=aAudio;
  fEvent:=CreateEventW(nil,false,false,nil);
+ Priority:=TThreadPriority.tpTimeCritical;
  inherited Create(false);
 end;
 
