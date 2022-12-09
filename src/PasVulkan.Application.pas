@@ -1446,6 +1446,7 @@ type EpvApplication=class(Exception)
        fWin32MouseCoordY:TpvInt32;
        fWin32AudioThread:TPasMPThread;
        fWin32HasFocus:Boolean;
+       fWin32CountJoysticks:TpvInt32;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
 
@@ -8922,6 +8923,7 @@ var Index,Counter,Tries,
  {$if defined(Windows)}
     Msg:TMsg;
  {$ifend}
+    DoUpdateJoysticks:boolean;
 {$ifend}
     OK,Found,DoUpdateMainJoystick:boolean;
 {$if defined(TpvApplicationUpdateJobOnMainThread)}
@@ -8937,6 +8939,10 @@ begin
  ProcessRunnables;
 
  DoUpdateMainJoystick:=false;
+
+{$if not defined(PasVulkanUseSDL2)}
+ DoUpdateJoysticks:=false;
+{$ifend}
 
  if TPasMPInterlocked.CompareExchange(fHasNewWindowTitle,false,true) then begin
 {$if defined(PasVulkanUseSDL2)}
@@ -9312,194 +9318,216 @@ begin
     DispatchMessageW(Msg);
    end;
   {$ifend}
-  while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
-   case fEvent.NativeEvent.Kind of
-    TpvApplicationNativeEventKind.Resize:begin
-     fWidth:=fEvent.NativeEvent.ResizeWidth;
-     fHeight:=fEvent.NativeEvent.ResizeHeight;
-     while fNativeEventQueue.Peek(fEvent.NativeEvent) and (fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize) do begin
+   while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+    case fEvent.NativeEvent.Kind of
+     TpvApplicationNativeEventKind.Resize:begin
       fWidth:=fEvent.NativeEvent.ResizeWidth;
       fHeight:=fEvent.NativeEvent.ResizeHeight;
-      fNativeEventQueue.Dequeue;
-     end;
-     fCurrentWidth:=fWidth;
-     fCurrentHeight:=fHeight;
-     if fGraphicsReady then begin
-      VulkanDebugLn('New surface dimension size detected!');
-{$if true}
-      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                                TAcquireVulkanBackBufferState.RecreateSurface,
-                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+      while fNativeEventQueue.Peek(fEvent.NativeEvent) and (fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize) do begin
+       fWidth:=fEvent.NativeEvent.ResizeWidth;
+       fHeight:=fEvent.NativeEvent.ResizeHeight;
+       fNativeEventQueue.Dequeue;
       end;
-{$else}
-      DeinitializeGraphics;
-      InitializeGraphics;
-{$ifend}
+      fCurrentWidth:=fWidth;
+      fCurrentHeight:=fHeight;
+      if fGraphicsReady then begin
+       VulkanDebugLn('New surface dimension size detected!');
+ {$if true}
+       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                 TAcquireVulkanBackBufferState.RecreateSurface,
+                                                 TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       end;
+ {$else}
+       DeinitializeGraphics;
+       InitializeGraphics;
+ {$ifend}
+      end;
+      if assigned(fScreen) then begin
+       fScreen.Resize(fWidth,fHeight);
+      end;
      end;
-     if assigned(fScreen) then begin
-      fScreen.Resize(fWidth,fHeight);
+     TpvApplicationNativeEventKind.Close:begin
+      if fTerminationOnQuitEvent then begin
+       VulkanWaitIdle;
+       Pause;
+       DeinitializeGraphics;
+       Terminate;
+      end else begin
+       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.Quit;
+       fInput.AddEvent(fEvent);
+      end;
      end;
-    end;
-    TpvApplicationNativeEventKind.Close:begin
-     if fTerminationOnQuitEvent then begin
+     TpvApplicationNativeEventKind.Destroy:begin
+      if not fTerminationOnQuitEvent then begin
+       VulkanWaitIdle;
+       Pause;
+       DeinitializeGraphics;
+       Terminate;
+      end;
+     end;
+     TpvApplicationNativeEventKind.LowMemory:begin
+      LowMemory;
+     end;
+     TpvApplicationNativeEventKind.WillEnterBackground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
+ {$ifend}
+      fActive:=false;
       VulkanWaitIdle;
       Pause;
       DeinitializeGraphics;
-      Terminate;
-     end else begin
-      fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.Quit;
-      fInput.AddEvent(fEvent);
+      fHasLastTime:=false;
      end;
-    end;
-    TpvApplicationNativeEventKind.Destroy:begin
-     if not fTerminationOnQuitEvent then begin
-      VulkanWaitIdle;
-      Pause;
-      DeinitializeGraphics;
-      Terminate;
+     TpvApplicationNativeEventKind.DidEnterBackground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
+ {$ifend}
      end;
-    end;
-    TpvApplicationNativeEventKind.LowMemory:begin
-     LowMemory;
-    end;
-    TpvApplicationNativeEventKind.WillEnterBackground:begin
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
-{$ifend}
-     fActive:=false;
-     VulkanWaitIdle;
-     Pause;
-     DeinitializeGraphics;
-     fHasLastTime:=false;
-    end;
-    TpvApplicationNativeEventKind.DidEnterBackground:begin
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
-{$ifend}
-    end;
-    TpvApplicationNativeEventKind.WillEnterForeground:begin
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
-{$ifend}
-    end;
-    TpvApplicationNativeEventKind.DidEnterForeground:begin
-     InitializeGraphics;
-     Resume;
-     fActive:=true;
-     fHasLastTime:=false;
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
-{$ifend}
-    end;
-    TpvApplicationNativeEventKind.GraphicsReset:begin
-     VulkanWaitIdle;
-     if fActive then begin
-      Pause;
+     TpvApplicationNativeEventKind.WillEnterForeground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
+ {$ifend}
      end;
-     if fGraphicsReady then begin
-      DeinitializeGraphics;
+     TpvApplicationNativeEventKind.DidEnterForeground:begin
       InitializeGraphics;
-     end;
-     if fActive then begin
       Resume;
+      fActive:=true;
+      fHasLastTime:=false;
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
+ {$ifend}
      end;
-     fHasLastTime:=false;
-    end;
-    TpvApplicationNativeEventKind.KeyDown:begin
-     OK:=true;
-     case fEvent.NativeEvent.KeyCode of
-      KEYCODE_F4:begin
-       if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
-        OK:=false;
-        if not fEvent.NativeEvent.KeyRepeat then begin
-         Terminate;
-        end;
-       end;
+     TpvApplicationNativeEventKind.GraphicsReset:begin
+      VulkanWaitIdle;
+      if fActive then begin
+       Pause;
       end;
-      KEYCODE_RETURN:begin
-       if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
-        if not fEvent.NativeEvent.KeyRepeat then begin
+      if fGraphicsReady then begin
+       DeinitializeGraphics;
+       InitializeGraphics;
+      end;
+      if fActive then begin
+       Resume;
+      end;
+      fHasLastTime:=false;
+     end;
+     TpvApplicationNativeEventKind.KeyDown:begin
+      OK:=true;
+      case fEvent.NativeEvent.KeyCode of
+       KEYCODE_F4:begin
+        if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
          OK:=false;
-         fFullScreen:=not fFullScreen;
+         if not fEvent.NativeEvent.KeyRepeat then begin
+          Terminate;
+         end;
+        end;
+       end;
+       KEYCODE_RETURN:begin
+        if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+         if not fEvent.NativeEvent.KeyRepeat then begin
+          OK:=false;
+          fFullScreen:=not fFullScreen;
+         end;
         end;
        end;
       end;
+      if OK then begin
+       if fNativeKeyRepeat then begin
+        if not fEvent.NativeEvent.KeyRepeat then begin
+         fInput.AddEvent(fEvent);
+        end;
+        fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+        fInput.AddEvent(fEvent);
+       end else if not fEvent.NativeEvent.KeyRepeat then begin
+        fInput.AddEvent(fEvent);
+        fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+        fInput.AddEvent(fEvent);
+        fLastPressedKeyEvent:=fEvent;
+        fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
+       end;
+      end;
      end;
-     if OK then begin
-      if fNativeKeyRepeat then begin
+     TpvApplicationNativeEventKind.KeyUp:begin
+      OK:=true;
+      case fEvent.NativeEvent.KeyCode of
+       KEYCODE_F4:begin
+        if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
+         OK:=false;
+        end;
+       end;
+       KEYCODE_RETURN:begin
+        if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+         OK:=false;
+        end;
+       end;
+      end;
+      if OK then begin
        if not fEvent.NativeEvent.KeyRepeat then begin
         fInput.AddEvent(fEvent);
-       end;
-       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
-       fInput.AddEvent(fEvent);
-      end else if not fEvent.NativeEvent.KeyRepeat then begin
-       fInput.AddEvent(fEvent);
-       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
-       fInput.AddEvent(fEvent);
-       fLastPressedKeyEvent:=fEvent;
-       fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
-      end;
-     end;
-    end;
-    TpvApplicationNativeEventKind.KeyUp:begin
-     OK:=true;
-     case fEvent.NativeEvent.KeyCode of
-      KEYCODE_F4:begin
-       if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
-        OK:=false;
-       end;
-      end;
-      KEYCODE_RETURN:begin
-       if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
-        OK:=false;
+        fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
        end;
       end;
      end;
-     if OK then begin
-      if not fEvent.NativeEvent.KeyRepeat then begin
-       fInput.AddEvent(fEvent);
-       fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
-      end;
+     TpvApplicationNativeEventKind.KeyTyped:begin
+      fInput.AddEvent(fEvent);
      end;
-    end;
-    TpvApplicationNativeEventKind.KeyTyped:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.UnicodeCharTyped:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseButtonDown:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseButtonUp:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseWheel:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseMoved:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseEnter:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.MouseLeave:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.FingerDown:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.FingerUp:begin
-     fInput.AddEvent(fEvent);
-    end;
-    TpvApplicationNativeEventKind.FingerMotion:begin
-     fInput.AddEvent(fEvent);
-    end;
-    else begin
+     TpvApplicationNativeEventKind.UnicodeCharTyped:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseButtonDown:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseButtonUp:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseWheel:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseMoved:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseEnter:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseLeave:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.FingerDown:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.FingerUp:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.FingerMotion:begin
+      fInput.AddEvent(fEvent);
+     end;
+     else begin
+     end;
     end;
    end;
-  end;
+{$if defined(Windows)}
+   fWin32CountJoysticks:=joyGetNumDevs;
+   if fWin32CountJoysticks<>fInput.fJoysticks.Count then begin
+    DoUpdateJoysticks:=true;
+   end;
+{$ifend}
+   if DoUpdateJoysticks then begin
+{$if defined(Windows)}
+    if fWin32CountJoysticks<>fInput.fJoysticks.Count then begin
+     fInput.fJoysticks.Clear;
+     for Counter:=0 to fWin32CountJoysticks-1 do begin
+      Joystick:=TpvApplicationJoystick.Create(Counter);
+      try
+       Joystick.Initialize;
+      finally
+       fInput.fJoysticks.Add(Joystick);
+      end;
+     end;
+    end;
+{$ifend}
+    DoUpdateMainJoystick:=true;
+   end;
  {$ifend}
    if DoUpdateMainJoystick then begin
     fInput.fMainJoystick:=nil;
