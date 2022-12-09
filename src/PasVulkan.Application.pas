@@ -1440,6 +1440,7 @@ type EpvApplication=class(Exception)
        fWin32MouseCoordX:TpvInt32;
        fWin32MouseCoordY:TpvInt32;
        fWin32AudioThread:TPasMPThread;
+       fWin32HasFocus:Boolean;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
 
@@ -8677,7 +8678,7 @@ var WindowFlags:DWORD;
 begin
  WindowFlags:=GetWindowLong(fWin32Handle,GWL_STYLE);
  result:=((fCurrentFullScreen=0) or
-          (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and ((Windows.GetActiveWindow=fWin32Handle) or (Windows.GetFocus=fWin32Handle))) or
+          (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and fWin32HasFocus and ((Windows.GetActiveWindow=fWin32Handle) or (Windows.GetFocus=fWin32Handle))) or
            ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
          (((WindowFlags and WS_MINIMIZE)=0) and not IsIconic(fWin32Handle));
 end;
@@ -10205,6 +10206,12 @@ begin
      fNativeEventQueue.Enqueue(NativeEvent);
     end;
    end;
+  end;
+  WM_SETFOCUS:begin
+   fWin32HasFocus:=true;
+  end;
+  WM_KILLFOCUS:begin
+   fWin32HasFocus:=false;
   end;
   else begin
   end;
