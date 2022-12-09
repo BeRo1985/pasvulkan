@@ -10430,7 +10430,6 @@ begin
    end;
   end;
   WM_CHAR:begin
-   writeln(aWParam);
    if (TpvUInt16(aWParam)>=$d800) and (TpvUInt16(aWParam)<=$dbff) then begin
     fWin32HighSurrogate:=TpvUInt16(aWParam);
    end else if ((TpvUInt16(fWin32HighSurrogate)>=$d800) and (TpvUInt16(fWin32HighSurrogate)<=$dbff)) and
