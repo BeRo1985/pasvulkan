@@ -8331,7 +8331,9 @@ type { TpvWin32AudioThread }
       private
        fApplication:TpvApplication;
        fAudio:TpvAudio;
+       fEvent:THandle;
       protected
+       procedure TerminatedSet; override;
        procedure Execute; override;
       public
        constructor Create(aApplication:TpvApplication;aAudio:TpvAudio); reintroduce;
@@ -8342,6 +8344,7 @@ constructor TpvWin32AudioThread.Create(aApplication:TpvApplication;aAudio:TpvAud
 begin
  fApplication:=aApplication;
  fAudio:=aAudio;
+ fEvent:=CreateEventW(nil,false,false,nil);
  inherited Create(false);
 end;
 
@@ -8351,7 +8354,18 @@ begin
   Terminate;
   WaitFor;
  end;
+ if fEvent<>0 then begin
+  CloseHandle(fEvent);
+ end;
  inherited Destroy;
+end;
+
+procedure TpvWin32AudioThread.TerminatedSet;
+begin
+ if fEvent<>0 then begin
+  SetEvent(fEvent);
+ end;
+ inherited TerminatedSet;
 end;
 
 procedure TpvWin32AudioThread.Execute;
@@ -8360,10 +8374,8 @@ var WaveFormat:TWaveFormatEx;
     WaveHandler:array[0..CountBuffers-1] of TWAVEHDR;
     WaveOutHandle:HWAVEOUT;
     BufferCounter:TpvInt32;
-    Event:THandle;
 begin
- Event:=CreateEventW(nil,false,false,nil);
- if Event<>0 then begin
+ if fEvent<>0 then begin
   try
    FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
    WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
@@ -8384,7 +8396,7 @@ begin
    end;
    try
     BufferCounter:=0;
-    if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,DWORD_PTR(Event),0,CALLBACK_EVENT)=MMSYSERR_NOERROR then begin
+    if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,DWORD_PTR(fEvent),0,CALLBACK_EVENT)=MMSYSERR_NOERROR then begin
      try
       while not Terminated do begin
        for BufferCounter:=0 to CountBuffers-1 do begin
@@ -8397,7 +8409,7 @@ begin
          end;
         end;
        end;
-       WaitForSingleObject(Event,10);
+       WaitForSingleObject(fEvent,1000);
       end;
       for BufferCounter:=0 to CountBuffers-1 do begin
        if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)=0 then begin
@@ -8419,7 +8431,6 @@ begin
     end;
    end;
   finally
-   CloseHandle(Event);
   end;
  end;
 end;
