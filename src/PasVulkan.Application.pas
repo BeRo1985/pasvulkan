@@ -8560,7 +8560,6 @@ begin
  fApplication:=aApplication;
  fAudio:=aAudio;
  fEvent:=CreateEventW(nil,false,false,nil);
- Priority:=TThreadPriority.tpTimeCritical;
  inherited Create(false);
 end;
 
@@ -8592,6 +8591,7 @@ var WaveFormat:TWaveFormatEx;
     BufferCounter:TpvInt32;
 begin
  if fEvent<>0 then begin
+  Priority:=TThreadPriority.tpTimeCritical;
   try
    FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
    WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
