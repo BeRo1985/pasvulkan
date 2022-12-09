@@ -1446,7 +1446,7 @@ type EpvApplication=class(Exception)
        fWin32Style:DWORD;
        fWin32Rect:TRect;
        fWin32Title:WideString;
-       fWin32KeyState:TKeyboardState;
+       //fWin32KeyState:TKeyboardState;
        fWin32MouseCoordX:TpvInt32;
        fWin32MouseCoordY:TpvInt32;
        fWin32AudioThread:TPasMPThread;
@@ -1459,6 +1459,7 @@ type EpvApplication=class(Exception)
        fWin32Fullscreen:Boolean;
        fWin32HighSurrogate:TpvUInt32;
        fWin32LowSurrogate:TpvUInt32;
+       fWin32TouchActive:Boolean;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -1866,6 +1867,23 @@ const Win32ClassName='PasVulkanWindow';
       Win32CursorMaskAND:TpvUInt8=$ff;
       Win32CursorMaskXOR:TpvUInt8=$00;
 
+      TWF_FINETOUCH=$00000001;
+      TWF_WANTPALM=$00000002;
+
+      WM_GESTURE=$00000119;
+      WM_TOUCH=$00000240;
+      WM_TOUCHMOVE=$00000240;
+      WM_TOUCHDOWN=$00000241;
+      WM_TOUCHUP=$00000242;
+      WM_POINTERUPDATE=$00000245;
+      WM_POINTERDOWN=$00000246;
+      WM_POINTERUP=$00000247;
+      WM_TABLET_QUERYSYSTEMGESTURESTATUS=$000002cc;
+
+      TOUCHEVENTF_MOVE=$0001;
+      TOUCHEVENTF_DOWN=$0002;
+      TOUCHEVENTF_UP=$0004;
+
 var Win32WindowClass:TWNDCLASSW=(
      style:0;
      lpfnWndProc:nil;
@@ -1878,6 +1896,13 @@ var Win32WindowClass:TWNDCLASSW=(
      lpszMenuName:nil;
      lpszClassName:Win32ClassName;
     );
+
+function RegisterTouchWindow(h:HWND;ulFlags:ULONG):BOOL; stdcall; external 'user32.dll' name 'RegisterTouchWindow';
+function UnregisterTouchWindow(h:HWND):BOOL; stdcall; external 'user32.dll' name 'UnregisterTouchWindow';
+
+function SetPropA(h:HWND;p:LPCSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
+function SetPropW(h:HWND;p:LPWSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
+
 {$ifend}
 
 {$if defined(fpc) and defined(Windows)}
@@ -11115,6 +11140,23 @@ begin
    SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
   end;
 
+  fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH);
+
+  if fWin32TouchActive then begin
+   SetPropA(fWin32Handle,
+            'MicrosoftTabletPenServiceProperty',
+            HANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
+                            $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
+                            $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
+                            $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
+                            $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
+                            $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
+                            $00010000 or   // TABLET_DISABLE_FLICKS
+                            $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
+                            $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
+                            $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
+  end;
+
   fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
 
   fWin32Fullscreen:=false;
@@ -11314,6 +11356,10 @@ begin
 
    if fWin32Icon<>0 then begin
     DestroyIcon(fWin32Icon);
+   end;
+
+   if fWin32TouchActive then begin
+    UnregisterTouchWindow(fWin32Handle);
    end;
 
    if assigned(fWin32Callback) then begin
