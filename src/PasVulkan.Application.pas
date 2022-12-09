@@ -9122,6 +9122,11 @@ begin
     TpvApplicationNativeEventKind.Resize:begin
      fWidth:=fEvent.NativeEvent.ResizeWidth;
      fHeight:=fEvent.NativeEvent.ResizeHeight;
+     while fNativeEventQueue.Peek(fEvent.NativeEvent) and (fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize) do begin
+      fWidth:=fEvent.NativeEvent.ResizeWidth;
+      fHeight:=fEvent.NativeEvent.ResizeHeight;
+      fNativeEventQueue.Dequeue;
+     end;
      fCurrentWidth:=fWidth;
      fCurrentHeight:=fHeight;
      if fGraphicsReady then begin
