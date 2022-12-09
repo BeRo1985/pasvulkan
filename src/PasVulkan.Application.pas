@@ -71,6 +71,7 @@ uses {$if defined(Unix)}
       ctypes,
      {$elseif defined(Windows)}
       Windows,
+      {$if not defined(PasVulkanUseSDL2)}Messages,{$ifend}
       MMSystem,
       Registry,
       {$if not defined(PasVulkanUseSDL2)}MultiMon,{$ifend}
@@ -1433,7 +1434,7 @@ type EpvApplication=class(Exception)
 {$if defined(Windows) and not defined(PasVulkanUseSDL2)}
        fWin32HInstance:HINST;
        fWin32Handle:HWND;
-       fWin32Callback:WNDPROC;
+       fWin32Callback:{$ifdef fpc}WNDPROC{$else}Pointer{$endif};
        fWin32Cursor:HCURSOR;
        fWin32Icon:HICON;
        fWin32KeyRepeat:Boolean;
@@ -8928,7 +8929,7 @@ var Index,Counter,Tries,
 {$else}
  {$if defined(Windows)}
     Msg:TMsg;
-    devMode:TDEVMODEW;
+    devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
     Rect:TRect;
     MonitorInfo:TMonitorInfo;
  {$ifend}
@@ -9618,7 +9619,7 @@ begin
      fWin32OldTop:=Rect.Top;
      fWin32OldWidth:=fWidth;
      fWin32OldHeight:=fHeight;
-     devMode.dmSize:=SizeOf(TDevModeW);
+     devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
      devMode.dmPelsWidth:=fScreenWidth;
      devMode.dmPelsHeight:=fScreenHeight;
      devMode.dmBitsPerPel:=32;
@@ -10305,10 +10306,10 @@ var NativeEvent:TpvApplicationNativeEvent;
   if (Modifiers and MK_MBUTTON)<>0 then begin
    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Middle];
   end;
-  if (Modifiers and MK_XBUTTON1)<>0 then begin
+  if (Modifiers and {$ifdef fpc}MK_XBUTTON1{$else}$20{$endif})<>0 then begin
    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
   end;
-  if (Modifiers and MK_XBUTTON2)<>0 then begin
+  if (Modifiers and {$ifdef fpc}MK_XBUTTON1{$else}$40{$endif})<>0 then begin
    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X2];
   end;
  end;
@@ -10339,7 +10340,7 @@ var NativeEvent:TpvApplicationNativeEvent;
    end;
    WM_XBUTTONDOWN,
    WM_XBUTTONUP:begin
-    if HIWORD(aWParam)=XBUTTON1 then begin
+    if HIWORD(aWParam)={$ifdef fpc}XBUTTON1{$else}TpvUInt16($0001){$endif} then begin
      NativeEvent.MouseButton:=TpvApplicationInputPointerButton.X1;
      NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
     end else begin
