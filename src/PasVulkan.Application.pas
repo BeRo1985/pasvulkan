@@ -9003,6 +9003,22 @@ begin
   end else begin
    SDL_SetRelativeMouseMode(0);
   end;
+{$elseif defined(Windows)}
+  if fCatchMouse then begin
+   SetForegroundWindow(fWin32Handle);
+   Windows.SetFocus(fWin32Handle);
+   SetCapture(fWin32Handle);
+   if GetClientRect(fWin32Handle,Rect) then begin
+    if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
+     ClipCursor(Rect);
+    end;
+   end;
+  end else begin
+   if GetCapture<>0 then begin
+    ReleaseCapture;
+   end;
+   ClipCursor(nil);
+  end;
 {$else}
 {$ifend}
  end;
@@ -10415,6 +10431,13 @@ begin
     NativeEvent.ResizeWidth:=Rect.Right-Rect.Left;
     NativeEvent.ResizeHeight:=Rect.Bottom-Rect.Top;
     fNativeEventQueue.Enqueue(NativeEvent);
+    if fCatchMouse then begin
+     if GetWindowRect(fWin32Handle,Rect) then begin
+      if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
+       ClipCursor(Rect);
+      end;
+     end;
+    end;
    end;
   end;
   WM_CLOSE:begin
