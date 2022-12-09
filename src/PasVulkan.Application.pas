@@ -91,6 +91,7 @@ uses {$if defined(Unix)}
      PasVulkan.Android,
      PasVulkan.Audio,
      PasVulkan.Resources,
+     PasVulkan.Collections,
      PasVulkan.NVIDIA.AfterMath;
 
 const MaxSwapChainImages=3;
@@ -408,6 +409,7 @@ const MaxSwapChainImages=3;
       KEYCODE_BUTTON_START=476;
       KEYCODE_BUTTON_SELECT=477;
       KEYCODE_BUTTON_MODE=478;
+      KEYCODE_TILDE=479;
 
       ORIENTATION_LANDSCAPE=0;
       ORIENTATION_PORTRAIT=1;
@@ -526,6 +528,7 @@ type EpvApplication=class(Exception)
        RMETA,
        NUM,
        CAPS,
+       SCROLL,
        MODE,
        RESERVED,
        CTRL,
@@ -560,9 +563,12 @@ type EpvApplication=class(Exception)
      PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
      TpvApplicationInputPointerButton=
       (
+       None,
        Left,
        Middle,
-       Right
+       Right,
+       X1,
+       X2
       );
 
      PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
@@ -711,11 +717,106 @@ type EpvApplication=class(Exception)
        function GetGameControllerMapping:TpvApplicationRawByteString;
      end;
 
+{$if not defined(PasVulkanUseSDL2)}
+     TpvApplicationNativeEventKind=
+      (
+       None,
+       Resize,
+       Quit,
+       Close,
+       Destroy,
+       DropFile,
+       TextInput,
+       KeyDown,
+       KeyUp,
+       KeyTyped,
+       UnicodeCharTyped,
+       MouseButtonDown,
+       MouseButtonUp,
+       MouseWheel,
+       MouseMoved,
+       MouseEnter,
+       MouseLeave,
+       FingerDown,
+       FingerUp,
+       FingerMotion
+      );
+
+     PpvApplicationNativeEventKind=^TpvApplicationNativeEventKind;
+
+     TpvApplicationNativeEvent=record
+      StringValue:TpvUTF8String;
+      case Kind:TpvApplicationNativeEventKind of
+       TpvApplicationNativeEventKind.None:(
+       );
+       TpvApplicationNativeEventKind.Resize:(
+        ResizeWidth:TpvInt32;
+        ResizeHeight:TpvInt32;
+       );
+       TpvApplicationNativeEventKind.Close:(
+       );
+       TpvApplicationNativeEventKind.Destroy:(
+       );
+       TpvApplicationNativeEventKind.DropFile:(
+       );
+       TpvApplicationNativeEventKind.KeyDown,
+       TpvApplicationNativeEventKind.KeyUp,
+       TpvApplicationNativeEventKind.KeyTyped:(
+        KeyCode:TpvInt32;
+        KeyModifiers:TpvApplicationInputKeyModifiers;
+        KeyRepeat:Boolean;
+       );
+       TpvApplicationNativeEventKind.UnicodeCharTyped:(
+        CharVal:WCHAR;
+       );
+       TpvApplicationNativeEventKind.MouseButtonDown,
+       TpvApplicationNativeEventKind.MouseButtonUp,
+       TpvApplicationNativeEventKind.MouseWheel,
+       TpvApplicationNativeEventKind.MouseMoved,
+       TpvApplicationNativeEventKind.MouseEnter,
+       TpvApplicationNativeEventKind.MouseLeave:(
+        MouseCoordX:TpvInt32;
+        MouseCoordY:TpvInt32;
+        MouseDeltaX:TpvInt32;
+        MouseDeltaY:TpvInt32;
+        MouseKeyModifiers:TpvApplicationInputKeyModifiers;
+        MouseButtons:TpvApplicationInputPointerButtons;
+        case TpvApplicationNativeEventKind of
+         TpvApplicationNativeEventKind.MouseWheel:(
+          MouseScrollOffsetX:TpvDouble;
+          MouseScrollOffsetY:TpvDouble;
+         );
+         TpvApplicationNativeEventKind.MouseButtonDown,
+         TpvApplicationNativeEventKind.MouseButtonUp,
+         TpvApplicationNativeEventKind.MouseMoved,
+         TpvApplicationNativeEventKind.MouseEnter,
+         TpvApplicationNativeEventKind.MouseLeave:(
+          MouseButton:TpvApplicationInputPointerButton;
+         );
+       );
+       TpvApplicationNativeEventKind.FingerDown,
+       TpvApplicationNativeEventKind.FingerUp,
+       TpvApplicationNativeEventKind.FingerMotion:(
+        FingerID:TpvUInt16;
+        FingerX:TpvDouble;
+        FingerY:TpvDouble;
+        FingerDeltaX:TpvDouble;
+        FingerDeltaY:TpvDouble;
+        FingerPressure:TpvDouble;
+       );
+     end;
+
+     PpvApplicationNativeEvent=^TpvApplicationNativeEvent;
+
+     TpvApplicationNativeEventQueue=TpvDynamicQueue<TpvApplicationNativeEvent>;
+
+{$ifend}
+
      TpvApplicationEvent=record
 {$if defined(PasVulkanUseSDL2)}
       SDLEvent:TSDL_Event;
 {$else}
-      Dummy:TpvUInt32;
+      NativeEvent:TpvApplicationNativeEvent;
 {$ifend}
       StringData:TpvUTF8String;
      end;
@@ -1313,6 +1414,30 @@ type EpvApplication=class(Exception)
 
        fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
 
+{$if not defined(PasVulkanUseSDL2)}
+       fNativeEventQueue:TpvApplicationNativeEventQueue;
+{$ifend}
+
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+       fWin32HInstance:HINST;
+       fWin32Handle:HWND;
+       fWin32Callback:WNDPROC;
+       fWin32Cursor:HCURSOR;
+       fWin32Icon:HICON;
+       fWin32KeyRepeat:Boolean;
+       fWin32MouseInside:Boolean;
+       fWin32WindowClass:ATOM;
+       fWin32Style:DWORD;
+       fWin32Rect:TRect;
+       fWin32Title:WideString;
+       fWin32KeyState:TKeyboardState;
+       fWin32MouseCoordX:TpvInt32;
+       fWin32MouseCoordY:TpvInt32;
+
+       function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
+
+{$ifend}
+
        procedure SetTitle(const aTitle:TpvUTF8String);
 
        procedure SetWindowTitle(const aWindowTitle:TpvUTF8String);
@@ -1706,6 +1831,23 @@ implementation
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
+
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+const Win32ClassName='PasVulkanWindow';
+
+var Win32WindowClass:TWNDCLASSW=(
+     style:0;
+     lpfnWndProc:nil;
+     cbClsExtra:0;
+     cbWndExtra:0;
+     hInstance:0;
+     hIcon:0;
+     hCursor:0;
+     hbrBackground:0;
+     lpszMenuName:nil;
+     lpszClassName:Win32ClassName;
+    );
+{$ifend}
 
 {$if defined(fpc) and defined(Windows)}
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
@@ -3157,7 +3299,7 @@ begin
  fKeyCodeNames[KEYCODE_SYSREQ]:='SYSREQ';
  fKeyCodeNames[KEYCODE_MENU]:='MENU';
  fKeyCodeNames[KEYCODE_POWER]:='POWER';
- fKeyCodeNames[KEYCODE_APPLICATION]:='Engine';
+ fKeyCodeNames[KEYCODE_APPLICATION]:='APPLICATION';
  fKeyCodeNames[KEYCODE_SELECT]:='SELECT';
  fKeyCodeNames[KEYCODE_STOP]:='STOP';
  fKeyCodeNames[KEYCODE_AGAIN]:='AGAIN';
@@ -4436,8 +4578,278 @@ begin
  end;
 end;
 {$else}
+var Index,PointerID,KeyCode,Position:TpvInt32;
+    KeyModifiers:TpvApplicationInputKeyModifiers;
+    Event:PpvApplicationEvent;
+    NativeEvent:PpvApplicationNativeEvent;
+    OK:boolean;
 begin
- fEventCount:=0;
+ fCriticalSection.Acquire;
+ try
+  fJustTouched:=false;
+  if fEventCount>0 then begin
+   for Index:=0 to fEventCount-1 do begin
+    Event:=@fEvents[Index];
+    NativeEvent:=@Event^.NativeEvent;
+    fCurrentEventTime:=fEventTimes[fEventCount];
+    case NativeEvent^.Kind of
+     TpvApplicationNativeEventKind.Quit:begin
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
+      end;
+     end;
+     TpvApplicationNativeEventKind.DropFile:begin
+      try
+       if (not pvApplication.DragDropFileEvent(Event^.StringData)) and assigned(fProcessor) then begin
+        fProcessor.DragDropFileEvent(Event^.StringData);
+       end;
+      finally
+       Event^.StringData:='';
+      end;
+     end;
+     TpvApplicationNativeEventKind.KeyDown,
+     TpvApplicationNativeEventKind.KeyUp,
+     TpvApplicationNativeEventKind.KeyTyped:begin
+      KeyCode:=NativeEvent^.KeyCode;
+      KeyModifiers:=NativeEvent^.KeyModifiers;
+      case NativeEvent^.Kind of
+       TpvApplicationNativeEventKind.KeyDown:begin
+        fKeyDown[KeyCode and $ffff]:=true;
+        inc(fKeyDownCount);
+        fJustKeyDown[KeyCode and $ffff]:=true;
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers));
+        end;
+       end;
+       TpvApplicationNativeEventKind.KeyUp:begin
+        fKeyDown[KeyCode and $ffff]:=false;
+        if fKeyDownCount>0 then begin
+         dec(fKeyDownCount);
+        end;
+        fJustKeyDown[KeyCode and $ffff]:=false;
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers));
+        end;
+       end;
+       TpvApplicationNativeEventKind.KeyTyped:begin
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers));
+        end;
+       end;
+       else begin
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.UnicodeCharTyped:begin
+      KeyModifiers:=[];
+      KeyCode:=Ord(NativeEvent^.CharVal);
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.TextInput:begin
+      KeyModifiers:=[];
+      Position:=0;
+      while Position<length(NativeEvent^.StringValue) do begin
+       KeyCode:=PUCUUTF8PtrCodeUnitGetCharAndIncFallback(PAnsiChar(TpvPointer(@NativeEvent^.StringValue[1])),length(NativeEvent^.StringValue),Position);
+       case KeyCode of
+        0:begin
+         break;
+        end;
+        else begin
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+         end;
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseMoved:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      fMouseDeltaX:=NativeEvent^.MouseDeltaX;
+      fMouseDeltaY:=NativeEvent^.MouseDeltaY;
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
+                                                                            TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),
+                                                                            TpvVector2.Create(NativeEvent^.MouseDeltaX,NativeEvent^.MouseDeltaY),
+                                                                            ord(fMouseDown<>[]) and 1,
+                                                                            0,
+                                                                            fMouseDown,
+                                                                            KeyModifiers));
+      if assigned(fProcessor) and not OK then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
+                                                                      TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),
+                                                                      TpvVector2.Create(NativeEvent^.MouseDeltaX,NativeEvent^.MouseDeltaY),
+                                                                      ord(fMouseDown<>[]) and 1,
+                                                                      0,
+                                                                      fMouseDown,
+                                                                      KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseButtonDown:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=NativeEvent^.MouseCoordX-fMouseX;
+      fMouseDeltaY:=NativeEvent^.MouseCoordY-fMouseY;}
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      case NativeEvent^.MouseButton of
+       TpvApplicationInputPointerButton.Left:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Left);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Right);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X1:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.X1);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.X1);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X2:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.X2);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.X2);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers));
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseButtonUp:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=NativeEvent^.MouseCoordX-fMouseX;
+      fMouseDeltaY:=NativeEvent^.MouseCoordY-fMouseY;}
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      case NativeEvent^.MouseButton of
+       TpvApplicationInputPointerButton.Left:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Left);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Right);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X1:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.X1);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.X1);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X2:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.X2);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.X2);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers));
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseWheel:begin
+      if (not pvApplication.Scrolled(TpvVector2.Create(NativeEvent^.MouseScrollOffsetX,NativeEvent^.MouseScrollOffsetY))) and assigned(fProcessor) then begin
+       fProcessor.Scrolled(TpvVector2.Create(NativeEvent^.MouseScrollOffsetX,NativeEvent^.MouseScrollOffsetY));
+      end;
+     end;
+     TpvApplicationNativeEventKind.FingerMotion:begin
+      KeyModifiers:=GetKeyModifiers;
+      PointerID:=NativeEvent^.FingerID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.FingerDown:begin
+      KeyModifiers:=GetKeyModifiers;
+      inc(fPointerDownCount);
+      PointerID:=NativeEvent^.FingerID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
+      fJustTouched:=true;
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.FingerUp:begin
+      KeyModifiers:=GetKeyModifiers;
+      if fPointerDownCount>0 then begin
+       dec(fPointerDownCount);
+      end;
+      PointerID:=NativeEvent^.FingerID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.FingerX*pvApplication.fWidth;
+      fPointerY[PointerID]:=NativeEvent^.FingerY*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=NativeEvent^.FingerPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.FingerDeltaX*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=NativeEvent^.FingerDeltaY*pvApplication.fWidth;
+      Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     else begin
+     end;
+    end;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+  fEventCount:=0;
+ end;
 end;
 {$ifend}
 
@@ -4678,6 +5090,56 @@ begin
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 {$else}
  result:=[];
+{$if defined(Windows)}
+ if HIWORD(GetAsyncKeyState(VK_MENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LMENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RMENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.RALT];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_CONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LCONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RCONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.RCTRL];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_SHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LSHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RSHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_LWIN))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RWIN))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.RMETA];
+ end;
+
+ if (GetAsyncKeyState(VK_CAPITAL) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CAPS];
+ end;
+
+ if (GetAsyncKeyState(VK_NUMLOCK) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.NUM];
+ end;
+
+ if (GetAsyncKeyState(VK_SCROLL) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SCROLL];
+ end;
+{$ifend}
 {$ifend}
 end;
 
@@ -5572,6 +6034,10 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
 {$ifend}
 
+{$if not defined(PasVulkanUseSDL2)}
+ fNativeEventQueue.Initialize;
+{$ifend}
+
 {fVulkanCountCommandQueues:=0;
 
  fVulkanCommandPools:=nil;
@@ -5666,7 +6132,11 @@ end;
 destructor TpvApplication.Destroy;
 begin
 
- FreeAndNil(fLifecycleListenerList);
+{$if not defined(PasVulkanUseSDL2)}
+ fNativeEventQueue.Finalize;
+{$ifend}
+
+FreeAndNil(fLifecycleListenerList);
  FreeAndNil(fLifecycleListenerListCriticalSection);
 
  fRunnableList:=nil;
@@ -7933,6 +8403,10 @@ begin
  end;
  result:=fAndroidReady and not fAndroidQuit;
 end;
+{$elseif defined(Windows)}
+begin
+ result:=true;
+end;
 {$else}
 begin
  result:=false;
@@ -7951,6 +8425,9 @@ var Index,Counter,Tries,
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
 {$else}
+ {$if defined(Windows)}
+    Msg:TMsg;
+ {$ifend}
 {$ifend}
     OK,Found,DoUpdateMainJoystick:boolean;
 {$if defined(TpvApplicationUpdateJobOnMainThread)}
@@ -8332,6 +8809,148 @@ begin
     end;
    end;
  {$else}
+  {$if defined(Windows)}
+   while PeekMessageW(Msg,0,0,0,PM_REMOVE) do begin
+    TranslateMessage(Msg);
+    DispatchMessageW(Msg);
+   end;
+  {$ifend}
+  while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+   case fEvent.NativeEvent.Kind of
+    TpvApplicationNativeEventKind.Resize:begin
+     fWidth:=fEvent.NativeEvent.ResizeWidth;
+     fHeight:=fEvent.NativeEvent.ResizeHeight;
+     fCurrentWidth:=fWidth;
+     fCurrentHeight:=fHeight;
+     if fGraphicsReady then begin
+      VulkanDebugLn('New surface dimension size detected!');
+{$if true}
+      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                TAcquireVulkanBackBufferState.RecreateSurface,
+                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+      end;
+{$else}
+      DeinitializeGraphics;
+      InitializeGraphics;
+{$ifend}
+     end;
+     if assigned(fScreen) then begin
+      fScreen.Resize(fWidth,fHeight);
+     end;
+    end;
+    TpvApplicationNativeEventKind.Close:begin
+     if fTerminationOnQuitEvent then begin
+      VulkanWaitIdle;
+      Pause;
+      DeinitializeGraphics;
+      Terminate;
+     end else begin
+      fInput.AddEvent(fEvent);
+     end;
+    end;
+    TpvApplicationNativeEventKind.Destroy:begin
+     if not fTerminationOnQuitEvent then begin
+      VulkanWaitIdle;
+      Pause;
+      DeinitializeGraphics;
+      Terminate;
+     end;
+    end;
+    TpvApplicationNativeEventKind.KeyDown:begin
+     OK:=true;
+     case fEvent.NativeEvent.KeyCode of
+      KEYCODE_F4:begin
+       if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
+        OK:=false;
+        if not fEvent.NativeEvent.KeyRepeat then begin
+         Terminate;
+        end;
+       end;
+      end;
+      KEYCODE_RETURN:begin
+       if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+        if not fEvent.NativeEvent.KeyRepeat then begin
+         OK:=false;
+         fFullScreen:=not fFullScreen;
+        end;
+       end;
+      end;
+     end;
+     if OK then begin
+      if fNativeKeyRepeat then begin
+       if fEvent.NativeEvent.KeyRepeat then begin
+        fInput.AddEvent(fEvent);
+       end;
+       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+       fInput.AddEvent(fEvent);
+      end else if not fEvent.NativeEvent.KeyRepeat then begin
+       fInput.AddEvent(fEvent);
+       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+       fInput.AddEvent(fEvent);
+       fLastPressedKeyEvent:=fEvent;
+       fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
+      end;
+     end;
+    end;
+    TpvApplicationNativeEventKind.KeyUp:begin
+     OK:=true;
+     case fEvent.NativeEvent.KeyCode of
+      KEYCODE_F4:begin
+       if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
+        OK:=false;
+       end;
+      end;
+      KEYCODE_RETURN:begin
+       if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+        OK:=false;
+       end;
+      end;
+     end;
+     if OK then begin
+      if not fEvent.NativeEvent.KeyRepeat then begin
+       fInput.AddEvent(fEvent);
+       fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
+      end;
+     end;
+    end;
+    TpvApplicationNativeEventKind.KeyTyped:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.UnicodeCharTyped:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseButtonDown:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseButtonUp:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseWheel:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseMoved:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseEnter:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.MouseLeave:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.FingerDown:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.FingerUp:begin
+     fInput.AddEvent(fEvent);
+    end;
+    TpvApplicationNativeEventKind.FingerMotion:begin
+     fInput.AddEvent(fEvent);
+    end;
+    else begin
+    end;
+   end;
+  end;
  {$ifend}
    if DoUpdateMainJoystick then begin
     fInput.fMainJoystick:=nil;
@@ -8710,12 +9329,505 @@ begin
 
 end;
 
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+function TpvApplicationWin32WndProc(aHWnd:HWND;uMsg:UINT;wParam:WParam;lParam:LParam):LRESULT; {$ifdef cpu386}stdcall;{$endif}
+var WindowPtr:LONG_PTR;
+    Application:TpvApplication;
+begin
+ if aHWnd<>0 then begin
+  if uMsg=WM_CREATE then begin
+   WindowPtr:=LONG_PTR(PCREATESTRUCT(lParam)^.lpCreateParams);
+   SetWindowLongPtrW(aHWnd,GWLP_USERDATA,WindowPtr);
+  end;
+  Application:=Pointer(LONG_PTR(GetWindowLongPtrW(aHWnd,GWLP_USERDATA)));
+ end else begin
+  Application:=nil;
+ end;
+ if assigned(Application) then begin
+  Application.Win32ProcessEvent(uMsg,wParam,lParam);
+  if assigned(Application.fWin32Callback) then begin
+   result:=CallWindowProcW(Application.fWin32Callback,aHWnd,uMsg,wParam,lParam);
+   exit;
+  end;
+ end;
+ if uMsg=WM_CLOSE then begin
+  // We don't forward the WM_CLOSE message to prevent the OS from automatically destroying the window
+  result:=0;
+ end else if (uMsg=WM_SYSCOMMAND) and (wParam=SC_KEYMENU) then begin
+  // Don't forward the menu system command, so that pressing ALT or F10 doesn't steal the focus
+  result:=0;
+ end else begin
+  result:=DefWindowProcW(aHWnd,uMsg,wParam,lParam);
+ end;
+end;
+
+function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
+var NativeEvent:TpvApplicationNativeEvent;
+    Rect:TRect;
+ procedure TranslateKeyEvent;
+ var VirtualKey:WPARAM;
+     ScanCode:DWORD;
+     Extended:Boolean;
+ begin
+
+  NativeEvent.KeyRepeat:=(HIWORD(aLParam) and KF_REPEAT)<>0;
+
+  VirtualKey:=aWParam;
+  ScanCode:=(aLParam and $00ff0000) shr 16;
+  Extended:=(aLParam and $01000000)<>0;
+
+  case VirtualKey of
+   VK_SHIFT:begin
+    VirtualKey:=MapVirtualKey(ScanCode,MAPVK_VSC_TO_VK_EX);
+   end;
+   VK_CONTROL:begin
+    if Extended then begin
+     VirtualKey:=VK_RCONTROL;
+    end else begin
+     VirtualKey:=VK_LCONTROL;
+    end;
+   end;
+   VK_MENU:begin
+    if Extended then begin
+     VirtualKey:=VK_RMENU;
+    end else begin
+     VirtualKey:=VK_LMENU;
+    end;
+   end;
+  end;
+
+  case VirtualKey of
+   VK_F1:begin
+    NativeEvent.KeyCode:=KEYCODE_F1;
+   end;
+   VK_F2:begin
+    NativeEvent.KeyCode:=KEYCODE_F2;
+   end;
+   VK_F3:begin
+    NativeEvent.KeyCode:=KEYCODE_F3;
+   end;
+   VK_F4:begin
+    NativeEvent.KeyCode:=KEYCODE_F4;
+   end;
+   VK_F5:begin
+    NativeEvent.KeyCode:=KEYCODE_F5;
+   end;
+   VK_F6:begin
+    NativeEvent.KeyCode:=KEYCODE_F6;
+   end;
+   VK_F7:begin
+    NativeEvent.KeyCode:=KEYCODE_F7;
+   end;
+   VK_F8:begin
+    NativeEvent.KeyCode:=KEYCODE_F8;
+   end;
+   VK_F9:begin
+    NativeEvent.KeyCode:=KEYCODE_F9;
+   end;
+   VK_F10:begin
+    NativeEvent.KeyCode:=KEYCODE_F10;
+   end;
+   VK_F11:begin
+    NativeEvent.KeyCode:=KEYCODE_F11;
+   end;
+   VK_F12:begin
+    NativeEvent.KeyCode:=KEYCODE_F12;
+   end;
+   VK_F13:begin
+    NativeEvent.KeyCode:=KEYCODE_F13;
+   end;
+   VK_F14:begin
+    NativeEvent.KeyCode:=KEYCODE_F14;
+   end;
+   VK_F15:begin
+    NativeEvent.KeyCode:=KEYCODE_F15;
+   end;
+   ord('A')..ord('Z'):begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('A'))+KEYCODE_A;
+   end;
+   ord('0')..ord('9'):begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_0;
+   end;
+   VK_ESCAPE:begin
+    NativeEvent.KeyCode:=KEYCODE_ESCAPE;
+   end;
+   VK_LCONTROL:begin
+    NativeEvent.KeyCode:=KEYCODE_LCTRL;
+   end;
+   VK_LSHIFT:begin
+    NativeEvent.KeyCode:=KEYCODE_LSHIFT;
+   end;
+   VK_LMENU:begin
+    NativeEvent.KeyCode:=KEYCODE_LALT;
+   end;
+   VK_LWIN:begin
+    NativeEvent.KeyCode:=KEYCODE_LGUI;
+   end;
+   VK_RCONTROL:begin
+    NativeEvent.KeyCode:=KEYCODE_RCTRL;
+   end;
+   VK_RSHIFT:begin
+    NativeEvent.KeyCode:=KEYCODE_RSHIFT;
+   end;
+   VK_RMENU:begin
+    NativeEvent.KeyCode:=KEYCODE_RALT;
+   end;
+   VK_RWIN:begin
+    NativeEvent.KeyCode:=KEYCODE_RGUI;
+   end;
+   VK_APPS:begin
+    NativeEvent.KeyCode:=KEYCODE_APPLICATION;
+   end;
+   VK_OEM_4:begin
+    NativeEvent.KeyCode:=KEYCODE_LEFTBRACKET;
+   end;
+   VK_OEM_6:begin
+    NativeEvent.KeyCode:=KEYCODE_RIGHTBRACKET;
+   end;
+   VK_OEM_1:begin
+    NativeEvent.KeyCode:=KEYCODE_SEMICOLON;
+   end;
+   VK_OEM_COMMA:begin
+    NativeEvent.KeyCode:=KEYCODE_COMMA;
+   end;
+   VK_OEM_PERIOD:begin
+    NativeEvent.KeyCode:=KEYCODE_PERIOD;
+   end;
+   VK_OEM_7:begin
+    NativeEvent.KeyCode:=KEYCODE_QUOTE;
+   end;
+   VK_OEM_2:begin
+    NativeEvent.KeyCode:=KEYCODE_SLASH;
+   end;
+   VK_OEM_5:begin
+    NativeEvent.KeyCode:=KEYCODE_BACKSLASH;
+   end;
+   VK_OEM_3:begin
+    NativeEvent.KeyCode:=KEYCODE_TILDE;
+   end;
+   VK_OEM_PLUS:begin
+    NativeEvent.KeyCode:=KEYCODE_EQUALS;
+   end;
+   VK_OEM_MINUS:begin
+    NativeEvent.KeyCode:=KEYCODE_MINUS;
+   end;
+   VK_SPACE:begin
+    NativeEvent.KeyCode:=KEYCODE_SPACE;
+   end;
+   VK_RETURN:begin
+    NativeEvent.KeyCode:=KEYCODE_RETURN;
+   end;
+   VK_ADD:begin
+    NativeEvent.KeyCode:=KEYCODE_PLUS;
+   end;
+   VK_SUBTRACT:begin
+    NativeEvent.KeyCode:=KEYCODE_MINUS;
+   end;
+   VK_MULTIPLY:begin
+    NativeEvent.KeyCode:=KEYCODE_ASTERISK;
+   end;
+   VK_DIVIDE:begin
+    NativeEvent.KeyCode:=KEYCODE_SLASH;
+   end;
+   VK_NUMPAD0..VK_NUMPAD8:begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_KP0;
+   end;
+   VK_BACK:begin
+    NativeEvent.KeyCode:=KEYCODE_BACK;
+   end;
+   VK_TAB:begin
+    NativeEvent.KeyCode:=KEYCODE_TAB;
+   end;
+   VK_PRIOR:begin
+    NativeEvent.KeyCode:=KEYCODE_PAGEUP;
+   end;
+   VK_NEXT:begin
+    NativeEvent.KeyCode:=KEYCODE_PAGEDOWN;
+   end;
+   VK_END:begin
+    NativeEvent.KeyCode:=KEYCODE_END;
+   end;
+   VK_HOME:begin
+    NativeEvent.KeyCode:=KEYCODE_HOME;
+   end;
+   VK_INSERT:begin
+    NativeEvent.KeyCode:=KEYCODE_INSERT;
+   end;
+   VK_DELETE:begin
+    NativeEvent.KeyCode:=KEYCODE_DELETE;
+   end;
+   VK_LEFT:begin
+    NativeEvent.KeyCode:=KEYCODE_LEFT;
+   end;
+   VK_RIGHT:begin
+    NativeEvent.KeyCode:=KEYCODE_RIGHT;
+   end;
+   VK_UP:begin
+    NativeEvent.KeyCode:=KEYCODE_UP;
+   end;
+   VK_DOWN:begin
+    NativeEvent.KeyCode:=KEYCODE_DOWN;
+   end;
+   VK_PAUSE:begin
+    NativeEvent.KeyCode:=KEYCODE_PAUSE;
+   end;
+   else begin
+    NativeEvent.KeyCode:=KEYCODE_UNKNOWN;
+   end;
+  end;
+
+  NativeEvent.KeyModifiers:=[];
+
+{ FillChar(fWin32KeyState,SizeOf(fWin32KeyState),#0);
+
+  if GetKeyboardState(fWin32KeyState) then} begin
+
+   if HIWORD(GetAsyncKeyState(VK_MENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LMENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RMENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.RALT];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_CONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LCONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RCONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.RCTRL];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_SHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LSHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RSHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_LWIN))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RWIN))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.RMETA];
+   end;
+
+   if (GetAsyncKeyState(VK_CAPITAL) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CAPS];
+   end;
+
+   if (GetAsyncKeyState(VK_NUMLOCK) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.NUM];
+   end;
+
+   if (GetAsyncKeyState(VK_SCROLL) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SCROLL];
+   end;
+
+  end;
+
+ end;
+ procedure TranslateMouseCoord;
+ begin
+  NativeEvent.MouseDeltaX:=LOWORD(aLParam)-fWin32MouseCoordX;
+  NativeEvent.MouseDeltaY:=HIWORD(aLParam)-fWin32MouseCoordY;
+  NativeEvent.MouseCoordX:=LOWORD(aLParam);
+  NativeEvent.MouseCoordY:=HIWORD(aLParam);
+  fWin32MouseCoordX:=NativeEvent.MouseCoordX;
+  fWin32MouseCoordY:=NativeEvent.MouseCoordY;
+ end;
+ procedure TranslateMouseEventModifier;
+ var Modifiers:TpvUInt32;
+ begin
+  Modifiers:=LOWORD(aWParam);
+  NativeEvent.MouseKeyModifiers:=[];
+  if (Modifiers and MK_CONTROL)<>0 then begin
+   NativeEvent.MouseKeyModifiers:=NativeEvent.MouseKeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL,TpvApplicationInputKeyModifier.RCTRL];
+  end;
+  if (Modifiers and MK_SHIFT)<>0 then begin
+   NativeEvent.MouseKeyModifiers:=NativeEvent.MouseKeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+  end;
+  if (Modifiers and MK_LBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Left];
+  end;
+  if (Modifiers and MK_RBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Right];
+  end;
+  if (Modifiers and MK_MBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Middle];
+  end;
+  if (Modifiers and MK_XBUTTON1)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
+  end;
+  if (Modifiers and MK_XBUTTON2)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X2];
+  end;
+ end;
+ procedure TranslateMouseEvent;
+ begin
+  NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+  NativeEvent.MouseButtons:=[];
+  TranslateMouseCoord;
+  TranslateMouseEventModifier;
+ end;
+ procedure TranslateMouseButtonEvent;
+ begin
+  case aMsg of
+   WM_LBUTTONDOWN,
+   WM_LBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Right;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Left];
+   end;
+   WM_RBUTTONDOWN,
+   WM_RBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Right;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Right];
+   end;
+   WM_MBUTTONDOWN,
+   WM_MBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Middle;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Middle];
+   end;
+   WM_XBUTTONDOWN,
+   WM_XBUTTONUP:begin
+    if HIWORD(aWParam)=XBUTTON1 then begin
+     NativeEvent.MouseButton:=TpvApplicationInputPointerButton.X1;
+     NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
+    end else begin
+     NativeEvent.MouseButton:=TpvApplicationInputPointerButton.X2;
+     NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X2];
+    end;
+   end;
+   else begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+   end;
+  end;
+  NativeEvent.MouseDeltaX:=LOWORD(aLParam)-fWin32MouseCoordX;
+  NativeEvent.MouseDeltaY:=HIWORD(aLParam)-fWin32MouseCoordY;
+  NativeEvent.MouseCoordX:=LOWORD(aLParam);
+  NativeEvent.MouseCoordY:=HIWORD(aLParam);
+  fWin32MouseCoordX:=NativeEvent.MouseCoordX;
+  fWin32MouseCoordY:=NativeEvent.MouseCoordY;
+ end;
+ procedure TranslateMouseWheelEvent;
+ begin
+  if aMsg=WM_MOUSEWHEEL then begin
+   NativeEvent.MouseScrollOffsetX:=TpvInt16(HIWORD(aWParam))/WHEEL_DELTA;
+  end else begin
+   NativeEvent.MouseScrollOffsetX:=0.0;
+  end;
+  if aMsg=WM_MOUSEHWHEEL then begin
+   NativeEvent.MouseScrollOffsetY:=TpvInt16(HIWORD(aWParam))/WHEEL_DELTA;
+  end else begin
+   NativeEvent.MouseScrollOffsetY:=0.0;
+  end;
+ end;
+begin
+ result:=0;
+ case aMsg of
+  WM_SIZE:begin
+   if GetClientRect(fWin32Handle,Rect) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.Resize;
+    NativeEvent.ResizeWidth:=Rect.Right-Rect.Left;
+    NativeEvent.ResizeHeight:=Rect.Bottom-Rect.Top;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_CLOSE:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.Close;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_DESTROY:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.Destroy;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_SETCURSOR:begin
+   if LOWORD(aLParam)=HTCLIENT then begin
+    SetCursor(fWin32Cursor);
+   end;
+  end;
+  WM_KEYDOWN,
+  WM_SYSKEYDOWN:begin
+   if fWin32KeyRepeat or ((HIWORD(aLParam) and KF_REPEAT)=0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyDown;
+    TranslateKeyEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_KEYUP,
+  WM_SYSKEYUP:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyUp;
+   TranslateKeyEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_CHAR:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+   NativeEvent.CharVal:=WideChar(TpvUInt16(aWParam));
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_RBUTTONDOWN,
+  WM_LBUTTONDOWN,
+  WM_MBUTTONDOWN,
+  WM_XBUTTONDOWN:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonDown;
+   TranslateMouseEvent;
+   TranslateMouseButtonEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_RBUTTONUP,
+  WM_LBUTTONUP,
+  WM_MBUTTONUP,
+  WM_XBUTTONUP:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonUp;
+   TranslateMouseEvent;
+   TranslateMouseButtonEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_MOUSEMOVE:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseMoved;
+   NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+   TranslateMouseEvent;
+   if not fWin32MouseInside then begin
+    fWin32MouseInside:=true;
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseEnter;
+   end;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_MOUSELEAVE:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseLeave;
+   TranslateMouseEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+   fWin32MouseInside:=false;
+  end;
+  WM_MOUSEWHEEL,
+  WM_MOUSEHWHEEL:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseWheel;
+   TranslateMouseEvent;
+   TranslateMouseWheelEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  else begin
+  end;
+ end;
+end;
+
+{$ifend}
+
 procedure TpvApplication.Run;
 var Index:TpvInt32;
     ExceptionString:String;
 {$if defined(PasVulkanUseSDL2)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
+{$elseif defined(Windows)}
+    ScreenDC:HDC;
 {$ifend}
 {$if defined(Android)}
     AndroidEnv:PJNIEnv;
@@ -8988,6 +10100,16 @@ begin
    fScreenWidth:=-1;
    fScreenHeight:=-1;
   end;
+{$elseif defined(Windows)}
+  ScreenDC:=GetDC(0);
+  try
+{  fScreenWidth:=GetSystemMetrics(SM_CXSCREEN);
+   fScreenHeight:=GetSystemMetrics(SM_CYSCREEN);}
+   fScreenWidth:=GetDeviceCaps(ScreenDC,HORZRES);
+   fScreenHeight:=GetDeviceCaps(ScreenDC,VERTRES);
+  finally
+   ReleaseDC(0,ScreenDC);
+  end;
 {$else}
   fScreenWidth:=-1;
   fScreenHeight:=-1;
@@ -9056,6 +10178,61 @@ begin
    break;
   until false;
 {$ifend}
+{$elseif defined(Windows)}
+
+  fWin32HInstance:=GetModuleHandleW(nil);
+
+  Win32WindowClass.lpfnWndProc:=@TpvApplicationWin32WndProc;
+  Win32WindowClass.hInstance:=fWin32HInstance;
+  Win32WindowClass.hIcon:=LoadIcon(0,IDI_APPLICATION);
+
+  fWin32WindowClass:=RegisterClassW(Win32WindowClass);
+  if fWin32WindowClass=0 then begin
+   raise EpvApplication.Create('Windows','Failed to register the window class.',LOG_ERROR);
+  end;
+
+  fWin32Style:=WS_VISIBLE;
+  if fFullscreen then begin
+   fWin32Style:=fWin32Style or WS_POPUP;
+  end else begin
+   fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU;
+  end;
+
+  fWin32Rect.Left:=0;
+  fWin32Rect.Top:=0;
+  fWin32Rect.Width:=fWidth;
+  fWin32Rect.Height:=fHeight;
+  if not Fullscreen then begin
+   AdjustWindowRect(fWin32Rect,fWin32Style,false);
+  end;
+
+  fWin32Title:=fWindowTitle;
+
+  fWin32Callback:=nil;
+
+  fWin32Handle:=CreateWindowW(Win32WindowClass.lpszClassName,
+                              PWideChar(fWin32Title),
+                              fWin32Style,
+                              ((fScreenWidth-fWidth)+1) div 2,
+                              ((fScreenHeight-fHeight)+1) div 2,
+                              fWin32Rect.Right-fWin32Rect.Left,
+                              fWin32Rect.Bottom-fWin32Rect.Top,
+                              0,
+                              0,
+                              fWin32HInstance,
+                              self
+                             );
+  if fWin32Handle=0 then begin
+   raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
+  end;
+
+  if fVisibleMouseCursor then begin
+   fWin32Cursor:=LoadCursor(0,IDC_ARROW);
+  end else begin
+   fWin32Cursor:=0;
+  end;
+  SetCursor(fWin32Cursor);
+
 {$else}
 {$ifend}
 
@@ -9240,6 +10417,24 @@ begin
     SDL_DestroyWindow(fSurfaceWindow);
     fSurfaceWindow:=nil;
    end;
+{$elseif defined(Windows)}
+
+   if fWin32Icon<>0 then begin
+    DestroyIcon(fWin32Icon);
+   end;
+
+   if assigned(fWin32Callback) then begin
+
+    SetWindowLongPtrW(fWin32Handle,GWLP_WNDPROC,LONG_PTR(Pointer(Addr(fWin32Callback))));
+
+   end else begin
+
+    CloseHandle(fWin32Handle);
+
+    UnregisterClassW(Win32WindowClass.lpszClassName,fWin32HInstance);
+
+   end;
+
 {$else}
 {$ifend}
 
