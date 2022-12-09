@@ -9015,6 +9015,8 @@ begin
   end else begin
    SDL_EventState(SDL_DROPFILE,SDL_DISABLE);
   end;
+{$elseif defined(Windows)}
+  DragAcceptFiles(fWin32Handle,fAcceptDragDropFiles);
 {$ifend}
  end;
 
@@ -9628,7 +9630,11 @@ begin
      devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
      {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
-      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      if fAcceptDragDropFiles then begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+      end else begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      end;
       SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
       ShowWindow(fWin32Handle,SW_SHOW);
       fWin32Fullscreen:=true;
@@ -9641,7 +9647,11 @@ begin
    end else if fWin32Fullscreen then begin
 {   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
-     SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+     if fAcceptDragDropFiles then begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+     end;
      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
      ShowWindow(fWin32Handle,SW_SHOW);
      fWin32Fullscreen:=false;
@@ -10012,8 +10022,12 @@ begin
 end;
 
 function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
-var NativeEvent:TpvApplicationNativeEvent;
+var Index,FileNameLength,DroppedFileCount:TpvSizeInt;
+    NativeEvent:TpvApplicationNativeEvent;
     Rect:TRect;
+    DropHandle:HDROP;
+    DropPoint:TPoint;
+    FileName:WideString;
  procedure TranslateKeyEvent;
  var VirtualKey:WPARAM;
      ScanCode:DWORD;
@@ -10401,6 +10415,33 @@ begin
   WM_SETCURSOR:begin
    if LOWORD(aLParam)=HTCLIENT then begin
     SetCursor(fWin32Cursor);
+   end;
+  end;
+  WM_DROPFILES:begin
+   DropHandle:=aWParam;
+   if DropHandle<>0 then begin
+    FileName:='';
+    try
+     try
+      DroppedFileCount:=DragQueryFile(DropHandle,$ffffffff,nil,0);
+      for Index:=0 to DroppedFileCount-1 do begin
+       FileNameLength:=DragQueryFileW(DropHandle,Index,nil,0);
+       if FileNameLength>0 then begin
+        SetLength(FileName,FileNameLength);
+        if DragQueryFileW(DropHandle,Index,PWideChar(FileName),FileNameLength+1)<>0 then begin
+         NativeEvent.Kind:=TpvApplicationNativeEventKind.DropFile;
+         NativeEvent.StringValue:=PUCUUTF16ToUTF8(FileName);
+         fNativeEventQueue.Enqueue(NativeEvent);
+        end;
+       end;
+      end;
+      DragQueryPoint(DropHandle,@DropPoint);
+     finally
+      DragFinish(DropHandle);
+     end;
+    finally
+     FileName:='';
+    end;
    end;
   end;
   WM_KEYDOWN,
@@ -10950,6 +10991,12 @@ begin
                              );
   if fWin32Handle=0 then begin
    raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
+  end;
+
+  if fAcceptDragDropFiles then begin
+   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+  end else begin
+   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
   end;
 
   fWin32Fullscreen:=false;
