@@ -49,7 +49,9 @@ uses
   Vulkan,
   PasVulkan.Types,
   PasVulkan.Android,
+{$if defined(PasVulkanUseSDL2)}
   PasVulkan.SDL2,
+{$ifend}
   PasVulkan.Framework,
   PasVulkan.Application,
   UnitApplication;
