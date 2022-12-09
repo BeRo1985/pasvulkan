@@ -10175,7 +10175,7 @@ var NativeEvent:TpvApplicationNativeEvent;
     NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_KP0;
    end;
    VK_BACK:begin
-    NativeEvent.KeyCode:=KEYCODE_BACK;
+    NativeEvent.KeyCode:=KEYCODE_BACKSPACE;
    end;
    VK_TAB:begin
     NativeEvent.KeyCode:=KEYCODE_TAB;
@@ -10412,7 +10412,13 @@ begin
   WM_CHAR:begin
    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
    NativeEvent.CharVal:=WideChar(TpvUInt16(aWParam));
-   fNativeEventQueue.Enqueue(NativeEvent);
+   if NativeEvent.CharVal=#8 then begin
+   end else if NativeEvent.CharVal=#9 then begin
+   end else if NativeEvent.CharVal=#10 then begin
+   end else if NativeEvent.CharVal=#13 then begin
+   end else begin
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
   end;
   WM_RBUTTONDOWN,
   WM_LBUTTONDOWN,
