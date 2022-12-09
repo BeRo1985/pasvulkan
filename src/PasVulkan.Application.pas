@@ -725,6 +725,22 @@ type EpvApplication=class(Exception)
      end;
 
 {$if not defined(PasVulkanUseSDL2)}
+{$ifdef Windows}
+     TpvApplicationTOUCHINPUT=record
+      x:LONG;
+      y:LONG;
+      hSource:HANDLE;
+      dwID:DWORD;
+      dwFlags:DWORD;
+      dwMask:DWORD;
+      dwTime:DWORD;
+      dwExtraInfo:ULONG_PTR;
+      cxContact:DWORD;
+      cyContact:DWORD;
+     end;
+     PpvApplicationTOUCHINPUT=^TpvApplicationTOUCHINPUT;
+{$endif}
+
      TpvApplicationNativeEventKind=
       (
        None,
@@ -1460,6 +1476,9 @@ type EpvApplication=class(Exception)
        fWin32HighSurrogate:TpvUInt32;
        fWin32LowSurrogate:TpvUInt32;
        fWin32TouchActive:Boolean;
+       fWin32TouchInputs:array of TpvApplicationTOUCHINPUT;
+       fWin32TouchLastX:array[0..$ffff] of TpvDouble;
+       fWin32TouchLastY:array[0..$ffff] of TpvDouble;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -1899,6 +1918,8 @@ var Win32WindowClass:TWNDCLASSW=(
 
 function RegisterTouchWindow(h:HWND;ulFlags:ULONG):BOOL; stdcall; external 'user32.dll' name 'RegisterTouchWindow';
 function UnregisterTouchWindow(h:HWND):BOOL; stdcall; external 'user32.dll' name 'UnregisterTouchWindow';
+function GetTouchInputInfo(hTouchInput:HANDLE;cInput:ULONG;pInputs:PpvApplicationTOUCHINPUT;cbSize:LONG):BOOL; stdcall; external 'user32.dll' name 'GetTouchInputInfo';
+procedure CloseTouchInputHandle(hTouchInput:HANDLE); stdcall; external 'user32.dll' name 'CloseTouchInputHandle';
 
 function SetPropA(h:HWND;p:LPCSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
 function SetPropW(h:HWND;p:LPWSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
@@ -10106,12 +10127,15 @@ begin
 end;
 
 function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
-var Index,FileNameLength,DroppedFileCount:TpvSizeInt;
+var Index,FileNameLength,DroppedFileCount,CountInputs:TpvSizeInt;
     NativeEvent:TpvApplicationNativeEvent;
     Rect:TRect;
     DropHandle:HDROP;
     DropPoint:TPoint;
     FileName:WideString;
+    TouchInput:PpvApplicationTOUCHINPUT;
+    x,y:TpvDouble;
+    Point:TPoint;
  procedure TranslateKeyEvent;
  var VirtualKey:WPARAM;
      ScanCode:DWORD;
@@ -10709,6 +10733,53 @@ begin
     end;
    end;
   end;
+  WM_TOUCH:begin
+   if fWin32TouchActive then begin
+    CountInputs:=LOWORD(aWParam);
+    if CountInputs>0 then begin
+     if length(fWin32TouchInputs)<CountInputs then begin
+      SetLength(fWin32TouchInputs,CountInputs);
+     end;
+     if GetTouchInputInfo(aLParam,CountInputs,@fWin32TouchInputs[0],CountInputs) then begin
+      try
+       for Index:=0 to CountInputs-1 do begin
+        TouchInput:=@fWin32TouchInputs[Index];
+        if (TouchInput^.dwFlags and (TOUCHEVENTF_DOWN or TOUCHEVENTF_UP or TOUCHEVENTF_MOVE))<>0 then begin
+         x:=TouchInput^.x*0.01;
+         y:=TouchInput^.y*0.01;
+         Point.x:=trunc(x);
+         Point.y:=trunc(y);
+         if ScreenToClient(fWin32Handle,Point) then begin
+          x:=Point.x+frac(x);
+          y:=Point.y+frac(y);
+          if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
+           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerDown;
+           fWin32TouchLastX[TouchInput^.dwID and $ffff]:=0;
+           fWin32TouchLastY[TouchInput^.dwID and $ffff]:=0;
+          end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
+           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerUp;
+          end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
+           NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerMotion;
+          end;
+          NativeEvent.FingerID:=TouchInput^.dwID;
+          NativeEvent.FingerX:=x;
+          NativeEvent.FingerY:=y;
+          NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchInput^.dwID and $ffff];
+          NativeEvent.FingerDeltaY:=y-fWin32TouchLastY[TouchInput^.dwID and $ffff];
+          NativeEvent.FingerPressure:=1.0;
+          fWin32TouchLastX[TouchInput^.dwID and $ffff]:=x;
+          fWin32TouchLastY[TouchInput^.dwID and $ffff]:=y;
+          fNativeEventQueue.Enqueue(NativeEvent);
+         end;
+        end;
+       end;
+      finally
+       CloseTouchInputHandle(aLParam);
+      end;
+     end;
+    end;
+   end;
+  end;
   WM_SETFOCUS:begin
    fWin32HasFocus:=true;
   end;
@@ -11142,6 +11213,8 @@ begin
 
   fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH);
 
+  fWin32TouchInputs:=nil;
+
   if fWin32TouchActive then begin
    SetPropA(fWin32Handle,
             'MicrosoftTabletPenServiceProperty',
@@ -11361,6 +11434,8 @@ begin
    if fWin32TouchActive then begin
     UnregisterTouchWindow(fWin32Handle);
    end;
+
+   fWin32TouchInputs:=nil;
 
    if assigned(fWin32Callback) then begin
 
