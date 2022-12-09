@@ -5281,11 +5281,18 @@ begin
 end;
 
 procedure TpvApplicationInput.SetCursorPosition(const pX,pY:TpvInt32);
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+var Rect:TRect;
+{$ifend}
 begin
  fCriticalSection.Acquire;
  try
 {$if defined(PasVulkanUseSDL2)}
   SDL_WarpMouseInWindow(pvApplication.fSurfaceWindow,pX,pY);
+{$elseif defined(Windows)}
+  if GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+   Windows.SetCursorPos(Rect.Left+pX,Rect.Right+pY);
+  end;
 {$else}
 {$ifend}
  finally
@@ -5955,6 +5962,7 @@ begin
 {$if defined(PasVulkanUseSDL2)}
  fLastPressedKeyEvent.SDLEvent.type_:=0;
 {$else}
+ fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
 {$ifend}
  fKeyRepeatTimeAccumulator:=0;
  fKeyRepeatInterval:=fHighResolutionTimer.MillisecondInterval*100;
@@ -6799,6 +6807,94 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanInstance');
 {$ifend}
 end;
+{$elseif defined(Windows)}
+type TExtensions=array of PAnsiChar;
+var i:TpvInt32;
+    CountExtensions:TpvInt32;
+    Extensions:TExtensions;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
+{$ifend}
+ if not assigned(fVulkanInstance) then begin
+  begin
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
+                                             Version,
+                                             'PasVulkanApplication',
+                                             $0100,
+                                             fVulkanAPIVersion,
+                                             false,
+                                             nil);
+   VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
+   for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
+    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
+   end;
+   for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
+    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[i]));
+   end;
+   begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+   end;
+   if fVulkanDebugging and
+      (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)>=0) then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    fVulkanDebuggingEnabled:=true;
+    if fVulkanValidation then begin
+     if fVulkanNoUniqueObjectsValidation then begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
+      end;
+     end else begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_KHRONOS_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_KHRONOS_validation');
+      end else if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
+      end;
+     end;
+     if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+     end;
+    end;
+   end else begin
+    fVulkanDebuggingEnabled:=false;
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+   end;
+   SetupVulkanInstance(fVulkanInstance);
+   fVulkanInstance.Initialize;
+   if fVulkanDebuggingEnabled then begin
+    fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
+    fVulkanInstance.InstallDebugReportCallback;
+   end;
+  end;
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanInstance');
+{$ifend}
+end;
 {$else}
 begin
  Assert(false);
@@ -6962,6 +7058,43 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
 {$ifend}
 end;
+{$elseif defined(Windows)}
+var VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.AllocateVulkanSurface');
+{$ifend}
+ if not assigned(fVulkanSurface) then begin
+  begin
+   begin
+    FillChar(VulkanSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
+    VulkanSurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    VulkanSurfaceCreateInfo.Win32.hwnd_:=fWin32Handle;
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan surface');
+{$ifend}
+    fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan surface');
+{$ifend}
+
+   end;
+
+  end;
+
+  if assigned(fVulkanSurface) and not assigned(fVulkanDevice) then begin
+   CreateVulkanDevice(fVulkanSurface);
+   if not assigned(fVulkanDevice) then begin
+    raise EpvVulkanSurfaceException.Create('Device does not support surface');
+   end;
+  end;
+
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
+{$ifend}
+end;
 {$else}
 begin
  Assert(false);
@@ -7007,7 +7140,7 @@ begin
    SDL_GetWindowWMInfo(fSurfaceWindow,@WMInfo);
    WindowHandle:=WMInfo.window;
 {$else}
-   WindowHandle:=0;
+   WindowHandle:=fWin32Handle;
 {$ifend}
 {$ifend}
 
@@ -8447,6 +8580,9 @@ begin
  if TPasMPInterlocked.CompareExchange(fHasNewWindowTitle,false,true) then begin
 {$if defined(PasVulkanUseSDL2)}
   SDL_SetWindowTitle(fSurfaceWindow,PAnsiChar(TpvApplicationRawByteString(fWindowTitle)));
+{$elseif defined(Windows)}
+  fWin32Title:=PUCUUTF8ToUTF16(fWindowTitle);
+  SetWindowTextW(fWin32Handle,PWideChar(fWin32Title));
 {$ifend}
  end;
 
@@ -10206,7 +10342,7 @@ begin
    AdjustWindowRect(fWin32Rect,fWin32Style,false);
   end;
 
-  fWin32Title:=fWindowTitle;
+  fWin32Title:=PUCUUTF8ToUTF16(fWindowTitle);
 
   fWin32Callback:=nil;
 
