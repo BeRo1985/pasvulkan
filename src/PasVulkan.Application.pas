@@ -10766,7 +10766,7 @@ begin
           NativeEvent.FingerY:=y;
           NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchInput^.dwID and $ffff];
           NativeEvent.FingerDeltaY:=y-fWin32TouchLastY[TouchInput^.dwID and $ffff];
-          NativeEvent.FingerPressure:=1.0;
+          NativeEvent.FingerPressure:=1.0; // <= TODO
           fWin32TouchLastX[TouchInput^.dwID and $ffff]:=x;
           fWin32TouchLastY[TouchInput^.dwID and $ffff]:=y;
           fNativeEventQueue.Enqueue(NativeEvent);
