@@ -10761,7 +10761,7 @@ begin
           end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
            NativeEvent.Kind:=TpvApplicationNativeEventKind.FingerMotion;
           end;
-          NativeEvent.FingerID:=TouchInput^.dwID;
+          NativeEvent.FingerID:=TouchInput^.dwID+1; // +1 because 0 = mouse
           NativeEvent.FingerX:=x;
           NativeEvent.FingerY:=y;
           NativeEvent.FingerDeltaX:=x-fWin32TouchLastX[TouchInput^.dwID and $ffff];
