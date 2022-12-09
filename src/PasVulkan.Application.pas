@@ -9010,7 +9010,7 @@ begin
    SetCapture(fWin32Handle);
    if GetClientRect(fWin32Handle,Rect) then begin
     if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
-     ClipCursor(Rect);
+     ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
     end;
    end;
   end else begin
@@ -10434,7 +10434,7 @@ begin
     if fCatchMouse then begin
      if GetWindowRect(fWin32Handle,Rect) then begin
       if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
-       ClipCursor(Rect);
+       ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
       end;
      end;
     end;
