@@ -828,10 +828,10 @@ type EpvApplication=class(Exception)
      TpvApplicationEvent=record
 {$if defined(PasVulkanUseSDL2)}
       SDLEvent:TSDL_Event;
+      StringData:TpvUTF8String;
 {$else}
       NativeEvent:TpvApplicationNativeEvent;
 {$ifend}
-      StringData:TpvUTF8String;
      end;
 
      PpvApplicationEvent=^TpvApplicationEvent;
@@ -4802,11 +4802,11 @@ begin
      end;
      TpvApplicationNativeEventKind.DropFile:begin
       try
-       if (not pvApplication.DragDropFileEvent(Event^.StringData)) and assigned(fProcessor) then begin
-        fProcessor.DragDropFileEvent(Event^.StringData);
+       if (not pvApplication.DragDropFileEvent(Event^.NativeEvent.StringValue)) and assigned(fProcessor) then begin
+        fProcessor.DragDropFileEvent(Event^.NativeEvent.StringValue);
        end;
       finally
-       Event^.StringData:='';
+       Event^.NativeEvent.StringValue:='';
       end;
      end;
      TpvApplicationNativeEventKind.KeyDown,
@@ -10423,6 +10423,7 @@ begin
     FileName:='';
     try
      try
+      DragQueryPoint(DropHandle,@DropPoint);
       DroppedFileCount:=DragQueryFile(DropHandle,$ffffffff,nil,0);
       for Index:=0 to DroppedFileCount-1 do begin
        FileNameLength:=DragQueryFileW(DropHandle,Index,nil,0);
@@ -10435,7 +10436,6 @@ begin
         end;
        end;
       end;
-      DragQueryPoint(DropHandle,@DropPoint);
      finally
       DragFinish(DropHandle);
      end;
