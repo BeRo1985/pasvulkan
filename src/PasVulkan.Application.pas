@@ -73,6 +73,7 @@ uses {$if defined(Unix)}
       Windows,
       MMSystem,
       Registry,
+      {$if not defined(PasVulkanUseSDL2)}MultiMon,{$ifend}
      {$ifend}
      SysUtils,
      Classes,
@@ -8929,6 +8930,7 @@ var Index,Counter,Tries,
     Msg:TMsg;
     devMode:TDEVMODEW;
     Rect:TRect;
+    MonitorInfo:TMonitorInfo;
  {$ifend}
     DoUpdateJoysticks:boolean;
 {$ifend}
@@ -9598,7 +9600,13 @@ begin
 {$ifend}
 {$elseif defined(Windows)}
    if fFullScreen then begin
-    if (not fWin32Fullscreen) and GetWindowRect(fWin32Handle,Rect) then begin
+    FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
+    MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
+    if (not fWin32Fullscreen) and
+       GetWindowRect(fWin32Handle,Rect) and
+       GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
+     fScreenWidth:=MonitorInfo.rcMonitor.Width;
+     fScreenHeight:=MonitorInfo.rcMonitor.Height;
      fWin32OldLeft:=Rect.Left;
      fWin32OldTop:=Rect.Top;
      fWin32OldWidth:=fWidth;
@@ -9611,7 +9619,7 @@ begin
      {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
-      SetWindowPos(fWin32Handle,HWND_TOP,0,0,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
+      SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
       ShowWindow(fWin32Handle,SW_SHOW);
       fWin32Fullscreen:=true;
 {    end else begin
