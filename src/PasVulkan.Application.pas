@@ -8360,58 +8360,66 @@ var WaveFormat:TWaveFormatEx;
     WaveHandler:array[0..CountBuffers-1] of TWAVEHDR;
     WaveOutHandle:HWAVEOUT;
     BufferCounter:TpvInt32;
+    Event:THandle;
 begin
- FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
- WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
- WaveFormat.nChannels:=2;
- WaveFormat.nSamplesPerSec:=SampleRate;
- WaveFormat.nAvgBytesPerSec:=SampleRate*SizeOf(TpvInt16)*2;
- WaveFormat.nBlockAlign:=SizeOf(TpvInt16)*WaveFormat.nChannels;
- WaveFormat.wBitsPerSample:=SizeOf(TpvInt16)*8;
- WaveFormat.cbSize:=0;
- for BufferCounter:=0 to CountBuffers-1 do begin
-  FillChar(WaveHandler[BufferCounter],SizeOf(TWAVEHDR),#0);
-  WaveHandler[BufferCounter].dwBufferLength:=BufferSize*SizeOf(TpvInt16)*2;
-  WaveHandler[BufferCounter].dwBytesRecorded:=0;
-  WaveHandler[BufferCounter].dwUser:=0;
-  WaveHandler[BufferCounter].dwFlags:=WHDR_DONE;
-  WaveHandler[BufferCounter].dwLoops:=0;
-  GetMem(WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
- end;
- try
-  BufferCounter:=0;
-  if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,0,0,0)=MMSYSERR_NOERROR then begin
+ Event:=CreateEventW(nil,false,false,nil);
+ if Event<>0 then begin
+  try
+   FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
+   WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
+   WaveFormat.nChannels:=2;
+   WaveFormat.nSamplesPerSec:=SampleRate;
+   WaveFormat.nAvgBytesPerSec:=SampleRate*SizeOf(TpvInt16)*2;
+   WaveFormat.nBlockAlign:=SizeOf(TpvInt16)*WaveFormat.nChannels;
+   WaveFormat.wBitsPerSample:=SizeOf(TpvInt16)*8;
+   WaveFormat.cbSize:=0;
+   for BufferCounter:=0 to CountBuffers-1 do begin
+    FillChar(WaveHandler[BufferCounter],SizeOf(TWAVEHDR),#0);
+    WaveHandler[BufferCounter].dwBufferLength:=BufferSize*SizeOf(TpvInt16)*2;
+    WaveHandler[BufferCounter].dwBytesRecorded:=0;
+    WaveHandler[BufferCounter].dwUser:=0;
+    WaveHandler[BufferCounter].dwFlags:=WHDR_DONE;
+    WaveHandler[BufferCounter].dwLoops:=0;
+    GetMem(WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+   end;
    try
-    while not Terminated do begin
-     for BufferCounter:=0 to CountBuffers-1 do begin
-      if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)<>0 then begin
-       if waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR))<>WAVERR_STILLPLAYING then begin
-        WaveHandler[BufferCounter].dwFlags:=WaveHandler[BufferCounter].dwFlags and not WHDR_DONE;
-        AudioFillBuffer(fAudio,WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
-        waveOutPrepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR));
-        waveOutWrite(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR));
+    BufferCounter:=0;
+    if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,DWORD_PTR(Event),0,CALLBACK_EVENT)=MMSYSERR_NOERROR then begin
+     try
+      while not Terminated do begin
+       for BufferCounter:=0 to CountBuffers-1 do begin
+        if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)<>0 then begin
+         if waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR))<>WAVERR_STILLPLAYING then begin
+          WaveHandler[BufferCounter].dwFlags:=WaveHandler[BufferCounter].dwFlags and not WHDR_DONE;
+          AudioFillBuffer(fAudio,WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+          waveOutPrepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR));
+          waveOutWrite(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR));
+         end;
+        end;
+       end;
+       WaitForSingleObject(Event,10);
+      end;
+      for BufferCounter:=0 to CountBuffers-1 do begin
+       if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)=0 then begin
+        while waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR))=WAVERR_STILLPLAYING do begin
+         sleep(1);
+        end;
        end;
       end;
-     end;
-     Sleep(0);
-    end;
-    for BufferCounter:=0 to CountBuffers-1 do begin
-     if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)=0 then begin
-      while waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR))=WAVERR_STILLPLAYING do begin
-       sleep(1);
-      end;
+     finally
+      waveOutReset(WaveOutHandle);
+      waveOutClose(WaveOutHandle);
      end;
     end;
    finally
-    waveOutReset(WaveOutHandle);
-    waveOutClose(WaveOutHandle);
+    for BufferCounter:=0 to CountBuffers-1 do begin
+     if assigned(WaveHandler[BufferCounter].lpData) then begin
+      FreeMem(WaveHandler[BufferCounter].lpData);
+     end;
+    end;
    end;
-  end;
- finally
-  for BufferCounter:=0 to CountBuffers-1 do begin
-   if assigned(WaveHandler[BufferCounter].lpData) then begin
-    FreeMem(WaveHandler[BufferCounter].lpData);
-   end;
+  finally
+   CloseHandle(Event);
   end;
  end;
 end;
