@@ -9228,7 +9228,7 @@ begin
      end;
      if OK then begin
       if fNativeKeyRepeat then begin
-       if fEvent.NativeEvent.KeyRepeat then begin
+       if not fEvent.NativeEvent.KeyRepeat then begin
         fInput.AddEvent(fEvent);
        end;
        fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
