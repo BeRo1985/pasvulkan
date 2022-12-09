@@ -8349,6 +8349,17 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.InitializeAudio . . .');
 {$ifend}
 end;
+{$elseif defined(Windows)}
+begin
+ if fUseAudio and not assigned(fAudio) then begin
+  fAudio:=TpvAudio.Create(44100,
+                          2,
+                          16,
+                          1024);
+  fAudio.SetMixerAGC(true);
+  fAudio.UpdateHook:=UpdateAudioHook;
+ end;
+end;
 {$else}
 begin
  if fUseAudio and not assigned(fAudio) then begin
@@ -8370,6 +8381,12 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DeinitializeAudio . . .');
 {$ifend}
+end;
+{$elseif defined(Windows)}
+begin
+ if assigned(fAudio) then begin
+  FreeAndNil(fAudio);
+ end;
 end;
 {$else}
 begin
