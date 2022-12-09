@@ -1436,6 +1436,7 @@ type EpvApplication=class(Exception)
        fWin32Handle:HWND;
        fWin32Callback:{$ifdef fpc}WNDPROC{$else}Pointer{$endif};
        fWin32Cursor:HCURSOR;
+       fWin32HiddenCursor:HCURSOR;
        fWin32Icon:HICON;
        fWin32KeyRepeat:Boolean;
        fWin32MouseInside:Boolean;
@@ -1857,6 +1858,9 @@ const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
 {$if defined(Windows) and not defined(PasVulkanUseSDL2)}
 const Win32ClassName='PasVulkanWindow';
+
+      Win32CursorMaskAND:TpvUInt8=$ff;
+      Win32CursorMaskXOR:TpvUInt8=$00;
 
 var Win32WindowClass:TWNDCLASSW=(
      style:0;
@@ -8988,7 +8992,7 @@ begin
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
   end else begin
-   fWin32Cursor:=0;
+   fWin32Cursor:=fWin32HiddenCursor;
   end;
   SetCursor(fWin32Cursor);
 {$else}
@@ -11035,12 +11039,14 @@ begin
    SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
   end;
 
+  fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
+
   fWin32Fullscreen:=false;
 
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
   end else begin
-   fWin32Cursor:=0;
+   fWin32Cursor:=fWin32HiddenCursor;
   end;
   SetCursor(fWin32Cursor);
 
@@ -11243,6 +11249,8 @@ begin
     DestroyWindow(fWin32Handle);
 
     UnregisterClassW(Win32WindowClass.lpszClassName,fWin32HInstance);
+
+    DestroyCursor(fWin32HiddenCursor);
 
    end;
 

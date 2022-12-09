@@ -609,6 +609,7 @@ begin
    end;
    KEYCODE_L:begin
     pvApplication.CatchMouse:=not pvApplication.CatchMouse;
+    pvApplication.VisibleMouseCursor:=not pvApplication.CatchMouse;
    end;
    KEYCODE_V,KEYCODE_B:begin
     if assigned(fGroupInstance) then begin
