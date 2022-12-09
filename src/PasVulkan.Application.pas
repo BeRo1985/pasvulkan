@@ -729,7 +729,7 @@ type EpvApplication=class(Exception)
      TpvApplicationTOUCHINPUT=record
       x:LONG;
       y:LONG;
-      hSource:HANDLE;
+      hSource:THANDLE;
       dwID:DWORD;
       dwFlags:DWORD;
       dwMask:DWORD;
@@ -1918,11 +1918,11 @@ var Win32WindowClass:TWNDCLASSW=(
 
 function RegisterTouchWindow(h:HWND;ulFlags:ULONG):BOOL; stdcall; external 'user32.dll' name 'RegisterTouchWindow';
 function UnregisterTouchWindow(h:HWND):BOOL; stdcall; external 'user32.dll' name 'UnregisterTouchWindow';
-function GetTouchInputInfo(hTouchInput:HANDLE;cInput:ULONG;pInputs:PpvApplicationTOUCHINPUT;cbSize:LONG):BOOL; stdcall; external 'user32.dll' name 'GetTouchInputInfo';
-procedure CloseTouchInputHandle(hTouchInput:HANDLE); stdcall; external 'user32.dll' name 'CloseTouchInputHandle';
+function GetTouchInputInfo(hTouchInput:THANDLE;cInput:ULONG;pInputs:PpvApplicationTOUCHINPUT;cbSize:LONG):BOOL; stdcall; external 'user32.dll' name 'GetTouchInputInfo';
+procedure CloseTouchInputHandle(hTouchInput:THANDLE); stdcall; external 'user32.dll' name 'CloseTouchInputHandle';
 
-function SetPropA(h:HWND;p:LPCSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
-function SetPropW(h:HWND;p:LPWSTR;hData:HANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
+function SetPropA(h:HWND;p:LPCSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
+function SetPropW(h:HWND;p:LPWSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
 
 {$ifend}
 
@@ -11218,16 +11218,16 @@ begin
   if fWin32TouchActive then begin
    SetPropA(fWin32Handle,
             'MicrosoftTabletPenServiceProperty',
-            HANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
-                            $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
-                            $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
-                            $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
-                            $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
-                            $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
-                            $00010000 or   // TABLET_DISABLE_FLICKS
-                            $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
-                            $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
-                            $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
+            THANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
+                             $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
+                             $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
+                             $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
+                             $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
+                             $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
+                             $00010000 or   // TABLET_DISABLE_FLICKS
+                             $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
+                             $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
+                             $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
   end;
 
   fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
