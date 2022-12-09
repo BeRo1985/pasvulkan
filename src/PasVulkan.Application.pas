@@ -10510,6 +10510,7 @@ begin
   finally
    ReleaseDC(0,ScreenDC);
   end;
+  fWin32KeyRepeat:=true;
 {$else}
   fScreenWidth:=-1;
   fScreenHeight:=-1;
