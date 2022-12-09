@@ -5059,11 +5059,11 @@ begin
       KeyModifiers:=GetKeyModifiers;
       PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
       fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
        fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
@@ -5073,11 +5073,11 @@ begin
       inc(fPointerDownCount);
       PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
       fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
       Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       fJustTouched:=true;
@@ -5092,11 +5092,11 @@ begin
       end;
       PointerID:=NativeEvent^.TouchID and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=NativeEvent^.TouchX*pvApplication.fWidth;
-      fPointerY[PointerID]:=NativeEvent^.TouchY*pvApplication.fHeight;
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
       fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
-      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY*pvApplication.fWidth;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
       Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
