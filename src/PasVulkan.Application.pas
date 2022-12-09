@@ -5484,7 +5484,7 @@ begin
   SDL_WarpMouseInWindow(pvApplication.fSurfaceWindow,pX,pY);
 {$elseif defined(Windows)}
   if GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
-   Windows.SetCursorPos(Rect.Left+pX,Rect.Right+pY);
+   Windows.SetCursorPos(Rect.Left+pX,Rect.Top+pY);
   end;
 {$else}
 {$ifend}
