@@ -8320,6 +8320,11 @@ begin
 end;
 
 {$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+
+// On Windows >= 10 the old MMSYSTEM WaveOut and DirectSound APIs are just thin WASAPI API wrappers now, so
+// that we can use the old but simple to use MMSYSTEM WAVEOUT API here without big disadvantages over using
+// WASAPI directly.
+
 type { TpvWin32AudioThread }
 
      TpvWin32AudioThread=class(TPasMPThread)
