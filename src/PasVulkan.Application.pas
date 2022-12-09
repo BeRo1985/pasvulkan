@@ -9496,8 +9496,9 @@ begin
        end;
       end;
       if OK then begin
-       if not fEvent.NativeEvent.KeyRepeat then begin
+      {if not fEvent.NativeEvent.KeyRepeat then}begin
         fInput.AddEvent(fEvent);
+        //writeln('6');
         fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
        end;
       end;
