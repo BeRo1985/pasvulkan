@@ -11269,6 +11269,11 @@ begin
  if assigned(fSurfaceWindow) then begin
   SDL_RaiseWindow(fSurfaceWindow);
  end;
+{$elseif defined(Windows)}
+ if fWin32Handle<>0 then begin
+  Windows.SetForegroundWindow(fWin32Handle);
+  Windows.SetFocus(fWin32Handle);
+ end;
 {$ifend}
 end;
 
