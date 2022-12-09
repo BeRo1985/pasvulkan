@@ -9701,7 +9701,11 @@ begin
     end;
    end else if fWin32Fullscreen then begin
 {   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
-     SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+     if fResizable then begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
+     end;
      if fAcceptDragDropFiles then begin
       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
      end else begin
@@ -11069,7 +11073,10 @@ begin
   if fFullscreen then begin
    fWin32Style:=fWin32Style or WS_POPUP;
   end else begin
-   fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU;
+   fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU;
+   if fResizable then begin
+    fWin32Style:=fWin32Style or WS_THICKFRAME or WS_MAXIMIZEBOX;
+   end;
   end;
 
   fWin32Rect.Left:=0;
@@ -11099,6 +11106,8 @@ begin
   if fWin32Handle=0 then begin
    raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
   end;
+
+  fCurrentFullscreen:=0;
 
   if fAcceptDragDropFiles then begin
    SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
