@@ -8981,6 +8981,13 @@ begin
   end else begin
    SDL_ShowCursor(0);
   end;
+{$elseif defined(Windows)}
+  if fVisibleMouseCursor then begin
+   fWin32Cursor:=LoadCursor(0,IDC_ARROW);
+  end else begin
+   fWin32Cursor:=0;
+  end;
+  SetCursor(fWin32Cursor);
 {$else}
 {$ifend}
  end;
