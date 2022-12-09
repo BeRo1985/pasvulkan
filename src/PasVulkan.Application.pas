@@ -8670,6 +8670,17 @@ begin
            ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
          ((WindowFlags and SDL_WINDOW_MINIMIZED)=0);
 end;
+{$elseif defined(Windows)}
+const FullScreenFocusActiveFlags=WS_VISIBLE;
+      FullScreenActiveFlags=WS_VISIBLE;
+var WindowFlags:DWORD;
+begin
+ WindowFlags:=GetWindowLong(fWin32Handle,GWL_STYLE);
+ result:=((fCurrentFullScreen=0) or
+          (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and ((Windows.GetActiveWindow=fWin32Handle) or (Windows.GetFocus=fWin32Handle))) or
+           ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
+         (((WindowFlags and WS_MINIMIZE)=0) and not IsIconic(fWin32Handle));
+end;
 {$else}
 begin
  result:=true;
@@ -10149,6 +10160,51 @@ begin
    TranslateMouseEvent;
    TranslateMouseWheelEvent;
    fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+{ WM_SYSCOMMAND:begin
+   case aWParam of
+    SC_MINIMIZE:begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_ACTIVATE:begin
+   if (LOWORD(aWParam)=WA_INACTIVE) and (HIWORD(aWParam)<>0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end else if ((LOWORD(aWParam)=WA_ACTIVE) or (LOWORD(aWParam)=WA_CLICKACTIVE)) and (HIWORD(aWParam)<>0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterForeground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterForeground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end; }
+  WM_WINDOWPOSCHANGING:begin
+   if aLParam<>0 then begin
+    if (PWINDOWPOS(aLParam)^.flags and SWP_SHOWWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterForeground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end else if (PWINDOWPOS(aLParam)^.flags and SWP_HIDEWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_WINDOWPOSCHANGED:begin
+   if aLParam<>0 then begin
+    if (PWINDOWPOS(aLParam)^.flags and SWP_SHOWWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterForeground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end else if (PWINDOWPOS(aLParam)^.flags and SWP_HIDEWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
   end;
   else begin
   end;
