@@ -10420,22 +10420,17 @@ begin
   WM_INPUTLANGCHANGE:begin
 
   end;
-  WM_UNICHAR:begin
+  $109{WM_UNICHAR}:begin
    if aWParam=$ffff{UNICODE_NOCHAR} then begin
     result:=1;
-   end else begin
+   end else if aWParam>=32 then begin
     NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
     NativeEvent.CharVal:=aWParam;
-    if NativeEvent.CharVal=8 then begin
-    end else if NativeEvent.CharVal=9 then begin
-    end else if NativeEvent.CharVal=10 then begin
-    end else if NativeEvent.CharVal=13 then begin
-    end else begin
-     fNativeEventQueue.Enqueue(NativeEvent);
-    end;
+    fNativeEventQueue.Enqueue(NativeEvent);
    end;
   end;
   WM_CHAR:begin
+   writeln(aWParam);
    if (TpvUInt16(aWParam)>=$d800) and (TpvUInt16(aWParam)<=$dbff) then begin
     fWin32HighSurrogate:=TpvUInt16(aWParam);
    end else if ((TpvUInt16(fWin32HighSurrogate)>=$d800) and (TpvUInt16(fWin32HighSurrogate)<=$dbff)) and
@@ -10446,16 +10441,10 @@ begin
                           TPUCUUTF32Char(TPUCUUInt16(fWin32LowSurrogate) and $3ff))+$10000;
     fNativeEventQueue.Enqueue(NativeEvent);
     fWin32HighSurrogate:=0;
-   end else begin
+   end else if aWParam>=32 then begin
     NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
     NativeEvent.CharVal:=TPUCUUTF32Char(TpvUInt16(aWParam));
-    if NativeEvent.CharVal=8 then begin
-    end else if NativeEvent.CharVal=9 then begin
-    end else if NativeEvent.CharVal=10 then begin
-    end else if NativeEvent.CharVal=13 then begin
-    end else begin
-     fNativeEventQueue.Enqueue(NativeEvent);
-    end;
+    fNativeEventQueue.Enqueue(NativeEvent);
    end;
   end;
   WM_RBUTTONDOWN,
