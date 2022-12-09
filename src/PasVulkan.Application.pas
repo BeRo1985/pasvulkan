@@ -8472,10 +8472,10 @@ end;
 {$elseif defined(Windows)}
 begin
  if fUseAudio and not assigned(fAudio) then begin
-  fAudio:=TpvAudio.Create(44100,
-                          2,
-                          16,
-                          1024);
+  fAudio:=TpvAudio.Create(TpvWin32AudioThread.SampleRate,
+                          TpvWin32AudioThread.Channels,
+                          TpvWin32AudioThread.Bits,
+                          TpvWin32AudioThread.BufferSize);
   fAudio.SetMixerAGC(true);
   fAudio.UpdateHook:=UpdateAudioHook;
   fWin32AudioThread:=TpvWin32AudioThread.Create(self,fAudio);
