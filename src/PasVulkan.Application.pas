@@ -9333,12 +9333,24 @@ begin
     end;
    end;
  {$else}
-  {$if defined(Windows)}
+
+   if fLastPressedKeyEvent.NativeEvent.Kind<>TpvApplicationNativeEventKind.None then begin
+    if fKeyRepeatTimeAccumulator>0 then begin
+     dec(fKeyRepeatTimeAccumulator,fDeltaTime);
+     while fKeyRepeatTimeAccumulator<0 do begin
+      inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
+      fInput.AddEvent(fLastPressedKeyEvent);
+     end;
+    end;
+   end;
+
+{$if defined(Windows)}
    while PeekMessageW(Msg,0,0,0,PM_REMOVE) do begin
     TranslateMessage(Msg);
     DispatchMessageW(Msg);
    end;
-  {$ifend}
+{$ifend}
+
    while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
     case fEvent.NativeEvent.Kind of
      TpvApplicationNativeEventKind.Resize:begin
