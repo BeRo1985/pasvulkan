@@ -1138,6 +1138,7 @@ type EpvApplication=class(Exception)
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
+       fCurrentRelativeMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
        fCurrentAcceptDragDropFiles:TpvInt32;
        fCurrentBlocking:TpvInt32;
@@ -1152,6 +1153,7 @@ type EpvApplication=class(Exception)
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
+       fRelativeMouse:boolean;
        fHideSystemBars:boolean;
        fAcceptDragDropFiles:boolean;
        fAndroidMouseTouchEvents:boolean;
@@ -1667,6 +1669,8 @@ type EpvApplication=class(Exception)
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
 
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
+
+       property RelativeMouse:boolean read fRelativeMouse write fRelativeMouse;
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
 
@@ -6192,6 +6196,7 @@ begin
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
+ fCurrentRelativeMouse:=-1;
  fCurrentHideSystemBars:=-1;
  fCurrentAcceptDragDropFiles:=-1;
  fCurrentBlocking:=-1;
@@ -6207,6 +6212,7 @@ begin
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
+ fRelativeMouse:=false;
  fHideSystemBars:=false;
  fAcceptDragDropFiles:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
@@ -8937,6 +8943,7 @@ var Index,Counter,Tries,
     Msg:TMsg;
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
     Rect:TRect;
+    Point:TPoint;
     MonitorInfo:TMonitorInfo;
  {$ifend}
     DoUpdateJoysticks:boolean;
@@ -9026,6 +9033,21 @@ begin
 {$else}
 {$ifend}
  end;
+
+ if fCurrentRelativeMouse<>ord(fRelativeMouse) then begin
+  fCurrentRelativeMouse:=ord(fRelativeMouse);
+{$if defined(PasVulkanUseSDL2)}
+{$else}
+  if fRelativeMouse and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+   Point.x:=(fWidth+1) shr 1;
+   Point.y:=(fHeight+1) shr 1;
+   if ClientToScreen(fWin32Handle,Point) then begin
+    Windows.SetCursorPos(Point.x,Point.y);
+   end;
+  end;
+{$ifend}
+ end;
+
 
  if fCurrentAcceptDragDropFiles<>ord(fAcceptDragDropFiles) then begin
   fCurrentAcceptDragDropFiles:=ord(fAcceptDragDropFiles);
@@ -10332,11 +10354,42 @@ var Index,FileNameLength,DroppedFileCount:TpvSizeInt;
 
  end;
  procedure TranslateMouseCoord;
+ var MouseCoordX,MouseCoordY,DeltaX,DeltaY:TpvInt32;
+     Point:TPoint;
  begin
-  NativeEvent.MouseDeltaX:=LOWORD(aLParam)-fWin32MouseCoordX;
-  NativeEvent.MouseDeltaY:=HIWORD(aLParam)-fWin32MouseCoordY;
-  NativeEvent.MouseCoordX:=LOWORD(aLParam);
-  NativeEvent.MouseCoordY:=HIWORD(aLParam);
+{ if fRelativeMouse and
+     ((NativeEvent.MouseCoordX<0) or (NativeEvent.MouseCoordX>=fWidth) or
+      (NativeEvent.MouseCoordY<0) or (NativeEvent.MouseCoordY>=fHeight)) then begin
+   MouseCoordX:=NativeEvent.MouseCoordX;
+   MouseCoordY:=NativeEvent.MouseCoordY;
+   DeltaX:=((((MouseCoordX+fWidth) mod fWidth)+fWidth) mod fWidth)-MouseCoordX;
+   DeltaY:=((((MouseCoordY+fHeight) mod fHeight)+fHeight) mod fHeight)-MouseCoordX;
+   inc(MouseCoordX,DeltaX);
+   inc(MouseCoordY,DeltaY);
+   inc(fWin32MouseCoordX,DeltaX);
+   inc(fWin32MouseCoordY,DeltaY);
+   NativeEvent.MouseCoordX:=MouseCoordX;
+   NativeEvent.MouseCoordY:=MouseCoordY;
+   if GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Windows.SetCursorPos(Rect.Left+NativeEvent.MouseCoordX,Rect.Top+NativeEvent.MouseCoordY);
+   end;
+  end;}
+  NativeEvent.MouseCoordX:=TpvInt16(LOWORD(aLParam));
+  NativeEvent.MouseCoordY:=TpvInt16(HIWORD(aLParam));
+  if fRelativeMouse then begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-((fWidth+1) shr 1);
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-((fHeight+1) shr 1);
+   if ((NativeEvent.MouseDeltaX<>0) or (NativeEvent.MouseDeltaY<>0)) and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Point.x:=(fWidth+1) shr 1;
+    Point.y:=(fHeight+1) shr 1;
+    if ClientToScreen(fWin32Handle,Point) then begin
+     Windows.SetCursorPos(Point.x,Point.y);
+    end;
+   end;
+  end else begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-fWin32MouseCoordX;
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-fWin32MouseCoordY;
+  end;
   fWin32MouseCoordX:=NativeEvent.MouseCoordX;
   fWin32MouseCoordY:=NativeEvent.MouseCoordY;
  end;
@@ -10375,6 +10428,8 @@ var Index,FileNameLength,DroppedFileCount:TpvSizeInt;
   TranslateMouseEventModifier;
  end;
  procedure TranslateMouseButtonEvent;
+ var Rect:TRect;
+     Point:TPoint;
  begin
   case aMsg of
    WM_LBUTTONDOWN,
@@ -10406,10 +10461,22 @@ var Index,FileNameLength,DroppedFileCount:TpvSizeInt;
     NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
    end;
   end;
-  NativeEvent.MouseDeltaX:=LOWORD(aLParam)-fWin32MouseCoordX;
-  NativeEvent.MouseDeltaY:=HIWORD(aLParam)-fWin32MouseCoordY;
-  NativeEvent.MouseCoordX:=LOWORD(aLParam);
-  NativeEvent.MouseCoordY:=HIWORD(aLParam);
+  NativeEvent.MouseCoordX:=TpvInt16(LOWORD(aLParam));
+  NativeEvent.MouseCoordY:=TpvInt16(HIWORD(aLParam));
+  if fRelativeMouse then begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-((fWidth+1) shr 1);
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-((fHeight+1) shr 1);
+   if ((NativeEvent.MouseDeltaX<>0) or (NativeEvent.MouseDeltaY<>0)) and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Point.x:=(fWidth+1) shr 1;
+    Point.y:=(fHeight+1) shr 1;
+    if ClientToScreen(fWin32Handle,Point) then begin
+     Windows.SetCursorPos(Point.x,Point.y);
+    end;
+   end;
+  end else begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-fWin32MouseCoordX;
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-fWin32MouseCoordY;
+  end;
   fWin32MouseCoordX:=NativeEvent.MouseCoordX;
   fWin32MouseCoordY:=NativeEvent.MouseCoordY;
  end;
