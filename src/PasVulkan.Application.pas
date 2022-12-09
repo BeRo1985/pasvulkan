@@ -9608,27 +9608,27 @@ begin
      devMode.dmPelsHeight:=fScreenHeight;
      devMode.dmBitsPerPel:=32;
      devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
-     if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then begin
+     {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
       SetWindowPos(fWin32Handle,HWND_TOP,0,0,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
       ShowWindow(fWin32Handle,SW_SHOW);
       fWin32Fullscreen:=true;
-     end else begin
-      fFullscreen:=false;
+{    end else begin
+      fFullscreen:=false;}
      end;
     end else begin
      fFullscreen:=false;
     end;
    end else if fWin32Fullscreen then begin
-    if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then begin
+{   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
      ShowWindow(fWin32Handle,SW_SHOW);
      fWin32Fullscreen:=false;
-    end else begin
-     fFullscreen:=true;
+{   end else begin
+     fFullscreen:=true;}
     end;
    end;
 {$else}
