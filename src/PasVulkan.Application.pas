@@ -1433,6 +1433,7 @@ type EpvApplication=class(Exception)
        fWin32KeyState:TKeyboardState;
        fWin32MouseCoordX:TpvInt32;
        fWin32MouseCoordY:TpvInt32;
+       fWin32AudioThread:TPasMPThread;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):LRESULT;
 
@@ -5825,12 +5826,12 @@ begin
  if OpenClipboard(0) then begin
   try
    EmptyClipboard;
-   ClipboardHandle:=GlobalAlloc(GMEM_MOVEABLE,(length(UTF16Data)+1)*sizeof(WideChar));
+   ClipboardHandle:=GlobalAlloc(GMEM_MOVEABLE,(length(UTF16Data)+1)*SizeOf(WideChar));
    if ClipboardHandle<>0 then begin
     Data:=GlobalLock(ClipboardHandle);
     try
      if assigned(Data) then begin
-      Move(UTF16Data[1],Data^,length(UTF16Data)*sizeof(WideChar));
+      Move(UTF16Data[1],Data^,length(UTF16Data)*SizeOf(WideChar));
       PWideChar(Data)[length(UTF16Data)+1]:=#0;
      end;
     finally
@@ -8318,6 +8319,105 @@ begin
 {$ifend}
 end;
 
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+type { TpvWin32AudioThread }
+
+     TpvWin32AudioThread=class(TPasMPThread)
+      private
+       const SampleRate=44100;
+             Channels=2;
+             Bits=16;
+             BufferSize=1024;
+      private
+       fApplication:TpvApplication;
+       fAudio:TpvAudio;
+      protected
+       procedure Execute; override;
+      public
+       constructor Create(aApplication:TpvApplication;aAudio:TpvAudio); reintroduce;
+       destructor Destroy; override;
+     end;
+
+constructor TpvWin32AudioThread.Create(aApplication:TpvApplication;aAudio:TpvAudio);
+begin
+ fApplication:=aApplication;
+ fAudio:=aAudio;
+ inherited Create(false);
+end;
+
+destructor TpvWin32AudioThread.Destroy;
+begin
+ if not Terminated then begin
+  Terminate;
+  WaitFor;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvWin32AudioThread.Execute;
+const CountBuffers=4;
+var WaveFormat:TWaveFormatEx;
+    WaveHandler:array[0..CountBuffers-1] of TWAVEHDR;
+    WaveOutHandle:HWAVEOUT;
+    BufferCounter:TpvInt32;
+begin
+ FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
+ WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
+ WaveFormat.nChannels:=2;
+ WaveFormat.nSamplesPerSec:=SampleRate;
+ WaveFormat.nAvgBytesPerSec:=SampleRate*SizeOf(TpvInt16)*2;
+ WaveFormat.nBlockAlign:=SizeOf(TpvInt16)*WaveFormat.nChannels;
+ WaveFormat.wBitsPerSample:=SizeOf(TpvInt16)*8;
+ WaveFormat.cbSize:=0;
+ for BufferCounter:=0 to CountBuffers-1 do begin
+  FillChar(WaveHandler[BufferCounter],SizeOf(TWAVEHDR),#0);
+  WaveHandler[BufferCounter].dwBufferLength:=BufferSize*SizeOf(TpvInt16)*2;
+  WaveHandler[BufferCounter].dwBytesRecorded:=0;
+  WaveHandler[BufferCounter].dwUser:=0;
+  WaveHandler[BufferCounter].dwFlags:=WHDR_DONE;
+  WaveHandler[BufferCounter].dwLoops:=0;
+  GetMem(WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+ end;
+ try
+  BufferCounter:=0;
+  if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,0,0,0)=MMSYSERR_NOERROR then begin
+   try
+    while not Terminated do begin
+     for BufferCounter:=0 to CountBuffers-1 do begin
+      if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)<>0 then begin
+       if waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR))<>WAVERR_STILLPLAYING then begin
+        WaveHandler[BufferCounter].dwFlags:=WaveHandler[BufferCounter].dwFlags and not WHDR_DONE;
+        AudioFillBuffer(fAudio,WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+        waveOutPrepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR));
+        waveOutWrite(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR));
+       end;
+      end;
+     end;
+     Sleep(0);
+    end;
+    for BufferCounter:=0 to CountBuffers-1 do begin
+     if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)=0 then begin
+      while waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],sizeof(TWAVEHDR))=WAVERR_STILLPLAYING do begin
+       sleep(1);
+      end;
+     end;
+    end;
+   finally
+    waveOutReset(WaveOutHandle);
+    waveOutClose(WaveOutHandle);
+   end;
+  end;
+ finally
+  for BufferCounter:=0 to CountBuffers-1 do begin
+   if assigned(WaveHandler[BufferCounter].lpData) then begin
+    FreeMem(WaveHandler[BufferCounter].lpData);
+   end;
+  end;
+ end;
+end;
+
+{$ifend}
+
 procedure TpvApplication.InitializeAudio;
 {$if defined(PasVulkanUseSDL2)}
 begin
@@ -8358,6 +8458,7 @@ begin
                           1024);
   fAudio.SetMixerAGC(true);
   fAudio.UpdateHook:=UpdateAudioHook;
+  fWin32AudioThread:=TpvWin32AudioThread.Create(self,fAudio);
  end;
 end;
 {$else}
@@ -8384,6 +8485,11 @@ begin
 end;
 {$elseif defined(Windows)}
 begin
+ if assigned(fWin32AudioThread) then begin
+  fWin32AudioThread.Terminate;
+  fWin32AudioThread.WaitFor;
+  FreeAndNil(fWin32AudioThread);
+ end;
  if assigned(fAudio) then begin
   FreeAndNil(fAudio);
  end;
