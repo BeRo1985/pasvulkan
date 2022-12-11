@@ -94,6 +94,8 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        fMillisecondInterval:TpvHighResolutionTime;
        fTwoMillisecondsInterval:TpvHighResolutionTime;
        fFourMillisecondsInterval:TpvHighResolutionTime;
+       fTenMillisecondsInterval:TpvHighResolutionTime;
+       fTwentyMillisecondsInterval:TpvHighResolutionTime;
        fQuarterSecondInterval:TpvHighResolutionTime;
        fMinuteInterval:TpvHighResolutionTime;
        fHourInterval:TpvHighResolutionTime;
@@ -115,6 +117,8 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        property MillisecondInterval:TpvHighResolutionTime read fMillisecondInterval;
        property TwoMillisecondsInterval:TpvHighResolutionTime read fTwoMillisecondsInterval;
        property FourMillisecondsInterval:TpvHighResolutionTime read fFourMillisecondsInterval;
+       property TenMillisecondsInterval:TpvHighResolutionTime read fTenMillisecondsInterval;
+       property TwentyMillisecondsInterval:TpvHighResolutionTime read fTwentyMillisecondsInterval;
        property QuarterSecondInterval:TpvHighResolutionTime read fQuarterSecondInterval;
        property SecondInterval:TpvHighResolutionTime read fFrequency;
        property MinuteInterval:TpvHighResolutionTime read fMinuteInterval;
@@ -293,6 +297,8 @@ begin
  fMillisecondInterval:=(fFrequency+500) div 1000;
  fTwoMillisecondsInterval:=(fFrequency+250) div 500;
  fFourMillisecondsInterval:=(fFrequency+125) div 250;
+ fTenMillisecondsInterval:=(fFrequency+50) div 100;
+ fTwentyMillisecondsInterval:=(fFrequency+25) div 50;
  fQuarterSecondInterval:=(fFrequency+2) div 4;
  fMinuteInterval:=fFrequency*60;
  fHourInterval:=fFrequency*3600;
@@ -345,6 +351,10 @@ begin
 {$if defined(windows)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
+  while (NowTime+(fTwentyMillisecondsInterval))<EndTime do begin
+   Sleep(10);
+   NowTime:=GetTime;
+  end;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
    Sleep(1);
    NowTime:=GetTime;
