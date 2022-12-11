@@ -681,16 +681,19 @@ type EpvApplication=class(Exception)
       private
        fIndex:TpvInt32;
        fID:TpvInt32;
-{$if not defined(PasVulkanHeadless)}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
-{$elseif defined(Windows)}
-       fJoystick:TpvInt32;
+{$elseif not defined(PasVulkanHeadless)}
+{$if defined(Windows)}
+       fJoystick:TpvUInt32;
+       fState:Pointer;
        fJoyCaps:TJOYCAPSW;
        fJoyInfoEx:TJoyInfoEx;
-       fAxes:array[0..5] of TpvDouble;
 {$ifend}
+       fAxes:array[0..GAME_CONTROLLER_AXIS_MAX-1] of TpvInt32;
+       fButtons:TpvUInt32;
+       fHats:TpvUInt32;
 {$ifend}
        fCountAxes:TpvInt32;
        fCountBalls:TpvInt32;
@@ -1973,6 +1976,7 @@ const XINPUT_DEVTYPE_GAMEPAD=$01;
       XINPUT_GAMEPAD_RIGHT_THUMB=$0080;
       XINPUT_GAMEPAD_LEFT_SHOULDER=$0100;
       XINPUT_GAMEPAD_RIGHT_SHOULDER=$0200;
+      XINPUT_GAMEPAD_GUIDE=$0400;
       XINPUT_GAMEPAD_A=$1000;
       XINPUT_GAMEPAD_B=$2000;
       XINPUT_GAMEPAD_X=$4000;
@@ -3099,6 +3103,7 @@ begin
  fIndex:=aIndex;
  fJoystick:=aIndex;
  fID:=fJoystick;
+ GetMem(fState,SizeOf(TXINPUT_STATE));
 end;
 {$else}
 constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32);
@@ -3117,6 +3122,14 @@ begin
  end else if assigned(fJoystick) then begin
   SDL_JoystickClose(fJoystick);
  end;
+{$elseif (defined(Windows) and not defined(PasVulkanHeadless))}
+ if assigned(fState) then begin
+  try
+   FreeMem(fState);
+  finally
+   fState:=nil;
+  end;
+ end;
 {$ifend}
  inherited Destroy;
 end;
@@ -3129,26 +3142,41 @@ begin
  fCountHats:=SDL_JoystickNumHats(fJoystick);
  fCountButtons:=SDL_JoystickNumButtons(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- if joyGetDevCapsW(fJoystick,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR then begin
-  fCountAxes:=fJoyCaps.wMaxAxes;
+ if fJoystick<XUSER_MAX_COUNT then begin
+  // The XInput API has a hard coded button/axis mapping, so we just match it
+  fCountAxes:=6;
   fCountBalls:=0;
-  fCountHats:=0;
-  fCountButtons:=fJoyCaps.wMaxButtons;
+  fCountHats:=1;
+  fCountButtons:=11;
  end else begin
-  fCountAxes:=0;
-  fCountBalls:=0;
-  fCountHats:=0;
-  fCountButtons:=0;
+  if joyGetDevCapsW(fJoystick-XUSER_MAX_COUNT,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR then begin
+   fCountAxes:=fJoyCaps.wMaxAxes;
+   fCountBalls:=0;
+   fCountHats:=1;
+   fCountButtons:=fJoyCaps.wMaxButtons;
+  end else begin
+   fCountAxes:=0;
+   fCountBalls:=0;
+   fCountHats:=0;
+   fCountButtons:=0;
+  end;
  end;
 {$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameController:boolean;
+{$if (defined(Windows) and not defined(PasVulkanHeadless))}
+var Capabilities:TXINPUT_CAPABILITIES;
+{$ifend}
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=assigned(fGameController);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=false;
+ if (fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS) then begin
+  result:=Capabilities.SubType=XINPUT_DEVSUBTYPE_GAMEPAD;
+ end else begin
+  result:=false;
+ end;
 {$else}
  result:=false;
 {$ifend}
@@ -3175,7 +3203,11 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickName(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=PUCUUTF16ToUTF8(PWideChar(@fJoyCaps.szPname[0]));
+ if fJoystick<XUSER_MAX_COUNT then begin
+  result:='XInput'+IntToStr(fJoystick);
+ end else begin
+  result:=PUCUUTF16ToUTF8(PWideChar(@fJoyCaps.szPname[0]));
+ end;
 {$else}
  result:='';
 {$ifend}
@@ -3187,8 +3219,13 @@ begin
  result:=SDL_JoystickGetGUID(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
  FillChar(result,SizeOf(TGUID),#0);
- result.D1:=fJoyCaps.wMid;
- result.D2:=fJoyCaps.wPid;
+ if fJoystick<XUSER_MAX_COUNT then begin
+  result.D1:=TpvUInt32($10000000) or fJoystick;
+ end else begin
+  result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+  result.D2:=fJoyCaps.wMid;
+  result.D3:=fJoyCaps.wPid;
+ end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
 {$ifend}
@@ -3200,8 +3237,13 @@ begin
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
  FillChar(result,SizeOf(TGUID),#0);
- result.D1:=fJoyCaps.wMid;
- result.D2:=fJoyCaps.wPid;
+ if fJoystick<XUSER_MAX_COUNT then begin
+  result.D1:=TpvUInt32($10000000) or fJoystick;
+ end else begin
+  result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+  result.D2:=fJoyCaps.wMid;
+  result.D3:=fJoyCaps.wPid;
+ end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
 {$ifend}
@@ -3231,30 +3273,176 @@ procedure TpvApplicationJoystick.Update;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_JoystickUpdate;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- fJoyInfoEx.dwSize:=sizeof(TJoyInfoEx);
- fJoyInfoEx.dwFlags:=JOY_RETURNALL;
- if joyGetPosEx(fJoystick,@fJoyInfoEx)=JOYERR_NOERROR then begin
-  if CountAxes>0 then begin
-   fAxes[0]:=((fJoyInfoEx.wXpos-fJoyCaps.wXmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wXmin)))-1.0;
+{$elseif not defined(PasVulkanHeadless)}
+ fAxes[0]:=0;
+ fAxes[1]:=0;
+ fAxes[2]:=0;
+ fAxes[3]:=0;
+ fAxes[4]:=0;
+ fAxes[5]:=0;
+ fButtons:=0;
+ fHats:=0;
+{$if defined(Windows) and not defined(PasVulkanHeadless)}
+ if fJoystick<XUSER_MAX_COUNT then begin
+  if XInputGetState(fJoystick,fState)=ERROR_SUCCESS then begin
+   fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=PXINPUT_STATE(fState)^.Gamepad.sThumbLX;
+   fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbLY);
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=PXINPUT_STATE(fState)^.Gamepad.sThumbRX;
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbRY);
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=TpvInt32(PXINPUT_STATE(fState)^.Gamepad.bLeftTrigger*257{65535 div 255})-32768;
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=TpvInt32(PXINPUT_STATE(fState)^.Gamepad.bRightTrigger*257{65535 div 255})-32768;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_A)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_A;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_B)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_B;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_X)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_X;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_Y)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_Y;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_BACK)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_BACK;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_GUIDE)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_GUIDE;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_START)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_START;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_THUMB)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSTICK;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_THUMB)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSTICK;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_SHOULDER)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSHOULDER;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_SHOULDER)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSHOULDER;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_UP)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_UP;
+    fHats:=fHats or JOYSTICK_HAT_UP;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_DOWN)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_DOWN;
+    fHats:=fHats or JOYSTICK_HAT_DOWN;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_LEFT)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_LEFT;
+    fHats:=fHats or JOYSTICK_HAT_LEFT;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_RIGHT)<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_RIGHT;
+    fHats:=fHats or JOYSTICK_HAT_RIGHT;
+   end;
   end;
-  if CountAxes>1 then begin
-   fAxes[1]:=((fJoyInfoEx.wYpos-fJoyCaps.wYmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wYmin)))-1.0;
-  end;
-  if CountAxes>2 then begin
-   fAxes[2]:=((fJoyInfoEx.wZpos-fJoyCaps.wZmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wZmin)))-1.0;
-  end;
-  if CountAxes>3 then begin
-   fAxes[3]:=((fJoyInfoEx.dwRpos-fJoyCaps.wRmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wRmin)))-1.0;
-  end;
-  if CountAxes>4 then begin
-   fAxes[4]:=((fJoyInfoEx.dwUpos-fJoyCaps.wUmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wUmin)))-1.0;
-  end;
-  if CountAxes>5 then begin
-   fAxes[5]:=((fJoyInfoEx.dwVpos-fJoyCaps.wVmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wVmin)))-1.0;
+ end else begin
+  fJoyInfoEx.dwSize:=SizeOf(TJoyInfoEx);
+  fJoyInfoEx.dwFlags:=JOY_RETURNALL;
+  if joyGetPosEx(fJoystick-XUSER_MAX_COUNT,@fJoyInfoEx)=JOYERR_NOERROR then begin
+   if CountAxes>0 then begin
+    fAxes[0]:=round((((fJoyInfoEx.wXpos-fJoyCaps.wXmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wXmin)))-1.0)*32768);
+   end else begin
+    fAxes[0]:=0;
+   end;
+   if CountAxes>1 then begin
+    fAxes[1]:=round((((fJoyInfoEx.wYpos-fJoyCaps.wYmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wYmin)))-1.0)*32768);
+   end else begin
+    fAxes[1]:=0;
+   end;
+   if CountAxes>2 then begin
+    fAxes[2]:=round((((fJoyInfoEx.wZpos-fJoyCaps.wZmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wZmin)))-1.0)*32768);
+   end else begin
+    fAxes[2]:=0;
+   end;
+   if CountAxes>3 then begin
+    fAxes[3]:=round((((fJoyInfoEx.dwRpos-fJoyCaps.wRmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wRmin)))-1.0)*32768);
+   end else begin
+    fAxes[3]:=0;
+   end;
+   if CountAxes>4 then begin
+    fAxes[4]:=round((((fJoyInfoEx.dwUpos-fJoyCaps.wUmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wUmin)))-1.0)*32768);
+   end else begin
+    fAxes[4]:=0;
+   end;
+   if CountAxes>5 then begin
+    fAxes[5]:=round((((fJoyInfoEx.dwVpos-fJoyCaps.wVmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wVmin)))-1.0)*32768);
+   end else begin
+    fAxes[5]:=0;
+   end;
+   case fJoyInfoEx.dwPOV of
+    0..2249:begin // 0
+     fHats:=JOYSTICK_HAT_UP;
+    end;
+    2250..6749:begin // 4500
+     fHats:=JOYSTICK_HAT_RIGHTUP;
+    end;
+    6750..11249:begin // 9000
+     fHats:=JOYSTICK_HAT_RIGHT;
+    end;
+    11250..15749:begin // 13500
+     fHats:=JOYSTICK_HAT_RIGHTDOWN;
+    end;
+    15750..20249:begin // 18000
+     fHats:=JOYSTICK_HAT_DOWN;
+    end;
+    20250..24749:begin // 22500
+     fHats:=JOYSTICK_HAT_LEFTDOWN;
+    end;
+    24750..29249:begin // 27000
+     fHats:=JOYSTICK_HAT_LEFT;
+    end;
+    29250..33749:begin // 31500
+     fHats:=JOYSTICK_HAT_LEFTUP;
+    end;
+    33750..35999:begin // 0
+     fHats:=JOYSTICK_HAT_UP;
+    end;
+    else begin
+     fHats:=JOYSTICK_HAT_CENTERED;
+    end;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 0))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_A;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 1))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_B;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 2))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_X;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 3))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_Y;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 4))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_BACK;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 5))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_GUIDE;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 6))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_START;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 7))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSTICK;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 8))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSTICK;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 9))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSHOULDER;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 10))<>0 then begin
+    fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSHOULDER;
+   end;
   end;
  end;
-{$else}
+{$ifend}
 {$ifend}
 end;
 
@@ -3262,9 +3450,9 @@ function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- if aAxisIndex in [0..5] then begin
-  result:=round(fAxes[aAxisIndex]*32768);
+{$elseif not defined(PasVulkanHeadless)}
+ if aAxisIndex in [0..GAME_CONTROLLER_AXIS_MAX-1] then begin
+  result:=fAxes[aAxisIndex];
  end else begin
   result:=0;
  end;
@@ -3317,39 +3505,8 @@ begin
    result:=JOYSTICK_HAT_NONE;
   end;
  end;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- case fJoyInfoEx.dwPOV of
-  0..2249:begin // 0
-   result:=JOYSTICK_HAT_UP;
-  end;
-  2250..6749:begin // 4500
-   result:=JOYSTICK_HAT_RIGHTUP;
-  end;
-  6750..11249:begin // 9000
-   result:=JOYSTICK_HAT_RIGHT;
-  end;
-  11250..15749:begin // 13500
-   result:=JOYSTICK_HAT_RIGHTDOWN;
-  end;
-  15750..20249:begin // 18000
-   result:=JOYSTICK_HAT_DOWN;
-  end;
-  20250..24749:begin // 22500
-   result:=JOYSTICK_HAT_LEFTDOWN;
-  end;
-  24750..29249:begin // 27000
-   result:=JOYSTICK_HAT_LEFT;
-  end;
-  29250..33749:begin // 31500
-   result:=JOYSTICK_HAT_LEFTUP;
-  end;
-  33750..35999:begin // 0
-   result:=JOYSTICK_HAT_UP;
-  end;
-  else begin
-   result:=JOYSTICK_HAT_CENTERED;
-  end;
- end;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=fHats;
 {$else}
  result:=JOYSTICK_HAT_NONE;
 {$ifend}
@@ -3359,14 +3516,17 @@ function TpvApplicationJoystick.GetButton(const aButtonIndex:TpvInt32):boolean;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetButton(fJoystick,aButtonIndex)<>0;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl aButtonIndex))<>0;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=(fButtons and (TpvUInt32(1) shl aButtonIndex))<>0;
 {$else}
  result:=false;
 {$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameControllerAttached:boolean;
+{$if (defined(Windows) and not defined(PasVulkanHeadless))}
+var Capabilities:TXINPUT_CAPABILITIES;
+{$ifend}
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
@@ -3374,6 +3534,8 @@ begin
  end else begin
   result:=false;
  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ result:=(fJoystick>=XUSER_MAX_COUNT) or (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS);
 {$else}
  result:=false;
 {$ifend}
@@ -3409,25 +3571,10 @@ begin
  end else begin
   result:=0;
  end;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+{$elseif not defined(PasVulkanHeadless)}
  case aAxis of
-  GAME_CONTROLLER_AXIS_LEFTX:begin
-   result:=round(fAxes[0]*32768);
-  end;
-  GAME_CONTROLLER_AXIS_LEFTY:begin
-   result:=round(fAxes[1]*32768);
-  end;
-  GAME_CONTROLLER_AXIS_RIGHTX:begin
-   result:=round(fAxes[2]*32768);
-  end;
-  GAME_CONTROLLER_AXIS_RIGHTY:begin
-   result:=round(fAxes[3]*32768);
-  end;
-  GAME_CONTROLLER_AXIS_TRIGGERLEFT:begin
-   result:=round(fAxes[4]*32768);
-  end;
-  GAME_CONTROLLER_AXIS_TRIGGERRIGHT:begin
-   result:=round(fAxes[5]*32768);
+  0..GAME_CONTROLLER_AXIS_MAX-1:begin
+   result:=fAxes[aAxis];
   end;
   else begin
    result:=0;
@@ -3495,58 +3642,8 @@ begin
  end else begin
   result:=false;
  end;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- // TODO: Fix me!
- case aButton of
-  GAME_CONTROLLER_BUTTON_A:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 0))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_B:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 1))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_X:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 2))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_Y:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 3))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_BACK:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 4))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_GUIDE:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 5))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_START:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 6))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_LEFTSTICK:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 7))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_RIGHTSTICK:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 8))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_LEFTSHOULDER:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 9))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_RIGHTSHOULDER:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 10))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_DPAD_UP:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 11))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_DPAD_DOWN:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 12))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_DPAD_LEFT:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 13))<>0;
-  end;
-  GAME_CONTROLLER_BUTTON_DPAD_RIGHT:begin
-   result:=(fJoyInfoEx.wButtons and (TpvUInt32(1) shl 14))<>0;
-  end;
-  else begin
-   result:=false;
-  end;
- end;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=(fButtons and (TpvUInt32(1) shl aButton))<>0;
 {$else}
  result:=false;
 {$ifend}
@@ -9174,7 +9271,6 @@ var Index,Counter,Tries,
     Point:TPoint;
     MonitorInfo:TMonitorInfo;
  {$ifend}
-    DoUpdateJoysticks:boolean;
 {$ifend}
     OK,Found,DoUpdateMainJoystick:boolean;
 {$if defined(TpvApplicationUpdateJobOnMainThread)}
@@ -9190,10 +9286,6 @@ begin
  ProcessRunnables;
 
  DoUpdateMainJoystick:=false;
-
-{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
- DoUpdateJoysticks:=false;
-{$ifend}
 
  if TPasMPInterlocked.CompareExchange(fHasNewWindowTitle,false,true) then begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
@@ -9811,28 +9903,21 @@ begin
     end;
    end;
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
-   fWin32CountJoysticks:=joyGetNumDevs;
+   fWin32CountJoysticks:=XUSER_MAX_COUNT+joyGetNumDevs;
    if fWin32CountJoysticks<>fInput.fJoysticks.Count then begin
-    DoUpdateJoysticks:=true;
-   end;
-{$ifend}
-   if DoUpdateJoysticks then begin
-{$if defined(Windows) and not defined(PasVulkanHeadless)}
-    if fWin32CountJoysticks<>fInput.fJoysticks.Count then begin
-     fInput.fJoysticks.Clear;
-     for Counter:=0 to fWin32CountJoysticks-1 do begin
-      Joystick:=TpvApplicationJoystick.Create(Counter);
-      try
-       Joystick.Initialize;
-      finally
-       fInput.fJoysticks.Add(Joystick);
-      end;
+    fInput.fJoysticks.Clear;
+    for Counter:=0 to fWin32CountJoysticks-1 do begin
+     Joystick:=TpvApplicationJoystick.Create(Counter);
+     try
+      Joystick.Initialize;
+     finally
+      fInput.fJoysticks.Add(Joystick);
      end;
     end;
-{$ifend}
     DoUpdateMainJoystick:=true;
    end;
- {$ifend}
+{$ifend}
+{$ifend}
    if DoUpdateMainJoystick then begin
     fInput.fMainJoystick:=nil;
     if fInput.fJoysticks.Count>0 then begin
