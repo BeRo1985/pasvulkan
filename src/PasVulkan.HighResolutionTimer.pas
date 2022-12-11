@@ -89,6 +89,9 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
 
      TpvHighResolutionTimer=class
       private
+{$ifdef Windows}
+       fWaitableTimer:THandle;
+{$endif}
        fFrequency:TpvInt64;
        fFrequencyShift:TpvInt32;
        fMillisecondInterval:TpvHighResolutionTime;
@@ -283,6 +286,7 @@ begin
  inherited Create;
  fFrequencyShift:=0;
 {$if defined(windows)}
+ fWaitableTimer:=CreateWaitableTimer(nil,false,nil);
  if QueryPerformanceFrequency(fFrequency) then begin
   while (fFrequency and $ffffffffe0000000)<>0 do begin
    fFrequency:=fFrequency shr 1;
@@ -314,6 +318,11 @@ end;
 
 destructor TpvHighResolutionTimer.Destroy;
 begin
+{$if defined(windows)}
+ if fWaitableTimer<>0 then begin
+  CloseHandle(fWaitableTimer);
+ end;
+{$ifend}
  inherited Destroy;
 end;
 
@@ -351,29 +360,60 @@ end;
 
 procedure TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64);
 {$if defined(Windows)}
-var Seconds,Observed,Delta:TpvDouble;
+var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
     EndTime,NowTime,Start:TpvHighResolutionTime;
+    DueTime:TLargeInteger;
 begin
  NowTime:=GetTime;
  EndTime:=NowTime+aDelay;
  Seconds:=ToFloatSeconds(aDelay);
- while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
-  Start:=GetTime;
-  Windows.Sleep(1);
-  NowTime:=GetTime;
-  Observed:=ToFloatSeconds(NowTime-Start);
-  Seconds:=Seconds-Observed;
-  inc(fSleepCount);
-  if fSleepCount>=16777216 then begin
-   fSleepEstimate:=5e-3;
-   fSleepMean:=5e-3;
-   fSleepM2:=0.0;
-   fSleepCount:=1;
-  end else begin
-   Delta:=Observed-fSleepMean;
-   fSleepMean:=fSleepMean+(Delta/fSleepCount);
-   fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
-   fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+ if fWaitableTimer<>0 then begin
+  while NowTime<EndTime do begin
+   ToWait:=Seconds-fSleepEstimate;
+   if ToWait>1e-7 then begin
+    Start:=GetTime;
+    DueTime:=-Max(TpvInt64(1),TpvInt64(round(ToWait*1e7)));
+    SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false);
+    WaitForSingleObject(fWaitableTimer,1000);
+    NowTime:=GetTime;
+    Observed:=ToFloatSeconds(NowTime-Start);
+    Seconds:=Seconds-Observed;
+    inc(fSleepCount);
+    if fSleepCount>=16777216 then begin
+     fSleepEstimate:=5e-3;
+     fSleepMean:=5e-3;
+     fSleepM2:=0.0;
+     fSleepCount:=1;
+    end else begin
+     Error:=Observed-ToWait;
+     Delta:=Error-fSleepMean;
+     fSleepMean:=fSleepMean+(Delta/fSleepCount);
+     fSleepM2:=fSleepM2+(Delta*(Error-fSleepMean));
+     fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+    end;
+   end else begin
+    break;
+   end;
+  end;
+ end else begin
+  while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
+   Start:=GetTime;
+   Windows.Sleep(1);
+   NowTime:=GetTime;
+   Observed:=ToFloatSeconds(NowTime-Start);
+   Seconds:=Seconds-Observed;
+   inc(fSleepCount);
+   if fSleepCount>=16777216 then begin
+    fSleepEstimate:=5e-3;
+    fSleepMean:=5e-3;
+    fSleepM2:=0.0;
+    fSleepCount:=1;
+   end else begin
+    Delta:=Observed-fSleepMean;
+    fSleepMean:=fSleepMean+(Delta/fSleepCount);
+    fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
+    fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+   end;
   end;
  end;
  repeat
