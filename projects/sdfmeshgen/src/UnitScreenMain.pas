@@ -1665,6 +1665,7 @@ begin
   end else begin
    fGUIUpdateProgressBar.Value:=TPasMPInterlocked.Read(fUpdateThread.fProgress);
   end;
+  fGUIInstance.SetRenderDirty;
  end;
 end;
 
@@ -1676,6 +1677,7 @@ begin
   fGUIUpdateProgressBar.MaximumValue:=65535;
   fGUIUpdateProgressBar.Value:=0;
   fUpdateThread:=TUpdateThread.Create(self);
+  fGUIInstance.SetRenderDirty;
  end;
 end;
 
@@ -2935,6 +2937,10 @@ begin
 
 // fGUIUpdateProgressBar.Value:=trunc(fTime*65536) and $ffff;
 
+ if fMesh.Indices.Count>0 then begin
+  fGUIInstance.SetRenderDirty;
+ end;
+
  fGUIInstance.DrawWidgetBounds:=false;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateInFlightFrameIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
@@ -2968,7 +2974,7 @@ var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     VulkanSwapChain:TpvVulkanSwapChain;
 begin
 
- begin
+ if fGUIInstance.CheckRenderDirty(pvApplication.DrawInFlightFrameIndex,aSwapChainImageIndex,true) then begin
 
   begin
 
