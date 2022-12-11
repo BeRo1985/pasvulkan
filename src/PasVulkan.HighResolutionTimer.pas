@@ -99,6 +99,10 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        fQuarterSecondInterval:TpvHighResolutionTime;
        fMinuteInterval:TpvHighResolutionTime;
        fHourInterval:TpvHighResolutionTime;
+       fSleepEstimate:TpvDouble;
+       fSleepMean:TpvDouble;
+       fSleepM2:TpvDouble;
+       fSleepCount:Int64;
       public
        constructor Create;
        destructor Destroy; override;
@@ -302,6 +306,10 @@ begin
  fQuarterSecondInterval:=(fFrequency+2) div 4;
  fMinuteInterval:=fFrequency*60;
  fHourInterval:=fFrequency*3600;
+ fSleepEstimate:=5e-3;
+ fSleepMean:=5e-3;
+ fSleepM2:=0.0;
+ fSleepCount:=1;
 end;
 
 destructor TpvHighResolutionTimer.Destroy;
@@ -342,6 +350,37 @@ begin
 end;
 
 procedure TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64);
+{$if defined(Windows)}
+var Seconds,Observed,Delta:TpvDouble;
+    EndTime,NowTime,Start:TpvHighResolutionTime;
+begin
+ NowTime:=GetTime;
+ EndTime:=NowTime+aDelay;
+ Seconds:=ToFloatSeconds(aDelay);
+ while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
+  Start:=GetTime;
+  Windows.Sleep(1);
+  NowTime:=GetTime;
+  Observed:=ToFloatSeconds(NowTime-Start);
+  Seconds:=Seconds-Observed;
+  inc(fSleepCount);
+  if fSleepCount>=16777216 then begin
+   fSleepEstimate:=5e-3;
+   fSleepMean:=5e-3;
+   fSleepM2:=0.0;
+   fSleepCount:=1;
+  end else begin
+   Delta:=Observed-fSleepMean;
+   fSleepMean:=fSleepMean+(Delta/fSleepCount);
+   fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
+   fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+  end;
+ end;
+ repeat
+  NowTime:=GetTime;
+ until NowTime>=EndTime;
+end;
+{$else}
 var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
 {$ifdef unix}
     req,rem:timespec;
@@ -351,16 +390,12 @@ begin
 {$if defined(windows)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
-  while (NowTime+(fTwentyMillisecondsInterval))<EndTime do begin
-   Sleep(10);
-   NowTime:=GetTime;
-  end;
   while (NowTime+fFourMillisecondsInterval)<EndTime do begin
-   Sleep(1);
+   Windows.Sleep(1);
    NowTime:=GetTime;
   end;
   while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   Sleep(0);
+   Windows.Sleep(0);
    NowTime:=GetTime;
   end;
   while NowTime<EndTime do begin
@@ -425,6 +460,7 @@ begin
 {$ifend}
  end;
 end;
+{$ifend}
 
 function TpvHighResolutionTimer.ToFixedPointSeconds(const aTime:TpvHighResolutionTime):TpvInt64;
 var a,b:TUInt128;
