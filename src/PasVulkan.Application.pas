@@ -1070,7 +1070,7 @@ type EpvApplication=class(Exception)
        FIFORelaxed=3,
        NoVSync={$ifdef fpc}0{$else}TpvApplicationPresentMode.Immediate{$endif},
        GreedyVSync={$ifdef fpc}1{$else}TpvApplicationPresentMode.Mailbox{$endif},
-       Vsync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
+       VSync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
       );
 
      TpvApplicationSwapChainColorSpace=
