@@ -281,12 +281,19 @@ begin
  Dest.Hi:=((u1*v1)+w2)+k;
 end;
 
+{$if defined(Windows)}
+function CreateWaitableTimerExW(lpTimerAttributes:Pointer;lpTimerName:LPCWSTR;dwFlags,dwDesiredAccess:DWORD):THandle; {$ifdef cpu386}stdcall;{$endif} external 'kernel32.dll' name 'CreateWaitableTimerExW';
+{$ifend}
+
 constructor TpvHighResolutionTimer.Create;
 begin
  inherited Create;
  fFrequencyShift:=0;
-{$if defined(windows)}
- fWaitableTimer:=CreateWaitableTimer(nil,false,nil);
+{$if defined(Windows)}
+ fWaitableTimer:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
+ if fWaitableTimer=0 then begin
+  fWaitableTimer:=CreateWaitableTimer(nil,false,nil);
+ end;
  if QueryPerformanceFrequency(fFrequency) then begin
   while (fFrequency and $ffffffffe0000000)<>0 do begin
    fFrequency:=fFrequency shr 1;
@@ -372,7 +379,7 @@ begin
    ToWait:=Seconds-fSleepEstimate;
    if ToWait>1e-7 then begin
     Start:=GetTime;
-    DueTime:=-Max(TpvInt64(1),TpvInt64(round(ToWait*1e7)));
+    DueTime:=-Max(TpvInt64(1),TpvInt64(trunc(ToWait*1e7)));
     SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false);
     WaitForSingleObject(fWaitableTimer,1000);
     NowTime:=GetTime;
@@ -486,7 +493,7 @@ begin
 {$else}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
-{$if defuned(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   while (NowTime+fFourMillisecondsInterval)<EndTime then begin
    SDL_Delay(1);
    NowTime:=GetTime;
