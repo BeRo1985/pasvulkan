@@ -283,6 +283,7 @@ end;
 
 {$if defined(Windows)}
 function CreateWaitableTimerExW(lpTimerAttributes:Pointer;lpTimerName:LPCWSTR;dwFlags,dwDesiredAccess:DWORD):THandle; {$ifdef cpu386}stdcall;{$endif} external 'kernel32.dll' name 'CreateWaitableTimerExW';
+function NtDelayExecution(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif} external 'ntdll.dll' name 'NtDelayExecution';
 {$ifend}
 
 constructor TpvHighResolutionTimer.Create;
@@ -386,14 +387,14 @@ begin
        // Ignore and do nothing in this case
       end;
       WAIT_ABANDONED,WAIT_FAILED:begin
-       Windows.Sleep(trunc(ToWait*1e3));
+       NtDelayExecution(false,DueTime);
       end;
       else {WAIT_OBJECT_0:}begin
        // Do nothing in this case
       end;
      end;
     end else begin
-     Windows.Sleep(trunc(ToWait*1e3));
+     NtDelayExecution(false,DueTime);
     end;
     NowTime:=GetTime;
     Observed:=ToFloatSeconds(NowTime-Start);
