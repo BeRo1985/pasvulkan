@@ -3165,7 +3165,7 @@ begin
 end;
 
 function TpvApplicationJoystick.IsGameController:boolean;
-{$if (defined(Windows) and not defined(PasVulkanHeadless))}
+{$if (defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless)))}
 var Capabilities:TXINPUT_CAPABILITIES;
 {$ifend}
 begin
@@ -3524,7 +3524,7 @@ begin
 end;
 
 function TpvApplicationJoystick.IsGameControllerAttached:boolean;
-{$if (defined(Windows) and not defined(PasVulkanHeadless))}
+{$if (defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless)))}
 var Capabilities:TXINPUT_CAPABILITIES;
 {$ifend}
 begin
