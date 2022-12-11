@@ -7,6 +7,7 @@
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
@@ -48,11 +49,14 @@
  CustomOptions += &apos; -dWayland -dXCB -dXLIB&apos;;
 end;
 
-if TargetOS&lt;>&apos;android&apos; then begin
- CustomOptions += &apos; -dPasVulkanUseSDL2WithVulkanSupport&apos;;
+if TargetOS=&apos;linux&apos; then begin
+ CustomOptions += &apos; -dPasVulkanUseSDL2&apos;;
+ if TargetOS&lt;>&apos;android&apos; then begin
+  CustomOptions += &apos; -dPasVulkanUseSDL2WithVulkanSupport&apos;;
+ end;
 end;
 
- CustomOptions += &apos; -dPasVulkanPasMP -dPasVulkanUseSDL2&apos;;
+ CustomOptions += &apos; -dPasVulkanPasMP&apos;;
 
 // example for adding linker options on Mac OS X
 //if TargetOS=&apos;darwin&apos; then
