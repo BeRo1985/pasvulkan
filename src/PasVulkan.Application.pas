@@ -1941,6 +1941,162 @@ procedure CloseTouchInputHandle(hTouchInput:THANDLE); stdcall; external 'user32.
 function SetPropA(h:HWND;p:LPCSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
 function SetPropW(h:HWND;p:LPWSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
 
+const XINPUT_DLL='xinput1_4.dll'; // >= Windows 8
+
+const XINPUT_DEVTYPE_GAMEPAD=$01;
+
+      XINPUT_DEVSUBTYPE_UNKNOWN=$00;
+      XINPUT_DEVSUBTYPE_GAMEPAD=$01;
+      XINPUT_DEVSUBTYPE_WHEEL=$02;
+      XINPUT_DEVSUBTYPE_ARCADE_STICK=$03;
+      XINPUT_DEVSUBTYPE_FLIGHT_STICK=$04;
+      XINPUT_DEVSUBTYPE_DANCE_PAD=$05;
+      XINPUT_DEVSUBTYPE_GUITAR=$06;
+      XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE=$07;
+      XINPUT_DEVSUBTYPE_DRUM_KIT=$08;
+      XINPUT_DEVSUBTYPE_GUITAR_BASS=$0b;
+      XINPUT_DEVSUBTYPE_ARCADE_PAD=$13;
+
+      XINPUT_CAPS_FFB_SUPPORTED=$0001;
+      XINPUT_CAPS_WIRELESS=$0002;
+      XINPUT_CAPS_VOICE_SUPPORTED=$0004;
+      XINPUT_CAPS_PMD_SUPPORTED=$0008;
+      XINPUT_CAPS_NO_NAVIGATION=$0010;
+
+      XINPUT_GAMEPAD_DPAD_UP=$0001;
+      XINPUT_GAMEPAD_DPAD_DOWN=$0002;
+      XINPUT_GAMEPAD_DPAD_LEFT=$0004;
+      XINPUT_GAMEPAD_DPAD_RIGHT=$0008;
+      XINPUT_GAMEPAD_START=$0010;
+      XINPUT_GAMEPAD_BACK=$0020;
+      XINPUT_GAMEPAD_LEFT_THUMB=$0040;
+      XINPUT_GAMEPAD_RIGHT_THUMB=$0080;
+      XINPUT_GAMEPAD_LEFT_SHOULDER=$0100;
+      XINPUT_GAMEPAD_RIGHT_SHOULDER=$0200;
+      XINPUT_GAMEPAD_A=$1000;
+      XINPUT_GAMEPAD_B=$2000;
+      XINPUT_GAMEPAD_X=$4000;
+      XINPUT_GAMEPAD_Y=$8000;
+
+      XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE=7849;
+      XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE=8689;
+      XINPUT_GAMEPAD_TRIGGER_THRESHOLD=30;
+
+      XINPUT_FLAG_GAMEPAD=$00000001;
+
+      XINPUT_BATTERY_DEVTYPE_GAMEPAD=$00;
+      XINPUT_BATTERY_DEVTYPE_HEADSET=$01;
+
+      XINPUT_BATTERY_TYPE_DISCONNECTED=$00;
+      XINPUT_BATTERY_TYPE_WIRED=$01;
+      XINPUT_BATTERY_TYPE_ALKALINE=$02;
+      XINPUT_BATTERY_TYPE_NIMH=$03;
+      XINPUT_BATTERY_TYPE_UNKNOWN=$ff;
+
+      XINPUT_BATTERY_LEVEL_EMPTY=$00;
+      XINPUT_BATTERY_LEVEL_LOW=$01;
+      XINPUT_BATTERY_LEVEL_MEDIUM=$02;
+      XINPUT_BATTERY_LEVEL_FULL=$03;
+
+      XUSER_MAX_COUNT=4;
+
+      XUSER_INDEX_ANY=$000000ff;
+
+      XINPUT_VK_PAD_A=$5800;
+      XINPUT_VK_PAD_B=$5801;
+      XINPUT_VK_PAD_X=$5802;
+      XINPUT_VK_PAD_Y=$5803;
+      XINPUT_VK_PAD_RSHOULDER=$5804;
+      XINPUT_VK_PAD_LSHOULDER=$5805;
+      XINPUT_VK_PAD_LTRIGGER=$5806;
+      XINPUT_VK_PAD_RTRIGGER=$5807;
+
+      XINPUT_VK_PAD_DPAD_UP=$5810;
+      XINPUT_VK_PAD_DPAD_DOWN=$5811;
+      XINPUT_VK_PAD_DPAD_LEFT=$5812;
+      XINPUT_VK_PAD_DPAD_RIGHT=$5813;
+      XINPUT_VK_PAD_START=$5814;
+      XINPUT_VK_PAD_BACK=$5815;
+      XINPUT_VK_PAD_LTHUMB_PRESS=$5816;
+      XINPUT_VK_PAD_RTHUMB_PRESS=$5817;
+
+      XINPUT_VK_PAD_LTHUMB_UP=$5820;
+      XINPUT_VK_PAD_LTHUMB_DOWN=$5821;
+      XINPUT_VK_PAD_LTHUMB_RIGHT=$5822;
+      XINPUT_VK_PAD_LTHUMB_LEFT=$5823;
+      XINPUT_VK_PAD_LTHUMB_UPLEFT=$5824;
+      XINPUT_VK_PAD_LTHUMB_UPRIGHT=$5825;
+      XINPUT_VK_PAD_LTHUMB_DOWNRIGHT=$5826;
+      XINPUT_VK_PAD_LTHUMB_DOWNLEFT=$5827;
+
+      XINPUT_VK_PAD_RTHUMB_UP=$5830;
+      XINPUT_VK_PAD_RTHUMB_DOWN=$5831;
+      XINPUT_VK_PAD_RTHUMB_RIGHT=$5832;
+      XINPUT_VK_PAD_RTHUMB_LEFT=$5833;
+      XINPUT_VK_PAD_RTHUMB_UPLEFT=$5834;
+      XINPUT_VK_PAD_RTHUMB_UPRIGHT=$5835;
+      XINPUT_VK_PAD_RTHUMB_DOWNRIGHT=$5836;
+      XINPUT_VK_PAD_RTHUMB_DOWNLEFT=$5837;
+
+      XINPUT_KEYSTROKE_KEYDOWN=$0001;
+      XINPUT_KEYSTROKE_KEYUP=$0002;
+      XINPUT_KEYSTROKE_REPEAT=$0004;
+
+type TXINPUT_GAMEPAD=record
+      wButtons:TpvUInt16;
+      bLeftTrigger:TpvUInt8;
+      bRightTrigger:TpvUInt8;
+      sThumbLX:TpvInt16;
+      sThumbLY:TpvInt16;
+      sThumbRX:TpvInt16;
+      sThumbRY:TpvInt16;
+     end;
+     PXINPUT_GAMEPAD=^TXINPUT_GAMEPAD;
+
+     TXINPUT_STATE=record
+      dwPacketNumber:TpvUInt32;
+      Gamepad:TXINPUT_GAMEPAD;
+     end;
+     PXINPUT_STATE=^TXINPUT_STATE;
+
+     TXINPUT_VIBRATION=record
+      wLeftMotorSpeed:TpvUInt16;
+      wRightMotorSpeed:TpvUInt16;
+     end;
+     PXINPUT_VIBRATION=^TXINPUT_VIBRATION;
+
+     TXINPUT_CAPABILITIES=record
+      Type_:TpvUInt8;
+      SubType:TpvUInt8;
+      Flags:TpvUInt16;
+      Gamepad:TXINPUT_GAMEPAD;
+      Vibration:TXINPUT_VIBRATION;
+     end;
+     PXINPUT_CAPABILITIES=^TXINPUT_CAPABILITIES;
+
+     TXINPUT_BATTERY_INFORMATION=record
+      BatteryType:TpvUInt8;
+      BatteryLevel:TpvUInt8;
+     end;
+     PXINPUT_BATTERY_INFORMATION=^TXINPUT_BATTERY_INFORMATION;
+
+     TXINPUT_KEYSTROKE=record
+      VirtualKey:TpvUInt16;
+      Unicode:WCHAR;
+      Flags:TpvUInt16;
+      UserIndex:TpvUInt8;
+      HidCode:TpvUInt8;
+     end;
+     PXINPUT_KEYSTROKE=^TXINPUT_KEYSTROKE;
+
+function XInputGetState(dwUserIndex:TpvUInt32;pState:PXINPUT_STATE):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetState';
+function XInputSetState(dwUserIndex:TpvUInt32;pVibration:PXINPUT_VIBRATION):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputSetState';
+function XInputGetCapabilities(dwUserIndex,dwFlags:TpvUInt32;pCapabilities:PXINPUT_CAPABILITIES):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetCapabilities';
+procedure XInputEnable(Enable:BOOL); {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputEnable';
+function XInputGetAudioDeviceIds(dwUserIndex:TpvUInt32;pRenderDeviceId:PLPWSTR;pRenderCount:PUINT;pCaptureDeviceId:PLPWSTR;pCaptureCount:PUINT):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetAudioDeviceIds';
+function XInputGetBatteryInformation(dwUserIndex:TpvUInt32;devType:TpvUInt8;pBatteryInformation:PXINPUT_BATTERY_INFORMATION):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetBatteryInformation';
+function XInputGetKeystroke(dwUserIndex,dwReserved:TpvUInt32;pKeystroke:PXINPUT_KEYSTROKE):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetKeystroke';
+
 {$ifend}
 {$ifend}
 
