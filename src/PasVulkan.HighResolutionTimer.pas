@@ -380,8 +380,21 @@ begin
    if ToWait>1e-7 then begin
     Start:=GetTime;
     DueTime:=-Max(TpvInt64(1),TpvInt64(trunc(ToWait*1e7)));
-    SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false);
-    WaitForSingleObject(fWaitableTimer,1000);
+    if SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false) then begin
+     case WaitForSingleObject(fWaitableTimer,1000) of
+      WAIT_TIMEOUT:begin
+       // Ignore and do nothing in this case
+      end;
+      WAIT_ABANDONED,WAIT_FAILED:begin
+       Windows.Sleep(trunc(ToWait*1e3));
+      end;
+      else {WAIT_OBJECT_0:}begin
+       // Do nothing in this case
+      end;
+     end;
+    end else begin
+     Windows.Sleep(trunc(ToWait*1e3));
+    end;
     NowTime:=GetTime;
     Observed:=ToFloatSeconds(NowTime-Start);
     Seconds:=Seconds-Observed;
