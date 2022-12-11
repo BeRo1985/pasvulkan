@@ -486,6 +486,7 @@ begin
 {$else}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
+{$if defuned(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   while (NowTime+fFourMillisecondsInterval)<EndTime then begin
    SDL_Delay(1);
    NowTime:=GetTime;
@@ -494,6 +495,7 @@ begin
    SDL_Delay(0);
    NowTime:=GetTime;
   end;
+{$ifend}
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
