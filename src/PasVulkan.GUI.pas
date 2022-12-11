@@ -1341,6 +1341,8 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
+     { TpvGUIInstance }
+
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
@@ -1354,7 +1356,7 @@ type TpvGUIObject=class;
        fDrawWidgetBounds:Boolean;
        fWindowTabbing:Boolean;
        fSwapChainReady:Boolean;
-       fRenderDirty:Boolean;
+       fRenderDirtyBitMask:TPasMPUInt32;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -1405,6 +1407,8 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure SetRenderDirty; override;
+       function CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean=true):Boolean;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
@@ -1417,7 +1421,6 @@ type TpvGUIObject=class;
        property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
        property DrawWidgetBounds:Boolean read fDrawWidgetBounds write fDrawWidgetBounds;
-       property RenderDirty:Boolean read fRenderDirty write fRenderDirty;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
@@ -4362,7 +4365,7 @@ var Instance_:TpvGUIInstance;
 begin
  Instance_:=Instance;
  if assigned(Instance_) then begin
-  Instance.fRenderDirty:=true;
+  Instance_.SetRenderDirty;
  end;
 end;
 
@@ -12611,7 +12614,7 @@ begin
 
  fSwapChainReady:=false;
 
- fRenderDirty:=true;
+ SetRenderDirty;
 
  fBuffers:=nil;
 
@@ -12694,7 +12697,7 @@ begin
  if fDrawEngine<>aDrawEngine then begin
   FreeAndNil(fDrawEngine);
   fDrawEngine:=aDrawEngine;
-  fRenderDirty:=true;
+  SetRenderDirty;
  end;
 end;
 
@@ -12875,7 +12878,7 @@ begin
   fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
  end;
 
- fRenderDirty:=true;
+ SetRenderDirty;
 
 end;
 
@@ -12921,7 +12924,7 @@ begin
   if assigned(fChildren) and fChildren.Contains(aGUIObject) then begin
    fChildren.Remove(aGUIObject);
   end;
-  fRenderDirty:=true;
+  SetRenderDirty;
  end;
 end;
 
@@ -13075,7 +13078,7 @@ begin
   MoveWindowToFront(fWindow);
  end;
 
- fRenderDirty:=true;
+ SetRenderDirty;
 
 end;
 
@@ -13092,7 +13095,7 @@ begin
    aWindow.PerformLayout;
   end;
   aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
-  fRenderDirty:=true;
+  SetRenderDirty;
  end;
 end;
 
@@ -13132,7 +13135,7 @@ begin
     end;
    until not Changed;
   end;
-  fRenderDirty:=true;
+  SetRenderDirty;
  end;
 end;
 
@@ -13140,7 +13143,7 @@ function TpvGUIInstance.AddMenu:TpvGUIWindowMenu;
 begin
  if not assigned(fMenu) then begin
   fMenu:=TpvGUIWindowMenu.Create(self);
-  fRenderDirty:=true;
+  SetRenderDirty;
  end;
  result:=fMenu;
 end;
@@ -13327,7 +13330,7 @@ begin
    end;
   end;
  end;
- fRenderDirty:=true;
+ SetRenderDirty;
 end;
 
 function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
@@ -13446,7 +13449,7 @@ begin
    end;
   end;
  end;
- fRenderDirty:=true;
+ SetRenderDirty;
 end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
@@ -13464,7 +13467,7 @@ begin
    result:=inherited Scrolled(aPosition,aRelativeAmount);
   end;
  end;
- fRenderDirty:=true;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIInstance.FindHoveredWidget;
@@ -13499,6 +13502,23 @@ begin
   if assigned(fHoveredWidget) then begin
    fHoveredWidget.IncRef;
   end;
+ end;
+end;
+
+procedure TpvGUIInstance.SetRenderDirty;
+begin
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($ffffffff));
+end;
+
+function TpvGUIInstance.CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean):Boolean;
+var Index,Mask:TpvUInt32;
+begin
+ Index:=(aInFlightFrameIndex*MaxSwapChainImages)+aSwapChainImageIndex;
+ Mask:=TpvUInt32(1) shl Index;
+ if aReset then begin
+  result:=(TPasMPInterlocked.ExchangeBitwiseAnd(fRenderDirtyBitMask,not Mask) and Mask)<>0;
+ end else begin
+  result:=(TPasMPInterlocked.Read(fRenderDirtyBitMask) and Mask)<>0;
  end;
 end;
 
@@ -13549,7 +13569,6 @@ begin
  end;
  fDrawEngine.Draw;
  fTime:=fTime+fDeltaTime;
- fRenderDirty:=false;
 end;
 
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
