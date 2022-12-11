@@ -148,13 +148,13 @@ type TpvGUIObject=class;
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
-     TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):boolean of object;
+     TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):Boolean of object;
 
-     TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
+     TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean of object;
 
-     TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):boolean of object;
+     TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):Boolean of object;
 
-     TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
+     TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):Boolean of object;
 
      TpvGUIDrawEngine=class
       public
@@ -198,7 +198,7 @@ type TpvGUIObject=class;
                );
                TKind.DrawGUIElement:(
                 fDrawGUIElementGUIElement:TVkInt32;
-                fDrawGUIElementFocused:boolean;
+                fDrawGUIElementFocused:Boolean;
                 fDrawGUIElementMin:TpvVector2;
                 fDrawGUIElementMax:TpvVector2;
                 fDrawGUIElementMetaMin:TpvVector2;
@@ -230,7 +230,7 @@ type TpvGUIObject=class;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
        fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fStrategy:TStrategy;
-       fTransparent:boolean;
+       fTransparent:Boolean;
        fClipRects:TClipRects;
        fCountClipRects:TpvSizeInt;
        fModelMatrices:TModelMatrices;
@@ -247,11 +247,11 @@ type TpvGUIObject=class;
        fTransparentBatchItems:TBatchItems;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
-       fDoNeedNewState:boolean;
-       fUseScissor:boolean;
+       fDoNeedNewState:Boolean;
+       fUseScissor:Boolean;
        procedure AcquireNewStateIfNeeded;
-       function GetTransparent:boolean; inline;
-       procedure SetTransparent(const aTransparent:boolean); inline;
+       function GetTransparent:Boolean; inline;
+       procedure SetTransparent(const aTransparent:Boolean); inline;
        function GetClipRect:TpvRect; inline;
        procedure SetClipRect(const aClipRect:TpvRect);
        function GetModelMatrix:TpvMatrix4x4; inline;
@@ -268,8 +268,8 @@ type TpvGUIObject=class;
        procedure Next;
        procedure Draw;
        procedure DrawVulkanCanvas(const aVulkanCanvas:TpvGUIVulkanCanvas;const aRect:TpvRect);
-       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
-       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:Boolean=true);
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
        procedure DrawFilledRectangle(const aRect:TpvRect);
@@ -280,13 +280,13 @@ type TpvGUIObject=class;
        property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
        property Color:TpvVector4 read GetColor write SetColor;
       published
-       property Transparent:boolean read GetTransparent write SetTransparent;
+       property Transparent:Boolean read GetTransparent write SetTransparent;
        property Font:TpvFont read fFont write fFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
        property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Strategy:TStrategy read fStrategy write fStrategy;
-       property UseScissor:boolean read fUseScissor write fUseScissor;
+       property UseScissor:Boolean read fUseScissor write fUseScissor;
      end;
 
      TpvGUIObjectList=class
@@ -298,26 +298,26 @@ type TpvGUIObject=class;
               function GetCurrent:TpvGUIObject; inline;
              public
               constructor Create(const aObjectList:TpvGUIObjectList);
-              function MoveNext:boolean; inline;
+              function MoveNext:Boolean; inline;
               property Current:TpvGUIObject read GetCurrent;
             end;
       private
        fItems:array of TpvGUIObject;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
-       fNotifyObjects:boolean;
-       fOwnsObjects:boolean;
+       fNotifyObjects:Boolean;
+       fOwnsObjects:Boolean;
        procedure HandleAdd(const aValue:TpvGUIObject);
        procedure HandleRemoveAndNil(var aValue:TpvGUIObject);
        procedure SetCount(const aNewCount:TpvSizeInt);
        function GetItem(const aIndex:TpvSizeInt):TpvGUIObject;
        procedure SetItem(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
       public
-       constructor Create(const aOwnsObjects:boolean);
+       constructor Create(const aOwnsObjects:Boolean);
        destructor Destroy; override;
        procedure Clear;
        function IndexOf(const aItem:TpvGUIObject):TpvSizeInt;
-       function Contains(const aItem:TpvGUIObject):boolean;
+       function Contains(const aItem:TpvGUIObject):Boolean;
        function Add(const aItem:TpvGUIObject):TpvSizeInt;
        procedure Insert(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
        procedure Delete(const aIndex:TpvSizeInt);
@@ -330,8 +330,8 @@ type TpvGUIObject=class;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const aIndex:TpvSizeInt]:TpvGUIObject read GetItem write SetItem; default;
-       property NotifyObjects:boolean read fNotifyObjects write fNotifyObjects;
-       property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
+       property NotifyObjects:Boolean read fNotifyObjects write fNotifyObjects;
+       property OwnsObjects:Boolean read fOwnsObjects write fOwnsObjects;
      end;
 
      IpvGUIObject=interface(IpvReferenceCountedObject)['{DF4E2599-646B-42AF-A138-7C213997EE3D}']
@@ -361,8 +361,9 @@ type TpvGUIObject=class;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
        function GetGUIObject:TpvGUIObject;
-       function HasParent(const aParent:TpvGUIObject):boolean; virtual;
-       function HasParentOrIs(const aParent:TpvGUIObject):boolean; virtual;
+       function HasParent(const aParent:TpvGUIObject):Boolean; virtual;
+       function HasParentOrIs(const aParent:TpvGUIObject):Boolean; virtual;
+       procedure SetRenderDirty; virtual;
        procedure Check; virtual;
        procedure Update; virtual;
       published
@@ -388,12 +389,12 @@ type TpvGUIObject=class;
        fTopologicalSortedList:TList;
        fToFreeList:TList;
        fCountToDisposeObjects:{$ifdef cpu64}TPasMPInt64{$else}TPasMPInt32{$endif};
-       procedure Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+       procedure Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
       public
        constructor Create(const aInstance:TpvGUIInstance); reintroduce;
        destructor Destroy; override;
        procedure AddGarbage(const aObject:TpvGUIObject);
-       procedure DisposeAllGarbage(const aForce:boolean);
+       procedure DisposeAllGarbage(const aForce:Boolean);
      end;
 
      TpvGUIObjectHolder=class(TpvGUIObject)
@@ -609,7 +610,7 @@ type TpvGUIObject=class;
 
      PpvGUIAdvancedGridLayoutAnchorVector=^TpvGUIAdvancedGridLayoutAnchorVector;
      TpvGUIAdvancedGridLayoutAnchorVector=record
-      case boolean of
+      case Boolean of
        false:(
         x,y:TpvUInt8;
        );
@@ -620,7 +621,7 @@ type TpvGUIObject=class;
 
      PpvGUIAdvancedGridLayoutAnchorAlignmentVector=^TpvGUIAdvancedGridLayoutAnchorAlignmentVector;
      TpvGUIAdvancedGridLayoutAnchorAlignmentVector=record
-      case boolean of
+      case Boolean of
        false:(
         x,y:TpvGUILayoutAlignment;
        );
@@ -636,7 +637,7 @@ type TpvGUIObject=class;
        constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill;const aVerticalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill); overload;
        constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment); overload;
        constructor Create(const aX,aY:TpvUInt8); overload;
-       case boolean of
+       case Boolean of
         false:(
          Position:TpvGUIAdvancedGridLayoutAnchorVector;
          Size:TpvGUIAdvancedGridLayoutAnchorVector;
@@ -677,7 +678,7 @@ type TpvGUIObject=class;
        fSizes:TpvVector2Array;
        fFixedSizes:TpvVector2Array;
        fTargetSizes:TpvVector2Array;
-       procedure ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
+       procedure ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:Boolean);
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
@@ -726,7 +727,7 @@ type TpvGUIObject=class;
        fSpacingProperty:TpvVector2Property;
        fDirection:TpvGUIFlowLayoutDirection;
        fAlignments:TpvGUIFlowLayoutAlignments;
-       fAlignmentOnBaseLine:boolean;
+       fAlignmentOnBaseLine:Boolean;
        fPositions:TpvVector2Array;
        fSizes:TpvVector2Array;
        function GetHorizontalAlignment:TpvGUIFlowLayoutAlignment; inline;
@@ -747,7 +748,7 @@ type TpvGUIObject=class;
                           const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
                           const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                           const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
-                          const aAlignmentOnBaseLine:boolean=false); reintroduce; virtual;
+                          const aAlignmentOnBaseLine:Boolean=false); reintroduce; virtual;
        destructor Destroy; override;
       published
        property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
@@ -757,7 +758,7 @@ type TpvGUIObject=class;
        property Direction:TpvGUIFlowLayoutDirection read fDirection write fDirection;
        property HorizontalAlignment:TpvGUIFlowLayoutAlignment read GetHorizontalAlignment write SetHorizontalAlignment;
        property VerticalAlignment:TpvGUIFlowLayoutAlignment read GetVerticalAlignment write SetVerticalAlignment;
-       property AlignmentOnBaseLine:boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
+       property AlignmentOnBaseLine:Boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
      end;
 
      TpvGUISkin=class(TpvGUIObject)
@@ -993,8 +994,8 @@ type TpvGUIObject=class;
              ComboBoxHorizontalMargin=2.0;
              MultiLineTextEditorMargin=4.0;
       protected
-       fUnfocusedWindowHeaderFontShadow:boolean;
-       fFocusedWindowHeaderFontShadow:boolean;
+       fUnfocusedWindowHeaderFontShadow:Boolean;
+       fFocusedWindowHeaderFontShadow:Boolean;
        fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
        fFocusedWindowHeaderFontShadowOffset:TpvVector2;
        fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
@@ -1090,8 +1091,8 @@ type TpvGUIObject=class;
        property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
        property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
       published
-       property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
-       property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
+       property UnfocusedWindowHeaderFontShadow:Boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
+       property FocusedWindowHeaderFontShadow:Boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
        property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
@@ -1123,7 +1124,7 @@ type TpvGUIObject=class;
        function GetCurrent:TpvGUIWidget; inline;
       public
        constructor Create(const aWidget:TpvGUIWidget);
-       function MoveNext:boolean; inline;
+       function MoveNext:Boolean; inline;
        property Current:TpvGUIWidget read GetCurrent;
      end;
 
@@ -1183,27 +1184,27 @@ type TpvGUIObject=class;
        fParentClipRect:TpvRect;
        fClipRect:TpvRect;
        fModelMatrix:TpvMatrix4x4;
-       function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetAutoSize:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetAutoSize(const aAutoSize:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetVisible(const aVisible:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetDraggable:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetDraggable(const aDraggable:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetTopLevelFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetKeyPreview:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetKeyPreview(const aKeyPreview:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetWantTabKey:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetWantTabKey(const aWantTabKey:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetEnabled:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetEnabled(const aEnabled:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetAutoSize:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetAutoSize(const aAutoSize:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetVisible:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetVisible(const aVisible:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetDraggable:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetDraggable(const aDraggable:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFocused(const aFocused:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTopLevelFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetPointerFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetPointerFocused(const aPointerFocused:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTabStop:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTabStop(const aTabStop:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetKeyPreview:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetKeyPreview(const aKeyPreview:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantAllKeys:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantAllKeys(const aWantAllKeys:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantTabKey:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantTabKey(const aWantTabKey:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1217,7 +1218,7 @@ type TpvGUIObject=class;
        function GetFixedHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRecursiveVisible:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
        function GetLastParentWindow:TpvGUIWindow;
        function GetScissorParent:TpvGUIWidget;
@@ -1245,27 +1246,27 @@ type TpvGUIObject=class;
        procedure BeforeDestruction; override;
        procedure Release; virtual;
        function GetEnumerator:TpvGUIWidgetEnumerator;
-       function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aPosition:TpvVector2):Boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetTabList(const aList:Classes.TList);
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; virtual;
-       function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
-       function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
-       function FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow; virtual;
-       function ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
+       function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:Boolean):TpvGUIWidget; virtual;
+       function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean; virtual;
+       function FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:Boolean):TpvGUIWindow; virtual;
+       function ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean; virtual;
        procedure SetSizeToPreferredSize; virtual;
        procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
        procedure Show; virtual;
        procedure Hide; virtual;
-       function Enter:boolean; virtual;
-       function Leave:boolean; virtual;
-       function PointerEnter:boolean; virtual;
-       function PointerLeave:boolean; virtual;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; virtual;
-       function DragReleaseEvent:boolean; virtual;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
+       function Enter:Boolean; virtual;
+       function Leave:Boolean; virtual;
+       function PointerEnter:Boolean; virtual;
+       function PointerLeave:Boolean; virtual;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; virtual;
+       function DragReleaseEvent:Boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; virtual;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; virtual;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
        procedure Draw; virtual;
@@ -1287,18 +1288,18 @@ type TpvGUIObject=class;
        property Size:TpvVector2Property read fSizeProperty;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
        property WidgetFlags:TpvGUIWidgetFlags read fWidgetFlags write fWidgetFlags;
-       property Enabled:boolean read GetEnabled write SetEnabled;
-       property AutoSize:boolean read GetAutoSize write SetAutoSize;
-       property Visible:boolean read GetVisible write SetVisible;
-       property Draggable:boolean read GetDraggable write SetDraggable;
-       property RecursiveVisible:boolean read GetRecursiveVisible;
-       property Focused:boolean read GetFocused write SetFocused;
-       property TopLevelFocused:boolean read GetTopLevelFocused write SetFocused;
-       property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
-       property TabStop:boolean read GetTabStop write SetTabStop;
-       property KeyPreview:boolean read GetKeyPreview write SetKeyPreview;
-       property WantAllKeys:boolean read GetWantAllKeys write SetWantAllKeys;
-       property WantTabKey:boolean read GetWantTabKey write SetWantTabKey;
+       property Enabled:Boolean read GetEnabled write SetEnabled;
+       property AutoSize:Boolean read GetAutoSize write SetAutoSize;
+       property Visible:Boolean read GetVisible write SetVisible;
+       property Draggable:Boolean read GetDraggable write SetDraggable;
+       property RecursiveVisible:Boolean read GetRecursiveVisible;
+       property Focused:Boolean read GetFocused write SetFocused;
+       property TopLevelFocused:Boolean read GetTopLevelFocused write SetFocused;
+       property PointerFocused:Boolean read GetPointerFocused write SetPointerFocused;
+       property TabStop:Boolean read GetTabStop write SetTabStop;
+       property KeyPreview:Boolean read GetKeyPreview write SetKeyPreview;
+       property WantAllKeys:Boolean read GetWantAllKeys write SetWantAllKeys;
+       property WantTabKey:Boolean read GetWantTabKey write SetWantTabKey;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -1350,9 +1351,10 @@ type TpvGUIObject=class;
        fFontCodePointRanges:TpvFontCodePointRanges;
        fMonoFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
-       fDrawWidgetBounds:boolean;
-       fWindowTabbing:boolean;
-       fSwapChainReady:boolean;
+       fDrawWidgetBounds:Boolean;
+       fWindowTabbing:Boolean;
+       fSwapChainReady:Boolean;
+       fRenderDirty:Boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -1397,12 +1399,12 @@ type TpvGUIObject=class;
        procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
-       function HasModalWindows:boolean;
+       function HasModalWindows:Boolean;
        procedure PerformLayout; override;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
@@ -1414,7 +1416,8 @@ type TpvGUIObject=class;
        property Canvas:TpvCanvas read fCanvas;
        property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
-       property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
+       property DrawWidgetBounds:Boolean read fDrawWidgetBounds write fDrawWidgetBounds;
+       property RenderDirty:Boolean read fRenderDirty write fRenderDirty;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
@@ -1481,12 +1484,12 @@ type TpvGUIObject=class;
                            TpvGUIWindowFlag.ResizableW,
                            TpvGUIWindowFlag.ResizableE];
       private
-       fWindowDisposed:boolean;
+       fWindowDisposed:Boolean;
        fLastFocused:TpvGUIWidget;
       protected
        fTitle:TpvUTF8String;
        fCachedTitle:TpvUTF8String;
-       fCachedTitleInvalidated:boolean;
+       fCachedTitleInvalidated:Boolean;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
        fLastWindowState:TpvGUIWindowState;
@@ -1502,8 +1505,8 @@ type TpvGUIObject=class;
        function GetFixedSize:TpvVector2; override;
        procedure SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
        procedure SetWindowState(const aWindowState:TpvGUIWindowState);
-       function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetModal:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModal(const aModal:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -1523,11 +1526,11 @@ type TpvGUIObject=class;
        procedure Center;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        procedure PerformLayout; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       public
        property FontColor;
@@ -1537,7 +1540,7 @@ type TpvGUIObject=class;
        property Title:TpvUTF8String read fTitle write SetTitle;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write SetWindowFlags;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
-       property Modal:boolean read GetModal write SetModal;
+       property Modal:Boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIPanel read GetButtonPanel;
        property Content:TpvGUIPanel read fContent;
        property Menu:TpvGUIWindowMenu read fMenu;
@@ -1605,7 +1608,7 @@ type TpvGUIObject=class;
                           const aIcon:TObject=nil;
                           const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
       published
        property OnButtonClick:TpvGUIMessageDialogOnButtonClick read fOnButtonClick write fOnButtonClick;
      end;
@@ -1646,27 +1649,27 @@ type TpvGUIObject=class;
 
      TpvGUIPanel=class(TpvGUIWidget)
       private
-       fBackground:boolean;
+       fBackground:Boolean;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
       published
-       property Background:boolean read fBackground write fBackground;
+       property Background:Boolean read fBackground write fBackground;
      end;
 
      TpvGUIColorPanel=class(TpvGUIWidget)
       private
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
       published
        property RGBA:TpvVector4Property read fRGBAProperty;
-       property SRGB:boolean read fSRGB write fSRGB;
+       property SRGB:Boolean read fSRGB write fSRGB;
      end;
 
      TpvGUIImage=class(TpvGUIWidget)
@@ -1686,7 +1689,7 @@ type TpvGUIObject=class;
       private
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
       protected
        function GetFont:TpvFont; override;
        procedure SetFont(const aFont:TpvFont);
@@ -1699,9 +1702,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1745,7 +1748,7 @@ type TpvGUIObject=class;
        fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fIconPosition:TpvGUIButtonIconPosition;
        fIcon:TObject;
        fIconHeight:TpvFloat;
@@ -1754,8 +1757,8 @@ type TpvGUIObject=class;
        procedure ProcessDown(const aPosition:TpvVector2);
        procedure ProcessUp(const aPosition:TpvVector2);
       protected
-       function GetDown:boolean; inline;
-       procedure SetDown(const aDown:boolean); virtual;
+       function GetDown:Boolean; inline;
+       procedure SetDown(const aDown:Boolean); virtual;
        procedure SetCaption(const aCaption:TpvUTF8String);
        procedure SetFont(const aFont:TpvFont);
        function GetFontSize:TpvFloat; override;
@@ -1765,9 +1768,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1777,7 +1780,7 @@ type TpvGUIObject=class;
        property FontSize write SetFontSize;
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
-       property Down:boolean read GetDown write SetDown;
+       property Down:Boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write SetCaption;
        property IconPosition:TpvGUIButtonIconPosition read fIconPosition write fIconPosition;
        property Icon:TObject read fIcon write fIcon;
@@ -1804,7 +1807,7 @@ type TpvGUIObject=class;
        fPopup:TpvGUIPopup;
        fToFocusWidget:TpvGUIWidget;
       protected
-       procedure SetDown(const aDown:boolean); override;
+       procedure SetDown(const aDown:Boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        procedure PerformLayout; override;
@@ -1817,7 +1820,7 @@ type TpvGUIObject=class;
       private
        fPopupMenu:TpvGUIPopupMenu;
       protected
-       procedure SetDown(const aDown:boolean); override;
+       procedure SetDown(const aDown:Boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        procedure Draw; override;
@@ -1849,12 +1852,12 @@ type TpvGUIObject=class;
        fCheckBoxGroup:TpvGUICheckBoxGroup;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fOnChange:TpvGUIOnEvent;
-       function GetPushed:boolean; inline;
-       procedure SetPushed(const aPushed:boolean); inline;
-       function GetChecked:boolean; inline;
-       procedure SetChecked(const aChecked:boolean);
+       function GetPushed:Boolean; inline;
+       procedure SetPushed(const aPushed:Boolean); inline;
+       function GetChecked:Boolean; inline;
+       procedure SetChecked(const aChecked:Boolean);
       protected
        function GetHighlightRect:TpvRect; override;
        function GetFont:TpvFont; override;
@@ -1868,9 +1871,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1881,8 +1884,8 @@ type TpvGUIObject=class;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation write SetTextTruncation;
-       property Pushed:boolean read GetPushed write SetPushed;
-       property Checked:boolean read GetChecked write SetChecked;
+       property Pushed:Boolean read GetPushed write SetPushed;
+       property Checked:Boolean read GetChecked write SetChecked;
        property Caption:TpvUTF8String read fCaption write SetCaption;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
@@ -1892,12 +1895,12 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
      end;
 
-     TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):boolean of object;
+     TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):Boolean of object;
 
      TpvGUITextEdit=class(TpvGUIWidget)
       private
-       fEditable:boolean;
-       fSpinnable:boolean;
+       fEditable:Boolean;
+       fSpinnable:Boolean;
        fText:TpvUTF8String;
        fTextGlyphRects:TpvCanvasTextGlyphRects;
        fCountTextGlyphRects:TpvInt32;
@@ -1920,39 +1923,39 @@ type TpvGUIObject=class;
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
-       property Spinnable:boolean read fSpinnable write fSpinnable;
+       property Spinnable:Boolean read fSpinnable write fSpinnable;
       protected
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
-       function GetEditable:boolean;
-       procedure SetEditable(const aEditable:boolean);
+       function GetEditable:Boolean;
+       procedure SetEditable(const aEditable:Boolean);
        procedure UpdateText; virtual;
-       function CheckText(const aText:TpvUTF8String):boolean; virtual;
+       function CheckText(const aText:TpvUTF8String):Boolean; virtual;
        function GetText:TpvUTF8String; virtual;
        procedure SetText(const aText:TpvUTF8String); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        procedure CutSelectedText;
        procedure CopySelectedText;
        procedure PasteText;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
        property Font;
        property FontSize;
-       property Editable:boolean read GetEditable write SetEditable;
+       property Editable:Boolean read GetEditable write SetEditable;
        property Text:TpvUTF8String read GetText write SetText;
        property MinimumWidth:TpvFloat read fMinimumWidth write fMinimumWidth;
        property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
@@ -1976,15 +1979,15 @@ type TpvGUIObject=class;
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        function GetValue:TpvInt64;
        procedure SetValue(const aValue:TpvInt64);
-       function CheckText(const aText:TpvUTF8String):boolean; override;
+       function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
       published
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
        property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
@@ -2007,15 +2010,15 @@ type TpvGUIObject=class;
        procedure SetMaximumValue(const aMaximumValue:TpvDouble);
        function GetValue:TpvDouble;
        procedure SetValue(const aValue:TpvDouble);
-       function CheckText(const aText:TpvUTF8String):boolean; override;
+       function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
       published
        property MinimumValue:TpvDouble read fMinimumValue write SetMinimumValue;
        property MaximumValue:TpvDouble read fMaximumValue write SetMaximumValue;
@@ -2045,16 +2048,16 @@ type TpvGUIObject=class;
        fRect:TpvRect;
        fOpenRect:TpvRect;
        fOnClick:TpvGUIOnEvent;
-       function GetEnabled:boolean; inline;
-       procedure SetEnabled(const aEnabled:boolean); inline;
-       function GetSelectable:boolean; inline;
+       function GetEnabled:Boolean; inline;
+       procedure SetEnabled(const aEnabled:Boolean); inline;
+       function GetSelectable:Boolean; inline;
        function GetMenu:TpvGUIPopupMenu;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
       published
-       property Enabled:boolean read GetEnabled write SetEnabled;
-       property Selectable:boolean read GetSelectable;
+       property Enabled:Boolean read GetEnabled write SetEnabled;
+       property Selectable:Boolean read GetSelectable;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property ShortcutHint:TpvUTF8String read fShortcutHint write fShortcutHint;
        property Icon:TObject read fIcon write fIcon;
@@ -2072,12 +2075,12 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fPositionProperty:TpvVector2Property;
        fSize:TpvVector2;
-       fHasSubMenus:boolean;
-       fReleaseOnDeactivation:boolean;
+       fHasSubMenus:Boolean;
+       fReleaseOnDeactivation:Boolean;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
        fHoveredMenuItem:TpvGUIMenuItem;
-       function GetActivated:boolean;
+       function GetActivated:Boolean;
       protected
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
@@ -2092,19 +2095,19 @@ type TpvGUIObject=class;
        procedure Deactivate;
        procedure DeactivateWindowMenu;
        procedure DeactivateSubmenus;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
        procedure Draw(const aDrawEngine:TpvGUIDrawEngine);
       public
        property FontColor:TpvVector4 read GetFontColor write fFontColor;
       published
-       property Activated:boolean read GetActivated;
+       property Activated:Boolean read GetActivated;
        property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Font:TpvFont read GetFont write fFont;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
        property Position:TpvVector2Property read fPositionProperty;
-       property ReleaseOnDeactivation:boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
+       property ReleaseOnDeactivation:Boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
      end;
 
      TpvGUIWindowMenu=class(TpvGUIWidget)
@@ -2118,11 +2121,11 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
      end;
@@ -2153,8 +2156,8 @@ type TpvGUIObject=class;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fThumbButtonSize:TpvFloat;
-       fSliderPushed:boolean;
-       fDragActive:boolean;
+       fSliderPushed:Boolean;
+       fDragActive:Boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
@@ -2173,15 +2176,15 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       published
@@ -2222,7 +2225,7 @@ type TpvGUIObject=class;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fThumbButtonSize:TpvFloat;
-       fSliderPushed:boolean;
+       fSliderPushed:Boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUISliderSubWidget;
        fPushedSubWidget:TpvGUISliderSubWidget;
@@ -2239,15 +2242,15 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
        property Orientation:TpvGUISliderOrientation read fOrientation write SetOrientation;
@@ -2339,10 +2342,11 @@ type TpvGUIObject=class;
 
      TpvGUITab=class(TCollectionItem)
       private
+       fOwner:TpvGUITabPanel;
        fFlags:TpvGUITabFlags;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fData:TObject;
        fContent:TpvGUIWidget;
        fTag:TpvSizeInt;
@@ -2350,19 +2354,21 @@ type TpvGUIObject=class;
        fSize:TpvVector2;
        fRect:TpvRect;
        procedure SetCaption(const aCaption:TpvUTF8String);
-       function GetModified:boolean; inline;
-       procedure SetModified(const aModified:boolean);
-       function GetSelected:boolean; inline;
-       procedure SetSelected(const aSelected:boolean);
+       function GetModified:Boolean; inline;
+       procedure SetModified(const aModified:Boolean);
+       function GetSelected:Boolean; inline;
+       procedure SetSelected(const aSelected:Boolean);
       public
        constructor Create(aCollection:TCollection); override;
        destructor Destroy; override;
+       procedure Close;
        property Data:TObject read fData write fData;
        property Content:TpvGUIWidget read fContent write fContent;
       published
+       property Owner:TpvGUITabPanel read fOwner;
        property Caption:TpvUTF8String read fCaption write SetCaption;
-       property Modified:boolean read GetModified write SetModified;
-       property Selected:boolean read GetSelected write SetSelected;
+       property Modified:Boolean read GetModified write SetModified;
+       property Selected:Boolean read GetSelected write SetSelected;
        property Tag:TpvSizeInt read fTag write fTag;
      end;
 
@@ -2384,7 +2390,7 @@ type TpvGUIObject=class;
        property Items[const aIndex:TpvSizeInt]:TpvGUITab read GetItem write SetItem; default;
      end;
 
-     TpvGUITabPanelOnTabEvent=function(const aSender:TObject;const aTab:TpvGUITab):boolean of object;
+     TpvGUITabPanelOnTabEvent=function(const aSender:TObject;const aTab:TpvGUITab):Boolean of object;
 
      PpvGUITabPanelFlag=^TpvGUITabPanelFlag;
      TpvGUITabPanelFlag=
@@ -2412,13 +2418,14 @@ type TpvGUIObject=class;
        fContent:TpvGUIPanel;
        fOnTabSelected:TpvGUITabPanelOnTabEvent;
        fOnTabUnselected:TpvGUITabPanelOnTabEvent;
+       fDestroying:Boolean;
        procedure SetContentMargin(const aContentMargin:TpvFloat);
-       function GetVisibleHeader:boolean; inline;
-       procedure SetVisibleHeader(const aVisibleHeader:boolean);
-       function GetVisibleContent:boolean; inline;
-       procedure SetVisibleContent(const aVisibleContent:boolean);
-       function GetVisibleContentBackground:boolean; inline;
-       procedure SetVisibleContentBackground(const aVisibleContentBackground:boolean);
+       function GetVisibleHeader:Boolean; inline;
+       procedure SetVisibleHeader(const aVisibleHeader:Boolean);
+       function GetVisibleContent:Boolean; inline;
+       procedure SetVisibleContent(const aVisibleContent:Boolean);
+       function GetVisibleContentBackground:Boolean; inline;
+       procedure SetVisibleContentBackground(const aVisibleContentBackground:Boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure SetTabs(const aTabs:TpvGUITabList);
@@ -2431,15 +2438,15 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
        property Tabs:TpvGUITabList read fTabs write SetTabs;
@@ -2447,9 +2454,9 @@ type TpvGUIObject=class;
        property Tab:TpvGUITab read GetTab write SetTab;
        property Content:TpvGUIPanel read fContent;
        property ContentMargin:TpvFloat read fContentMargin write SetContentMargin;
-       property VisibleHeader:boolean read GetVisibleHeader write SetVisibleHeader;
-       property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
-       property VisibleContentBackground:boolean read GetVisibleContentBackground write SetVisibleContentBackground;
+       property VisibleHeader:Boolean read GetVisibleHeader write SetVisibleHeader;
+       property VisibleContent:Boolean read GetVisibleContent write SetVisibleContent;
+       property VisibleContentBackground:Boolean read GetVisibleContentBackground write SetVisibleContentBackground;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
@@ -2473,7 +2480,7 @@ type TpvGUIObject=class;
        Mark
       );
 
-     TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIListBoxOnGetItemText=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
 
@@ -2497,11 +2504,11 @@ type TpvGUIObject=class;
        fActionStopIndex:TpvSizeInt;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
-       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
-       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
-       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
-       function GetMultiSelect:boolean; inline;
-       procedure SetMultiSelect(const aMultiSelect:boolean);
+       function GetSelected(const aItemIndex:TpvSizeInt):Boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
+       function GetMultiSelect:Boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:Boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        function GetCountVisibleItems:TpvSizeInt;
@@ -2512,22 +2519,22 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure ClearSelection;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
-       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
+       property Selected[const aItemIndex:TpvSizeInt]:Boolean read GetSelected write SetSelected;
       published
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
-       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
@@ -2535,7 +2542,7 @@ type TpvGUIObject=class;
        property OnGetItemText:TpvGUIListBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
-     TpvGUIComboBoxOnDrawItem=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIComboBoxOnDrawItem=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIComboBoxOnGetItemText=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
 
@@ -2549,17 +2556,17 @@ type TpvGUIObject=class;
        fItemIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkRowHeight:TpvFloat;
-       fClosePopup:boolean;
+       fClosePopup:Boolean;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIComboBoxOnDrawItem;
        fOnGetItemText:TpvGUIComboBoxOnGetItemText;
        procedure PopupButtonOnChange(const aSender:TpvGUIObject);
-       function PopupOnEnter(const aSender:TpvGUIObject):boolean;
-       function PopupOnLeave(const aSender:TpvGUIObject):boolean;
+       function PopupOnEnter(const aSender:TpvGUIObject):Boolean;
+       function PopupOnLeave(const aSender:TpvGUIObject):Boolean;
        procedure ListBoxOnChangeItemIndex(const aSender:TpvGUIObject);
-       function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetHighlightRect:TpvRect; override;
@@ -2568,15 +2575,15 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
@@ -2599,16 +2606,16 @@ type TpvGUIObject=class;
 
      TpvGUISplitterPanelGripButton=class(TpvGUIWidget)
       private
-       fDown:boolean;
+       fDown:Boolean;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
      end;
 
@@ -2620,7 +2627,7 @@ type TpvGUIObject=class;
        fLeftTopPanel:TpvGUIPanel;
        fRightBottomPanel:TpvGUIPanel;
        fGripButton:TpvGUISplitterPanelGripButton;
-       fDirty:boolean;
+       fDirty:Boolean;
        procedure SetOrientation(const aOrientation:TpvGUISplitterPanelOrientation);
        procedure SetGripSize(const aGripSize:TpvFloat);
        procedure SetPartitionFactor(const aPartitionFactor:TpvFloat);
@@ -2660,17 +2667,17 @@ type TpvGUIObject=class;
        fFind:TpvUTF8String;
        fRegularExpression:TpvTextEditor.TRegularExpression;
        fReplace:TpvUTF8String;
-       fUseRegularExpression:boolean;
-       fWholeWords:boolean;
-       fCaseInsensitive:boolean;
-       fMultiLine:boolean;
-       fReplaceAll:boolean;
-       fPromptOnReplace:boolean;
-       fSearchSelection:boolean;
-       fEntrieScope:boolean;
-       fDoReplace:boolean;
-       fDoIt:boolean;
-       fDoRefocusTextEditor:boolean;
+       fUseRegularExpression:Boolean;
+       fWholeWords:Boolean;
+       fCaseInsensitive:Boolean;
+       fMultiLine:Boolean;
+       fReplaceAll:Boolean;
+       fPromptOnReplace:Boolean;
+       fSearchSelection:Boolean;
+       fEntrieScope:Boolean;
+       fDoReplace:Boolean;
+       fDoIt:Boolean;
+       fDoRefocusTextEditor:Boolean;
        fCodePointIndex:TpvSizeInt;
        fSelectionStart:TpvSizeInt;
        fSelectionEnd:TpvSizeInt;
@@ -2707,12 +2714,12 @@ type TpvGUIObject=class;
        fViewNonScrollMaximumVisibleColumnWidth:TpvSizeInt;
        fViewNonScrollCountVisibleLines:TpvSizeInt;
        fTime:TpvDouble;
-       fDirty:boolean;
-       fLeftSideBar:boolean;
-       fEditable:boolean;
-       fOverwrite:boolean;
-       fOldLineWrap:boolean;
-       fLineWrap:boolean;
+       fDirty:Boolean;
+       fLeftSideBar:Boolean;
+       fEditable:Boolean;
+       fOverwrite:Boolean;
+       fOldLineWrap:Boolean;
+       fLineWrap:Boolean;
        fVisibleAreaRect:TpvRect;
        fLeftSideBarAreaRect:TpvRect;
        fTextAreaRect:TpvRect;
@@ -2723,7 +2730,7 @@ type TpvGUIObject=class;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
-       procedure OpenSearchReplaceDialog(const aReplace:boolean);
+       procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
@@ -2750,19 +2757,19 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        procedure CutSelectedText;
        procedure CopySelectedText;
        procedure PasteText;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
@@ -2773,10 +2780,10 @@ type TpvGUIObject=class;
        property TextEditor:TpvTextEditor read fTextEditor;
        property View:TpvTextEditor.TView read fView;
        property Text:TpvUTF8String read GetText write SetText;
-       property LeftSideBar:boolean read fLeftSideBar write fLeftSideBar;
-       property Editable:boolean read fEditable write fEditable;
-       property Overwrite:boolean read fOverwrite write fOverwrite;
-       property LineWrap:boolean read fLineWrap write fLineWrap;
+       property LeftSideBar:Boolean read fLeftSideBar write fLeftSideBar;
+       property Editable:Boolean read fEditable write fEditable;
+       property Overwrite:Boolean read fOverwrite write fOverwrite;
+       property LineWrap:Boolean read fLineWrap write fLineWrap;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
@@ -2805,17 +2812,17 @@ type TpvGUIObject=class;
        fCheckBoxPromptOnReplace:TpvGUICheckBox;
        fCheckBoxSearchSelection:TpvGUICheckBox;
        fCheckBoxEntrieScope:TpvGUICheckBox;
-       fReplace:boolean;
-       function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       fReplace:Boolean;
+       function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure NewSearchReplaceState;
        procedure ButtonFindOnClick(const aSender:TpvGUIObject);
        procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
-       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:Boolean); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
      end;
 
      TpvGUIMultiLineTextEditGoToLineWindow=class(TpvGUIWindow)
@@ -2827,13 +2834,13 @@ type TpvGUIObject=class;
        fPanelButtons:TpvGUIPanel;
        fButtonOK:TpvGUIButton;
        fButtonCancel:TpvGUIButton;
-       function IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure ButtonOKOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
        constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
      end;
 
      TpvGUIVulkanCanvas=class(TpvGUIWidget)
@@ -2857,7 +2864,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGB:TpvVector3;
        fRGBProperty:TpvVector3Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
        fMode:TpvInt32;
@@ -2867,16 +2874,16 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGB:TpvVector3Property read fRGBProperty;
-       property SRGB:boolean read fSRGB write fSRGB;
+       property SRGB:Boolean read fSRGB write fSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -2886,7 +2893,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
        fOnChange:TpvGUIOnEvent;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fColorWheel:TpvGUIColorWheel;
@@ -2910,7 +2917,7 @@ type TpvGUIObject=class;
        fFloatEditB:TpvGUIFloatEdit;
        fLabelA:TpvGUILabel;
        fFloatEditA:TpvGUIFloatEdit;
-       procedure SetSRGB(const aSRGB:boolean);
+       procedure SetSRGB(const aSRGB:Boolean);
        procedure UpdateEditFields;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
@@ -2933,7 +2940,7 @@ type TpvGUIObject=class;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGBA:TpvVector4Property read fRGBAProperty;
-       property SRGB:boolean read fSRGB write SetSRGB;
+       property SRGB:Boolean read fSRGB write SetSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -2947,14 +2954,14 @@ type TpvGUIObject=class;
              );
       private
        fAlignment:TAlignment;
-       fAutoSize:boolean;
+       fAutoSize:Boolean;
        fCaption:TpvUTF8String;
        fWidth:TpvFloat;
        fStretch:TpvFloat;
        fMinWidth:TpvFloat;
        fMaxWidth:TpvFloat;
        fTag:TpvSizeInt;
-       fVisible:boolean;
+       fVisible:Boolean;
        fWorkWidth:TpvFloat;
        fRect:TpvRect;
       protected
@@ -2967,14 +2974,14 @@ type TpvGUIObject=class;
        procedure Assign(Source:TPersistent); override;
       published
        property Alignment:TAlignment read fAlignment write fAlignment default TAlignment.Leading;
-       property AutoSize:boolean read fAutoSize write fAutoSize default false;
+       property AutoSize:Boolean read fAutoSize write fAutoSize default false;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Width:TpvFloat read GetStoredWidth write fWidth;
        property Stretch:TpvFloat read fStretch write fStretch;
        property MinWidth:TpvFloat read fMinWidth write fMinWidth;
        property MaxWidth:TpvFloat read fMaxWidth write fMaxWidth;
        property Tag:TpvSizeInt read fTag write fTag default 0;
-       property Visible:boolean read fVisible write fVisible default true;
+       property Visible:Boolean read fVisible write fVisible default true;
      end;
 
      TpvGUIListViewColumns=class(TCollection)
@@ -2990,9 +2997,9 @@ type TpvGUIObject=class;
        fParent:TpvGUIListViewItems;
        fCaption:TpvUTF8String;
        fData:pointer;
-       fFocused:boolean;
+       fFocused:Boolean;
        fImage:TObject;
-       fSelected:boolean;
+       fSelected:Boolean;
        fSubItems:TStrings;
        fTag:TpvSizeInt;
        fRect:TpvRect;
@@ -3007,9 +3014,9 @@ type TpvGUIObject=class;
       published
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Index:TpvSizeInt read GetIndex;
-       property Focused:boolean read fFocused write fFocused;
+       property Focused:Boolean read fFocused write fFocused;
        property Image:TObject read fImage write fImage;
-       property Selected:boolean read fSelected write fSelected;
+       property Selected:Boolean read fSelected write fSelected;
        property SubItems:TStrings read fSubItems write SetSubItems;
        property Tag:TpvSizeInt read fTag write fTag default 0;
      end;
@@ -3041,7 +3048,7 @@ type TpvGUIObject=class;
        Mark
       );
 
-     TpvGUIListViewOnDrawItem=function(const aSender:TpvGUIListView;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIListViewOnDrawItem=function(const aSender:TpvGUIListView;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIListViewOnGetItemText=function(const aSender:TpvGUIListView;const aItemIndex,aSubItemIndex:TpvSizeInt):TpvUTF8String of object;
 
@@ -3083,13 +3090,13 @@ type TpvGUIObject=class;
        procedure SetViewMode(const aViewMode:TViewMode);
        procedure SetItems(const aItems:TpvGUIListViewItems);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
-       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
-       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
-       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
-       function GetMultiSelect:boolean; inline;
-       procedure SetMultiSelect(const aMultiSelect:boolean);
-       function GetHeader:boolean; inline;
-       procedure SetHeader(const aHeader:boolean);
+       function GetSelected(const aItemIndex:TpvSizeInt):Boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
+       function GetMultiSelect:Boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:Boolean);
+       function GetHeader:Boolean; inline;
+       procedure SetHeader(const aHeader:Boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        function GetCountItemsPerRow:TpvSizeInt;
@@ -3102,18 +3109,18 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure ClearSelection;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Check; override;
        procedure Draw; override;
-       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
+       property Selected[const aItemIndex:TpvSizeInt]:Boolean read GetSelected write SetSelected;
       published
        property ViewMode:TViewMode read fViewMode write SetViewMode;
        property Columns:TpvGUIListViewColumns read fColumns;
@@ -3122,8 +3129,8 @@ type TpvGUIObject=class;
        property ItemWidth:TpvFloat read fItemWidth write fItemWidth;
        property ItemHeight:TpvFloat read fItemHeight write fItemHeight;
        property HeaderHeight:TpvFloat read fHeaderHeight write fHeaderHeight;
-       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
-       property Header:boolean read GetHeader write SetHeader;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
+       property Header:Boolean read GetHeader write SetHeader;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
@@ -3142,7 +3149,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
-     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String) of object;
+     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:Boolean;aFileName:TpvUTF8String) of object;
 
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
@@ -3156,7 +3163,7 @@ type TpvGUIObject=class;
               LowerCaseFileName:TpvUTF8String;
               FileExtension:TpvUTF8String;
               LowerCaseFileExtension:TpvUTF8String;
-              Directory:boolean;
+              Directory:Boolean;
               Size:TpvInt64;
               DateTime:TDateTime;
              end;
@@ -3181,14 +3188,14 @@ type TpvGUIObject=class;
        fDefaultFileExtension:TpvUTF8String;
        fOverwritePromptFileName:TpvUTF8String;
        fListItems:TListItems;
-       fOK:boolean;
-       fOverwritePrompt:boolean;
+       fOK:Boolean;
+       fOverwritePrompt:Boolean;
        fOverwritePromptDialog:TpvGUIFileDialogOverwritePromptMessageDialog;
        fOnResult:TpvGUIFileDialogOnResult;
-       function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
        procedure ListViewOnDoubleClick(const aSender:TpvGUIObject);
        procedure ButtonUpOnClick(const aSender:TpvGUIObject);
@@ -3200,20 +3207,20 @@ type TpvGUIObject=class;
        procedure SetFileName(const aFileName:TpvUTF8String);
        function GetFilter:TpvUTF8String;
        procedure SetFilter(const aFilter:TpvUTF8String);
-       function Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
+       function Accept(const aNewItemIndex:TpvSizeInt=-1):Boolean;
        procedure Reject;
       public
        constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        procedure Check; override;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName write SetFileName;
        property Filter:TpvUTF8String read GetFilter write SetFilter;
        property DefaultFileExtension:TpvUTF8String read fDefaultFileExtension write fDefaultFileExtension;
-       property OK:boolean read fOK write fOK;
-       property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
+       property OK:Boolean read fOK write fOK;
+       property OverwritePrompt:Boolean read fOverwritePrompt write fOverwritePrompt;
        property OnResult:TpvGUIFileDialogOnResult read fOnResult write fOnResult;
      end;
 
@@ -3360,12 +3367,12 @@ begin
  end;
 end;
 
-function TpvGUIDrawEngine.GetTransparent:boolean;
+function TpvGUIDrawEngine.GetTransparent:Boolean;
 begin
  result:=fTransparent;
 end;
 
-procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:boolean);
+procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:Boolean);
 begin
  fTransparent:=aTransparent;
 end;
@@ -3685,7 +3692,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
 var BatchItem:PBatchItem;
 begin
  BatchItem:=NewBatchItem;
@@ -3699,7 +3706,7 @@ begin
  BatchItem^.fDrawGUIElementMeta:=aMeta;
 end;
 
-procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:Boolean=true);
 var BatchItem:PBatchItem;
     RowIndex,ColumnIndex:TpvInt32;
     Rect:TpvRect;
@@ -4011,7 +4018,7 @@ begin
  fIndex:=-1;
 end;
 
-function TpvGUIObjectList.TValueEnumerator.MoveNext:boolean;
+function TpvGUIObjectList.TValueEnumerator.MoveNext:Boolean;
 begin
  inc(fIndex);
  result:=fIndex<fObjectList.fCount;
@@ -4022,7 +4029,7 @@ begin
  result:=fObjectList.fItems[fIndex];
 end;
 
-constructor TpvGUIObjectList.Create(const aOwnsObjects:boolean);
+constructor TpvGUIObjectList.Create(const aOwnsObjects:Boolean);
 begin
  inherited Create;
  fItems:=nil;
@@ -4137,7 +4144,7 @@ begin
  result:=-1;
 end;
 
-function TpvGUIObjectList.Contains(const aItem:TpvGUIObject):boolean;
+function TpvGUIObjectList.Contains(const aItem:TpvGUIObject):Boolean;
 var Index:TpvInt32;
 begin
  for Index:=0 to fCount-1 do begin
@@ -4322,7 +4329,7 @@ begin
  result:=nil;
 end;
 
-function TpvGUIObject.HasParent(const aParent:TpvGUIObject):boolean;
+function TpvGUIObject.HasParent(const aParent:TpvGUIObject):Boolean;
 var CurrentParent:TpvGUIObject;
 begin
  CurrentParent:=fParent;
@@ -4336,7 +4343,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIObject.HasParentOrIs(const aParent:TpvGUIObject):boolean;
+function TpvGUIObject.HasParentOrIs(const aParent:TpvGUIObject):Boolean;
 var CurrentParent:TpvGUIObject;
 begin
  CurrentParent:=self;
@@ -4348,6 +4355,15 @@ begin
   CurrentParent:=CurrentParent.Parent;
  end;
  result:=false;
+end;
+
+procedure TpvGUIObject.SetRenderDirty;
+var Instance_:TpvGUIInstance;
+begin
+ Instance_:=Instance;
+ if assigned(Instance_) then begin
+  Instance.fRenderDirty:=true;
+ end;
 end;
 
 procedure TpvGUIObject.Check;
@@ -4459,7 +4475,7 @@ begin
  end;
 end;
 
-procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
 var Index:TpvSizeInt;
     OldGarbageDisposerData,NewGarbageDisposerData,
     OldMarkBits,NewMarkBits:TPasMPUInt32;
@@ -4501,7 +4517,7 @@ begin
  end;
 end;
 
-procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage(const aForce:boolean);
+procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage(const aForce:Boolean);
 var Index:TpvSizeInt;
     CurrentObject:TpvGUIObject;
 begin
@@ -4615,7 +4631,7 @@ const Axis0=1;
 var ChildIndex:TpvInt32;
     YOffset:TpvFloat;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4672,7 +4688,7 @@ var ChildIndex:TpvInt32;
     Offset,YOffset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    IsInstance,First:boolean;
+    IsInstance,First:Boolean;
     Child:TpvGUIObject;
     ChildWidget,LastVisibleChildWidget:TpvGUIWidget;
 begin
@@ -4821,7 +4837,7 @@ end;
 procedure TpvGUIFillLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var ChildIndex:TpvInt32;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4893,7 +4909,7 @@ end;
 function TpvGUIBoxLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var Axis0,Axis1,ChildIndex:TpvInt32;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4947,7 +4963,7 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
     Offset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -5062,7 +5078,7 @@ end;
 function TpvGUIGroupLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var ChildIndex:TpvInt32;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First,Indent,IndentCurrent:boolean;
+    First,Indent,IndentCurrent:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
@@ -5121,7 +5137,7 @@ procedure TpvGUIGroupLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var ChildIndex:TpvInt32;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
     AvailableWidth:TpvFloat;
-    First,Indent,IndentCurrent:boolean;
+    First,Indent,IndentCurrent:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
@@ -5689,7 +5705,7 @@ begin
 
 end;
 
-procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
+procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:Boolean);
 var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
     FixedSize,ContainerSize:TpvVector2;
     ColumnRows:TpvGUIAdvancedGridLayoutColumnRows;
@@ -5972,7 +5988,7 @@ constructor TpvGUIFlowLayout.Create(const aParent:TpvGUIObject;
                                     const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
                                     const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                                     const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
-                                    const aAlignmentOnBaseLine:boolean=false);
+                                    const aAlignmentOnBaseLine:Boolean=false);
 begin
 
  inherited Create(aParent);
@@ -6042,7 +6058,7 @@ function TpvGUIFlowLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector
 var Axis0,Axis1,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    First:boolean;
+    First:Boolean;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     MaxAxis1:TpvFloat;
@@ -6232,7 +6248,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    First:boolean;
+    First:Boolean;
     FixedSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     MaxAxis1,MinPosition,MaxPosition,MaxHeight,Difference:TpvFloat;
@@ -6709,7 +6725,7 @@ procedure TpvGUIDefaultVectorBasedSkin.Setup;
 const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA27908}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
-    RecreateCacheFiles:boolean;
+    RecreateCacheFiles:Boolean;
     CacheStoragePath,CacheStorageFile:string;
     FileStream:TFileStream;
     CacheStorageCacheVersionGUID:TGUID;
@@ -11523,7 +11539,7 @@ begin
  fIndex:=-1;
 end;
 
-function TpvGUIWidgetEnumerator.MoveNext:boolean;
+function TpvGUIWidgetEnumerator.MoveNext:Boolean;
 begin
  inc(fIndex);
  while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TpvGUIWidget) do begin
@@ -11541,6 +11557,8 @@ constructor TpvGUIWidget.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
+
+ SetRenderDirty;
 
  fLayout:=nil;
 
@@ -11629,6 +11647,8 @@ begin
 
  FreeAndNil(fFixedSizeProperty);
 
+ SetRenderDirty;
+
  inherited Destroy;
 
 end;
@@ -11686,12 +11706,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetEnabled:boolean;
+function TpvGUIWidget.GetEnabled:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Enabled in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetEnabled(const aEnabled:boolean);
+procedure TpvGUIWidget.SetEnabled(const aEnabled:Boolean);
 begin
  if aEnabled then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Enabled);
@@ -11700,12 +11720,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetAutoSize:boolean;
+function TpvGUIWidget.GetAutoSize:Boolean;
 begin
  result:=TpvGUIWidgetFlag.AutoSize in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetAutoSize(const aAutoSize:boolean);
+procedure TpvGUIWidget.SetAutoSize(const aAutoSize:Boolean);
 begin
  if aAutoSize then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.AutoSize);
@@ -11714,12 +11734,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetVisible:boolean;
+function TpvGUIWidget.GetVisible:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Visible in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetVisible(const aVisible:boolean);
+procedure TpvGUIWidget.SetVisible(const aVisible:Boolean);
 begin
  if aVisible then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Visible);
@@ -11728,12 +11748,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetDraggable:boolean;
+function TpvGUIWidget.GetDraggable:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Draggable in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetDraggable(const aDraggable:boolean);
+procedure TpvGUIWidget.SetDraggable(const aDraggable:Boolean);
 begin
  if aDraggable then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
@@ -11742,12 +11762,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetFocused:boolean;
+function TpvGUIWidget.GetFocused:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Focused in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetFocused(const aFocused:boolean);
+procedure TpvGUIWidget.SetFocused(const aFocused:Boolean);
 begin
  if aFocused then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
@@ -11756,7 +11776,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetTopLevelFocused:boolean;
+function TpvGUIWidget.GetTopLevelFocused:Boolean;
 begin
  result:=(TpvGUIWidgetFlag.Focused in fWidgetFlags) and
          assigned(fInstance) and
@@ -11764,12 +11784,12 @@ begin
          (fInstance.fCurrentFocusPath.fItems[fInstance.fCurrentFocusPath.fCount-1]=self);
 end;
 
-function TpvGUIWidget.GetPointerFocused:boolean;
+function TpvGUIWidget.GetPointerFocused:Boolean;
 begin
  result:=TpvGUIWidgetFlag.PointerFocused in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:boolean);
+procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:Boolean);
 begin
  if aPointerFocused then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
@@ -11778,12 +11798,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetTabStop:boolean;
+function TpvGUIWidget.GetTabStop:Boolean;
 begin
  result:=TpvGUIWidgetFlag.TabStop in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetTabStop(const aTabStop:boolean);
+procedure TpvGUIWidget.SetTabStop(const aTabStop:Boolean);
 begin
  if aTabStop then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
@@ -11792,12 +11812,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetKeyPreview:boolean;
+function TpvGUIWidget.GetKeyPreview:Boolean;
 begin
  result:=TpvGUIWidgetFlag.KeyPreview in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:boolean);
+procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:Boolean);
 begin
  if aKeyPreview then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.KeyPreview);
@@ -11806,12 +11826,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetWantAllKeys:boolean;
+function TpvGUIWidget.GetWantAllKeys:Boolean;
 begin
  result:=TpvGUIWidgetFlag.WantAllKeys in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:boolean);
+procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:Boolean);
 begin
  if aWantAllKeys then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.WantAllKeys);
@@ -11820,12 +11840,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetWantTabKey:boolean;
+function TpvGUIWidget.GetWantTabKey:Boolean;
 begin
  result:=TpvGUIWidgetFlag.WantTabKey in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetWantTabKey(const aWantTabKey:boolean);
+procedure TpvGUIWidget.SetWantTabKey(const aWantTabKey:Boolean);
 begin
  if aWantTabKey then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.WantTabKey);
@@ -11903,7 +11923,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetRecursiveVisible:boolean;
+function TpvGUIWidget.GetRecursiveVisible:Boolean;
 var CurrentWidget:TpvGUIWidget;
 begin
  CurrentWidget:=self;
@@ -11991,7 +12011,7 @@ begin
  result:=TpvGUIWidgetEnumerator.Create(self);
 end;
 
-function TpvGUIWidget.Contains(const aPosition:TpvVector2):boolean;
+function TpvGUIWidget.Contains(const aPosition:TpvVector2):Boolean;
 begin
  result:=(aPosition.x>=0.0) and
          (aPosition.y>=0.0) and
@@ -12049,8 +12069,8 @@ begin
  end;
 end;
 
-function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget;
-const Directions:array[boolean] of TpvInt32=(-1,1);
+function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:Boolean):TpvGUIWidget;
+const Directions:array[Boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
     Widget:TpvGUIWidget;
     List:Classes.TList;
@@ -12092,7 +12112,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+function TpvGUIWidget.ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean;
 var CurrentWidget,ParentWidget:TpvGUIWidget;
 begin
  result:=false;
@@ -12112,8 +12132,8 @@ begin
  end;
 end;
 
-function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow;
-const Directions:array[boolean] of TpvInt32=(-1,1);
+function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:Boolean):TpvGUIWindow;
+const Directions:array[Boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
     Object_:TpvGUIObject;
     Window:TpvGUIWindow;
@@ -12161,7 +12181,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+function TpvGUIWidget.ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean;
 var CurrentWindow,ParentWindow:TpvGUIWindow;
 begin
  result:=false;
@@ -12314,51 +12334,51 @@ begin
  end;
 end;
 
-function TpvGUIWidget.Enter:boolean;
+function TpvGUIWidget.Enter:Boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=assigned(fOnEnter) and fOnEnter(self);
 end;
 
-function TpvGUIWidget.Leave:boolean;
+function TpvGUIWidget.Leave:Boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=assigned(fOnLeave) and fOnLeave(self);
 end;
 
-function TpvGUIWidget.PointerEnter:boolean;
+function TpvGUIWidget.PointerEnter:Boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=assigned(fOnPointerEnter) and fOnPointerEnter(self);
 end;
 
-function TpvGUIWidget.PointerLeave:boolean;
+function TpvGUIWidget.PointerLeave:Boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=assigned(fOnPointerLeave) and fOnPointerLeave(self);
 end;
 
-function TpvGUIWidget.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWidget.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIWidget.DragReleaseEvent:boolean;
+function TpvGUIWidget.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
-function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildPointerEvent:TpvApplicationInputPointerEvent;
-    PreviousContained,CurrentContained:boolean;
+    PreviousContained,CurrentContained:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -12407,7 +12427,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -12591,6 +12611,8 @@ begin
 
  fSwapChainReady:=false;
 
+ fRenderDirty:=true;
+
  fBuffers:=nil;
 
  fCountBuffers:=0;
@@ -12672,6 +12694,7 @@ begin
  if fDrawEngine<>aDrawEngine then begin
   FreeAndNil(fDrawEngine);
   fDrawEngine:=aDrawEngine;
+  fRenderDirty:=true;
  end;
 end;
 
@@ -12779,7 +12802,7 @@ procedure TpvGUIInstance.UpdateFocusForReleaseObject(const aGUIObject:TpvGUIObje
 var Index:TpvSizeInt;
     OtherObject:TpvGUIObject;
     RootWidget,OtherWidget:TpvGUIWidget;
-    Found:boolean;
+    Found:Boolean;
 begin
 
  repeat
@@ -12852,6 +12875,8 @@ begin
   fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
  end;
 
+ fRenderDirty:=true;
+
 end;
 
 procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
@@ -12896,6 +12921,7 @@ begin
   if assigned(fChildren) and fChildren.Contains(aGUIObject) then begin
    fChildren.Remove(aGUIObject);
   end;
+  fRenderDirty:=true;
  end;
 end;
 
@@ -13049,6 +13075,8 @@ begin
   MoveWindowToFront(fWindow);
  end;
 
+ fRenderDirty:=true;
+
 end;
 
 procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
@@ -13064,12 +13092,13 @@ begin
    aWindow.PerformLayout;
   end;
   aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
+  fRenderDirty:=true;
  end;
 end;
 
 procedure TpvGUIInstance.MoveWindowToFront(const aWindow:TpvGUIWindow);
 var Index,BaseIndex:TpvInt32;
-    Changed:boolean;
+    Changed:Boolean;
     Current:TpvGUIObject;
     PopupWidget:TpvGUIPopup;
 begin
@@ -13103,6 +13132,7 @@ begin
     end;
    until not Changed;
   end;
+  fRenderDirty:=true;
  end;
 end;
 
@@ -13110,11 +13140,12 @@ function TpvGUIInstance.AddMenu:TpvGUIWindowMenu;
 begin
  if not assigned(fMenu) then begin
   fMenu:=TpvGUIWindowMenu.Create(self);
+  fRenderDirty:=true;
  end;
  result:=fMenu;
 end;
 
-function TpvGUIInstance.HasModalWindows:boolean;
+function TpvGUIInstance.HasModalWindows:Boolean;
 begin
  result:=assigned(fModalWindowStack) and (fModalWindowStack.Count>0);
 end;
@@ -13169,7 +13200,7 @@ begin
 end;
 {$ifend}
 
-function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
@@ -13296,15 +13327,16 @@ begin
    end;
   end;
  end;
+ fRenderDirty:=true;
 end;
 
-function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWindow:TpvGUIWindow;
     CurrentWidget:TpvGUIWidget;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
-    DoUpdateCursor,IsCursorOnMenu:boolean;
+    DoUpdateCursor,IsCursorOnMenu:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -13414,9 +13446,10 @@ begin
    end;
   end;
  end;
+ fRenderDirty:=true;
 end;
 
-function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
@@ -13431,12 +13464,13 @@ begin
    result:=inherited Scrolled(aPosition,aRelativeAmount);
   end;
  end;
+ fRenderDirty:=true;
 end;
 
 procedure TpvGUIInstance.FindHoveredWidget;
 var Index:TpvInt32;
     CurrentWidget:TpvGUIWidget;
-    IsOnPopupMenu:boolean;
+    IsOnPopupMenu:Boolean;
 begin
  IsOnPopupMenu:=false;
  if fPopupMenuStack.Count>0 then begin
@@ -13515,6 +13549,7 @@ begin
  end;
  fDrawEngine.Draw;
  fTime:=fTime+fDeltaTime;
+ fRenderDirty:=false;
 end;
 
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
@@ -13788,12 +13823,12 @@ begin
  end;
 end;
 
-function TpvGUIWindow.GetModal:boolean;
+function TpvGUIWindow.GetModal:Boolean;
 begin
  result:=TpvGUIWindowFlag.Modal in fWindowFlags;
 end;
 
-procedure TpvGUIWindow.SetModal(const aModal:boolean);
+procedure TpvGUIWindow.SetModal(const aModal:Boolean);
 begin
  if aModal then begin
   SetWindowFlags(fWindowFlags+[TpvGUIWindowFlag.Modal]);
@@ -13962,17 +13997,17 @@ begin
  end;
 end;
 
-function TpvGUIWindow.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWindow.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIWindow.DragReleaseEvent:boolean;
+function TpvGUIWindow.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
@@ -13994,9 +14029,9 @@ begin
  end;
 end;
 
-function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ClampedRelativePosition,MinimumPosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
-    OK:boolean;
+    OK:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -14303,7 +14338,7 @@ begin
  end;
 end;
 
-function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -14506,7 +14541,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
@@ -14802,12 +14837,12 @@ begin
  end;
 end;
 
-function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
-function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -14815,7 +14850,7 @@ begin
  end;
 end;
 
-function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -14872,12 +14907,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIButton.GetDown:boolean;
+function TpvGUIButton.GetDown:Boolean;
 begin
  result:=TpvGUIButtonFlag.Down in fButtonFlags;
 end;
 
-procedure TpvGUIButton.SetDown(const aDown:boolean);
+procedure TpvGUIButton.SetDown(const aDown:Boolean);
 begin
  if (TpvGUIButtonFlag.Down in fButtonFlags)<>aDown then begin
   if aDown then begin
@@ -14942,7 +14977,7 @@ procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildButton:TpvGUIButton;
-    OldDown:boolean;
+    OldDown:Boolean;
 begin
  OldDown:=Down;
  if TpvGUIButtonFlag.RadioButton in fButtonFlags then begin
@@ -14989,7 +15024,7 @@ begin
 end;
 
 procedure TpvGUIButton.ProcessUp(const aPosition:TpvVector2);
-var OldDown:boolean;
+var OldDown:Boolean;
 begin
  OldDown:=Down;
  if assigned(fOnClick) and Contains(aPosition) then begin
@@ -15000,7 +15035,7 @@ begin
  end;
 end;
 
-function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -15022,11 +15057,11 @@ begin
  end;
 end;
 
-function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildButton:TpvGUIButton;
-    OldDown:boolean;
+    OldDown:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -15050,7 +15085,7 @@ begin
  end;
 end;
 
-function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -15121,7 +15156,7 @@ begin
  end;
 end;
 
-procedure TpvGUIPopupButton.SetDown(const aDown:boolean);
+procedure TpvGUIPopupButton.SetDown(const aDown:Boolean);
 var ChildFixedSize,ChildPreferredSize:TpvVector2;
 begin
  inherited SetDown(aDown);
@@ -15160,7 +15195,7 @@ begin
 
 end;
 
-procedure TpvGUIPopupMenuButton.SetDown(const aDown:boolean);
+procedure TpvGUIPopupMenuButton.SetDown(const aDown:Boolean);
 begin
  inherited SetDown(aDown);
  if aDown then begin
@@ -15213,12 +15248,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUICheckBox.GetPushed:boolean;
+function TpvGUICheckBox.GetPushed:Boolean;
 begin
  result:=TpvGUICheckBoxFlag.Pushed in fCheckBoxFlags;
 end;
 
-procedure TpvGUICheckBox.SetPushed(const aPushed:boolean);
+procedure TpvGUICheckBox.SetPushed(const aPushed:Boolean);
 begin
  if aPushed then begin
   Include(fCheckBoxFlags,TpvGUICheckBoxFlag.Pushed);
@@ -15227,12 +15262,12 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.GetChecked:boolean;
+function TpvGUICheckBox.GetChecked:Boolean;
 begin
  result:=TpvGUICheckBoxFlag.Checked in fCheckBoxFlags;
 end;
 
-procedure TpvGUICheckBox.SetChecked(const aChecked:boolean);
+procedure TpvGUICheckBox.SetChecked(const aChecked:Boolean);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildCheckBox:TpvGUICheckBox;
@@ -15346,7 +15381,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -15367,7 +15402,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -15401,7 +15436,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -15552,12 +15587,12 @@ begin
  result:=Skin.GetTextEditPreferredSize(self);
 end;
 
-function TpvGUITextEdit.GetEditable:boolean;
+function TpvGUITextEdit.GetEditable:Boolean;
 begin
  result:=fEditable;
 end;
 
-procedure TpvGUITextEdit.SetEditable(const aEditable:boolean);
+procedure TpvGUITextEdit.SetEditable(const aEditable:Boolean);
 begin
  fEditable:=aEditable;
  if fEditable then begin
@@ -15571,7 +15606,7 @@ procedure TpvGUITextEdit.UpdateText;
 begin
 end;
 
-function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):Boolean;
 begin
  if assigned(fOnCheckText) then begin
   result:=fOnCheckText(aText);
@@ -15616,17 +15651,19 @@ begin
 
   fTextSelectionEnd:=0;
 
+  SetRenderDirty;
+
  end;
 
 end;
 
-function TpvGUITextEdit.Enter:boolean;
+function TpvGUITextEdit.Enter:Boolean;
 begin
  result:=inherited Enter;
  pvApplication.Input.StartTextInput;
 end;
 
-function TpvGUITextEdit.Leave:boolean;
+function TpvGUITextEdit.Leave:Boolean;
 begin
  pvApplication.Input.StopTextInput;
  result:=inherited Leave;
@@ -15657,6 +15694,7 @@ begin
   end;
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.CopySelectedText;
@@ -15669,6 +15707,7 @@ begin
   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.PasteText;
@@ -15711,6 +15750,7 @@ begin
   end;
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.DeleteSelectedText;
@@ -15737,6 +15777,7 @@ begin
   end;
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.SelectAll;
@@ -15744,6 +15785,7 @@ begin
  fTextSelectionStart:=1;
  fTextSelectionEnd:=PUCUUTF8Length(Text)+1;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.SelectNone;
@@ -15751,6 +15793,7 @@ begin
  fTextSelectionStart:=0;
  fTextSelectionEnd:=0;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
@@ -15783,17 +15826,17 @@ begin
  SelectNone;
 end;
 
-function TpvGUITextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUITextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITextEdit.DragReleaseEvent:boolean;
+function TpvGUITextEdit.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -16060,9 +16103,10 @@ begin
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -16155,9 +16199,10 @@ begin
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -16166,8 +16211,13 @@ begin
 end;
 
 procedure TpvGUITextEdit.Update;
+var CursorVisibleChangeCheck:Boolean;
 begin
+ CursorVisibleChangeCheck:=frac(fTime)<0.5;
  fTime:=fTime+fInstance.fDeltaTime;
+ if CursorVisibleChangeCheck<>(frac(fTime)<0.5) then begin
+  SetRenderDirty;
+ end;
  inherited Update;
 end;
 
@@ -16324,7 +16374,7 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):Boolean;
 type TCharSet=set of AnsiChar;
 var Index,Len:TpvSizeInt;
     DigitCharSet:TCharSet;
@@ -16384,17 +16434,17 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIIntegerEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
 end;
 
-function TpvGUIIntegerEdit.DragReleaseEvent:boolean;
+function TpvGUIIntegerEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvInt64;
 begin
  result:=inherited KeyEvent(aKeyEvent);
@@ -16444,7 +16494,7 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -16473,7 +16523,7 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -16583,7 +16633,7 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):Boolean;
 type TCharSet=set of AnsiChar;
 var Index,Len:TpvSizeInt;
     DigitCharSet:TCharSet;
@@ -16657,17 +16707,17 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIFloatEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
 end;
 
-function TpvGUIFloatEdit.DragReleaseEvent:boolean;
+function TpvGUIFloatEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvDouble;
 begin
  result:=inherited KeyEvent(aKeyEvent);
@@ -16717,7 +16767,7 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
@@ -16746,7 +16796,7 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
@@ -16797,12 +16847,12 @@ begin
 
 end;
 
-function TpvGUIMenuItem.GetEnabled:boolean;
+function TpvGUIMenuItem.GetEnabled:Boolean;
 begin
  result:=TpvGUIMenuItemFlag.Enabled in fFlags;
 end;
 
-procedure TpvGUIMenuItem.SetEnabled(const aEnabled:boolean);
+procedure TpvGUIMenuItem.SetEnabled(const aEnabled:Boolean);
 begin
  if aEnabled then begin
   Include(fFlags,TpvGUIMenuItemFlag.Enabled);
@@ -16811,7 +16861,7 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.GetSelectable:boolean;
+function TpvGUIMenuItem.GetSelectable:Boolean;
 begin
  result:=fCaption<>'-';
 end;
@@ -16917,7 +16967,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.GetActivated:boolean;
+function TpvGUIPopupMenu.GetActivated:Boolean;
 begin
  result:=fInstance.fPopupMenuStack.Contains(self);
 end;
@@ -17050,7 +17100,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,OtherIndex:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17231,7 +17281,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17308,7 +17358,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPosition);
  if result then begin
@@ -17346,7 +17396,7 @@ begin
 
 end;
 
-function TpvGUIWindowMenu.Enter:boolean;
+function TpvGUIWindowMenu.Enter:Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
 begin
@@ -17363,7 +17413,7 @@ begin
  result:=inherited Enter;
 end;
 
-function TpvGUIWindowMenu.Leave:boolean;
+function TpvGUIWindowMenu.Leave:Boolean;
 begin
  result:=inherited Leave;
  fFocusedMenuItem:=nil;
@@ -17393,7 +17443,7 @@ begin
  result:=Skin.GetWindowMenuPreferredSize(self);
 end;
 
-function TpvGUIWindowMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWindowMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,OtherIndex:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17510,7 +17560,7 @@ begin
  end;
 end;
 
-function TpvGUIWindowMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWindowMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17585,7 +17635,7 @@ begin
  end;
 end;
 
-function TpvGUIWindowMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWindowMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -17767,12 +17817,12 @@ begin
  result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
 end;
 
-function TpvGUIScrollBar.Enter:boolean;
+function TpvGUIScrollBar.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIScrollBar.Leave:boolean;
+function TpvGUIScrollBar.Leave:Boolean;
 begin
  fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
  fStepSize:=0;
@@ -17780,12 +17830,12 @@ begin
  result:=inherited Leave;
 end;
 
-function TpvGUIScrollBar.PointerEnter:boolean;
+function TpvGUIScrollBar.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIScrollBar.PointerLeave:boolean;
+function TpvGUIScrollBar.PointerLeave:Boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
   fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
@@ -17793,7 +17843,7 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIScrollBar.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIScrollBar.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=GetThumbButtonRect.Touched(aPosition) and (aButton=TpvApplicationInputPointerButton.Left);
  if result then begin
@@ -17801,13 +17851,13 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.DragReleaseEvent:boolean;
+function TpvGUIScrollBar.DragReleaseEvent:Boolean;
 begin
  fDragActive:=false;
  result:=true;
 end;
 
-function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -17880,7 +17930,7 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -18044,7 +18094,7 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -18225,12 +18275,12 @@ begin
  result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);}
 end;
 
-function TpvGUISlider.Enter:boolean;
+function TpvGUISlider.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUISlider.Leave:boolean;
+function TpvGUISlider.Leave:Boolean;
 begin
  fPushedSubWidget:=TpvGUISliderSubWidget.None;
  fStepSize:=0;
@@ -18238,12 +18288,12 @@ begin
  result:=inherited Leave;
 end;
 
-function TpvGUISlider.PointerEnter:boolean;
+function TpvGUISlider.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUISlider.PointerLeave:boolean;
+function TpvGUISlider.PointerLeave:Boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
   fPushedSubWidget:=TpvGUISliderSubWidget.None;
@@ -18251,17 +18301,17 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUISlider.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISlider.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=GetThumbButtonRect.Touched(aPosition);
 end;
 
-function TpvGUISlider.DragReleaseEvent:boolean;
+function TpvGUISlider.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -18334,7 +18384,7 @@ begin
  end;
 end;
 
-function TpvGUISlider.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUISlider.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -18453,7 +18503,7 @@ begin
  end;
 end;
 
-function TpvGUISlider.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUISlider.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -18770,7 +18820,23 @@ end;
 
 destructor TpvGUITab.Destroy;
 begin
+ if assigned(fContent) then begin
+  try
+   if assigned(fOwner) and not fOwner.fDestroying then begin
+    fContent.Release;
+   end;
+  finally
+   fContent:=nil;
+  end;
+ end;
  inherited Destroy;
+end;
+
+procedure TpvGUITab.Close;
+begin
+ if assigned(Collection) then begin
+  (Collection as TpvGUITabList).Remove(self);
+ end;
 end;
 
 procedure TpvGUITab.SetCaption(const aCaption:TpvUTF8String);
@@ -18781,12 +18847,12 @@ begin
  end;
 end;
 
-function TpvGUITab.GetModified:boolean;
+function TpvGUITab.GetModified:Boolean;
 begin
  result:=TpvGUITabFlag.Modified in fFlags;
 end;
 
-procedure TpvGUITab.SetModified(const aModified:boolean);
+procedure TpvGUITab.SetModified(const aModified:Boolean);
 begin
  if (TpvGUITabFlag.Modified in fFlags)<>aModified then begin
   if aModified then begin
@@ -18797,12 +18863,12 @@ begin
  end;
 end;
 
-function TpvGUITab.GetSelected:boolean;
+function TpvGUITab.GetSelected:Boolean;
 begin
  result:=(Collection as TpvGUITabList).fOwner.fTabIndex=Index;
 end;
 
-procedure TpvGUITab.SetSelected(const aSelected:boolean);
+procedure TpvGUITab.SetSelected(const aSelected:Boolean);
 begin
  if (Collection as TpvGUITabList).fOwner.fTabIndex<>Index then begin
   if aSelected then begin
@@ -18885,6 +18951,7 @@ end;
 function TpvGUITabList.Add(const aCaption:TpvUTF8String):TpvGUITab;
 begin
  result:=TpvGUITab.Create(self);
+ result.fOwner:=fOwner;
  result.fCaption:=aCaption;
 end;
 
@@ -18930,10 +18997,13 @@ begin
 
  fOnTabUnselected:=nil;
 
+ fDestroying:=false;
+
 end;
 
 destructor TpvGUITabPanel.Destroy;
 begin
+ fDestroying:=true;
  FreeAndNil(fTabs);
  inherited Destroy;
 end;
@@ -18950,12 +19020,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleHeader:boolean;
+function TpvGUITabPanel.GetVisibleHeader:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleHeader in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleHeader(const aVisibleHeader:boolean);
+procedure TpvGUITabPanel.SetVisibleHeader(const aVisibleHeader:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleHeader in fFlags)<>aVisibleHeader then begin
   if aVisibleHeader then begin
@@ -18973,12 +19043,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleContent:boolean;
+function TpvGUITabPanel.GetVisibleContent:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleContent in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleContent(const aVisibleContent:boolean);
+procedure TpvGUITabPanel.SetVisibleContent(const aVisibleContent:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleContent in fFlags)<>aVisibleContent then begin
   if aVisibleContent then begin
@@ -18990,12 +19060,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleContentBackground:boolean;
+function TpvGUITabPanel.GetVisibleContentBackground:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleContentBackground in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleContentBackground(const aVisibleContentBackground:boolean);
+procedure TpvGUITabPanel.SetVisibleContentBackground(const aVisibleContentBackground:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleContentBackground in fFlags)<>aVisibleContentBackground then begin
   if aVisibleContentBackground then begin
@@ -19131,37 +19201,37 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.Enter:boolean;
+function TpvGUITabPanel.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUITabPanel.Leave:boolean;
+function TpvGUITabPanel.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUITabPanel.PointerEnter:boolean;
+function TpvGUITabPanel.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUITabPanel.PointerLeave:boolean;
+function TpvGUITabPanel.PointerLeave:Boolean;
 begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUITabPanel.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUITabPanel.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITabPanel.DragReleaseEvent:boolean;
+function TpvGUITabPanel.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  ExecuteInvalidateActions;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
@@ -19233,7 +19303,7 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentTabIndex:TpvSizeInt;
     CurrentTab:TpvGUITab;
 begin
@@ -19276,7 +19346,7 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -19352,12 +19422,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIListBox.GetMultiSelect:boolean;
+function TpvGUIListBox.GetMultiSelect:Boolean;
 begin
  result:=TpvGUIListBoxFlag.MultiSelect in fFlags;
 end;
 
-procedure TpvGUIListBox.SetMultiSelect(const aMultiSelect:boolean);
+procedure TpvGUIListBox.SetMultiSelect(const aMultiSelect:Boolean);
 begin
  if (TpvGUIListBoxFlag.MultiSelect in fFlags)<>aMultiSelect then begin
   if aMultiSelect then begin
@@ -19393,7 +19463,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+function TpvGUIListBox.GetSelected(const aItemIndex:TpvSizeInt):Boolean;
 begin
  if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
   result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
@@ -19403,7 +19473,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListBox.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+procedure TpvGUIListBox.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
 var OldSize,NewSize:TpvSizeInt;
 begin
  if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
@@ -19444,7 +19514,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
 begin
  ChangeSelected(aItemIndex,aSelected,true);
 end;
@@ -19525,39 +19595,39 @@ begin
  end;
 end;
 
-function TpvGUIListBox.Enter:boolean;
+function TpvGUIListBox.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIListBox.Leave:boolean;
+function TpvGUIListBox.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIListBox.PointerEnter:boolean;
+function TpvGUIListBox.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIListBox.PointerLeave:boolean;
+function TpvGUIListBox.PointerLeave:Boolean;
 begin
  fAction:=TpvGUIListBoxAction.None;
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIListBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIListBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListBox.DragReleaseEvent:boolean;
+function TpvGUIListBox.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
- procedure DoSelection(const aForce:boolean);
+function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+ procedure DoSelection(const aForce:Boolean);
  var CurrentItemIndex:TpvSizeInt;
  begin
   if aForce or (fAction in [TpvGUIListBoxAction.PreMark,TpvGUIListBoxAction.Mark]) then begin
@@ -19672,7 +19742,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  UpdateScrollBar;
@@ -19744,7 +19814,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -19832,13 +19902,13 @@ begin
  fListBox.SetItemIndex(fItemIndex);
 end;
 
-function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):boolean;
+function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):Boolean;
 begin
  fClosePopup:=false;
  result:=false;
 end;
 
-function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):boolean;
+function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):Boolean;
 begin
  fClosePopup:=true;
  result:=false;
@@ -19851,7 +19921,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  case aKeyEvent.KeyCode of
@@ -19927,37 +19997,37 @@ begin
  fPopupButton.Popup.fFixedSize.y:=fListBox.GetPreferredSize.y;
 end;
 
-function TpvGUIComboBox.Enter:boolean;
+function TpvGUIComboBox.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIComboBox.Leave:boolean;
+function TpvGUIComboBox.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIComboBox.PointerEnter:boolean;
+function TpvGUIComboBox.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIComboBox.PointerLeave:boolean;
+function TpvGUIComboBox.PointerLeave:Boolean;
 begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIComboBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIComboBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIComboBox.DragReleaseEvent:boolean;
+function TpvGUIComboBox.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -20022,7 +20092,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -20051,7 +20121,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -20110,17 +20180,17 @@ begin
  result:=Skin.GetSplitterPanelGripButtonPreferredSize(self);
 end;
 
-function TpvGUISplitterPanelGripButton.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISplitterPanelGripButton.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISplitterPanelGripButton.DragReleaseEvent:boolean;
+function TpvGUISplitterPanelGripButton.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -20177,7 +20247,7 @@ begin
  end;
 end;
 
-function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -20215,7 +20285,7 @@ begin
  end;
 end;
 
-function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
@@ -20522,7 +20592,7 @@ end;
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
 var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
     MessageDialog:TpvGUIMessageDialog;
-    First:boolean;
+    First:Boolean;
 begin
  if fDoIt then begin
   fDoIt:=false;
@@ -20800,7 +20870,7 @@ begin
 
 end;
 
-procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:boolean);
+procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:Boolean);
 begin
  if assigned(fView) then begin
   if not assigned(fSearchReplaceWindow) then begin
@@ -20874,6 +20944,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObject);
@@ -20886,6 +20957,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnGoToLineNumberClick(const aSender:TpvGUIObject);
@@ -20940,6 +21012,7 @@ begin
    fTime:=0.0;
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
@@ -20954,6 +21027,7 @@ begin
    fTime:=0.0;
   end;
  end;
+ SetRenderDirty;
 end;
 
 function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
@@ -20975,6 +21049,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 function TpvGUIMultiLineTextEdit.GetFont:TpvFont;
@@ -21094,7 +21169,7 @@ begin
 
 end;
 
-function TpvGUIMultiLineTextEdit.Enter:boolean;
+function TpvGUIMultiLineTextEdit.Enter:Boolean;
 begin
  result:=inherited Enter;
  if fEditable then begin
@@ -21102,7 +21177,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEdit.Leave:boolean;
+function TpvGUIMultiLineTextEdit.Leave:Boolean;
 begin
  if fEditable then begin
   pvApplication.Input.StopTextInput;
@@ -21120,6 +21195,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.CopySelectedText;
@@ -21127,6 +21203,7 @@ begin
  if assigned(fView) and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.GetMarkedRangeText);
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PasteText;
@@ -21139,6 +21216,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
@@ -21150,6 +21228,7 @@ begin
    fOnChange(self);
   end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectAll;
@@ -21159,6 +21238,7 @@ begin
   fDirty:=true;
   fTime:=0.0;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectNone;
@@ -21168,9 +21248,10 @@ begin
   fDirty:=true;
   fTime:=0.0;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
  if result and assigned(fView) then begin
@@ -21183,14 +21264,16 @@ begin
    fPopupMenu.Deactivate;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.DragReleaseEvent:boolean;
+function TpvGUIMultiLineTextEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -21502,9 +21585,10 @@ begin
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -21569,9 +21653,10 @@ begin
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -21597,9 +21682,11 @@ begin
   end;
   result:=true;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.Update;
+var CursorVisibleChangeCheck:Boolean;
 begin
  if assigned(fSearchReplaceState) then begin
   fSearchReplaceState.Process;
@@ -21618,7 +21705,11 @@ begin
   if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
    fVerticalScrollBar.Value:=fView.CursorOffset.y;
   end;
+  CursorVisibleChangeCheck:=frac(fTime)<0.5;
   fTime:=fTime+fInstance.fDeltaTime;
+  if CursorVisibleChangeCheck<>(frac(fTime)<0.5) then begin
+   SetRenderDirty;
+  end;
  end;
  inherited Update;
 end;
@@ -21637,7 +21728,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean);
+constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:Boolean);
 begin
 
  inherited Create(aParent);
@@ -21820,7 +21911,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
@@ -21833,7 +21924,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -21850,7 +21941,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -22039,7 +22130,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
@@ -22052,7 +22143,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -22187,7 +22278,7 @@ begin
  fHSV:=ConvertHSVToRGB(fRGB);
 end;
 
-function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -22280,7 +22371,7 @@ begin
  end;
 end;
 
-function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
  function Rotate(const aPoint:TpvVector2;const aAngle:TpvScalar):TpvVector2;
  var s,c:TpvScalar;
@@ -22290,7 +22381,7 @@ var Index:TpvInt32;
   SinCos(aAngle,s,c);
   result:=TpvMatrix2x2.Create(c,-s,s,c)*aPoint;
  end;
- function Process(const aPoint:TpvVector2;const aDoHandle:boolean;const aMode:TpvInt32;var aOutMode:TpvInt32):boolean;
+ function Process(const aPoint:TpvVector2;const aDoHandle:Boolean;const aMode:TpvInt32;var aOutMode:TpvInt32):Boolean;
  var p,p2,p3,p4,LocalSize:TpvVector2;
      Radius,Radius2,d,s,t:TpvScalar;
      bc:TpvVector3;
@@ -22402,7 +22493,7 @@ begin
  end;
 end;
 
-function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -22637,7 +22728,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUIColorPicker.SetSRGB(const aSRGB:boolean);
+procedure TpvGUIColorPicker.SetSRGB(const aSRGB:Boolean);
 begin
  if fSRGB<>aSRGB then begin
   fSRGB:=aSRGB;
@@ -23034,12 +23125,12 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetMultiSelect:boolean;
+function TpvGUIListView.GetMultiSelect:Boolean;
 begin
  result:=TpvGUIListViewFlag.MultiSelect in fFlags;
 end;
 
-procedure TpvGUIListView.SetMultiSelect(const aMultiSelect:boolean);
+procedure TpvGUIListView.SetMultiSelect(const aMultiSelect:Boolean);
 begin
  if (TpvGUIListViewFlag.MultiSelect in fFlags)<>aMultiSelect then begin
   if aMultiSelect then begin
@@ -23054,12 +23145,12 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetHeader:boolean;
+function TpvGUIListView.GetHeader:Boolean;
 begin
  result:=TpvGUIListViewFlag.Header in fFlags;
 end;
 
-procedure TpvGUIListView.SetHeader(const aHeader:boolean);
+procedure TpvGUIListView.SetHeader(const aHeader:Boolean);
 begin
  if (TpvGUIListViewFlag.Header in fFlags)<>aHeader then begin
   if aHeader then begin
@@ -23101,7 +23192,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+function TpvGUIListView.GetSelected(const aItemIndex:TpvSizeInt):Boolean;
 begin
  if TpvGUIListViewFlag.MultiSelect in fFlags then begin
   result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
@@ -23111,7 +23202,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListView.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+procedure TpvGUIListView.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
 var OldSize,NewSize:TpvSizeInt;
 begin
  if TpvGUIListViewFlag.MultiSelect in fFlags then begin
@@ -23152,7 +23243,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListView.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+procedure TpvGUIListView.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
 begin
  ChangeSelected(aItemIndex,aSelected,true);
 end;
@@ -23253,39 +23344,39 @@ begin
  end;
 end;
 
-function TpvGUIListView.Enter:boolean;
+function TpvGUIListView.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIListView.Leave:boolean;
+function TpvGUIListView.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIListView.PointerEnter:boolean;
+function TpvGUIListView.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIListView.PointerLeave:boolean;
+function TpvGUIListView.PointerLeave:Boolean;
 begin
  fAction:=TpvGUIListViewAction.None;
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIListView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIListView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListView.DragReleaseEvent:boolean;
+function TpvGUIListView.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
- procedure DoSelection(const aForce:boolean);
+function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+ procedure DoSelection(const aForce:Boolean);
  var CurrentItemIndex:TpvSizeInt;
  begin
   if aForce or (fAction in [TpvGUIListViewAction.PreMark,TpvGUIListViewAction.Mark]) then begin
@@ -23411,7 +23502,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex,
     FoundItemIndex:TpvSizeInt;
     Item:TpvGUIListViewItem;
@@ -23542,7 +23633,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -23839,7 +23930,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23852,7 +23943,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23868,7 +23959,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23881,7 +23972,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23970,7 +24061,7 @@ type TFilter=record
      end;
      PFilter=^TFilter;
      TFilters=TpvDynamicArray<TFilter>;
- function Add(const aFileName:TpvUTF8String;const aDirectory:boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
+ function Add(const aFileName:TpvUTF8String;const aDirectory:Boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
  var ListItem:PListItem;
  begin
   result:=fListItems.AddNew;
@@ -24273,7 +24364,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
@@ -24295,7 +24386,7 @@ begin
  inherited Check;
 end;
 
-function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
+function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):Boolean;
 var NewFileName,FileExtension:TpvUTF8String;
 begin
  result:=false;
