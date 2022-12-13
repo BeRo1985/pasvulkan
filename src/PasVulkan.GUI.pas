@@ -2701,6 +2701,8 @@ type TpvGUIObject=class;
        procedure Process;
      end;
 
+     { TpvGUIMultiLineTextEdit }
+
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
@@ -2775,6 +2777,7 @@ type TpvGUIObject=class;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
+       procedure SetDirty;
        function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
        function DragReleaseEvent:Boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
@@ -21307,6 +21310,12 @@ begin
   fDirty:=true;
   fTime:=0.0;
  end;
+ SetRenderDirty;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetDirty;
+begin
+ fDirty:=true;
  SetRenderDirty;
 end;
 
