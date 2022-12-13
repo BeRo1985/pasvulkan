@@ -2487,6 +2487,8 @@ type TpvGUIObject=class;
 
      TpvGUIListBoxOnGetItemText=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
 
+     { TpvGUIListBox }
+
      TpvGUIListBox=class(TpvGUIWidget)
       private
        fFlags:TpvGUIListBoxFlags;
@@ -2499,12 +2501,15 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
+       fOnDoubleClick:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIListBoxOnDrawItem;
        fOnGetItemText:TpvGUIListBoxOnGetItemText;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        fAction:TpvGUIListBoxAction;
        fActionStartIndex:TpvSizeInt;
        fActionStopIndex:TpvSizeInt;
+       fDoubleClickTimeAccumulator:double;
+       fDoubleClickCounter:TpvSizeInt;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetSelected(const aItemIndex:TpvSizeInt):Boolean;
@@ -2531,6 +2536,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure Check; override;
        procedure Draw; override;
        property Selected[const aItemIndex:TpvSizeInt]:Boolean read GetSelected write SetSelected;
       published
@@ -2541,6 +2547,7 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawItem:TpvGUIListBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
@@ -10083,7 +10090,7 @@ begin
                       TpvRect.CreateRelative(Offset,
                                              TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
 
-  end;{}
+  end;//}
 
  end;
 
@@ -19426,11 +19433,17 @@ begin
 
  fOnDrawItem:=nil;
 
+ fOnDoubleClick:=nil;
+
  fOnGetItemText:=nil;
 
  fSelectedBitmap:=nil;
 
  fAction:=TpvGUIListBoxAction.None;
+
+ fDoubleClickTimeAccumulator:=0.0;
+
+ fDoubleClickCounter:=0;
 
 end;
 
@@ -19783,6 +19796,11 @@ begin
       fSelectedBitmap:=nil;
       SetSelected(fItemIndex,true);
      end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter=0 then begin
+       fDoubleClickTimeAccumulator:=0.0;
+      end;
+     end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -19795,6 +19813,18 @@ begin
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
+      end;
+     end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter<2 then begin
+       inc(fDoubleClickCounter);
+       if fDoubleClickCounter=2 then begin
+        fDoubleClickCounter:=0;
+        fDoubleClickTimeAccumulator:=0.0;
+        if assigned(fOnDoubleClick) then begin
+         fOnDoubleClick(self);
+        end;
+       end;
       end;
      end;
      fAction:=TpvGUIListBoxAction.None;
@@ -19849,6 +19879,16 @@ begin
   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
   result:=true;
  end;
+end;
+
+procedure TpvGUIListBox.Check;
+begin
+ fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
+ if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
+  fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
+  fDoubleClickCounter:=0;
+ end;
+inherited Check;
 end;
 
 procedure TpvGUIListBox.Draw;
