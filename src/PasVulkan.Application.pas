@@ -10802,7 +10802,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
  procedure TranslateMouseWheelEvent;
  begin
   if aMsg=WM_MOUSEWHEEL then begin
-   NativeEvent.MouseScrollOffsetX:=-(TpvInt16(HIWORD(aWParam))/WHEEL_DELTA);
+   NativeEvent.MouseScrollOffsetX:=TpvInt16(HIWORD(aWParam))/WHEEL_DELTA;
   end else begin
    NativeEvent.MouseScrollOffsetX:=0.0;
   end;
