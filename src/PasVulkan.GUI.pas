@@ -13217,6 +13217,7 @@ var Index:TpvInt32;
     CurrentWindow:TpvGUIWindow;
     List:Classes.TList;
 begin
+ SetRenderDirty;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
   if fPopupMenuStack.Count>0 then begin
@@ -13337,7 +13338,6 @@ begin
    end;
   end;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
@@ -13348,6 +13348,7 @@ var Index:TpvInt32;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
     DoUpdateCursor,IsCursorOnMenu:Boolean;
 begin
+ SetRenderDirty;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   DoUpdateCursor:=false;
@@ -13456,12 +13457,12 @@ begin
    end;
   end;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var Index:TpvInt32;
 begin
+ SetRenderDirty;
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
   for Index:=fPopupMenuStack.Count-1 downto 0 do begin
@@ -13474,7 +13475,6 @@ begin
    result:=inherited Scrolled(aPosition,aRelativeAmount);
   end;
  end;
- SetRenderDirty;
 end;
 
 procedure TpvGUIInstance.FindHoveredWidget;
