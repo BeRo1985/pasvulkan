@@ -14575,7 +14575,7 @@ var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) and not result then begin
+ if not result then begin
   if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
                               TpvApplicationInputKeyModifier.CTRL,
                               TpvApplicationInputKeyModifier.SHIFT,
@@ -14584,11 +14584,13 @@ begin
     MessageDialogButton:=@fButtons[Index];
     for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
      if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
-      if assigned(fOnButtonClick) then begin
-       fOnButtonClick(self,MessageDialogButton^.fID);
+      if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+       if assigned(fOnButtonClick) then begin
+        fOnButtonClick(self,MessageDialogButton^.fID);
+       end;
+       result:=true;
+       Close;
       end;
-      result:=true;
-      Close;
       break;
      end;
     end;
@@ -24435,10 +24437,12 @@ end;
 function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) and not result then begin
+ if not result then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
-    Reject;
+    if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+     Reject;
+    end;
     result:=true;
    end;
   end;
