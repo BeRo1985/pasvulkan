@@ -24447,6 +24447,9 @@ begin
    end;
   end;
  end;
+ if not result then begin
+  result:=inherited KeyEvent(aKeyEvent);
+ end;
 end;
 
 procedure TpvGUIFileDialog.Check;
