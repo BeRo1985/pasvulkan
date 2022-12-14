@@ -14575,7 +14575,7 @@ var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) and not result then begin
   if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
                               TpvApplicationInputKeyModifier.CTRL,
                               TpvApplicationInputKeyModifier.SHIFT,
@@ -24435,7 +24435,7 @@ end;
 function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) and not result then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
     Reject;
