@@ -14599,6 +14599,9 @@ begin
     end;
    end;
   end;
+  if not result then begin
+   result:=inherited KeyEvent(aKeyEvent);
+  end;
  end;
 end;
 
@@ -24045,16 +24048,18 @@ end;
 function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+ case aKeyEvent.KeyCode of
+  KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
     Accept(0);
-    result:=true;
    end;
-   KEYCODE_BACKSPACE:begin
+   result:=true;
+  end;
+  KEYCODE_BACKSPACE:begin
+   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
     SetPath('..');
-    result:=true;
    end;
+   result:=true;
   end;
  end;
 end;
@@ -24446,9 +24451,9 @@ begin
     result:=true;
    end;
   end;
- end;
- if not result then begin
-  result:=inherited KeyEvent(aKeyEvent);
+  if not result then begin
+   result:=inherited KeyEvent(aKeyEvent);
+  end;
  end;
 end;
 
