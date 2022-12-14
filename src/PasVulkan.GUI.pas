@@ -2739,6 +2739,7 @@ type TpvGUIObject=class;
        fFontCharSize:TpvVector2;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
+       fOnStatusChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
@@ -2799,6 +2800,7 @@ type TpvGUIObject=class;
        property LineWrap:Boolean read fLineWrap write fLineWrap;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnStatusChange:TpvGUIOnEvent read fOnStatusChange write fOnStatusChange;
      end;
 
      TpvGUIMultiLineTextEditSearchReplaceWindow=class(TpvGUIWindow)
@@ -20899,6 +20901,8 @@ begin
 
  fOnChange:=nil;
 
+ fOnStatusChange:=nil;
+
  fSearchReplaceWindow:=nil;
 
  fSearchReplaceState:=nil;
@@ -21010,6 +21014,9 @@ begin
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21022,6 +21029,9 @@ begin
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
+  end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
   end;
  end;
  SetRenderDirty;
@@ -21056,6 +21066,10 @@ begin
  if fHorizontalScrollDirection<>aHorizontalScrollDirection then begin
   fHorizontalScrollDirection:=aHorizontalScrollDirection;
   PerformLayout;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+  SetRenderDirty;
  end;
 end;
 
@@ -21064,6 +21078,10 @@ begin
  if fVerticalScrollDirection<>aVerticalScrollDirection then begin
   fVerticalScrollDirection:=aVerticalScrollDirection;
   PerformLayout;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+  SetRenderDirty;
  end;
 end;
 
@@ -21077,6 +21095,9 @@ begin
    fView.CursorOffset:=Coordinate;
    fDirty:=true;
    fTime:=0.0;
+  end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
   end;
  end;
  SetRenderDirty;
@@ -21092,6 +21113,9 @@ begin
    fView.CursorOffset:=Coordinate;
    fDirty:=true;
    fTime:=0.0;
+  end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
   end;
  end;
  SetRenderDirty;
@@ -21114,6 +21138,9 @@ begin
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
+  end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
   end;
  end;
  SetRenderDirty;
@@ -21261,6 +21288,9 @@ begin
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21269,6 +21299,9 @@ procedure TpvGUIMultiLineTextEdit.CopySelectedText;
 begin
  if assigned(fView) and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.GetMarkedRangeText);
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21282,6 +21315,9 @@ begin
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21294,6 +21330,9 @@ begin
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21304,6 +21343,9 @@ begin
   fView.MarkAll;
   fDirty:=true;
   fTime:=0.0;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21314,6 +21356,9 @@ begin
   fView.UnmarkAll;
   fDirty:=true;
   fTime:=0.0;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
  SetRenderDirty;
 end;
@@ -21335,6 +21380,9 @@ begin
   fTime:=0.0;
   if assigned(fPopupMenu) then begin
    fPopupMenu.Deactivate;
+  end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
   end;
  end;
  SetRenderDirty;
@@ -21658,6 +21706,11 @@ begin
    end;
   end;
  end;
+ if result then begin
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+ end;
  SetRenderDirty;
 end;
 
@@ -21726,6 +21779,11 @@ begin
    end;
   end;
  end;
+ if result then begin
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+ end;
  SetRenderDirty;
 end;
 
@@ -21753,6 +21811,9 @@ begin
    fDirty:=true;
    fTime:=0.0;
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
   result:=true;
  end;
  SetRenderDirty;
@@ -21771,6 +21832,10 @@ begin
    fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
    fViewOldCountLines:=fViewCountLines;
    PerformLayout;
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
+   SetRenderDirty;
   end;
   if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
    fHorizontalScrollBar.Value:=fView.CursorOffset.x;
