@@ -1403,6 +1403,14 @@ type TpvTextEditor=class
               procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+             public
+              property CaseInsensitive:boolean read fCaseInsensitive write fCaseInsensitive;
+              property KeywordBeginCodePointSet:TCodePointSet read fKeywordBeginCodePointSet write fKeywordBeginCodePointSet;
+              property KeywordPartCodePointSet:TCodePointSet read fKeywordPartCodePointSet write fKeywordPartCodePointSet;
+              property KeywordPartCodePointSetExcludingBeginCodePointSet:TCodePointSet read fKeywordPartCodePointSetExcludingBeginCodePointSet write fKeywordPartCodePointSetExcludingBeginCodePointSet;
+              property WhiteSpaceCodePointSet:TCodePointSet read fWhiteSpaceCodePointSet write fWhiteSpaceCodePointSet;
+              property NewLineCodePointSet:TCodePointSet read fNewLineCodePointSet write fNewLineCodePointSet;
+              property WhiteSpaceCodePointSetExcludingNewLineCodePointSet:TCodePointSet read fWhiteSpaceCodePointSetExcludingNewLineCodePointSet write fWhiteSpaceCodePointSetExcludingNewLineCodePointSet;
             end;
             TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
