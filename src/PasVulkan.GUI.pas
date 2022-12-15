@@ -122,6 +122,8 @@ type TpvGUIObject=class;
 
      TpvGUIColorPanel=class;
 
+     TpvGUITab=class;
+
      TpvGUITabPanel=class;
 
      TpvGUIListBox=class;
@@ -155,6 +157,8 @@ type TpvGUIObject=class;
      TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):Boolean of object;
 
      TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):Boolean of object;
+
+     TpvGUIOnTabEvent=procedure(const aSender:TpvGUITab) of object;
 
      TpvGUIDrawEngine=class
       public
@@ -2343,6 +2347,8 @@ type TpvGUIObject=class;
      PpvGUITabFlags=^TpvGUITabFlags;
      TpvGUITabFlags=set of TpvGUITabFlag;
 
+     { TpvGUITab }
+
      TpvGUITab=class(TCollectionItem)
       private
        fOwner:TpvGUITabPanel;
@@ -2356,6 +2362,7 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fRect:TpvRect;
+       fOnDestroy:TpvGUIOnTabEvent;
        procedure SetCaption(const aCaption:TpvUTF8String);
        function GetModified:Boolean; inline;
        procedure SetModified(const aModified:Boolean);
@@ -2364,6 +2371,7 @@ type TpvGUIObject=class;
       public
        constructor Create(aCollection:TCollection); override;
        destructor Destroy; override;
+       procedure BeforeDestruction; override;
        procedure Close;
        property Data:TObject read fData write fData;
        property Content:TpvGUIWidget read fContent write fContent;
@@ -2372,6 +2380,7 @@ type TpvGUIObject=class;
        property Caption:TpvUTF8String read fCaption write SetCaption;
        property Modified:Boolean read GetModified write SetModified;
        property Selected:Boolean read GetSelected write SetSelected;
+       property OnDestroy:TpvGUIOnTabEvent read fOnDestroy write fOnDestroy;
        property Tag:TpvSizeInt read fTag write fTag;
      end;
 
@@ -18866,6 +18875,14 @@ begin
   end;
  end;
  inherited Destroy;
+end;
+
+procedure TpvGUITab.BeforeDestruction;
+begin
+ if assigned(fOnDestroy) then begin
+  fOnDestroy(self);
+ end;
+ inherited BeforeDestruction;
 end;
 
 procedure TpvGUITab.Close;
