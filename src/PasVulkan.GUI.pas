@@ -18975,9 +18975,10 @@ begin
  if assigned(fOwner) then begin
   case Action of
    Classes.TCollectionNotification.cnDeleting,Classes.TCollectionNotification.cnExtracting:begin
-    Index:=fOwner.TabIndex;
+    Index:=Min(fOwner.fTabIndex+1,Count-1);
     fOwner.fTabIndex:=-1;
     fOwner.SetTabIndex(Index);
+    dec(fOwner.fTabIndex);
    end;
    else begin
    end;
