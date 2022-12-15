@@ -2384,12 +2384,15 @@ type TpvGUIObject=class;
        property Tag:TpvSizeInt read fTag write fTag;
      end;
 
+     { TpvGUITabList }
+
      TpvGUITabList=class(TCollection)
       private
        fOwner:TpvGUITabPanel;
        function GetItem(const aIndex:TpvSizeInt):TpvGUITab; inline;
        procedure SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab); inline;
       protected
+       procedure Notify(Item:Classes.TCollectionItem;Action:Classes.TCollectionNotification); override;
       public
        constructor Create(const aOwner:TpvGUITabPanel); reintroduce;
        destructor Destroy; override;
@@ -2417,6 +2420,8 @@ type TpvGUIObject=class;
      PpvGUITabPanelFlags=^TpvGUITabPanelFlags;
      TpvGUITabPanelFlags=set of TpvGUITabPanelFlag;
 
+     { TpvGUITabPanel }
+
      TpvGUITabPanel=class(TpvGUIWidget)
       private
        fFlags:TpvGUITabPanelFlags;
@@ -2438,8 +2443,10 @@ type TpvGUIObject=class;
        procedure SetVisibleContent(const aVisibleContent:Boolean);
        function GetVisibleContentBackground:Boolean; inline;
        procedure SetVisibleContentBackground(const aVisibleContentBackground:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        procedure SetTabs(const aTabs:TpvGUITabList);
        function GetTabIndex:TpvSizeInt;
        procedure SetTabIndex(const aTabIndex:TpvSizeInt);
@@ -2449,6 +2456,7 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure BeforeDestruction; override;
        procedure PerformLayout; override;
        function Enter:Boolean; override;
        function Leave:Boolean; override;
@@ -2526,8 +2534,10 @@ type TpvGUIObject=class;
        procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
        function GetMultiSelect:Boolean; inline;
        procedure SetMultiSelect(const aMultiSelect:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        function GetCountVisibleItems:TpvSizeInt;
        procedure AdjustScrollBar;
        procedure UpdateScrollBar;
@@ -2588,6 +2598,7 @@ type TpvGUIObject=class;
        function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
       public
@@ -2626,6 +2637,7 @@ type TpvGUIObject=class;
      TpvGUISplitterPanelGripButton=class(TpvGUIWidget)
       private
        fDown:Boolean;
+      protected
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -2772,6 +2784,7 @@ type TpvGUIObject=class;
        procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
        procedure HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
        procedure VerticalScrollBarOnChange(const aSender:TpvGUIObject);
+      protected
        function GetFont:TpvFont; override;
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
@@ -3121,8 +3134,10 @@ type TpvGUIObject=class;
        procedure SetMultiSelect(const aMultiSelect:Boolean);
        function GetHeader:Boolean; inline;
        procedure SetHeader(const aHeader:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        function GetCountItemsPerRow:TpvSizeInt;
        function GetCountVisibleRows:TpvSizeInt;
        function GetCountVisibleItems:TpvSizeInt;
@@ -18953,6 +18968,23 @@ begin
  inherited Items[aIndex]:=TCollectionItem(aTab);
 end;
 
+procedure TpvGUITabList.Notify(Item:Classes.TCollectionItem;Action:Classes.TCollectionNotification);
+var Index:TpvSizeInt;
+begin
+ inherited Notify(Item,Action);
+ if assigned(fOwner) then begin
+  case Action of
+   Classes.TCollectionNotification.cnDeleting,Classes.TCollectionNotification.cnExtracting:begin
+    Index:=fOwner.TabIndex;
+    fOwner.fTabIndex:=-1;
+    fOwner.SetTabIndex(Index);
+   end;
+   else begin
+   end;
+  end;
+ end;
+end;
+
 function TpvGUITabList.IndexOf(const aTab:TpvGUITab):TpvSizeInt;
 var Index:TpvSizeInt;
 begin
@@ -19061,6 +19093,17 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvGUITabPanel.BeforeDestruction;
+begin
+ if assigned(fTabs) then begin
+  try
+   fTabs.fOwner:=nil;
+  finally
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
 procedure TpvGUITabPanel.SetContentMargin(const aContentMargin:TpvFloat);
 begin
  if fContentMargin<>aContentMargin then begin
@@ -19161,7 +19204,11 @@ end;
 
 function TpvGUITabPanel.GetTabIndex:TpvSizeInt;
 begin
- result:=Min(Max(fTabIndex,0),fTabs.Count-1);
+ if assigned(fTabs) then begin
+  result:=Min(Max(fTabIndex,0),fTabs.Count-1);
+ end else begin
+  result:=0;
+ end;
 end;
 
 procedure TpvGUITabPanel.SetTabIndex(const aTabIndex:TpvSizeInt);
