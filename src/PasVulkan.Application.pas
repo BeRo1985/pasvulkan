@@ -1160,6 +1160,7 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
+       fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
@@ -1174,6 +1175,7 @@ type EpvApplication=class(Exception)
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fFullscreen:boolean;
+       fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
@@ -1691,6 +1693,8 @@ type EpvApplication=class(Exception)
        property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
+
+       property Maximized:boolean read fMaximized write fMaximized;
 
        property ExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode read fExclusiveFullScreenMode write fExclusiveFullScreenMode;
 
@@ -6516,6 +6520,7 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
+ fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
@@ -6530,6 +6535,7 @@ begin
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
+ fMaximized:=false;
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
  fResizable:=true;
@@ -9392,6 +9398,23 @@ begin
   fNextScreen:=nil;
  end;
 
+ if fCurrentMaximized<>TpvInt32(fMaximized) then begin
+  fCurrentMaximized:=TpvInt32(fMaximized);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  if fMaximized then begin
+   SDL_MinimizeWindow(fSurfaceWindow);
+  end else begin
+   SDL_RestoreWindow(fSurfaceWindow);
+  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if fMaximized then begin
+   ShowWindow(fWin32Handle,SW_MAXIMIZE);
+  end else begin
+   ShowWindow(fWin32Handle,SW_RESTORE);
+  end;
+{$ifend}
+ end;
+
  if (fCurrentWidth<>fWidth) or (fCurrentHeight<>fHeight) or (fCurrentPresentMode<>TpvInt32(fPresentMode)) then begin
   fCurrentWidth:=fWidth;
   fCurrentHeight:=fHeight;
@@ -11374,6 +11397,10 @@ begin
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
+{ if fMaximized then begin
+   fVideoFlags:=fVideoFlags or SDL_WINDOW_MAXIMIZED;
+  end;
+  fCurrentMaximized:=TpvInt32(fMaximized);//}
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
   if fSDLVersionWithVulkanSupport then begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_VULKAN;
@@ -11395,6 +11422,7 @@ begin
   if fResizable then begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
   end;
+
 {$endif}
 
 {$if defined(fpc) and defined(android)}
@@ -11529,6 +11557,16 @@ begin
    fWin32Cursor:=fWin32HiddenCursor;
   end;
   SetCursor(fWin32Cursor);
+
+{ if fMaximized then begin
+   ShowWindow(fWin32Handle,SW_MAXIMIZE);
+  end else begin
+   ShowWindow(fWin32Handle,SW_NORMAL);
+  end;
+  fCurrentMaximized:=TpvInt32(fMaximized);
+
+  Windows.SetForegroundWindow(fWin32Handle);
+  Windows.SetFocus(fWin32Handle);}
 
 {$else}
 {$ifend}
