@@ -11364,7 +11364,7 @@ begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
      TextPosition:=Column.fRect.LeftTop+(Column.fRect.Size*0.5);
      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+Column.fRect.LeftTop,
-                                                  Column.fRect.Size);
+                                                  Column.fRect.Size).GetIntersection(ClipRect);
      aDrawEngine.DrawText(Column.fCaption,TextPosition);
     end;
 
