@@ -2071,9 +2071,9 @@ function SDL_DestroyWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifnd
 function SDL_DestroyRenderer(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_DestroyTexture(texture:PSDL_Texture):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
-procedure SDL_MinimizeWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-procedure SDL_MaximizeWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
-procedure SDL_RestoreWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_MinimizeWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_MaximizeWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_RestoreWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GL_MakeCurrent(window:PSDL_Window;context:PSDL_GLContext):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 

@@ -6283,23 +6283,27 @@ function TpvApplicationClipboard.HasText:boolean;
 {$if defined(Windows)}
 var ClipboardHandle:THandle;
     Data:pointer;
+    Error:TpvUInt32;
 begin
  result:=false;
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   ClipboardHandle:=Windows.GetClipboardData(CF_UNICODETEXT);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
+    Data:=Windows.GlobalLock(ClipboardHandle);
     try
      if assigned(Data) then begin
       result:=PWideChar(Data)^<>#0;
      end;
     finally
-     GlobalUnlock(ClipboardHandle);
+     Windows.GlobalUnlock(ClipboardHandle);
     end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
@@ -6318,24 +6322,28 @@ function TpvApplicationClipboard.GetText:TpvApplicationUTF8String;
 var ClipboardHandle:THandle;
     Data:pointer;
     UTF16Data:WideString;
+    Error:TpvUInt32;
 begin
  result:='';
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   ClipboardHandle:=Windows.GetClipboardData(CF_UNICODETEXT);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
+    Data:=Windows.GlobalLock(ClipboardHandle);
     try
      if assigned(Data) then begin
       UTF16Data:=PWideChar(Data);
       result:=PUCUUTF16ToUTF8(UTF16Data);
      end;
     finally
-     GlobalUnlock(ClipboardHandle);
+     Windows.GlobalUnlock(ClipboardHandle);
     end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
@@ -6368,26 +6376,35 @@ procedure TpvApplicationClipboard.SetText(const aTextString:TpvApplicationUTF8St
 var ClipboardHandle:THandle;
     Data:pointer;
     UTF16Data:WideString;
+    Error:TpvUInt32;
+    Size:TpvSizeInt;
 begin
  UTF16Data:=PUCUUTF8ToUTF16(aTextString);
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   EmptyClipboard;
-   ClipboardHandle:=GlobalAlloc(GMEM_MOVEABLE,(length(UTF16Data)+1)*SizeOf(WideChar));
+   Size:=(length(UTF16Data)+1)*SizeOf(WideChar);
+   ClipboardHandle:=Windows.GlobalAlloc(GMEM_MOVEABLE or GMEM_ZEROINIT or GMEM_DDESHARE,Size);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
-    try
-     if assigned(Data) then begin
+    Data:=Windows.GlobalLock(ClipboardHandle);
+    if assigned(Data) then begin
+     try
       Move(UTF16Data[1],Data^,length(UTF16Data)*SizeOf(WideChar));
       PWideChar(Data)[length(UTF16Data)+1]:=#0;
+     finally
+      Windows.GlobalUnlock(ClipboardHandle);
      end;
-    finally
-     GlobalUnlock(ClipboardHandle);
     end;
-    SetClipboardData(CF_UNICODETEXT,ClipboardHandle);
+    Windows.EmptyClipboard;
+    if Windows.SetClipboardData(CF_UNICODETEXT,ClipboardHandle)=0 then begin
+     Error:=GetLastError;
+     pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
+    end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
