@@ -18974,7 +18974,7 @@ begin
  inherited Notify(Item,Action);
  if assigned(fOwner) then begin
   case Action of
-   Classes.TCollectionNotification.cnDeleting,Classes.TCollectionNotification.cnExtracting:begin
+   Classes.TCollectionNotification.cnDeleting:begin
     Index:=Min(fOwner.fTabIndex+1,Count-1);
     fOwner.fTabIndex:=-1;
     fOwner.SetTabIndex(Index);
