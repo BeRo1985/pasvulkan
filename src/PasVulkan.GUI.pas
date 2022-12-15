@@ -21868,7 +21868,7 @@ begin
    end else begin
     Step:=ceil(v);
    end;
-   FontSize:=Min(Max(FontSize+Step,2),48);
+   FontSize:=Min(Max(abs(FontSize)+Step,2),48)*Sign(FontSize);
   end else begin
    v:=aRelativeAmount.x+aRelativeAmount.y;
    if v<0.0 then begin
