@@ -21858,26 +21858,39 @@ var TemporaryValue,Step:TpvInt64;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if assigned(fView) and not result then begin
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
+  if (pvApplication.Input.GetKeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                           TpvApplicationInputKeyModifier.CTRL,
+                                           TpvApplicationInputKeyModifier.SHIFT,
+                                           TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   FontSize:=Min(Max(FontSize+Step,2),48);
   end else begin
-   Step:=ceil(v);
-  end;
-{ if Step<0 then begin
-   fView.MoveDown;
-   fDirty:=true;
-  end else if Step>0 then begin
-   fView.MoveUp;
-   fDirty:=true;
-  end;}
-  if fVerticalScrollBar.Visible and (Step<>0) then begin
-   fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
-   fDirty:=true;
-   fTime:=0.0;
-  end;
-  if assigned(fOnStatusChange) then begin
-   fOnStatusChange(self);
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+ { if Step<0 then begin
+    fView.MoveDown;
+    fDirty:=true;
+   end else if Step>0 then begin
+    fView.MoveUp;
+    fDirty:=true;
+   end;}
+   if fVerticalScrollBar.Visible and (Step<>0) then begin
+    fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
+    fDirty:=true;
+    fTime:=0.0;
+   end;
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
   end;
   result:=true;
  end;
