@@ -21509,6 +21509,24 @@ begin
        result:=true;
       end;
      end;
+     KEYCODE_KP_MINUS,KEYCODE_MINUS:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+       FontSize:=Min(Max(abs(FontSize)-1,2),48)*Sign(FontSize);
+       result:=true;
+      end;
+     end;
+     KEYCODE_KP_PLUS,KEYCODE_PLUS:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+       FontSize:=Min(Max(abs(FontSize)+1,2),48)*Sign(FontSize);
+       result:=true;
+      end;
+     end;
      KEYCODE_LEFT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if not fView.HasMarkedRange then begin
