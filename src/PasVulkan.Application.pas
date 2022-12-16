@@ -1377,6 +1377,10 @@ type EpvApplication=class(Exception)
 
        fSwapChainImageIndex:TpvInt32;
 
+       fVulkanPresentID:TpvUInt64;
+
+       fVulkanPresentLastID:TpvUInt64;
+
        fVulkanAPIVersion:TvkUInt32;
 
        fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
@@ -6641,6 +6645,10 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;}
 
+ fVulkanPresentID:=0;
+
+ fVulkanPresentLastID:=0;
+
  fVulkanAPIVersion:=VK_API_VERSION_1_0;
 
  fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
@@ -8629,6 +8637,8 @@ begin
 end;
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
+var PresentIdKHR:TVkPresentIdKHR;
+    PresentNext:Pointer;
 begin
 
  result:=false;
@@ -8694,10 +8704,22 @@ begin
 
   fVulkanBackBufferState:=TVulkanBackBufferState.Acquire;
 
+  PresentNext:=nil;
+
+  if fVulkanDevice.PresentIDSupport then begin
+   FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
+   PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+   PresentIdKHR.swapchainCount:=1;
+   PresentIdKHR.pPresentIds:=@fVulkanPresentID;
+   inc(fVulkanPresentID);
+   PresentNext:=@PresentIdKHR;
+  end;
+
   try
-   case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore) of
+   case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
     VK_SUCCESS:begin
      //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+     fVulkanPresentLastID:=fVulkanPresentID;
      fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
      if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
       dec(fNextInFlightFrameIndex,fCountInFlightFrames);
@@ -8709,6 +8731,7 @@ begin
      result:=true;
     end;
     VK_SUBOPTIMAL_KHR:begin
+     fVulkanPresentLastID:=fVulkanPresentID;
      if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                 TAcquireVulkanBackBufferState.RecreateSurface,
@@ -8728,6 +8751,8 @@ begin
       end;
       result:=true;
      end;
+    end;
+    else begin
     end;
    end;
   except
