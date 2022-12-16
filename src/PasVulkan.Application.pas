@@ -7727,15 +7727,19 @@ begin
 
 {$if defined(Windows)}
 {$if defined(PasVulkanHeadless)}
-   WindowHandle:=0;
+  WindowHandle:=0;
 {$elseif defined(PasVulkanUseSDL2)}
-   SDL_VERSION(WMInfo.version);
-   SDL_GetWindowWMInfo(fSurfaceWindow,@WMInfo);
-   WindowHandle:=WMInfo.window;
+  SDL_VERSION(WMInfo.version);
+  SDL_GetWindowWMInfo(fSurfaceWindow,@WMInfo);
+  WindowHandle:=WMInfo.window;
 {$else}
-   WindowHandle:=fWin32Handle;
+  WindowHandle:=fWin32Handle;
 {$ifend}
 {$ifend}
+
+ fVulkanPresentID:=0;
+
+ fVulkanPresentLastID:=0;
 
  fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
                                              fVulkanSurface,
