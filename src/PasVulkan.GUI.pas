@@ -3190,6 +3190,8 @@ type TpvGUIObject=class;
 
      TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:Boolean;aFileName:TpvUTF8String) of object;
 
+     { TpvGUIFileDialog }
+
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
        type TMode=
@@ -3253,6 +3255,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        procedure Check; override;
+       procedure Setup;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName write SetFileName;
@@ -24625,6 +24628,10 @@ begin
  end;*)
  fButtonUp.Enabled:=length(fPath)>{$ifdef Unix}1{$else}0{$endif};
  inherited Check;
+end;
+
+procedure TpvGUIFileDialog.Setup;
+begin
 end;
 
 function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):Boolean;
