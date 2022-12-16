@@ -369,6 +369,8 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
+       fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -427,6 +429,8 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
+       property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures;
+       property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
@@ -604,6 +608,8 @@ type EpvVulkanException=class(Exception);
        fImageFormatList:boolean;
        fUseNVIDIADeviceDiagnostics:boolean;
        fFullScreenExclusiveSupport:boolean;
+       fPresentIDSupport:boolean;
+       fPresentWaitSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -613,6 +619,8 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
+       fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -666,6 +674,8 @@ type EpvVulkanException=class(Exception);
        property UseNVIDIADeviceDiagnostics:boolean read fUseNVIDIADeviceDiagnostics write fUseNVIDIADeviceDiagnostics;
        property NVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV read fNVIDIADeviceDiagnosticsFlags write fNVIDIADeviceDiagnosticsFlags;
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
+       property PresentIDSupport:boolean read fPresentIDSupport;
+       property PresentWaitSupport:boolean read fPresentWaitSupport;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -7246,6 +7256,24 @@ begin
   end;
  end;
 
+ begin
+  FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
+  fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0 then begin
+   fPresentIDFeatures.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fPresentIDFeatures;
+  end;
+ end;
+
+ begin
+  FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
+  fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0 then begin
+   fPresentWaitFeatures.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fPresentWaitFeatures;
+  end;
+ end;
+
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
     assigned(fInstance.Commands.Commands.GetPhysicalDeviceFeatures2KHR) then begin
   fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
@@ -8659,6 +8687,32 @@ begin
    end;
 
    fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>0;
+
+   begin
+    FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIDFeaturesKHR),#0);
+    fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE) then begin
+     fPresentIDFeatures.presentId:=PhysicalDevice.fPresentIDFeatures.presentId;
+     fPresentIDFeatures.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fPresentIDFeatures;
+    end;
+   end;
+
+   fPresentIDSupport:=PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE;
+
+   begin
+    FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentWaitFeaturesKHR),#0);
+    fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE) then begin
+     fPresentWaitFeatures.presentWait:=PhysicalDevice.fPresentWaitFeatures.presentWait;
+     fPresentWaitFeatures.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fPresentWaitFeatures;
+    end;
+   end;
+
+   fPresentWaitSupport:=PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE;
 
   end;
 
