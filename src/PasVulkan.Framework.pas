@@ -1848,7 +1848,7 @@ type EpvVulkanException=class(Exception);
                           const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
                           const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
        destructor Destroy; override;
-       function QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil):TVkResult;
+       function QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
        function AcquireNextImage(const aSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aTimeOut:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
        procedure GetScreenshot(out aScreenshot:TpvVulkanSwapChainScreenshot;const aSwapChainImage:TpvVulkanImage=nil);
        procedure SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95);
@@ -14703,11 +14703,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanSwapChain.QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil):TVkResult;
+function TpvVulkanSwapChain.QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
 var PresentInfo:TVkPresentInfoKHR;
 begin
  FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
  PresentInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+ PresentInfo.pNext:=aNext;
  PresentInfo.swapchainCount:=1;
  PresentInfo.pSwapchains:=@fSwapChainHandle;
  PresentInfo.pImageIndices:=@fCurrentImageIndex;
