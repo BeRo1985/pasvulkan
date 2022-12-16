@@ -1177,6 +1177,7 @@ type EpvApplication=class(Exception)
        fFullscreen:boolean;
        fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
+       fPresentFrameLatency:TpvUInt64;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
@@ -1549,6 +1550,8 @@ type EpvApplication=class(Exception)
        procedure CreateVulkanCommandBuffers;
        procedure DestroyVulkanCommandBuffers;
 
+       procedure WaitSwapChainLatency;
+
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
 
@@ -1705,6 +1708,8 @@ type EpvApplication=class(Exception)
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
 
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
+
+       property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
 
        property Resizable:boolean read fResizable write fResizable;
 
@@ -6559,6 +6564,7 @@ begin
  fMaximized:=false;
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
+ fPresentFrameLatency:={$ifdef Android}2{$else}1{$endif};
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
@@ -8286,6 +8292,25 @@ begin
    if CanBeParallelProcessed then begin
     // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
     fSkipNextDrawFrame:=true;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvApplication.WaitSwapChainLatency;
+var Target:TpvUInt64;
+    WaitResult:TVkResult;
+begin
+ if assigned(fVulkanDevice) and
+    fVulkanDevice.PresentIDSupport and
+    fVulkanDevice.PresentWaitSupport and
+    (fVulkanPresentLastID>fPresentFrameLatency) and
+    (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
+  Target:=fVulkanPresentLastID-fPresentFrameLatency;
+  if assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
+   WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,High(TpvUInt64));
+   if WaitResult<>VK_SUCCESS then begin
+    Log(LOG_INFO,'TpvApplication.WaitSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
    end;
   end;
  end;
