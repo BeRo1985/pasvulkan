@@ -1550,7 +1550,7 @@ type EpvApplication=class(Exception)
        procedure CreateVulkanCommandBuffers;
        procedure DestroyVulkanCommandBuffers;
 
-       procedure WaitSwapChainLatency;
+       function WaitForSwapChainLatency:boolean;
 
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
@@ -8297,22 +8297,39 @@ begin
  end;
 end;
 
-procedure TpvApplication.WaitSwapChainLatency;
-var Target:TpvUInt64;
+function TpvApplication.WaitForSwapChainLatency:boolean;
+var Target,TimeOut:TpvUInt64;
     WaitResult:TVkResult;
 begin
  if assigned(fVulkanDevice) and
     fVulkanDevice.PresentIDSupport and
     fVulkanDevice.PresentWaitSupport and
     (fVulkanPresentLastID>fPresentFrameLatency) and
-    (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
+    (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
+    assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
   Target:=fVulkanPresentLastID-fPresentFrameLatency;
-  if assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
-   WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,High(TpvUInt64));
-   if WaitResult<>VK_SUCCESS then begin
-    Log(LOG_INFO,'TpvApplication.WaitSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
+  if fBlocking then begin
+   TimeOut:=High(TpvUInt64);
+  end else begin
+   TimeOut:=1; // one nanosecond
+  end;
+  WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
+  case WaitResult of
+   VK_SUCCESS,
+   VK_SUBOPTIMAL_KHR:begin
+    result:=true;
+   end;
+   VK_ERROR_OUT_OF_DATE_KHR,
+   VK_TIMEOUT:begin
+    result:=false;
+   end;
+   else begin
+    Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
+    result:=true;
    end;
   end;
+ end else begin
+  result:=true;
  end;
 end;
 
@@ -9359,8 +9376,10 @@ var Index,Counter,Tries,
 {$else}
     Jobs:array[0..1] of PPasMPJob;
 {$ifend}
-    DoProcess:boolean;
+    ReadyForSwapChainLatency,DoProcess:boolean;
 begin
+
+ ReadyForSwapChainLatency:=WaitForSwapChainLatency;
 
  ProcessRunnables;
 
@@ -10134,7 +10153,7 @@ begin
 
  end;
 
- if fGraphicsReady and IsVisibleToUser then begin
+ if fGraphicsReady and IsVisibleToUser and ReadyForSwapChainLatency then begin
 
   try
    fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
