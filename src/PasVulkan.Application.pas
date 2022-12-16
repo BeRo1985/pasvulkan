@@ -7026,9 +7026,11 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
   end;
 
-  if (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>=0) and
-     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0) then begin
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
   end;
 
@@ -8304,6 +8306,7 @@ begin
  if assigned(fVulkanDevice) and
     fVulkanDevice.PresentIDSupport and
     fVulkanDevice.PresentWaitSupport and
+    (fPresentFrameLatency<>0) and
     (fVulkanPresentLastID>fPresentFrameLatency) and
     (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
     assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
