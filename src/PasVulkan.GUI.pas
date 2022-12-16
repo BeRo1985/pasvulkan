@@ -2778,6 +2778,8 @@ type TpvGUIObject=class;
        procedure PopupMenuOnSearchClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
+       procedure SetFont(const aFont:TpvFont);
+       procedure SetFontSize(const aFontSize:TpvFloat);
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
        procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -2809,6 +2811,8 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+       property Font read GetFont write SetFont;
+       property FontSize read GetFontSize write SetFontSize;
        property HorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fHorizontalScrollDirection write SetHorizontalScrollDirection;
        property VerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fVerticalScrollDirection write SetVerticalScrollDirection;
        property HorizontalScrollBar:TpvGUIScrollBar read fHorizontalScrollBar;
@@ -21187,6 +21191,22 @@ begin
   end;
  end;
  SetRenderDirty;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetFont(const aFont:TpvFont);
+begin
+ if fFont<>aFont then begin
+  fFont:=aFont;
+  SetRenderDirty;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetFontSize(const aFontSize:TpvFloat);
+begin
+ if fFontSize<>aFontSize then begin
+  fFontSize:=aFontSize;
+  SetRenderDirty;
+ end;
 end;
 
 function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
