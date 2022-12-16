@@ -840,6 +840,8 @@ type TpvGUIObject=class;
        fIconReplace:TObject;
        fIconCog:TObject;
        fIconCogs:TObject;
+       fIconCheckThick:TObject;
+       fIconCloseThick:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -987,6 +989,8 @@ type TpvGUIObject=class;
        property IconReplace:TObject read fIconReplace write fIconReplace;
        property IconCog:TObject read fIconCog write fIconCog;
        property IconCogs:TObject read fIconCogs write fIconCogs;
+       property IconCheckThick:TObject read fIconCheckThick write fIconCheckThick;
+       property IconCloseThick:TObject read fIconCloseThick write fIconCloseThick;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -6528,6 +6532,8 @@ begin
  fIconReplace:=nil;
  fIconCog:=nil;
  fIconCogs:=nil;
+ fIconCheckThick:=nil;
+ fIconCloseThick:=nil;
  Setup;
 end;
 
@@ -7482,6 +7488,30 @@ begin
                                                                            2,
                                                                            1);
 
+ fIconCheckThick:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheckThick',
+                                                                                '"M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
+
+ fIconCloseThick:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCloseThick',
+                                                                                'M20 6.91L17.09 4L12 9.09L6.91 4L4 6.91L9.09 12L4 17.09L6.91 20L12 14.91L17.09 20L20 17.09L14.91 12L20 6.91Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
+
   if length(CacheStoragePath)>0 then begin
 
    fSignedDistanceFieldSpriteAtlas.SaveToFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip',true);
@@ -7557,6 +7587,8 @@ begin
   fIconReplace:=fSignedDistanceFieldSpriteAtlas.Sprites['IconReplace'];
   fIconCog:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCog'];
   fIconCogs:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCogs'];
+  fIconCheckThick:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCheckThick'];
+  fIconCloseThick:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCloseThick'];
 
  end;
 
