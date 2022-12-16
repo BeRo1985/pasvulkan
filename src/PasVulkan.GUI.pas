@@ -6801,7 +6801,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA2790A}';
+const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA2790B}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:Boolean;
@@ -7510,7 +7510,7 @@ begin
                                                                            1);
 
  fIconCheckThick:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheckThick',
-                                                                                '"M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z',
+                                                                                'M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z',
                                                                                 48,
                                                                                 48,
                                                                                 48.0/24.0,
