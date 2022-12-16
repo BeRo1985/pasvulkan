@@ -145,6 +145,9 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 {$ifend}
 
 {$if not (defined(fpc) and defined(android))}
+
+{$R *.res}
+
 begin
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
  // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo
