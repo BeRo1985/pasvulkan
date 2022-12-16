@@ -24001,7 +24001,7 @@ begin
   Title:='Save';
  end;
 
- fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,4.0);
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Content,4.0);
  Content.Layout:=fAdvancedGridLayout;
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Path
  fAdvancedGridLayout.Rows.Add(240.0,1.0); // List
