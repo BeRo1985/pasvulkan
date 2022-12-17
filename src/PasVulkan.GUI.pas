@@ -60,6 +60,7 @@ unit PasVulkan.GUI;
 {$endif}
 {$m+}
 {-$define PasVulkanGUIDebug}
+{-$define PasVulkanGUIFreeDebug}
 
 interface
 
@@ -358,6 +359,7 @@ type TpvGUIObject=class;
        fTag:TpvPtrInt;
        fProtectedObjectCounter:TPasMPUInt32;
        fGarbageDisposerCounter:TPasMPUInt32;
+       fIsOnGarbageDisposerList:TPasMPBool32;
        fMarkBits:TPasMPUInt32;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
@@ -382,6 +384,11 @@ type TpvGUIObject=class;
 
      EpvGUIObjectGarbageDisposer=class(Exception);
 
+     TpvGUIObjectGarbageDisposerObjectList=class(TpvObjectList<TpvGUIObject>)
+     end;
+
+     { TpvGUIObjectGarbageDisposer }
+
      TpvGUIObjectGarbageDisposer=class
       private
        // This is NOT a garbage collector, it's reallly just a Directed-Acyclic-Graph-
@@ -389,16 +396,17 @@ type TpvGUIObject=class;
        // so that all garbage objects are freed in a controlled topological order
        // relatively to each another.
        fInstance:TpvGUIInstance;
-       fLock:TPasMPSlimReaderWriterLock;
-       fToDisposeList:TList;
-       fTopologicalSortedList:TList;
-       fToFreeList:TList;
+       fLock:TPasMPCriticalSection;
+       fToDisposeList:TpvGUIObjectGarbageDisposerObjectList;
+       fTopologicalSortedList:TpvGUIObjectGarbageDisposerObjectList;
+       fToFreeList:TpvGUIObjectGarbageDisposerObjectList;
        fCountToDisposeObjects:{$ifdef cpu64}TPasMPInt64{$else}TPasMPInt32{$endif};
        procedure Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
       public
        constructor Create(const aInstance:TpvGUIInstance); reintroduce;
        destructor Destroy; override;
        procedure AddGarbage(const aObject:TpvGUIObject);
+       procedure RemoveGarbage(const aObject:TpvGUIObject);
        procedure DisposeAllGarbage(const aForce:Boolean);
      end;
 
@@ -3330,6 +3338,11 @@ uses PasDblStrUtils,
      PasVulkan.VectorPath,
      PasVulkan.Image.PNG;
 
+{$ifdef PasVulkanGUIFreeDebug}
+var FreePointerHashMap:TpvHashMap<TpvGUIObject,boolean>;
+    FreePointerHashMapLock:TPasMPCriticalSection=nil;
+{$endif}
+
 const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_WINDOW_FILL=2;
       GUI_ELEMENT_WINDOW_DROPSHADOW=3;
@@ -4380,6 +4393,17 @@ begin
 
  inherited Create;
 
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMapLock.Acquire;
+ try
+  if FreePointerHashMap.ExistKey(self) then begin
+   FreePointerHashMap.Delete(self);
+  end;
+ finally
+  FreePointerHashMapLock.Release;
+ end;
+{$endif}
+
  if assigned(aParent) then begin
   fInstance:=aParent.fInstance;
  end else if self is TpvGUIInstance then begin
@@ -4400,6 +4424,8 @@ begin
 
  fGarbageDisposerCounter:=0;
 
+ fIsOnGarbageDisposerList:=false;
+
 end;
 
 {-$define PasVulkanGUIDebug}
@@ -4415,7 +4441,22 @@ begin
   fChildren[Index].fParent:=nil;
  end;
 {$endif}
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMapLock.Acquire;
+ try
+  if FreePointerHashMap.ExistKey(self) then begin
+   pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.Destroy','Double free! self: '+IntToHex(TpvPtrInt(self),16));
+  end else begin
+   FreePointerHashMap.Add(self,true);
+  end;
+ finally
+  FreePointerHashMapLock.Release;
+ end;
+{$endif}
  FreeAndNil(fChildren);
+ if assigned(fInstance) and assigned(fInstance.fObjectGarbageDisposer) then begin
+  fInstance.fObjectGarbageDisposer.RemoveGarbage(self);
+ end;
  inherited Destroy;
 {$ifdef PasVulkanGUIDebug}
  fChildren:=pointer(TpvPtrUInt(1)); // for intentionally intended SIGSERV exceptions at Use-After-Free problems
@@ -4527,13 +4568,16 @@ begin
 
  fInstance:=aInstance;
 
- fLock:=TPasMPSlimReaderWriterLock.Create;
+ fLock:=TPasMPCriticalSection.Create;
 
- fToDisposeList:=TList.Create;
+ fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToDisposeList.OwnsObjects:=false;
 
- fTopologicalSortedList:=TList.Create;
+ fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fTopologicalSortedList.OwnsObjects:=false;
 
- fToFreeList:=TList.Create;
+ fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToFreeList.OwnsObjects:=false;
 
  fCountToDisposeObjects:=0;
 
@@ -4573,20 +4617,60 @@ end;
 
 procedure TpvGUIObjectGarbageDisposer.AddGarbage(const aObject:TpvGUIObject);
 begin
- fLock.Acquire;
- try
-  fToDisposeList.Add(aObject);
-  aObject.IncRef;
-  TPasMPInterlocked.Increment(fCountToDisposeObjects);
- finally
-  fLock.Release;
+ if assigned(aObject) then begin
+  fLock.Acquire;
+  try
+   fToDisposeList.Add(aObject);
+   aObject.IncRef;
+   aObject.fIsOnGarbageDisposerList:=true;
+   TPasMPInterlocked.Increment(fCountToDisposeObjects);
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvGUIObjectGarbageDisposer.RemoveGarbage(const aObject:TpvGUIObject);
+var Index:TpvSizeInt;
+begin
+ if assigned(aObject) then begin
+  fLock.Acquire;
+  try
+   if aObject.fIsOnGarbageDisposerList then begin
+    try
+     begin
+      Index:=fToDisposeList.IndexOf(aObject);
+      if Index>=0 then begin
+       TPasMPInterlocked.Decrement(fCountToDisposeObjects);
+       fToDisposeList.Delete(Index);
+      end;
+     end;
+     begin
+      Index:=fTopologicalSortedList.IndexOf(aObject);
+      if Index>=0 then begin
+       fTopologicalSortedList.Delete(Index);
+      end;
+     end;
+     begin
+      Index:=fToFreeList.IndexOf(aObject);
+      if Index>=0 then begin
+       fToFreeList.Delete(Index);
+      end;
+     end;
+    finally
+     aObject.fIsOnGarbageDisposerList:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
 procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
 var Index:TpvSizeInt;
     OldGarbageDisposerData,NewGarbageDisposerData,
-    OldMarkBits,NewMarkBits:TPasMPUInt32;
+    OldMarkBits,ChildMarkBit:TPasMPUInt32;
 begin
  OldMarkBits:=TPasMPInterlocked.Read(aObject.fMarkBits);
  case OldMarkBits and (TpvGUIObject.TemporarilyMarkBit or
@@ -4604,13 +4688,15 @@ begin
    end;
    begin
     // Mark it permanently
+    if aIsChild then begin
+     // Mark it also as child of an another garbage parent object
+     ChildMarkBit:=TpvGUIObject.ChildMarkBit;
+    end else begin
+     ChildMarkBit:=0;
+    end;
     repeat
      OldGarbageDisposerData:=TPasMPInterlocked.Read(aObject.fMarkBits);
-     NewGarbageDisposerData:=(OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit;
-     if aIsChild then begin
-      // Mark it also as child of an another garbage parent object
-      NewGarbageDisposerData:=NewGarbageDisposerData or TpvGUIObject.ChildMarkBit;
-     end;
+     NewGarbageDisposerData:=((OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit) or ChildMarkBit;
     until TPasMPInterlocked.CompareExchange(aObject.fMarkBits,NewGarbageDisposerData,OldGarbageDisposerData)=OldGarbageDisposerData;
    end;
    if (OldMarkBits and TpvGUIObject.PermanentlyMarkBit)=0 then begin
@@ -4636,37 +4722,42 @@ begin
    try
     try
      if aForce then begin
-      for Index:=0 to fToDisposeList.Count-1 do begin
+      Index:=0;
+      while Index<fToDisposeList.Count do begin
        CurrentObject:=TpvGUIObject(fToDisposeList.Items[Index]);
-       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ProtectedMarkBit));
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.ProtectedMarkBit)));
+       inc(Index);
       end;
      end;
-     for Index:=0 to fToDisposeList.Count-1 do begin
+     Index:=0;
+     while Index<fToDisposeList.Count do begin
       Visit(TpvGUIObject(fToDisposeList.Items[Index]),false);
+      inc(Index);
      end;
     finally
      fToDisposeList.Clear;
     end;
     try
-     for Index:=0 to fTopologicalSortedList.Count-1 do begin
+     Index:=0;
+     while Index<fTopologicalSortedList.Count do begin
       CurrentObject:=TpvGUIObject(fTopologicalSortedList.Items[Index]);
       if CurrentObject.fGarbageDisposerCounter>0 then begin
        // Delayed garbage
-       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit)));
        TPasMPInterlocked.Decrement(CurrentObject.fGarbageDisposerCounter);
        fToDisposeList.Add(CurrentObject);
        TPasMPInterlocked.Increment(fCountToDisposeObjects);
       end else begin
        case TPasMPInterlocked.Read(CurrentObject.fMarkBits) and (TpvGUIObject.ChildMarkBit or
                                                                  TpvGUIObject.ProtectedMarkBit) of
-        TpvGUIObject.ChildMarkBit:begin
+        TpvGUIObject.ChildMarkBit,
+        TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit:begin
          // Do nothing, if it is a child of an another garbage parent object, because
          // the another garbage parent object will freeing it already anyway then.
         end;
-        TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit,
         TpvGUIObject.ProtectedMarkBit:begin
          // Delayed garbage
-         TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+         TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit)));
          fToDisposeList.Add(CurrentObject);
          TPasMPInterlocked.Increment(fCountToDisposeObjects);
         end;
@@ -4676,11 +4767,17 @@ begin
         end;
        end;
       end;
+      inc(Index);
      end;
-     for Index:=fToFreeList.Count-1 downto 0 do begin
-//    writeln(TpvPtrUint(TpvGUIObject(fToFreeList.Items[Index])),' ',TpvGUIObject(fToFreeList.Items[Index]).ClassName,' ',TpvGUIObject(fToFreeList.Items[Index]).fReferenceCounter);
-      TpvGUIObject(fToFreeList.Items[Index]).DecRefWithoutFree;
-      TpvGUIObject(fToFreeList.Items[Index]).Free;
+{    if fToFreeList.Count>0 then begin
+      writeln;
+      writeln(fToFreeList.Count);
+     end;}
+     while fToFreeList.Count>0 do begin
+      CurrentObject:=TpvGUIObject(fToFreeList.Extract(fToFreeList.Count-1));
+//    writeln(TpvPtrUInt(CurrentObject),' ',CurrentObject.ClassName,' ',CurrentObject.fReferenceCounter);
+      CurrentObject.DecRefWithoutFree;
+      CurrentObject.Free;
      end;
     finally
      fToFreeList.Clear;
@@ -11947,6 +12044,8 @@ begin
  FreeAndNil(fFixedSizeProperty);
 
  SetRenderDirty;
+
+//writeln('Destroy ',ClassName,' ',TpvPtrUInt(self));
 
  inherited Destroy;
 
@@ -25103,4 +25202,14 @@ begin
  Close;
 end;
 
+initialization
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMap:=TpvHashMap<TpvGUIObject,boolean>.Create(false);
+ FreePointerHashMapLock:=TPasMPCriticalSection.Create;
+{$endif}
+finalization
+{$ifdef PasVulkanGUIFreeDebug}
+ FreeAndNil(FreePointerHashMap);
+ FreeAndNil(FreePointerHashMapLock);
+{$endif}
 end.
