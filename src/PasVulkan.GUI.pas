@@ -329,6 +329,7 @@ type TpvGUIObject=class;
        procedure DeleteRangeBackwards(const aFromIndex,aToIndex:TpvSizeInt);
        procedure Remove(const aItem:TpvGUIObject);
        procedure Extract(const aItem:TpvGUIObject);
+       function ExtractIndex(const aIndex:TpvSizeInt):TpvGUIObject;
        procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
        procedure Move(const aIndex,aToIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
@@ -384,8 +385,7 @@ type TpvGUIObject=class;
 
      EpvGUIObjectGarbageDisposer=class(Exception);
 
-     TpvGUIObjectGarbageDisposerObjectList=class(TpvObjectList<TpvGUIObject>)
-     end;
+     TpvGUIObjectGarbageDisposerObjectList=TpvGUIObjectList;
 
      { TpvGUIObjectGarbageDisposer }
 
@@ -4350,8 +4350,19 @@ var Index:TpvSizeInt;
 begin
  Index:=IndexOf(aItem);
  if Index>=0 then begin
-  FillChar(fItems[Index],SizeOf(TpvGUIObject),#0);
+  fItems[Index]:=nil;
   Delete(Index);
+ end;
+end;
+
+function TpvGUIObjectList.ExtractIndex(const aIndex:TpvSizeInt):TpvGUIObject;
+begin
+ if aIndex>=0 then begin
+  result:=fItems[aIndex];
+  fItems[aIndex]:=nil;
+  Delete(aIndex);
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -4570,14 +4581,11 @@ begin
 
  fLock:=TPasMPCriticalSection.Create;
 
- fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
- fToDisposeList.OwnsObjects:=false;
+ fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
 
- fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create;
- fTopologicalSortedList.OwnsObjects:=false;
+ fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
 
- fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
- fToFreeList.OwnsObjects:=false;
+ fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
 
  fCountToDisposeObjects:=0;
 
@@ -4774,7 +4782,7 @@ begin
       writeln(fToFreeList.Count);
      end;}
      while fToFreeList.Count>0 do begin
-      CurrentObject:=TpvGUIObject(fToFreeList.Extract(fToFreeList.Count-1));
+      CurrentObject:=TpvGUIObject(fToFreeList.ExtractIndex(fToFreeList.Count-1));
 //    writeln(TpvPtrUInt(CurrentObject),' ',CurrentObject.ClassName,' ',CurrentObject.fReferenceCounter);
       CurrentObject.DecRefWithoutFree;
       CurrentObject.Free;
