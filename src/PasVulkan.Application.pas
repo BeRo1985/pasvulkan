@@ -1248,6 +1248,8 @@ type EpvApplication=class(Exception)
 
        fGraphicsReady:boolean;
 
+       fReinitializeGraphics:boolean;
+
        fVulkanRecreateSwapChainOnSuboptimalSurface:boolean;
 
        fVulkanDebugging:boolean;
@@ -1706,6 +1708,8 @@ type EpvApplication=class(Exception)
        property ExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode read fExclusiveFullScreenMode write fExclusiveFullScreenMode;
 
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
+
+       property ReinitializeGraphics:boolean read fReinitializeGraphics write fReinitializeGraphics;
 
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
 
@@ -6592,6 +6596,8 @@ begin
 
  fGraphicsReady:=false;
 
+ fReinitializeGraphics:=false;
+
  fSkipNextDrawFrame:=false;
 
  fVulkanRecreateSwapChainOnSuboptimalSurface:=false;
@@ -10161,6 +10167,23 @@ begin
  end;
 
  if fGraphicsReady and IsVisibleToUser and ReadyForSwapChainLatency then begin
+
+  if fReinitializeGraphics then begin
+   try
+{$if true}
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    end;
+{$else}
+    DeinitializeGraphics;
+    InitializeGraphics;
+{$ifend}
+   finally
+    fReinitializeGraphics:=false;
+   end;
+  end;
 
   try
    fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
