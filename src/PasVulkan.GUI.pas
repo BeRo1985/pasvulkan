@@ -2814,6 +2814,7 @@ type TpvGUIObject=class;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
        procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
+       procedure PopupMenuOnActivate(const aSender:TpvGUIObject);
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -21147,6 +21148,7 @@ begin
  fVerticalScrollDirection:=TpvGUIMultiLineTextEditScrollDirection.Auto;
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
+ fPopupMenu.OnActivate:=PopupMenuOnActivate;
 
  fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
  fMenuItemCut.Caption:='Cut';
@@ -21347,6 +21349,16 @@ begin
  if assigned(fSearchReplaceState) and not fSearchReplaceState.fDoReplace then begin
   fSearchReplaceState.fDoIt:=true;
  end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnActivate(const aSender:TpvGUIObject);
+begin
+ fMenuItemCut.Enabled:=fEditable;
+ fMenuItemPaste.Enabled:=fEditable;
+ fMenuItemDelete.Enabled:=fEditable;
+ fMenuItemUndo.Enabled:=fEditable;
+ fMenuItemRedo.Enabled:=fEditable;
+ fMenuItemReplace.Enabled:=fEditable;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
