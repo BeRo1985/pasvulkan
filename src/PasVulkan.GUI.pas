@@ -1943,6 +1943,12 @@ type TpvGUIObject=class;
        fTime:TpvDouble;
        fDragRect:TpvRect;
        fPopupMenu:TpvGUIPopupMenu;
+       fMenuItemCut:TpvGUIMenuItem;
+       fMenuItemCopy:TpvGUIMenuItem;
+       fMenuItemPaste:TpvGUIMenuItem;
+       fMenuItemDelete:TpvGUIMenuItem;
+       fMenuItemSelectAll:TpvGUIMenuItem;
+       fMenuItemSelectNone:TpvGUIMenuItem;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
        fOnCheckText:TpvGUITextEditOnCheckText;
@@ -2109,6 +2115,8 @@ type TpvGUIObject=class;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
        fHoveredMenuItem:TpvGUIMenuItem;
+       fOnActivate:TpvGUIOnEvent;
+       fOnDeactivate:TpvGUIOnEvent;
        function GetActivated:Boolean;
       protected
        function GetSkin:TpvGUISkin; virtual;
@@ -2137,6 +2145,8 @@ type TpvGUIObject=class;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
        property Position:TpvVector2Property read fPositionProperty;
        property ReleaseOnDeactivation:Boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
+       property OnActivate:TpvGUIOnEvent read fOnActivate write fOnActivate;
+       property OnDeactivate:TpvGUIOnEvent read fOnDeactivate write fOnDeactivate;
      end;
 
      TpvGUIWindowMenu=class(TpvGUIWidget)
@@ -15753,49 +15763,49 @@ begin
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Cut';
- MenuItem.ShortcutHint:='Ctrl-X';
- MenuItem.fIcon:=Skin.fIconContentCut;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCutClick;
+ fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCut.Caption:='Cut';
+ fMenuItemCut.ShortcutHint:='Ctrl-X';
+ fMenuItemCut.fIcon:=Skin.fIconContentCut;
+ fMenuItemCut.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCut.OnClick:=PopupMenuOnCutClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Copy';
- MenuItem.ShortcutHint:='Ctrl-C';
- MenuItem.fIcon:=Skin.fIconContentCopy;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCopyClick;
+ fMenuItemCopy:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCopy.Caption:='Copy';
+ fMenuItemCopy.ShortcutHint:='Ctrl-C';
+ fMenuItemCopy.fIcon:=Skin.fIconContentCopy;
+ fMenuItemCopy.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCopy.OnClick:=PopupMenuOnCopyClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Paste';
- MenuItem.ShortcutHint:='Ctrl-V';
- MenuItem.fIcon:=Skin.fIconContentPaste;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnPasteClick;
+ fMenuItemPaste:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemPaste.Caption:='Paste';
+ fMenuItemPaste.ShortcutHint:='Ctrl-V';
+ fMenuItemPaste.fIcon:=Skin.fIconContentPaste;
+ fMenuItemPaste.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemPaste.OnClick:=PopupMenuOnPasteClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Delete';
- MenuItem.ShortcutHint:='Del';
- MenuItem.fIcon:=Skin.fIconContentDelete;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnDeleteClick;
+ fMenuItemDelete:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemDelete.Caption:='Delete';
+ fMenuItemDelete.ShortcutHint:='Del';
+ fMenuItemDelete.fIcon:=Skin.fIconContentDelete;
+ fMenuItemDelete.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemDelete.OnClick:=PopupMenuOnDeleteClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select all';
- MenuItem.ShortcutHint:='Ctrl+A';
- MenuItem.fIcon:=Skin.fIconSelectAll;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectAllClick;
+ fMenuItemSelectAll:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectAll.Caption:='Select all';
+ fMenuItemSelectAll.ShortcutHint:='Ctrl+A';
+ fMenuItemSelectAll.fIcon:=Skin.fIconSelectAll;
+ fMenuItemSelectAll.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectAll.OnClick:=PopupMenuOnSelectAllClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select none';
- MenuItem.fIcon:=Skin.fIconSelectNone;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
+ fMenuItemSelectNone:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectNone.Caption:='Select none';
+ fMenuItemSelectNone.fIcon:=Skin.fIconSelectNone;
+ fMenuItemSelectNone.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectNone.OnClick:=PopupMenuOnSelectNoneClick;
 
  fTextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
@@ -17222,6 +17232,10 @@ begin
 
  fReleaseOnDeactivation:=false;
 
+ fOnActivate:=nil;
+
+ fOnDeactivate:=nil;
+
 end;
 
 destructor TpvGUIPopupMenu.Destroy;
@@ -17295,6 +17309,10 @@ var Index:TpvInt32;
     ParentPopupMenu:TpvGUIPopupMenu;
 begin
 
+ if assigned(fOnActivate) then begin
+  fOnActivate(self);
+ end;
+
  fPosition:=aPosition;
 
  Skin.GetPopupMenuPreferredSize(self);
@@ -17367,6 +17385,9 @@ procedure TpvGUIPopupMenu.Deactivate;
 var Index:TpvInt32;
 begin
  if fInstance.fPopupMenuStack.Contains(self) then begin
+  if assigned(fOnDeactivate) then begin
+   fOnDeactivate(self);
+  end;
   IncRef;
   try
    Index:=fInstance.fPopupMenuStack.IndexOf(self);
