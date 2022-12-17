@@ -15953,27 +15953,29 @@ procedure TpvGUITextEdit.CutSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
     TemporaryUncheckedText:TpvUTF8String;
 begin
- if (fTextSelectionStart>0) and
-    (fTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-  TemporaryUncheckedText:=fText;
-  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-  if CheckText(TemporaryUncheckedText) then begin
-   fTextCursorPositionIndex:=CurrentPosition;
-   fTextSelectionStart:=0;
-   fTextSelectionEnd:=0;
-   if fText<>TemporaryUncheckedText then begin
-    fText:=TemporaryUncheckedText;
-    UpdateText;
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+ if fEditable then begin
+  if (fTextSelectionStart>0) and
+     (fTextSelectionEnd>0) then begin
+   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
+   TemporaryUncheckedText:=fText;
+   Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+   if CheckText(TemporaryUncheckedText) then begin
+    fTextCursorPositionIndex:=CurrentPosition;
+    fTextSelectionStart:=0;
+    fTextSelectionEnd:=0;
+    if fText<>TemporaryUncheckedText then begin
+     fText:=TemporaryUncheckedText;
+     UpdateText;
+     if assigned(fOnChange) then begin
+      fOnChange(self);
+     end;
     end;
    end;
   end;
+  fTime:=0.0;
  end;
- fTime:=0.0;
  SetRenderDirty;
 end;
 
@@ -15995,41 +15997,43 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryUncheckedText,TemporaryText:TpvUTF8String;
 begin
- TemporaryUncheckedText:=fText;
- TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
- TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
- TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
- if (TemporaryUncheckedTextSelectionStart>0) and
-    (TemporaryUncheckedTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-  TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-  TemporaryUncheckedTextSelectionStart:=0;
-  TemporaryUncheckedTextSelectionEnd:=0;
- end;
- if pvApplication.Clipboard.HasText then begin
-  TemporaryText:=pvApplication.Clipboard.GetText;
-  if length(TemporaryText)>0 then begin
-   Insert(TemporaryText,
-          TemporaryUncheckedText,
-          PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-   inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+ if fEditable then begin
+  TemporaryUncheckedText:=fText;
+  TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+  TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+  TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+  if (TemporaryUncheckedTextSelectionStart>0) and
+     (TemporaryUncheckedTextSelectionEnd>0) then begin
+   CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+   OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+   Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+   TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+   TemporaryUncheckedTextSelectionStart:=0;
+   TemporaryUncheckedTextSelectionEnd:=0;
   end;
- end;
- if CheckText(TemporaryUncheckedText) then begin
-  fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-  fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-  fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-  if fText<>TemporaryUncheckedText then begin
-   fText:=TemporaryUncheckedText;
-   UpdateText;
-   if assigned(fOnChange) then begin
-    fOnChange(self);
+  if pvApplication.Clipboard.HasText then begin
+   TemporaryText:=pvApplication.Clipboard.GetText;
+   if length(TemporaryText)>0 then begin
+    Insert(TemporaryText,
+           TemporaryUncheckedText,
+           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+    inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
    end;
   end;
+  if CheckText(TemporaryUncheckedText) then begin
+   fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+   fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+   fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+   if fText<>TemporaryUncheckedText then begin
+    fText:=TemporaryUncheckedText;
+    UpdateText;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
+  end;
+  fTime:=0.0;
  end;
- fTime:=0.0;
  SetRenderDirty;
 end;
 
@@ -16037,7 +16041,8 @@ procedure TpvGUITextEdit.DeleteSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
     TemporaryUncheckedText:TpvUTF8String;
 begin
- if (fTextSelectionStart>0) and
+ if fEditable and
+    (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
@@ -16207,7 +16212,8 @@ begin
      end;
      KEYCODE_BACKSPACE:begin
       if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
+         (fTextSelectionEnd>0) and
+         fEditable then begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
        TemporaryUncheckedText:=fText;
@@ -16226,7 +16232,8 @@ begin
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) then begin
+       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) and
+          fEditable then begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Dec(fText,OtherPosition);
         if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
@@ -16263,7 +16270,7 @@ begin
        TemporaryUncheckedTextSelectionEnd:=0;
       end;
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if pvApplication.Clipboard.HasText then begin
+       if pvApplication.Clipboard.HasText and fEditable then begin
         TemporaryText:=pvApplication.Clipboard.GetText;
         if length(TemporaryText)>0 then begin
          Insert(TemporaryText,
@@ -16272,7 +16279,7 @@ begin
          inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
         end;
        end;
-      end else begin
+      end else if fEditable then begin
        Insert(#32,
               TemporaryUncheckedText,
               PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
@@ -16294,7 +16301,8 @@ begin
      end;
      KEYCODE_DELETE:begin
       if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
+         (fTextSelectionEnd>0) and
+         fEditable then begin
        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         CutSelectedText;
        end else begin
@@ -16302,7 +16310,7 @@ begin
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) then begin
+       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) and fEditable then begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Inc(fText,OtherPosition);
         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
@@ -16336,49 +16344,55 @@ begin
      end;
      KEYCODE_V:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CutSelectedText;
+       if fEditable then begin
+        CutSelectedText;
+       end;
        result:=true;
       end;
      end;
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-    TemporaryUncheckedText:=fText;
-    TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
-    TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
-    TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
-    if (TemporaryUncheckedTextSelectionStart>0) and
-       (TemporaryUncheckedTextSelectionEnd>0) then begin
-     CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-     TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-     TemporaryUncheckedTextSelectionStart:=0;
-     TemporaryUncheckedTextSelectionEnd:=0;
-    end;
-    Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-           TemporaryUncheckedText,
-           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-    inc(TemporaryUncheckedTextCursorPositionIndex);
-    if CheckText(TemporaryUncheckedText) then begin
-     fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-     fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-     fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-     if fText<>TemporaryUncheckedText then begin
-      fText:=TemporaryUncheckedText;
-      UpdateText;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+    if fEditable then begin
+     TemporaryUncheckedText:=fText;
+     TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+     TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+     TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+     if (TemporaryUncheckedTextSelectionStart>0) and
+        (TemporaryUncheckedTextSelectionEnd>0) then begin
+      CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+      OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+      Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+      TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+      TemporaryUncheckedTextSelectionStart:=0;
+      TemporaryUncheckedTextSelectionEnd:=0;
+     end;
+     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
+            TemporaryUncheckedText,
+            PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+     inc(TemporaryUncheckedTextCursorPositionIndex);
+     if CheckText(TemporaryUncheckedText) then begin
+      fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+      fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+      fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+      if fText<>TemporaryUncheckedText then begin
+       fText:=TemporaryUncheckedText;
+       UpdateText;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
      end;
+     fTime:=0.0;
     end;
-    fTime:=0.0;
     result:=true;
    end;
   end;
@@ -16733,38 +16747,46 @@ begin
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-       SetValue(TemporaryValue+fSmallStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+        SetValue(TemporaryValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-       SetValue(TemporaryValue-fSmallStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+        SetValue(TemporaryValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-       SetValue(TemporaryValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+        SetValue(TemporaryValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-       SetValue(TemporaryValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+        SetValue(TemporaryValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
@@ -16782,20 +16804,22 @@ begin
  if not result then begin
   case aPointerEvent.PointerEventType of
    TpvApplicationInputPointerEventType.Drag:begin
-    TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
-    end else begin
-     Step:=ceil(v)*fSmallStep;
-    end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-     SetValue(TemporaryValue+Step);
-    end else if Step<0 then begin
-     SetValue(fMinimumValue);
-    end else if Step>0 then begin
-     SetValue(fMaximumValue);
+    if fEditable then begin
+     TemporaryValue:=GetValue;
+     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
+     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+      SetValue(TemporaryValue+Step);
+     end else if Step<0 then begin
+      SetValue(fMinimumValue);
+     end else if Step>0 then begin
+      SetValue(fMaximumValue);
+     end;
     end;
     result:=true;
    end;
@@ -16809,20 +16833,22 @@ var TemporaryValue,Step:TpvInt64;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  TemporaryValue:=GetValue;
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v)*fSmallStep;
-  end else begin
-   Step:=ceil(v)*fSmallStep;
-  end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
+  if fEditable then begin
+   TemporaryValue:=GetValue;
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v)*fSmallStep;
+   end else begin
+    Step:=ceil(v)*fSmallStep;
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
   end;
   result:=true;
  end;
@@ -17006,38 +17032,46 @@ begin
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-       SetValue(TemporaryValue+fSmallStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+        SetValue(TemporaryValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-       SetValue(TemporaryValue-fSmallStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+        SetValue(TemporaryValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-       SetValue(TemporaryValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+        SetValue(TemporaryValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-       SetValue(TemporaryValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+        SetValue(TemporaryValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
@@ -17055,20 +17089,22 @@ begin
  if not result then begin
   case aPointerEvent.PointerEventType of
    TpvApplicationInputPointerEventType.Drag:begin
-    TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
-    end else begin
-     Step:=ceil(v)*fSmallStep;
-    end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-     SetValue(TemporaryValue+Step);
-    end else if Step<0 then begin
-     SetValue(fMinimumValue);
-    end else if Step>0 then begin
-     SetValue(fMaximumValue);
+    if fEditable then begin
+     TemporaryValue:=GetValue;
+     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
+     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+      SetValue(TemporaryValue+Step);
+     end else if Step<0 then begin
+      SetValue(fMinimumValue);
+     end else if Step>0 then begin
+      SetValue(fMaximumValue);
+     end;
     end;
     result:=true;
    end;
@@ -17082,20 +17118,22 @@ var TemporaryValue,Step:TpvDouble;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  TemporaryValue:=GetValue;
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v)*fSmallStep;
-  end else begin
-   Step:=ceil(v)*fSmallStep;
-  end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
+  if fEditable then begin
+   TemporaryValue:=GetValue;
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v)*fSmallStep;
+   end else begin
+    Step:=ceil(v)*fSmallStep;
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
   end;
   result:=true;
  end;
@@ -21590,7 +21628,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.CutSelectedText;
 begin
- if assigned(fView) and fView.HasMarkedRange and fEditable then begin
+ if assigned(fView) and fEditable and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
   fTime:=0.0;
@@ -21617,7 +21655,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PasteText;
 begin
- if assigned(fView) and pvApplication.Clipboard.HasText and fEditable then begin
+ if assigned(fView) and fEditable and pvApplication.Clipboard.HasText then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
   fTime:=0.0;
@@ -21633,7 +21671,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
- if assigned(fView) and fView.DeleteMarkedRange and fEditable then begin
+ if assigned(fView) and fEditable and fView.DeleteMarkedRange then begin
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
