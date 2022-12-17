@@ -21298,7 +21298,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnUndoClick(const aSender:TpvGUIObject);
 begin
- if assigned(fView) then begin
+ if assigned(fView) and fEditable then begin
   fView.Undo;
   fDirty:=true;
   fTime:=0.0;
@@ -21314,7 +21314,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObject);
 begin
- if assigned(fView) then begin
+ if assigned(fView) and fEditable then begin
   fView.Redo;
   fDirty:=true;
   fTime:=0.0;
@@ -21349,7 +21349,9 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
 begin
- OpenSearchReplaceDialog(true);
+ if fEditable then begin
+  OpenSearchReplaceDialog(true);
+ end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -21588,7 +21590,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.CutSelectedText;
 begin
- if assigned(fView) and fView.HasMarkedRange then begin
+ if assigned(fView) and fView.HasMarkedRange and fEditable then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
   fTime:=0.0;
@@ -21615,7 +21617,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PasteText;
 begin
- if assigned(fView) and pvApplication.Clipboard.HasText then begin
+ if assigned(fView) and pvApplication.Clipboard.HasText and fEditable then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
   fTime:=0.0;
@@ -21631,7 +21633,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
- if assigned(fView) and fView.DeleteMarkedRange then begin
+ if assigned(fView) and fView.DeleteMarkedRange and fEditable then begin
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
@@ -21729,11 +21731,13 @@ begin
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-      fView.Enter(fOverwrite);
-      fDirty:=true;
-      fTime:=0.0;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+      if fEditable then begin
+       fView.Enter(fOverwrite);
+       fDirty:=true;
+       fTime:=0.0;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
       result:=true;
      end;
@@ -21742,11 +21746,13 @@ begin
                                   TpvApplicationInputKeyModifier.CTRL,
                                   TpvApplicationInputKeyModifier.ALT,
                                   TpvApplicationInputKeyModifier.META])=[] then begin
-       fView.InsertCodePoint(9,fOverwrite);
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.InsertCodePoint(9,fOverwrite);
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
        result:=true;
       end;
@@ -21904,20 +21910,26 @@ begin
      end;
      KEYCODE_BACKSPACE:begin
       if fView.HasMarkedRange then begin
-       DeleteSelectedText;
+       if fEditable then begin
+        DeleteSelectedText;
+       end;
       end else begin
-       fView.Backspace;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.Backspace;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
       end;
       result:=true;
      end;
      KEYCODE_INSERT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
       end else begin
        fOverwrite:=not fOverwrite;
       end;
@@ -21927,17 +21939,21 @@ begin
      end;
      KEYCODE_DELETE:begin
       if fView.HasMarkedRange then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        CutSelectedText;
-       end else begin
-        DeleteSelectedText;
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         CutSelectedText;
+        end else begin
+         DeleteSelectedText;
+        end;
        end;
       end else begin
-       fView.Delete;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.Delete;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
       end;
       result:=true;
@@ -21956,42 +21972,50 @@ begin
      end;
      KEYCODE_V:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CutSelectedText;
+       if fEditable then begin
+        CutSelectedText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_Y:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.Undo;
-       end else begin
-        fView.Redo;
-       end;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         fView.Undo;
+        end else begin
+         fView.Redo;
+        end;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
        result:=true;
       end;
      end;
      KEYCODE_Z:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.Redo;
-       end else begin
-        fView.Undo;
-       end;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         fView.Redo;
+        end else begin
+         fView.Undo;
+        end;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
        result:=true;
       end;
@@ -22010,7 +22034,9 @@ begin
      end;
      KEYCODE_H,KEYCODE_R:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       OpenSearchReplaceDialog(true);
+       if fEditable then begin
+        OpenSearchReplaceDialog(true);
+       end;
        result:=true;
       end;
      end;
@@ -22021,11 +22047,13 @@ begin
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-    fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
-    fDirty:=true;
-    fTime:=0.0;
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+    if fEditable then begin
+     fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
+     fDirty:=true;
+     fTime:=0.0;
+     if assigned(fOnChange) then begin
+      fOnChange(self);
+     end;
     end;
     result:=true;
    end;
