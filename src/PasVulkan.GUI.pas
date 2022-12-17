@@ -1383,6 +1383,7 @@ type TpvGUIObject=class;
        fWindowTabbing:Boolean;
        fSwapChainReady:Boolean;
        fRenderDirtyBitMask:TPasMPUInt32;
+       fRenderDirtyCounter:TPasMPUInt32;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -1434,6 +1435,7 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure SetRenderDirty; override;
+       function IsRenderDirty(const aReset:Boolean=true):Boolean;
        function CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean=true):Boolean;
        procedure Check; override;
        procedure Update; override;
@@ -13791,6 +13793,15 @@ end;
 procedure TpvGUIInstance.SetRenderDirty;
 begin
  TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($ffffffff));
+ TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000010));
+end;
+
+function TpvGUIInstance.IsRenderDirty(const aReset:Boolean):Boolean;
+begin
+ result:=fRenderDirtyCounter>0;
+ if result and aReset then begin
+  result:=TPasMPInterlocked.Decrement(fRenderDirtyCounter)>0;
+ end;
 end;
 
 function TpvGUIInstance.CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean):Boolean;
