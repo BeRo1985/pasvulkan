@@ -19195,10 +19195,16 @@ begin
  if assigned(fOwner) then begin
   case Action of
    Classes.TCollectionNotification.cnDeleting:begin
-    Index:=Min(fOwner.fTabIndex+1,Count-1);
-    fOwner.fTabIndex:=-1;
-    fOwner.SetTabIndex(Index);
-    dec(fOwner.fTabIndex);
+    if fOwner.fTabIndex=(Count-1) then begin
+     Index:=fOwner.fTabIndex-1;
+     fOwner.fTabIndex:=-1;
+     fOwner.SetTabIndex(Index);
+    end else begin
+     Index:=Min(fOwner.fTabIndex+1,Count-1);
+     fOwner.fTabIndex:=-1;
+     fOwner.SetTabIndex(Index);
+     dec(fOwner.fTabIndex);
+    end;
    end;
    else begin
    end;
