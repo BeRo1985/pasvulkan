@@ -367,6 +367,7 @@ type TpvGUIObject=class;
        function GetGUIObject:TpvGUIObject;
        function HasParent(const aParent:TpvGUIObject):Boolean; virtual;
        function HasParentOrIs(const aParent:TpvGUIObject):Boolean; virtual;
+       procedure ResetRenderDirty; virtual;
        procedure SetRenderDirty; virtual;
        procedure Check; virtual;
        procedure Update; virtual;
@@ -1434,9 +1435,10 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure ResetRenderDirty; override;
        procedure SetRenderDirty; override;
-       function IsRenderDirty(const aReset:Boolean=true):Boolean;
-       function CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean=true):Boolean;
+       function CheckRenderDirty(const aReset:Boolean=true):Boolean; overload;
+       function CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean=true):Boolean; overload;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
@@ -4452,6 +4454,15 @@ begin
   CurrentParent:=CurrentParent.Parent;
  end;
  result:=false;
+end;
+
+procedure TpvGUIObject.ResetRenderDirty;
+var Instance_:TpvGUIInstance;
+begin
+ Instance_:=Instance;
+ if assigned(Instance_) then begin
+  Instance_.ResetRenderDirty;
+ end;
 end;
 
 procedure TpvGUIObject.SetRenderDirty;
@@ -13790,13 +13801,19 @@ begin
  end;
 end;
 
+procedure TpvGUIInstance.ResetRenderDirty;
+begin
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($00000000));
+ TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000000));
+end;
+
 procedure TpvGUIInstance.SetRenderDirty;
 begin
  TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($ffffffff));
  TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000010));
 end;
 
-function TpvGUIInstance.IsRenderDirty(const aReset:Boolean):Boolean;
+function TpvGUIInstance.CheckRenderDirty(const aReset:Boolean):Boolean;
 begin
  result:=fRenderDirtyCounter>0;
  if result and aReset then begin
