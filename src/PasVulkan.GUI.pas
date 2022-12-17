@@ -1926,6 +1926,8 @@ type TpvGUIObject=class;
 
      TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):Boolean of object;
 
+     { TpvGUITextEdit }
+
      TpvGUITextEdit=class(TpvGUIWidget)
       private
        fEditable:Boolean;
@@ -1952,12 +1954,14 @@ type TpvGUIObject=class;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
        fOnCheckText:TpvGUITextEditOnCheckText;
+       procedure PopupMenuOnActivate(const aSender:TpvGUIObject);
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
+      private
        property Spinnable:Boolean read fSpinnable write fSpinnable;
       protected
        function GetFontSize:TpvFloat; override;
@@ -15762,6 +15766,7 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
+ fPopupMenu.OnActivate:=PopupMenuOnActivate;
 
  fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
  fMenuItemCut.Caption:='Cut';
@@ -16089,6 +16094,13 @@ begin
  fTextSelectionEnd:=0;
  fTime:=0.0;
  SetRenderDirty;
+end;
+
+procedure TpvGUITextEdit.PopupMenuOnActivate(const aSender:TpvGUIObject);
+begin
+ fMenuItemCut.Enabled:=fEditable;
+ fMenuItemPaste.Enabled:=fEditable;
+ fMenuItemDelete.Enabled:=fEditable;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
