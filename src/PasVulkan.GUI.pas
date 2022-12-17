@@ -2763,6 +2763,18 @@ type TpvGUIObject=class;
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
+       fMenuItemCut:TpvGUIMenuItem;
+       fMenuItemCopy:TpvGUIMenuItem;
+       fMenuItemPaste:TpvGUIMenuItem;
+       fMenuItemDelete:TpvGUIMenuItem;
+       fMenuItemSelectAll:TpvGUIMenuItem;
+       fMenuItemSelectNone:TpvGUIMenuItem;
+       fMenuItemUndo:TpvGUIMenuItem;
+       fMenuItemRedo:TpvGUIMenuItem;
+       fMenuItemGoToLineNumber:TpvGUIMenuItem;
+       fMenuItemSearch:TpvGUIMenuItem;
+       fMenuItemFindNext:TpvGUIMenuItem;
+       fMenuItemReplace:TpvGUIMenuItem;
        fSpacerPanel:TpvGUIPanel;
        fHorizontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
@@ -21136,100 +21148,100 @@ begin
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Cut';
- MenuItem.ShortcutHint:='Ctrl-X';
- MenuItem.fIcon:=Skin.fIconContentCut;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCutClick;
+ fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCut.Caption:='Cut';
+ fMenuItemCut.ShortcutHint:='Ctrl-X';
+ fMenuItemCut.fIcon:=Skin.fIconContentCut;
+ fMenuItemCut.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCut.OnClick:=PopupMenuOnCutClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Copy';
- MenuItem.ShortcutHint:='Ctrl-C';
- MenuItem.fIcon:=Skin.fIconContentCopy;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCopyClick;
+ fMenuItemCopy:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCopy.Caption:='Copy';
+ fMenuItemCopy.ShortcutHint:='Ctrl-C';
+ fMenuItemCopy.fIcon:=Skin.fIconContentCopy;
+ fMenuItemCopy.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCopy.OnClick:=PopupMenuOnCopyClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Paste';
- MenuItem.ShortcutHint:='Ctrl-V';
- MenuItem.fIcon:=Skin.fIconContentPaste;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnPasteClick;
+ fMenuItemPaste:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemPaste.Caption:='Paste';
+ fMenuItemPaste.ShortcutHint:='Ctrl-V';
+ fMenuItemPaste.fIcon:=Skin.fIconContentPaste;
+ fMenuItemPaste.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemPaste.OnClick:=PopupMenuOnPasteClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Delete';
- MenuItem.ShortcutHint:='Del';
- MenuItem.fIcon:=Skin.fIconContentDelete;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnDeleteClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='-';
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select all';
- MenuItem.ShortcutHint:='Ctrl+A';
- MenuItem.fIcon:=Skin.fIconSelectAll;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectAllClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select none';
- MenuItem.fIcon:=Skin.fIconSelectNone;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
+ fMenuItemDelete:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemDelete.Caption:='Delete';
+ fMenuItemDelete.ShortcutHint:='Del';
+ fMenuItemDelete.fIcon:=Skin.fIconContentDelete;
+ fMenuItemDelete.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemDelete.OnClick:=PopupMenuOnDeleteClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Undo';
- MenuItem.ShortcutHint:='Ctrl-Z';
- MenuItem.fIcon:=Skin.fIconUndo;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnUndoClick;
+ fMenuItemSelectAll:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectAll.Caption:='Select all';
+ fMenuItemSelectAll.ShortcutHint:='Ctrl+A';
+ fMenuItemSelectAll.fIcon:=Skin.fIconSelectAll;
+ fMenuItemSelectAll.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectAll.OnClick:=PopupMenuOnSelectAllClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Redo';
- MenuItem.ShortcutHint:='Ctrl-Shift-Z';
- MenuItem.fIcon:=Skin.fIconRedo;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnRedoClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='-';
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Go to line number';
- MenuItem.ShortcutHint:='Ctrl-G';
- MenuItem.fIcon:=Skin.fIconSearch;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnGoToLineNumberClick;
+ fMenuItemSelectNone:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectNone.Caption:='Select none';
+ fMenuItemSelectNone.fIcon:=Skin.fIconSelectNone;
+ fMenuItemSelectNone.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectNone.OnClick:=PopupMenuOnSelectNoneClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Search';
- MenuItem.ShortcutHint:='Ctrl-F';
- MenuItem.fIcon:=Skin.fIconSearch;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSearchClick;
+ fMenuItemUndo:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemUndo.Caption:='Undo';
+ fMenuItemUndo.ShortcutHint:='Ctrl-Z';
+ fMenuItemUndo.fIcon:=Skin.fIconUndo;
+ fMenuItemUndo.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemUndo.OnClick:=PopupMenuOnUndoClick;
+
+ fMenuItemRedo:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemRedo.Caption:='Redo';
+ fMenuItemRedo.ShortcutHint:='Ctrl-Shift-Z';
+ fMenuItemRedo.fIcon:=Skin.fIconRedo;
+ fMenuItemRedo.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemRedo.OnClick:=PopupMenuOnRedoClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Find next';
- MenuItem.ShortcutHint:='F3';
- MenuItem.fIcon:=Skin.fIconSearchNext;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnFindNextClick;
+ MenuItem.Caption:='-';
+
+ fMenuItemGoToLineNumber:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemGoToLineNumber.Caption:='Go to line number';
+ fMenuItemGoToLineNumber.ShortcutHint:='Ctrl-G';
+ fMenuItemGoToLineNumber.fIcon:=Skin.fIconSearch;
+ fMenuItemGoToLineNumber.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemGoToLineNumber.OnClick:=PopupMenuOnGoToLineNumberClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Replace';
- MenuItem.ShortcutHint:='Ctrl-H';
- MenuItem.fIcon:=Skin.fIconReplace;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnReplaceClick;
+ MenuItem.Caption:='-';
+
+ fMenuItemSearch:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSearch.Caption:='Search';
+ fMenuItemSearch.ShortcutHint:='Ctrl-F';
+ fMenuItemSearch.fIcon:=Skin.fIconSearch;
+ fMenuItemSearch.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSearch.OnClick:=PopupMenuOnSearchClick;
+
+ fMenuItemFindNext:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemFindNext.Caption:='Find next';
+ fMenuItemFindNext.ShortcutHint:='F3';
+ fMenuItemFindNext.fIcon:=Skin.fIconSearchNext;
+ fMenuItemFindNext.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemFindNext.OnClick:=PopupMenuOnFindNextClick;
+
+ fMenuItemReplace:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemReplace.Caption:='Replace';
+ fMenuItemReplace.ShortcutHint:='Ctrl-H';
+ fMenuItemReplace.fIcon:=Skin.fIconReplace;
+ fMenuItemReplace.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemReplace.OnClick:=PopupMenuOnReplaceClick;
 
  fTextEditor:=TpvTextEditor.Create;
 
