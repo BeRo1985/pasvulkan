@@ -385,7 +385,8 @@ type TpvGUIObject=class;
 
      EpvGUIObjectGarbageDisposer=class(Exception);
 
-     TpvGUIObjectGarbageDisposerObjectList=TpvGUIObjectList;
+     TpvGUIObjectGarbageDisposerObjectList=class(TpvObjectGenericList<TpvGUIObject>)
+     end;
 
      { TpvGUIObjectGarbageDisposer }
 
@@ -4581,11 +4582,14 @@ begin
 
  fLock:=TPasMPCriticalSection.Create;
 
- fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
+ fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToDisposeList.OwnsObjects:=false;
 
- fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
+ fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fTopologicalSortedList.OwnsObjects:=false;
 
- fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create(false);
+ fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToFreeList.OwnsObjects:=false;
 
  fCountToDisposeObjects:=0;
 
@@ -4782,7 +4786,7 @@ begin
       writeln(fToFreeList.Count);
      end;}
      while fToFreeList.Count>0 do begin
-      CurrentObject:=TpvGUIObject(fToFreeList.ExtractIndex(fToFreeList.Count-1));
+      CurrentObject:=TpvGUIObject(fToFreeList.Extract(fToFreeList.Count-1));
 //    writeln(TpvPtrUInt(CurrentObject),' ',CurrentObject.ClassName,' ',CurrentObject.fReferenceCounter);
       CurrentObject.DecRefWithoutFree;
       CurrentObject.Free;
