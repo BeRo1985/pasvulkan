@@ -11591,7 +11591,8 @@ begin
 
   Win32WindowClass.lpfnWndProc:=@TpvApplicationWin32WndProc;
   Win32WindowClass.hInstance:=fWin32HInstance;
-  Win32WindowClass.hIcon:=LoadIconA(fWin32HInstance,{$ifdef fpc}'MAINICON'{$else}IDI_APPLICATION{$endif});
+  Win32WindowClass.hIcon:=LoadIconA(fWin32HInstance,'MAINICON');
+// Win32WindowClass.hIcon:=LoadIcon(fWin32HInstance,{$ifdef fpc}'MAINICON'{$else}IDI_APPLICATION{$endif});
 
   fWin32WindowClass:=RegisterClassW(Win32WindowClass);
   if fWin32WindowClass=0 then begin
