@@ -381,7 +381,7 @@ void main(void){
       vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
       vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-#if 1
+#if 0
       vec4 t00 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0);
       vec4 t01 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0);
       vec4 t10 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0);
