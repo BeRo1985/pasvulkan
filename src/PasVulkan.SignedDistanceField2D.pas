@@ -106,6 +106,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
       SquaredDistanceR:TpvFloat;
       SquaredDistanceG:TpvFloat;
       SquaredDistanceB:TpvFloat;
+      Distance:TpvFloat;
       PseudoSquaredDistanceR:TpvFloat;
       PseudoSquaredDistanceG:TpvFloat;
       PseudoSquaredDistanceB:TpvFloat;
@@ -237,6 +238,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        fMultiChannelMode:TMultiChannelMode;
        fShape:TpvSignedDistanceField2DShape;
        fDistanceFieldData:TpvSignedDistanceField2DData;
+       fGradientChannelIndex:TpvSizeInt;
       protected
        function Clamp(const Value,MinValue,MaxValue:TpvInt64):TpvInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble; overload;
@@ -659,15 +661,29 @@ end;
 procedure TpvSignedDistanceField2DGenerator.InitializeDistances;
 var Index:TpvInt32;
 begin
- for Index:=0 to length(fDistanceFieldData)-1 do begin
-  fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].SquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].SquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].SquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].PseudoSquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].PseudoSquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].PseudoSquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
-  fDistanceFieldData[Index].DeltaWindingScore:=0;
+ case fMultiChannelMode of
+  TMultiChannelMode.Gradients:begin
+   for Index:=0 to length(fDistanceFieldData)-1 do begin
+    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
+    if fGradientChannelIndex=0 then begin
+     fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
+    end;
+    fDistanceFieldData[Index].DeltaWindingScore:=0;
+   end;
+  end;
+  else begin
+   for Index:=0 to length(fDistanceFieldData)-1 do begin
+    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].SquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].SquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].SquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
+    fDistanceFieldData[Index].PseudoSquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].PseudoSquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].PseudoSquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
+    fDistanceFieldData[Index].DeltaWindingScore:=0;
+   end;
+  end;
  end;
 end;
 
@@ -1698,8 +1714,27 @@ var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindi
     RowData:TpvSignedDistanceField2DRowData;
     DistanceFieldDataItem:PpvSignedDistanceField2DDataItem;
     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TpvSignedDistanceField2DDoublePrecisionPoint;
-    pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TpvDouble;
+    pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value,oX,oY:TpvDouble;
 begin
+ if fMultiChannelMode=TMultiChannelMode.Gradients then begin
+  case fGradientChannelIndex of
+   1:begin
+    oX:=1.0;
+    oY:=0.0;
+   end;
+   2:begin
+    oX:=0.0;
+    oY:=1.0;
+   end;
+   else {0:}begin
+    oX:=0.0;
+    oY:=0.0;
+   end;
+  end;
+ end else begin
+  oX:=0.0;
+  oY:=0.0;
+ end;
  RowData.QuadraticXDirection:=0;
  for ContourIndex:=0 to fShape.CountContours-1 do begin
   Contour:=@fShape.Contours[ContourIndex];
@@ -1719,7 +1754,7 @@ begin
    y1:=DistanceField.Height-1;}
    for y:=Max(FromY,y0) to Min(ToY,y1) do begin
     PreviousPathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
-    pY:=y+0.5;
+    pY:=y+oY+0.5;
     PointLeft.x:=x0;
     PointLeft.y:=pY;
     PointRight.x:=x1;
@@ -1729,7 +1764,7 @@ begin
     end;
     for x:=x0 to x1 do begin
      PixelIndex:=(y*fDistanceField.Width)+x;
-     pX:=x+0.5;
+     pX:=x+oX+0.5;
      Point.x:=pX;
      Point.y:=pY;
      DistanceFieldDataItem:=@fDistanceFieldData[PixelIndex];
@@ -2028,17 +2063,38 @@ begin
     end;
    end;
    DistanceFieldPixel:=@fDistanceField^.Pixels[PixelIndex];
-   if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
-    DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
-    DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
-    DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
-    DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-   end else begin
-    Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-    DistanceFieldPixel^.r:=Value;
-    DistanceFieldPixel^.g:=Value;
-    DistanceFieldPixel^.b:=Value;
-    DistanceFieldPixel^.a:=Value;
+   case fMultiChannelMode of
+    TMultiChannelMode.MSDFGENCompatible:begin
+     DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
+     DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
+     DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
+     DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+    end;
+    TMultiChannelMode.Gradients:begin
+     case fGradientChannelIndex of
+      1:begin
+       DistanceFieldPixel^.g:=PackDistanceFieldValue((sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign)-DistanceFieldDataItem^.Distance);
+      end;
+      2:begin
+       DistanceFieldPixel^.b:=PackDistanceFieldValue((sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign)-DistanceFieldDataItem^.Distance);
+      end;
+      else {0:}begin
+       DistanceFieldDataItem^.Distance:=sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign;
+       Value:=PackDistanceFieldValue(DistanceFieldDataItem^.Distance);
+       DistanceFieldPixel^.r:=Value;
+       DistanceFieldPixel^.g:=Value;
+       DistanceFieldPixel^.b:=Value;
+       DistanceFieldPixel^.a:=Value;
+      end;
+     end;
+    end;
+    else begin
+     Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+     DistanceFieldPixel^.r:=Value;
+     DistanceFieldPixel^.g:=Value;
+     DistanceFieldPixel^.b:=Value;
+     DistanceFieldPixel^.a:=Value;
+    end;
    end;
    inc(PixelIndex);
   end;
@@ -2050,7 +2106,7 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
-var TryIteration:TpvInt32;
+var TryIteration,GradientChannelIndex:TpvInt32;
     PasMPInstance:TPasMP;
 begin
 
@@ -2068,62 +2124,69 @@ begin
 
  fMultiChannelMode:=aMultiChannelMode;
 
+ fDistanceFieldData:=nil;
  try
 
-  Initialize(fShape);
+  SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
+
   try
 
-   fDistanceFieldData:=nil;
-   try
+   for GradientChannelIndex:=0 to 2 do begin
 
-    SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
-
-    fPointInPolygonPathSegments:=nil;
+    Initialize(fShape);
     try
 
-     for TryIteration:=0 to 2 do begin
-      case TryIteration of
-       0,1:begin
-        InitializeDistances;
-        ConvertShape(TryIteration in [1,2]);
-        if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
-         NormalizeShape;
-         PathSegmentColorizeShape;
-         NormalizeShape;
+     fGradientChannelIndex:=GradientChannelIndex;
+
+     fPointInPolygonPathSegments:=nil;
+     try
+
+      for TryIteration:=0 to 2 do begin
+       case TryIteration of
+        0,1:begin
+         InitializeDistances;
+         ConvertShape(TryIteration in [1,2]);
+         if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
+          NormalizeShape;
+          PathSegmentColorizeShape;
+          NormalizeShape;
+         end;
+        end;
+        else {2:}begin
+         InitializeDistances;
+         ConvertShape(true);
+         ConvertToPointInPolygonPathSegments;
         end;
        end;
-       else {2:}begin
-        InitializeDistances;
-        ConvertShape(true);
-        ConvertToPointInPolygonPathSegments;
+       PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
+       if GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
+        break;
+       end else begin
+        // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
        end;
       end;
-      PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
-      if GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
-       break;
-      end else begin
-       // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
-      end;
+
+     finally
+      fPointInPolygonPathSegments:=nil;
      end;
 
     finally
-     fPointInPolygonPathSegments:=nil;
+     Finalize(fShape);
     end;
 
-   finally
-    fDistanceFieldData:=nil;
+    if fMultiChannelMode<>TMultiChannelMode.Gradients then begin
+     break;
+    end;
+
    end;
 
   finally
-   Finalize(fShape);
+   fDistanceField:=nil;
+   fVectorPath:=nil;
   end;
 
  finally
-
-  fDistanceField:=nil;
-
-  fVectorPath:=nil;
-
+  fDistanceFieldData:=nil;
  end;
 
 end;
