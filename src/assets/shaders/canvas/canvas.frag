@@ -360,7 +360,12 @@ void main(void){
   switch(inState.x){ 
     case 1:{
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0, PI = 3.14159, ONE_OVER_PI = 1.0 / 3.14159;     
+#if 1
+      vec4 centerTexel = textureLod(uTexture, texCoord, 0.0);
+      float center = centerTexel.w;
+#else
       float center = textureLod(uTexture, texCoord, 0.0).w;
+#endif
 #ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
 #else
@@ -381,14 +386,15 @@ void main(void){
       vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
       vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-#if 0
+#if 1
       vec4 t00 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0);
       vec4 t01 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0);
       vec4 t10 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0);
       vec4 t11 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0);
-      vec4 txx = vec4(linearstep(width.x, width.y, center)) + (linearstep(width.xxxx, width.yyyy, vec4(t00.x, t01.x, t10.x, t11.x)) * 0.5);
-      vec4 angleFactors = vec4(1.0) - abs(vec4(atan(t00.z, t00.y), atan(t01.z, t01.y), atan(t10.z, t10.y), atan(t11.z, t11.y)) * ONE_OVER_PI);
-      color = vec4(vec3(1.0), clamp(dot(vec4(txx * angleFactors), vec4(1.0)) * 0.25, 0.0, 1.0));
+      color = vec4(vec3(1.0), clamp(((linearstep(width.x, width.y, center) * (1.0 - abs(atan(centerTexel.z, centerTexel.y) * ONE_OVER_PI))) + 
+                                       dot(vec4(linearstep(width.xxxx, width.yyyy, vec4(t00.x, t01.x, t10.x, t11.x)) * 
+                                                vec4(vec4(1.0) - abs(vec4(atan(t00.z, t00.y), atan(t01.z, t01.y), atan(t10.z, t10.y), atan(t11.z, t11.y)) * ONE_OVER_PI))), 
+                                          vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
 #else      
       color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
                                                 dot(linearstep(width.xxxx, 
