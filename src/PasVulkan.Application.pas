@@ -1079,6 +1079,15 @@ type EpvApplication=class(Exception)
        SRGB=1
       );
 
+     TpvApplicationPresentFrameLatencyMode=
+      (
+       None=-1,
+       Auto=0,
+       PresentWait=1,
+       FenceWait=2,
+       CombinedWait=3
+      );
+
      { TpvApplication }
 
      TpvApplication=class
@@ -1178,6 +1187,7 @@ type EpvApplication=class(Exception)
        fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
        fPresentFrameLatency:TpvUInt64;
+       fPresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
@@ -1714,6 +1724,8 @@ type EpvApplication=class(Exception)
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
 
        property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
+
+       property PresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode read fPresentFrameLatencyMode write fPresentFrameLatencyMode;
 
        property Resizable:boolean read fResizable write fResizable;
 
@@ -6569,6 +6581,7 @@ begin
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
  fPresentFrameLatency:={$ifdef Android}2{$else}1{$endif};
+ fPresentFrameLatencyMode:=TpvApplicationPresentFrameLatencyMode.CombinedWait;
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
@@ -8313,7 +8326,10 @@ function TpvApplication.WaitForSwapChainLatency:boolean;
 var Target,TimeOut:TpvUInt64;
     WaitResult:TVkResult;
 begin
- if assigned(fVulkanDevice) and
+ if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                  TpvApplicationPresentFrameLatencyMode.PresentWait,
+                                  TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
+    assigned(fVulkanDevice) and
     fVulkanDevice.PresentIDSupport and
     fVulkanDevice.PresentWaitSupport and
     (fPresentFrameLatency<>0) and
@@ -10239,7 +10255,15 @@ begin
 
   end else begin
 
-   if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
+   if (fVulkanBackBufferState=TVulkanBackBufferState.Present) or
+      (fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) or
+      ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                     TpvApplicationPresentFrameLatencyMode.PresentWait]) and
+       assigned(fVulkanDevice) and
+       fVulkanDevice.PresentIDSupport and
+       fVulkanDevice.PresentWaitSupport and
+       (fPresentMode=TpvApplicationPresentMode.VSync) and
+       (fPresentFrameLatency>0)) then begin
 
     DoProcess:=true;
 

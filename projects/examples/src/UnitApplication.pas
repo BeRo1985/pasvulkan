@@ -136,15 +136,16 @@ begin
  WaitOnPreviousFrames:=false;
  VulkanAPIVersion:=VK_API_VERSION_1_0;
 //DesiredCountSwapChainImages:=2;
-{$ifdef Android}
+ Blocking:=true;
+{-$ifdef Android}
  if fForceNoVSync then begin
   PresentMode:=TpvApplicationPresentMode.Mailbox;
  end else begin
   PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
  end;
-{$else}
+(*{$else}
  PresentMode:=TpvApplicationPresentMode.Mailbox;
-{$endif}
+{$endif}*)
 end;
 
 procedure TApplication.Start;
