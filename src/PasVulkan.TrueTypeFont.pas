@@ -10737,7 +10737,8 @@ begin
                                                VectorPath,
                                                Scale,
                                                -ox,
-                                               -oy);
+                                               -oy,
+                                               TpvSignedDistanceField2DGenerator.TMultiChannelMode.Gradients);
 
    finally
     VectorPath.Free;
