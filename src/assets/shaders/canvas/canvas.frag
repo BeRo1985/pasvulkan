@@ -388,7 +388,7 @@ void main(void){
       vec4 t11 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0);
       vec4 txx = vec4(linearstep(width.x, width.y, center)) + (linearstep(width.xxxx, width.yyyy, vec4(t00.x, t01.x, t10.x, t11.x)) * 0.5);
       vec4 angleFactors = vec4(1.0) - abs(vec4(atan(t00.z, t00.y), atan(t01.z, t01.y), atan(t10.z, t10.y), atan(t11.z, t11.y)) * ONE_OVER_PI);
-      color = vec4(vec3(1.0), clamp(dot(vec4(txx * angleFactors), vec4(1.0)) * ONE_BY_THREE, 0.0, 1.0));
+      color = vec4(vec3(1.0), clamp(dot(vec4(txx * angleFactors), vec4(1.0)) * 0.25, 0.0, 1.0));
 #else      
       color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
                                                 dot(linearstep(width.xxxx, 
