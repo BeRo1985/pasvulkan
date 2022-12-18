@@ -300,7 +300,7 @@ vec3 barycentricTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){
                       
 vec2 rotate(vec2 v, float a){
   vec2 s = sin(vec2(a) + vec2(0.0, 1.57079633));
-	return mat2(s.y, -s.x, s.x, s.y) * v;
+  return mat2(s.y, -s.x, s.x, s.y) * v;
 }                               
 
 vec3 rgb2hsv(vec3 c){
@@ -549,33 +549,33 @@ void main(void){
              borderTowardsLight,
              borderAwayFromLight;
         switch(guiElementIndex){
-        	case GUI_ELEMENT_BUTTON_UNFOCUSED:{
+          case GUI_ELEMENT_BUTTON_UNFOCUSED:{
             gradientTop = uUnfocusedButtonGradientTop;
             gradientBottom = uUnfocusedButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BUTTON_FOCUSED:{
+          case GUI_ELEMENT_BUTTON_FOCUSED:{
             gradientTop = uFocusedButtonGradientTop;
             gradientBottom = uFocusedButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BUTTON_PUSHED:{
+          case GUI_ELEMENT_BUTTON_PUSHED:{
             gradientTop = uPushedButtonGradientTop;
             gradientBottom = uPushedButtonGradientBottom;
             borderTowardsLight = uBorderDark;
             borderAwayFromLight = uBorderLight;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BUTTON_DISABLED:{
+          case GUI_ELEMENT_BUTTON_DISABLED:{
             gradientTop = uDisabledButtonGradientTop;
             gradientBottom = uDisabledButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
         }
         color = blend(color, 
@@ -632,47 +632,47 @@ void main(void){
              borderTowardsLight,
              borderAwayFromLight;
         switch(guiElementIndex){
-        	case GUI_ELEMENT_BOX_UNFOCUSED:{
+          case GUI_ELEMENT_BOX_UNFOCUSED:{
             gradientTop = uUnfocusedBoxGradientTop;
             gradientBottom = uUnfocusedBoxGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BOX_FOCUSED:{
+          case GUI_ELEMENT_BOX_FOCUSED:{
             gradientTop = uFocusedBoxGradientTop;
             gradientBottom = uFocusedBoxGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BOX_DISABLED:{
+          case GUI_ELEMENT_BOX_DISABLED:{
             gradientTop = uDisabledBoxGradientTop;
             gradientBottom = uDisabledBoxGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BOX_DARK_UNFOCUSED:{
+          case GUI_ELEMENT_BOX_DARK_UNFOCUSED:{
             gradientTop = uUnfocusedBoxDarkGradientTop;
             gradientBottom = uUnfocusedBoxDarkGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BOX_DARK_FOCUSED:{
+          case GUI_ELEMENT_BOX_DARK_FOCUSED:{
             gradientTop = uFocusedBoxDarkGradientTop;
             gradientBottom = uFocusedBoxDarkGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_BOX_DARK_DISABLED:{
+          case GUI_ELEMENT_BOX_DARK_DISABLED:{
             gradientTop = uDisabledBoxDarkGradientTop;
             gradientBottom = uDisabledBoxDarkGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
-          	break;
+            break;
           }
         }
         color = blend(color, 
@@ -707,19 +707,19 @@ void main(void){
              borderTowardsLight,
              borderAwayFromLight;
         switch(guiElementIndex){
-        	case GUI_ELEMENT_PANEL_ENABLED:{
+          case GUI_ELEMENT_PANEL_ENABLED:{
             gradientTop = uEnabledPanelGradientTop;
             gradientBottom = uEnabledPanelGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_PANEL_DISABLED:{
+          case GUI_ELEMENT_PANEL_DISABLED:{
             gradientTop = uDisabledPanelGradientTop;
             gradientBottom = uDisabledPanelGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
         }
         color = blend(color, 
@@ -754,33 +754,33 @@ void main(void){
              borderTowardsLight,
              borderAwayFromLight;
         switch(guiElementIndex){
-        	case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:{
+          case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:{
             gradientTop = uUnfocusedButtonGradientTop;
             gradientBottom = uUnfocusedButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_TAB_BUTTON_FOCUSED:{
+          case GUI_ELEMENT_TAB_BUTTON_FOCUSED:{
             gradientTop = uFocusedButtonGradientTop;
             gradientBottom = uFocusedButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_TAB_BUTTON_PUSHED:{
+          case GUI_ELEMENT_TAB_BUTTON_PUSHED:{
             gradientTop = uPushedButtonGradientTop;
             gradientBottom = uPushedButtonGradientBottom;
             borderTowardsLight = uBorderDark;
             borderAwayFromLight = uBorderLight;
-          	break;
+            break;
           }
-        	case GUI_ELEMENT_TAB_BUTTON_DISABLED:{
+          case GUI_ELEMENT_TAB_BUTTON_DISABLED:{
             gradientTop = uDisabledButtonGradientTop;
             gradientBottom = uDisabledButtonGradientBottom;
             borderTowardsLight = uBorderLight;
             borderAwayFromLight = uBorderDark;
-          	break;
+            break;
           }
         }
         color = blend(color, 
