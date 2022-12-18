@@ -2055,6 +2055,8 @@ type TpvGUIObject=class;
        property Spinnable;
      end;
 
+     { TpvGUIFloatEdit }
+
      TpvGUIFloatEdit=class(TpvGUITextEdit)
       private
        fMinimumValue:TpvDouble;
@@ -2062,16 +2064,20 @@ type TpvGUIObject=class;
        fSmallStep:TpvDouble;
        fLargeStep:TpvDouble;
        fDigits:TpvInt32;
-       procedure UpdateText; override;
+       procedure Accept;
        procedure ApplyMinMaxValueBounds;
        procedure SetMinimumValue(const aMinimumValue:TpvDouble);
        procedure SetMaximumValue(const aMaximumValue:TpvDouble);
        function GetValue:TpvDouble;
        procedure SetValue(const aValue:TpvDouble);
+      protected
+       procedure UpdateText; override;
        function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
        function DragReleaseEvent:Boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
@@ -17088,10 +17094,31 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUIFloatEdit.Enter:Boolean;
+begin
+ Result:=inherited Enter;
+end;
+
+function TpvGUIFloatEdit.Leave:Boolean;
+begin
+ Accept;
+ Result:=inherited Leave;
+end;
+
+procedure TpvGUIFloatEdit.Accept;
+var OldText,NewText:TpvUTF8String;
+begin
+ OldText:=fText;
+ ApplyMinMaxValueBounds;
+ NewText:=PasDblStrUtils.ConvertDoubleToString(GetValue,omStandard,fDigits);
+ if OldText<>NewText then begin
+  SetText(NewText);
+ end;
+end;
+
 procedure TpvGUIFloatEdit.UpdateText;
 begin
  inherited UpdateText;
- ApplyMinMaxValueBounds;
 end;
 
 procedure TpvGUIFloatEdit.ApplyMinMaxValueBounds;
@@ -17124,7 +17151,9 @@ begin
  end else begin
   OK:=false;
   result:=PasDblStrUtils.ConvertStringToDouble(fText,rmNearest,@OK,fDigits);
-  if not OK then begin
+  if OK then begin
+   result:=Min(Max(result,fMinimumValue),fMaximumValue);
+  end else begin
    result:=0.0;
   end;
  end;
@@ -17237,6 +17266,11 @@ begin
   case aKeyEvent.KeyEventType of
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
+     KEYCODE_RETURN:begin
+      Accept;
+      result:=true;
+     end;
+
      KEYCODE_UP:begin
       if fEditable then begin
        TemporaryValue:=GetValue;
