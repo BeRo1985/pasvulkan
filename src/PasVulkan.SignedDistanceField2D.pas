@@ -220,6 +220,13 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
              CurveTessellationTolerance=0.125;
              CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
              CurveRecursionLimit=16;
+      public
+       type TMultiChannelMode=
+             (
+              None,
+              MSDFGENCompatible,
+              Gradients
+             );
       private
        fPointInPolygonPathSegments:TpvSignedDistanceField2DPointInPolygonPathSegments;
        fVectorPath:TpvVectorPath;
@@ -227,7 +234,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        fOffsetX:TpvDouble;
        fOffsetY:TpvDouble;
        fDistanceField:PpvSignedDistanceField2D;
-       fMultiChannel:boolean;
+       fMultiChannelMode:TMultiChannelMode;
        fShape:TpvSignedDistanceField2DShape;
        fDistanceFieldData:TpvSignedDistanceField2DData;
       protected
@@ -285,8 +292,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannel:boolean=false);
-       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannel:boolean=false); static;
+       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannelMode:TMultiChannelMode=TMultiChannelMode.None);
+       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannelMode:TMultiChannelMode=TMultiChannelMode.None); static;
      end;
 
 implementation
@@ -297,7 +304,7 @@ begin
  fPointInPolygonPathSegments:=nil;
  fVectorPath:=nil;
  fDistanceField:=nil;
- fMultiChannel:=false;
+ fMultiChannelMode:=TMultiChannelMode.None;
 end;
 
 destructor TpvSignedDistanceField2DGenerator.Destroy;
@@ -1739,7 +1746,7 @@ begin
       PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
       CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
       CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
-(**)  if fMultiChannel then begin
+(**)  if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
        case PathSegment^.Type_ of
         TpvSignedDistanceField2DPathSegmentType.Line:begin
          Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
@@ -1802,7 +1809,7 @@ begin
       if CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistance then begin
        DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
       end;
-      if fMultiChannel then begin
+      if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
        if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Red)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
         DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
@@ -2021,7 +2028,7 @@ begin
     end;
    end;
    DistanceFieldPixel:=@fDistanceField^.Pixels[PixelIndex];
-   if fMultiChannel then begin
+   if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
     DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
     DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
     DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
@@ -2042,7 +2049,7 @@ begin
 
 end;
 
-procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannel:boolean=false);
+procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
 var TryIteration:TpvInt32;
     PasMPInstance:TPasMP;
 begin
@@ -2059,7 +2066,7 @@ begin
 
  fOffsetY:=aOffsetY;
 
- fMultiChannel:=aMultiChannel;
+ fMultiChannelMode:=aMultiChannelMode;
 
  try
 
@@ -2079,7 +2086,7 @@ begin
        0,1:begin
         InitializeDistances;
         ConvertShape(TryIteration in [1,2]);
-        if fMultiChannel then begin
+        if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
          NormalizeShape;
          PathSegmentColorizeShape;
          NormalizeShape;
@@ -2121,12 +2128,12 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aMultiChannel:boolean=false);
+class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
 var Generator:TpvSignedDistanceField2DGenerator;
 begin
  Generator:=TpvSignedDistanceField2DGenerator.Create;
  try
-  Generator.Execute(aDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,aMultiChannel);
+  Generator.Execute(aDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,aMultiChannelMode);
  finally
   Generator.Free;
  end;
