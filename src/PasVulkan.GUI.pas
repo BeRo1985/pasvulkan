@@ -2019,22 +2019,28 @@ type TpvGUIObject=class;
        property TextTruncation;
      end;
 
+     { TpvGUIIntegerEdit }
+
      TpvGUIIntegerEdit=class(TpvGUITextEdit)
       private
        fMinimumValue:TpvInt64;
        fMaximumValue:TpvInt64;
        fSmallStep:TpvInt64;
        fLargeStep:TpvInt64;
-       procedure UpdateText; override;
+       procedure Accept;
        procedure ApplyMinMaxValueBounds;
        procedure SetMinimumValue(const aMinimumValue:TpvInt64);
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        function GetValue:TpvInt64;
        procedure SetValue(const aValue:TpvInt64);
+      protected
+       procedure UpdateText; override;
        function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
        function DragReleaseEvent:Boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
@@ -16721,10 +16727,31 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUIIntegerEdit.Enter:Boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIIntegerEdit.Leave:Boolean;
+begin
+ Accept;
+ result:=inherited Leave;
+end;
+
+procedure TpvGUIIntegerEdit.Accept;
+var OldText,NewText:TpvUTF8String;
+begin
+ OldText:=fText;
+ ApplyMinMaxValueBounds;
+ NewText:=IntToStr(GetValue);
+ if OldText<>NewText then begin
+  SetText(NewText);
+ end;
+end;
+
 procedure TpvGUIIntegerEdit.UpdateText;
 begin
  inherited UpdateText;
- ApplyMinMaxValueBounds;
 end;
 
 procedure TpvGUIIntegerEdit.ApplyMinMaxValueBounds;
@@ -16825,6 +16852,7 @@ begin
    end;
   end;
  end;
+ result:=Min(Max(result,fMinimumValue),fMaximumValue);
 end;
 
 procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
@@ -16920,6 +16948,10 @@ begin
   case aKeyEvent.KeyEventType of
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
+     KEYCODE_RETURN:begin
+      Accept;
+      result:=true;
+     end;
      KEYCODE_UP:begin
       if fEditable then begin
        TemporaryValue:=GetValue;
