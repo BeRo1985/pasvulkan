@@ -372,8 +372,7 @@ float sampleSDF(const in TVEC texCoord){
   gradients[1] = (gradientSquaredLengths[1] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[1] * inversesqrt(max(gradientSquaredLengths[1], 1e-4)));
   gradients[2] = (gradientSquaredLengths[2] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[2] * inversesqrt(max(gradientSquaredLengths[2], 1e-4)));
   gradients[3] = (gradientSquaredLengths[3] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[3] * inversesqrt(max(gradientSquaredLengths[3], 1e-4)));
-  vec2 texSize = textureSize(uTexture, 0).xy, 
-       texTexelCoord = texCoord.xy * texSize;
+  vec2 texTexelCoord = texCoord.xy * textureSize(uTexture, 0).xy;
   vec2 Juv[4] = vec2[4](
     vec2(texTexelCoord + vec2(0.125, 0.375)),
     vec2(texTexelCoord + vec2(-0.125, -0.375)),
