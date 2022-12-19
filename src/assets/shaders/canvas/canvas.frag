@@ -340,6 +340,82 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
 
 #endif
 
+#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
+  #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
+  #define TVEC vec3
+#else
+  #define ADJUST_TEXCOORD(uv) uv
+  #define TVEC vec2
+#endif
+
+#if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
+float sampleSDF(TVEC texCoord){
+  const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), 
+              ONE_BY_THREE = 1.0 / 3.0, 
+              NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0);     
+  vec4 center = textureLod(uTexture, texCoord, 0.0);
+  vec4 centerGradientX = dFdx(center);
+  vec4 centerGradientY = dFdy(center);
+  vec2 centerGradients[4] = vec2[4](
+    vec2(centerGradientX.x, centerGradientY.x),
+    vec2(centerGradientX.y, centerGradientY.y),
+    vec2(centerGradientX.z, centerGradientY.z),
+    vec2(centerGradientX.w, centerGradientY.w)
+  );
+  vec4 centerGradientSquaredLengths = vec4(dot(centerGradients[0], centerGradients[0]), 
+                                           dot(centerGradients[1], centerGradients[1]), 
+                                           dot(centerGradients[2], centerGradients[2]), 
+                                           dot(centerGradients[3], centerGradients[3]));
+  centerGradients[0] = (centerGradientSquaredLengths[0] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[0] * inversesqrt(max(centerGradientSquaredLengths[0], 1e-4)));
+  centerGradients[1] = (centerGradientSquaredLengths[1] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[1] * inversesqrt(max(centerGradientSquaredLengths[1], 1e-4)));
+  centerGradients[2] = (centerGradientSquaredLengths[2] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[2] * inversesqrt(max(centerGradientSquaredLengths[2], 1e-4)));
+  centerGradients[3] = (centerGradientSquaredLengths[3] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[3] * inversesqrt(max(centerGradientSquaredLengths[3], 1e-4)));
+  vec2 texSize = textureSize(uTexture, 0).xy, invTexSize = vec2(1.0) / texSize;
+  vec2 offsets[4] = vec2[4](
+    vec2(0.125, 0.375) * invTexSize,
+    vec2(-0.125, -0.375) * invTexSize,
+    vec2(0.375, -0.125) * invTexSize,
+    vec2(-0.375, 0.125) * invTexSize
+  ); 
+  vec2 Juv[4] = vec2[4](
+    vec2((texCoord.xy + offsets[0]) * texSize),
+    vec2((texCoord.xy + offsets[1]) * texSize),
+    vec2((texCoord.xy + offsets[2]) * texSize),
+    vec2((texCoord.xy + offsets[3]) * texSize)
+  );
+  vec4 Jdxdy[4] = vec4[4](
+    vec4(dFdx(Juv[0]), dFdy(Juv[0])),
+    vec4(dFdx(Juv[1]), dFdy(Juv[1])),
+    vec4(dFdx(Juv[2]), dFdy(Juv[2])),
+    vec4(dFdx(Juv[3]), dFdy(Juv[3]))
+  );
+  vec2 jacobianGradients[4] = vec2[4](
+#if 1
+    vec2(mat2(centerGradients[0], centerGradients[0]) * mat2(Jdxdy[0].xy, Jdxdy[0].zw)),
+    vec2(mat2(centerGradients[1], centerGradients[1]) * mat2(Jdxdy[1].xy, Jdxdy[1].zw)),
+    vec2(mat2(centerGradients[2], centerGradients[2]) * mat2(Jdxdy[2].xy, Jdxdy[2].zw)),
+    vec2(mat2(centerGradients[3], centerGradients[3]) * mat2(Jdxdy[3].xy, Jdxdy[3].zw))
+#else
+    vec2((centerGradients[0].x * Jdxdy[0].x) + (centerGradients[0].y * Jdxdy[0].z), (centerGradients[0].x * Jdxdy[0].y) + (centerGradients[0].y * Jdxdy[0].w)),
+    vec2((centerGradients[1].x * Jdxdy[1].x) + (centerGradients[1].y * Jdxdy[1].z), (centerGradients[1].x * Jdxdy[1].y) + (centerGradients[1].y * Jdxdy[1].w)),
+    vec2((centerGradients[2].x * Jdxdy[2].x) + (centerGradients[2].y * Jdxdy[2].z), (centerGradients[2].x * Jdxdy[2].y) + (centerGradients[2].y * Jdxdy[2].w)),
+    vec2((centerGradients[3].x * Jdxdy[3].x) + (centerGradients[3].y * Jdxdy[3].z), (centerGradients[3].x * Jdxdy[3].y) + (centerGradients[3].y * Jdxdy[3].w))
+#endif
+  );
+  vec4 widths = min(vec4(length(jacobianGradients[0]), 
+                         length(jacobianGradients[1]), 
+                         length(jacobianGradients[2]), 
+                         length(jacobianGradients[3])) * NORMALIZATION_THICKNESS_SCALE, vec4(0.5));
+  return dot(linearstep(vec4(0.5) - widths, vec4(0.5) + widths, center), vec4(0.25)); 
+}
+
+float multiSampleSDF(TVEC texCoord){
+  const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0);
+  vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
+  return dot(vec4(sampleSDF(ADJUST_TEXCOORD(buv.xy)), sampleSDF(ADJUST_TEXCOORD(buv.zy)), sampleSDF(ADJUST_TEXCOORD(buv.xw)), sampleSDF(ADJUST_TEXCOORD(buv.zw))), vec4(0.25));
+}
+#endif
+
 void main(void){
   vec4 color;
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
@@ -351,14 +427,15 @@ void main(void){
   color = inColor;
 #else 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
-  #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
   #define texCoord inTexCoord
 #else
-  #define ADJUST_TEXCOORD(uv) uv
   vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * vec3(inPosition, 1.0)).xy : inTexCoord.xy;
 #endif
   switch(inState.x){ 
     case 1:{
+#if 1
+      color = vec2(1.0, multiSampleSDF(texCoord)).xxxy;
+#else
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0, PI = 3.14159, ONE_OVER_PI = 1.0 / 3.14159;     
 #if 0
       vec4 centerTexel = textureLod(uTexture, texCoord, 0.0) - vec2(0.0, 0.5).xyyx;
@@ -405,6 +482,7 @@ void main(void){
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
 #endif                                                                    
       //color.a = pow(color.a, 2.2);
+#endif                                                                    
       break;
     }
     default:{
