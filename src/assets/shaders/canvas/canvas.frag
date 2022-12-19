@@ -349,13 +349,15 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
 #endif
 
 #if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
-float sampleSDF(TVEC texCoord){
+
+// 4x multisampled 4-rook/RGSS SDF with a single texture lookup of four SDF values in the RGBA color channels 
+float sampleSDF(const in TVEC texCoord){
   const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), 
               ONE_BY_THREE = 1.0 / 3.0, 
               NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0);     
-  vec4 sample = textureLod(uTexture, texCoord, 0.0);
-  vec4 gradientX = dFdx(sample);
-  vec4 gradientY = dFdy(sample);
+  vec4 texel = textureLod(uTexture, texCoord, 0.0);
+  vec4 gradientX = dFdx(texel);
+  vec4 gradientY = dFdy(texel);
   vec2 gradients[4] = vec2[4](
     vec2(gradientX.x, gradientY.x),
     vec2(gradientX.y, gradientY.y),
@@ -390,7 +392,7 @@ float sampleSDF(TVEC texCoord){
     vec4(dFdx(Juv[3]), dFdy(Juv[3]))
   );
   vec2 jacobianGradients[4] = vec2[4](
-#if 1
+#if 0
     vec2(mat2(gradients[0], gradients[0]) * mat2(Jdxdy[0].xy, Jdxdy[0].zw)),
     vec2(mat2(gradients[1], gradients[1]) * mat2(Jdxdy[1].xy, Jdxdy[1].zw)),
     vec2(mat2(gradients[2], gradients[2]) * mat2(Jdxdy[2].xy, Jdxdy[2].zw)),
@@ -406,10 +408,11 @@ float sampleSDF(TVEC texCoord){
                          length(jacobianGradients[1]), 
                          length(jacobianGradients[2]), 
                          length(jacobianGradients[3])) * NORMALIZATION_THICKNESS_SCALE, vec4(0.5));
-  return dot(linearstep(vec4(0.5) - widths, vec4(0.5) + widths, sample), vec4(0.25)); 
+  return dot(linearstep(vec4(0.5) - widths, vec4(0.5) + widths, texel), vec4(0.25)); 
 }
 
-float multiSampleSDF(TVEC texCoord){
+// In the best case effectively 16x multisampled SDF, otherwise just 4x in the worst case, depending on the texCoord gradient derivatives 
+float multiSampleSDF(const in TVEC texCoord){
   const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0);
   vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   return dot(vec4(sampleSDF(ADJUST_TEXCOORD(buv.xy)), sampleSDF(ADJUST_TEXCOORD(buv.zy)), sampleSDF(ADJUST_TEXCOORD(buv.xw)), sampleSDF(ADJUST_TEXCOORD(buv.zw))), vec4(0.25));
