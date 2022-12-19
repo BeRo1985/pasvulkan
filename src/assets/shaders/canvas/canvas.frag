@@ -372,18 +372,13 @@ float sampleSDF(const in TVEC texCoord){
   gradients[1] = (gradientSquaredLengths[1] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[1] * inversesqrt(max(gradientSquaredLengths[1], 1e-4)));
   gradients[2] = (gradientSquaredLengths[2] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[2] * inversesqrt(max(gradientSquaredLengths[2], 1e-4)));
   gradients[3] = (gradientSquaredLengths[3] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[3] * inversesqrt(max(gradientSquaredLengths[3], 1e-4)));
-  vec2 texSize = textureSize(uTexture, 0).xy, invTexSize = vec2(1.0) / texSize;
-  vec2 offsets[4] = vec2[4](
-    vec2(0.125, 0.375) * invTexSize,
-    vec2(-0.125, -0.375) * invTexSize,
-    vec2(0.375, -0.125) * invTexSize,
-    vec2(-0.375, 0.125) * invTexSize
-  ); 
+  vec2 texSize = textureSize(uTexture, 0).xy, 
+       texTexelCoord = texCoord.xy * texSize;
   vec2 Juv[4] = vec2[4](
-    vec2((texCoord.xy + offsets[0]) * texSize),
-    vec2((texCoord.xy + offsets[1]) * texSize),
-    vec2((texCoord.xy + offsets[2]) * texSize),
-    vec2((texCoord.xy + offsets[3]) * texSize)
+    vec2(texTexelCoord + vec2(0.125, 0.375)),
+    vec2(texTexelCoord + vec2(-0.125, -0.375)),
+    vec2(texTexelCoord + vec2(0.375, -0.125)),
+    vec2(texTexelCoord + vec2(-0.375, 0.125))
   );
   vec4 Jdxdy[4] = vec4[4](
     vec4(dFdx(Juv[0]), dFdy(Juv[0])),
