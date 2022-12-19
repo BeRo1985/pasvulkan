@@ -353,23 +353,23 @@ float sampleSDF(TVEC texCoord){
   const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), 
               ONE_BY_THREE = 1.0 / 3.0, 
               NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0);     
-  vec4 center = textureLod(uTexture, texCoord, 0.0);
-  vec4 centerGradientX = dFdx(center);
-  vec4 centerGradientY = dFdy(center);
-  vec2 centerGradients[4] = vec2[4](
-    vec2(centerGradientX.x, centerGradientY.x),
-    vec2(centerGradientX.y, centerGradientY.y),
-    vec2(centerGradientX.z, centerGradientY.z),
-    vec2(centerGradientX.w, centerGradientY.w)
+  vec4 sample = textureLod(uTexture, texCoord, 0.0);
+  vec4 gradientX = dFdx(sample);
+  vec4 gradientY = dFdy(sample);
+  vec2 gradients[4] = vec2[4](
+    vec2(gradientX.x, gradientY.x),
+    vec2(gradientX.y, gradientY.y),
+    vec2(gradientX.z, gradientY.z),
+    vec2(gradientX.w, gradientY.w)
   );
-  vec4 centerGradientSquaredLengths = vec4(dot(centerGradients[0], centerGradients[0]), 
-                                           dot(centerGradients[1], centerGradients[1]), 
-                                           dot(centerGradients[2], centerGradients[2]), 
-                                           dot(centerGradients[3], centerGradients[3]));
-  centerGradients[0] = (centerGradientSquaredLengths[0] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[0] * inversesqrt(max(centerGradientSquaredLengths[0], 1e-4)));
-  centerGradients[1] = (centerGradientSquaredLengths[1] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[1] * inversesqrt(max(centerGradientSquaredLengths[1], 1e-4)));
-  centerGradients[2] = (centerGradientSquaredLengths[2] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[2] * inversesqrt(max(centerGradientSquaredLengths[2], 1e-4)));
-  centerGradients[3] = (centerGradientSquaredLengths[3] < 1e-4) ? vec2(SQRT_0_DOT_5) : (centerGradients[3] * inversesqrt(max(centerGradientSquaredLengths[3], 1e-4)));
+  vec4 gradientSquaredLengths = vec4(dot(gradients[0], gradients[0]), 
+                                     dot(gradients[1], gradients[1]), 
+                                     dot(gradients[2], gradients[2]), 
+                                     dot(gradients[3], gradients[3]));
+  gradients[0] = (gradientSquaredLengths[0] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[0] * inversesqrt(max(gradientSquaredLengths[0], 1e-4)));
+  gradients[1] = (gradientSquaredLengths[1] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[1] * inversesqrt(max(gradientSquaredLengths[1], 1e-4)));
+  gradients[2] = (gradientSquaredLengths[2] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[2] * inversesqrt(max(gradientSquaredLengths[2], 1e-4)));
+  gradients[3] = (gradientSquaredLengths[3] < 1e-4) ? vec2(SQRT_0_DOT_5) : (gradients[3] * inversesqrt(max(gradientSquaredLengths[3], 1e-4)));
   vec2 texSize = textureSize(uTexture, 0).xy, invTexSize = vec2(1.0) / texSize;
   vec2 offsets[4] = vec2[4](
     vec2(0.125, 0.375) * invTexSize,
@@ -391,22 +391,22 @@ float sampleSDF(TVEC texCoord){
   );
   vec2 jacobianGradients[4] = vec2[4](
 #if 1
-    vec2(mat2(centerGradients[0], centerGradients[0]) * mat2(Jdxdy[0].xy, Jdxdy[0].zw)),
-    vec2(mat2(centerGradients[1], centerGradients[1]) * mat2(Jdxdy[1].xy, Jdxdy[1].zw)),
-    vec2(mat2(centerGradients[2], centerGradients[2]) * mat2(Jdxdy[2].xy, Jdxdy[2].zw)),
-    vec2(mat2(centerGradients[3], centerGradients[3]) * mat2(Jdxdy[3].xy, Jdxdy[3].zw))
+    vec2(mat2(gradients[0], gradients[0]) * mat2(Jdxdy[0].xy, Jdxdy[0].zw)),
+    vec2(mat2(gradients[1], gradients[1]) * mat2(Jdxdy[1].xy, Jdxdy[1].zw)),
+    vec2(mat2(gradients[2], gradients[2]) * mat2(Jdxdy[2].xy, Jdxdy[2].zw)),
+    vec2(mat2(gradients[3], gradients[3]) * mat2(Jdxdy[3].xy, Jdxdy[3].zw))
 #else
-    vec2((centerGradients[0].x * Jdxdy[0].x) + (centerGradients[0].y * Jdxdy[0].z), (centerGradients[0].x * Jdxdy[0].y) + (centerGradients[0].y * Jdxdy[0].w)),
-    vec2((centerGradients[1].x * Jdxdy[1].x) + (centerGradients[1].y * Jdxdy[1].z), (centerGradients[1].x * Jdxdy[1].y) + (centerGradients[1].y * Jdxdy[1].w)),
-    vec2((centerGradients[2].x * Jdxdy[2].x) + (centerGradients[2].y * Jdxdy[2].z), (centerGradients[2].x * Jdxdy[2].y) + (centerGradients[2].y * Jdxdy[2].w)),
-    vec2((centerGradients[3].x * Jdxdy[3].x) + (centerGradients[3].y * Jdxdy[3].z), (centerGradients[3].x * Jdxdy[3].y) + (centerGradients[3].y * Jdxdy[3].w))
+    vec2((gradients[0].x * Jdxdy[0].x) + (gradients[0].y * Jdxdy[0].z), (gradients[0].x * Jdxdy[0].y) + (gradients[0].y * Jdxdy[0].w)),
+    vec2((gradients[1].x * Jdxdy[1].x) + (gradients[1].y * Jdxdy[1].z), (gradients[1].x * Jdxdy[1].y) + (gradients[1].y * Jdxdy[1].w)),
+    vec2((gradients[2].x * Jdxdy[2].x) + (gradients[2].y * Jdxdy[2].z), (gradients[2].x * Jdxdy[2].y) + (gradients[2].y * Jdxdy[2].w)),
+    vec2((gradients[3].x * Jdxdy[3].x) + (gradients[3].y * Jdxdy[3].z), (gradients[3].x * Jdxdy[3].y) + (gradients[3].y * Jdxdy[3].w))
 #endif
   );
   vec4 widths = min(vec4(length(jacobianGradients[0]), 
                          length(jacobianGradients[1]), 
                          length(jacobianGradients[2]), 
                          length(jacobianGradients[3])) * NORMALIZATION_THICKNESS_SCALE, vec4(0.5));
-  return dot(linearstep(vec4(0.5) - widths, vec4(0.5) + widths, center), vec4(0.25)); 
+  return dot(linearstep(vec4(0.5) - widths, vec4(0.5) + widths, sample), vec4(0.25)); 
 }
 
 float multiSampleSDF(TVEC texCoord){
