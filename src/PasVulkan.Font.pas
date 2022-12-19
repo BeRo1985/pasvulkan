@@ -1356,7 +1356,7 @@ begin
     end;
    end;
   end;
-  TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.Gradients);
+  TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.Multisampling);
   if assigned(aTrimmedHullVectors) then begin
    ConvexHull2DPixels:=nil;
    try

@@ -226,7 +226,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
              (
               None,
               MSDFGENCompatible,
-              Gradients
+              Gradients,
+              Multisampling
              );
       private
        fPointInPolygonPathSegments:TpvSignedDistanceField2DPointInPolygonPathSegments;
@@ -238,7 +239,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        fMultiChannelMode:TMultiChannelMode;
        fShape:TpvSignedDistanceField2DShape;
        fDistanceFieldData:TpvSignedDistanceField2DData;
-       fGradientChannelIndex:TpvSizeInt;
+       fColorChannelIndex:TpvSizeInt;
       protected
        function Clamp(const Value,MinValue,MaxValue:TpvInt64):TpvInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble; overload;
@@ -665,9 +666,15 @@ begin
   TMultiChannelMode.Gradients:begin
    for Index:=0 to length(fDistanceFieldData)-1 do begin
     fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
-    if fGradientChannelIndex=0 then begin
+    if fColorChannelIndex=0 then begin
      fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
     end;
+    fDistanceFieldData[Index].DeltaWindingScore:=0;
+   end;
+  end;
+  TMultiChannelMode.Multisampling:begin
+   for Index:=0 to length(fDistanceFieldData)-1 do begin
+    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
     fDistanceFieldData[Index].DeltaWindingScore:=0;
    end;
   end;
@@ -1716,24 +1723,47 @@ var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindi
     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TpvSignedDistanceField2DDoublePrecisionPoint;
     pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value,oX,oY:TpvDouble;
 begin
- if fMultiChannelMode=TMultiChannelMode.Gradients then begin
-  case fGradientChannelIndex of
-   1:begin
-    oX:=1.0;
-    oY:=0.0;
-   end;
-   2:begin
-    oX:=0.0;
-    oY:=1.0;
-   end;
-   else {0:}begin
-    oX:=0.0;
-    oY:=0.0;
+ case fMultiChannelMode of
+  TMultiChannelMode.Gradients:begin
+   case fColorChannelIndex of
+    1:begin
+     oX:=1.0;
+     oY:=0.0;
+    end;
+    2:begin
+     oX:=0.0;
+     oY:=1.0;
+    end;
+    else {0:}begin
+     oX:=0.0;
+     oY:=0.0;
+    end;
    end;
   end;
- end else begin
-  oX:=0.0;
-  oY:=0.0;
+  TMultiChannelMode.Multisampling:begin
+   case fColorChannelIndex of
+    0:begin
+     oX:=0.125;
+     oY:=0.375;
+    end;
+    1:begin
+     oX:=-0.125;
+     oY:=-0.375;
+    end;
+    2:begin
+     oX:=0.375;
+     oY:=-0.125;
+    end;
+    else {3:}begin
+     oX:=-0.375;
+     oY:=0.125;
+    end;
+   end;
+  end;
+  else begin
+   oX:=0.0;
+   oY:=0.0;
+  end;
  end;
  RowData.QuadraticXDirection:=0;
  for ContourIndex:=0 to fShape.CountContours-1 do begin
@@ -2071,7 +2101,7 @@ begin
      DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
     end;
     TMultiChannelMode.Gradients:begin
-     case fGradientChannelIndex of
+     case fColorChannelIndex of
       1:begin
        DistanceFieldPixel^.g:=PackDistanceFieldValue((sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign)-DistanceFieldDataItem^.Distance);
       end;
@@ -2084,6 +2114,23 @@ begin
        DistanceFieldPixel^.r:=Value;
        DistanceFieldPixel^.g:=Value;
        DistanceFieldPixel^.b:=Value;
+       DistanceFieldPixel^.a:=Value;
+      end;
+     end;
+    end;
+    TMultiChannelMode.Multisampling:begin
+     Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+     case fColorChannelIndex of
+      0:begin
+       DistanceFieldPixel^.r:=Value;
+      end;
+      1:begin
+       DistanceFieldPixel^.g:=Value;
+      end;
+      2:begin
+       DistanceFieldPixel^.b:=Value;
+      end;
+      else {3:}begin
        DistanceFieldPixel^.a:=Value;
       end;
      end;
@@ -2106,7 +2153,7 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
-var TryIteration,GradientChannelIndex:TpvInt32;
+var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
     PasMPInstance:TPasMP;
 begin
 
@@ -2124,6 +2171,18 @@ begin
 
  fMultiChannelMode:=aMultiChannelMode;
 
+ case aMultiChannelMode of
+  TMultiChannelMode.Gradients:begin
+   CountColorChannels:=3;
+  end;
+  TMultiChannelMode.Multisampling:begin
+   CountColorChannels:=4;
+  end;
+  else begin
+   CountColorChannels:=1;
+  end;
+ end;
+
  fDistanceFieldData:=nil;
  try
 
@@ -2131,12 +2190,12 @@ begin
 
   try
 
-   for GradientChannelIndex:=0 to 2 do begin
+   for ColorChannelIndex:=0 to CountColorChannels-1 do begin
 
     Initialize(fShape);
     try
 
-     fGradientChannelIndex:=GradientChannelIndex;
+     fColorChannelIndex:=ColorChannelIndex;
 
      fPointInPolygonPathSegments:=nil;
      try
@@ -2172,10 +2231,6 @@ begin
 
     finally
      Finalize(fShape);
-    end;
-
-    if fMultiChannelMode<>TMultiChannelMode.Gradients then begin
-     break;
     end;
 
    end;

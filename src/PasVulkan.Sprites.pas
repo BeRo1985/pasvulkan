@@ -1758,7 +1758,7 @@ begin
   SignedDistanceField.Width:=aImageWidth;
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
-  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.Gradients);
+  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.Multisampling);
   result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
   result.SignedDistanceField:=true;
  finally
