@@ -11252,7 +11252,8 @@ begin
       TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
        Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
       end;
-      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_,
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.MultiLineString:begin
        Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,1.0,1.0);
       end;
       TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
