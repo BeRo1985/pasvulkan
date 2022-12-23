@@ -2088,34 +2088,33 @@ begin
  result:=0;
  for Index:=0 to length(fPointInPolygonPathSegments)-1 do begin
   PointInPolygonPathSegment:=@fPointInPolygonPathSegments[Index];
-  if SameValue(PointInPolygonPathSegment^.Points[0].x,PointInPolygonPathSegment^.Points[1].x) and
-     SameValue(PointInPolygonPathSegment^.Points[0].y,PointInPolygonPathSegment^.Points[1].y) then begin
-   continue;
-  end;
-  y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
-  y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
-  if y0<0.0 then begin
-   CaseIndex:=0;
-  end else if y0>0.0 then begin
-   CaseIndex:=2;
-  end else begin
-   CaseIndex:=1;
-  end;
-  if y1<0.0 then begin
-   inc(CaseIndex,0);
-  end else if y1>0.0 then begin
-   inc(CaseIndex,6);
-  end else begin
-   inc(CaseIndex,3);
-  end;
-  if CaseIndex in [1,2,3,6] then begin
-   x0:=PointInPolygonPathSegment^.Points[0].x-Point.x;
-   x1:=PointInPolygonPathSegment^.Points[1].x-Point.x;
-   if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
-    if CaseIndex in [1,2] then begin
-     inc(result);
-    end else begin
-     dec(result);
+  if not (SameValue(PointInPolygonPathSegment^.Points[0].x,PointInPolygonPathSegment^.Points[1].x) and
+          SameValue(PointInPolygonPathSegment^.Points[0].y,PointInPolygonPathSegment^.Points[1].y)) then begin
+   y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
+   y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
+   if y0<0.0 then begin
+    CaseIndex:=0;
+   end else if y0>0.0 then begin
+    CaseIndex:=2;
+   end else begin
+    CaseIndex:=1;
+   end;
+   if y1<0.0 then begin
+    inc(CaseIndex,0);
+   end else if y1>0.0 then begin
+    inc(CaseIndex,6);
+   end else begin
+    inc(CaseIndex,3);
+   end;
+   if CaseIndex in [1,2,3,6] then begin
+    x0:=PointInPolygonPathSegment^.Points[0].x-Point.x;
+    x1:=PointInPolygonPathSegment^.Points[1].x-Point.x;
+    if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
+     if CaseIndex in [1,2] then begin
+      inc(result);
+     end else begin
+      dec(result);
+     end;
     end;
    end;
   end;
