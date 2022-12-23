@@ -213,6 +213,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
 
      TpvSignedDistanceField2DPointInPolygonPathSegments=array of TpvSignedDistanceField2DPointInPolygonPathSegment;
 
+     { TpvSignedDistanceField2DGenerator }
+
      TpvSignedDistanceField2DGenerator=class
       private
        const DistanceField2DMagnitudeValue=VulkanDistanceField2DSpreadValue;
@@ -261,6 +263,9 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        function DoublePrecisionPointLerp(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
        function DoublePrecisionPointLerpEx(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
        function DoublePrecisionPointMap(const p:TpvSignedDistanceField2DDoublePrecisionPoint;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvSignedDistanceField2DDoublePrecisionPoint;
+       procedure GetOffset(out oX,oY:TpvDouble);
+       procedure ApplyOffset(var aX,aY:TpvDouble); overload;
+       function ApplyOffset(const aPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint; overload;
        function BetweenClosedOpen(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
        function BetweenClosed(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
        function NearlyZero(const Value:TpvDouble;const Tolerance:TpvDouble=DistanceField2DNearlyZeroValue):boolean;
@@ -428,6 +433,68 @@ function TpvSignedDistanceField2DGenerator.DoublePrecisionPointMap(const p:TpvSi
 begin
  result.x:=(p.x*m[0])+(p.y*m[1])+m[2];
  result.y:=(p.x*m[3])+(p.y*m[4])+m[5];
+end;
+
+procedure TpvSignedDistanceField2DGenerator.GetOffset(out oX,oY:TpvDouble);
+begin
+ case fMultiChannelMode of
+  TMultiChannelMode.Gradients:begin
+   case fColorChannelIndex of
+    1:begin
+     oX:=1.0;
+     oY:=0.0;
+    end;
+    2:begin
+     oX:=0.0;
+     oY:=1.0;
+    end;
+    else {0:}begin
+     oX:=0.0;
+     oY:=0.0;
+    end;
+   end;
+  end;
+  TMultiChannelMode.Multisampling:begin
+   case fColorChannelIndex of
+    0:begin
+     oX:=0.125;
+     oY:=0.375;
+    end;
+    1:begin
+     oX:=-0.125;
+     oY:=-0.375;
+    end;
+    2:begin
+     oX:=0.375;
+     oY:=-0.125;
+    end;
+    else {3:}begin
+     oX:=-0.375;
+     oY:=0.125;
+    end;
+   end;
+  end;
+  else begin
+   oX:=0.0;
+   oY:=0.0;
+  end;
+ end;
+end;
+
+procedure TpvSignedDistanceField2DGenerator.ApplyOffset(var aX,aY:TpvDouble);
+var oX,oY:TpvDouble;
+begin
+ GetOffset(oX,oY);
+ aX:=aX+oX;
+ aY:=aY+oY;
+end;
+
+function TpvSignedDistanceField2DGenerator.ApplyOffset(const aPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
+var oX,oY:TpvDouble;
+begin
+ GetOffset(oX,oY);
+ result.x:=aPoint.x+oX;
+ result.y:=aPoint.y+oY;
 end;
 
 function TpvSignedDistanceField2DGenerator.BetweenClosedOpen(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
@@ -1768,48 +1835,7 @@ var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindi
     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TpvSignedDistanceField2DDoublePrecisionPoint;
     pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value,oX,oY:TpvDouble;
 begin
- case fMultiChannelMode of
-  TMultiChannelMode.Gradients:begin
-   case fColorChannelIndex of
-    1:begin
-     oX:=1.0;
-     oY:=0.0;
-    end;
-    2:begin
-     oX:=0.0;
-     oY:=1.0;
-    end;
-    else {0:}begin
-     oX:=0.0;
-     oY:=0.0;
-    end;
-   end;
-  end;
-  TMultiChannelMode.Multisampling:begin
-   case fColorChannelIndex of
-    0:begin
-     oX:=0.125;
-     oY:=0.375;
-    end;
-    1:begin
-     oX:=-0.125;
-     oY:=-0.375;
-    end;
-    2:begin
-     oX:=0.375;
-     oY:=-0.125;
-    end;
-    else {3:}begin
-     oX:=-0.375;
-     oY:=0.125;
-    end;
-   end;
-  end;
-  else begin
-   oX:=0.0;
-   oY:=0.0;
-  end;
- end;
+ GetOffset(oX,oY);
  RowData.QuadraticXDirection:=0;
  for ContourIndex:=0 to fShape.CountContours-1 do begin
   Contour:=@fShape.Contours[ContourIndex];
@@ -2101,9 +2127,12 @@ var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TpvInt32;
     DistanceFieldDataItem:PpvSignedDistanceField2DDataItem;
     DistanceFieldPixel:PpvSignedDistanceField2DPixel;
     p:TpvSignedDistanceField2DDoublePrecisionPoint;
+    oX,oY:TpvDouble;
 begin
 
  result:=true;
+
+ GetOffset(oX,oY);
 
  PixelIndex:=0;
  for y:=0 to Height-1 do begin
@@ -2111,8 +2140,8 @@ begin
   for x:=0 to Width-1 do begin
    DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
    if TryIteration=2 then begin
-    p.x:=x+0.5;
-    p.y:=y+0.5;
+    p.x:=x+oX+0.5;
+    p.y:=y+oY+0.5;
     WindingNumber:=GetWindingNumberAtPointInPolygon(p);
    end else begin
     inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
