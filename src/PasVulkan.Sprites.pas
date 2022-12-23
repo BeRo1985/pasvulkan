@@ -1574,6 +1574,9 @@ begin
         TemporaryArrayTexture:=ArrayTexture;
         Layer:=LayerIndex;
         break;
+       end else begin
+        // Undo for saving vRAM space
+        TemporaryArrayTexture.Resize(TemporaryArrayTexture.fWidth,TemporaryArrayTexture.fHeight,TemporaryArrayTexture.fLayers-1);
        end;
       end;
      end;
