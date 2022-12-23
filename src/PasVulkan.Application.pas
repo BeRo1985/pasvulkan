@@ -1073,6 +1073,12 @@ type EpvApplication=class(Exception)
        VSync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
       );
 
+     TpvApplicationProcessingMode=
+      (
+       Strict=0,
+       Flexible=1
+      );
+
      TpvApplicationSwapChainColorSpace=
       (
        RGB=0,
@@ -1188,6 +1194,7 @@ type EpvApplication=class(Exception)
        fPresentMode:TpvApplicationPresentMode;
        fPresentFrameLatency:TpvUInt64;
        fPresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode;
+       fProcessingMode:TpvApplicationProcessingMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
@@ -1562,6 +1569,8 @@ type EpvApplication=class(Exception)
        procedure CreateVulkanCommandBuffers;
        procedure DestroyVulkanCommandBuffers;
 
+       function ShouldSkipNextFrameForRendering:boolean;
+
        function WaitForSwapChainLatency:boolean;
 
        function AcquireVulkanBackBuffer:boolean;
@@ -1726,6 +1735,8 @@ type EpvApplication=class(Exception)
        property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
 
        property PresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode read fPresentFrameLatencyMode write fPresentFrameLatencyMode;
+
+       property ProcessingMode:TpvApplicationProcessingMode read fProcessingMode write fProcessingMode;
 
        property Resizable:boolean read fResizable write fResizable;
 
@@ -6582,6 +6593,7 @@ begin
  fPresentMode:=TpvApplicationPresentMode.Immediate;
  fPresentFrameLatency:={$ifdef Android}2{$else}1{$endif};
  fPresentFrameLatencyMode:=TpvApplicationPresentFrameLatencyMode.CombinedWait;
+ fProcessingMode:=TpvApplicationProcessingMode.Flexible;
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
@@ -8322,44 +8334,145 @@ begin
  end;
 end;
 
+function TpvApplication.ShouldSkipNextFrameForRendering:boolean;
+begin
+ result:=fSkipNextDrawFrame or not
+         ((not (CanBeParallelProcessed and (fCountInFlightFrames>1))) or
+         IsReadyForDrawOfInFlightFrameIndex(fCurrentInFlightFrameIndex));
+end;
+
 function TpvApplication.WaitForSwapChainLatency:boolean;
 var Target,TimeOut:TpvUInt64;
     WaitResult:TVkResult;
+    PrepreviousFrameFrenceIndex:TpvInt32;
+    PrepreviousFrameFrenceMask:TpvUInt32;
+    PrepreviousFrameFrence:TpvVulkanFence;
 begin
- if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
-                                  TpvApplicationPresentFrameLatencyMode.PresentWait,
-                                  TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
-    assigned(fVulkanDevice) and
-    fVulkanDevice.PresentIDSupport and
-    fVulkanDevice.PresentWaitSupport and
-    (fPresentFrameLatency<>0) and
-    (fVulkanPresentLastID>fPresentFrameLatency) and
-    (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
-    assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
-  Target:=fVulkanPresentLastID-fPresentFrameLatency;
-  if fBlocking then begin
-   TimeOut:=High(TpvUInt64);
+
+ if fGraphicsReady then begin
+
+  // Frame present waiting part
+  if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                   TpvApplicationPresentFrameLatencyMode.PresentWait,
+                                   TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
+     assigned(fVulkanDevice) and
+     fVulkanDevice.PresentIDSupport and
+     fVulkanDevice.PresentWaitSupport and
+     (fPresentFrameLatency<>0) and
+     (fVulkanPresentLastID>fPresentFrameLatency) and
+     (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
+     assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
+   Target:=fVulkanPresentLastID-fPresentFrameLatency;
+   if fBlocking then begin
+    TimeOut:=High(TpvUInt64);
+   end else begin
+    TimeOut:=1; // one nanosecond
+   end;
+   WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
+   case WaitResult of
+    VK_SUCCESS,
+    VK_SUBOPTIMAL_KHR:begin
+     result:=true;
+    end;
+    VK_ERROR_OUT_OF_DATE_KHR,
+    VK_TIMEOUT:begin
+     result:=false;
+    end;
+    else begin
+     Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
+     result:=true;
+    end;
+   end;
   end else begin
-   TimeOut:=1; // one nanosecond
+   result:=true;
   end;
-  WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
-  case WaitResult of
-   VK_SUCCESS,
-   VK_SUBOPTIMAL_KHR:begin
+
+  // Frame fence waiting part
+  if result then begin
+
+   result:=false;
+
+   if (fVulkanBackBufferState=TVulkanBackBufferState.Present) or
+      (fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) or
+      ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                     TpvApplicationPresentFrameLatencyMode.PresentWait]) and
+       assigned(fVulkanDevice) and
+       fVulkanDevice.PresentIDSupport and
+       fVulkanDevice.PresentWaitSupport and
+       (fPresentMode=TpvApplicationPresentMode.VSync) and
+       (fPresentFrameLatency>0)) then begin
+
     result:=true;
-   end;
-   VK_ERROR_OUT_OF_DATE_KHR,
-   VK_TIMEOUT:begin
+
+   end else begin
+
+    // Based on a Sebastian Aaltonen tweet thread, which can found at
+    // https://twitter.com/SebAaltonen/status/1569608367618011136 .
+    // Reformulated summary:
+    // If instead of waiting for the GPU to finish with previous frame
+    // respectively the Minus-InFlightFrameCount frame at the beginning
+    // of the simulation, we consider waiting for the GPU to finish with
+    // the frame before the previous frame (-2 frame index), so we will
+    // have a lower overall latency (input lag) and only have to buffer
+    // twice the dynamic resources.
+    // This approach stabilizes latencies and results in up to three frames
+    // in flight, and furthermore the simulation can then also write directly
+    // to GPU buffer data pointers if desired.
+    // Indeed, in a GPU-bound scenario, this can have only marginally worse
+    // latency than waiting for idle, but however far higher throughput.
+    // Moreover, it seems to be the best compromise between latency and
+    // throughput.
+    // However, spiky CPU frames with variable length that happen to exceed
+    // the GPU budget could become a problem here. In this case, an extra
+    // frame for buffering would better hide the variable CPU cost, and
+    // now we get a GPU blast instead.
+    // Nevertheless, this problem only occurs when the CPU/GPU utilization
+    // is very close to 100%/100% and the frame costs fluctuate strongly.
+    // Normally, however, the CPU or GPU usually have a bit of headroom
+    // to hide the latency.
+
+    PrepreviousFrameFrenceIndex:=(fVulkanFrameFenceCounter+(4-2)) and 3;
+
+    PrepreviousFrameFrenceMask:=TpvUInt32(1) shl PrepreviousFrameFrenceIndex;
+
+    PrepreviousFrameFrence:=fVulkanFrameFences[PrepreviousFrameFrenceIndex];
+
     result:=false;
+
+    if fBlocking or
+       (((fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)=0) or
+        ((not assigned(PrepreviousFrameFrence)) or
+         (PrepreviousFrameFrence.GetStatus=VK_SUCCESS))) then begin
+
+     try
+      if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
+       fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
+       if assigned(PrepreviousFrameFrence) then begin
+        if fBlocking then begin
+         PrepreviousFrameFrence.WaitFor;
+        end;
+        PrepreviousFrameFrence.Reset;
+       end;
+      end;
+     except
+      Log(LOG_VERBOSE,'TpvApplication.WaitForSwapChainLatency','Exception at preprevious waiting');
+      raise;
+     end;
+
+     result:=true;
+
+    end;
+
    end;
-   else begin
-    Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
-    result:=true;
-   end;
+
   end;
+
  end else begin
-  result:=true;
+
+  result:=false;
+
  end;
+
 end;
 
 function TpvApplication.AcquireVulkanBackBuffer:boolean;
@@ -9380,10 +9493,7 @@ end;
 procedure TpvApplication.ProcessMessages;
 {-$define TpvApplicationUpdateJobOnMainThread}
 {$define TpvApplicationDrawJobOnMainThread}
-var Index,Counter,Tries,
-    PrepreviousFrameFrenceIndex:TpvInt32;
-    PrepreviousFrameFrenceMask:TpvUInt32;
-    PrepreviousFrameFrence:TpvVulkanFence;
+var Index,Counter,Tries:TpvInt32;
     Joystick:TpvApplicationJoystick;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
@@ -9405,10 +9515,12 @@ var Index,Counter,Tries,
 {$else}
     Jobs:array[0..1] of PPasMPJob;
 {$ifend}
-    ReadyForSwapChainLatency,DoProcess:boolean;
+    DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
 begin
 
- ReadyForSwapChainLatency:=WaitForSwapChainLatency;
+ DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
+
+ ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 
  ProcessRunnables;
 
@@ -10208,9 +10320,7 @@ begin
    raise;
   end;
 
-  if fSkipNextDrawFrame or not
-     ((not (CanBeParallelProcessed and (fCountInFlightFrames>1))) or
-      IsReadyForDrawOfInFlightFrameIndex(fCurrentInFlightFrameIndex)) then begin
+  if ShouldSkipNextFrameForRendering then begin
 
    fSkipNextDrawFrame:=false;
 
@@ -10255,83 +10365,9 @@ begin
 
   end else begin
 
-   if (fVulkanBackBufferState=TVulkanBackBufferState.Present) or
-      (fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) or
-      ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
-                                     TpvApplicationPresentFrameLatencyMode.PresentWait]) and
-       assigned(fVulkanDevice) and
-       fVulkanDevice.PresentIDSupport and
-       fVulkanDevice.PresentWaitSupport and
-       (fPresentMode=TpvApplicationPresentMode.VSync) and
-       (fPresentFrameLatency>0)) then begin
+   case fProcessingMode of
 
-    DoProcess:=true;
-
-   end else begin
-
-    // Based on a Sebastian Aaltonen tweet thread, which can found at
-    // https://twitter.com/SebAaltonen/status/1569608367618011136 .
-    // Reformulated summary:
-    // If instead of waiting for the GPU to finish with previous frame
-    // respectively the Minus-InFlightFrameCount frame at the beginning
-    // of the simulation, we consider waiting for the GPU to finish with
-    // the frame before the previous frame (-2 frame index), so we will
-    // have a lower overall latency (input lag) and only have to buffer
-    // twice the dynamic resources.
-    // This approach stabilizes latencies and results in up to three frames
-    // in flight, and furthermore the simulation can then also write directly
-    // to GPU buffer data pointers if desired.
-    // Indeed, in a GPU-bound scenario, this can have only marginally worse
-    // latency than waiting for idle, but however far higher throughput.
-    // Moreover, it seems to be the best compromise between latency and
-    // throughput.
-    // However, spiky CPU frames with variable length that happen to exceed
-    // the GPU budget could become a problem here. In this case, an extra
-    // frame for buffering would better hide the variable CPU cost, and
-    // now we get a GPU blast instead.
-    // Nevertheless, this problem only occurs when the CPU/GPU utilization
-    // is very close to 100%/100% and the frame costs fluctuate strongly.
-    // Normally, however, the CPU or GPU usually have a bit of headroom
-    // to hide the latency.
-
-    PrepreviousFrameFrenceIndex:=(fVulkanFrameFenceCounter+(4-2)) and 3;
-
-    PrepreviousFrameFrenceMask:=TpvUInt32(1) shl PrepreviousFrameFrenceIndex;
-
-    PrepreviousFrameFrence:=fVulkanFrameFences[PrepreviousFrameFrenceIndex];
-
-    DoProcess:=false;
-
-    if fBlocking or
-       (((fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)=0) or
-        ((not assigned(PrepreviousFrameFrence)) or
-         (PrepreviousFrameFrence.GetStatus=VK_SUCCESS))) then begin
-
-     try
-      if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
-       fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
-       if assigned(PrepreviousFrameFrence) then begin
-        if fBlocking then begin
-         PrepreviousFrameFrence.WaitFor;
-        end;
-        PrepreviousFrameFrence.Reset;
-       end;
-      end;
-     except
-      Log(LOG_VERBOSE,'TpvApplication.ProcessMessages','Exception at preprevious waiting');
-      raise;
-     end;
-
-     DoProcess:=true;
-
-    end;
-
-   end;
-
-   if DoProcess then begin
-
-{$if true}
-    if true then begin
+    TpvApplicationProcessingMode.Flexible:begin
 
      UpdateJob:=nil;
      try
@@ -10412,7 +10448,9 @@ begin
       end;
      end;
 
-    end else{$ifend}begin
+    end;
+
+    else {TpvApplicationProcessingMode.Strict:}begin
 
      if AcquireVulkanBackBuffer then begin
 
@@ -10449,7 +10487,7 @@ begin
 
         BeginFrame(fUpdateDeltaTime);
 
-  {$if defined(TpvApplicationUpdateJobOnMainThread)}
+ {$if defined(TpvApplicationUpdateJobOnMainThread)}
         DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
         try
          fPasMPInstance.Run(DrawJob);
@@ -10457,7 +10495,7 @@ begin
         finally
          fPasMPInstance.WaitRelease(DrawJob);
         end;
-  {$elseif defined(TpvApplicationDrawJobOnMainThread)}
+ {$elseif defined(TpvApplicationDrawJobOnMainThread)}
         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
         try
          fPasMPInstance.Run(UpdateJob);
@@ -10465,11 +10503,11 @@ begin
         finally
          fPasMPInstance.WaitRelease(UpdateJob);
         end;
-  {$else}
+ {$else}
         Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
         Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
         fPasMPInstance.Invoke(Jobs);
-  {$ifend}
+ {$ifend}
 
         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 
