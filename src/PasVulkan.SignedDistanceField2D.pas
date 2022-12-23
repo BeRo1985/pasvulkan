@@ -804,7 +804,6 @@ function TpvSignedDistanceField2DGenerator.AddCubicBezierCurveAsSubdividedQuadra
 const MaxChoppedPoints=10;
 type TChoppedPoints=array[0..MaxChoppedPoints-1] of TpvSignedDistanceField2DDoublePrecisionPoint;
 var ChoppedPoints:TChoppedPoints;
-    CountChoppedPoints:TpvSizeInt;
  procedure OutputLine(const aP0,aP1:TpvSignedDistanceField2DDoublePrecisionPoint);
  begin
   AddLineToPathSegmentArray(Contour,[aP0,aP1]);
@@ -1612,8 +1611,8 @@ begin
        if DoSubdivideCurvesIntoLines then begin
         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
        end else begin
-        AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
-//      AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
+//      AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
+        AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
        end;
       end;
       LastPoint:=Point;
