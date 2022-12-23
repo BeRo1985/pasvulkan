@@ -115,11 +115,16 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
 
      TpvSignedDistanceField2DData=array of TpvSignedDistanceField2DDataItem;
 
-     PpvSignedDistanceField2DDoublePrecisionPoint=^TpvSignedDistanceField2DDoublePrecisionPoint;
      TpvSignedDistanceField2DDoublePrecisionPoint=record
       x:TpvDouble;
       y:TpvDouble;
      end;
+
+     PpvSignedDistanceField2DDoublePrecisionPoint=^TpvSignedDistanceField2DDoublePrecisionPoint;
+
+     TpvSignedDistanceField2DDoublePrecisionPoints=array[0..65535] of TpvSignedDistanceField2DDoublePrecisionPoint;
+
+     PpvSignedDistanceField2DDoublePrecisionPoints=^TpvSignedDistanceField2DDoublePrecisionPoints;
 
      PpvSignedDistanceField2DDoublePrecisionAffineMatrix=^TpvSignedDistanceField2DDoublePrecisionAffineMatrix;
      TpvSignedDistanceField2DDoublePrecisionAffineMatrix=array[0..5] of TpvDouble;
@@ -254,6 +259,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        function DoublePrecisionPointDotProduct(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
        function DoublePrecisionPointNormalize(const v:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
        function DoublePrecisionPointLerp(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
+       function DoublePrecisionPointLerpEx(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
        function DoublePrecisionPointMap(const p:TpvSignedDistanceField2DDoublePrecisionPoint;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvSignedDistanceField2DDoublePrecisionPoint;
        function BetweenClosedOpen(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
        function BetweenClosed(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
@@ -410,6 +416,12 @@ begin
   result.x:=(a.x*(1.0-t))+(b.x*t);
   result.y:=(a.y*(1.0-t))+(b.y*t);
  end;
+end;
+
+function TpvSignedDistanceField2DGenerator.DoublePrecisionPointLerpEx(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
+begin
+ result.x:=(a.x*(1.0-t))+(b.x*t);
+ result.y:=(a.y*(1.0-t))+(b.y*t);
 end;
 
 function TpvSignedDistanceField2DGenerator.DoublePrecisionPointMap(const p:TpvSignedDistanceField2DDoublePrecisionPoint;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvSignedDistanceField2DDoublePrecisionPoint;
@@ -789,7 +801,263 @@ begin
 end;
 
 function TpvSignedDistanceField2DGenerator.AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
-type TLine=record
+const MaxChoppedPoints=10;
+type TChoppedPoints=array[0..MaxChoppedPoints-1] of TpvSignedDistanceField2DDoublePrecisionPoint;
+var ChoppedPoints:TChoppedPoints;
+    CountChoppedPoints:TpvSizeInt;
+ procedure OutputLine(const aP0,aP1:TpvSignedDistanceField2DDoublePrecisionPoint);
+ begin
+  AddLineToPathSegmentArray(Contour,[aP0,aP1]);
+ end;
+ procedure OutputQuad(const aP0,aP1,aP2:TpvSignedDistanceField2DDoublePrecisionPoint);
+ begin
+  AddQuadraticBezierCurveToPathSegmentArray(Contour,[aP0,aP1,aP2]);
+ end;
+ procedure ChopCubicAt(Src,Dst:PpvSignedDistanceField2DDoublePrecisionPoints;const t:TpvDouble); overload;
+ var p0,p1,p2,p3,ab,bc,cd,abc,bcd,abcd:TpvSignedDistanceField2DDoublePrecisionPoint;
+ begin
+  if SameValue(t,1.0) then begin
+   Dst^[0]:=Src^[0];
+   Dst^[1]:=Src^[1];
+   Dst^[2]:=Src^[2];
+   Dst^[3]:=Src^[3];
+   Dst^[4]:=Src^[3];
+   Dst^[5]:=Src^[3];
+   Dst^[6]:=Src^[3];
+  end else begin
+   p0:=Src^[0];
+   p1:=Src^[1];
+   p2:=Src^[2];
+   p3:=Src^[3];
+   ab:=DoublePrecisionPointLerpEx(p0,p1,t);
+   bc:=DoublePrecisionPointLerpEx(p1,p2,t);
+   cd:=DoublePrecisionPointLerpEx(p2,p3,t);
+   abc:=DoublePrecisionPointLerpEx(ab,bc,t);
+   bcd:=DoublePrecisionPointLerpEx(bc,cd,t);
+   abcd:=DoublePrecisionPointLerpEx(abc,bcd,t);
+   Dst^[0]:=p0;
+   Dst^[1]:=ab;
+   Dst^[2]:=abc;
+   Dst^[3]:=abcd;
+   Dst^[4]:=bcd;
+   Dst^[5]:=cd;
+   Dst^[6]:=p3;
+  end;
+ end;
+ procedure ChopCubicAt(Src,Dst:PpvSignedDistanceField2DDoublePrecisionPoints;const t0,t1:TpvDouble); overload;
+ var p0,p1,p2,p3,
+     ab0,bc0,cd0,abc0,bcd0,abcd0,
+     ab1,bc1,cd1,abc1,bcd1,abcd1,
+     Middle0,Middle1:TpvSignedDistanceField2DDoublePrecisionPoint;
+ begin
+  if SameValue(t1,1.0) then begin
+   ChopCubicAt(Src,Dst,t0);
+   Dst^[7]:=Src^[3];
+   Dst^[8]:=Src^[3];
+   Dst^[9]:=Src^[3];
+  end else begin
+   p0:=Src^[0];
+   p1:=Src^[1];
+   p2:=Src^[2];
+   p3:=Src^[3];
+   ab0:=DoublePrecisionPointLerpEx(p0,p1,t0);
+   bc0:=DoublePrecisionPointLerpEx(p1,p2,t0);
+   cd0:=DoublePrecisionPointLerpEx(p2,p3,t0);
+   abc0:=DoublePrecisionPointLerpEx(ab0,bc0,t0);
+   bcd0:=DoublePrecisionPointLerpEx(bc0,cd0,t0);
+   abcd0:=DoublePrecisionPointLerpEx(abc0,bcd0,t0);
+   ab1:=DoublePrecisionPointLerpEx(p0,p1,t1);
+   bc1:=DoublePrecisionPointLerpEx(p1,p2,t1);
+   cd1:=DoublePrecisionPointLerpEx(p2,p3,t1);
+   abc1:=DoublePrecisionPointLerpEx(ab1,bc1,t1);
+   bcd1:=DoublePrecisionPointLerpEx(bc1,cd1,t1);
+   abcd1:=DoublePrecisionPointLerpEx(abc1,bcd1,t1);
+   Middle0:=DoublePrecisionPointLerpEx(abc0,bcd0,t1);
+   Middle1:=DoublePrecisionPointLerpEx(abc1,bcd1,t0);
+   Dst^[0]:=p0;
+   Dst^[1]:=ab0;
+   Dst^[2]:=abc0;
+   Dst^[3]:=abcd0;
+   Dst^[4]:=Middle0;
+   Dst^[5]:=Middle1;
+   Dst^[6]:=abcd1;
+   Dst^[7]:=bcd1;
+   Dst^[8]:=cd1;
+   Dst^[9]:=p3;
+  end;
+ end;
+ function ChopCubicAtInflections(const aSrc:array of TpvSignedDistanceField2DDoublePrecisionPoint;out aDst:TChoppedPoints):TpvSizeInt;
+  function ValidUnitDivide(aNumerator,aDenominator:TpvDouble;out aRatio:TpvDouble):boolean;
+  begin
+   if aNumerator<0.0 then begin
+    aNumerator:=-aNumerator;
+    aDenominator:=-aDenominator;
+   end;
+   if IsZero(aNumerator) or IsZero(aDenominator) or (aNumerator>=aDenominator) then begin
+    result:=false;
+   end else begin
+    aRatio:=aNumerator/aDenominator;
+    if IsNaN(aRatio) or IsZero(aRatio) then begin
+     result:=false;
+    end else begin
+     result:=true;
+    end;
+   end;
+  end;
+  function FindUnitQuadRoots(const A,B,C:TpvDouble;out aRoot0,aRoot1:TpvDouble):TpvSizeInt;
+  var dr,Q:TpvDouble;
+  begin
+   if IsZero(A) then begin
+    if ValidUnitDivide(-C,B,aRoot0) then begin
+     result:=1;
+    end else begin
+     result:=0;
+    end;
+   end else begin
+    dr:=sqr(B)-(4.0*A*C);
+    if dr<0.0 then begin
+     result:=0;
+    end else begin
+     dr:=sqrt(dr);
+     if IsInfinite(dr) or IsNaN(dr) then begin
+      result:=0;
+     end else begin
+      if B<0.0 then begin
+       Q:=-(B-dr)*0.5;
+      end else begin
+       Q:=-(B+dr)*0.5;
+      end;
+      if ValidUnitDivide(Q,A,aRoot0) then begin
+       if ValidUnitDivide(C,Q,aRoot1) then begin
+        result:=2;
+        if aRoot0>aRoot1 then begin
+         Q:=aRoot0;
+         aRoot0:=aRoot1;
+         aRoot1:=Q;
+        end else if SameValue(aRoot0,aRoot1) then begin
+         dec(result);
+        end;
+       end else begin
+        result:=1;
+       end;
+      end else begin
+       if ValidUnitDivide(C,Q,aRoot0) then begin
+        result:=1;
+       end else begin
+        result:=0;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ var Index,Count:TpvSizeInt;
+     Times:array[0..1] of TpvDouble;
+     Ax,Ay,Bx,By,Cx,Cy,t0,t1,LastTime:TpvDouble;
+     Src:PpvSignedDistanceField2DDoublePrecisionPoint;
+     Dst:PpvSignedDistanceField2DDoublePrecisionPoint;
+ begin
+  Ax:=aSrc[1].x-aSrc[0].x;
+  Ay:=aSrc[1].y-aSrc[0].y;
+  Bx:=aSrc[2].x-(2.0*aSrc[1].x)+aSrc[0].x;
+  By:=aSrc[2].y-(2.0*aSrc[1].y)+aSrc[0].y;
+  Cx:=aSrc[3].x+(3.0*(aSrc[1].x-aSrc[2].x))-aSrc[0].x;
+  Cy:=aSrc[3].y+(3.0*(aSrc[1].y-aSrc[2].y))-aSrc[0].y;
+  Count:=FindUnitQuadRoots((Bx*Cy)-(By*Cx),(Ax*Cy)-(Ay*Cx),(Ax*By)-(Ay*Bx),Times[0],Times[1]);
+  if Count=0 then begin
+   aDst[0]:=aSrc[0];
+   aDst[1]:=aSrc[1];
+   aDst[2]:=aSrc[2];
+   aDst[3]:=aSrc[3];
+  end else begin
+   Src:=@aSrc[0];
+   Dst:=@aDst[0];
+   Index:=0;
+   while Index<(Count-1) do begin
+    t0:=Times[Index+0];
+    t1:=Times[Index+1];
+    if Index<>0 then begin
+     LastTime:=Times[Index-1];
+     t0:=Clamp(TpvDouble((t0-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+     t1:=Clamp(TpvDouble((t1-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+    end;
+    ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0,t1);
+    inc(Src,4);
+    inc(Dst,6);
+    inc(Index,2);
+   end;
+   if Index<Count then begin
+    t0:=Times[Index];
+    if Index<>0 then begin
+     LastTime:=Times[Index-1];
+     t0:=Clamp(TpvDouble((t0-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+    end;
+    ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0);
+   end;
+  end;
+  result:=Count+1;
+ end;
+ procedure ConvertNonInflectCubicToQuads(const aPoints:PpvSignedDistanceField2DDoublePrecisionPoints;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
+ const LengthScale=DistanceField2DScalar1Value*1.5;
+       MaxSubdivisions=10;
+ var ab,dc,c0,c1,c:TpvSignedDistanceField2DDoublePrecisionPoint;
+     p:array[0..7] of TpvSignedDistanceField2DDoublePrecisionPoint;
+ begin
+  ab:=DoublePrecisionPointSub(aPoints^[1],aPoints^[0]);
+  dc:=DoublePrecisionPointSub(aPoints^[2],aPoints^[3]);
+  if DoublePrecisionPointLengthSquared(ab)<DistanceField2DNearlyZeroValue then begin
+   if DoublePrecisionPointLengthSquared(dc)<DistanceField2DNearlyZeroValue then begin
+    OutputLine(aPoints^[0],aPoints^[3]);
+    exit;
+   end else begin
+    ab:=DoublePrecisionPointSub(aPoints^[2],aPoints^[0]);
+   end;
+  end;
+  if DoublePrecisionPointLengthSquared(dc)<DistanceField2DNearlyZeroValue then begin
+   dc:=DoublePrecisionPointSub(aPoints^[1],aPoints^[3]);
+  end;
+  ab.x:=ab.x*LengthScale;
+  ab.y:=ab.y*LengthScale;
+  dc.x:=dc.x*LengthScale;
+  dc.y:=dc.y*LengthScale;
+  c0:=DoublePrecisionPointAdd(aPoints^[0],ab);
+  c1:=DoublePrecisionPointAdd(aPoints^[3],dc);
+  if (aSubLevel>MaxSubdivisions) or (DoublePrecisionPointDistanceSquared(c0,c1)<aSquaredTolerance) then begin
+   if aPreserveFirstTangent=aPreserveLastTangent then begin
+    c:=DoublePrecisionPointLerpEx(c0,c1,0.5);
+   end else if aPreserveFirstTangent then begin
+    c:=c0;
+   end else begin
+    c:=c1;
+   end;
+   OutputQuad(aPoints^[0],c,aPoints^[3]);
+  end else begin
+   ChopCubicAt(aPoints,TpvPointer(@p[0]),0.5);
+   ConvertNonInflectCubicToQuads(TpvPointer(@p[0]),aSquaredTolerance,aSubLevel+1,aPreserveFirstTangent,false);
+   ConvertNonInflectCubicToQuads(TpvPointer(@p[3]),aSquaredTolerance,aSubLevel+1,false,aPreserveLastTangent);
+  end;
+ end;
+var Count,Index:TpvSizeInt;
+begin
+ Assert(length(Points)=4);
+ result:=Contour.CountPathSegments;
+ if not ((IsNaN(Points[0].x) or IsInfinite(Points[0].x)) or
+         (IsNaN(Points[0].y) or IsInfinite(Points[0].y)) or
+         (IsNaN(Points[1].x) or IsInfinite(Points[1].x)) or
+         (IsNaN(Points[1].y) or IsInfinite(Points[1].y)) or
+         (IsNaN(Points[2].x) or IsInfinite(Points[2].x)) or
+         (IsNaN(Points[2].y) or IsInfinite(Points[2].y)) or
+         (IsNaN(Points[3].x) or IsInfinite(Points[3].x)) or
+         (IsNaN(Points[3].y) or IsInfinite(Points[3].y))) then begin
+  Count:=ChopCubicAtInflections(Points,ChoppedPoints);
+  if Count>0 then begin
+   for Index:=0 to Count-1 do begin
+    ConvertNonInflectCubicToQuads(TpvPointer(@ChoppedPoints[Index*3]),DistanceField2DScalar1Value,0,true,true);
+   end;
+  end;
+ end;
+end;
+{type TLine=record
       a,b,c:TpvDouble;
       Exist,Vertical:boolean;
      end;
@@ -1010,7 +1278,7 @@ begin
  Assert(length(Points)=4);
  result:=Contour.CountPathSegments;
  CubicCurveToTangent(Points[0],Points[1],Points[2],Points[3]);
-end;
+end;}
 
 function TpvSignedDistanceField2DGenerator.AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
 var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
