@@ -8349,7 +8349,7 @@ var Target,TimeOut:TpvUInt64;
     PrepreviousFrameFrence:TpvVulkanFence;
 begin
 
- if fGraphicsReady then begin
+ if fGraphicsReady and IsVisibleToUser then begin
 
   // Frame present waiting part
   if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
