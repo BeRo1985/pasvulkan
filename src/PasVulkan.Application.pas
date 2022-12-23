@@ -10294,7 +10294,7 @@ begin
 
  end;
 
- if fGraphicsReady and IsVisibleToUser and ReadyForSwapChainLatency then begin
+ if fGraphicsReady and IsVisibleToUser then begin
 
   if fReinitializeGraphics then begin
    try
@@ -10363,7 +10363,7 @@ begin
     dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
    end;
 
-  end else begin
+  end else if ReadyForSwapChainLatency then begin
 
    case fProcessingMode of
 
