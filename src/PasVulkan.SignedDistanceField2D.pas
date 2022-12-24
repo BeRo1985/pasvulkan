@@ -298,7 +298,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
               procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
-              procedure SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
+              procedure SplitInThirds(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
             end;
             PEdgeSegment=^TEdgeSegment;
             TEdgeSegments=array of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
@@ -867,7 +867,7 @@ begin
  end;
 end;
 
-procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
+procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.SplitInThirds(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
 begin
  case Type_ of
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
@@ -1052,7 +1052,7 @@ begin
  for ContourIndex:=0 to Count-1 do begin
   Contour:=@Contours[ContourIndex];
   if Contour^.Count=1 then begin
-   Contour^.Edges[0].SplitInThree(Part1,Part2,Part3);
+   Contour^.Edges[0].SplitInThirds(Part1,Part2,Part3);
    Contour^.Edges:=nil;
    SetLength(Contour^.Edges,3);
    Contour^.Count:=3;
@@ -1288,9 +1288,10 @@ var ContourIndex,EdgeIndex,CountCorners,Corner:TpvSizeInt;
     CrossThreshold:TpvDouble;
     Corners:TCorners;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
-    PreviousDirection,Direction,Miter:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    PreviousDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     Colors:array[0..5] of TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
+    Parts:array[0..6] of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
 begin
  CrossThreshold:=sin(aAngleThreshold);
  Corners:=nil;
@@ -1331,9 +1332,37 @@ begin
          Edge^.Color:=Colors[3+trunc((((3+((2.875*EdgeIndex)/(Contour.Count-1)))-1.4375)+0.5)-3)];
         end;
        end else if Contour.Count>=1 then begin
+        Contour.Edges[0].SplitInThirds(Parts[(3*Corner)+0],Parts[(3*Corner)+1],Parts[(3*Corner)+2]);
+        if Contour.Count>=2 then begin
+         Contour.Edges[0].SplitInThirds(Parts[3-(3*Corner)],Parts[4-(3*Corner)],Parts[5-(3*Corner)]);
+         Parts[0].Color:=Colors[0];
+         Parts[1].Color:=Colors[0];
+         Parts[2].Color:=Colors[1];
+         Parts[3].Color:=Colors[1];
+         Parts[4].Color:=Colors[2];
+         Parts[5].Color:=Colors[2];
+         Contour.Count:=6;
+         SetLength(Contour.Edges,6);
+         Contour.Edges[0]:=Parts[0];
+         Contour.Edges[1]:=Parts[1];
+         Contour.Edges[2]:=Parts[2];
+         Contour.Edges[3]:=Parts[3];
+         Contour.Edges[4]:=Parts[4];
+         Contour.Edges[5]:=Parts[5];
+        end else begin
+         Parts[0].Color:=Colors[0];
+         Parts[1].Color:=Colors[1];
+         Parts[2].Color:=Colors[2];
+         Contour.Count:=3;
+         SetLength(Contour.Edges,3);
+         Contour.Edges[0]:=Parts[0];
+         Contour.Edges[1]:=Parts[1];
+         Contour.Edges[2]:=Parts[2];
+        end;
        end;
       end;
       else begin
+
       end;
      end;
     end;
