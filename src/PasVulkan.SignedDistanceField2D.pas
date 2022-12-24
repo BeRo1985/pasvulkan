@@ -339,6 +339,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
        class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
        class procedure AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+       class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
       public
 
      end;
@@ -1242,6 +1243,11 @@ begin
   aScale:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(Frame.x/Dimensions.x);
  end;
  aTranslate:=aTranslate+(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(aPixelRange*0.5)/aScale);
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean;
+begin
+ result:=(aDirection.Dot(bDirection)<=0) or (abs(aDirection.Dot(bDirection))>aCrossThreshold);
 end;
 
 { TpvSignedDistanceField2DGenerator }
