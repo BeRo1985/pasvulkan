@@ -2781,9 +2781,11 @@ begin
 end;
 
 function TpvSignedDistanceField2DGenerator.ConvertShapeToMSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
-var ContourIndex:TpvSizeInt;
+var ContourIndex,EdgeIndex:TpvSizeInt;
     SrcContour:PpvSignedDistanceField2DPathContour;
     DstContour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+    SrcPathSegment:PpvSignedDistanceField2DPathSegment;
+    DstEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
 begin
  result.Contours:=nil;
  SetLength(result.Contours,fShape.CountContours);
@@ -2791,9 +2793,23 @@ begin
  for ContourIndex:=0 to fShape.CountContours-1 do begin
   SrcContour:=@fShape.Contours[ContourIndex];
   DstContour:=@result.Contours[ContourIndex];
+  DstContour^.Edges:=nil;
+  SetLength(DstContour^.Edges,SrcContour^.CountPathSegments);
   DstContour^.Count:=SrcContour^.CountPathSegments;
-
+  for EdgeIndex:=0 to SrcContour^.CountPathSegments-1 do begin
+   SrcPathSegment:=@SrcContour^.PathSegments[EdgeIndex];
+   DstEdge:=@DstContour.Edges[EdgeIndex];
+   case SrcPathSegment^.Type_ of
+    TpvSignedDistanceField2DPathSegmentType.Line:begin
+     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y));
+    end;
+    else {TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:}begin
+     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[2].x,SrcPathSegment^.Points[2].y));
+    end;
+   end;
+  end;
  end;
+ result.Normalize;
 end;
 
 procedure TpvSignedDistanceField2DGenerator.SplitPathSegmentIntoThreePartsInsideContour(var Contour:TpvSignedDistanceField2DPathContour;const BasePathSegmentIndex:TpvInt32);
