@@ -1038,18 +1038,42 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TShape.Normalize;
+var ContourIndex:TpvSizeInt;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+    Part1,Part2,Part3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
 begin
-
+ for ContourIndex:=0 to Count-1 do begin
+  Contour:=@Contours[ContourIndex];
+  if Contour^.Count=1 then begin
+   Contour^.Edges[0].SplitInThree(Part1,Part2,Part3);
+   Contour^.Edges:=nil;
+   SetLength(Contour^.Edges,3);
+   Contour^.Count:=3;
+   Contour^.Edges[0]:=Part1;
+   Contour^.Edges[1]:=Part2;
+   Contour^.Edges[2]:=Part3;
+  end;
+ end;
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TShape.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+var ContourIndex:TpvSizeInt;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
 begin
-
+ for ContourIndex:=0 to Count-1 do begin
+  Contour:=@Contours[ContourIndex];
+  Contour^.Bounds(aBounds);
+ end;
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TShape.BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
+var ContourIndex:TpvSizeInt;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
 begin
-
+ for ContourIndex:=0 to Count-1 do begin
+  Contour:=@Contours[ContourIndex];
+  Contour^.BoundMiters(aBounds,aBorder,aMiterLimit,aPolarity);
+ end;
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TShape.GetBounds(const aBorder:TpvDouble; const aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt):TpvSignedDistanceField2DMSDFGenerator.TBounds;
