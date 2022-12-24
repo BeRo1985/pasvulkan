@@ -294,6 +294,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               function Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
               function Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
               function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+              procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
             end;
             PEdgeSegment=^TEdgeSegment;
       private
@@ -741,6 +742,35 @@ begin
     result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,abs(Direction(0).Normalize.Dot(qa.Normalize)));
    end else begin
     result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,abs(Direction(1).Normalize.Dot((Points[3]-aOrigin).Normalize)));
+   end;
+  end;
+ end;
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
+var dir,aq,bq:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    ts,PseudoDistance:TpvDouble;
+begin
+ if aParam<0.0 then begin
+  dir:=Direction(0).Normalize;
+  aq:=aOrigin-Point(0);
+  ts:=aq.Dot(dir);
+  if ts<0.0 then begin
+   PseudoDistance:=aq.Cross(dir);
+   if abs(PseudoDistance)<=abs(aDistance.Distance) then begin
+    aDistance.Distance:=PseudoDistance;
+    aDistance.Dot:=0.0;
+   end;
+  end;
+ end else if aParam>1.0 then begin
+  dir:=Direction(1).Normalize;
+  bq:=aOrigin-Point(1);
+  ts:=bq.Dot(dir);
+  if ts<0.0 then begin
+   PseudoDistance:=bq.Cross(dir);
+   if abs(PseudoDistance)<=abs(aDistance.Distance) then begin
+    aDistance.Distance:=PseudoDistance;
+    aDistance.Dot:=0.0;
    end;
   end;
  end;
