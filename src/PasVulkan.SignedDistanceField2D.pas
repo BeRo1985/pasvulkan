@@ -936,8 +936,46 @@ begin
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TContour.Winding:TpvSizeInt;
+var Total:TpvDouble;
+    Index:TpvSizeInt;
+    Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    a,b,c,d,Previous,Current:TpvSignedDistanceField2DMSDFGenerator.TVector2;
 begin
-
+ if Count>0 then begin
+  Total:=0.0;
+  case Count of
+   1:Begin
+    a:=Edges[0].Point(0.0);
+    b:=Edges[0].Point(1.0/3.0);
+    c:=Edges[0].Point(2.0/3.0);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,a);
+   end;
+   2:begin
+    a:=Edges[0].Point(0.0);
+    b:=Edges[0].Point(0.5);
+    c:=Edges[1].Point(0.0);
+    d:=Edges[1].Point(0.5);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,d);
+    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(d,a);
+   end;
+   else begin
+    Previous:=Edges[Count-1].Point(0.0);
+    for Index:=0 to Count-1 do begin
+     Edge:=@Edges[Index];
+     Current:=Edge^.Point(0.0);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(Previous,Current);
+     Previous:=Current;
+    end;
+   end;
+  end;
+  result:=TpvSignedDistanceField2DMSDFGenerator.Sign(Total);
+ end else begin
+  result:=0;
+ end;
 end;
 
 { TpvSignedDistanceField2DMSDFGenerator }
