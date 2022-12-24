@@ -330,7 +330,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
             end;
             PShape=^TShape;
             TShapes=array of TpvSignedDistanceField2DMSDFGenerator.TShape;
-      private
+      public
        class function Median(a,b,c:TpvDouble):TpvDouble; static;
        class function Sign(n:TpvDouble):TpvInt32; static;
        class function NonZeroSign(n:TpvDouble):TpvInt32; static;
@@ -342,8 +342,6 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-      public
-
      end;
 
      { TpvSignedDistanceField2DGenerator }
