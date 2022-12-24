@@ -1520,18 +1520,81 @@ begin
 end;
 
 class procedure TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2);
-var x,y:TpvSizeInt;
+type TClash=record
+      x,y:TpvSizeInt;
+     end;
+     PClash=^TClash;
+     TClashes=array of TClash;
+var x,y,Count,Index:TpvSizeInt;
+    Clashes:TClashes;
+    Clash:PClash;
+    Pixel:TpvSignedDistanceField2DMSDFGenerator.PPixel;
+    Median:TpvDouble;
 begin
- for y:=0 to aImage.Height-1 do begin
-  for x:=0 to aImage.Width-1 do begin
-   if ((x>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x-1)],aThreshold.x)) or
-      ((x<(aImage.Width-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x+1)],aThreshold.x)) or
-		  ((y>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y-1)*aImage.Width)+x],aThreshold.y)) or
-      ((y<(aImage.Height-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y+1)*aImage.Width)+x],aThreshold.y)) then begin
 
+ Clashes:=nil;
+ Count:=0;
+ try
+  for y:=0 to aImage.Height-1 do begin
+   for x:=0 to aImage.Width-1 do begin
+    if ((x>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x-1)],aThreshold.x)) or
+       ((x<(aImage.Width-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x+1)],aThreshold.x)) or
+		   ((y>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y-1)*aImage.Width)+x],aThreshold.y)) or
+       ((y<(aImage.Height-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y+1)*aImage.Width)+x],aThreshold.y)) then begin
+     if Count>=length(Clashes) then begin
+      SetLength(Clashes,(Count+1)+((Count+1) shr 1));
+     end;
+     Clash:=@Clashes[Count];
+     inc(Count);
+     Clash^.x:=x;
+     Clash^.y:=y;
+    end;
    end;
   end;
+  for Index:=0 to Count-1 do begin
+   Clash:=@Clashes[Index];
+   Pixel:=@aImage.Pixels[(Clash^.y*aImage.Width)+Clash^.x];
+   Median:=TpvSignedDistanceField2DMSDFGenerator.Median(Pixel^.r,Pixel^.g,Pixel^.b);
+   Pixel^.r:=Median;
+   Pixel^.g:=Median;
+   Pixel^.b:=Median;
+  end;
+ finally
+  Clashes:=nil;
  end;
+
+
+ Clashes:=nil;
+ Count:=0;
+ try
+  for y:=0 to aImage.Height-1 do begin
+   for x:=0 to aImage.Width-1 do begin
+    if ((x>0) and (y>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y-1)*aImage.Width)+(x-1)],aThreshold.x)) or
+       ((x<(aImage.Width-1)) and (y>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y-1)*aImage.Width)+(x+1)],aThreshold.x)) or
+		   ((x>0) and (y<(aImage.Height-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y+1)*aImage.Width)+(x-1)],aThreshold.y)) or
+       ((x<(aImage.Width-1)) and (y<(aImage.Height-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y+1)*aImage.Width)+(x+1)],aThreshold.y)) then begin
+     if Count>=length(Clashes) then begin
+      SetLength(Clashes,(Count+1)+((Count+1) shr 1));
+     end;
+     Clash:=@Clashes[Count];
+     inc(Count);
+     Clash^.x:=x;
+     Clash^.y:=y;
+    end;
+   end;
+  end;
+  for Index:=0 to Count-1 do begin
+   Clash:=@Clashes[Index];
+   Pixel:=@aImage.Pixels[(Clash^.y*aImage.Width)+Clash^.x];
+   Median:=TpvSignedDistanceField2DMSDFGenerator.Median(Pixel^.r,Pixel^.g,Pixel^.b);
+   Pixel^.r:=Median;
+   Pixel^.g:=Median;
+   Pixel^.b:=Median;
+  end;
+ finally
+  Clashes:=nil;
+ end;
+
 end;
 
 { TpvSignedDistanceField2DGenerator }
