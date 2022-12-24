@@ -440,6 +440,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        function CalculateSideOfQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const Point,XFormPoint:TpvSignedDistanceField2DDoublePrecisionPoint;const RowData:TpvSignedDistanceField2DRowData):TpvSignedDistanceField2DPathSegmentSide;
        function DistanceToPathSegment(const Point:TpvSignedDistanceField2DDoublePrecisionPoint;const PathSegment:TpvSignedDistanceField2DPathSegment;const RowData:TpvSignedDistanceField2DRowData;out PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide):TpvDouble;
        procedure ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
+       function ConvertShapeToMSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
        procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TpvSignedDistanceField2DPathContour;const BasePathSegmentIndex:TpvInt32);
        procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TpvSignedDistanceField2DPathContour;const BasePathSegmentIndex:TpvInt32;const BasePathSegment:TpvSignedDistanceField2DPathSegment);
        procedure NormalizeShape;
@@ -2776,6 +2777,22 @@ begin
   end;
  finally
   SetLength(fShape.Contours,fShape.CountContours);
+ end;
+end;
+
+function TpvSignedDistanceField2DGenerator.ConvertShapeToMSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
+var ContourIndex:TpvSizeInt;
+    SrcContour:PpvSignedDistanceField2DPathContour;
+    DstContour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+begin
+ result.Contours:=nil;
+ SetLength(result.Contours,fShape.CountContours);
+ result.Count:=fShape.CountContours;
+ for ContourIndex:=0 to fShape.CountContours-1 do begin
+  SrcContour:=@fShape.Contours[ContourIndex];
+  DstContour:=@result.Contours[ContourIndex];
+  DstContour^.Count:=SrcContour^.CountPathSegments;
+
  end;
 end;
 
