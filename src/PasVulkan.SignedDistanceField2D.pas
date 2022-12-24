@@ -341,6 +341,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class procedure AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
+       class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
       public
 
      end;
@@ -1279,6 +1280,71 @@ begin
    aSeed:=aSeed shr 1;
   end;
  end;
+end;
+
+class procedure TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
+type TCorners=array of TpvSizeInt;
+var ContourIndex,EdgeIndex,CountCorners,Corner:TpvSizeInt;
+    CrossThreshold:TpvDouble;
+    Corners:TCorners;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+    PreviousDirection,Direction,Miter:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    Colors:array[0..5] of TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
+begin
+ CrossThreshold:=sin(aAngleThreshold);
+ Corners:=nil;
+ try
+  for ContourIndex:=0 to aShape.Count-1 do begin
+   Contour:=@aShape.Contours[ContourIndex];
+   try
+    CountCorners:=0;
+    if Contour^.Count>0 then begin
+     PreviousDirection:=Contour^.Edges[Contour^.Count-1].Direction(1);
+     for EdgeIndex:=0 to Contour^.Count-1 do begin
+      Edge:=@Contour^.Edges[EdgeIndex];
+      if IsCorner(PreviousDirection.Normalize,Edge^.Direction(0).Normalize,CrossThreshold) then begin
+       if CountCorners>=length(Corners) then begin
+        SetLength(Corners,(CountCorners+1)+((CountCorners+1) shr 1));
+       end;
+       Corners[CountCorners]:=EdgeIndex;
+       inc(CountCorners);
+      end;
+      PreviousDirection:=Edge^.Direction(1);
+     end;
+     case CountCorners of
+      0:begin
+       for EdgeIndex:=0 to Contour^.Count-1 do begin
+        Edge:=@Contour^.Edges[EdgeIndex];
+        Edge^.Color:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE;
+       end;
+      end;
+      1:begin
+       Colors[0]:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE;
+       TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Colors[0],aSeed);
+       Colors[2]:=Colors[0];
+       TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Colors[2],aSeed);
+       Corner:=Corners[0];
+       if Contour.Count>=3 then begin
+        for EdgeIndex:=0 to Contour.Count-1 do begin
+         Edge:=@Contour^.Edges[EdgeIndex];
+         Edge^.Color:=Colors[3+trunc((((3+((2.875*EdgeIndex)/(Contour.Count-1)))-1.4375)+0.5)-3)];
+        end;
+       end else if Contour.Count>=1 then begin
+       end;
+      end;
+      else begin
+      end;
+     end;
+    end;
+   finally
+    Corners:=nil;
+   end;
+  end;
+ finally
+  Corners:=nil;
+ end;
+
 end;
 
 { TpvSignedDistanceField2DGenerator }
