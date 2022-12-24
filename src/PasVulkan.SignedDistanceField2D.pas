@@ -342,6 +342,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
+       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1384,6 +1385,11 @@ begin
  finally
   Corners:=nil;
  end;
+
+end;
+
+class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8);
+begin
 
 end;
 
