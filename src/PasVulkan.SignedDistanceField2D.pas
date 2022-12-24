@@ -915,8 +915,8 @@ begin
   SetLength(Edges,(Count+1)+((Count+1) shr 1)); // Grow factor 1.5
  end;
  Edges[Count]:=aEdge;
- inc(Count);
  result:=@Edges[Count];
+ inc(Count);
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TContour.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
@@ -1006,7 +1006,12 @@ end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TShape.AddContour:TpvSignedDistanceField2DMSDFGenerator.PContour;
 begin
-
+ if Count>=length(Contours) then begin
+  SetLength(Contours,(Count+1)+((Count+1) shr 1)); // Grow factor 1.5
+ end;
+ result:=@Contours[Count];
+ inc(Count);
+ result^:=TContour.Create;
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TShape.Validate:boolean;
