@@ -306,6 +306,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
+       class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
       public
      end;
 
@@ -979,6 +980,11 @@ begin
    result:=SolveQuadratic(x0,x1,b,c,d);
   end;
  end;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble;
+begin
+ result:=(b.x-a.x)*(a.y+b.y);
 end;
 
 { TpvSignedDistanceField2DGenerator }
