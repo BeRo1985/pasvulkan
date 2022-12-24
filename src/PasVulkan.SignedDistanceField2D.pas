@@ -1015,8 +1015,26 @@ begin
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TShape.Validate:boolean;
+var ContourIndex,EdgeIndex:TpvSizeInt;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+    Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    Corner:TpvSignedDistanceField2DMSDFGenerator.TVector2;
 begin
-
+ for ContourIndex:=0 to Count-1 do begin
+  Contour:=@Contours[ContourIndex];
+  if Contour^.Count>0 then begin
+   Corner:=Contour^.Edges[Contour^.Count-1].Point(1);
+   for EdgeIndex:=0 to Contour^.Count-1 do begin
+    Edge:=@Contour^.Edges[EdgeIndex];
+    if Edge^.Point(0)<>Corner then begin
+     result:=false;
+     exit;
+    end;
+    Corner:=Edge^.Point(1);
+   end;
+  end;
+ end;
+ result:=true;
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TShape.Normalize;
