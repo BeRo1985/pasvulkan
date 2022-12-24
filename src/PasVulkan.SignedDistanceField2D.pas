@@ -298,19 +298,36 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
               procedure SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
             end;
-            PEdgeSegment=^TEdgeSegment;
+            PEdgeSegment=^TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
             TEdgeSegments=array of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
             { TContour }
             TContour=record
              public
               Edges:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegments;
               Count:TpvSizeInt;
-              function Create:TContour;
+              class function Create:TContour; static;
               function AddEdge(const aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
               procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
               function Winding:TpvSizeInt;
             end;
+            PContour=^TpvSignedDistanceField2DMSDFGenerator.TContour;
+            TContours=array of TpvSignedDistanceField2DMSDFGenerator.TContour;
+            { TShape }
+            TShape=record
+             Contours:TContours;
+             Count:TpvSizeInt;
+             InverseYAxis:boolean;
+             class function Create:TShape; static;
+             function AddContour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+             function Validate:boolean;
+             procedure Normalize;
+             procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+             procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
+             function GetBounds(const aBorder:TpvDouble=0.0;const aMiterLimit:TpvDouble=0;const aPolarity:TpvSizeInt=0):TpvSignedDistanceField2DMSDFGenerator.TBounds;
+            end;
+            PShape=^TpvSignedDistanceField2DMSDFGenerator.TShape;
+            TShapes=array of TpvSignedDistanceField2DMSDFGenerator.TShape;
       private
        class function Median(a,b,c:TpvDouble):TpvDouble; static;
        class function Sign(n:TpvDouble):TpvInt32; static;
@@ -886,7 +903,7 @@ end;
 
 { TpvSignedDistanceField2DMSDFGenerator.TContour }
 
-function TpvSignedDistanceField2DMSDFGenerator.TContour.Create:TpvSignedDistanceField2DMSDFGenerator.TContour;
+class function TpvSignedDistanceField2DMSDFGenerator.TContour.Create:TpvSignedDistanceField2DMSDFGenerator.TContour;
 begin
  result.Edges:=nil;
  result.Count:=0;
@@ -976,6 +993,45 @@ begin
  end else begin
   result:=0;
  end;
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator.TShape }
+
+class function TpvSignedDistanceField2DMSDFGenerator.TShape.Create:TpvSignedDistanceField2DMSDFGenerator.TShape;
+begin
+ result.Contours:=nil;
+ result.Count:=0;
+ result.InverseYAxis:=false;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TShape.AddContour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+begin
+
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TShape.Validate:boolean;
+begin
+
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TShape.Normalize;
+begin
+
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TShape.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+begin
+
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TShape.BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
+begin
+
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TShape.GetBounds(const aBorder:TpvDouble; const aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt):TpvSignedDistanceField2DMSDFGenerator.TBounds;
+begin
+
 end;
 
 { TpvSignedDistanceField2DMSDFGenerator }
