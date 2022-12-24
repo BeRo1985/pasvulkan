@@ -638,10 +638,10 @@ begin
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
-var aq,ab,eq,qa,br,epDir,qe:TpvSignedDistanceField2DMSDFGenerator.TVector2;
-    EndPointDistance,OrthoDistance,a,b,c,d,MinDistance,Distance:TpvDouble;
+var aq,ab,eq,qa,br,epDir,qe,sa,d1,d2:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    EndPointDistance,OrthoDistance,a,b,c,d,MinDistance,Distance,Time:TpvDouble;
     t:array[0..3] of TpvDouble;
-    Solutions,Index:TpvSizeInt;
+    Solutions,Index,Step:TpvSizeInt;
 begin
  case Type_ of
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
@@ -661,7 +661,7 @@ begin
   end;
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
    qa:=Points[0]-aOrigin;
-   ab:=Points[1] -Points[0];
+   ab:=Points[1]-Points[0];
    br:=(Points[2]-Points[1])-ab;
    a:=br.Dot(br);
    b:=3.0*ab.Dot(br);
@@ -696,6 +696,52 @@ begin
    end;
   end;
   else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
+   qa:=Points[0]-aOrigin;
+   ab:=Points[1]-Points[0];
+   br:=(Points[2]-Points[1])-ab;
+   sa:=((Points[3]-Points[2])-(Points[2]-Points[1]))-br;
+   epDir:=Direction(0);
+	 MinDistance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(epDir.Cross(qa))*qa.Length;
+	 aParam:=-qa.Dot(epDir)/epDir.Dot(epDir);
+   begin
+    epDir:=Direction(1);
+ 	  Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(epDir.Cross(Points[3]-aOrigin))*(Points[3]-aOrigin).Length;
+ 	  aParam:=-qa.Dot(epDir)/epDir.Dot(epDir);
+    if abs(Distance)<abs(MinDistance) then begin
+     MinDistance:=Distance;
+     aParam:=(epDir-(Points[3]-aOrigin)).Dot(epDir)/epDir.Dot(epDir);
+    end;
+   end;
+   for Index:=0 to TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STARTS-1 do begin
+    Time:=Index/TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STARTS;
+    Step:=0;
+    repeat
+		 qe:=(((Points[0]+(ab*(3.0*Time)))+(br*(3.0*sqr(Time))))+(sa*(sqr(Time)*Time)))-aOrigin;
+		 Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(Direction(Time).Cross(qe))*qe.Length();
+     if abs(Distance)<abs(MinDistance) then begin
+      MinDistance:=Distance;
+      aParam:=Time;
+     end;
+     if Step<=TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STEPS then begin
+      break;
+     end;
+     d1:=((sa*(3.0*sqr(Time)))+(br*(6*Time)))+(ab*3.0);
+     d2:=(sa*(6*Time))+(br*6);
+     Time:=Time-(qe.Dot(d1)/(d1.Dot(d1)+qe.Dot(d2)));
+     if (Time<0.0) or (Time>1.0) then begin
+      break;
+     end else begin
+      inc(Step);
+     end;
+    until false;
+   end;
+   if (aParam>=0.0) and (aParam<=1.0) then begin
+    result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,0.0);
+   end else if aParam<0.5 then begin
+    result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,abs(Direction(0).Normalize.Dot(qa.Normalize)));
+   end else begin
+    result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,abs(Direction(1).Normalize.Dot((Points[3]-aOrigin).Normalize)));
+   end;
   end;
  end;
 end;
