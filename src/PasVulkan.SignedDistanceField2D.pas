@@ -342,7 +342,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8); static;
+       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvDouble); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1388,7 +1388,7 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvDouble);
 type TEdgePoint=Record
       MinDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
       NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
@@ -1455,10 +1455,10 @@ begin
  if assigned(r.NearEdge) then begin
   b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
  end;
- aR:=Min(Max(Round((r.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
- aG:=Min(Max(Round((g.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
- aB:=Min(Max(Round((b.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
- aA:=Min(Max(Round((MinDistance.Distance*(128.0/aRange))+128.0),0),255);
+ aR:=(r.MinDistance.Distance/aRange)+0.5;
+ aG:=(g.MinDistance.Distance/aRange)+0.5;
+ aB:=(b.MinDistance.Distance/aRange)+0.5;
+ aA:=(MinDistance.Distance/aRange)+0.5;
 end;
 
 { TpvSignedDistanceField2DGenerator }
