@@ -213,6 +213,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
 
      TpvSignedDistanceField2DPointInPolygonPathSegments=array of TpvSignedDistanceField2DPointInPolygonPathSegment;
 
+     EpvSignedDistanceField2DMSDFGenerator=class(Exception);
+
      { TpvSignedDistanceField2DMSDFGenerator }
 
      TpvSignedDistanceField2DMSDFGenerator=class
@@ -336,7 +338,9 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
        class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
+       class procedure AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
       public
+
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1207,6 +1211,37 @@ end;
 class function TpvSignedDistanceField2DMSDFGenerator.Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble;
 begin
  result:=(b.x-a.x)*(a.y+b.y);
+end;
+
+class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+var Bounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;
+    l,b,r,t:TpvDouble;
+    Frame,Dimensions:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ Bounds:=aShape.GetBounds;
+ l:=Bounds.l;
+ b:=Bounds.b;
+ r:=Bounds.r;
+ t:=Bounds.t;
+ if (l>=r) or (b>=t) then begin
+  l:=0.0;
+  b:=0.0;
+  r:=1.0;
+  t:=1.0;
+ end;
+ Frame:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(aWidth-aPixelRange,aHeight-aPixelRange);
+ if (Frame.x<=1e-6) or (Frame.y<=1e-6) then begin
+  raise EpvSignedDistanceField2DMSDFGenerator.Create('Cannot fit the specified pixel range');
+ end;
+ Dimensions:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(r-l,t-b);
+ if (Dimensions.x*Frame.y)<(Dimensions.y*Frame.x) then begin
+  aTranslate:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(((((Frame.x/Frame.y)*Dimensions.y)-Dimensions.x)*0.5)-l,-b);
+  aScale:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(Frame.y/Dimensions.y);
+ end else begin
+  aTranslate:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(-l,((((Frame.y/Frame.x)*Dimensions.x)-Dimensions.y)*0.5)-b);
+  aScale:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(Frame.x/Dimensions.x);
+ end;
+ aTranslate:=aTranslate+(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(aPixelRange*0.5)/aScale);
 end;
 
 { TpvSignedDistanceField2DGenerator }
