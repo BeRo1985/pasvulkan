@@ -1399,6 +1399,8 @@ var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     r,g,b:TEdgePoint;
     p:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Param:TpvDouble;
+    MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
 begin
  x:=aX;
  if aShape.InverseYAxis then begin
@@ -1407,6 +1409,7 @@ begin
   y:=aY;
  end;
  p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
+ MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
  r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
  r.NearEdge:=nil;
  r.NearParam:=0.0;
@@ -1420,9 +1423,42 @@ begin
   Contour:=@aShape.Contours[ContourIndex];
   if Contour^.Count>0 then begin
    for EdgeIndex:=0 to Contour^.Count-1 do begin
+    Edge:=@Contour^.Edges[EdgeIndex];
+    Distance:=Edge^.MinSignedDistance(p,Param);
+    if Distance<MinDistance then begin
+     MinDistance:=Distance;
+    end;
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and (Distance<r.MinDistance) then begin
+     r.MinDistance:=Distance;
+     r.NearEdge:=Edge;
+     r.NearParam:=Param;
+    end;
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and (Distance<g.MinDistance) then begin
+     g.MinDistance:=Distance;
+     g.NearEdge:=Edge;
+     g.NearParam:=Param;
+    end;
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and (Distance<b.MinDistance) then begin
+     b.MinDistance:=Distance;
+     b.NearEdge:=Edge;
+     b.NearParam:=Param;
+    end;
    end;
   end;
  end;
+ if assigned(r.NearEdge) then begin
+  r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
+ end;
+ if assigned(r.NearEdge) then begin
+  g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
+ end;
+ if assigned(r.NearEdge) then begin
+  b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
+ end;
+ aR:=Min(Max(Round((r.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
+ aG:=Min(Max(Round((g.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
+ aB:=Min(Max(Round((b.MinDistance.Distance*(128.0/aRange))+128.0),0),255);
+ aA:=Min(Max(Round((MinDistance.Distance*(128.0/aRange))+128.0),0),255);
 end;
 
 { TpvSignedDistanceField2DGenerator }
