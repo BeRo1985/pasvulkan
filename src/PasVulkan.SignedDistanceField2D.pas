@@ -292,6 +292,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               constructor Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
               constructor Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
               function Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+              function Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+              function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
             end;
             PEdgeSegment=^TEdgeSegment;
       private
@@ -606,6 +608,43 @@ begin
   else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
    p12:=Points[1].Lerp(Points[2],aParam);
    result:=((Points[0].Lerp(Points[1],aParam)).Lerp(p12,aParam)).Lerp(p12.Lerp(Points[2].Lerp(Points[3],aParam),aParam),aParam);
+  end;
+ end;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ case Type_ of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+   result:=Points[1]-Points[0];
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
+   result:=(Points[1]-Points[0]).Lerp(Points[2]-Points[1],aParam);
+   if IsZero(result.x) and IsZero(result.y) then begin
+    result:=Points[2]-Points[0];
+   end;
+  end;
+  else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
+   result:=((Points[1]-Points[0]).Lerp(Points[2]-Points[1],aParam)).Lerp((Points[2]-Points[1]).Lerp(Points[3]-Points[2],aParam),aParam);
+   if IsZero(result.x) and IsZero(result.y) then begin
+    if SameValue(aParam,0) then begin
+     result:=Points[2]-Points[0];
+    end else if SameValue(aParam,1) then begin
+     result:=Points[3]-Points[1];
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+begin
+ case Type_ of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
+  end;
+  else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
   end;
  end;
 end;
