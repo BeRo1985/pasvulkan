@@ -1076,9 +1076,22 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TShape.GetBounds(const aBorder:TpvDouble; const aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt):TpvSignedDistanceField2DMSDFGenerator.TBounds;
+function TpvSignedDistanceField2DMSDFGenerator.TShape.GetBounds(const aBorder:TpvDouble;const aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt):TpvSignedDistanceField2DMSDFGenerator.TBounds;
 begin
-
+ result.l:=MaxDouble;
+ result.b:=MaxDouble;
+ result.r:=-MaxDouble;
+ result.t:=-MaxDouble;
+ Bounds(result);
+ if aBorder>0.0 then begin
+  result.l:=result.l-aBorder;
+  result.b:=result.b-aBorder;
+  result.r:=result.r+aBorder;
+  result.t:=result.t+aBorder;
+  if aMiterLimit>0.0 then begin
+   BoundMiters(result,aBorder,aMiterLimit,aPolarity);
+  end;
+ end;
 end;
 
 { TpvSignedDistanceField2DMSDFGenerator }
