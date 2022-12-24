@@ -1492,7 +1492,7 @@ begin
  end;
 end;
 
-class function TpvSignedDistanceField2DMSDFGenerator.DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
+class function TpvSignedDistanceField2DMSDFGenerator.DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean;
 var a0,a1,a2,b0,b1,b2,t:TpvDouble;
 begin
  a0:=a.r;
