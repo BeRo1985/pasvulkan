@@ -342,7 +342,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8); static;
+       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1388,9 +1388,41 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvUInt8);
+type TEdgePoint=Record
+      MinDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+      NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+      NearParam:TpvDouble;
+     end;
+var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
+    Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
+    Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    r,g,b:TEdgePoint;
+    p:TpvSignedDistanceField2DMSDFGenerator.TVector2;
 begin
-
+ x:=aX;
+ if aShape.InverseYAxis then begin
+  y:=aH-(aY+1);
+ end else begin
+  y:=aY;
+ end;
+ p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
+ r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ r.NearEdge:=nil;
+ r.NearParam:=0.0;
+ g.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ g.NearEdge:=nil;
+ g.NearParam:=0.0;
+ b.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ b.NearEdge:=nil;
+ b.NearParam:=0.0;
+ for ContourIndex:=0 to aShape.Count-1 do begin
+  Contour:=@aShape.Contours[ContourIndex];
+  if Contour^.Count>0 then begin
+   for EdgeIndex:=0 to Contour^.Count-1 do begin
+   end;
+  end;
+ end;
 end;
 
 { TpvSignedDistanceField2DGenerator }
