@@ -330,6 +330,20 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
             end;
             PShape=^TShape;
             TShapes=array of TpvSignedDistanceField2DMSDFGenerator.TShape;
+            TPixel=record
+             r:TpvDouble;
+             g:TpvDouble;
+             b:TpvDouble;
+             a:TpvDouble;
+            end;
+            PPixel=^TPixel;
+            TPixels=array of TPixel;
+            TImage=record
+             Width:TpvSizeInt;
+             Height:TpvSizeInt;
+             Pixels:TPixels;
+            end;
+            PImage=^TImage;
       public
        class function Median(a,b,c:TpvDouble):TpvDouble; static;
        class function Sign(n:TpvDouble):TpvInt32; static;
@@ -342,7 +356,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-       class procedure GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvDouble); static;
+       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1388,7 +1402,7 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GetPixel(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aX,aY,aW,aH:TpvSizeInt;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;out aR,aG,aB,aA:TpvDouble);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2);
 type TEdgePoint=Record
       MinDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
       NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
@@ -1401,64 +1415,68 @@ var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
     p:TpvSignedDistanceField2DMSDFGenerator.TVector2;
     Param:TpvDouble;
     MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+    Pixel:TpvSignedDistanceField2DMSDFGenerator.PPixel;
 begin
- x:=aX;
- if aShape.InverseYAxis then begin
-  y:=aH-(aY+1);
- end else begin
-  y:=aY;
- end;
- p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
- MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- r.NearEdge:=nil;
- r.NearParam:=0.0;
- g.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- g.NearEdge:=nil;
- g.NearParam:=0.0;
- b.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- b.NearEdge:=nil;
- b.NearParam:=0.0;
- for ContourIndex:=0 to aShape.Count-1 do begin
-  Contour:=@aShape.Contours[ContourIndex];
-  if Contour^.Count>0 then begin
-   for EdgeIndex:=0 to Contour^.Count-1 do begin
-    Edge:=@Contour^.Edges[EdgeIndex];
-    Distance:=Edge^.MinSignedDistance(p,Param);
-    if Distance<MinDistance then begin
-     MinDistance:=Distance;
-    end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and (Distance<r.MinDistance) then begin
-     r.MinDistance:=Distance;
-     r.NearEdge:=Edge;
-     r.NearParam:=Param;
-    end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and (Distance<g.MinDistance) then begin
-     g.MinDistance:=Distance;
-     g.NearEdge:=Edge;
-     g.NearParam:=Param;
-    end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and (Distance<b.MinDistance) then begin
-     b.MinDistance:=Distance;
-     b.NearEdge:=Edge;
-     b.NearParam:=Param;
+ for x:=0 to aImage.Width-1 do begin
+  for y:=0 to aImage.Height-1 do begin
+   if aShape.InverseYAxis then begin
+    p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,(aImage.Height-(y+1))+0.5)/aScale)-aTranslate;
+   end else begin
+    p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
+   end;
+   MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+   r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+   r.NearEdge:=nil;
+   r.NearParam:=0.0;
+   g.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+   g.NearEdge:=nil;
+   g.NearParam:=0.0;
+   b.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+   b.NearEdge:=nil;
+   b.NearParam:=0.0;
+   for ContourIndex:=0 to aShape.Count-1 do begin
+    Contour:=@aShape.Contours[ContourIndex];
+    if Contour^.Count>0 then begin
+     for EdgeIndex:=0 to Contour^.Count-1 do begin
+      Edge:=@Contour^.Edges[EdgeIndex];
+      Distance:=Edge^.MinSignedDistance(p,Param);
+      if Distance<MinDistance then begin
+       MinDistance:=Distance;
+      end;
+      if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and (Distance<r.MinDistance) then begin
+       r.MinDistance:=Distance;
+       r.NearEdge:=Edge;
+       r.NearParam:=Param;
+      end;
+      if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and (Distance<g.MinDistance) then begin
+       g.MinDistance:=Distance;
+       g.NearEdge:=Edge;
+       g.NearParam:=Param;
+      end;
+      if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and (Distance<b.MinDistance) then begin
+       b.MinDistance:=Distance;
+       b.NearEdge:=Edge;
+       b.NearParam:=Param;
+      end;
+     end;
     end;
    end;
+   if assigned(r.NearEdge) then begin
+    r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
+   end;
+   if assigned(r.NearEdge) then begin
+    g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
+   end;
+   if assigned(r.NearEdge) then begin
+    b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
+   end;
+   Pixel:=@aImage.Pixels[(y*aImage.Width)+x];
+   Pixel^.r:=(r.MinDistance.Distance/aRange)+0.5;
+   Pixel^.g:=(g.MinDistance.Distance/aRange)+0.5;
+   Pixel^.b:=(b.MinDistance.Distance/aRange)+0.5;
+   Pixel^.a:=(MinDistance.Distance/aRange)+0.5;
   end;
  end;
- if assigned(r.NearEdge) then begin
-  r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
- end;
- if assigned(r.NearEdge) then begin
-  g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
- end;
- if assigned(r.NearEdge) then begin
-  b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
- end;
- aR:=(r.MinDistance.Distance/aRange)+0.5;
- aG:=(g.MinDistance.Distance/aRange)+0.5;
- aB:=(b.MinDistance.Distance/aRange)+0.5;
- aA:=(MinDistance.Distance/aRange)+0.5;
 end;
 
 { TpvSignedDistanceField2DGenerator }
