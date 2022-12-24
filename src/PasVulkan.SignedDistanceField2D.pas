@@ -1284,12 +1284,13 @@ end;
 
 class procedure TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
 type TCorners=array of TpvSizeInt;
-var ContourIndex,EdgeIndex,CountCorners,Corner:TpvSizeInt;
+var ContourIndex,EdgeIndex,CountCorners,Corner,Spline,Start,Index:TpvSizeInt;
     CrossThreshold:TpvDouble;
     Corners:TCorners;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
     PreviousDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    Color,InitialColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
     Colors:array[0..5] of TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
     Parts:array[0..6] of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
 begin
@@ -1362,7 +1363,19 @@ begin
        end;
       end;
       else begin
-
+       Spline:=0;
+       Start:=Corners[0];
+       Color:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE;
+       TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Color,aSeed);
+       InitialColor:=Color;
+       for EdgeIndex:=0 to Contour^.Count-1 do begin
+        Index:=(Start+EdgeIndex) mod Contour^.Count;
+        if ((Spline+1)<CountCorners) and (Corners[Spline+1]=Index) then begin
+         inc(Spline);
+         TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Color,aSeed,TpvSignedDistanceField2DMSDFGenerator.TEdgeColor(TpvUInt32(TpvUInt32(ord(Spline=(CountCorners-1)) and 1)*TpvUInt32(InitialColor))));
+        end;
+        Contour^.Edges[Index].Color:=Color;
+       end;
       end;
      end;
     end;
