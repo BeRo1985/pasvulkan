@@ -296,6 +296,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
               procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+              procedure SplitInThree(out aPart1,aPart2,aPart3:TEdgeSegment);
             end;
             PEdgeSegment=^TEdgeSegment;
       private
@@ -824,6 +825,47 @@ begin
    end;
    if (Solutions>1) and ((Params[1]>0.0) and (Params[1]<1.0)) then begin
     aBounds.PointBounds(Point(Params[1]));
+   end;
+  end;
+ end;
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
+begin
+ case Type_ of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+   aPart1:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Points[0],Point(1.0/3.0),Color);
+   aPart2:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),Point(2.0/3.0),Color);
+   aPart3:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),Points[1],Color);
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
+   aPart1:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Points[0],Points[0].Lerp(Points[1],1.0/3.0),Point(1.0/3.0),Color);
+   aPart2:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(1.0/3.0),Points[0].Lerp(Points[1],5.0/9.0).Lerp(Points[1].Lerp(Points[2],4.0/9.0),0.5),Point(2.0/3.0),Color);
+   aPart3:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),Points[1].Lerp(Points[2],2.0/3.0),Points[2],Color);
+  end;
+  else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
+   if Points[0]=Points[1] then begin
+    aPart1:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Points[0],(Points[0].Lerp(Points[1],1.0/3.0)).Lerp(Points[1].Lerp(Points[2],1.0/3.0),1.0/3.0),Point(1.0/3.0),Color);
+   end else begin
+    aPart1:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Points[0].Lerp(Points[1],1.0/3.0),(Points[0].Lerp(Points[1],1.0/3.0)).Lerp(Points[1].Lerp(Points[2],1.0/3.0),1.0/3.0),Point(1.0/3.0),Color);
+   end;
+   aPart2:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(1.0/3.0),
+                                                                     ((Points[0].Lerp(Points[1],1.0/3.0)).Lerp(Points[1].Lerp(Points[2],1.0/3.0),1.0/3.0)).Lerp(((Points[1].Lerp(Points[2],1.0/3.0)).Lerp(Points[2].Lerp(Points[3],1.0/3.0),1.0/3.0)),2.0/3.0),
+                                                                     ((Points[0].Lerp(Points[1],2.0/3.0)).Lerp(Points[1].Lerp(Points[2],2.0/3.0),2.0/3.0)).Lerp(((Points[1].Lerp(Points[2],2.0/3.0)).Lerp(Points[2].Lerp(Points[3],2.0/3.0),2.0/3.0)),1.0/3.0),
+                                                                     Point(2.0/3.0),
+                                                                     Color);
+   if Points[2]=Points[3] then begin
+    aPart3:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),
+                                                                      (Points[1].Lerp(Points[2],2.0/3.0)).Lerp(Points[2].Lerp(Points[3],2.0/3.0),2.0/3.0),
+                                                                      Points[3],
+                                                                      Points[3],
+                                                                      Color);
+   end else begin
+    aPart3:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),
+                                                                      (Points[1].Lerp(Points[2],2.0/3.0)).Lerp(Points[2].Lerp(Points[3],2.0/3.0),2.0/3.0),
+                                                                      Points[2].Lerp(Points[3],2.0/3.0),
+                                                                      Points[3],
+                                                                      Color);
    end;
   end;
  end;
