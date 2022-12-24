@@ -293,7 +293,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               constructor Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
               function Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
               function Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-              function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+              function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
             end;
             PEdgeSegment=^TEdgeSegment;
       private
@@ -637,10 +637,25 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+var aq,ab,eq:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    EndPointDistance,OrthoDistance:TpvDouble;
 begin
  case Type_ of
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+   aq:=aOrigin-Points[0];
+   ab:=Points[1]-Points[0];
+   aParam:=aq.Dot(ab)/ab.Dot(ab);
+   eq:=Points[ord(aParam>0.5) and 1]-aOrigin;
+   EndPointDistance:=eq.Length;
+   if (aParam>0.0) and (aParam<1.0) then begin
+    OrthoDistance:=ab.OrthoNormal.Dot(aq);
+    if abs(OrthoDistance)<EndPointDistance then begin
+     result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(OrthoDistance,0.0);
+     exit;
+    end;
+   end;
+   result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(aq.Cross(ab))*EndPointDistance,abs(ab.Normalize.Dot(eq.Normalize)));
   end;
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
   end;
