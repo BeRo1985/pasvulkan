@@ -1282,7 +1282,7 @@ begin
  end;
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
+class procedure TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64);
 type TCorners=array of TpvSizeInt;
 var ContourIndex,EdgeIndex,CountCorners,Corner,Spline,Start,Index:TpvSizeInt;
     CrossThreshold:TpvDouble;
