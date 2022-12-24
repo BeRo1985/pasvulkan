@@ -213,6 +213,97 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
 
      TpvSignedDistanceField2DPointInPolygonPathSegments=array of TpvSignedDistanceField2DPointInPolygonPathSegment;
 
+     { TpvSignedDistanceField2DMSDFGenerator }
+
+     TpvSignedDistanceField2DMSDFGenerator=class
+      public
+       type { TVector2 }
+            TVector2=record
+             public
+              x:TpvDouble;
+              y:TpvDouble;
+              constructor Create(const aValue:TpvDouble); overload;
+              constructor Create(const aX,aY:TpvDouble); overload;
+              function Length:TpvDouble;
+              function Direction:TpvDouble;
+              function Normalize:TVector2;
+              function Dot(const aRight:TVector2):TpvDouble;
+              function Cross(const aRight:TVector2):TpvDouble;
+              function OrthoNormal:TVector2;
+              function Lerp(const b:TVector2;const t:TpvDouble):TVector2;
+              class operator Equal(const a,b:TVector2):boolean;
+              class operator NotEqual(const a,b:TVector2):boolean;
+              class operator Add(const a,b:TVector2):TVector2;
+              class operator Subtract(const a,b:TVector2):TVector2;
+              class operator Multiply(const a,b:TVector2):TVector2; overload;
+              class operator Multiply(const a:TVector2;const b:TpvDouble):TVector2; overload;
+              class operator Divide(const a,b:TVector2):TVector2; overload;
+              class operator Divide(const a:TVector2;const b:TpvDouble):TVector2; overload;
+              class operator Negative(const a:TVector2):TVector2;
+              class operator Positive(const a:TVector2):TVector2;
+            end;
+            PVector2=^TVector2;
+       const InfinateDistance=-1e240;
+       type { TSignedDistance }
+            TSignedDistance=record
+             public
+              Distance:TpvDouble;
+              Dot:TpvDouble;
+              constructor Create(const aDistance,aDot:TpvDouble);
+              class function Empty:TSignedDistance; static;
+              class operator LessThan(const a,b:TSignedDistance):boolean;
+            end;
+            { TBounds }
+            TBounds=record
+             public
+              l:TpvDouble;
+              b:TpvDouble;
+              r:TpvDouble;
+              t:TpvDouble;
+              procedure PointBounds(const p:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+            end;
+            TEdgeColor=
+             (
+	            BLACK=0,
+	            RED=1,
+	            GREEN=2,
+	            YELLOW=3,
+	            BLUE=4,
+	            MAGENTA=5,
+	            CYAN=6,
+	            WHITE=7
+             );
+            TEdgeType=
+             (
+	            LINEAR=0,
+	            QUADRATIC=1,
+	            CUBIC=2
+             );
+       const TOO_LARGE_RATIO=1e12;
+             MSDFGEN_CUBIC_SEARCH_STARTS=4;
+             MSDFGEN_CUBIC_SEARCH_STEPS=4;
+       type { TEdgeSegment }
+            TEdgeSegment=record
+             public
+              Points:array[0..3] of TpvSignedDistanceField2DMSDFGenerator.TVector2;
+              Color:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
+              Type_:TpvSignedDistanceField2DMSDFGenerator.TEdgeType;
+              constructor Create(const aP0,aP1:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              constructor Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              constructor Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              function Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+            end;
+            PEdgeSegment=^TEdgeSegment;
+      private
+       class function Median(a,b,c:TpvDouble):TpvDouble; static;
+       class function Sign(n:TpvDouble):TpvInt32; static;
+       class function NonZeroSign(n:TpvDouble):TpvInt32; static;
+       class function SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt; static;
+       class function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt; static;
+       class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
+      public
+     end;
+
      { TpvSignedDistanceField2DGenerator }
 
      TpvSignedDistanceField2DGenerator=class
@@ -311,6 +402,325 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
      end;
 
 implementation
+
+{ TpvSignedDistanceField2DMSDFGenerator.TVector2 }
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(const aValue:TpvDouble);
+begin
+ x:=aValue;
+ y:=aValue;
+end;
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(const aX,aY:TpvDouble);
+begin
+ x:=aX;
+ y:=aY;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Length:TpvDouble;
+begin
+ result:=sqrt(sqr(x)+sqr(y));
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Direction:TpvDouble;
+begin
+ result:=ArcTan2(y,x);
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Normalize:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+var Len:TpvDouble;
+begin
+ Len:=Length;
+ if IsZero(Len) then begin
+  result.x:=0.0;
+  result.y:=0.0;
+ end else begin
+  result.x:=x/Len;
+  result.y:=y/Len;
+ end;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Dot(const aRight:TpvSignedDistanceField2DMSDFGenerator.TVector2): TpvDouble;
+begin
+ result:=(x*aRight.x)+(y*aRight.y);
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Cross(const aRight:TpvSignedDistanceField2DMSDFGenerator.TVector2): TpvDouble;
+begin
+ result:=(x*aRight.y)-(y*aRight.x);
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.OrthoNormal:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+var Len:TpvDouble;
+begin
+ Len:=Length;
+ if IsZero(Len) then begin
+  result.x:=0.0;
+  result.y:=0.0;
+ end else begin
+  result.x:=y/Len;
+  result.y:=(-x)/Len;
+ end;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TVector2.Lerp(const b:TpvSignedDistanceField2DMSDFGenerator.TVector2;const t:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=(x*(1.0-t))+(b.x*t);
+ result.y:=(y*(1.0-t))+(b.y*t);
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Equal(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2): boolean;
+begin
+ result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.NotEqual(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2): boolean;
+begin
+ result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Add(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Subtract(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Multiply(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x*b.x;
+ result.y:=a.y*b.y;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Multiply(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2;const b:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x*b;
+ result.y:=a.y*b;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Divide(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Divide(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2;const b:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Negative(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=-a.x;
+ result.y:=-a.y;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Positive(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator.TSignedDistance }
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(const aDistance,aDot:TpvDouble);
+begin
+ Distance:=aDistance;
+ Dot:=aDot;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+begin
+ result.Distance:=TpvSignedDistanceField2DMSDFGenerator.InfinateDistance;
+ result.Dot:=1.0;
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.LessThan(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=(abs(a.Distance)<abs(b.Distance)) or (SameValue(a.Distance,b.Distance) and (a.Dot<b.Dot));
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator.TBounds }
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TBounds.PointBounds(const p:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+begin
+ if p.x<l then begin
+  l:=p.x;
+ end;
+ if p.y<b then begin
+  b:=p.y;
+ end;
+ if p.x>r then begin
+  r:=p.x;
+ end;
+ if p.y>t then begin
+  t:=p.y;
+ end;
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment }
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+begin
+ Points[0]:=aP0;
+ Points[1]:=aP1;
+ Color:=aColor;
+ Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR;
+end;
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+begin
+ Points[0]:=aP0;
+ Points[1]:=aP1;
+ Points[2]:=aP2;
+ Color:=aColor;
+ Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC;
+end;
+
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+begin
+ Points[0]:=aP0;
+ Points[1]:=aP1;
+ Points[2]:=aP2;
+ Points[3]:=aP3;
+ Color:=aColor;
+ Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+var p12:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+begin
+ case Type_ of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+   result:=Points[0].Lerp(Points[1],aParam);
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
+   result:=(Points[0].Lerp(Points[1],aParam)).Lerp(Points[1].Lerp(Points[2],aParam),aParam);
+  end;
+  else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
+   p12:=Points[1].Lerp(Points[2],aParam);
+   result:=((Points[0].Lerp(Points[1],aParam)).Lerp(p12,aParam)).Lerp(p12.Lerp(Points[2].Lerp(Points[3],aParam),aParam),aParam);
+  end;
+ end;
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator }
+
+class function TpvSignedDistanceField2DMSDFGenerator.Median(a,b,c:TpvDouble):TpvDouble;
+begin
+ result:=Max(Min(a,b),Min(Max(a,b),c));
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.Sign(n:TpvDouble):TpvInt32;
+begin
+ result:=(ord(n<0) and 1)-(ord(n>0) and 1);
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(n:TpvDouble):TpvInt32;
+begin
+ result:=((ord(n>0) and 1) shl 1)-1;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt;
+var d:TpvDouble;
+begin
+ if IsZero(a) or ((abs(b)+abs(c))>(TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO*abs(a))) then begin
+  if IsZero(b) or (abs(c)>(TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO*abs(b))) then begin
+   if IsZero(c) then begin
+    result:=-1;
+   end else begin
+    result:=0;
+   end;
+  end else begin
+   x0:=(-c)/b;
+   result:=1;
+  end;
+ end else begin
+  d:=sqr(b)-(4.0*a*c);
+  if IsZero(d) then begin
+   x0:=(-b)/(2.0*a);
+   result:=1;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   x0:=((-b)+d)/(2.0*a);
+   x1:=((-b)-d)/(2.0*a);
+   result:=2;
+  end else begin
+   result:=0;
+  end;
+ end;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt;
+var a2,q,r,r2,q3,t,aa,bb:TpvDouble;
+begin
+ a2:=sqr(a);
+ q:=(a2-(3.0*b))/9.0;
+ r:=((a*((2.0*a2)-(9.0*b)))+(27*c))/54.0;
+ r2:=sqr(r);
+ q3:=sqr(q)*q;
+ if r2<q3 then begin
+  t:=r/sqrt(q3);
+  if t<-1.0 then begin
+   t:=-1.0;
+  end else if t>1.0 then begin
+   t:=1.0;
+  end;
+  t:=ArcCos(t);
+  a:=a/3.0;
+  q:=(-2.0)*sqrt(q);
+  x0:=(q*cos(t/3.0))-a;
+  x1:=(q*cos(((t+2)*PI)/3.0))-a;
+  x2:=(q*cos(((t-2)*PI)/3.0))-a;
+  result:=3;
+ end else begin
+  aa:=-Power(abs(r)+sqrt(r2-q3),1.0/3.0);
+  if r<0 then begin
+   aa:=-aa;
+  end;
+  if IsZero(aa) then begin
+   bb:=0.0;
+  end else begin
+   bb:=q/aa;
+  end;
+  a:=a/3.0;
+  x0:=(aa+bb)-a;
+  x1:=((-0.5)*(aa+bb))-a;
+  x2:=0.5*sqrt(3)*(aa-bb);
+  if abs(x2)<1e-14 then begin
+   result:=2;
+  end else begin
+   result:=1;
+  end;
+ end;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt;
+var bn,cn,dn:TpvDouble;
+begin
+ if IsZero(a) then begin
+  result:=SolveQuadratic(x0,x1,b,c,d);
+ end else begin
+  bn:=b/a;
+  cn:=c/a;
+  dn:=d/a;
+  if (abs(bn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) and
+     (abs(cn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) and
+     (abs(dn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) then begin
+   result:=SolveCubicNormed(x0,x1,x2,bn,cn,dn);
+  end else begin
+   result:=SolveQuadratic(x0,x1,b,c,d);
+  end;
+ end;
+end;
+
+{ TpvSignedDistanceField2DGenerator }
 
 constructor TpvSignedDistanceField2DGenerator.Create;
 begin
