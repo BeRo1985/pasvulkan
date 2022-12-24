@@ -295,6 +295,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               function Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
               function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
               procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
+              procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
             end;
             PEdgeSegment=^TEdgeSegment;
       private
@@ -771,6 +772,58 @@ begin
    if abs(PseudoDistance)<=abs(aDistance.Distance) then begin
     aDistance.Distance:=PseudoDistance;
     aDistance.Dot:=0.0;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+var b,a0,a1,a2:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Param:TpvDouble;
+    Params:array[0..1] of TpvDouble;
+    Solutions:TpvSizeInt;
+begin
+ case Type_ of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
+   aBounds.PointBounds(Points[0]);
+   aBounds.PointBounds(Points[1]);
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
+   aBounds.PointBounds(Points[0]);
+   aBounds.PointBounds(Points[2]);
+   b:=(Points[1]-Points[0])-(Points[2]-Points[1]);
+   if not IsZero(b.x) then begin
+    Param:=(Points[1].x-Points[0].x)/b.x;
+    if (Param>0.0) and (Param<1.0) then begin
+     aBounds.PointBounds(Point(Param));
+    end;
+   end;
+   if not IsZero(b.y) then begin
+    Param:=(Points[1].y-Points[0].y)/b.y;
+    if (Param>0.0) and (Param<1.0) then begin
+     aBounds.PointBounds(Point(Param));
+    end;
+   end;
+  end;
+  else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
+   aBounds.PointBounds(Points[0]);
+   aBounds.PointBounds(Points[3]);
+   a0:=Points[1]-Points[0];
+   a1:=((Points[2]-Points[1])-a0)*2.0;
+   a2:=((Points[3]-(Points[2]*3.0))+(Points[1]*3.0))-Points[0];
+   Solutions:=SolveQuadratic(Params[0],Params[1],a2.x,a1.x,a0.x);
+   if (Solutions>0) and ((Params[0]>0.0) and (Params[0]<1.0)) then begin
+    aBounds.PointBounds(Point(Params[0]));
+   end;
+   if (Solutions>1) and ((Params[1]>0.0) and (Params[1]<1.0)) then begin
+    aBounds.PointBounds(Point(Params[1]));
+   end;
+   Solutions:=SolveQuadratic(Params[0],Params[1],a2.y,a1.y,a0.y);
+   if (Solutions>0) and ((Params[0]>0.0) and (Params[0]<1.0)) then begin
+    aBounds.PointBounds(Point(Params[0]));
+   end;
+   if (Solutions>1) and ((Params[1]>0.0) and (Params[1]<1.0)) then begin
+    aBounds.PointBounds(Point(Params[1]));
    end;
   end;
  end;
