@@ -280,8 +280,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
 	            CUBIC=2
              );
        const TOO_LARGE_RATIO=1e12;
-             MSDFGEN_CUBIC_SEARCH_STARTS=4;
-             MSDFGEN_CUBIC_SEARCH_STEPS=4;
+             MSDFGEN_CUBIC_SEARCH_STARTS=8;
+             MSDFGEN_CUBIC_SEARCH_STEPS=8;
        type { TEdgeSegment }
             TEdgeSegment=record
              public
