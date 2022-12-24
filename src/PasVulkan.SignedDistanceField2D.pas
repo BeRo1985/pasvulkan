@@ -300,7 +300,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
               procedure SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
             end;
-            PEdgeSegment=^TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
+            PEdgeSegment=^TEdgeSegment;
             TEdgeSegments=array of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
             { TContour }
             TContour=record
@@ -313,7 +313,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
               function Winding:TpvSizeInt;
             end;
-            PContour=^TpvSignedDistanceField2DMSDFGenerator.TContour;
+            PContour=^TContour;
             TContours=array of TpvSignedDistanceField2DMSDFGenerator.TContour;
             { TShape }
             TShape=record
@@ -328,7 +328,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
              procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
              function GetBounds(const aBorder:TpvDouble=0.0;const aMiterLimit:TpvDouble=0;const aPolarity:TpvSizeInt=0):TpvSignedDistanceField2DMSDFGenerator.TBounds;
             end;
-            PShape=^TpvSignedDistanceField2DMSDFGenerator.TShape;
+            PShape=^TShape;
             TShapes=array of TpvSignedDistanceField2DMSDFGenerator.TShape;
       private
        class function Median(a,b,c:TpvDouble):TpvDouble; static;
@@ -340,6 +340,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
        class procedure AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
+       class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
       public
 
      end;
@@ -1214,7 +1215,7 @@ begin
  result:=(b.x-a.x)*(a.y+b.y);
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2);
 var Bounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;
     l,b,r,t:TpvDouble;
     Frame,Dimensions:TpvSignedDistanceField2DMSDFGenerator.TVector2;
@@ -1248,6 +1249,13 @@ end;
 class function TpvSignedDistanceField2DMSDFGenerator.IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean;
 begin
  result:=(aDirection.Dot(bDirection)<=0) or (abs(aDirection.Dot(bDirection))>aCrossThreshold);
+end;
+
+class procedure TpvSignedDistanceField2DMSDFGenerator.SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK);
+var Combined:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
+begin
+ Combined:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor(TpvUInt32(TpvUInt32(aColor) and TpvUInt32(aBanned)));
+
 end;
 
 { TpvSignedDistanceField2DGenerator }
