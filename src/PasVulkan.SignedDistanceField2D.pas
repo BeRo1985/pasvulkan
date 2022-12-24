@@ -338,6 +338,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
             end;
             PPixel=^TPixel;
             TPixels=array of TPixel;
+            TPixelArray=array[0..65535] of TPixel;
+            PPixelArray=^TPixelArray;
             TImage=record
              Width:TpvSizeInt;
              Height:TpvSizeInt;
@@ -357,6 +359,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
        class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+       class function DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1477,6 +1480,42 @@ begin
    Pixel^.a:=(MinDistance.Distance/aRange)+0.5;
   end;
  end;
+end;
+
+class function TpvSignedDistanceField2DMSDFGenerator.DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
+var a0,a1,a2,b0,b1,b2,t:TpvDouble;
+begin
+ a0:=a.r;
+ a1:=a.g;
+ a2:=a.b;
+ b0:=b.r;
+ b1:=b.g;
+ b2:=b.b;
+ if abs(b0-a0)<abs(b1-a1) then begin
+  t:=a0;
+  a0:=a1;
+  a1:=t;
+  t:=b0;
+  b0:=b1;
+  b1:=t;
+ end;
+ if abs(b1-a1)<abs(b2-a2) then begin
+  t:=a1;
+  a1:=a2;
+  a2:=t;
+  t:=b1;
+  b1:=b2;
+  b2:=t;
+  if abs(b0-a0)<abs(b1-a1) then begin
+   t:=a0;
+   a0:=a1;
+   a1:=t;
+   t:=b0;
+   b0:=b1;
+   b1:=t;
+  end;
+ end;
+ result:=(abs(b1-a1)>=aThreshold) and (not (SameValue(b0,b1) and SameValue(b0,b2))) and (abs(a2-0.5)>=abs(b2-0.5));
 end;
 
 { TpvSignedDistanceField2DGenerator }
