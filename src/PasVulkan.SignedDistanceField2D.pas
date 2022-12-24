@@ -360,7 +360,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
        class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
        class function DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
-       class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvDouble); static;
+       class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -1421,8 +1421,8 @@ var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
     MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
     Pixel:TpvSignedDistanceField2DMSDFGenerator.PPixel;
 begin
- for x:=0 to aImage.Width-1 do begin
-  for y:=0 to aImage.Height-1 do begin
+ for y:=0 to aImage.Height-1 do begin
+  for x:=0 to aImage.Width-1 do begin
    if aShape.InverseYAxis then begin
     p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,(aImage.Height-(y+1))+0.5)/aScale)-aTranslate;
    end else begin
@@ -1519,9 +1519,19 @@ begin
  result:=(abs(b1-a1)>=aThreshold) and (not (SameValue(b0,b1) and SameValue(b0,b2))) and (abs(a2-0.5)>=abs(b2-0.5));
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvDouble);
+class procedure TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+var x,y:TpvSizeInt;
 begin
+ for y:=0 to aImage.Height-1 do begin
+  for x:=0 to aImage.Width-1 do begin
+   if ((x>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x-1)],aThreshold.x)) or
+      ((x<(aImage.Width-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[(y*aImage.Width)+(x+1)],aThreshold.x)) or
+		  ((y>0) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y-1)*aImage.Width)+x],aThreshold.y)) or
+      ((y<(aImage.Height-1)) and TpvSignedDistanceField2DMSDFGenerator.DetectClash(aImage.Pixels[(y*aImage.Width)+x],aImage.Pixels[((y+1)*aImage.Width)+x],aThreshold.y)) then begin
 
+   end;
+  end;
+ end;
 end;
 
 { TpvSignedDistanceField2DGenerator }
