@@ -296,9 +296,21 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
               procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
-              procedure SplitInThree(out aPart1,aPart2,aPart3:TEdgeSegment);
+              procedure SplitInThree(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
             end;
             PEdgeSegment=^TEdgeSegment;
+            TEdgeSegments=array of TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment;
+            { TContour }
+            TContour=record
+             public
+              Edges:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegments;
+              Count:TpvSizeInt;
+              function Create:TContour;
+              function AddEdge(const aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+              procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+              procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
+              function Winding:TpvSizeInt;
+            end;
       private
        class function Median(a,b,c:TpvDouble):TpvDouble; static;
        class function Sign(n:TpvDouble):TpvInt32; static;
@@ -870,6 +882,62 @@ begin
    end;
   end;
  end;
+end;
+
+{ TpvSignedDistanceField2DMSDFGenerator.TContour }
+
+function TpvSignedDistanceField2DMSDFGenerator.TContour.Create:TpvSignedDistanceField2DMSDFGenerator.TContour;
+begin
+ result.Edges:=nil;
+ result.Count:=0;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TContour.AddEdge(const aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+begin
+ if Count>=length(Edges) then begin
+  SetLength(Edges,(Count+1)+((Count+1) shr 1)); // Grow factor 1.5
+ end;
+ Edges[Count]:=aEdge;
+ inc(Count);
+ result:=@Edges[Count];
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TContour.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to Count-1 do begin
+  Edges[Index].Bounds(aBounds);
+ end;
+end;
+
+procedure TpvSignedDistanceField2DMSDFGenerator.TContour.BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
+var Index:TpvSizeInt;
+    PreviousDirection,Direction,Miter:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+    MiterLength,q:TpvDouble;
+begin
+ if Count>0 then begin
+  PreviousDirection:=Edges[Count-1].Direction(1).Normalize;
+  for Index:=0 to Count-1 do begin
+   Edge:=@Edges[Index];
+   Direction:=-Edge^.Direction(0).Normalize;
+   if (aPolarity*PreviousDirection.Cross(Direction))>=0.0 then begin
+    MiterLength:=aMiterLimit;
+    q:=(1.0-PreviousDirection.Dot(Direction))*0.5;
+    if q>0.0 then begin
+     MiterLength:=Min(1.0/sqrt(q),aMiterLimit);
+    end;
+    Miter:=Edge^.Point(0)+((PreviousDirection+Direction).Normalize*(aBorder*MiterLength));
+    aBounds.PointBounds(Miter);
+   end;
+   PreviousDirection:=Edge^.Direction(1).Normalize;
+  end;
+ end;
+end;
+
+function TpvSignedDistanceField2DMSDFGenerator.TContour.Winding:TpvSizeInt;
+begin
+
 end;
 
 { TpvSignedDistanceField2DMSDFGenerator }
