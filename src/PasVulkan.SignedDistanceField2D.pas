@@ -1252,10 +1252,33 @@ begin
 end;
 
 class procedure TpvSignedDistanceField2DMSDFGenerator.SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK);
+const Start:array[0..2] of TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=
+       (
+        TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.CYAN,
+        TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.MAGENTA,
+        TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.YELLOW
+       );
 var Combined:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
+    Shifted:TpvUInt32;
 begin
  Combined:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor(TpvUInt32(TpvUInt32(aColor) and TpvUInt32(aBanned)));
-
+ case Combined of
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED,
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN,
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE:begin
+   aColor:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor(TpvUInt32(TpvUInt32(aColor) xor TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE)));
+  end;
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK,
+  TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE:begin
+   aColor:=Start[aSeed mod 3];
+   aSeed:=aSeed div 3;
+  end;
+  else begin
+   Shifted:=TpvUInt32(aColor) shl (1+(aSeed and 1));
+   aColor:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor(TpvUInt32(TpvUInt32(Shifted or (Shifted shr 3)) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE)));
+   aSeed:=aSeed shr 1;
+  end;
+ end;
 end;
 
 { TpvSignedDistanceField2DGenerator }
