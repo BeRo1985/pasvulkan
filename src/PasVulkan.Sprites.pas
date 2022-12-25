@@ -222,7 +222,7 @@ type EpvSpriteAtlas=class(Exception);
        fTrimmedRect:TpvRect;
        fOffset:TpvVector2;
        fSize:TpvVector2;
-       fSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant;
+       fSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant;
        function GetSignedDistanceField:boolean; inline;
        procedure SetSignedDistanceField(const aSignedDistanceField:boolean); inline;
        function GetRotated:boolean; inline;
@@ -254,7 +254,7 @@ type EpvSpriteAtlas=class(Exception);
        property ScaleX:TpvFloat read fScaleX write fScaleX;
        property ScaleY:TpvFloat read fScaleY write fScaleY;
        property SignedDistanceField:boolean read GetSignedDistanceField write SetSignedDistanceField;
-       property SignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant read fSignedDistanceFieldVariant write fSignedDistanceFieldVariant;
+       property SignedDistanceFieldVariant:TpvSignedDistanceField2DVariant read fSignedDistanceFieldVariant write fSignedDistanceFieldVariant;
        property Rotated:boolean read GetRotated write SetRotated;
      end;
 
@@ -330,8 +330,8 @@ type EpvSpriteAtlas=class(Exception);
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
        function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
-       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite; overload;
-       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
        function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
        procedure LoadFromStream(const aStream:TStream);
@@ -1755,7 +1755,7 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF):TpvSprite;
 var SignedDistanceField:TpvSignedDistanceField2D;
 begin
  SignedDistanceField.Pixels:=nil;
@@ -1772,7 +1772,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF):TpvSprite;
 var VectorPath:TpvVectorPath;
 begin
  VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
@@ -2144,7 +2144,7 @@ begin
       Sprite.fScaleX:=ReadFloat;
       Sprite.fScaleY:=ReadFloat;
       if TpvSpriteFlag.SignedDistanceField in Sprite.fFlags then begin
-       Sprite.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant(TpvUInt8(ReadUInt8));
+       Sprite.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DVariant(TpvUInt8(ReadUInt8));
       end;
       Sprite.fTrimmedHullVectors:=nil;
       if (ui8 and 4)<>0 then begin

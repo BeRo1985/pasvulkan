@@ -243,7 +243,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fFillRule:TpvCanvasFillRule;
        fFillStyle:TpvCanvasFillStyle;
        fFillWrapMode:TpvCanvasFillWrapMode;
-       fSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant;
        fColor:TpvVector4;
        fClipRect:TpvRect;
        fScissor:TVkRect2D;
@@ -294,7 +293,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillRule:TpvCanvasFillRule read fFillRule write fFillRule;
        property FillStyle:TpvCanvasFillStyle read fFillStyle write fFillStyle;
        property FillWrapMode:TpvCanvasFillWrapMode read fFillWrapMode write fFillWrapMode;
-       property SignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant read fSignedDistanceFieldVariant write fSignedDistanceFieldVariant;
        property Font:TpvFont read fFont write fFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
@@ -608,6 +606,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
+       fSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
@@ -1292,7 +1291,6 @@ begin
  fFillRule:=TpvCanvasFillRule.EvenOdd;
  fFillStyle:=TpvCanvasFillStyle.Color;
  fFillWrapMode:=TpvCanvasFillWrapMode.None;
- fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant.SDF;
  fColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
@@ -3921,7 +3919,7 @@ begin
  result:=(TpvUInt32(fInternalRenderingMode) shl pvcvsRenderingModeShift) or
          (TpvUInt32(fState.fFillStyle) shl pvcvsFillStyleShift) or
          (TpvUInt32(fState.fFillWrapMode) shl pvcvsFillWrapModeShift) or
-         (TpvUInt32(fState.fSignedDistanceFieldVariant) shl pvcvsSignedDistanceFieldVariantShift);
+         (TpvUInt32(fSignedDistanceFieldVariant) shl pvcvsSignedDistanceFieldVariantShift);
 end;
 
 procedure TpvCanvas.GarbageCollectDescriptors;
@@ -4580,10 +4578,10 @@ begin
 
  if aSprite.SignedDistanceField then begin
   fInternalRenderingMode:=TpvCanvasRenderingMode.SignedDistanceField;
-  fState.fSignedDistanceFieldVariant:=aSprite.SignedDistanceFieldVariant;
+  fSignedDistanceFieldVariant:=aSprite.SignedDistanceFieldVariant;
  end else begin
   fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
-  fState.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant.SDF;
+  fSignedDistanceFieldVariant:=TpvSignedDistanceField2DVariant(TpvUInt8(0));
  end;
 
  VertexColor.r:=fState.fColor.r;

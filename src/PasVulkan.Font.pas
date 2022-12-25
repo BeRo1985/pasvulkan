@@ -224,15 +224,15 @@ type EpvFont=class(Exception);
        fCodePointToGlyphMap:TpvFontCodePointToGlyphMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fSignedDistanceFieldJobs:TpvFontSignedDistanceFieldJobs;
-       fSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant;
+       fSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant;
        fMonospaceSize:TpvVector2;
        fHasMonospaceSize:boolean;
        procedure CalculateMonospaceSize;
-       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant);
+       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DVariant);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF);
+       constructor CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF);
        constructor CreateFromStream(const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
        constructor CreateFromFile(const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
@@ -387,7 +387,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF);
+constructor TpvFont.CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean;const aPadding:TpvInt32;const aTrimPadding:TpvInt32;const aConvexHullTrimming:boolean;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
       GlyphRasterizationToMetaScaleFactor=1.0/4.0;
@@ -1315,7 +1315,7 @@ begin
  end;
 end;
 
-procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant);
+procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DVariant);
 const Scale=1.0/256.0;
 var CommandIndex,x,y:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
