@@ -308,7 +308,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
               Edges:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegments;
               Count:TpvSizeInt;
               class function Create:TContour; static;
-              function AddEdge(const aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+              function AddEdge({$ifdef fpc}constref{$else}const{$endif} aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
               procedure BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
               function Winding:TpvSizeInt;
@@ -354,7 +354,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
        class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
-       class procedure AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+       class procedure AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
@@ -935,7 +935,7 @@ begin
  result.Count:=0;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TContour.AddEdge(const aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
+function TpvSignedDistanceField2DMSDFGenerator.TContour.AddEdge({$ifdef fpc}constref{$else}const{$endif} aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
 begin
  if Count>=length(Edges) then begin
   SetLength(Edges,(Count+1)+((Count+1) shr 1)); // Grow factor 1.5
@@ -1235,7 +1235,7 @@ begin
  result:=(b.x-a.x)*(a.y+b.y);
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame(const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2);
 var Bounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;
     l,b,r,t:TpvDouble;
     Frame,Dimensions:TpvSignedDistanceField2DMSDFGenerator.TVector2;
