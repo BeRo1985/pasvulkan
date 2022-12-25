@@ -292,7 +292,7 @@ type EpvSpriteAtlas=class(Exception);
 
      TpvSpriteAtlas=class
       private
-       const FileFormatGUID:TGUID='{DBF9E645-5C92-451B-94F7-134C891D484E}';
+       const FileFormatGUID:TGUID='{DBF9E645-5C92-451B-94F7-134C891D484F}';
       private
        fDevice:TpvVulkanDevice;
        fArrayTextures:TpvSpriteAtlasArrayTextures;
@@ -2130,6 +2130,7 @@ begin
       if (ui8 and 2)<>0 then begin
        Include(Sprite.fFlags,TpvSpriteFlag.Rotated);
       end;
+      Sprite.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant(TpvUInt8(ReadUInt8));
       Sprite.fX:=ReadInt32;
       Sprite.fY:=ReadInt32;
       Sprite.fLayer:=ReadInt32;
@@ -2374,6 +2375,7 @@ begin
        WriteUInt8((TpvUInt8(ord(TpvSpriteFlag.SignedDistanceField in Sprite.fFlags) and 1) shl 0) or
                   (TpvUInt8(ord(TpvSpriteFlag.Rotated in Sprite.fFlags) and 1) shl 1) or
                   (TpvUInt8(ord(length(Sprite.fTrimmedHullVectors)>0) and 1) shl 2));
+       WriteUInt8(TpvUInt8(Sprite.fSignedDistanceFieldVariant));
        WriteInt32(Sprite.fX);
        WriteInt32(Sprite.fY);
        WriteInt32(Sprite.fLayer);
