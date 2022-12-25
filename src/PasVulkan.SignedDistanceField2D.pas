@@ -2038,35 +2038,16 @@ end;
 procedure TpvSignedDistanceField2DGenerator.InitializeDistances;
 var Index:TpvInt32;
 begin
- case fMultiChannelMode of
-  TMultiChannelMode.Gradients:begin
-   for Index:=0 to length(fDistanceFieldData)-1 do begin
-    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
-    if fColorChannelIndex=0 then begin
-     fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
-    end;
-    fDistanceFieldData[Index].DeltaWindingScore:=0;
-   end;
-  end;
-  TMultiChannelMode.Multisampling:begin
-   for Index:=0 to length(fDistanceFieldData)-1 do begin
-    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].DeltaWindingScore:=0;
-   end;
-  end;
-  else begin
-   for Index:=0 to length(fDistanceFieldData)-1 do begin
-    fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].SquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].SquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].SquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
-    fDistanceFieldData[Index].PseudoSquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].PseudoSquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].PseudoSquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
-    fDistanceFieldData[Index].DeltaWindingScore:=0;
-   end;
-  end;
+ for Index:=0 to length(fDistanceFieldData)-1 do begin
+  fDistanceFieldData[Index].SquaredDistance:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].SquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].SquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].SquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].Distance:=DistanceField2DMagnitudeValue;
+  fDistanceFieldData[Index].PseudoSquaredDistanceR:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].PseudoSquaredDistanceG:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].PseudoSquaredDistanceB:=sqr(DistanceField2DMagnitudeValue);
+  fDistanceFieldData[Index].DeltaWindingScore:=0;
  end;
 end;
 
