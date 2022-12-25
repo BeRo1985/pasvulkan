@@ -3557,6 +3557,7 @@ end;
 procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
 var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
     PasMPInstance:TPasMP;
+    OK:boolean;
  procedure GenerateMSDF;
  var x,y:TpvSizeInt;
      MSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
@@ -3656,49 +3657,58 @@ begin
 
     try
 
-     for ColorChannelIndex:=0 to CountColorChannels-1 do begin
+     Initialize(fShape);
+     try
 
-      Initialize(fShape);
+      fPointInPolygonPathSegments:=nil;
       try
 
-       fColorChannelIndex:=ColorChannelIndex;
+       for TryIteration:=0 to 2 do begin
 
-       fPointInPolygonPathSegments:=nil;
-       try
+        case TryIteration of
 
-        for TryIteration:=0 to 2 do begin
-         case TryIteration of
-          0,1:begin
-           InitializeDistances;
-           ConvertShape(TryIteration in [1,2]);
-           if fMultiChannelMode=TMultiChannelMode.MSDF then begin
-            NormalizeShape;
-            PathSegmentColorizeShape;
-            NormalizeShape;
-           end;
-          end;
-          else {2:}begin
-           InitializeDistances;
-           ConvertShape(true);
-           ConvertToPointInPolygonPathSegments;
+         0,1:begin
+          InitializeDistances;
+          ConvertShape(TryIteration in [1,2]);
+          if fMultiChannelMode=TMultiChannelMode.MSDF then begin
+           NormalizeShape;
+           PathSegmentColorizeShape;
+           NormalizeShape;
           end;
          end;
-         PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
-         if GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
-          break;
-         end else begin
-          // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
+
+         else {2:}begin
+          InitializeDistances;
+          ConvertShape(true);
+          ConvertToPointInPolygonPathSegments;
          end;
         end;
 
-       finally
-        fPointInPolygonPathSegments:=nil;
+        OK:=true;
+
+        for ColorChannelIndex:=0 to CountColorChannels-1 do begin
+         fColorChannelIndex:=ColorChannelIndex;
+         PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
+         if not GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
+          OK:=false;
+          break;
+         end;
+        end;
+
+        if OK then begin
+         break;
+        end else begin
+         // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
+        end;
+
        end;
 
       finally
-       Finalize(fShape);
+       fPointInPolygonPathSegments:=nil;
       end;
 
+     finally
+      Finalize(fShape);
      end;
 
     finally
@@ -3711,6 +3721,7 @@ begin
    end;
 
   end;
+
  end;
 
 end;
