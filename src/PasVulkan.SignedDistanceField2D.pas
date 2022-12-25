@@ -751,8 +751,8 @@ begin
    end;
    for Index:=0 to Solutions-1 do begin
 		if (t[Index]>0.0) and (t[Index]<1.0) then begin
-     qe:=((Points[0]+(ab*(2.0*t[Index])))+(br*sqr(t[Index])))-aOrigin;
-     Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(Direction(t[Index]).Cross(qe))*qe.Length;
+     qe:=(qa+(ab*(2.0*t[Index])))+(br*sqr(t[Index]));
+     Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign((ab+(br*t[Index])).Cross(qe))*qe.Length;
   	 if abs(Distance)<abs(MinDistance) then begin
 	    MinDistance:=Distance;
       aParam:=t[Index];
@@ -786,26 +786,22 @@ begin
    end;
    for Index:=0 to TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STARTS-1 do begin
     Time:=Index/TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STARTS;
-    Step:=0;
-    repeat
-		 qe:=(((Points[0]+(ab*(3.0*Time)))+(br*(3.0*sqr(Time))))+(sa*(sqr(Time)*Time)))-aOrigin;
-		 Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(Direction(Time).Cross(qe))*qe.Length();
-     if abs(Distance)<abs(MinDistance) then begin
-      MinDistance:=Distance;
-      aParam:=Time;
-     end;
-     if Step<=TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STEPS then begin
-      break;
-     end;
-     d1:=((sa*(3.0*sqr(Time)))+(br*(6*Time)))+(ab*3.0);
-     d2:=(sa*(6*Time))+(br*6);
+    qe:=(((Points[0]+(ab*(3.0*Time)))+(br*(3.0*sqr(Time))))+(sa*(sqr(Time)*Time)))-aOrigin;
+    for Step:=0 to TpvSignedDistanceField2DMSDFGenerator.MSDFGEN_CUBIC_SEARCH_STEPS-1 do begin
+     d1:=((ab*3.0)+(br*(6.0*Time)))+(sa*(sqr(Time)*3.0));
+     d2:=(br*6.0)+(sa*(6.0*Time));
      Time:=Time-(qe.Dot(d1)/(d1.Dot(d1)+qe.Dot(d2)));
-     if (Time<0.0) or (Time>1.0) then begin
-      break;
+     if (Time>0.0) and (Time<1.0) then begin
+      qe:=(((Points[0]+(ab*(3.0*Time)))+(br*(3.0*sqr(Time))))+(sa*(sqr(Time)*Time)))-aOrigin;
+ 	    Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(d1.Cross(qe))*qe.Length();
+      if abs(Distance)<abs(MinDistance) then begin
+       MinDistance:=Distance;
+       aParam:=Time;
+      end;
      end else begin
-      inc(Step);
+      break;
      end;
-    until false;
+    end;
    end;
    if (aParam>=0.0) and (aParam<=1.0) then begin
     result:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Create(MinDistance,0.0);
@@ -1163,8 +1159,8 @@ end;
 class function TpvSignedDistanceField2DMSDFGenerator.SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt;
 var d:TpvDouble;
 begin
- if IsZero(a) or ((abs(b)+abs(c))>(TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO*abs(a))) then begin
-  if IsZero(b) or (abs(c)>(TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO*abs(b))) then begin
+ if IsZero(a) or (abs(b)>(abs(a)*1e+12)) then begin
+  if IsZero(b) then begin
    if IsZero(c) then begin
     result:=-1;
    end else begin
@@ -1191,13 +1187,18 @@ begin
 end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt;
-var a2,q,r,r2,q3,t,aa,bb:TpvDouble;
+const ONE_OVER_3=1.0/3.0;
+      ONE_OVER_9=1.0/9.0;
+      ONE_OVER_54=1.0/9.0;
+      BoolSign:array[boolean] of TpvInt32=(-1,1);
+var a2,q,r,r2,q3,t,u,v:TpvDouble;
 begin
  a2:=sqr(a);
- q:=(a2-(3.0*b))/9.0;
- r:=((a*((2.0*a2)-(9.0*b)))+(27*c))/54.0;
+ q:=ONE_OVER_9*(a2-(3.0*b));
+ r:=ONE_OVER_54*((a*((2.0*a2)-(9.0*b)))+(27*c));
  r2:=sqr(r);
  q3:=sqr(q)*q;
+ a:=a*ONE_OVER_3;
  if r2<q3 then begin
   t:=r/sqrt(q3);
   if t<-1.0 then begin
@@ -1206,27 +1207,21 @@ begin
    t:=1.0;
   end;
   t:=ArcCos(t);
-  a:=a/3.0;
   q:=(-2.0)*sqrt(q);
-  x0:=(q*cos(t/3.0))-a;
-  x1:=(q*cos(((t+2)*PI)/3.0))-a;
-  x2:=(q*cos(((t-2)*PI)/3.0))-a;
+  x0:=(q*cos(ONE_OVER_3*t))-a;
+  x1:=(q*cos(ONE_OVER_3*((t+2)*PI)))-a;
+  x2:=(q*cos(ONE_OVER_3*((t-2)*PI)))-a;
   result:=3;
  end else begin
-  aa:=-Power(abs(r)+sqrt(r2-q3),1.0/3.0);
-  if r<0 then begin
-   aa:=-aa;
-  end;
-  if IsZero(aa) then begin
-   bb:=0.0;
+  u:=BoolSign[Boolean(r<0)]*Power(abs(r)+sqrt(r2-q3),1.0/3.0);
+  if IsZero(u) then begin
+   v:=0.0;
   end else begin
-   bb:=q/aa;
+   v:=q/u;
   end;
-  a:=a/3.0;
-  x0:=(aa+bb)-a;
-  x1:=((-0.5)*(aa+bb))-a;
-  x2:=0.5*sqrt(3)*(aa-bb);
-  if abs(x2)<1e-14 then begin
+  x0:=(u+v)-a;
+  if SameValue(u,v) or (abs(u-v)<(1e-12*abs(u+v))) then begin
+   x1:=((-0.5)*(u+v))-a;
    result:=2;
   end else begin
    result:=1;
@@ -1235,18 +1230,14 @@ begin
 end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt;
-var bn,cn,dn:TpvDouble;
+var bn:TpvDouble;
 begin
  if IsZero(a) then begin
   result:=SolveQuadratic(x0,x1,b,c,d);
  end else begin
   bn:=b/a;
-  cn:=c/a;
-  dn:=d/a;
-  if (abs(bn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) and
-     (abs(cn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) and
-     (abs(dn)<TpvSignedDistanceField2DMSDFGenerator.TOO_LARGE_RATIO) then begin
-   result:=SolveCubicNormed(x0,x1,x2,bn,cn,dn);
+  if abs(bn)<1e+6 then begin
+   result:=SolveCubicNormed(x0,x1,x2,bn,c/a,d/a);
   end else begin
    result:=SolveQuadratic(x0,x1,b,c,d);
   end;
