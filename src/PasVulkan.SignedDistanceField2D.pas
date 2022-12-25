@@ -383,7 +383,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        type TMultiChannelMode=
              (
               None,
-              MSDFGENCompatible,
+              MSDF,
               Gradients,
               Multisampling
              );
@@ -3211,7 +3211,7 @@ begin
       PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
       CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
       CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
-(**)  if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
+(**)  if fMultiChannelMode=TMultiChannelMode.MSDF then begin
        case PathSegment^.Type_ of
         TpvSignedDistanceField2DPathSegmentType.Line:begin
          Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
@@ -3274,7 +3274,7 @@ begin
       if CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistance then begin
        DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
       end;
-      if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
+      if fMultiChannelMode=TMultiChannelMode.MSDF then begin
        if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Red)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
         DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
@@ -3496,7 +3496,7 @@ begin
    end;
    DistanceFieldPixel:=@fDistanceField^.Pixels[PixelIndex];
    case fMultiChannelMode of
-    TMultiChannelMode.MSDFGENCompatible:begin
+    TMultiChannelMode.MSDF:begin
      DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
      DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
      DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
@@ -3557,6 +3557,62 @@ end;
 procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aMultiChannelMode:TMultiChannelMode);
 var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
     PasMPInstance:TPasMP;
+ procedure GenerateMSDF;
+ var x,y:TpvSizeInt;
+     MSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
+     MSDFImage:TpvSignedDistanceField2DMSDFGenerator.TImage;
+     sp:TpvSignedDistanceField2DMSDFGenerator.PPixel;
+     dp:PpvSignedDistanceField2DPixel;
+ begin
+
+  MSDFImage.Pixels:=nil;
+  try
+
+   MSDFImage.Width:=aDistanceField.Width;
+   MSDFImage.Height:=aDistanceField.Height;
+
+   SetLength(MSDFImage.Pixels,MSDFImage.Width*MSDFImage.Height);
+
+   FillChar(MSDFImage.Pixels[0],MSDFImage.Width*MSDFImage.Height*SizeOf(TpvSignedDistanceField2DMSDFGenerator.TPixel),#0);
+
+   Initialize(fShape);
+   try
+
+    ConvertShape(false);
+
+    MSDFShape:=ConvertShapeToMSDFShape;
+    try
+
+     TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.0,1.0),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(0.0,0.0));
+
+     TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(VulkanDistanceField2DSpreadValue,VulkanDistanceField2DSpreadValue));
+
+     sp:=@MSDFImage.Pixels[0];
+     dp:=@aDistanceField.Pixels[0];
+     for y:=0 to MSDFImage.Height-1 do begin
+      for x:=0 to MSDFImage.Width-1 do begin
+       dp^.r:=Min(Max(Round(sp^.r*256),0),255);
+       dp^.g:=Min(Max(Round(sp^.g*256),0),255);
+       dp^.b:=Min(Max(Round(sp^.b*256),0),255);
+       dp^.a:=Min(Max(Round(sp^.a*256),0),255);
+       inc(sp);
+       inc(dp);
+      end;
+     end;
+
+    finally
+     MSDFShape.Contours:=nil;
+    end;
+
+   finally
+    Finalize(fShape);
+   end;
+
+  finally
+   MSDFImage.Pixels:=nil;
+  end;
+
+ end;
 begin
 
  PasMPInstance:=TPasMP.GetGlobalInstance;
@@ -3574,76 +3630,87 @@ begin
  fMultiChannelMode:=aMultiChannelMode;
 
  case aMultiChannelMode of
-  TMultiChannelMode.Gradients:begin
-   CountColorChannels:=3;
+
+  TMultiChannelMode.MSDF:begin
+   GenerateMSDF;
   end;
-  TMultiChannelMode.Multisampling:begin
-   CountColorChannels:=4;
-  end;
+
   else begin
-   CountColorChannels:=1;
-  end;
- end;
 
- fDistanceFieldData:=nil;
- try
+   case aMultiChannelMode of
+    TMultiChannelMode.Gradients:begin
+     CountColorChannels:=3;
+    end;
+    TMultiChannelMode.Multisampling:begin
+     CountColorChannels:=4;
+    end;
+    else begin
+     CountColorChannels:=1;
+    end;
+   end;
 
-  SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
+   fDistanceFieldData:=nil;
+   try
 
-  try
+    SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
 
-   for ColorChannelIndex:=0 to CountColorChannels-1 do begin
-
-    Initialize(fShape);
     try
 
-     fColorChannelIndex:=ColorChannelIndex;
+     for ColorChannelIndex:=0 to CountColorChannels-1 do begin
 
-     fPointInPolygonPathSegments:=nil;
-     try
+      Initialize(fShape);
+      try
 
-      for TryIteration:=0 to 2 do begin
-       case TryIteration of
-        0,1:begin
-         InitializeDistances;
-         ConvertShape(TryIteration in [1,2]);
-         if fMultiChannelMode=TMultiChannelMode.MSDFGENCompatible then begin
-          NormalizeShape;
-          PathSegmentColorizeShape;
-          NormalizeShape;
+       fColorChannelIndex:=ColorChannelIndex;
+
+       fPointInPolygonPathSegments:=nil;
+       try
+
+        for TryIteration:=0 to 2 do begin
+         case TryIteration of
+          0,1:begin
+           InitializeDistances;
+           ConvertShape(TryIteration in [1,2]);
+           if fMultiChannelMode=TMultiChannelMode.MSDF then begin
+            NormalizeShape;
+            PathSegmentColorizeShape;
+            NormalizeShape;
+           end;
+          end;
+          else {2:}begin
+           InitializeDistances;
+           ConvertShape(true);
+           ConvertToPointInPolygonPathSegments;
+          end;
+         end;
+         PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
+         if GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
+          break;
+         end else begin
+          // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
          end;
         end;
-        else {2:}begin
-         InitializeDistances;
-         ConvertShape(true);
-         ConvertToPointInPolygonPathSegments;
-        end;
+
+       finally
+        fPointInPolygonPathSegments:=nil;
        end;
-       PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
-       if GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
-        break;
-       end else begin
-        // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
-       end;
+
+      finally
+       Finalize(fShape);
       end;
 
-     finally
-      fPointInPolygonPathSegments:=nil;
      end;
 
     finally
-     Finalize(fShape);
+     fDistanceField:=nil;
+     fVectorPath:=nil;
     end;
 
+   finally
+    fDistanceFieldData:=nil;
    end;
 
-  finally
-   fDistanceField:=nil;
-   fVectorPath:=nil;
   end;
-
- finally
-  fDistanceFieldData:=nil;
  end;
 
 end;
