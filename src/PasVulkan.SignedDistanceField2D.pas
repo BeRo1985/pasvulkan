@@ -242,7 +242,12 @@ type TpvSignedDistanceField2DVariant=
               Dot:TpvDouble;
               constructor Create(const aDistance,aDot:TpvDouble);
               class function Empty:TSignedDistance; static;
+              class operator Equal(const a,b:TSignedDistance):boolean;
+              class operator NotEqual(const a,b:TSignedDistance):boolean;
               class operator LessThan(const a,b:TSignedDistance):boolean;
+              class operator LessThanOrEqual(const a,b:TSignedDistance):boolean;
+              class operator GreaterThan(const a,b:TSignedDistance):boolean;
+              class operator GreaterThanOrEqual(const a,b:TSignedDistance):boolean;
             end;
             { TBounds }
             TBounds=record
@@ -580,9 +585,34 @@ begin
  result.Dot:=1.0;
 end;
 
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Equal(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=SameValue(a.Distance,b.Distance) and SameValue(a.Dot,b.Dot);
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.NotEqual(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=(not SameValue(a.Distance,b.Distance)) or (not SameValue(a.Dot,b.Dot));
+end;
+
 class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.LessThan(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
 begin
  result:=(abs(a.Distance)<abs(b.Distance)) or (SameValue(a.Distance,b.Distance) and (a.Dot<b.Dot));
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.LessThanOrEqual(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=(abs(a.Distance)<abs(b.Distance)) or (SameValue(a.Distance,b.Distance) and ((a.Dot<=b.Dot) or SameValue(a.Dot,b.Dot)));
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.GreaterThan(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=(abs(a.Distance)>abs(b.Distance)) or (SameValue(a.Distance,b.Distance) and (a.Dot>b.Dot));
+end;
+
+class operator TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.GreaterThanOrEqual(const a,b:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance):boolean;
+begin
+ result:=(abs(a.Distance)>abs(b.Distance)) or (SameValue(a.Distance,b.Distance) and ((a.Dot>=b.Dot) or SameValue(a.Dot,b.Dot)));
 end;
 
 { TpvSignedDistanceField2DMSDFGenerator.TBounds }
