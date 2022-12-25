@@ -387,6 +387,7 @@ type TpvSignedDistanceField2DVariant=
              CurveTessellationTolerance=0.125;
              CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
              CurveRecursionLimit=16;
+       type TMSDFMatches=array of TpvInt8;
       private
        fPointInPolygonPathSegments:TpvSignedDistanceField2DPointInPolygonPathSegments;
        fVectorPath:TpvVectorPath;
@@ -399,6 +400,8 @@ type TpvSignedDistanceField2DVariant=
        fDistanceFieldData:TpvSignedDistanceField2DData;
        fColorChannelIndex:TpvSizeInt;
        fMSDFImage:TpvSignedDistanceField2DMSDFGenerator.PImage;
+       fMSDFAmbiguous:boolean;
+       fMSDFMatches:TMSDFMatches;
       protected
        function Clamp(const Value,MinValue,MaxValue:TpvInt64):TpvInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble; overload;
@@ -3419,7 +3422,7 @@ var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TpvInt32;
     DistanceFieldDataItem:PpvSignedDistanceField2DDataItem;
     DistanceFieldPixel:PpvSignedDistanceField2DPixel;
     p:TpvSignedDistanceField2DDoublePrecisionPoint;
-    oX,oY:TpvDouble;
+    oX,oY,SignedDistance:TpvDouble;
 begin
 
  result:=true;
@@ -3462,11 +3465,20 @@ begin
    case fVariant of
     TpvSignedDistanceField2DVariant.MSDF:begin
      if assigned(fMSDFImage) then begin
-      if Sign(fMSDFImage.Pixels[PixelIndex].a-0.5)<>DistanceFieldSign then begin
-       fMSDFImage.Pixels[PixelIndex].a:=0.5-(fMSDFImage.Pixels[PixelIndex].a-0.5);
+      SignedDistance:=TpvSignedDistanceField2DMSDFGenerator.Median(fMSDFImage^.Pixels[PixelIndex].r,fMSDFImage^.Pixels[PixelIndex].g,fMSDFImage^.Pixels[PixelIndex].b);
+      if SameValue(SignedDistance,0.5) then begin
+       fMSDFAmbiguous:=true;
+       fMSDFMatches[PixelIndex]:=0;
+      end else if TpvSignedDistanceField2DMSDFGenerator.Sign(SignedDistance-0.5)<>DistanceFieldSign then begin
        fMSDFImage.Pixels[PixelIndex].r:=0.5-(fMSDFImage.Pixels[PixelIndex].r-0.5);
        fMSDFImage.Pixels[PixelIndex].g:=0.5-(fMSDFImage.Pixels[PixelIndex].g-0.5);
        fMSDFImage.Pixels[PixelIndex].b:=0.5-(fMSDFImage.Pixels[PixelIndex].b-0.5);
+       fMSDFMatches[PixelIndex]:=-1;
+      end else begin
+       fMSDFMatches[PixelIndex]:=1;
+      end;
+      if TpvSignedDistanceField2DMSDFGenerator.Sign(fMSDFImage^.Pixels[PixelIndex].a-0.5)<>DistanceFieldSign then begin
+       fMSDFImage^.Pixels[PixelIndex].a:=0.5-(fMSDFImage.Pixels[PixelIndex].a-0.5);
       end;
      end;
     end;
@@ -3645,7 +3657,14 @@ var PasMPInstance:TPasMP;
      TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
 
      fMSDFImage:=@MSDFImage;
-     Generate;
+     fMSDFAmbiguous:=false;
+     fMSDFMatches:=nil;
+     try
+      SetLength(fMSDFMatches,MSDFImage.Width*MSDFImage.Height);
+      Generate;
+     finally
+      fMSDFMatches:=nil;
+     end;
      fMSDFImage:=nil;
 
      sp:=@MSDFImage.Pixels[0];
