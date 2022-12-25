@@ -359,7 +359,7 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
        class procedure GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt); static;
-       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil); static;
        class function DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
        class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
      end;
@@ -1483,12 +1483,45 @@ begin
  Pixel^.a:=(MinDistance.Distance/aRange)+0.5;
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2);
-var x,y:TpvSizeInt;
+type TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData=record
+      Image:TpvSignedDistanceField2DMSDFGenerator.PImage;
+      Shape:TpvSignedDistanceField2DMSDFGenerator.PShape;
+      Range:TpvDouble;
+      Scale:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+      Translate:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+     end;
+
+     PpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData=^TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
+
+procedure TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const DataPointer:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
+var Data:PpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
+    Index,x,y,w:TPasMPNativeInt;
 begin
- for y:=0 to aImage.Height-1 do begin
-  for x:=0 to aImage.Width-1 do begin
-   GenerateDistanceFieldPixel(aImage,aShape,aRange,aScale,aTranslate,x,y);
+ Data:=DataPointer;
+ w:=Data^.Image^.Width;
+ for Index:=FromIndex to ToIndex do begin
+  y:=Index div w;
+  x:=Index-(y*w);
+  TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(Data^.Image^,Data^.Shape^,Data^.Range,Data^.Scale,Data^.Translate,x,y);
+ end;
+end;
+
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil);
+var x,y:TpvSizeInt;
+    Data:TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
+begin
+ if assigned(aPasMPInstance) then begin
+  Data.Image:=@aImage;
+  Data.Shape:=@aShape;
+  Data.Range:=aRange;
+  Data.Scale:=aScale;
+  Data.Translate:=aTranslate;
+  aPasMPInstance.Invoke(aPasMPInstance.ParallelFor(@Data,0,(aImage.Width*aImage.Height)-1,TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldParallelForJobFunction,1,10,nil,0));
+ end else begin
+  for y:=0 to aImage.Height-1 do begin
+   for x:=0 to aImage.Width-1 do begin
+    TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(aImage,aShape,aRange,aScale,aTranslate,x,y);
+   end;
   end;
  end;
 end;
