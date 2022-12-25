@@ -3348,6 +3348,7 @@ implementation
 
 uses PasDblStrUtils,
      PasVulkan.Assets,
+     PasVulkan.SignedDistanceField2D,
      PasVulkan.VectorPath,
      PasVulkan.Image.PNG;
 
@@ -7107,7 +7108,9 @@ begin
                                               fInstance.fFontCodePointRanges,
                                               true,
                                               2,
-                                              1);
+                                              1,
+                                              false,
+                                              TpvSignedDistanceField2DVariant.MSDF);
    finally
     TrueTypeFont.Free;
    end;
@@ -7126,7 +7129,9 @@ begin
                                                   fInstance.fFontCodePointRanges,
                                                   true,
                                                   2,
-                                                  1);
+                                                  1,
+                                                  false,
+                                                  TpvSignedDistanceField2DVariant.MSDF);
    finally
     TrueTypeFont.Free;
    end;
@@ -7145,7 +7150,9 @@ begin
                                                         fInstance.fFontCodePointRanges,
                                                         true,
                                                         2,
-                                                        1);
+                                                        1,
+                                                        false,
+                                                        TpvSignedDistanceField2DVariant.MSDF);
    finally
     TrueTypeFont.Free;
    end;
@@ -7164,7 +7171,9 @@ begin
                                                     fInstance.fFontCodePointRanges,
                                                     true,
                                                     2,
-                                                    1);
+                                                    1,
+                                                    false,
+                                                    TpvSignedDistanceField2DVariant.MSDF);
    finally
     TrueTypeFont.Free;
    end;
@@ -7183,7 +7192,9 @@ begin
                                               fInstance.fMonoFontCodePointRanges,
                                               true,
                                               2,
-                                              1);
+                                              1,
+                                              false,
+                                              TpvSignedDistanceField2DVariant.MSDF);
    finally
     TrueTypeFont.Free;
    end;
