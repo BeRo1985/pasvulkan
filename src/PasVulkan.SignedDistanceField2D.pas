@@ -3314,7 +3314,7 @@ var PasMPInstance:TPasMP;
 
    TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
 
-   fMSDFShape:=@MDFShape;
+   fMSDFShape:=@MSDFShape;
    fMSDFImage:=@MSDFImage;
    fMSDFAmbiguous:=false;
    fMSDFMatches:=nil;
