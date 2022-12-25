@@ -82,7 +82,7 @@ const pvcvsRenderingModeShift=0;
       pvcvsObjectModeShift=2;
       pvcvsFillStyleShift=10;
       pvcvsFillWrapModeShift=12;
-      pvcvsSignedDistanceFieldVariantShift=15;
+      pvcvsSignedDistanceFieldVariantShift=14;
 
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=

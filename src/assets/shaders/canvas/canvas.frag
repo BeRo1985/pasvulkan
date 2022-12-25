@@ -350,8 +350,41 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
 
 #if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
 
+// In the best case effectively 5x (4+1) multisampled mono-SDF, otherwise just 1x in the worst case, depending on the texCoord gradient derivatives 
+float multiSampleSDF(const in TVEC texCoord){
+  const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0, PI = 3.14159, ONE_OVER_PI = 1.0 / 3.14159;     
+  float center = textureLod(uTexture, texCoord, 0.0).w;
+#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
+  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+#else
+  // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
+  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0); 
+  vec2 centerGradient = vec2(dFdx(center), dFdy(center));
+  float centerGradientSquaredLength = dot(centerGradient, centerGradient);
+  if(centerGradientSquaredLength < 1e-4){
+    centerGradient = vec2(SQRT_0_DOT_5); 
+  }else{
+    centerGradient *= inversesqrt(centerGradientSquaredLength); 
+  }
+  vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
+        Jdx = dFdx(Juv), 
+        Jdy = dFdy(Juv),
+        jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                                (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+  vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
+#endif
+  vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
+  return  clamp((linearstep(width.x, width.y, center) + 
+          dot(linearstep(width.xxxx, 
+                         width.yyyy,
+                         vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
+                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
+                              textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
+                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
+}
+
 // 4x multisampled 4-rook/RGSS SDF with a single texture lookup of four SDF values in the RGBA color channels 
-float sampleSDF(const in TVEC texCoord){
+float sampleSSAASDF(const in TVEC texCoord){
   const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), 
               ONE_BY_THREE = 1.0 / 3.0, 
               NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0);     
@@ -406,11 +439,79 @@ float sampleSDF(const in TVEC texCoord){
 }
 
 // In the best case effectively 16x multisampled SDF, otherwise just 4x in the worst case, depending on the texCoord gradient derivatives 
-float multiSampleSDF(const in TVEC texCoord){
+float multiSampleSSAASDF(const in TVEC texCoord){
   const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0);
   vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-  return dot(vec4(sampleSDF(ADJUST_TEXCOORD(buv.xy)), sampleSDF(ADJUST_TEXCOORD(buv.zy)), sampleSDF(ADJUST_TEXCOORD(buv.xw)), sampleSDF(ADJUST_TEXCOORD(buv.zw))), vec4(0.25));
+  return dot(vec4(sampleSSAASDF(ADJUST_TEXCOORD(buv.xy)), sampleSSAASDF(ADJUST_TEXCOORD(buv.zy)), sampleSSAASDF(ADJUST_TEXCOORD(buv.xw)), sampleSSAASDF(ADJUST_TEXCOORD(buv.zw))), vec4(0.25));
 }
+
+// In the best case effectively 16x multisampled gradient SDF, otherwise just 4x in the worst case, depending on the texCoord gradient derivatives 
+float multiSampleGSDF(const in TVEC texCoord){
+  const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0, PI = 3.14159, ONE_OVER_PI = 1.0 / 3.14159;     
+  vec4 centerTexel = textureLod(uTexture, texCoord, 0.0) - vec2(0.0, 0.5).xyyx;
+  float center = centerTexel.w;
+#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
+  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+#else
+  // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
+  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0); 
+  vec2 centerGradient = vec2(dFdx(center), dFdy(center));
+  float centerGradientSquaredLength = dot(centerGradient, centerGradient);
+  if(centerGradientSquaredLength < 1e-4){
+    centerGradient = vec2(SQRT_0_DOT_5); 
+  }else{
+    centerGradient *= inversesqrt(centerGradientSquaredLength); 
+  }
+  vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
+        Jdx = dFdx(Juv), 
+        Jdy = dFdy(Juv),
+        jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                                (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+  vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
+#endif
+  vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
+  vec4 t00 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0) - vec2(0.0, 0.5).xyyx;
+  vec4 t01 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0) - vec2(0.0, 0.5).xyyx;
+  vec4 t10 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0) - vec2(0.0, 0.5).xyyx;
+  vec4 t11 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0) - vec2(0.0, 0.5).xyyx;
+  return clamp(((linearstep(width.x, width.y, center) * (1.0 - abs(atan(centerTexel.z, centerTexel.y) * ONE_OVER_PI))) + 
+                dot(vec4(linearstep(width.xxxx, width.yyyy, vec4(t00.x, t01.x, t10.x, t11.x)) * 
+                        vec4(vec4(1.0) - abs(vec4(atan(t00.z, t00.y), atan(t01.z, t01.y), atan(t10.z, t10.y), atan(t11.z, t11.y)) * ONE_OVER_PI))), 
+                  vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
+}
+
+float sampleMSDF(const in TVEC texCoord){
+  vec4 centerTexel = textureLod(uTexture, texCoord, 0.0);
+  float center = max(min(centerTexel.x, centerTexel.y), min(max(centerTexel.x, centerTexel.y), centerTexel.z)); // median
+#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
+  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+#else
+  // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
+  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0); 
+  vec2 centerGradient = vec2(dFdx(center), dFdy(center));
+  float centerGradientSquaredLength = dot(centerGradient, centerGradient);
+  if(centerGradientSquaredLength < 1e-4){
+    centerGradient = vec2(SQRT_0_DOT_5); 
+  }else{
+    centerGradient *= inversesqrt(centerGradientSquaredLength); 
+  }
+  vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
+        Jdx = dFdx(Juv), 
+        Jdy = dFdy(Juv),
+        jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                                (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+  vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
+#endif
+  return linearstep(width.x, width.y, center); 
+}
+
+// In the best case effectively 4x multisampled gradient SDF, otherwise just 1x in the worst case, depending on the texCoord gradient derivatives 
+float multiSampleMSDF(const in TVEC texCoord){
+  const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0);
+  vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
+  return dot(vec4(sampleMSDF(ADJUST_TEXCOORD(buv.xy)), sampleMSDF(ADJUST_TEXCOORD(buv.zy)), sampleMSDF(ADJUST_TEXCOORD(buv.xw)), sampleMSDF(ADJUST_TEXCOORD(buv.zw))), vec4(0.25));
+}
+
 #endif
 
 void main(void){
@@ -430,56 +531,32 @@ void main(void){
 #endif
   switch(inState.x){ 
     case 1:{
-#if 1
-      color = vec2(1.0, multiSampleSDF(texCoord)).xxxy;
-#else
-      const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0, PI = 3.14159, ONE_OVER_PI = 1.0 / 3.14159;     
-#if 0
-      vec4 centerTexel = textureLod(uTexture, texCoord, 0.0) - vec2(0.0, 0.5).xyyx;
-      float center = centerTexel.w;
-#else
-      float center = textureLod(uTexture, texCoord, 0.0).w;
-#endif
-#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
-      vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
-#else
-      // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
-      const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0); 
-      vec2 centerGradient = vec2(dFdx(center), dFdy(center));
-      float centerGradientSquaredLength = dot(centerGradient, centerGradient);
-      if(centerGradientSquaredLength < 1e-4){
-        centerGradient = vec2(SQRT_0_DOT_5); 
-      }else{
-        centerGradient *= inversesqrt(centerGradientSquaredLength); 
-      }
-      vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
-           Jdx = dFdx(Juv), 
-           Jdy = dFdy(Juv),
-           jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
-                                   (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
-      vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
-#endif
-      vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-#if 0
-      vec4 t00 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0) - vec2(0.0, 0.5).xyyx;
-      vec4 t01 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0) - vec2(0.0, 0.5).xyyx;
-      vec4 t10 = textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0) - vec2(0.0, 0.5).xyyx;
-      vec4 t11 = textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0) - vec2(0.0, 0.5).xyyx;
-      color = vec4(vec3(1.0), clamp(((linearstep(width.x, width.y, center) * (1.0 - abs(atan(centerTexel.z, centerTexel.y) * ONE_OVER_PI))) + 
-                                       dot(vec4(linearstep(width.xxxx, width.yyyy, vec4(t00.x, t01.x, t10.x, t11.x)) * 
-                                                vec4(vec4(1.0) - abs(vec4(atan(t00.z, t00.y), atan(t01.z, t01.y), atan(t10.z, t10.y), atan(t11.z, t11.y)) * ONE_OVER_PI))), 
-                                          vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
-#else      
-      color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
-                                                dot(linearstep(width.xxxx, 
-                                                               width.yyyy,
-                                                               vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
-                                                                    textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
-                                                                    textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
-                                                                    textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
-#endif                                                                    
-      //color.a = pow(color.a, 2.2);
-#endif                                                                    
+      switch(inState.w & 0xf){ 
+        case 0:{
+          // Mono SDF
+          color = vec2(1.0, multiSampleSDF(texCoord)).xxxy;
+          break;
+        }
+        case 1:{
+          // Supersampling Antialiased SDF
+          color = vec2(1.0, multiSampleSSAASDF(texCoord)).xxxy;
+          break;
+        }
+        case 2:{
+          // Gradient SDF
+          color = vec2(1.0, multiSampleGSDF(texCoord)).xxxy;
+          break;
+        }
+        case 3:{
+          // Multi Channel SDF
+          color = vec2(1.0, multiSampleMSDF(texCoord)).xxxy;
+          break;
+        }
+        default:{
+          color = vec4(0.0);
+          break;
+        }
+      }      
       break;
     }
     default:{

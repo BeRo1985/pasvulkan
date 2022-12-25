@@ -46,7 +46,7 @@ void main(void){
   outState = ivec4(uvec4((inState >> 0u) & 0x3u,
                          (inState >> 2u) & 0xffu,                         
                          (inState >> 10u) & 0xfu,                         
-                         0u));
+                         (inState >> 14u) & 0xfu));
 #if !USECLIPDISTANCE
   outClipRect = inClipRect;
 #endif
