@@ -358,9 +358,9 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
        class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-       class procedure GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt); static;
-       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil); static;
-       class function DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
+       class procedure GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt); static;
+       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil); static;
+       class function DetectClash({$ifdef fpc}constref{$else}const{$endif} a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
        class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
      end;
 
@@ -1408,7 +1408,7 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt);
 type TEdgePoint=Record
       MinDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
       NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
@@ -1506,7 +1506,7 @@ begin
  end;
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil);
 var x,y:TpvSizeInt;
     Data:TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
 begin
@@ -1526,7 +1526,7 @@ begin
  end;
 end;
 
-class function TpvSignedDistanceField2DMSDFGenerator.DetectClash(const a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean;
+class function TpvSignedDistanceField2DMSDFGenerator.DetectClash({$ifdef fpc}constref{$else}const{$endif} a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean;
 var a0,a1,a2,b0,b1,b2,t:TpvDouble;
 begin
  a0:=a.r;
