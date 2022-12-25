@@ -381,14 +381,10 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
       public
        type TVariant=
              (
-              SDF=0,
-              Mono=0,
-              SSAASDF=1,
-              Supersampled=1,
-              GSDF=2,
-              Gradients=2,
-              MSDF=3,
-              MultiChannel=3
+              SDF=0,      // Mono SDF
+              SSAASDF=1,  // Supersampling Antialiased SDF
+              GSDF=2,     // Gradient SDF
+              MSDF=3      // Multi Channel SDF
              );
       private
        fPointInPolygonPathSegments:TpvSignedDistanceField2DPointInPolygonPathSegments;
