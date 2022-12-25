@@ -3625,7 +3625,7 @@ var PasMPInstance:TPasMP;
 
  end;
  procedure GenerateMSDF;
- var x,y:TpvSizeInt;
+ var x,y,NeighbourMatch:TpvSizeInt;
      MSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
      MSDFImage:TpvSignedDistanceField2DMSDFGenerator.TImage;
      sp:TpvSignedDistanceField2DMSDFGenerator.PPixel;
@@ -3654,38 +3654,65 @@ var PasMPInstance:TPasMP;
 
      TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.0,1.0),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(0.0,0.0));
 
-     TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
-
-     fMSDFImage:=@MSDFImage;
-     fMSDFAmbiguous:=false;
-     fMSDFMatches:=nil;
-     try
-      SetLength(fMSDFMatches,MSDFImage.Width*MSDFImage.Height);
-      Generate;
-     finally
-      fMSDFMatches:=nil;
-     end;
-     fMSDFImage:=nil;
-
-     sp:=@MSDFImage.Pixels[0];
-     dp:=@aDistanceField.Pixels[0];
-     for y:=0 to MSDFImage.Height-1 do begin
-      for x:=0 to MSDFImage.Width-1 do begin
-       dp^.r:=Min(Max(Round(sp^.r*256),0),255);
-       dp^.g:=Min(Max(Round(sp^.g*256),0),255);
-       dp^.b:=Min(Max(Round(sp^.b*256),0),255);
-       dp^.a:=Min(Max(Round(sp^.a*256),0),255);
-       inc(sp);
-       inc(dp);
-      end;
-     end;
-
     finally
      MSDFShape.Contours:=nil;
     end;
 
    finally
     Finalize(fShape);
+   end;
+
+   TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
+
+   fMSDFImage:=@MSDFImage;
+   fMSDFAmbiguous:=false;
+   fMSDFMatches:=nil;
+   try
+    SetLength(fMSDFMatches,MSDFImage.Width*MSDFImage.Height);
+    Generate;
+    if fMSDFAmbiguous then begin
+     for y:=0 to MSDFImage.Height-1 do begin
+      for x:=0 to MSDFImage.Width-1 do begin
+       if fMSDFMatches[(y*MSDFImage.Width)+x]=0 then begin
+        NeighbourMatch:=0;
+        if x>0 then begin
+         inc(NeighbourMatch,fMSDFMatches[(y*MSDFImage.Width)+(x-1)]);
+        end;
+        if x<(MSDFImage.Width-1) then begin
+         inc(NeighbourMatch,fMSDFMatches[(y*MSDFImage.Width)+(x+1)]);
+        end;
+        if y>0 then begin
+         inc(NeighbourMatch,fMSDFMatches[((y-1)*MSDFImage.Width)+x]);
+        end;
+        if y<(MSDFImage.Height-1) then begin
+         inc(NeighbourMatch,fMSDFMatches[((y+1)*MSDFImage.Width)+x]);
+        end;
+        if NeighbourMatch<0 then begin
+         sp:=@MSDFImage.Pixels[(y*MSDFImage.Width)+x];
+         sp^.r:=0.5-(sp^.r-0.5);
+         sp^.g:=0.5-(sp^.g-0.5);
+         sp^.b:=0.5-(sp^.b-0.5);
+        end;
+       end;
+      end;
+     end;
+    end;
+   finally
+    fMSDFMatches:=nil;
+   end;
+   fMSDFImage:=nil;
+
+   sp:=@MSDFImage.Pixels[0];
+   dp:=@aDistanceField.Pixels[0];
+   for y:=0 to MSDFImage.Height-1 do begin
+    for x:=0 to MSDFImage.Width-1 do begin
+     dp^.r:=Min(Max(Round(sp^.r*256),0),255);
+     dp^.g:=Min(Max(Round(sp^.g*256),0),255);
+     dp^.b:=Min(Max(Round(sp^.b*256),0),255);
+     dp^.a:=Min(Max(Round(sp^.a*256),0),255);
+     inc(sp);
+     inc(dp);
+    end;
    end;
 
   finally
