@@ -2130,7 +2130,6 @@ begin
       if (ui8 and 2)<>0 then begin
        Include(Sprite.fFlags,TpvSpriteFlag.Rotated);
       end;
-      Sprite.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant(TpvUInt8(ReadUInt8));
       Sprite.fX:=ReadInt32;
       Sprite.fY:=ReadInt32;
       Sprite.fLayer:=ReadInt32;
@@ -2144,6 +2143,9 @@ begin
       Sprite.fOffsetY:=ReadFloat;
       Sprite.fScaleX:=ReadFloat;
       Sprite.fScaleY:=ReadFloat;
+      if TpvSpriteFlag.SignedDistanceField in Sprite.fFlags then begin
+       Sprite.fSignedDistanceFieldVariant:=TpvSignedDistanceField2DGenerator.TVariant(TpvUInt8(ReadUInt8));
+      end;
       Sprite.fTrimmedHullVectors:=nil;
       if (ui8 and 4)<>0 then begin
        CountTrimmedHullVectors:=ReadInt32;
@@ -2375,7 +2377,6 @@ begin
        WriteUInt8((TpvUInt8(ord(TpvSpriteFlag.SignedDistanceField in Sprite.fFlags) and 1) shl 0) or
                   (TpvUInt8(ord(TpvSpriteFlag.Rotated in Sprite.fFlags) and 1) shl 1) or
                   (TpvUInt8(ord(length(Sprite.fTrimmedHullVectors)>0) and 1) shl 2));
-       WriteUInt8(TpvUInt8(Sprite.fSignedDistanceFieldVariant));
        WriteInt32(Sprite.fX);
        WriteInt32(Sprite.fY);
        WriteInt32(Sprite.fLayer);
@@ -2389,6 +2390,9 @@ begin
        WriteFloat(Sprite.fOffsetY);
        WriteFloat(Sprite.fScaleX);
        WriteFloat(Sprite.fScaleY);
+       if TpvSpriteFlag.SignedDistanceField in Sprite.fFlags then begin
+        WriteUInt8(TpvUInt8(Sprite.fSignedDistanceFieldVariant));
+       end;
        if length(Sprite.fTrimmedHullVectors)>0 then begin
         WriteInt32(length(Sprite.fTrimmedHullVectors));
         for SubIndex:=0 to length(Sprite.fTrimmedHullVectors)-1 do begin
