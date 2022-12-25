@@ -73,6 +73,7 @@ uses SysUtils,
      PasVulkan.XML,
      PasVulkan.VectorPath,
      PasVulkan.Streams,
+     PasVulkan.SignedDistanceField2D,
      PasVulkan.Image.BMP,
      PasVulkan.Image.JPEG,
      PasVulkan.Image.PNG,
@@ -221,6 +222,7 @@ type EpvSpriteAtlas=class(Exception);
        fTrimmedRect:TpvRect;
        fOffset:TpvVector2;
        fSize:TpvVector2;
+       fSignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant;
        function GetSignedDistanceField:boolean; inline;
        procedure SetSignedDistanceField(const aSignedDistanceField:boolean); inline;
        function GetRotated:boolean; inline;
@@ -252,6 +254,7 @@ type EpvSpriteAtlas=class(Exception);
        property ScaleX:TpvFloat read fScaleX write fScaleX;
        property ScaleY:TpvFloat read fScaleY write fScaleY;
        property SignedDistanceField:boolean read GetSignedDistanceField write SetSignedDistanceField;
+       property SignedDistanceFieldVariant:TpvSignedDistanceField2DGenerator.TVariant read fSignedDistanceFieldVariant write fSignedDistanceFieldVariant;
        property Rotated:boolean read GetRotated write SetRotated;
      end;
 
@@ -327,8 +330,8 @@ type EpvSpriteAtlas=class(Exception);
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
        function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
-       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
-       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.Supersampled):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
        function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
        procedure LoadFromStream(const aStream:TStream);
@@ -351,7 +354,6 @@ implementation
 
 uses PasDblStrUtils,
      PasVulkan.Archive.ZIP,
-     PasVulkan.SignedDistanceField2D,
      PasVulkan.ConvexHullGenerator2D;
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
@@ -1753,7 +1755,7 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite;
 var SignedDistanceField:TpvSignedDistanceField2D;
 begin
  SignedDistanceField.Pixels:=nil;
@@ -1761,15 +1763,16 @@ begin
   SignedDistanceField.Width:=aImageWidth;
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
-  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.MSDF);
+  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,aSDFVariant);
   result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
   result.SignedDistanceField:=true;
+  result.SignedDistanceFieldVariant:=aSDFVariant;
  finally
   SignedDistanceField.Pixels:=nil;
  end;
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DGenerator.TVariant=TpvSignedDistanceField2DGenerator.TVariant.SSAASDF):TpvSprite;
 var VectorPath:TpvVectorPath;
 begin
  VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
