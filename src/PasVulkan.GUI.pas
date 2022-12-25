@@ -7110,7 +7110,7 @@ begin
                                               2,
                                               1,
                                               false,
-                                              TpvSignedDistanceField2DVariant.MSDF);
+                                              TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -7131,7 +7131,7 @@ begin
                                                   2,
                                                   1,
                                                   false,
-                                                  TpvSignedDistanceField2DVariant.MSDF);
+                                                  TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -7152,7 +7152,7 @@ begin
                                                         2,
                                                         1,
                                                         false,
-                                                        TpvSignedDistanceField2DVariant.MSDF);
+                                                        TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -7173,7 +7173,7 @@ begin
                                                     2,
                                                     1,
                                                     false,
-                                                    TpvSignedDistanceField2DVariant.MSDF);
+                                                    TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -7194,7 +7194,7 @@ begin
                                               2,
                                               1,
                                               false,
-                                              TpvSignedDistanceField2DVariant.MSDF);
+                                              TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;

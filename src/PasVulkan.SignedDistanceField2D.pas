@@ -79,7 +79,8 @@ type TpvSignedDistanceField2DVariant=
        SDF=0,      // Mono SDF
        SSAASDF=1,  // Supersampling Antialiased SDF
        GSDF=2,     // Gradient SDF
-       MSDF=3      // Multi Channel SDF
+       MSDF=3,     // Multi Channel SDF
+       Default=1   // SSAASDF as default
       );
      PpvSignedDistanceField2DVariant=^TpvSignedDistanceField2DVariant;
 
@@ -435,8 +436,8 @@ type TpvSignedDistanceField2DVariant=
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SDF);
-       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SDF); static;
+       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default);
+       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default); static;
      end;
 
 implementation
@@ -1642,7 +1643,7 @@ begin
  fPointInPolygonPathSegments:=nil;
  fVectorPath:=nil;
  fDistanceField:=nil;
- fVariant:=TpvSignedDistanceField2DVariant.SDF;
+ fVariant:=TpvSignedDistanceField2DVariant.Default;
 end;
 
 destructor TpvSignedDistanceField2DGenerator.Destroy;

@@ -232,7 +232,7 @@ type EpvFont=class(Exception);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.SSAASDF);
+       constructor CreateFromTrueTypeFont(const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false;const aSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default);
        constructor CreateFromStream(const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
        constructor CreateFromFile(const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
