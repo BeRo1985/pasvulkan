@@ -234,7 +234,7 @@ type TpvSignedDistanceField2DVariant=
               class operator Positive(const a:TVector2):TVector2;
             end;
             PVector2=^TVector2;
-       const InfinateDistance=-1e240;
+       const NegativeInfinityDistance=-1e240;
        type { TSignedDistance }
             TSignedDistance=record
              public
@@ -581,7 +581,7 @@ end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
 begin
- result.Distance:=TpvSignedDistanceField2DMSDFGenerator.InfinateDistance;
+ result.Distance:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
  result.Dot:=1.0;
 end;
 
