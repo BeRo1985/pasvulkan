@@ -1421,6 +1421,7 @@ var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
     p:TpvSignedDistanceField2DMSDFGenerator.TVector2;
     Param:TpvDouble;
     MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+    HasMinDistance:boolean;
     Pixel:TpvSignedDistanceField2DMSDFGenerator.PPixel;
 begin
  x:=aX;
@@ -1431,6 +1432,7 @@ begin
  end;
  p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
  MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ HasMinDistance:=false;
  r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
  r.NearEdge:=nil;
  r.NearParam:=0.0;
@@ -1446,20 +1448,21 @@ begin
    for EdgeIndex:=0 to Contour^.Count-1 do begin
     Edge:=@Contour^.Edges[EdgeIndex];
     Distance:=Edge^.MinSignedDistance(p,Param);
-    if Distance<MinDistance then begin
+    if (not HasMinDistance) or (Distance<MinDistance) then begin
      MinDistance:=Distance;
+     HasMinDistance:=true;
     end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and (Distance<r.MinDistance) then begin
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and ((not assigned(r.NearEdge)) or (Distance<r.MinDistance)) then begin
      r.MinDistance:=Distance;
      r.NearEdge:=Edge;
      r.NearParam:=Param;
     end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and (Distance<g.MinDistance) then begin
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and ((not assigned(g.NearEdge)) or (Distance<g.MinDistance)) then begin
      g.MinDistance:=Distance;
      g.NearEdge:=Edge;
      g.NearParam:=Param;
     end;
-    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and (Distance<b.MinDistance) then begin
+    if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and ((not assigned(b.NearEdge)) or (Distance<b.MinDistance)) then begin
      b.MinDistance:=Distance;
      b.NearEdge:=Edge;
      b.NearParam:=Param;

@@ -496,10 +496,10 @@ float sampleMSDF(const in TVEC texCoord){
     centerGradient *= inversesqrt(centerGradientSquaredLength); 
   }
   vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
-        Jdx = dFdx(Juv), 
-        Jdy = dFdy(Juv),
-        jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
-                                (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+       Jdx = dFdx(Juv), 
+       Jdy = dFdy(Juv),
+       jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                               (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
   vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
   return linearstep(width.x, width.y, center); 
