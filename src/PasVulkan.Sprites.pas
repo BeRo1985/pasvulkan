@@ -1571,7 +1571,7 @@ begin
                                    TrimmedImageHeight+TotalPadding,
                                    (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
        if assigned(Node) then begin
-        TemporaryArrayTexture:=ArrayTexture;
+        ArrayTexture:=TemporaryArrayTexture;
         Layer:=LayerIndex;
         break;
        end else begin
@@ -1761,7 +1761,7 @@ begin
   SignedDistanceField.Width:=aImageWidth;
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
-  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.Multisampling);
+  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,TpvSignedDistanceField2DGenerator.TMultiChannelMode.MSDF);
   result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
   result.SignedDistanceField:=true;
  finally

@@ -2801,6 +2801,7 @@ var ContourIndex,EdgeIndex:TpvSizeInt;
     SrcPathSegment:PpvSignedDistanceField2DPathSegment;
     DstEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
 begin
+ result:=TpvSignedDistanceField2DMSDFGenerator.TShape.Create;
  result.Contours:=nil;
  SetLength(result.Contours,fShape.CountContours);
  result.Count:=fShape.CountContours;
@@ -3598,9 +3599,11 @@ var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
     MSDFShape:=ConvertShapeToMSDFShape;
     try
 
+     TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(MSDFShape,3,0);
+
      TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.0,1.0),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(0.0,0.0));
 
-     TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(VulkanDistanceField2DSpreadValue,VulkanDistanceField2DSpreadValue));
+     TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
 
      sp:=@MSDFImage.Pixels[0];
      dp:=@aDistanceField.Pixels[0];

@@ -10738,7 +10738,7 @@ begin
                                                Scale,
                                                -ox,
                                                -oy,
-                                               TpvSignedDistanceField2DGenerator.TMultiChannelMode.Multisampling);
+                                               TpvSignedDistanceField2DGenerator.TMultiChannelMode.None);
 
    finally
     VectorPath.Free;
