@@ -398,6 +398,7 @@ type TpvSignedDistanceField2DVariant=
        fShape:TpvSignedDistanceField2DShape;
        fDistanceFieldData:TpvSignedDistanceField2DData;
        fColorChannelIndex:TpvSizeInt;
+       fMSDFImage:TpvSignedDistanceField2DMSDFGenerator.PImage;
       protected
        function Clamp(const Value,MinValue,MaxValue:TpvInt64):TpvInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble; overload;
@@ -638,7 +639,11 @@ end;
 constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
 begin
  Points[0]:=aP0;
- Points[1]:=aP1;
+ if (aP0=aP1) or (aP1=aP2) then begin
+  Points[1]:=aP0.Lerp(aP2,0.5);
+ end else begin
+  Points[1]:=aP1;
+ end;
  Points[2]:=aP2;
  Color:=aColor;
  Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC;
@@ -729,7 +734,7 @@ begin
    Solutions:=SolveCubic(t[0],t[1],t[2],a,b,c,d);
    epDir:=Direction(0);
 	 MinDistance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(epDir.Cross(qa))*qa.Length;
-	 aParam:=-qa.Dot(epDir)/epDir.Dot(epDir);
+	 aParam:=-(qa.Dot(epDir)/epDir.Dot(epDir));
    epDir:=Direction(1);
 	 Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(epDir.Cross(Points[2]-aOrigin))*((Points[2]-aOrigin).Length);
 	 if abs(Distance)<abs(MinDistance) then begin
@@ -739,7 +744,7 @@ begin
    for Index:=0 to Solutions-1 do begin
 		if (t[Index]>0.0) and (t[Index]<1.0) then begin
      qe:=((Points[0]+(ab*(2.0*t[Index])))+(br*sqr(t[Index])))-aOrigin;
-     Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign((Points[2]-Points[0]).Cross(qe))*qe.Length;
+     Distance:=TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(Direction(t[Index]).Cross(qe))*qe.Length;
   	 if abs(Distance)<abs(MinDistance) then begin
 	    MinDistance:=Distance;
       aParam:=t[Index];
@@ -896,7 +901,7 @@ begin
   end;
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC:begin
    aPart1:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Points[0],Points[0].Lerp(Points[1],1.0/3.0),Point(1.0/3.0),Color);
-   aPart2:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(1.0/3.0),Points[0].Lerp(Points[1],5.0/9.0).Lerp(Points[1].Lerp(Points[2],4.0/9.0),0.5),Point(2.0/3.0),Color);
+   aPart2:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(1.0/3.0),(Points[0].Lerp(Points[1],5.0/9.0)).Lerp(Points[1].Lerp(Points[2],4.0/9.0),0.5),Point(2.0/3.0),Color);
    aPart3:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(Point(2.0/3.0),Points[1].Lerp(Points[2],2.0/3.0),Points[2],Color);
   end;
   else {TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC:}begin
@@ -1129,12 +1134,22 @@ end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.Sign(n:TpvDouble):TpvInt32;
 begin
- result:=(ord(n<0) and 1)-(ord(n>0) and 1);
+ if n<0.0 then begin
+  result:=-1;
+ end else if n>0.0 then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
 end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.NonZeroSign(n:TpvDouble):TpvInt32;
 begin
- result:=((ord(n>0) and 1) shl 1)-1;
+ if n<0.0 then begin
+  result:=-1;
+ end else begin
+  result:=1;
+ end;
 end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt;
@@ -1268,7 +1283,7 @@ end;
 
 class function TpvSignedDistanceField2DMSDFGenerator.IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean;
 begin
- result:=(aDirection.Dot(bDirection)<=0) or (abs(aDirection.Dot(bDirection))>aCrossThreshold);
+ result:=(aDirection.Dot(bDirection)<=0.0) or (abs(aDirection.Dot(bDirection))>aCrossThreshold);
 end;
 
 class procedure TpvSignedDistanceField2DMSDFGenerator.SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK);
@@ -3229,58 +3244,6 @@ begin
       PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
       CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
       CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
-(**)  if fVariant=TpvSignedDistanceField2DVariant.MSDF then begin
-       case PathSegment^.Type_ of
-        TpvSignedDistanceField2DPathSegmentType.Line:begin
-         Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
-        end;
-        TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
-         Time:=GetQuadraticBezierCurveNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
-        end;
-        else begin
-         Time:=0.5;
-        end;
-       end;
-       if Time<=0.0 then begin
-        p0:=PathSegmentCornerPoint(PathSegment^,0,0)^;
-        p1:=PathSegmentCornerPoint(PathSegment^,0,1)^;
-        Direction:=DoublePrecisionPointNormalize(DoublePrecisionPointSub(p1,p0));
-        OriginPointDifference:=DoublePrecisionPointSub(Point,p0);
-        if DoublePrecisionPointDotProduct(OriginPointDifference,Direction)<0.0 then begin
-         Value:=DoublePrecisionPointCrossProduct(OriginPointDifference,Direction);
-//         Value:=GetNonClampedSignedLineDistance(Point,p0,p1);
-         if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
-          CurrentSquaredPseudoDistance:=abs(Value);
-         end;
-        end;
-{       Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
-        if Value<0.0 then begin
-         Value:=sqr(Value);
-         if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
-          CurrentSquaredPseudoDistance:=abs(Value);
-         end;
-        end;}
-       end else if Time>=1.0 then begin
-        p0:=PathSegmentCornerPoint(PathSegment^,1,0)^;
-        p1:=PathSegmentCornerPoint(PathSegment^,1,1)^;
-        Direction:=DoublePrecisionPointNormalize(DoublePrecisionPointSub(p1,p0));
-        OriginPointDifference:=DoublePrecisionPointSub(Point,p1);
-        if DoublePrecisionPointDotProduct(OriginPointDifference,Direction)>0.0 then begin
-         Value:=DoublePrecisionPointCrossProduct(OriginPointDifference,Direction);
-//         Value:=GetNonClampedSignedLineDistance(Point,p0,p1);
-         if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
-          CurrentSquaredPseudoDistance:=abs(Value);
-         end;
-        end;
-{       Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
-        if Value>0.0 then begin
-         Value:=sqr(Value);
-         if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
-          CurrentSquaredPseudoDistance:=abs(Value);
-         end;
-        end;}
-       end;
-      end;(**)
       if (PreviousPathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Left) and (PathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Right) then begin
        DeltaWindingScore:=-1;
       end else if (PreviousPathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Right) and (PathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Left) then begin
@@ -3291,23 +3254,6 @@ begin
       PreviousPathSegmentSide:=PathSegmentSide;
       if CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistance then begin
        DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
-      end;
-      if fVariant=TpvSignedDistanceField2DVariant.MSDF then begin
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Red)))<>0)) and
-          (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
-        DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
-        DistanceFieldDataItem^.PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
-       end;
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Green)))<>0)) and
-          (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceG) then begin
-        DistanceFieldDataItem^.SquaredDistanceG:=CurrentSquaredDistance;
-        DistanceFieldDataItem^.PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
-       end;
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Blue)))<>0)) and
-          (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceB) then begin
-        DistanceFieldDataItem^.SquaredDistanceB:=CurrentSquaredDistance;
-        DistanceFieldDataItem^.PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
-       end;
       end;
       inc(DistanceFieldDataItem^.DeltaWindingScore,DeltaWindingScore);
      end;
@@ -3515,10 +3461,14 @@ begin
    DistanceFieldPixel:=@fDistanceField^.Pixels[PixelIndex];
    case fVariant of
     TpvSignedDistanceField2DVariant.MSDF:begin
-     DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
-     DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
-     DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
-     DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+     if assigned(fMSDFImage) then begin
+      if Sign(fMSDFImage.Pixels[PixelIndex].a-0.5)<>DistanceFieldSign then begin
+       fMSDFImage.Pixels[PixelIndex].a:=0.5-(fMSDFImage.Pixels[PixelIndex].a-0.5);
+       fMSDFImage.Pixels[PixelIndex].r:=0.5-(fMSDFImage.Pixels[PixelIndex].r-0.5);
+       fMSDFImage.Pixels[PixelIndex].g:=0.5-(fMSDFImage.Pixels[PixelIndex].g-0.5);
+       fMSDFImage.Pixels[PixelIndex].b:=0.5-(fMSDFImage.Pixels[PixelIndex].b-0.5);
+      end;
+     end;
     end;
     TpvSignedDistanceField2DVariant.GSDF:begin
      case fColorChannelIndex of
@@ -3573,9 +3523,95 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
-var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
-    PasMPInstance:TPasMP;
-    OK:boolean;
+var PasMPInstance:TPasMP;
+ procedure Generate;
+ var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
+     OK:boolean;
+ begin
+
+  case aVariant of
+   TpvSignedDistanceField2DVariant.GSDF:begin
+    CountColorChannels:=3;
+   end;
+   TpvSignedDistanceField2DVariant.SSAASDF:begin
+    CountColorChannels:=4;
+   end;
+   else begin
+    CountColorChannels:=1;
+   end;
+  end;
+
+  fDistanceFieldData:=nil;
+  try
+
+   SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
+
+   try
+
+    Initialize(fShape);
+    try
+
+     fPointInPolygonPathSegments:=nil;
+     try
+
+      for TryIteration:=0 to 2 do begin
+
+       case TryIteration of
+
+        0,1:begin
+         InitializeDistances;
+         ConvertShape(TryIteration in [1,2]);
+         if fVariant=TpvSignedDistanceField2DVariant.MSDF then begin
+          NormalizeShape;
+          PathSegmentColorizeShape;
+          NormalizeShape;
+         end;
+        end;
+
+        else {2:}begin
+         InitializeDistances;
+         ConvertShape(true);
+         ConvertToPointInPolygonPathSegments;
+        end;
+       end;
+
+       OK:=true;
+
+       for ColorChannelIndex:=0 to CountColorChannels-1 do begin
+        fColorChannelIndex:=ColorChannelIndex;
+        PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
+        if not GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
+         OK:=false;
+         break;
+        end;
+       end;
+
+       if OK then begin
+        break;
+       end else begin
+        // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
+       end;
+
+      end;
+
+     finally
+      fPointInPolygonPathSegments:=nil;
+     end;
+
+    finally
+     Finalize(fShape);
+    end;
+
+   finally
+    fDistanceField:=nil;
+    fVectorPath:=nil;
+   end;
+
+  finally
+   fDistanceFieldData:=nil;
+  end;
+
+ end;
  procedure GenerateMSDF;
  var x,y:TpvSizeInt;
      MSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
@@ -3607,6 +3643,10 @@ var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
      TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.0,1.0),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(0.0,0.0));
 
      TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
+
+     fMSDFImage:=@MSDFImage;
+     Generate;
+     fMSDFImage:=nil;
 
      sp:=@MSDFImage.Pixels[0];
      dp:=@aDistanceField.Pixels[0];
@@ -3658,87 +3698,8 @@ begin
 
   else begin
 
-   case aVariant of
-    TpvSignedDistanceField2DVariant.GSDF:begin
-     CountColorChannels:=3;
-    end;
-    TpvSignedDistanceField2DVariant.SSAASDF:begin
-     CountColorChannels:=4;
-    end;
-    else begin
-     CountColorChannels:=1;
-    end;
-   end;
-
-   fDistanceFieldData:=nil;
-   try
-
-    SetLength(fDistanceFieldData,fDistanceField.Width*fDistanceField.Height);
-
-    try
-
-     Initialize(fShape);
-     try
-
-      fPointInPolygonPathSegments:=nil;
-      try
-
-       for TryIteration:=0 to 2 do begin
-
-        case TryIteration of
-
-         0,1:begin
-          InitializeDistances;
-          ConvertShape(TryIteration in [1,2]);
-          if fVariant=TpvSignedDistanceField2DVariant.MSDF then begin
-           NormalizeShape;
-           PathSegmentColorizeShape;
-           NormalizeShape;
-          end;
-         end;
-
-         else {2:}begin
-          InitializeDistances;
-          ConvertShape(true);
-          ConvertToPointInPolygonPathSegments;
-         end;
-        end;
-
-        OK:=true;
-
-        for ColorChannelIndex:=0 to CountColorChannels-1 do begin
-         fColorChannelIndex:=ColorChannelIndex;
-         PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,fDistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
-         if not GenerateDistanceFieldPicture(fDistanceFieldData,fDistanceField.Width,fDistanceField.Height,TryIteration) then begin
-          OK:=false;
-          break;
-         end;
-        end;
-
-        if OK then begin
-         break;
-        end else begin
-         // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
-        end;
-
-       end;
-
-      finally
-       fPointInPolygonPathSegments:=nil;
-      end;
-
-     finally
-      Finalize(fShape);
-     end;
-
-    finally
-     fDistanceField:=nil;
-     fVectorPath:=nil;
-    end;
-
-   finally
-    fDistanceFieldData:=nil;
-   end;
+   fMSDFImage:=nil;
+   Generate;
 
   end;
 
