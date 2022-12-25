@@ -385,6 +385,7 @@ type TpvSignedDistanceField2DVariant=
        fShape:TpvSignedDistanceField2DShape;
        fDistanceFieldData:TpvSignedDistanceField2DData;
        fColorChannelIndex:TpvSizeInt;
+       fMSDFShape:TpvSignedDistanceField2DMSDFGenerator.PShape;
        fMSDFImage:TpvSignedDistanceField2DMSDFGenerator.PImage;
        fMSDFAmbiguous:boolean;
        fMSDFMatches:TMSDFMatches;
@@ -3313,6 +3314,7 @@ var PasMPInstance:TPasMP;
 
    TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
 
+   fMSDFShape:=@MDFShape;
    fMSDFImage:=@MSDFImage;
    fMSDFAmbiguous:=false;
    fMSDFMatches:=nil;
@@ -3350,6 +3352,7 @@ var PasMPInstance:TPasMP;
     fMSDFMatches:=nil;
    end;
    fMSDFImage:=nil;
+   fMSDFShape:=nil;
 
    sp:=@MSDFImage.Pixels[0];
    dp:=@aDistanceField.Pixels[0];
@@ -3393,6 +3396,7 @@ begin
 
   else begin
 
+   fMSDFShape:=nil;
    fMSDFImage:=nil;
    Generate;
 
