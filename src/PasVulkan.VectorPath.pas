@@ -635,7 +635,7 @@ var Vectors:TpvVectorPathVectors;
       XRoot:=XRoots[XIndex];
       if (XRoot>=0.0) and (XRoot<=1.0) then begin
        for YIndex:=0 to CountYRoots-1 do begin
-        if SameValue(XRoot,YRoots[XIndex]) then begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
          OutputPoint((c22*sqr(s))+(c21*s)+c20);
          OK:=true;
          break;
@@ -655,6 +655,11 @@ var Vectors:TpvVectorPathVectors;
      c10,c11,c12,c20,c21,c22,c23,
      c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
      PolyCoefs:array[0..6] of TpvDouble;
+     Roots:TpvDoubleDynamicArray;
+     XRoots,YRoots:array[0..1] of TpvDouble;
+     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+     OK:boolean;
+     s,XRoot:TpvDouble;
  begin
   a1:=aSegment0^.Points[0];
   a2:=aSegment0^.Points[1];
@@ -684,6 +689,42 @@ var Vectors:TpvVectorPathVectors;
   PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
   PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
   PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
+  Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+  for Index:=0 to length(Roots)-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+         OutputPoint((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
+       end;
+      end;
+      if OK then begin
+       break;
+      end;
+     end;
+    end;
+   end;
+  end;
  end;
  procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
