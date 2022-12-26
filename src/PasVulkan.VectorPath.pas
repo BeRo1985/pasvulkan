@@ -495,6 +495,62 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
+ function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt;
+ const ONE_OVER_3=1.0/3.0;
+       ONE_OVER_9=1.0/9.0;
+       ONE_OVER_54=1.0/9.0;
+       BoolSign:array[boolean] of TpvInt32=(-1,1);
+ var a2,q,r,r2,q3,t,u,v:TpvDouble;
+ begin
+  a2:=sqr(a);
+  q:=ONE_OVER_9*(a2-(3.0*b));
+  r:=ONE_OVER_54*((a*((2.0*a2)-(9.0*b)))+(27*c));
+  r2:=sqr(r);
+  q3:=sqr(q)*q;
+  a:=a*ONE_OVER_3;
+  if r2<q3 then begin
+   t:=r/sqrt(q3);
+   if t<-1.0 then begin
+    t:=-1.0;
+   end else if t>1.0 then begin
+    t:=1.0;
+   end;
+   t:=ArcCos(t);
+   q:=(-2.0)*sqrt(q);
+   x0:=(q*cos(ONE_OVER_3*t))-a;
+   x1:=(q*cos(ONE_OVER_3*((t+2)*PI)))-a;
+   x2:=(q*cos(ONE_OVER_3*((t-2)*PI)))-a;
+   result:=3;
+  end else begin
+   u:=BoolSign[Boolean(r<0)]*Power(abs(r)+sqrt(r2-q3),1.0/3.0);
+   if IsZero(u) then begin
+    v:=0.0;
+   end else begin
+    v:=q/u;
+   end;
+   x0:=(u+v)-a;
+   if SameValue(u,v) or (abs(u-v)<(1e-12*abs(u+v))) then begin
+    x1:=((-0.5)*(u+v))-a;
+    result:=2;
+   end else begin
+    result:=1;
+   end;
+  end;
+ end;
+ function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt;
+ var bn:TpvDouble;
+ begin
+  if IsZero(a) then begin
+   result:=SolveQuadratic(x0,x1,b,c,d);
+  end else begin
+   bn:=b/a;
+   if abs(bn)<1e+6 then begin
+    result:=SolveCubicNormed(x0,x1,x2,bn,c/a,d/a);
+   end else begin
+    result:=SolveQuadratic(x0,x1,b,c,d);
+   end;
+  end;
+ end;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
@@ -511,7 +567,7 @@ var Vectors:TpvVectorPathVectors;
  end;
  procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
-     a,b,c,cl,t:TpvDouble;
+     a,cl,t:TpvDouble;
      Roots:array[0..1] of TpvDouble;
      RootIndex,CountRoots:TpvSizeInt;
  begin
@@ -526,9 +582,7 @@ var Vectors:TpvVectorPathVectors;
   if IsZero(a) then begin
    CountRoots:=0;
   end else begin
-   b:=n.Dot(c1)/a;
-   c:=n.Dot(c2)/a;
-   CountRoots:=SolveQuadratic(Roots[0],Roots[1],a,b,c);
+   CountRoots:=SolveQuadratic(Roots[0],Roots[1],a,n.Dot(c1)/a,n.Dot(c2)/a);
   end;
   for RootIndex:=0 to CountRoots-1 do begin
    t:=Roots[RootIndex];
@@ -549,7 +603,51 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
  procedure HandleLineCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ var Min_,Max_,c0,c1,c2,c3,n,p,p1,p2,p3,p4,p5,p6,p7,p8,p9:TpvVectorPathVector;
+     a,cl,t:TpvDouble;
+     Roots:array[0..2] of TpvDouble;
+     RootIndex,CountRoots:TpvSizeInt;
  begin
+  Min_:=aSegment0^.Points[0].Minimum(aSegment0^.Points[1]);
+  Max_:=aSegment0^.Points[0].Maximum(aSegment0^.Points[1]);
+  p1:=aSegment1^.Points[0];
+  p2:=aSegment1^.Points[1];
+  p3:=aSegment1^.Points[2];
+  p4:=aSegment1^.Points[3];
+  c0:=p1;
+  c1:=(p1*(-3.0))+(p2*3.0);
+  c2:=(p1*3.0)+((p2*(-6.0))+(p3*3.0));
+  c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
+  n:=TpvVectorPathVector.Create(aSegment0^.Points[0].y-aSegment0^.Points[1].y,aSegment0^.Points[1].x-aSegment0^.Points[0].x);
+  cl:=(aSegment0^.Points[0].x*aSegment0^.Points[1].y)-(aSegment0^.Points[1].x*aSegment0^.Points[0].y);
+  a:=n.Dot(c0)+cl;
+  if IsZero(a) then begin
+   CountRoots:=0;
+  end else begin
+   CountRoots:=SolveCubic(Roots[0],Roots[1],Roots[2],a,n.Dot(c1),n.Dot(c2),n.Dot(c3));
+  end;
+  for RootIndex:=0 to CountRoots-1 do begin
+   t:=Roots[RootIndex];
+   if (t>=0.0) and (t<=1.0) then begin
+    p5:=p1.Lerp(p2,t);
+    p6:=p2.Lerp(p3,t);
+    p7:=p3.Lerp(p4,t);
+    p8:=p5.Lerp(p6,t);
+    p9:=p6.Lerp(p7,t);
+    p:=p8.Lerp(p9,t);
+    if SameValue(aSegment0^.Points[0].x,aSegment0^.Points[1].x) then begin
+     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+      OutputPoint(p);
+     end;
+    end else if SameValue(aSegment0^.Points[0].y,aSegment0^.Points[1].y) then begin
+     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+      OutputPoint(p);
+     end;
+    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
+     OutputPoint(p);
+    end;
+   end;
+  end;
  end;
  procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
