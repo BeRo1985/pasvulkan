@@ -2821,6 +2821,7 @@ type TpvGUIObject=class;
        fViewNonScrollCountVisibleLines:TpvSizeInt;
        fTime:TpvDouble;
        fDirty:Boolean;
+       fViewDirty:Boolean;
        fLeftSideBar:Boolean;
        fEditable:Boolean;
        fOverwrite:Boolean;
@@ -2837,6 +2838,7 @@ type TpvGUIObject=class;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
+       procedure SetViewDirty;
        procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
        procedure PopupMenuOnActivate(const aSender:TpvGUIObject);
@@ -21476,6 +21478,8 @@ begin
 
  fViewCountLines:=-2;
 
+ fViewDirty:=true;
+
  fTime:=0.0;
 
  fDirty:=true;
@@ -21532,6 +21536,11 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetViewDirty;
+begin
+ fViewDirty:=true;
 end;
 
 procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:Boolean);
@@ -22075,6 +22084,7 @@ begin
                                   TpvApplicationInputKeyModifier.SHIFT,
                                   TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
        FontSize:=Min(Max(abs(FontSize)-1,2),48)*Sign(FontSize);
+       SetViewDirty;
        result:=true;
       end;
      end;
@@ -22084,6 +22094,7 @@ begin
                                   TpvApplicationInputKeyModifier.SHIFT,
                                   TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
        FontSize:=Min(Max(abs(FontSize)+1,2),48)*Sign(FontSize);
+       SetViewDirty;
        result:=true;
       end;
      end;
@@ -22469,6 +22480,7 @@ begin
     Step:=ceil(v);
    end;
    FontSize:=Min(Max(abs(FontSize)+Step,2),48)*Sign(FontSize);
+   SetViewDirty;
   end else begin
    v:=aRelativeAmount.x+aRelativeAmount.y;
    if v<0.0 then begin
@@ -22505,8 +22517,10 @@ begin
  end;
  if assigned(fView) then begin
   Skin.GetMultiLineTextEditPreferredSize(self);
-  if (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
+  if fViewDirty or
+     (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
      (fViewOldCountLines<>fViewCountLines) then begin
+   fViewDirty:=false;
    fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
    fViewOldCountLines:=fViewCountLines;
    PerformLayout;
