@@ -116,11 +116,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathVector=^TpvVectorPathVector;
 
-     TpvVectorPathVectorArray=array of TpvVectorPathVector;
+     TpvVectorPathVectors=array of TpvVectorPathVector;
 
-     TpvVectorPathVectors=array[0..65535] of TpvVectorPathVector;
+     TpvVectorPathRawVectors=array[0..65535] of TpvVectorPathVector;
 
-     PpvVectorPathVectors=^TpvVectorPathVectors;
+     PpvVectorPathRawVectors=^TpvVectorPathRawVectors;
 
      { TpvVectorPathVectorCommand }
 
@@ -182,9 +182,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      { TpvVectorContour }
 
+     { TpvVectorPathContour }
+
      TpvVectorPathContour=record
       public
        Segments:TpvVectorPathSegments;
+       function GetBeginEndPoints:TpvVectorPathVectors;
      end;
 
      PpvVectorPathContour=^TpvVectorPathContour;
@@ -392,6 +395,49 @@ begin
  fY1:=aY1;
  fX2:=aX2;
  fY2:=aY2;
+end;
+
+{ TpvVectorPathContour }
+
+function TpvVectorPathContour.GetBeginEndPoints:TpvVectorPathVectors;
+var Count,SegmentIndex:TpvSizeInt;
+    Segment:PpvVectorPathSegment;
+begin
+ result:=nil;
+ Count:=0;
+ try
+  for SegmentIndex:=0 to length(Segments)-1 do begin
+   Segment:=@Segments[SegmentIndex];
+   case Segment^.Type_ of
+    TpvVectorPathSegmentType.Line:begin
+     if (Count+1)>=length(result) then begin
+      SetLength(result,(Count+2)*2);
+     end;
+     result[Count]:=Segment^.Points[0];
+     result[Count+1]:=Segment^.Points[1];
+     inc(Count,2);
+    end;
+    TpvVectorPathSegmentType.CubicCurve:begin
+     if (Count+1)>=length(result) then begin
+      SetLength(result,(Count+2)*2);
+     end;
+     result[Count]:=Segment^.Points[0];
+     result[Count+1]:=Segment^.Points[2];
+     inc(Count,2);
+    end;
+    else {TpvVectorPathSegmentType.QuadraticCurve:}begin
+     if (Count+1)>=length(result) then begin
+      SetLength(result,(Count+2)*2);
+     end;
+     result[Count]:=Segment^.Points[0];
+     result[Count+1]:=Segment^.Points[3];
+     inc(Count,2);
+    end;
+   end;
+  end;
+ finally
+  SetLength(result,Count);
+ end;
 end;
 
 { TpvVectorPath }
@@ -845,7 +891,7 @@ var Index:TpvSizeInt;
    LastX:=aP2.x;
    LastY:=aP2.y;
   end;
-  procedure ChopCubicAt(Src,Dst:PpvVectorPathVectors;const t:TpvDouble); overload;
+  procedure ChopCubicAt(Src,Dst:PpvVectorPathRawVectors;const t:TpvDouble); overload;
   var p0,p1,p2,p3,ab,bc,cd,abc,bcd,abcd:TpvVectorPathVector;
   begin
    if SameValue(t,1.0) then begin
@@ -876,7 +922,7 @@ var Index:TpvSizeInt;
     Dst^[6]:=p3;
    end;
   end;
-  procedure ChopCubicAt(Src,Dst:PpvVectorPathVectors;const t0,t1:TpvDouble); overload;
+  procedure ChopCubicAt(Src,Dst:PpvVectorPathRawVectors;const t0,t1:TpvDouble); overload;
   var p0,p1,p2,p3,
       ab0,bc0,cd0,abc0,bcd0,abcd0,
       ab1,bc1,cd1,abc1,bcd1,abcd1,
@@ -1033,7 +1079,7 @@ var Index:TpvSizeInt;
   begin
    result:=(aValue<NearlyZeroValue) or IsZero(aValue);
   end;
-  procedure ConvertNonInflectCubicToQuads(const aPoints:PpvVectorPathVectors;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
+  procedure ConvertNonInflectCubicToQuads(const aPoints:PpvVectorPathRawVectors;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
   const MaxSubdivisions=10;
   var ab,dc,c0,c1,c:TpvVectorPathVector;
       p:array[0..7] of TpvVectorPathVector;
