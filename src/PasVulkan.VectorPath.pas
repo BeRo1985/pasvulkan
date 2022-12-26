@@ -82,6 +82,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        Close
       );
 
+     { TpvVectorPathVector }
+
      TpvVectorPathVector=record
       public
        x:TpvDouble;
@@ -120,6 +122,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathVectors=^TpvVectorPathVectors;
 
+     { TpvVectorPathVectorCommand }
+
      TpvVectorPathCommand=class
       private
        fCommandType:TpvVectorPathCommandType;
@@ -157,6 +161,35 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathFillRule=^TpvVectorPathFillRule;
 
+     TpvVectorPathSegmentType=
+      (
+       Line,
+       QuadraticCurve,
+       CubicCurve
+      );
+
+     PpvVectorPathSegmentType=^TpvVectorPathSegmentType;
+
+     TpvVectorPathSegment=record
+      public
+       Type_:TpvVectorPathSegmentType;
+       Points:array[0..3] of TpvVectorPathVector;
+     end;
+
+     PpvVectorPathSegment=^TpvVectorPathSegment;
+
+     TpvVectorPathSegments=array of TpvVectorPathSegment;
+
+     { TpvVectorContour }
+
+     TpvVectorPathContour=record
+      public
+       Segments:TpvVectorPathSegments;
+     end;
+
+     PpvVectorPathContour=^TpvVectorPathContour;
+
+     TpvVectorPathContours=array of TpvVectorPathContour;
 
      { TpvVectorPath }
 
@@ -176,6 +209,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure Close;
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
+       function GetContours:TpvVectorPathContours;
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
@@ -183,6 +217,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      end;
 
 implementation
+
+{ TpvVectorPathVector }
 
 constructor TpvVectorPathVector.Create(const aValue:TpvDouble);
 begin
@@ -338,6 +374,8 @@ begin
  result.y:=a.y;
 end;
 
+{ TpvVectorPathCommand }
+
 constructor TpvVectorPathCommand.Create(const aCommandType:TpvVectorPathCommandType;
                                         const aX0:TpvDouble=0.0;
                                         const aY0:TpvDouble=0.0;
@@ -355,6 +393,8 @@ begin
  fX2:=aX2;
  fY2:=aY2;
 end;
+
+{ TpvVectorPath }
 
 constructor TpvVectorPath.Create;
 begin
@@ -1224,6 +1264,11 @@ begin
  finally
   FreeAndNil(OldCommands);
  end;
+end;
+
+function TpvVectorPath.GetContours:TpvVectorPathContours;
+begin
+ result:=nil;
 end;
 
 function TpvVectorPath.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
