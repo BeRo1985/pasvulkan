@@ -90,12 +90,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aX,aY:TpvDouble); overload;
        function Length:TpvDouble;
        function LengthSquared:TpvDouble;
+       function Distance(const b:TpvVectorPathVector):TpvDouble;
+       function DistanceSquared(const b:TpvVectorPathVector):TpvDouble;
        function Direction:TpvDouble;
        function Normalize:TpvVectorPathVector;
        function Dot(const aRight:TpvVectorPathVector):TpvDouble;
        function Cross(const aRight:TpvVectorPathVector):TpvDouble;
        function OrthoNormal:TpvVectorPathVector;
        function Lerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
+       function ClampedLerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
+       class function IsLeft(const a,b,c:TpvVectorPathVector):TpvDouble; static;
        class operator Equal(const a,b:TpvVectorPathVector):boolean;
        class operator NotEqual(const a,b:TpvVectorPathVector):boolean;
        class operator Add(const a,b:TpvVectorPathVector):TpvVectorPathVector;
@@ -145,12 +149,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathCommandList=class(TObjectList<TpvVectorPathCommand>);
 
-     PpvVectorPathFillRule=^TpvVectorPathFillRule;
      TpvVectorPathFillRule=
       (
        NonZero,
        EvenOdd
       );
+
+     PpvVectorPathFillRule=^TpvVectorPathFillRule;
+
 
      { TpvVectorPath }
 
@@ -200,6 +206,16 @@ begin
  result:=sqr(x)+sqr(y);
 end;
 
+function TpvVectorPathVector.Distance(const b:TpvVectorPathVector):TpvDouble;
+begin
+ result:=(b-self).Length;
+end;
+
+function TpvVectorPathVector.DistanceSquared(const b:TpvVectorPathVector):TpvDouble;
+begin
+ result:=(b-self).LengthSquared;
+end;
+
 function TpvVectorPathVector.Direction:TpvDouble;
 begin
  result:=ArcTan2(y,x);
@@ -218,12 +234,12 @@ begin
  end;
 end;
 
-function TpvVectorPathVector.Dot(const aRight:TpvVectorPathVector): TpvDouble;
+function TpvVectorPathVector.Dot(const aRight:TpvVectorPathVector):TpvDouble;
 begin
  result:=(x*aRight.x)+(y*aRight.y);
 end;
 
-function TpvVectorPathVector.Cross(const aRight:TpvVectorPathVector): TpvDouble;
+function TpvVectorPathVector.Cross(const aRight:TpvVectorPathVector):TpvDouble;
 begin
  result:=(x*aRight.y)-(y*aRight.x);
 end;
@@ -245,6 +261,23 @@ function TpvVectorPathVector.Lerp(const b:TpvVectorPathVector;const t:TpvDouble)
 begin
  result.x:=(x*(1.0-t))+(b.x*t);
  result.y:=(y*(1.0-t))+(b.y*t);
+end;
+
+function TpvVectorPathVector.ClampedLerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result.x:=(x*(1.0-t))+(b.x*t);
+  result.y:=(y*(1.0-t))+(b.y*t);
+ end;
+end;
+
+class function TpvVectorPathVector.IsLeft(const a,b,c:TpvVectorPathVector):TpvDouble;
+begin
+ result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
 end;
 
 class operator TpvVectorPathVector.Equal(const a,b:TpvVectorPathVector): boolean;

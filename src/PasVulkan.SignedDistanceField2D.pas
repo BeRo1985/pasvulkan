@@ -118,41 +118,33 @@ type TpvSignedDistanceField2DVariant=
 
      TpvSignedDistanceField2DData=array of TpvSignedDistanceField2DDataItem;
 
-     TpvSignedDistanceField2DDoublePrecisionPoint=record
-      x:TpvDouble;
-      y:TpvDouble;
-     end;
-
-     PpvSignedDistanceField2DDoublePrecisionPoint=^TpvSignedDistanceField2DDoublePrecisionPoint;
-
-     TpvSignedDistanceField2DDoublePrecisionPoints=array[0..65535] of TpvSignedDistanceField2DDoublePrecisionPoint;
-
-     PpvSignedDistanceField2DDoublePrecisionPoints=^TpvSignedDistanceField2DDoublePrecisionPoints;
-
-     PpvSignedDistanceField2DDoublePrecisionAffineMatrix=^TpvSignedDistanceField2DDoublePrecisionAffineMatrix;
      TpvSignedDistanceField2DDoublePrecisionAffineMatrix=array[0..5] of TpvDouble;
 
-     PpvSignedDistanceField2DPathSegmentType=^TpvSignedDistanceField2DPathSegmentType;
+     PpvSignedDistanceField2DDoublePrecisionAffineMatrix=^TpvSignedDistanceField2DDoublePrecisionAffineMatrix;
+
      TpvSignedDistanceField2DPathSegmentType=
       (
        Line,
        QuadraticBezierCurve
       );
 
-     PpvSignedDistanceField2DBoundingBox=^TpvSignedDistanceField2DBoundingBox;
+     PpvSignedDistanceField2DPathSegmentType=^TpvSignedDistanceField2DPathSegmentType;
+
      TpvSignedDistanceField2DBoundingBox=record
-      Min:TpvSignedDistanceField2DDoublePrecisionPoint;
-      Max:TpvSignedDistanceField2DDoublePrecisionPoint;
+      Min:TpvVectorPathVector;
+      Max:TpvVectorPathVector;
      end;
 
-     PpvSignedDistanceField2DPathSegmentPoints=^TpvSignedDistanceField2DPathSegmentPoints;
-     TpvSignedDistanceField2DPathSegmentPoints=array[0..2] of TpvSignedDistanceField2DDoublePrecisionPoint;
+     PpvSignedDistanceField2DBoundingBox=^TpvSignedDistanceField2DBoundingBox;
 
-     PpvSignedDistanceField2DPathSegment=^TpvSignedDistanceField2DPathSegment;
+     TpvSignedDistanceField2DPathSegmentPoints=array[0..2] of TpvVectorPathVector;
+
+     PpvSignedDistanceField2DPathSegmentPoints=^TpvSignedDistanceField2DPathSegmentPoints;
+
      TpvSignedDistanceField2DPathSegment=record
       Type_:TpvSignedDistanceField2DPathSegmentType;
       Points:TpvSignedDistanceField2DPathSegmentPoints;
-      P0T,P2T:TpvSignedDistanceField2DDoublePrecisionPoint;
+      P0T,P2T:TpvVectorPathVector;
       XFormMatrix:TpvSignedDistanceField2DDoublePrecisionAffineMatrix;
       ScalingFactor:TpvDouble;
       SquaredScalingFactor:TpvDouble;
@@ -160,6 +152,8 @@ type TpvSignedDistanceField2DVariant=
       SquaredTangentToleranceScaled:TpvDouble;
       BoundingBox:TpvSignedDistanceField2DBoundingBox;
      end;
+
+     PpvSignedDistanceField2DPathSegment=^TpvSignedDistanceField2DPathSegment;
 
      TpvSignedDistanceField2DPathSegments=array of TpvSignedDistanceField2DPathSegment;
 
@@ -171,13 +165,13 @@ type TpvSignedDistanceField2DVariant=
 
      TpvSignedDistanceField2DPathContours=array of TpvSignedDistanceField2DPathContour;
 
-     PpvSignedDistanceField2DShape=^TpvSignedDistanceField2DShape;
      TpvSignedDistanceField2DShape=record
       Contours:TpvSignedDistanceField2DPathContours;
       CountContours:TpvInt32;
      end;
 
-     PpvSignedDistanceField2DRowDataIntersectionType=^TpvSignedDistanceField2DRowDataIntersectionType;
+     PpvSignedDistanceField2DShape=^TpvSignedDistanceField2DShape;
+
      TpvSignedDistanceField2DRowDataIntersectionType=
       (
        NoIntersection,
@@ -186,7 +180,8 @@ type TpvSignedDistanceField2DVariant=
        TwoPointsIntersect
       );
 
-     PpvSignedDistanceField2DRowData=^TpvSignedDistanceField2DRowData;
+     PpvSignedDistanceField2DRowDataIntersectionType=^TpvSignedDistanceField2DRowDataIntersectionType;
+
      TpvSignedDistanceField2DRowData=record
       IntersectionType:TpvSignedDistanceField2DRowDataIntersectionType;
       QuadraticXDirection:TpvInt32;
@@ -195,10 +190,13 @@ type TpvSignedDistanceField2DVariant=
       XAtIntersection:array[0..1] of TpvFloat;
      end;
 
-     PpvSignedDistanceField2DPointInPolygonPathSegment=^TpvSignedDistanceField2DPointInPolygonPathSegment;
+     PpvSignedDistanceField2DRowData=^TpvSignedDistanceField2DRowData;
+
      TpvSignedDistanceField2DPointInPolygonPathSegment=record
-      Points:array[0..1] of TpvSignedDistanceField2DDoublePrecisionPoint;
+      Points:array[0..1] of TpvVectorPathVector;
      end;
+
+     PpvSignedDistanceField2DPointInPolygonPathSegment=^TpvSignedDistanceField2DPointInPolygonPathSegment;
 
      TpvSignedDistanceField2DPointInPolygonPathSegments=array of TpvSignedDistanceField2DPointInPolygonPathSegment;
 
@@ -208,32 +206,6 @@ type TpvSignedDistanceField2DVariant=
 
      TpvSignedDistanceField2DMSDFGenerator=class
       public
-       type { TVector2 }
-            TVector2=record
-             public
-              x:TpvDouble;
-              y:TpvDouble;
-              constructor Create(const aValue:TpvDouble); overload;
-              constructor Create(const aX,aY:TpvDouble); overload;
-              function Length:TpvDouble;
-              function Direction:TpvDouble;
-              function Normalize:TVector2;
-              function Dot(const aRight:TVector2):TpvDouble;
-              function Cross(const aRight:TVector2):TpvDouble;
-              function OrthoNormal:TVector2;
-              function Lerp(const b:TVector2;const t:TpvDouble):TVector2;
-              class operator Equal(const a,b:TVector2):boolean;
-              class operator NotEqual(const a,b:TVector2):boolean;
-              class operator Add(const a,b:TVector2):TVector2;
-              class operator Subtract(const a,b:TVector2):TVector2;
-              class operator Multiply(const a,b:TVector2):TVector2; overload;
-              class operator Multiply(const a:TVector2;const b:TpvDouble):TVector2; overload;
-              class operator Divide(const a,b:TVector2):TVector2; overload;
-              class operator Divide(const a:TVector2;const b:TpvDouble):TVector2; overload;
-              class operator Negative(const a:TVector2):TVector2;
-              class operator Positive(const a:TVector2):TVector2;
-            end;
-            PVector2=^TVector2;
        const NegativeInfinityDistance=-1e240;
        type { TSignedDistance }
             TSignedDistance=record
@@ -256,7 +228,7 @@ type TpvSignedDistanceField2DVariant=
               b:TpvDouble;
               r:TpvDouble;
               t:TpvDouble;
-              procedure PointBounds(const p:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+              procedure PointBounds(const p:TpvVectorPathVector);
             end;
             TEdgeColor=
              (
@@ -281,16 +253,16 @@ type TpvSignedDistanceField2DVariant=
        type { TEdgeSegment }
             TEdgeSegment=record
              public
-              Points:array[0..3] of TpvSignedDistanceField2DMSDFGenerator.TVector2;
+              Points:array[0..3] of TpvVectorPathVector;
               Color:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
               Type_:TpvSignedDistanceField2DMSDFGenerator.TEdgeType;
-              constructor Create(const aP0,aP1:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
-              constructor Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
-              constructor Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
-              function Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-              function Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-              function MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
-              procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
+              constructor Create(const aP0,aP1:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              constructor Create(const aP0,aP1,aP2:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              constructor Create(const aP0,aP1,aP2,aP3:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE); overload;
+              function Point(const aParam:TpvDouble):TpvVectorPathVector;
+              function Direction(const aParam:TpvDouble):TpvVectorPathVector;
+              function MinSignedDistance(const aOrigin:TpvVectorPathVector;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+              procedure DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvVectorPathVector;const aParam:TpvDouble);
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
               procedure SplitInThirds(out aPart1,aPart2,aPart3:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment);
             end;
@@ -347,15 +319,15 @@ type TpvSignedDistanceField2DVariant=
        class function SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt; static;
        class function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt; static;
-       class function Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble; static;
-       class procedure AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
-       class function IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean; static;
+       class function Shoelace(const a,b:TpvVectorPathVector):TpvDouble; static;
+       class procedure AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvVectorPathVector); static;
+       class function IsCorner(const aDirection,bDirection:TpvVectorPathVector;const aCrossThreshold:TpvDouble):boolean; static;
        class procedure SwitchColor(var aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;var aSeed:TpvUInt64;const aBanned:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK); static;
        class procedure EdgeColoringSimple(var aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aAngleThreshold:TpvDouble;aSeed:TpvUInt64); static;
-       class procedure GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt); static;
-       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil); static;
+       class procedure GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvVectorPathVector;const aX,aY:TpvSizeInt); static;
+       class procedure GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvVectorPathVector;const aPasMPInstance:TPasMP=nil); static;
        class function DetectClash({$ifdef fpc}constref{$else}const{$endif} a,b:TpvSignedDistanceField2DMSDFGenerator.TPixel;const aThreshold:TpvDouble):boolean; static;
-       class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2); static;
+       class procedure ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvVectorPathVector); static;
      end;
 
      { TpvSignedDistanceField2DGenerator }
@@ -392,41 +364,29 @@ type TpvSignedDistanceField2DVariant=
       protected
        function Clamp(const Value,MinValue,MaxValue:TpvInt64):TpvInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble; overload;
-       function DoublePrecisionPointAdd(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-       function DoublePrecisionPointSub(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-       function DoublePrecisionPointLength(const p:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointDistance(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointLengthSquared(const v:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointDistanceSquared(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointCrossProduct(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointIsLeft(const a,b,c:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointDotProduct(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       function DoublePrecisionPointNormalize(const v:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-       function DoublePrecisionPointLerp(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
-       function DoublePrecisionPointLerpEx(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
-       function DoublePrecisionPointMap(const p:TpvSignedDistanceField2DDoublePrecisionPoint;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvSignedDistanceField2DDoublePrecisionPoint;
+       function VectorMap(const p:TpvVectorPathVector;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvVectorPathVector;
        procedure GetOffset(out oX,oY:TpvDouble);
        procedure ApplyOffset(var aX,aY:TpvDouble); overload;
-       function ApplyOffset(const aPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint; overload;
+       function ApplyOffset(const aPoint:TpvVectorPathVector):TpvVectorPathVector; overload;
        function BetweenClosedOpen(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
        function BetweenClosed(const a,b,c:TpvDouble;const Tolerance:TpvDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
        function NearlyZero(const Value:TpvDouble;const Tolerance:TpvDouble=DistanceField2DNearlyZeroValue):boolean;
        function NearlyEqual(const x,y:TpvDouble;const Tolerance:TpvDouble=DistanceField2DNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
        function SignOf(const Value:TpvDouble):TpvInt32;
-       function IsColinear(const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):boolean;
-       function PathSegmentDirection(const PathSegment:TpvSignedDistanceField2DPathSegment;const Which:TpvInt32):TpvSignedDistanceField2DDoublePrecisionPoint;
+       function IsColinear(const Points:array of TpvVectorPathVector):boolean;
+       function PathSegmentDirection(const PathSegment:TpvSignedDistanceField2DPathSegment;const Which:TpvInt32):TpvVectorPathVector;
        function PathSegmentCountPoints(const PathSegment:TpvSignedDistanceField2DPathSegment):TpvInt32;
-       function PathSegmentEndPoint(const PathSegment:TpvSignedDistanceField2DPathSegment):PpvSignedDistanceField2DDoublePrecisionPoint;
-       function PathSegmentCornerPoint(const PathSegment:TpvSignedDistanceField2DPathSegment;const WhichA,WhichB:TpvInt32):PpvSignedDistanceField2DDoublePrecisionPoint;
+       function PathSegmentEndPoint(const PathSegment:TpvSignedDistanceField2DPathSegment):PpvVectorPathVector;
+       function PathSegmentCornerPoint(const PathSegment:TpvSignedDistanceField2DPathSegment;const WhichA,WhichB:TpvInt32):PpvVectorPathVector;
        procedure InitializePathSegment(var PathSegment:TpvSignedDistanceField2DPathSegment);
        procedure InitializeDistances;
-       function AddLineToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
-       function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
+       function AddLineToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvVectorPathVector):TpvInt32;
+       function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvVectorPathVector):TpvInt32;
        function CubeRoot(Value:TpvDouble):TpvDouble;
-       function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const XFormPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-       procedure PrecomputationForRow(out RowData:TpvSignedDistanceField2DRowData;const PathSegment:TpvSignedDistanceField2DPathSegment;const PointLeft,PointRight:TpvSignedDistanceField2DDoublePrecisionPoint);
-       function CalculateSideOfQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const Point,XFormPoint:TpvSignedDistanceField2DDoublePrecisionPoint;const RowData:TpvSignedDistanceField2DRowData):TpvSignedDistanceField2DPathSegmentSide;
-       function DistanceToPathSegment(const Point:TpvSignedDistanceField2DDoublePrecisionPoint;const PathSegment:TpvSignedDistanceField2DPathSegment;const RowData:TpvSignedDistanceField2DRowData;out PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide):TpvDouble;
+       function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const XFormPoint:TpvVectorPathVector):TpvDouble;
+       procedure PrecomputationForRow(out RowData:TpvSignedDistanceField2DRowData;const PathSegment:TpvSignedDistanceField2DPathSegment;const PointLeft,PointRight:TpvVectorPathVector);
+       function CalculateSideOfQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const Point,XFormPoint:TpvVectorPathVector;const RowData:TpvSignedDistanceField2DRowData):TpvSignedDistanceField2DPathSegmentSide;
+       function DistanceToPathSegment(const Point:TpvVectorPathVector;const PathSegment:TpvSignedDistanceField2DPathSegment;const RowData:TpvSignedDistanceField2DRowData;out PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide):TpvDouble;
        procedure ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
        function ConvertShapeToMSDFShape:TpvSignedDistanceField2DMSDFGenerator.TShape;
        procedure CalculateDistanceFieldDataLineRange(const FromY,ToY:TpvInt32);
@@ -434,7 +394,7 @@ type TpvSignedDistanceField2DVariant=
        function PackDistanceFieldValue(Distance:TpvDouble):TpvUInt8;
        function PackPseudoDistanceFieldValue(Distance:TpvDouble):TpvUInt8;
        procedure ConvertToPointInPolygonPathSegments;
-       function GetWindingNumberAtPointInPolygon(const Point:TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
+       function GetWindingNumberAtPointInPolygon(const Point:TpvVectorPathVector):TpvInt32;
        function GenerateDistanceFieldPicture(const DistanceFieldData:TpvSignedDistanceField2DData;const Width,Height,TryIteration:TpvInt32):boolean;
       public
        constructor Create; reintroduce;
@@ -444,130 +404,6 @@ type TpvSignedDistanceField2DVariant=
      end;
 
 implementation
-
-{ TpvSignedDistanceField2DMSDFGenerator.TVector2 }
-
-constructor TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(const aValue:TpvDouble);
-begin
- x:=aValue;
- y:=aValue;
-end;
-
-constructor TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(const aX,aY:TpvDouble);
-begin
- x:=aX;
- y:=aY;
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Length:TpvDouble;
-begin
- result:=sqrt(sqr(x)+sqr(y));
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Direction:TpvDouble;
-begin
- result:=ArcTan2(y,x);
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Normalize:TpvSignedDistanceField2DMSDFGenerator.TVector2;
-var Len:TpvDouble;
-begin
- Len:=Length;
- if IsZero(Len) then begin
-  result.x:=0.0;
-  result.y:=0.0;
- end else begin
-  result.x:=x/Len;
-  result.y:=y/Len;
- end;
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Dot(const aRight:TpvSignedDistanceField2DMSDFGenerator.TVector2): TpvDouble;
-begin
- result:=(x*aRight.x)+(y*aRight.y);
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Cross(const aRight:TpvSignedDistanceField2DMSDFGenerator.TVector2): TpvDouble;
-begin
- result:=(x*aRight.y)-(y*aRight.x);
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.OrthoNormal:TpvSignedDistanceField2DMSDFGenerator.TVector2;
-var Len:TpvDouble;
-begin
- Len:=Length;
- if IsZero(Len) then begin
-  result.x:=0.0;
-  result.y:=0.0;
- end else begin
-  result.x:=y/Len;
-  result.y:=(-x)/Len;
- end;
-end;
-
-function TpvSignedDistanceField2DMSDFGenerator.TVector2.Lerp(const b:TpvSignedDistanceField2DMSDFGenerator.TVector2;const t:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=(x*(1.0-t))+(b.x*t);
- result.y:=(y*(1.0-t))+(b.y*t);
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Equal(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2): boolean;
-begin
- result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.NotEqual(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2): boolean;
-begin
- result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Add(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x+b.x;
- result.y:=a.y+b.y;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Subtract(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x-b.x;
- result.y:=a.y-b.y;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Multiply(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x*b.x;
- result.y:=a.y*b.y;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Multiply(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2;const b:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x*b;
- result.y:=a.y*b;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Divide(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x/b.x;
- result.y:=a.y/b.y;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Divide(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2;const b:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x/b;
- result.y:=a.y/b;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Negative(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=-a.x;
- result.y:=-a.y;
-end;
-
-class operator TpvSignedDistanceField2DMSDFGenerator.TVector2.Positive(const a:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-begin
- result.x:=a.x;
- result.y:=a.y;
-end;
 
 { TpvSignedDistanceField2DMSDFGenerator.TSignedDistance }
 
@@ -615,7 +451,7 @@ end;
 
 { TpvSignedDistanceField2DMSDFGenerator.TBounds }
 
-procedure TpvSignedDistanceField2DMSDFGenerator.TBounds.PointBounds(const p:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+procedure TpvSignedDistanceField2DMSDFGenerator.TBounds.PointBounds(const p:TpvVectorPathVector);
 begin
  if p.x<l then begin
   l:=p.x;
@@ -633,7 +469,7 @@ end;
 
 { TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment }
 
-constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
 begin
  Points[0]:=aP0;
  Points[1]:=aP1;
@@ -641,7 +477,7 @@ begin
  Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR;
 end;
 
-constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
 begin
  Points[0]:=aP0;
  if (aP0=aP1) or (aP1=aP2) then begin
@@ -654,7 +490,7 @@ begin
  Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.QUADRATIC;
 end;
 
-constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2,aP3:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
+constructor TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(const aP0,aP1,aP2,aP3:TpvVectorPathVector;const aColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor);
 begin
  Points[0]:=aP0;
  Points[1]:=aP1;
@@ -664,8 +500,8 @@ begin
  Type_:=TpvSignedDistanceField2DMSDFGenerator.TEdgeType.CUBIC;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Point(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
-var p12:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Point(const aParam:TpvDouble):TpvVectorPathVector;
+var p12:TpvVectorPathVector;
 begin
  case Type_ of
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
@@ -681,7 +517,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Direction(const aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TVector2;
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Direction(const aParam:TpvDouble):TpvVectorPathVector;
 begin
  case Type_ of
   TpvSignedDistanceField2DMSDFGenerator.TEdgeType.LINEAR:begin
@@ -706,8 +542,8 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
-var aq,ab,eq,qa,br,epDir,qe,sa,d1,d2:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+function TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.MinSignedDistance(const aOrigin:TpvVectorPathVector;var aParam:TpvDouble):TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
+var aq,ab,eq,qa,br,epDir,qe,sa,d1,d2:TpvVectorPathVector;
     EndPointDistance,OrthoDistance,a,b,c,d,MinDistance,Distance,Time:TpvDouble;
     t:array[0..3] of TpvDouble;
     Solutions,Index,Step:TpvSizeInt;
@@ -811,8 +647,8 @@ begin
  end;
 end;
 
-procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aParam:TpvDouble);
-var dir,aq,bq:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.DistanceToPseudoDistance(var aDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;const aOrigin:TpvVectorPathVector;const aParam:TpvDouble);
+var dir,aq,bq:TpvVectorPathVector;
     ts,PseudoDistance:TpvDouble;
 begin
  if aParam<0.0 then begin
@@ -841,7 +677,7 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
-var b,a0,a1,a2:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+var b,a0,a1,a2:TpvVectorPathVector;
     Param:TpvDouble;
     Params:array[0..1] of TpvDouble;
     Solutions:TpvSizeInt;
@@ -961,7 +797,7 @@ end;
 
 procedure TpvSignedDistanceField2DMSDFGenerator.TContour.BoundMiters(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;const aBorder,aMiterLimit:TpvDouble;const aPolarity:TpvSizeInt);
 var Index:TpvSizeInt;
-    PreviousDirection,Direction,Miter:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    PreviousDirection,Direction,Miter:TpvVectorPathVector;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     MiterLength,q:TpvDouble;
 begin
@@ -988,7 +824,7 @@ function TpvSignedDistanceField2DMSDFGenerator.TContour.Winding:TpvSizeInt;
 var Total:TpvDouble;
     Index:TpvSizeInt;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
-    a,b,c,d,Previous,Current:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    a,b,c,d,Previous,Current:TpvVectorPathVector;
 begin
  if Count>0 then begin
   Total:=0.0;
@@ -1050,7 +886,7 @@ function TpvSignedDistanceField2DMSDFGenerator.TShape.Validate:boolean;
 var ContourIndex,EdgeIndex:TpvSizeInt;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
-    Corner:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Corner:TpvVectorPathVector;
 begin
  for ContourIndex:=0 to Count-1 do begin
   Contour:=@Contours[ContourIndex];
@@ -1241,15 +1077,15 @@ begin
  end;
 end;
 
-class function TpvSignedDistanceField2DMSDFGenerator.Shoelace(const a,b:TpvSignedDistanceField2DMSDFGenerator.TVector2):TpvDouble;
+class function TpvSignedDistanceField2DMSDFGenerator.Shoelace(const a,b:TpvVectorPathVector):TpvDouble;
 begin
  result:=(b.x-a.x)*(a.y+b.y);
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+class procedure TpvSignedDistanceField2DMSDFGenerator.AutoFrame({$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aWidth,aHeight:TpvSizeInt;const aPixelRange:TpvDouble;out aTranslate,aScale:TpvVectorPathVector);
 var Bounds:TpvSignedDistanceField2DMSDFGenerator.TBounds;
     l,b,r,t:TpvDouble;
-    Frame,Dimensions:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    Frame,Dimensions:TpvVectorPathVector;
 begin
  Bounds:=aShape.GetBounds;
  l:=Bounds.l;
@@ -1262,22 +1098,22 @@ begin
   r:=1.0;
   t:=1.0;
  end;
- Frame:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(aWidth-aPixelRange,aHeight-aPixelRange);
+ Frame:=TpvVectorPathVector.Create(aWidth-aPixelRange,aHeight-aPixelRange);
  if (Frame.x<=1e-6) or (Frame.y<=1e-6) then begin
   raise EpvSignedDistanceField2DMSDFGenerator.Create('Cannot fit the specified pixel range');
  end;
- Dimensions:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(r-l,t-b);
+ Dimensions:=TpvVectorPathVector.Create(r-l,t-b);
  if (Dimensions.x*Frame.y)<(Dimensions.y*Frame.x) then begin
-  aTranslate:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(((((Frame.x/Frame.y)*Dimensions.y)-Dimensions.x)*0.5)-l,-b);
-  aScale:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(Frame.y/Dimensions.y);
+  aTranslate:=TpvVectorPathVector.Create(((((Frame.x/Frame.y)*Dimensions.y)-Dimensions.x)*0.5)-l,-b);
+  aScale:=TpvVectorPathVector.Create(Frame.y/Dimensions.y);
  end else begin
-  aTranslate:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(-l,((((Frame.y/Frame.x)*Dimensions.x)-Dimensions.y)*0.5)-b);
-  aScale:=TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(Frame.x/Dimensions.x);
+  aTranslate:=TpvVectorPathVector.Create(-l,((((Frame.y/Frame.x)*Dimensions.x)-Dimensions.y)*0.5)-b);
+  aScale:=TpvVectorPathVector.Create(Frame.x/Dimensions.x);
  end;
- aTranslate:=aTranslate+(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(aPixelRange*0.5)/aScale);
+ aTranslate:=aTranslate+(TpvVectorPathVector.Create(aPixelRange*0.5)/aScale);
 end;
 
-class function TpvSignedDistanceField2DMSDFGenerator.IsCorner(const aDirection,bDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aCrossThreshold:TpvDouble):boolean;
+class function TpvSignedDistanceField2DMSDFGenerator.IsCorner(const aDirection,bDirection:TpvVectorPathVector;const aCrossThreshold:TpvDouble):boolean;
 begin
  result:=(aDirection.Dot(bDirection)<=0.0) or (abs(aDirection.Dot(bDirection))>aCrossThreshold);
 end;
@@ -1318,7 +1154,7 @@ var ContourIndex,EdgeIndex,CountCorners,Corner,Spline,Start,Index:TpvSizeInt;
     CrossThreshold:TpvDouble;
     Corners:TCorners;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
-    PreviousDirection:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    PreviousDirection:TpvVectorPathVector;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     Color,InitialColor:TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
     Colors:array[0..5] of TpvSignedDistanceField2DMSDFGenerator.TEdgeColor;
@@ -1419,7 +1255,7 @@ begin
 
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aX,aY:TpvSizeInt);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceFieldPixel(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvVectorPathVector;const aX,aY:TpvSizeInt);
 type TEdgePoint=Record
       MinDistance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
       NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
@@ -1429,7 +1265,7 @@ var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     r,g,b:TEdgePoint;
-    p:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+    p:TpvVectorPathVector;
     Param:TpvDouble;
     MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
     HasMinDistance:boolean;
@@ -1441,7 +1277,7 @@ begin
  end else begin
   y:=aY;
  end;
- p:=(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(x+0.5,y+0.5)/aScale)-aTranslate;
+ p:=(TpvVectorPathVector.Create(x+0.5,y+0.5)/aScale)-aTranslate;
  MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
  HasMinDistance:=false;
  r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
@@ -1501,8 +1337,8 @@ type TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData=record
       Image:TpvSignedDistanceField2DMSDFGenerator.PImage;
       Shape:TpvSignedDistanceField2DMSDFGenerator.PShape;
       Range:TpvDouble;
-      Scale:TpvSignedDistanceField2DMSDFGenerator.TVector2;
-      Translate:TpvSignedDistanceField2DMSDFGenerator.TVector2;
+      Scale:TpvVectorPathVector;
+      Translate:TpvVectorPathVector;
      end;
 
      PpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData=^TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
@@ -1520,7 +1356,7 @@ begin
  end;
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvSignedDistanceField2DMSDFGenerator.TVector2;const aPasMPInstance:TPasMP=nil);
+class procedure TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;{$ifdef fpc}constref{$else}const{$endif} aShape:TpvSignedDistanceField2DMSDFGenerator.TShape;const aRange:TpvDouble;const aScale,aTranslate:TpvVectorPathVector;const aPasMPInstance:TPasMP=nil);
 var x,y:TpvSizeInt;
     Data:TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData;
 begin
@@ -1576,7 +1412,7 @@ begin
  result:=(abs(b1-a1)>=aThreshold) and (not (SameValue(b0,b1) and SameValue(b0,b2))) and (abs(a2-0.5)>=abs(b2-0.5));
 end;
 
-class procedure TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvSignedDistanceField2DMSDFGenerator.TVector2);
+class procedure TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(var aImage:TpvSignedDistanceField2DMSDFGenerator.TImage;const aThreshold:TpvVectorPathVector);
 type TClash=record
       x,y:TpvSizeInt;
      end;
@@ -1695,85 +1531,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointAdd(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-begin
- result.x:=a.x+b.x;
- result.y:=a.y+b.y;
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointSub(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-begin
- result.x:=a.x-b.x;
- result.y:=a.y-b.y;
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointLength(const p:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=sqrt(sqr(p.x)+sqr(p.y));
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointDistance(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=sqrt(sqr(a.x-b.x)+sqr(a.y-b.y));
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointLengthSquared(const v:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=sqr(v.x)+sqr(v.y);
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointDistanceSquared(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=sqr(a.x-b.x)+sqr(a.y-b.y);
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointCrossProduct(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=(a.x*b.y)-(a.y*b.x);
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointIsLeft(const a,b,c:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointDotProduct(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
-begin
- result:=(a.x*b.x)+(a.y*b.y);
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointNormalize(const v:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
-var f:TpvDouble;
-begin
- f:=sqr(v.x)+sqr(v.y);
- if IsZero(f) then begin
-  result.x:=0.0;
-  result.y:=0.0;
- end else begin
-  result.x:=v.x/f;
-  result.y:=v.y/f;
- end;
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointLerp(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
-begin
- if t<=0.0 then begin
-  result:=a;
- end else if t>=1.0 then begin
-  result:=b;
- end else begin
-  result.x:=(a.x*(1.0-t))+(b.x*t);
-  result.y:=(a.y*(1.0-t))+(b.y*t);
- end;
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointLerpEx(const a,b:TpvSignedDistanceField2DDoublePrecisionPoint;const t:TpvDouble):TpvSignedDistanceField2DDoublePrecisionPoint;
-begin
- result.x:=(a.x*(1.0-t))+(b.x*t);
- result.y:=(a.y*(1.0-t))+(b.y*t);
-end;
-
-function TpvSignedDistanceField2DGenerator.DoublePrecisionPointMap(const p:TpvSignedDistanceField2DDoublePrecisionPoint;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.VectorMap(const p:TpvVectorPathVector;const m:TpvSignedDistanceField2DDoublePrecisionAffineMatrix):TpvVectorPathVector;
 begin
  result.x:=(p.x*m[0])+(p.y*m[1])+m[2];
  result.y:=(p.x*m[3])+(p.y*m[4])+m[5];
@@ -1833,7 +1591,7 @@ begin
  aY:=aY+oY;
 end;
 
-function TpvSignedDistanceField2DGenerator.ApplyOffset(const aPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.ApplyOffset(const aPoint:TpvVectorPathVector):TpvVectorPathVector;
 var oX,oY:TpvDouble;
 begin
  GetOffset(oX,oY);
@@ -1902,14 +1660,14 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.IsColinear(const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):boolean;
+function TpvSignedDistanceField2DGenerator.IsColinear(const Points:array of TpvVectorPathVector):boolean;
 begin
  Assert(length(Points)=3);
  result:=abs(((Points[1].y-Points[0].y)*(Points[1].x-Points[2].x))-
              ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=DistanceField2DCloseSquaredValue;
 end;
 
-function TpvSignedDistanceField2DGenerator.PathSegmentDirection(const PathSegment:TpvSignedDistanceField2DPathSegment;const Which:TpvInt32):TpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.PathSegmentDirection(const PathSegment:TpvSignedDistanceField2DPathSegment;const Which:TpvInt32):TpvVectorPathVector;
 begin
  case PathSegment.Type_ of
   TpvSignedDistanceField2DPathSegmentType.Line:begin
@@ -1957,7 +1715,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.PathSegmentEndPoint(const PathSegment:TpvSignedDistanceField2DPathSegment):PpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.PathSegmentEndPoint(const PathSegment:TpvSignedDistanceField2DPathSegment):PpvVectorPathVector;
 begin
  case PathSegment.Type_ of
   TpvSignedDistanceField2DPathSegmentType.Line:begin
@@ -1973,7 +1731,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.PathSegmentCornerPoint(const PathSegment:TpvSignedDistanceField2DPathSegment;const WhichA,WhichB:TpvInt32):PpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.PathSegmentCornerPoint(const PathSegment:TpvSignedDistanceField2DPathSegment;const WhichA,WhichB:TpvInt32):PpvVectorPathVector;
 begin
  case PathSegment.Type_ of
   TpvSignedDistanceField2DPathSegmentType.Line:begin
@@ -1990,7 +1748,7 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.InitializePathSegment(var PathSegment:TpvSignedDistanceField2DPathSegment);
-var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TpvSignedDistanceField2DDoublePrecisionPoint;
+var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TpvVectorPathVector;
     Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TpvDouble;
 begin
  case PathSegment.Type_ of
@@ -2003,7 +1761,7 @@ begin
    PathSegment.BoundingBox.Max.y:=Max(p0.y,p2.y);
    PathSegment.ScalingFactor:=1.0;
    PathSegment.SquaredScalingFactor:=1.0;
-   Hypotenuse:=DoublePrecisionPointDistance(p0,p2);
+   Hypotenuse:=p0.Distance(p2);
    CosTheta:=(p2.x-p0.x)/Hypotenuse;
    SinTheta:=(p2.y-p0.y)/Hypotenuse;
    PathSegment.XFormMatrix[0]:=CosTheta;
@@ -2078,8 +1836,8 @@ begin
  end;
  PathSegment.NearlyZeroScaled:=DistanceField2DNearlyZeroValue/PathSegment.ScalingFactor;
  PathSegment.SquaredTangentToleranceScaled:=sqr(DistanceField2DTangentToleranceValue)/PathSegment.SquaredScalingFactor;
- PathSegment.P0T:=DoublePrecisionPointMap(p0,PathSegment.XFormMatrix);
- PathSegment.P2T:=DoublePrecisionPointMap(p2,PathSegment.XFormMatrix);
+ PathSegment.P0T:=VectorMap(p0,PathSegment.XFormMatrix);
+ PathSegment.P2T:=VectorMap(p2,PathSegment.XFormMatrix);
 end;
 
 procedure TpvSignedDistanceField2DGenerator.InitializeDistances;
@@ -2092,7 +1850,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.AddLineToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
+function TpvSignedDistanceField2DGenerator.AddLineToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvVectorPathVector):TpvInt32;
 var PathSegment:PpvSignedDistanceField2DPathSegment;
 begin
  Assert(length(Points)=2);
@@ -2110,13 +1868,13 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
+function TpvSignedDistanceField2DGenerator.AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvVectorPathVector):TpvInt32;
 var PathSegment:PpvSignedDistanceField2DPathSegment;
 begin
  Assert(length(Points)=3);
  result:=Contour.CountPathSegments;
- if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<DistanceField2DCloseSquaredValue) or
-    (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<DistanceField2DCloseSquaredValue) or
+ if (Points[0].DistanceSquared(Points[1])<DistanceField2DCloseSquaredValue) or
+    (Points[1].DistanceSquared(Points[2])<DistanceField2DCloseSquaredValue) or
     IsColinear(Points) then begin
   if not (SameValue(Points[0].x,Points[2].x) and SameValue(Points[0].y,Points[2].y)) then begin
    inc(Contour.CountPathSegments);
@@ -2155,7 +1913,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const XFormPoint:TpvSignedDistanceField2DDoublePrecisionPoint):TpvDouble;
+function TpvSignedDistanceField2DGenerator.CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const XFormPoint:TpvVectorPathVector):TpvDouble;
 const OneDiv3=1.0/3.0;
       OneDiv27=1.0/27.0;
 var a,b,a3,b2,c,SqrtC,CosPhi,Phi:TpvDouble;
@@ -2189,13 +1947,13 @@ begin
  end;
 end;
 
-procedure TpvSignedDistanceField2DGenerator.PrecomputationForRow(out RowData:TpvSignedDistanceField2DRowData;const PathSegment:TpvSignedDistanceField2DPathSegment;const PointLeft,PointRight:TpvSignedDistanceField2DDoublePrecisionPoint);
-var XFormPointLeft,XFormPointRight:TpvSignedDistanceField2DDoublePrecisionPoint;
+procedure TpvSignedDistanceField2DGenerator.PrecomputationForRow(out RowData:TpvSignedDistanceField2DRowData;const PathSegment:TpvSignedDistanceField2DPathSegment;const PointLeft,PointRight:TpvVectorPathVector);
+var XFormPointLeft,XFormPointRight:TpvVectorPathVector;
     x0,y0,x1,y1,m,b,m2,c,Tolerance,d:TpvDouble;
 begin
  if PathSegment.Type_=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve then begin
-  XFormPointLeft:=DoublePrecisionPointMap(PointLeft,PathSegment.XFormMatrix);
-  XFormPointRight:=DoublePrecisionPointMap(PointRight,PathSegment.XFormMatrix);
+  XFormPointLeft:=VectorMap(PointLeft,PathSegment.XFormMatrix);
+  XFormPointRight:=VectorMap(PointRight,PathSegment.XFormMatrix);
   RowData.QuadraticXDirection:=SignOf(PathSegment.P2T.x-PathSegment.P0T.x);
   RowData.ScanlineXDirection:=SignOf(XFormPointRight.x-XFormPointLeft.x);
   x0:=XFormPointLeft.x;
@@ -2231,7 +1989,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.CalculateSideOfQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const Point,XFormPoint:TpvSignedDistanceField2DDoublePrecisionPoint;const RowData:TpvSignedDistanceField2DRowData):TpvSignedDistanceField2DPathSegmentSide;
+function TpvSignedDistanceField2DGenerator.CalculateSideOfQuadraticBezierCurve(const PathSegment:TpvSignedDistanceField2DPathSegment;const Point,XFormPoint:TpvVectorPathVector;const RowData:TpvSignedDistanceField2DRowData):TpvSignedDistanceField2DPathSegmentSide;
 var p0,p1:TpvDouble;
     sp0,sp1:TpvInt32;
     ip0,ip1:boolean;
@@ -2291,11 +2049,11 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.DistanceToPathSegment(const Point:TpvSignedDistanceField2DDoublePrecisionPoint;const PathSegment:TpvSignedDistanceField2DPathSegment;const RowData:TpvSignedDistanceField2DRowData;out PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide):TpvDouble;
-var XFormPoint,x:TpvSignedDistanceField2DDoublePrecisionPoint;
+function TpvSignedDistanceField2DGenerator.DistanceToPathSegment(const Point:TpvVectorPathVector;const PathSegment:TpvSignedDistanceField2DPathSegment;const RowData:TpvSignedDistanceField2DRowData;out PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide):TpvDouble;
+var XFormPoint,x:TpvVectorPathVector;
     NearestPoint:TpvDouble;
 begin
- XFormPoint:=DoublePrecisionPointMap(Point,PathSegment.XFormMatrix);
+ XFormPoint:=VectorMap(Point,PathSegment.XFormMatrix);
  case PathSegment.Type_ of
   TpvSignedDistanceField2DPathSegmentType.Line:begin
    if BetweenClosed(XFormPoint.x,PathSegment.P0T.x,PathSegment.P2T.x) then begin
@@ -2316,10 +2074,9 @@ begin
    if BetweenClosed(NearestPoint,PathSegment.P0T.x,PathSegment.P2T.x) then begin
     x.x:=NearestPoint;
     x.y:=sqr(NearestPoint);
-    result:=DoublePrecisionPointDistanceSquared(XFormPoint,x)*PathSegment.SquaredScalingFactor;
+    result:=XFormPoint.DistanceSquared(x)*PathSegment.SquaredScalingFactor;
    end else begin
-    result:=Min(DoublePrecisionPointDistanceSquared(XFormPoint,PathSegment.P0T),
-                DoublePrecisionPointDistanceSquared(XFormPoint,PathSegment.P2T))*PathSegment.SquaredScalingFactor;
+    result:=Min(XFormPoint.DistanceSquared(PathSegment.P0T),XFormPoint.DistanceSquared(PathSegment.P2T))*PathSegment.SquaredScalingFactor;
    end;
    if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
     PathSegmentSide:=CalculateSideOfQuadraticBezierCurve(PathSegment,Point,XFormPoint,RowData);
@@ -2339,7 +2096,7 @@ var CommandIndex:TpvInt32;
     Command:TpvVectorPathCommand;
     WorkVectorPath:TpvVectorPath;
     Contour:PpvSignedDistanceField2DPathContour;
-    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvSignedDistanceField2DDoublePrecisionPoint;
+    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
     Scale:TpvDouble;
 begin
  Scale:=fScale*DistanceField2DRasterizerToScreenScale;
@@ -2465,10 +2222,10 @@ begin
    DstEdge:=@DstContour.Edges[EdgeIndex];
    case SrcPathSegment^.Type_ of
     TpvSignedDistanceField2DPathSegmentType.Line:begin
-     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y));
+     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvVectorPathVector.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvVectorPathVector.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y));
     end;
     else {TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:}begin
-     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(SrcPathSegment^.Points[2].x,SrcPathSegment^.Points[2].y));
+     DstEdge^:=TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment.Create(TpvVectorPathVector.Create(SrcPathSegment^.Points[0].x,SrcPathSegment^.Points[0].y),TpvVectorPathVector.Create(SrcPathSegment^.Points[1].x,SrcPathSegment^.Points[1].y),TpvVectorPathVector.Create(SrcPathSegment^.Points[2].x,SrcPathSegment^.Points[2].y));
     end;
    end;
   end;
@@ -2484,7 +2241,7 @@ var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindi
     PreviousPathSegmentSide,PathSegmentSide:TpvSignedDistanceField2DPathSegmentSide;
     RowData:TpvSignedDistanceField2DRowData;
     DistanceFieldDataItem:PpvSignedDistanceField2DDataItem;
-    PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TpvSignedDistanceField2DDoublePrecisionPoint;
+    PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TpvVectorPathVector;
     pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value,oX,oY:TpvDouble;
 begin
  GetOffset(oX,oY);
@@ -2572,8 +2329,8 @@ procedure TpvSignedDistanceField2DGenerator.ConvertToPointInPolygonPathSegments;
 var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
     Contour:PpvSignedDistanceField2DPathContour;
     PathSegment:PpvSignedDistanceField2DPathSegment;
-    StartPoint,LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
- procedure AddPathSegment(const p0,p1:TpvSignedDistanceField2DDoublePrecisionPoint);
+    StartPoint,LastPoint:TpvVectorPathVector;
+ procedure AddPathSegment(const p0,p1:TpvVectorPathVector);
  var Index:TpvInt32;
      PointInPolygonPathSegment:PpvSignedDistanceField2DPointInPolygonPathSegment;
  begin
@@ -2588,16 +2345,16 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
    PointInPolygonPathSegment^.Points[1]:=p1;
   end;
  end;
- procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TpvSignedDistanceField2DDoublePrecisionPoint);
- var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
-  procedure LineToPointAt(const Point:TpvSignedDistanceField2DDoublePrecisionPoint);
+ procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TpvVectorPathVector);
+ var LastPoint:TpvVectorPathVector;
+  procedure LineToPointAt(const Point:TpvVectorPathVector);
   begin
    AddPathSegment(LastPoint,Point);
    LastPoint:=Point;
   end;
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
   var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
-      Point:TpvSignedDistanceField2DDoublePrecisionPoint;
+      Point:TpvVectorPathVector;
   begin
    x12:=(x1+x2)*0.5;
    y12:=(y1+y2)*0.5;
@@ -2663,7 +2420,7 @@ begin
  end;
 end;
 
-function TpvSignedDistanceField2DGenerator.GetWindingNumberAtPointInPolygon(const Point:TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
+function TpvSignedDistanceField2DGenerator.GetWindingNumberAtPointInPolygon(const Point:TpvVectorPathVector):TpvInt32;
 var Index,CaseIndex:TpvInt32;
     PointInPolygonPathSegment:PpvSignedDistanceField2DPointInPolygonPathSegment;
     x0,y0,x1,y1:TpvDouble;
@@ -2708,7 +2465,7 @@ function TpvSignedDistanceField2DGenerator.GenerateDistanceFieldPicture(const Di
 var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TpvInt32;
     DistanceFieldDataItem:PpvSignedDistanceField2DDataItem;
     DistanceFieldPixel:PpvSignedDistanceField2DPixel;
-    p:TpvSignedDistanceField2DDoublePrecisionPoint;
+    p:TpvVectorPathVector;
     oX,oY,SignedDistance:TpvDouble;
 begin
 
@@ -2934,7 +2691,7 @@ var PasMPInstance:TPasMP;
 
      TpvSignedDistanceField2DMSDFGenerator.EdgeColoringSimple(MSDFShape,3,0);
 
-     TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.0,1.0),TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(0.0,0.0));
+     TpvSignedDistanceField2DMSDFGenerator.GenerateDistanceField(MSDFImage,MSDFShape,VulkanDistanceField2DSpreadValue,TpvVectorPathVector.Create(1.0,1.0),TpvVectorPathVector.Create(0.0,0.0));
 
     finally
      MSDFShape.Contours:=nil;
@@ -2944,7 +2701,7 @@ var PasMPInstance:TPasMP;
     Finalize(fShape);
    end;
 
-   TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvSignedDistanceField2DMSDFGenerator.TVector2.Create(1.001/VulkanDistanceField2DSpreadValue));
+   TpvSignedDistanceField2DMSDFGenerator.ErrorCorrection(MSDFImage,TpvVectorPathVector.Create(1.001/VulkanDistanceField2DSpreadValue));
 
    fMSDFShape:=@MSDFShape;
    fMSDFImage:=@MSDFImage;
