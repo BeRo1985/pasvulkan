@@ -566,7 +566,10 @@ var Vectors:TpvVectorPathVectors;
  end;
  procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
-     v0,v1,v2,v3:TpvDouble;
+     v0,v1,v2,v3,v4,v5,v6,s,XRoot,YRoot:TpvDouble;
+     Roots,XRoots,YRoots:array[0..3] of TpvDouble;
+     CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+     OK:boolean;
  begin
   a1:=aSegment0^.Points[0];
   a2:=aSegment0^.Points[1];
@@ -585,7 +588,67 @@ var Vectors:TpvVectorPathVectors;
    v1:=v0-(c11.x*c11.y);
    v2:=v0+v1;
    v3:=c11.y*c11.y;
+   CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
+                            2.0*c12.x*c21.y*c22.y,
+                            (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
+                            (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
+                            ((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1),
+                            Roots[0],
+                            Roots[1],
+                            Roots[2],
+                            Roots[3]);
   end else begin
+   v0:=(c12.x*c22.y)-(c12.y*c22.x);
+   v1:=(c12.x*c21.y)-(c21.x*c12.y);
+   v2:=(c11.x*c12.y)-(c11.y*c12.x);
+   v3:=c10.y-c20.y;
+   v4:=(c12.y*(c10.x-c20.x))-(c12.x*v3);
+   v5:=((-c11.y)*v2)+(c12.y*v4);
+   v6:=v2*v2;
+   CountRoots:=SolveQuartic(sqr(v0),
+                            2.0*v0*v1,
+                            ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
+                            ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
+                            ((v3*v6)+(v4*v5))/c12.y,
+                            Roots[0],
+                            Roots[1],
+                            Roots[2],
+                            Roots[3]);
+  end;
+  for Index:=0 to CountRoots-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex]) then begin
+         OutputPoint((c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
+       end;
+      end;
+      if OK then begin
+       break;
+      end;
+     end;
+    end;
+   end;
   end;
  end;
  procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
