@@ -110,6 +110,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        class operator Subtract(const a,b:TpvVectorPathVector):TpvVectorPathVector;
        class operator Multiply(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload;
        class operator Multiply(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload;
+       class operator Multiply(const a:TpvDouble;const b:TpvVectorPathVector):TpvVectorPathVector; overload;
        class operator Divide(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload;
        class operator Divide(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload;
        class operator Negative(const a:TpvVectorPathVector):TpvVectorPathVector;
@@ -366,6 +367,12 @@ class operator TpvVectorPathVector.Multiply(const a:TpvVectorPathVector;const b:
 begin
  result.x:=a.x*b;
  result.y:=a.y*b;
+end;
+
+class operator TpvVectorPathVector.Multiply(const a:TpvDouble;const b:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result.x:=a*b.x;
+ result.y:=a*b.y;
 end;
 
 class operator TpvVectorPathVector.Divide(const a,b:TpvVectorPathVector):TpvVectorPathVector;
