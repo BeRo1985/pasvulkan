@@ -168,7 +168,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
        procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
        procedure Close;
-       procedure ConvertCubicCurvesToQuadraticCurves;
+       procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
@@ -744,13 +744,11 @@ begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
 end;
 
-procedure TpvVectorPath.ConvertCubicCurvesToQuadraticCurves;
-const ValueOne=1.0;
-      NearlyZeroValue=ValueOne/TpvInt64(1 shl 18);
+procedure TpvVectorPath.ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
 var Index:TpvSizeInt;
     OldCommands:TpvVectorPathCommandList;
     OldCommand:TpvVectorPathCommand;
-    StartX,StartY,LastX,LastY:TpvDouble;
+    ValueOne,NearlyZeroValue,LengthScale,StartX,StartY,LastX,LastY:TpvDouble;
  procedure ConvertCubicCurveToQuadraticCurve(const aX0,aY0,aX1,aY1,aX2,aY2:TpvDouble);
  const MaxChoppedPoints=10;
  type TChoppedPoints=array[0..MaxChoppedPoints-1] of TpvVectorPathVector;
@@ -958,8 +956,7 @@ var Index:TpvSizeInt;
    result:=Count+1;
   end;
   procedure ConvertNonInflectCubicToQuads(const aPoints:PpvVectorPathVectors;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
-  const LengthScale=ValueOne*1.5;
-        MaxSubdivisions=10;
+  const MaxSubdivisions=10;
   var ab,dc,c0,c1,c:TpvVectorPathVector;
       p:array[0..7] of TpvVectorPathVector;
   begin
@@ -1023,6 +1020,9 @@ var Index:TpvSizeInt;
   LastY:=aY2;
  end;
 begin
+ ValueOne:=aPixelRatio;
+ NearlyZeroValue:=ValueOne/TpvInt64(1 shl 18);
+ LengthScale:=ValueOne*1.5;
  StartX:=0.0;
  StartY:=0.0;
  LastX:=0.0;
