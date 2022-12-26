@@ -280,12 +280,12 @@ begin
  result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
 end;
 
-class operator TpvVectorPathVector.Equal(const a,b:TpvVectorPathVector): boolean;
+class operator TpvVectorPathVector.Equal(const a,b:TpvVectorPathVector):boolean;
 begin
  result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
 end;
 
-class operator TpvVectorPathVector.NotEqual(const a,b:TpvVectorPathVector): boolean;
+class operator TpvVectorPathVector.NotEqual(const a,b:TpvVectorPathVector):boolean;
 begin
  result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
 end;
