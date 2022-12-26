@@ -452,70 +452,23 @@ var Vectors:TpvVectorPathVectors;
   Vectors[Count]:=aVector;
   inc(Count);
  end;
- // Function to calculate the y-coordinate of a 2D quadratic curve for a given x-coordinate
- function Quadratic(const aSegment:PpvVectorPathSegment;const aX:TpvDouble):TpvDouble;
- var a,b,c:TpvDouble;
- begin
-  // Calculate the coefficients of the quadratic equation
-  a:=(aSegment^.Points[0].y-(2.0*aSegment^.Points[1].y))+aSegment^.Points[2].y;
-  b:=2.0*(aSegment^.Points[1].y-aSegment^.Points[0].y);
-  c:=aSegment^.Points[0].y;
-  result:=(a*sqr(aX))+(b*aX)+c;
- end;
- // Function to calculate the y-coordinate of a 2D cubic curve for a given x-coordinate
- function Cubic(const aSegment:PpvVectorPathSegment;const aX:TpvDouble):TpvDouble;
- var a,b,c,d:TpvDouble;
- begin
-  // Calculate the coefficients of the cubic equation
-  a:=((aSegment^.Points[0].y-(3.0*aSegment^.Points[1].y))+(3.0*aSegment^.Points[2].y))-aSegment^.Points[3].y;
-  b:=3.0*((aSegment^.Points[1].y-(2.0*aSegment^.Points[2].y))+aSegment^.Points[3].y);
-  c:=3.0*(aSegment^.Points[2].y-aSegment^.Points[1].y);
-  d:=aSegment^.Points[0].y;
-  result:=(a*(sqr(aX)*aX))+(b*sqr(aX))+(c*aX)+d;
- end;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
- var m0,b0,m1,b1,x,y,a0,c0,a1,c1,Determinant:TpvDouble;
+ var a,b,Determinant:TpvDouble;
  begin
-
-  // Calculate the coefficients of the first line equation
-  m0:=(aSegment0^.Points[2].y-aSegment0^.Points[0].y)/(aSegment0^.Points[2].x-aSegment0^.Points[0].x);
-  b0:=aSegment0^.Points[0].y-(m0*aSegment0^.Points[0].x);
-
-  // Calculate the coefficients of the second line equation
-  m1:=(aSegment1^.Points[2].y-aSegment1^.Points[0].y)/(aSegment1^.Points[2].x-aSegment1^.Points[0].x);
-  b1:=aSegment1^.Points[0].y-(m0*aSegment1^.Points[0].x);
-
-  // Check if the lines are parallel
-  if SameValue(m0,m1) then begin
-   // The lines are parallel, so they intersect only if they have the same y-intercept (b0 = b1)
-   if SameValue(b0,b1) then begin
-    // The lines are the same, so they intersect at all points
-    OutputPoint(aSegment0^.Points[0]);
-    OutputPoint(aSegment0^.Points[1]);
-    OutputPoint(aSegment1^.Points[0]);
-    OutputPoint(aSegment1^.Points[1]);
-   end;
-  end else begin
-   // The lines are not parallel, so they intersect at a single point
-{  x:=(b1-b0)/(m0-m1);
-   y:=(m0*x)+b0;
-   OutputPoint(TpvVectorPathVector.Create(x,y));}
-   a0:=aSegment0^.Points[1].y-aSegment0^.Points[0].y;
-   b0:=aSegment0^.Points[0].x-aSegment0^.Points[1].x;
-   c0:=(a0*aSegment0^.Points[0].x)+(b0*aSegment0^.Points[0].y);
-   a1:=aSegment1^.Points[1].y-aSegment1^.Points[0].y;
-   b1:=aSegment1^.Points[0].x-aSegment1^.Points[1].x;
-   c1:=(a0*aSegment1^.Points[0].x)+(b0*aSegment1^.Points[0].y);
-   Determinant:=(a0*b1)-(a1*b0);
-   if not IsZero(Determinant) then begin
-    x:=((b1*c0)-(b0*c1))/Determinant;
-    y:=((a0*c1)-(a1*c0))/Determinant;
-    OutputPoint(TpvVectorPathVector.Create(x,y));
+  a:=((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
+  b:=((aSegment0^.Points[1].x-aSegment0^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment0^.Points[1].y-aSegment0^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
+  Determinant:=(aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[1].x-aSegment0^.Points[0].x))-((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[1].y-aSegment0^.Points[0].y));
+  if not IsZero(Determinant) then begin
+   a:=a/Determinant;
+   b:=b/Determinant;
+   if ((a>=0.0) and (a<=1.0)) and ((b>=0.0) and (b<=1.0)) then begin
+    OutputPoint(aSegment0^.Points[0].Lerp(aSegment0^.Points[1],a));
    end;
   end;
  end;
  procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
+
  end;
  procedure HandleLineCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
