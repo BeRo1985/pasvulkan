@@ -18200,9 +18200,9 @@ var Derivative,DerivativeRoots:TpvDoubleDynamicArray;
 begin
  result:=nil;
  case length(aCoefs) of
-  0..1:begin
+  0:begin
   end;
-  2:begin
+  1..2:begin
    if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
     SetLength(result,1);
     result[0]:=Root;
