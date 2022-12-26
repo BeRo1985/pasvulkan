@@ -18145,10 +18145,52 @@ begin
  end;
 end;
 
-function GetRootBisection(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+function PolyEval(const aCoefs:array of TpvDouble;const aValue:TpvDouble):TpvDouble;
+var Index:TpvSizeInt;
 begin
- result:=false;
+ result:=0.0;
+ for Index:=0 to length(aCoefs)-1 do begin
+  result:=(result*aValue)+aCoefs[Index];
+ end;
+end;
 
+function GetRootBisection(const aCoefs:array of TpvDouble;aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+const TOLERANCE=1e-6;
+      ACCURACY=6;
+var MinValue,MaxValue,Value,t0,t1:TpvDouble;
+    Iterations,Index:TpvSizeInt;
+begin
+ MinValue:=PolyEval(aCoefs,aMin);
+ MaxValue:=PolyEval(aCoefs,aMax);
+ if abs(MinValue)<TOLERANCE then begin
+  aResult:=MinValue;
+  result:=true;
+ end else if abs(MaxValue)<TOLERANCE then begin
+  aResult:=MaxValue;
+  result:=true;
+ end else if (MinValue*MaxValue)<=0.0 then begin
+  t0:=ln(aMax-aMin);
+  t1:=ln(10.0)*ACCURACY;
+  Iterations:=Trunc(Ceil((t0+t1)/ln(2)));
+  for Index:=0 to Iterations-1 do begin
+   aResult:=(aMin+aMax)*0.5;
+   Value:=PolyEval(aCoefs,aResult);
+   if abs(Value)<TOLERANCE then begin
+    result:=true;
+    exit;
+   end;
+   if (Value*MinValue)<0.0 then begin
+    aMax:=aResult;
+    MaxValue:=Value;
+   end else begin
+    aMin:=aResult;
+    MinValue:=Value;
+   end;
+  end;
+  result:=false;
+ end else begin
+  result:=false;
+ end;
 end;
 
 function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
