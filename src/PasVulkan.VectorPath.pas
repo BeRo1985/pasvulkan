@@ -651,7 +651,33 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
  procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ var a1,a2,a3,b1,b2,b3,b4,
+     c10,c11,c12,c20,c21,c22,c23,
+     c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
  begin
+  a1:=aSegment0^.Points[0];
+  a2:=aSegment0^.Points[1];
+  a3:=aSegment0^.Points[2];
+  b1:=aSegment1^.Points[0];
+  b2:=aSegment1^.Points[1];
+  b3:=aSegment1^.Points[2];
+  b4:=aSegment1^.Points[3];
+  c10:=a1;
+  c11:=(a1*(-2.0))+(a2*2.0);
+  c12:=(a1+(a2*(-2.0))+a3;
+  c20:=b1;
+  c21:=(b1*(-3.0))+(b2*3.0);
+  c22:=((b1*3.0)+(b2*(-6.0))+(b3*3.0);
+  c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
+  c10s:=c10*c10;
+  c11s:=c11*c11;
+  c12s:=c12*c12;
+  c20s:=c20*c20;
+  c21s:=c21*c21;
+  c22s:=c22*c22;
+  c23s:=c23*c23;
+
+
  end;
  procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
