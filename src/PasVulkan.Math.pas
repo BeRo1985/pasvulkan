@@ -18135,9 +18135,70 @@ begin
  end;
 end;
 
-function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+function GetRootsDerivative(const aCoefs:array of TpvDouble):TpvDoubleDynamicArray;
+var Index:TpvSizeInt;
 begin
  result:=nil;
+ SetLength(result,length(aCoefs)-1);
+ for Index:=0 to length(aCoefs)-2 do begin
+  result[Index]:=aCoefs[Index+1]*(Index+1);
+ end;
+end;
+
+function GetRootBisection(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+begin
+ result:=false;
+
+end;
+
+function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+var Derivative,DerivativeRoots:TpvDoubleDynamicArray;
+    Count,Index:TpvSizeInt;
+    Root:TpvDouble;
+begin
+ result:=nil;
+ case length(aCoefs) of
+  0..1:begin
+  end;
+  2:begin
+   if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
+    SetLength(result,1);
+    result[0]:=Root;
+   end;
+  end;
+  else begin
+   Count:=0;
+   try
+    SetLength(result,length(aCoefs)+2);
+    Derivative:=GetRootsDerivative(aCoefs);
+    DerivativeRoots:=SolveRootsInInterval(Derivative,aMin,aMax);
+    if length(DerivativeRoots)>0 then begin
+     if GetRootBisection(aCoefs,aMin,DerivativeRoots[0],Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+     for Index:=0 to length(DerivativeRoots)-2 do begin
+      if GetRootBisection(aCoefs,DerivativeRoots[Index],DerivativeRoots[Index+1],Root) then begin
+       result[Count]:=Root;
+       inc(Count);
+      end;
+     end;
+     if GetRootBisection(aCoefs,DerivativeRoots[length(DerivativeRoots)-1],aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end else begin
+     if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end;
+   finally
+    SetLength(result,Count);
+   end;
+  end;
+ end;
+
 end;
 
 initialization
