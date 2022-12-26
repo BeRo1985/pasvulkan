@@ -1627,6 +1627,10 @@ function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4; overload;
 function ConvertHSVToRGB(const aHSV:TpvVector3):TpvVector3;
 function ConvertRGBToHSV(const aRGB:TpvVector3):TpvVector3;
 
+function SolveQuadratic(const a,b,c:TpvDouble;out r0,r1:TpvDouble):TpvSizeInt;
+function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
+function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
+
 implementation
 
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -17962,6 +17966,171 @@ begin
   fOnChange(self);
  end else begin
   fVector^:=aNewVector;
+ end;
+end;
+
+function SolveQuadratic(const a,b,c:TpvDouble;out r0,r1:TpvDouble):TpvSizeInt;
+var d:TpvDouble;
+begin
+ if IsZero(a) or (abs(b)>(abs(a)*1e+12)) then begin
+  if IsZero(b) then begin
+   if IsZero(c) then begin
+    result:=-1;
+   end else begin
+    result:=0;
+   end;
+  end else begin
+   r0:=(-c)/b;
+   result:=1;
+  end;
+ end else begin
+  d:=sqr(b)+((4.0*a)*c);
+  if IsZero(d) then begin
+   r0:=(-b)/(2.0*a);
+   result:=1;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   r0:=((-b)+d)/(2.0*a);
+   r1:=((-b)-d)/(2.0*a);
+   result:=2;
+  end else begin
+   result:=0;
+  end;
+ end;
+end;
+
+function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
+const ONE_OVER_3=1.0/3.0;
+      ONE_OVER_9=1.0/9.0;
+      ONE_OVER_54=1.0/9.0;
+var a0,a1,a2,o,q,r,d_,u,Theta,t:TpvDouble;
+begin
+ if IsZero(a) then begin
+  result:=SolveQuadratic(b,c,d,r0,r1);
+ end else begin
+  result:=0;
+  a2:=b/a;
+  a1:=c/a;
+  a0:=d/a;
+  q:=(a1*ONE_OVER_3)-(sqr(a2)*ONE_OVER_9);
+  r:=((27.0*a0)+(a2*((2.0*sqr(a2))-(9.0*a1))))*ONE_OVER_54;
+  d_:=(q*sqr(q))+sqr(r);
+  o:=(-ONE_OVER_3)*a2;
+  if IsZero(d_) then begin
+   if IsZero(r) then begin
+    r0:=0.0;
+    result:=1;
+   end else begin
+    u:=Power(-r,ONE_OVER_3);
+    r0:=(2.0*u)+o;
+    r1:=-u;
+    result:=2;
+   end;
+  end else if d>0 then begin
+   d_:=sqrt(d_);
+   r0:=(Power(d_-r,ONE_OVER_3)-Power(d_+r,ONE_OVER_3))+o;
+   result:=1;
+  end else begin
+   Theta:=ArcCos((-r)/sqrt(-(sqr(q)*q)))*ONE_OVER_3;
+   t:=2*sqrt(-q);
+   r0:=(t*cos(Theta))+o;
+   r1:=((-t)*cos(Theta+(PI*ONE_OVER_3)))+o;
+   r2:=((-t)*cos(Theta-(PI*ONE_OVER_3)))+o;
+   result:=3;
+  end;
+ end;
+end;
+
+function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
+var Index,OtherIndex,CubSols:TpvSizeInt;
+    a_,b_,c_,d_,y,rs,tmp,ds,es:TpvDouble;
+    SolValid:array[0..3] of boolean;
+    Results:array[0..3] of TpvDouble;
+    CubicSols:array[0..2] of TpvDouble;
+begin
+ if IsZero(a) then begin
+  result:=SolveCubic(b,c,d,e,r0,r1,r2);
+ end else begin
+  SolValid[0]:=false;
+  SolValid[1]:=false;
+  SolValid[2]:=false;
+  SolValid[3]:=false;
+  a_:=b/a;
+  b_:=c/a;
+  c_:=d/a;
+  d_:=e/a;
+  CubSols:=SolveCubic(1.0,
+                      -b,
+                      (a_*c_)-(4.0*d_),
+                      (((-sqr(a_))*d_)+((4.0*b_)*d_))-sqr(c_),
+                      CubicSols[0],
+                      CubicSols[1],
+                      CubicSols[2]);
+  if CubSols>0 then begin
+   result:=0;
+   y:=CubicSols[0];
+   rs:=((sqr(a_)*0.25)-b_)+y;
+   if IsZero(rs) then begin
+    tmp:=sqr(y)-(4.0*d_);
+    if tmp<0 then begin
+     exit;
+    end;
+    ds:=(((3.0*sqr(a_))*0.25)-(2*b))+(2.0*tmp);
+    es:=(((3.0*sqr(a_))*0.25)-(2*b))-(2.0*tmp);
+    if ds>=0.0 then begin
+     ds:=sqrt(ds);
+     SolValid[0]:=true;
+     SolValid[1]:=true;
+     inc(result,2);
+     Results[0]:=((-0.25)*a)-(ds*0.5);
+     Results[1]:=((-0.25)*a)+(ds*0.5);
+    end;
+    if es>=0.0 then begin
+     es:=sqrt(es);
+     SolValid[2]:=true;
+     SolValid[3]:=true;
+     inc(result,2);
+     Results[2]:=((-0.25)*a)-(es*0.5);
+     Results[3]:=((-0.25)*a)+(es*0.5);
+    end;
+   end else if rs>0.0 then begin
+    rs:=sqrt(rs);
+    ds:=(((0.75*sqr(a_))-rs)-(2.0*b_))+((((4.0*(a_*b_))-(8.0*c_))-(sqr(a_)*a_))/(4.0*rs));
+    es:=(((0.75*sqr(a_))-rs)-(2.0*b_))-((((4.0*(a_*b_))-(8.0*c_))-(sqr(a_)*a_))/(4.0*rs));
+    if ds>=0.0 then begin
+     ds:=sqrt(ds);
+     SolValid[0]:=true;
+     SolValid[1]:=true;
+     inc(result,2);
+     Results[0]:=(((-0.25)*a)+(rs*0.5))-(ds*0.5);
+     Results[1]:=(((-0.25)*a)+(rs*0.5))+(ds*0.5);
+    end;
+    if es>=0.0 then begin
+     es:=sqrt(es);
+     SolValid[2]:=true;
+     SolValid[3]:=true;
+     inc(result,2);
+     Results[2]:=(((-0.25)*a)-(rs*0.5))-(es*0.5);
+     Results[3]:=(((-0.25)*a)-(rs*0.5))+(es*0.5);
+    end;
+    OtherIndex:=0;
+    for Index:=0 to result-1 do begin
+     while (OtherIndex<4) and not SolValid[OtherIndex] do begin
+      inc(OtherIndex);
+     end;
+     Results[Index]:=Results[OtherIndex];
+     inc(OtherIndex);
+    end;
+    r0:=Results[0];
+    r1:=Results[1];
+    r2:=Results[2];
+    r3:=Results[3];
+   end else begin
+    result:=0;
+   end;
+  end else begin
+   result:=0;
+  end;
  end;
 end;
 

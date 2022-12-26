@@ -466,96 +466,6 @@ var Vectors:TpvVectorPathVectors;
   Vectors[Count]:=aVector;
   inc(Count);
  end;
- function SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt;
- var d:TpvDouble;
- begin
-  if IsZero(a) or (abs(b)>(abs(a)*1e+12)) then begin
-   if IsZero(b) then begin
-    if IsZero(c) then begin
-     result:=-1;
-    end else begin
-     result:=0;
-    end;
-   end else begin
-    x0:=(-c)/b;
-    result:=1;
-   end;
-  end else begin
-   d:=sqr(b)-(4.0*a*c);
-   if IsZero(d) then begin
-    x0:=(-b)/(2.0*a);
-    result:=1;
-   end else if d>0.0 then begin
-    d:=sqrt(d);
-    x0:=((-b)+d)/(2.0*a);
-    x1:=((-b)-d)/(2.0*a);
-    result:=2;
-   end else begin
-    result:=0;
-   end;
-  end;
- end;
- function SolveCubicNormed(out x0,x1,x2:TpvDouble;a,b,c:TpvDouble):TpvSizeInt;
- const ONE_OVER_3=1.0/3.0;
-       ONE_OVER_9=1.0/9.0;
-       ONE_OVER_54=1.0/9.0;
-       BoolSign:array[boolean] of TpvInt32=(-1,1);
- var a2,q,r,r2,q3,t,u,v:TpvDouble;
- begin
-  a2:=sqr(a);
-  q:=ONE_OVER_9*(a2-(3.0*b));
-  r:=ONE_OVER_54*((a*((2.0*a2)-(9.0*b)))+(27*c));
-  r2:=sqr(r);
-  q3:=sqr(q)*q;
-  a:=a*ONE_OVER_3;
-  if r2<q3 then begin
-   t:=r/sqrt(q3);
-   if t<-1.0 then begin
-    t:=-1.0;
-   end else if t>1.0 then begin
-    t:=1.0;
-   end;
-   t:=ArcCos(t);
-   q:=(-2.0)*sqrt(q);
-   x0:=(q*cos(ONE_OVER_3*t))-a;
-   x1:=(q*cos(ONE_OVER_3*((t+2)*PI)))-a;
-   x2:=(q*cos(ONE_OVER_3*((t-2)*PI)))-a;
-   result:=3;
-  end else begin
-   u:=BoolSign[Boolean(r<0)]*Power(abs(r)+sqrt(r2-q3),1.0/3.0);
-   if IsZero(u) then begin
-    v:=0.0;
-   end else begin
-    v:=q/u;
-   end;
-   x0:=(u+v)-a;
-   if SameValue(u,v) or (abs(u-v)<(1e-12*abs(u+v))) then begin
-    x1:=((-0.5)*(u+v))-a;
-    result:=2;
-   end else begin
-    result:=1;
-   end;
-  end;
- end;
- function SolveCubic(out x0,x1,x2:TpvDouble;const a,b,c,d:TpvDouble):TpvSizeInt;
- var bn:TpvDouble;
- begin
-  if IsZero(a) then begin
-   result:=SolveQuadratic(x0,x1,b,c,d);
-  end else begin
-   bn:=b/a;
-   if abs(bn)<1e+6 then begin
-    result:=SolveCubicNormed(x0,x1,x2,bn,c/a,d/a);
-   end else begin
-    result:=SolveQuadratic(x0,x1,b,c,d);
-   end;
-  end;
- end;
- function SolveQuartic(out x0,x1,x2,x3:TpvDouble;const a,b,c,d,e:TpvDouble):TpvSizeInt;
- begin
-  result:=0;
-
- end;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
@@ -587,7 +497,7 @@ var Vectors:TpvVectorPathVectors;
   if IsZero(a) then begin
    CountRoots:=0;
   end else begin
-   CountRoots:=SolveQuadratic(Roots[0],Roots[1],a,n.Dot(c1)/a,n.Dot(c2)/a);
+   CountRoots:=SolveQuadratic(a,n.Dot(c1)/a,n.Dot(c2)/a,Roots[0],Roots[1]);
   end;
   for RootIndex:=0 to CountRoots-1 do begin
    t:=Roots[RootIndex];
@@ -629,7 +539,7 @@ var Vectors:TpvVectorPathVectors;
   if IsZero(a) then begin
    CountRoots:=0;
   end else begin
-   CountRoots:=SolveCubic(Roots[0],Roots[1],Roots[2],a,n.Dot(c1),n.Dot(c2),n.Dot(c3));
+   CountRoots:=SolveCubic(a,n.Dot(c1),n.Dot(c2),n.Dot(c3),Roots[0],Roots[1],Roots[2]);
   end;
   for RootIndex:=0 to CountRoots-1 do begin
    t:=Roots[RootIndex];
