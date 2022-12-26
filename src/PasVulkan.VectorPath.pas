@@ -60,6 +60,8 @@ unit PasVulkan.VectorPath;
 {$endif}
 {$m+}
 
+{$define CANINLINE}
+
 interface
 
 uses SysUtils,
@@ -90,31 +92,31 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        y:TpvDouble;
        constructor Create(const aValue:TpvDouble); overload;
        constructor Create(const aX,aY:TpvDouble); overload;
-       function Length:TpvDouble;
-       function LengthSquared:TpvDouble;
-       function Distance(const b:TpvVectorPathVector):TpvDouble;
-       function DistanceSquared(const b:TpvVectorPathVector):TpvDouble;
-       function Direction:TpvDouble;
-       function Normalize:TpvVectorPathVector;
+       function Length:TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function LengthSquared:TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function Distance(const b:TpvVectorPathVector):TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function DistanceSquared(const b:TpvVectorPathVector):TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function Direction:TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function Normalize:TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
        function Minimum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
        function Maximum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
-       function Dot(const aRight:TpvVectorPathVector):TpvDouble;
-       function Cross(const aRight:TpvVectorPathVector):TpvDouble;
-       function OrthoNormal:TpvVectorPathVector;
+       function Dot(const aRight:TpvVectorPathVector):TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function Cross(const aRight:TpvVectorPathVector):TpvDouble; {$ifdef CANINLINE}inline;{$endif}
+       function OrthoNormal:TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
        function Lerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
        function ClampedLerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
        class function IsLeft(const a,b,c:TpvVectorPathVector):TpvDouble; static;
-       class operator Equal(const a,b:TpvVectorPathVector):boolean;
-       class operator NotEqual(const a,b:TpvVectorPathVector):boolean;
-       class operator Add(const a,b:TpvVectorPathVector):TpvVectorPathVector;
-       class operator Subtract(const a,b:TpvVectorPathVector):TpvVectorPathVector;
-       class operator Multiply(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload;
-       class operator Multiply(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload;
-       class operator Multiply(const a:TpvDouble;const b:TpvVectorPathVector):TpvVectorPathVector; overload;
-       class operator Divide(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload;
-       class operator Divide(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload;
-       class operator Negative(const a:TpvVectorPathVector):TpvVectorPathVector;
-       class operator Positive(const a:TpvVectorPathVector):TpvVectorPathVector;
+       class operator Equal(const a,b:TpvVectorPathVector):boolean; {$ifdef CANINLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvVectorPathVector):boolean; {$ifdef CANINLINE}inline;{$endif}
+       class operator Add(const a,b:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Multiply(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       class operator Multiply(const a:TpvDouble;const b:TpvVectorPathVector):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       class operator Divide(const a,b:TpvVectorPathVector):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       class operator Divide(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       class operator Negative(const a:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Positive(const a:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
      end;
 
      PpvVectorPathVector=^TpvVectorPathVector;
