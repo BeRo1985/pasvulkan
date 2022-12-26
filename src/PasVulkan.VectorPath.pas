@@ -96,6 +96,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function DistanceSquared(const b:TpvVectorPathVector):TpvDouble;
        function Direction:TpvDouble;
        function Normalize:TpvVectorPathVector;
+       function Minimum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
+       function Maximum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
        function Dot(const aRight:TpvVectorPathVector):TpvDouble;
        function Cross(const aRight:TpvVectorPathVector):TpvDouble;
        function OrthoNormal:TpvVectorPathVector;
@@ -272,6 +274,18 @@ begin
   result.x:=x/Len;
   result.y:=y/Len;
  end;
+end;
+
+function TpvVectorPathVector.Minimum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result.x:=Min(x,aRight.x);
+ result.y:=Min(y,aRight.y);
+end;
+
+function TpvVectorPathVector.Maximum(const aRight:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result.x:=Max(x,aRight.x);
+ result.y:=Max(y,aRight.y);
 end;
 
 function TpvVectorPathVector.Dot(const aRight:TpvVectorPathVector):TpvDouble;
@@ -452,12 +466,41 @@ var Vectors:TpvVectorPathVectors;
   Vectors[Count]:=aVector;
   inc(Count);
  end;
+ function SolveQuadratic(out x0,x1:TpvDouble;const a,b,c:TpvDouble):TpvSizeInt;
+ var d:TpvDouble;
+ begin
+  if IsZero(a) or (abs(b)>(abs(a)*1e+12)) then begin
+   if IsZero(b) then begin
+    if IsZero(c) then begin
+     result:=-1;
+    end else begin
+     result:=0;
+    end;
+   end else begin
+    x0:=(-c)/b;
+    result:=1;
+   end;
+  end else begin
+   d:=sqr(b)-(4.0*a*c);
+   if IsZero(d) then begin
+    x0:=(-b)/(2.0*a);
+    result:=1;
+   end else if d>0.0 then begin
+    d:=sqrt(d);
+    x0:=((-b)+d)/(2.0*a);
+    x1:=((-b)-d)/(2.0*a);
+    result:=2;
+   end else begin
+    result:=0;
+   end;
+  end;
+ end;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
   a:=((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
   b:=((aSegment0^.Points[1].x-aSegment0^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment0^.Points[1].y-aSegment0^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
-  Determinant:=(aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[1].x-aSegment0^.Points[0].x))-((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[1].y-aSegment0^.Points[0].y));
+  Determinant:=((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[1].x-aSegment0^.Points[0].x))-((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[1].y-aSegment0^.Points[0].y));
   if not IsZero(Determinant) then begin
    a:=a/Determinant;
    b:=b/Determinant;
@@ -467,8 +510,36 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
  procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
+     cl,t:TpvDouble;
+     Roots:array[0..1] of TpvDouble;
+     RootIndex,CountRoots:TpvSizeInt;
  begin
-
+  Min_:=aSegment0^.Points[0].Minimum(aSegment0^.Points[1]);
+  Max_:=aSegment0^.Points[0].Maximum(aSegment0^.Points[1]);
+  c2:=aSegment1^.Points[0]+((aSegment1^.Points[1]*(-2.0))+aSegment1^.Points[2]);
+  c1:=(aSegment1^.Points[0]*(-2.0))+(aSegment1^.Points[1]*2.0);
+  c0:=TpvVectorPathVector.Create(aSegment1^.Points[0].x,aSegment1^.Points[0].y);
+  n:=TpvVectorPathVector.Create(aSegment0^.Points[0].y-aSegment0^.Points[1].y,aSegment0^.Points[1].x-aSegment0^.Points[0].x);
+  cl:=(aSegment0^.Points[0].x*aSegment0^.Points[1].y)-(aSegment0^.Points[1].x*aSegment0^.Points[0].y);
+  CountRoots:=SolveQuadratic(Roots[0],Roots[1],n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl);
+  for RootIndex:=0 to CountRoots-1 do begin
+   t:=Roots[RootIndex];
+   if (t>=0.0) and (t<=1.0) then begin
+    p:=(aSegment1^.Points[0].Lerp(aSegment1^.Points[1],t)).Lerp(aSegment1^.Points[1].Lerp(aSegment1^.Points[2],t),t);
+    if SameValue(aSegment0^.Points[0].x,aSegment0^.Points[1].x) then begin
+     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+      OutputPoint(p);
+     end;
+    end else if SameValue(aSegment0^.Points[0].y,aSegment0^.Points[1].y) then begin
+     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+      OutputPoint(p);
+     end;
+    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
+     OutputPoint(p);
+    end;
+   end;
+  end;
  end;
  procedure HandleLineCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
