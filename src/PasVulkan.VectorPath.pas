@@ -551,6 +551,11 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
+ function SolveQuartic(out x0,x1,x2,x3:TpvDouble;const a,b,c,d,e:TpvDouble):TpvSizeInt;
+ begin
+  result:=0;
+
+ end;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
@@ -650,7 +655,28 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
  procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
+     v0,v1,v2,v3:TpvDouble;
  begin
+  a1:=aSegment0^.Points[0];
+  a2:=aSegment0^.Points[1];
+  a3:=aSegment0^.Points[2];
+  b1:=aSegment1^.Points[0];
+  b2:=aSegment1^.Points[1];
+  b3:=aSegment1^.Points[2];
+  c10:=a1;
+  c11:=(a1*(-2.0))+(a2*2.0);
+  c12:=a1+((a2*(-2.0))+a3);
+  c20:=b1;
+  c21:=(b1*(-2.0))+(b2*2.0);
+  c22:=b1+((b2*(-2.0))+b3);
+  if IsZero(c12.y) then begin
+   v0:=c12.x*(c10.y-c20.y);
+   v1:=v0-(c11.x*c11.y);
+   v2:=v0+v1;
+   v3:=c11.y*c11.y;
+  end else begin
+  end;
  end;
  procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
