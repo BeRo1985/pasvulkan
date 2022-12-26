@@ -469,12 +469,10 @@ var Vectors:TpvVectorPathVectors;
  procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
-  a:=((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
-  b:=((aSegment0^.Points[1].x-aSegment0^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment0^.Points[1].y-aSegment0^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x));
   Determinant:=((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[1].x-aSegment0^.Points[0].x))-((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[1].y-aSegment0^.Points[0].y));
   if not IsZero(Determinant) then begin
-   a:=a/Determinant;
-   b:=b/Determinant;
+   a:=(((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x)))/Determinant;
+   b:=(((aSegment0^.Points[1].x-aSegment0^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment0^.Points[1].y-aSegment0^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x)))/Determinant;
    if ((a>=0.0) and (a<=1.0)) and ((b>=0.0) and (b<=1.0)) then begin
     OutputPoint(aSegment0^.Points[0].Lerp(aSegment0^.Points[1],a));
    end;
