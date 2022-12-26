@@ -1630,6 +1630,7 @@ function ConvertRGBToHSV(const aRGB:TpvVector3):TpvVector3;
 function SolveQuadratic(const a,b,c:TpvDouble;out r0,r1:TpvDouble):TpvSizeInt;
 function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
 function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
+function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
 
 implementation
 
@@ -18132,6 +18133,11 @@ begin
    result:=0;
   end;
  end;
+end;
+
+function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+begin
+ result:=nil;
 end;
 
 initialization
