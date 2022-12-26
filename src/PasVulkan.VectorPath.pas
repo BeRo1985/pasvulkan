@@ -188,6 +188,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        Segments:TpvVectorPathSegments;
        function GetBeginEndPoints:TpvVectorPathVectors;
+       function GetIntersectionPoints:TpvVectorPathVectors;
      end;
 
      PpvVectorPathContour=^TpvVectorPathContour;
@@ -417,7 +418,7 @@ begin
      result[Count+1]:=Segment^.Points[1];
      inc(Count,2);
     end;
-    TpvVectorPathSegmentType.CubicCurve:begin
+    TpvVectorPathSegmentType.QuadraticCurve:begin
      if (Count+1)>=length(result) then begin
       SetLength(result,(Count+2)*2);
      end;
@@ -425,7 +426,7 @@ begin
      result[Count+1]:=Segment^.Points[2];
      inc(Count,2);
     end;
-    else {TpvVectorPathSegmentType.QuadraticCurve:}begin
+    else {TpvVectorPathSegmentType.CubicCurve:}begin
      if (Count+1)>=length(result) then begin
       SetLength(result,(Count+2)*2);
      end;
@@ -438,6 +439,86 @@ begin
  finally
   SetLength(result,Count);
  end;
+end;
+
+function TpvVectorPathContour.GetIntersectionPoints:TpvVectorPathVectors;
+var Vectors:TpvVectorPathVectors;
+    Count:TpvSizeInt;
+ procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+ procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+ procedure HandleLineCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+ procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+ procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+ procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ begin
+ end;
+var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+    Segment,OtherSegment:PpvVectorPathSegment;
+begin
+ Vectors:=nil;
+ Count:=0;
+ try
+  for SegmentIndex:=0 to length(Segments)-1 do begin
+   Segment:=@Segments[SegmentIndex];
+   for OtherSegmentIndex:=SegmentIndex+1 to length(Segments)-1 do begin
+    OtherSegment:=@Segments[OtherSegmentIndex];
+    case Segment^.Type_ of
+     TpvVectorPathSegmentType.Line:begin
+      case OtherSegment^.Type_ of
+       TpvVectorPathSegmentType.Line:begin
+        HandleLineLine(Segment,OtherSegment);
+       end;
+       TpvVectorPathSegmentType.QuadraticCurve:begin
+        HandleLineQuadraticCurve(Segment,OtherSegment);
+       end;
+       else {TpvVectorPathSegmentType.CubicCurve:}begin
+        HandleLineCubicCurve(Segment,OtherSegment);
+       end;
+      end;
+     end;
+     TpvVectorPathSegmentType.QuadraticCurve:begin
+      case OtherSegment^.Type_ of
+       TpvVectorPathSegmentType.Line:begin
+        HandleLineQuadraticCurve(OtherSegment,Segment);
+       end;
+       TpvVectorPathSegmentType.QuadraticCurve:begin
+        HandleQuadraticCurveQuadraticCurve(Segment,OtherSegment);
+       end;
+       else {TpvVectorPathSegmentType.CubicCurve:}begin
+        HandleQuadraticCurveCubicCurve(Segment,OtherSegment);
+       end;
+      end;
+     end;
+     else {TpvVectorPathSegmentType.CubicCurve:}begin
+      case OtherSegment^.Type_ of
+       TpvVectorPathSegmentType.Line:begin
+        HandleLineCubicCurve(OtherSegment,Segment);
+       end;
+       TpvVectorPathSegmentType.QuadraticCurve:begin
+        HandleQuadraticCurveCubicCurve(OtherSegment,Segment);
+       end;
+       else {TpvVectorPathSegmentType.CubicCurve:}begin
+        HandleCubicCurveCubicCurve(Segment,OtherSegment);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  SetLength(Vectors,Count);
+ end;
+ result:=Vectors;
 end;
 
 { TpvVectorPath }
