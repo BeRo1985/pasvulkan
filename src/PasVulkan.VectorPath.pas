@@ -955,6 +955,10 @@ var Index:TpvSizeInt;
    end;
    result:=Count+1;
   end;
+  function IsNearlyZeroValue(const aValue:TpvDouble):Boolean;
+  begin
+   result:=(aValue<NearlyZeroValue) or IsZero(aValue);
+  end;
   procedure ConvertNonInflectCubicToQuads(const aPoints:PpvVectorPathVectors;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
   const MaxSubdivisions=10;
   var ab,dc,c0,c1,c:TpvVectorPathVector;
@@ -962,15 +966,15 @@ var Index:TpvSizeInt;
   begin
    ab:=aPoints^[1]-aPoints^[0];
    dc:=aPoints^[2]-aPoints^[3];
-   if ab.LengthSquared<NearlyZeroValue then begin
-    if dc.LengthSquared<NearlyZeroValue then begin
+   if IsNearlyZeroValue(ab.LengthSquared) then begin
+    if IsNearlyZeroValue(dc.LengthSquared) then begin
      OutputLine(aPoints^[0],aPoints^[3]);
      exit;
     end else begin
      ab:=aPoints^[2]-aPoints^[0];
     end;
    end;
-   if dc.LengthSquared<NearlyZeroValue then begin
+   if IsNearlyZeroValue(dc.LengthSquared) then begin
     dc:=aPoints^[1]-aPoints^[3];
    end;
    ab.x:=ab.x*LengthScale;
@@ -1001,14 +1005,16 @@ var Index:TpvSizeInt;
   Points[1]:=TpvVectorPathVector.Create(aX0,aY0);
   Points[2]:=TpvVectorPathVector.Create(aX1,aY1);
   Points[3]:=TpvVectorPathVector.Create(aX2,aY2);
-  if not ((IsNaN(Points[0].x) or IsInfinite(Points[0].x)) or
-          (IsNaN(Points[0].y) or IsInfinite(Points[0].y)) or
-          (IsNaN(Points[1].x) or IsInfinite(Points[1].x)) or
-          (IsNaN(Points[1].y) or IsInfinite(Points[1].y)) or
-          (IsNaN(Points[2].x) or IsInfinite(Points[2].x)) or
-          (IsNaN(Points[2].y) or IsInfinite(Points[2].y)) or
-          (IsNaN(Points[3].x) or IsInfinite(Points[3].x)) or
-          (IsNaN(Points[3].y) or IsInfinite(Points[3].y))) then begin
+  if (IsNaN(Points[0].x) or IsInfinite(Points[0].x)) or
+     (IsNaN(Points[0].y) or IsInfinite(Points[0].y)) or
+     (IsNaN(Points[1].x) or IsInfinite(Points[1].x)) or
+     (IsNaN(Points[1].y) or IsInfinite(Points[1].y)) or
+     (IsNaN(Points[2].x) or IsInfinite(Points[2].x)) or
+     (IsNaN(Points[2].y) or IsInfinite(Points[2].y)) or
+     (IsNaN(Points[3].x) or IsInfinite(Points[3].x)) or
+     (IsNaN(Points[3].y) or IsInfinite(Points[3].y)) then begin
+   OutputLine(Points[0],Points[2]);
+  end else begin
    Count:=ChopCubicAtInflections(Points,ChoppedPoints);
    if Count>0 then begin
     for Index:=0 to Count-1 do begin
