@@ -1267,8 +1267,156 @@ begin
 end;
 
 function TpvVectorPath.GetContours:TpvVectorPathContours;
+var CountContours,CommandIndex,CountPathSegments:TpvSizeInt;
+    Command:TpvVectorPathCommand;
+    Contour:PpvVectorPathContour;
+    Segment:PpvVectorPathSegment;
+    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
 begin
+ CountContours:=0;
  result:=nil;
+ try
+  Contour:=nil;
+  try
+   CountPathSegments:=0;
+   StartPoint.x:=0.0;
+   StartPoint.y:=0.0;
+   LastPoint.x:=0.0;
+   LastPoint.y:=0.0;
+   for CommandIndex:=0 to fCommands.Count-1 do begin
+    Command:=fCommands[CommandIndex];
+    case Command.CommandType of
+     TpvVectorPathCommandType.MoveTo:begin
+      if assigned(Contour) then begin
+       if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+        if CountPathSegments>=length(Contour^.Segments) then begin
+         SetLength(Contour^.Segments,(CountPathSegments+1)*2);
+        end;
+        Segment:=@Contour^.Segments[CountPathSegments];
+        inc(CountPathSegments);
+        Segment^.Type_:=TpvVectorPathSegmentType.Line;
+        Segment^.Points[0]:=LastPoint;
+        Segment^.Points[1]:=StartPoint;
+       end;
+       SetLength(Contour^.Segments,CountPathSegments);
+       CountPathSegments:=0;
+      end;
+      if length(result)<(CountContours+1) then begin
+       SetLength(result,(CountContours+1)*2);
+      end;
+      Contour:=@result[CountContours];
+      inc(CountContours);
+      LastPoint.x:=Command.x0;
+      LastPoint.y:=Command.y0;
+      StartPoint:=LastPoint;
+     end;
+     TpvVectorPathCommandType.LineTo:begin
+      if not assigned(Contour) then begin
+       if length(result)<(CountContours+1) then begin
+        SetLength(result,(CountContours+1)*2);
+       end;
+       Contour:=@result[CountContours];
+       inc(CountContours);
+       CountPathSegments:=0;
+      end;
+      Point.x:=Command.x0;
+      Point.y:=Command.y0;
+      if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
+       if CountPathSegments>=length(Contour^.Segments) then begin
+        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
+       end;
+       Segment:=@Contour^.Segments[CountPathSegments];
+       inc(CountPathSegments);
+       Segment^.Type_:=TpvVectorPathSegmentType.Line;
+       Segment^.Points[0]:=LastPoint;
+       Segment^.Points[1]:=Point;
+      end;
+      LastPoint:=Point;
+     end;
+     TpvVectorPathCommandType.QuadraticCurveTo:begin
+      if not assigned(Contour) then begin
+       if length(result)<(CountContours+1) then begin
+        SetLength(result,(CountContours+1)*2);
+       end;
+       Contour:=@result[CountContours];
+       inc(CountContours);
+       CountPathSegments:=0;
+      end;
+      ControlPoint.x:=Command.x0;
+      ControlPoint.y:=Command.y0;
+      Point.x:=Command.x1;
+      Point.y:=Command.y1;
+      if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+                                    (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
+       if CountPathSegments>=length(Contour^.Segments) then begin
+        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
+       end;
+       Segment:=@Contour^.Segments[CountPathSegments];
+       inc(CountPathSegments);
+       Segment^.Type_:=TpvVectorPathSegmentType.QuadraticCurve;
+       Segment^.Points[0]:=LastPoint;
+       Segment^.Points[1]:=ControlPoint;
+       Segment^.Points[2]:=Point;
+      end;
+      LastPoint:=Point;
+     end;
+     TpvVectorPathCommandType.CubicCurveTo:begin
+      if not assigned(Contour) then begin
+       if length(result)<(CountContours+1) then begin
+        SetLength(result,(CountContours+1)*2);
+       end;
+       Contour:=@result[CountContours];
+       inc(CountContours);
+       CountPathSegments:=0;
+      end;
+      ControlPoint.x:=Command.x0;
+      ControlPoint.y:=Command.y0;
+      OtherControlPoint.y:=Command.y1;
+      OtherControlPoint.y:=Command.y1;
+      Point.x:=Command.x2;
+      Point.y:=Command.y2;
+      if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+                                    (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y)) and
+                                    (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y))) then begin
+       if CountPathSegments>=length(Contour^.Segments) then begin
+        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
+       end;
+       Segment:=@Contour^.Segments[CountPathSegments];
+       inc(CountPathSegments);
+       Segment^.Type_:=TpvVectorPathSegmentType.CubicCurve;
+       Segment^.Points[0]:=LastPoint;
+       Segment^.Points[1]:=ControlPoint;
+       Segment^.Points[2]:=OtherControlPoint;
+       Segment^.Points[3]:=Point;
+      end;
+      LastPoint:=Point;
+     end;
+     TpvVectorPathCommandType.Close:begin
+      if assigned(Contour) then begin
+       if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+        if CountPathSegments>=length(Contour^.Segments) then begin
+         SetLength(Contour^.Segments,(CountPathSegments+1)*2);
+        end;
+        Segment:=@Contour^.Segments[CountPathSegments];
+        inc(CountPathSegments);
+        Segment^.Type_:=TpvVectorPathSegmentType.Line;
+        Segment^.Points[0]:=LastPoint;
+        Segment^.Points[1]:=StartPoint;
+       end;
+       SetLength(Contour^.Segments,CountPathSegments);
+      end;
+      Contour:=nil;
+     end;
+    end;
+   end;
+  finally
+   if assigned(Contour) then begin
+    SetLength(Contour^.Segments,CountPathSegments);
+   end;
+  end;
+ finally
+  SetLength(result,CountContours);
+ end;
 end;
 
 function TpvVectorPath.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
