@@ -511,7 +511,7 @@ var Vectors:TpvVectorPathVectors;
  end;
  procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
-     cl,t:TpvDouble;
+     a,b,c,cl,t:TpvDouble;
      Roots:array[0..1] of TpvDouble;
      RootIndex,CountRoots:TpvSizeInt;
  begin
@@ -522,7 +522,14 @@ var Vectors:TpvVectorPathVectors;
   c0:=TpvVectorPathVector.Create(aSegment1^.Points[0].x,aSegment1^.Points[0].y);
   n:=TpvVectorPathVector.Create(aSegment0^.Points[0].y-aSegment0^.Points[1].y,aSegment0^.Points[1].x-aSegment0^.Points[0].x);
   cl:=(aSegment0^.Points[0].x*aSegment0^.Points[1].y)-(aSegment0^.Points[1].x*aSegment0^.Points[0].y);
-  CountRoots:=SolveQuadratic(Roots[0],Roots[1],n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl);
+  a:=n.Dot(c0)+cl;
+  if IsZero(a) then begin
+   CountRoots:=0;
+  end else begin
+   b:=n.Dot(c1)/a;
+   c:=n.Dot(c2)/a;
+   CountRoots:=SolveQuadratic(Roots[0],Roots[1],a,b,c);
+  end;
   for RootIndex:=0 to CountRoots-1 do begin
    t:=Roots[RootIndex];
    if (t>=0.0) and (t<=1.0) then begin
