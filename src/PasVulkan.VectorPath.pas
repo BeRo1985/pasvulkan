@@ -566,8 +566,9 @@ var Vectors:TpvVectorPathVectors;
  end;
  procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
-     v0,v1,v2,v3,v4,v5,v6,s,XRoot,YRoot:TpvDouble;
-     Roots,XRoots,YRoots:array[0..3] of TpvDouble;
+     v0,v1,v2,v3,v4,v5,v6,s,XRoot:TpvDouble;
+     Roots:array[0..3] of TpvDouble;
+     XRoots,YRoots:array[0..1] of TpvDouble;
      CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
      OK:boolean;
  begin
