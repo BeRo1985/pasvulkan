@@ -654,6 +654,7 @@ var Vectors:TpvVectorPathVectors;
  var a1,a2,a3,b1,b2,b3,b4,
      c10,c11,c12,c20,c21,c22,c23,
      c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
+     PolyCoefs:array[0..6] of TpvDouble;
  begin
   a1:=aSegment0^.Points[0];
   a2:=aSegment0^.Points[1];
@@ -664,10 +665,10 @@ var Vectors:TpvVectorPathVectors;
   b4:=aSegment1^.Points[3];
   c10:=a1;
   c11:=(a1*(-2.0))+(a2*2.0);
-  c12:=(a1+(a2*(-2.0))+a3;
+  c12:=(a1+(a2*(-2.0)))+a3;
   c20:=b1;
   c21:=(b1*(-3.0))+(b2*3.0);
-  c22:=((b1*3.0)+(b2*(-6.0))+(b3*3.0);
+  c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
   c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
   c10s:=c10*c10;
   c11s:=c11*c11;
@@ -676,8 +677,13 @@ var Vectors:TpvVectorPathVectors;
   c21s:=c21*c21;
   c22s:=c22*c22;
   c23s:=c23*c23;
-
-
+  PolyCoefs[0]:=(((-2.0)*c12.x*c12.y*c23.x*c23.y)+(c12s.x*c23s.y))+(c12s.y*c23s.x);
+  PolyCoefs[1]:=((((-2.0)*c12.x*c12.y*c22.x*c23.y)-(2.0*c12.x*c12.y*c22.y*c23.x))+(2.0*c12s.y*c22.x*c23.x))+(2.0*c12s.x*c22.y*c23.y);
+  PolyCoefs[2]:=(((((((-2.0)*c12.x*c21.x*c12.y*c23.y)-(2.0*c12.x*c12.y*c21.y*c23.x))-(2.0*c12.x*c12.y*c22.x*c22.y))+(2.0*c21.x*c12s.y*c23.x))+(c12s.y*c22s.x))+(c12s.x*((2.0*c21.y*c23.y)+c22s.y)));
+  PolyCoefs[3]:=(((((((((((((((2.0*c10.x*c12.x*c12.y*c23.y)+(2.0*c10.y*c12.x*c12.y*c23.x))+(c11.x*c11.y*c12.x*c23.y))+(c11.x*c11.y*c12.y*c23.x))-(2.0*c20.x*c12.x*c12.y*c23.y))-(2.0*c12.x*c20.y*c12.y*c23.x))-(2.0*c12.x*c21.x*c12.y*c22.y))-(2.0*c12.x*c12.y*c21.y*c22.x))-(2.0*c10.x*c12s.y*c23.x))-(2.0*c10.y*c12s.x*c23.y))+(2.0*c20.x*c12s.y*c23.x))+(2.0*c21.x*c12s.y*c22.x))-(c11s.y*c12.x*c23.x))-(c11s.x*c12.y*c23.y))+(c12s.x*((2.0*c20.y*c23.y)+(2.0*c21.y*c22.y))));
+  PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
+  PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
+  PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
  end;
  procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
  begin
