@@ -2092,103 +2092,66 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
-var CommandIndex:TpvInt32;
-    Command:TpvVectorPathCommand;
-    WorkVectorPath:TpvVectorPath;
+var VectorPathEx:TpvVectorPath;
+    VectorPathShape:TpvVectorPathShape;
+    VectorPathContour:TpvVectorPathContour;
+    VectorPathSegment:TpvVectorPathSegment;
     Contour:PpvSignedDistanceField2DPathContour;
-    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
-    Scale:TpvDouble;
+    Scale,Translate:TpvVectorPathVector;
 begin
- Scale:=fScale*DistanceField2DRasterizerToScreenScale;
- WorkVectorPath:=TpvVectorPath.Create;
+ Scale:=TpvVectorPathVector.Create(fScale*DistanceField2DRasterizerToScreenScale);
+ Translate:=TpvVectorPathVector.Create(fOffsetX,fOffsetY);
+ VectorPathEx:=TpvVectorPath.Create;
  try
-  WorkVectorPath.Assign(fVectorPath);
+{ VectorPathShape:=TpvVectorPathShape.Create(fVectorPath);
+  try
+   VectorPathEx.Assign(VectorPathShape);
+  finally
+   FreeAndNil(VectorPathShape);
+  end;}
+  VectorPathEx.Assign(fVectorPath);
   if DoSubdivideCurvesIntoLines then begin
-   WorkVectorPath.ConvertCurvesToLines;
+   VectorPathEx.ConvertCurvesToLines;
   end else begin
-   WorkVectorPath.ConvertCubicCurvesToQuadraticCurves;
+   VectorPathEx.ConvertCubicCurvesToQuadraticCurves;
   end;
+  VectorPathShape:=TpvVectorPathShape.Create(VectorPathEx);
+ finally
+  FreeAndNil(VectorPathEx);
+ end;
+ try
+{ if DoSubdivideCurvesIntoLines then begin
+   VectorPathShape.ConvertCurvesToLines;
+  end else begin
+   VectorPathShape.ConvertCubicCurvesToQuadraticCurves;
+  end;}
   fShape.Contours:=nil;
   fShape.CountContours:=0;
   try
-   Contour:=nil;
-   try
-    StartPoint.x:=0.0;
-    StartPoint.y:=0.0;
-    LastPoint.x:=0.0;
-    LastPoint.y:=0.0;
-    for CommandIndex:=0 to WorkVectorPath.Commands.Count-1 do begin
-     Command:=WorkVectorPath.Commands[CommandIndex];
-     case Command.CommandType of
-      TpvVectorPathCommandType.MoveTo:begin
-       if assigned(Contour) then begin
-        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-         AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
-        end;
-        SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
+   for VectorPathContour in VectorPathShape.Contours do begin
+    if length(fShape.Contours)<(fShape.CountContours+1) then begin
+     SetLength(fShape.Contours,(fShape.CountContours+1)*2);
+    end;
+    Contour:=@fShape.Contours[fShape.CountContours];
+    inc(fShape.CountContours);
+    try
+     for VectorPathSegment in VectorPathContour.Segments do begin
+      case VectorPathSegment.Type_ of
+       TpvVectorPathSegmentType.Line:begin
+        AddLineToPathSegmentArray(Contour^,[(VectorPathSegment.Points[0]*Scale)+Translate,
+                                            (VectorPathSegment.Points[1]*Scale)+Translate]);
        end;
-       if length(fShape.Contours)<(fShape.CountContours+1) then begin
-        SetLength(fShape.Contours,(fShape.CountContours+1)*2);
+       TpvVectorPathSegmentType.QuadraticCurve:begin
+        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[(VectorPathSegment.Points[0]*Scale)+Translate,
+                                                            (VectorPathSegment.Points[1]*Scale)+Translate,
+                                                            (VectorPathSegment.Points[2]*Scale)+Translate]);
        end;
-       Contour:=@fShape.Contours[fShape.CountContours];
-       inc(fShape.CountContours);
-       LastPoint.x:=(Command.x0*Scale)+fOffsetX;
-       LastPoint.y:=(Command.y0*Scale)+fOffsetY;
-       StartPoint:=LastPoint;
-      end;
-      TpvVectorPathCommandType.LineTo:begin
-       if not assigned(Contour) then begin
-        if length(fShape.Contours)<(fShape.CountContours+1) then begin
-         SetLength(fShape.Contours,(fShape.CountContours+1)*2);
-        end;
-        Contour:=@fShape.Contours[fShape.CountContours];
-        inc(fShape.CountContours);
+       TpvVectorPathSegmentType.CubicCurve:begin
+        raise Exception.Create('Ups?!');
        end;
-       Point.x:=(Command.x0*Scale)+fOffsetX;
-       Point.y:=(Command.y0*Scale)+fOffsetY;
-       if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
-        AddLineToPathSegmentArray(Contour^,[LastPoint,Point]);
-       end;
-       LastPoint:=Point;
-      end;
-      TpvVectorPathCommandType.QuadraticCurveTo:begin
-       if not assigned(Contour) then begin
-        if length(fShape.Contours)<(fShape.CountContours+1) then begin
-         SetLength(fShape.Contours,(fShape.CountContours+1)*2);
-        end;
-        Contour:=@fShape.Contours[fShape.CountContours];
-        inc(fShape.CountContours);
-       end;
-       ControlPoint.x:=(Command.x0*Scale)+fOffsetX;
-       ControlPoint.y:=(Command.y0*Scale)+fOffsetY;
-       Point.x:=(Command.x1*Scale)+fOffsetX;
-       Point.y:=(Command.y1*Scale)+fOffsetY;
-       if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
-                                     (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
-        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
-       end;
-       LastPoint:=Point;
-      end;
-      TpvVectorPathCommandType.CubicCurveTo:begin
-       // It should handled by WorkVectorPath.ConvertCurvesToLines or
-       // WorkVectorPath.ConvertCubicCurvesToQuadraticCurves before,
-       // so this case can be actually not happen.
-       Assert(false);
-       LastPoint:=Point;
-      end;
-      TpvVectorPathCommandType.Close:begin
-       if assigned(Contour) then begin
-        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-         AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
-        end;
-        SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
-       end;
-       Contour:=nil;
       end;
      end;
-    end;
-   finally
-    if assigned(Contour) then begin
+    finally
      SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
     end;
    end;
@@ -2196,7 +2159,7 @@ begin
    SetLength(fShape.Contours,fShape.CountContours);
   end;
  finally
-  FreeAndNil(WorkVectorPath);
+  FreeAndNil(VectorPathShape);
  end;
 end;
 
