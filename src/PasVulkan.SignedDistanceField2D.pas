@@ -2120,13 +2120,13 @@ begin
      for LocalVectorPathSegment in LocalVectorPathContour.Segments do begin
       case LocalVectorPathSegment.Type_ of
        TpvVectorPathSegmentType.Line:begin
-        AddLineToPathSegmentArray(Contour^,[(LocalVectorPathSegment.Points[0]*Scale)+Translate,
-                                            (LocalVectorPathSegment.Points[1]*Scale)+Translate]);
+        AddLineToPathSegmentArray(Contour^,[(TpvVectorPathSegmentLine(LocalVectorPathSegment).Points[0]*Scale)+Translate,
+                                            (TpvVectorPathSegmentLine(LocalVectorPathSegment).Points[1]*Scale)+Translate]);
        end;
        TpvVectorPathSegmentType.QuadraticCurve:begin
-        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[(LocalVectorPathSegment.Points[0]*Scale)+Translate,
-                                                            (LocalVectorPathSegment.Points[1]*Scale)+Translate,
-                                                            (LocalVectorPathSegment.Points[2]*Scale)+Translate]);
+        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[(TpvVectorPathSegmentQuadraticCurve(LocalVectorPathSegment).Points[0]*Scale)+Translate,
+                                                            (TpvVectorPathSegmentQuadraticCurve(LocalVectorPathSegment).Points[1]*Scale)+Translate,
+                                                            (TpvVectorPathSegmentQuadraticCurve(LocalVectorPathSegment).Points[2]*Scale)+Translate]);
        end;
        TpvVectorPathSegmentType.CubicCurve:begin
         raise Exception.Create('Ups?!');
