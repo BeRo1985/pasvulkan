@@ -611,7 +611,7 @@ end;
 
 constructor TpvVectorPathContour.Create(const aContour:TpvVectorPathContour);
 begin
- inherited Create;
+ Create;
  Assign(aContour);
 end;
 
