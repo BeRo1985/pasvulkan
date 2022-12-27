@@ -736,7 +736,110 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
  procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ var a1,a2,a3,a4,b1,b2,b3,b4,
+     c10,c11,c12,c13,c20,c21,c22,c23,
+     c10s,c11s,c12s,c13s,c20s,c21s,c22s,c23s,
+     c10c,c11c,c12c,c13c,c20c,c21c,c22c,c23c:TpvVectorPathVector;
+     PolyCoefs:array[0..9] of TpvDouble;
+     Roots:TpvDoubleDynamicArray;
+     XRoots,YRoots:array[0..1] of TpvDouble;
+     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+     OK:boolean;
+     s,XRoot:TpvDouble;
  begin
+  a1:=aSegment0^.Points[0];
+  a2:=aSegment0^.Points[1];
+  a3:=aSegment0^.Points[2];
+  a4:=aSegment0^.Points[3];
+  b1:=aSegment1^.Points[0];
+  b2:=aSegment1^.Points[1];
+  b3:=aSegment1^.Points[2];
+  b4:=aSegment1^.Points[3];
+  c10:=a1;
+  c11:=(a1*(-3.0))+(a2*3.0);
+  c12:=((a1*3.0)+(a2*(-6.0)))+(a3*3.0);
+  c13:=(((a1*(-1.0))+(a2*3.0))+(a3*(-3.0)))+a4;
+  c20:=b1;
+  c21:=(b1*(-3.0))+(b2*3.0);
+  c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
+  c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
+  c10s:=c10*c10;
+  c11s:=c11*c11;
+  c12s:=c12*c12;
+  c13s:=c13*c13;
+  c20s:=c20*c20;
+  c21s:=c21*c21;
+  c22s:=c22*c22;
+  c23s:=c23*c23;
+  c10c:=c10s*c10;
+  c11c:=c11s*c11;
+  c12c:=c12s*c12;
+  c13c:=c13s*c13;
+  c20c:=c20s*c20;
+  c21c:=c21s*c21;
+  c22c:=c22s*c22;
+  c23c:=c23s*c23;
+  PolyCoefs[0]:=-c13c.x*c23c.y+c13c.y*c23c.x-3*c13.x*c13s.y*c23s.x*c23.y+3*c13s.x*c13.y*c23.x*c23s.y;
+  PolyCoefs[1]:=-6*c13.x*c22.x*c13s.y*c23.x*c23.y+6*c13s.x*c13.y*c22.y*c23.x*c23.y+3*c22.x*c13c.y*c23s.x-3*c13c.x*c22.y*c23s.y-3*c13.x*c13s.y*c22.y*c23s.x+3*c13s.x*c22.x*c13.y*c23s.y;
+  PolyCoefs[2]:=-6*c21.x*c13.x*c13s.y*c23.x*c23.y-6*c13.x*c22.x*c13s.y*c22.y*c23.x+6*c13s.x*c22.x*c13.y*c22.y*c23.y+3*c21.x*c13c.y*c23s.x+3*c22s.x*c13c.y*c23.x+3*c21.x*c13s.x*c13.y*c23s.y-3*c13.x*c21.y*c13s.y*c23s.x-3*c13.x*c22s.x*c13s.y*c23.y+c13s.x*c13.y*c23.x*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-c21.y*c23s.y-2*c22s.y*c23.y-c23.y*(2*c21.y*c23.y+c22s.y));
+  PolyCoefs[3]:=c11.x*c12.y*c13.x*c13.y*c23.x*c23.y-c11.y*c12.x*c13.x*c13.y*c23.x*c23.y+6*c21.x*c22.x*c13c.y*c23.x+3*c11.x*c12.x*c13.x*c13.y*c23s.y+6*c10.x*c13.x*c13s.y*c23.x*c23.y-3*c11.x*c12.x*c13s.y*c23.x*c23.y-3*c11.y*c12.y*c13.x*c13.y*c23s.x-6*c10.y*c13s.x*c13.y*c23.x*c23.y-6*c20.x*c13.x*c13s.y*c23.x*c23.y+3*c11.y*c12.y*c13s.x*c23.x*c23.y-2*c12.x*c12s.y*c13.x*c23.x*c23.y-6*c21.x*c13.x*c22.x*c13s.y*c23.y-6*c21.x*c13.x*c13s.y*c22.y*c23.x-6*c13.x*c21.y*c22.x*c13s.y*c23.x+6*c21.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.y*c23.x*c23.y+c22c.x*c13c.y-3*c10.x*c13c.y*c23s.x+3*c10.y*c13c.x*c23s.y+3*c20.x*c13c.y*c23s.x+c12c.y*c13.x*c23s.x-c12c.x*c13.y*c23s.y-3*c10.x*c13s.x*c13.y*c23s.y+3*c10.y*c13.x*c13s.y*c23s.x-2*c11.x*c12.y*c13s.x*c23s.y+c11.x*c12.y*c13s.y*c23s.x-c11.y*c12.x*c13s.x*c23s.y+2*c11.y*c12.x*c13s.y*c23s.x+3*c20.x*c13s.x*c13.y*c23s.y-c12.x*c12s.y*c13.y*c23s.x-3*c20.y*c13.x*c13s.y*c23s.x+c12s.x*c12.y*c13.x*c23s.y-
+                3*c13.x*c22s.x*c13s.y*c22.y+c13s.x*c13.y*c23.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c22.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c21.y*c22.y*c23.y-c20.y*c23s.y-c22.y*(2*c21.y*c23.y+c22s.y)-c23.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+  PolyCoefs[4]:=6*c11.x*c12.x*c13.x*c13.y*c22.y*c23.y+c11.x*c12.y*c13.x*c22.x*c13.y*c23.y+c11.x*c12.y*c13.x*c13.y*c22.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c23.y-c11.y*c12.x*c13.x*c13.y*c22.y*c23.x-6*c11.y*c12.y*c13.x*c22.x*c13.y*c23.x-6*c10.x*c22.x*c13c.y*c23.x+6*c20.x*c22.x*c13c.y*c23.x+6*c10.y*c13c.x*c22.y*c23.y+2*c12c.y*c13.x*c22.x*c23.x-2*c12c.x*c13.y*c22.y*c23.y+6*c10.x*c13.x*c22.x*c13s.y*c23.y+6*c10.x*c13.x*c13s.y*c22.y*c23.x+6*c10.y*c13.x*c22.x*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c23.y-3*c11.x*c12.x*c13s.y*c22.y*c23.x+2*c11.x*c12.y*c22.x*c13s.y*c23.x+4*c11.y*c12.x*c22.x*c13s.y*c23.x-6*c10.x*c13s.x*c13.y*c22.y*c23.y-6*c10.y*c13s.x*c22.x*c13.y*c23.y-6*c10.y*c13s.x*c13.y*c22.y*c23.x-4*c11.x*c12.y*c13s.x*c22.y*c23.y-6*c20.x*c13.x*c22.x*c13s.y*c23.y-6*c20.x*c13.x*c13s.y*c22.y*c23.x-2*c11.y*c12.x*c13s.x*c22.y*c23.y+3*c11.y*c12.y*c13s.x*c22.x*c23.y+3*c11.y*c12.y*c13s.x*c22.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c23.y-
+                2*c12.x*c12s.y*c13.x*c22.y*c23.x-2*c12.x*c12s.y*c22.x*c13.y*c23.x-6*c20.y*c13.x*c22.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c13s.y*c23.x-6*c21.x*c13.x*c22.x*c13s.y*c22.y+6*c20.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.x*c22.y*c23.y+2*c12s.x*c12.y*c22.x*c13.y*c23.y+2*c12s.x*c12.y*c13.y*c22.y*c23.x+3*c21.x*c22s.x*c13c.y+3*c21s.x*c13c.y*c23.x-3*c13.x*c21.y*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c23.y+c13s.x*c22.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c13.y*c23.x*(6*c20.y*c22.y+3*c21s.y)+c21.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c22.y*c23.y-c23.y*(2*c20.y*c22.y+c21s.y)-c21.y*(2*c21.y*c23.y+c22s.y)-c22.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+  PolyCoefs[5]:=c11.x*c21.x*c12.y*c13.x*c13.y*c23.y+c11.x*c12.y*c13.x*c21.y*c13.y*c23.x+c11.x*c12.y*c13.x*c22.x*c13.y*c22.y-c11.y*c12.x*c21.x*c13.x*c13.y*c23.y-c11.y*c12.x*c13.x*c21.y*c13.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c22.y-6*c11.y*c21.x*c12.y*c13.x*c13.y*c23.x-6*c10.x*c21.x*c13c.y*c23.x+6*c20.x*c21.x*c13c.y*c23.x+2*c21.x*c12c.y*c13.x*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c23.y+6*c10.x*c13.x*c21.y*c13s.y*c23.x+6*c10.x*c13.x*c22.x*c13s.y*c22.y+6*c10.y*c21.x*c13.x*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c23.y-3*c11.x*c12.x*c21.y*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c22.y+2*c11.x*c21.x*c12.y*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c13s.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c23.y-6*c10.y*c13s.x*c21.y*c13.y*c23.x-6*c10.y*c13s.x*c22.x*c13.y*c22.y-6*c20.x*c21.x*c13.x*c13s.y*c23.y-6*c20.x*c13.x*c21.y*c13s.y*c23.x-6*c20.x*c13.x*c22.x*c13s.y*c22.y+3*c11.y*c21.x*c12.y*c13s.x*c23.y-3*c11.y*c12.y*c13.x*c22s.x*c13.y+3*c11.y*c12.y*c13s.x*c21.y*c23.x+
+                3*c11.y*c12.y*c13s.x*c22.x*c22.y-2*c12.x*c21.x*c12s.y*c13.x*c23.y-2*c12.x*c21.x*c12s.y*c13.y*c23.x-2*c12.x*c12s.y*c13.x*c21.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c22.y-6*c20.y*c21.x*c13.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c22.x*c13s.y+6*c20.y*c13s.x*c21.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c23.y+2*c12s.x*c12.y*c21.y*c13.y*c23.x+2*c12s.x*c12.y*c22.x*c13.y*c22.y-3*c10.x*c22s.x*c13c.y+3*c20.x*c22s.x*c13c.y+3*c21s.x*c22.x*c13c.y+c12c.y*c13.x*c22s.x+3*c10.y*c13.x*c22s.x*c13s.y+c11.x*c12.y*c22s.x*c13s.y+2*c11.y*c12.x*c22s.x*c13s.y-c12.x*c12s.y*c22s.x*c13.y-3*c20.y*c13.x*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c22.y+c12s.x*c12.y*c13.x*(2*c21.y*c23.y+c22s.y)+c11.x*c12.x*c13.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c21.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c21.y*c23.y-c22s.y)+c10.y*c13c.x*(6*c21.y*c23.y+3*c22s.y)+c11.y*c12.x*c13s.x*(-2*c21.y*c23.y-c22s.y)+
+                c11.x*c12.y*c13s.x*(-4*c21.y*c23.y-2*c22s.y)+c10.x*c13s.x*c13.y*(-6*c21.y*c23.y-3*c22s.y)+c13s.x*c22.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c20.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c21.y*c23.y-c22.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c21.y*c23.y+c22s.y)-c21.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+  PolyCoefs[6]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c23.y+c10.x*c11.y*c12.x*c13.x*c13.y*c23.y+6*c10.x*c11.y*c12.y*c13.x*c13.y*c23.x-6*c10.y*c11.x*c12.x*c13.x*c13.y*c23.y-c10.y*c11.x*c12.y*c13.x*c13.y*c23.x+c10.y*c11.y*c12.x*c13.x*c13.y*c23.x+c11.x*c11.y*c12.x*c12.y*c13.x*c23.y-c11.x*c11.y*c12.x*c12.y*c13.y*c23.x+c11.x*c20.x*c12.y*c13.x*c13.y*c23.y+c11.x*c20.y*c12.y*c13.x*c13.y*c23.x+c11.x*c21.x*c12.y*c13.x*c13.y*c22.y+c11.x*c12.y*c13.x*c21.y*c22.x*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c23.y-6*c20.x*c11.y*c12.y*c13.x*c13.y*c23.x-c11.y*c12.x*c20.y*c13.x*c13.y*c23.x-c11.y*c12.x*c21.x*c13.x*c13.y*c22.y-c11.y*c12.x*c13.x*c21.y*c22.x*c13.y-6*c11.y*c21.x*c12.y*c13.x*c22.x*c13.y-6*c10.x*c20.x*c13c.y*c23.x-6*c10.x*c21.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c23.x+6*c20.x*c21.x*c22.x*c13c.y+2*c20.x*c12c.y*c13.x*c23.x+2*c21.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c23.y-6*c10.x*c10.y*c13.x*c13s.y*c23.x+3*c10.x*c11.x*c12.x*c13s.y*c23.y-
+                2*c10.x*c11.x*c12.y*c13s.y*c23.x-4*c10.x*c11.y*c12.x*c13s.y*c23.x+3*c10.y*c11.x*c12.x*c13s.y*c23.x+6*c10.x*c10.y*c13s.x*c13.y*c23.y+6*c10.x*c20.x*c13.x*c13s.y*c23.y-3*c10.x*c11.y*c12.y*c13s.x*c23.y+2*c10.x*c12.x*c12s.y*c13.x*c23.y+2*c10.x*c12.x*c12s.y*c13.y*c23.x+6*c10.x*c20.y*c13.x*c13s.y*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c22.y+6*c10.x*c13.x*c21.y*c22.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c23.y+6*c10.y*c20.x*c13.x*c13s.y*c23.x+2*c10.y*c11.y*c12.x*c13s.x*c23.y-3*c10.y*c11.y*c12.y*c13s.x*c23.x+2*c10.y*c12.x*c12s.y*c13.x*c23.x+6*c10.y*c21.x*c13.x*c22.x*c13s.y-3*c11.x*c20.x*c12.x*c13s.y*c23.y+2*c11.x*c20.x*c12.y*c13s.y*c23.x+c11.x*c11.y*c12s.y*c13.x*c23.x-3*c11.x*c12.x*c20.y*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c22.y-3*c11.x*c12.x*c21.y*c22.x*c13s.y+2*c11.x*c21.x*c12.y*c22.x*c13s.y+4*c20.x*c11.y*c12.x*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c23.y-6*c10.y*c20.x*c13s.x*c13.y*c23.y-
+                6*c10.y*c20.y*c13s.x*c13.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c22.y-2*c10.y*c12s.x*c12.y*c13.x*c23.y-2*c10.y*c12s.x*c12.y*c13.y*c23.x-6*c10.y*c13s.x*c21.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c23.y-2*c11.x*c11s.y*c13.x*c13.y*c23.x+3*c20.x*c11.y*c12.y*c13s.x*c23.y-2*c20.x*c12.x*c12s.y*c13.x*c23.y-2*c20.x*c12.x*c12s.y*c13.y*c23.x-6*c20.x*c20.y*c13.x*c13s.y*c23.x-6*c20.x*c21.x*c13.x*c13s.y*c22.y-6*c20.x*c13.x*c21.y*c22.x*c13s.y+3*c11.y*c20.y*c12.y*c13s.x*c23.x+3*c11.y*c21.x*c12.y*c13s.x*c22.y+3*c11.y*c12.y*c13s.x*c21.y*c22.x-2*c12.x*c20.y*c12s.y*c13.x*c23.x-2*c12.x*c21.x*c12s.y*c13.x*c22.y-2*c12.x*c21.x*c12s.y*c22.x*c13.y-2*c12.x*c12s.y*c13.x*c21.y*c22.x-6*c20.y*c21.x*c13.x*c22.x*c13s.y-c11s.y*c12.x*c12.y*c13.x*c23.x+2*c20.x*c12s.x*c12.y*c13.y*c23.y+6*c20.y*c13s.x*c21.y*c22.x*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c23.y+c11s.x*c12.x*c12.y*c13.y*c23.y+2*c12s.x*c20.y*c12.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c22.y+
+                2*c12s.x*c12.y*c21.y*c22.x*c13.y+c21c.x*c13c.y+3*c10s.x*c13c.y*c23.x-3*c10s.y*c13c.x*c23.y+3*c20s.x*c13c.y*c23.x+c11c.y*c13s.x*c23.x-c11c.x*c13s.y*c23.y-c11.x*c11s.y*c13s.x*c23.y+c11s.x*c11.y*c13s.y*c23.x-3*c10s.x*c13.x*c13s.y*c23.y+3*c10s.y*c13s.x*c13.y*c23.x-c11s.x*c12s.y*c13.x*c23.y+c11s.y*c12s.x*c13.y*c23.x-3*c21s.x*c13.x*c21.y*c13s.y-3*c20s.x*c13.x*c13s.y*c23.y+3*c20s.y*c13s.x*c13.y*c23.x+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c20.y*c23.y-2*c21.y*c22.y)+c10.y*c13c.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c23.y-2*c21.y*c22.y)+c12s.x*c12.y*c13.x*(2*c20.y*c23.y+2*c21.y*c22.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c23.y-4*c21.y*c22.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c23.y-6*c21.y*c22.y)+c20.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c21.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21.y*c22.y-c20s.y*c23.y-c21.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+  PolyCoefs[7]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c22.y+c10.x*c11.y*c12.x*c13.x*c13.y*c22.y+6*c10.x*c11.y*c12.y*c13.x*c22.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c13.y*c22.y-c10.y*c11.x*c12.y*c13.x*c22.x*c13.y+c10.y*c11.y*c12.x*c13.x*c22.x*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c22.y-c11.x*c11.y*c12.x*c12.y*c22.x*c13.y+c11.x*c20.x*c12.y*c13.x*c13.y*c22.y+c11.x*c20.y*c12.y*c13.x*c22.x*c13.y+c11.x*c21.x*c12.y*c13.x*c21.y*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c22.y-6*c20.x*c11.y*c12.y*c13.x*c22.x*c13.y-c11.y*c12.x*c20.y*c13.x*c22.x*c13.y-c11.y*c12.x*c21.x*c13.x*c21.y*c13.y-6*c10.x*c20.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c22.x+2*c20.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c22.y-6*c10.x*c10.y*c13.x*c22.x*c13s.y+3*c10.x*c11.x*c12.x*c13s.y*c22.y-2*c10.x*c11.x*c12.y*c22.x*c13s.y-4*c10.x*c11.y*c12.x*c22.x*c13s.y+3*c10.y*c11.x*c12.x*c22.x*c13s.y+6*c10.x*c10.y*c13s.x*c13.y*c22.y+6*c10.x*c20.x*c13.x*c13s.y*c22.y-3*c10.x*c11.y*c12.y*c13s.x*c22.y+
+                2*c10.x*c12.x*c12s.y*c13.x*c22.y+2*c10.x*c12.x*c12s.y*c22.x*c13.y+6*c10.x*c20.y*c13.x*c22.x*c13s.y+6*c10.x*c21.x*c13.x*c21.y*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c22.y+6*c10.y*c20.x*c13.x*c22.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c22.y-3*c10.y*c11.y*c12.y*c13s.x*c22.x+2*c10.y*c12.x*c12s.y*c13.x*c22.x-3*c11.x*c20.x*c12.x*c13s.y*c22.y+2*c11.x*c20.x*c12.y*c22.x*c13s.y+c11.x*c11.y*c12s.y*c13.x*c22.x-3*c11.x*c12.x*c20.y*c22.x*c13s.y-3*c11.x*c12.x*c21.x*c21.y*c13s.y+4*c20.x*c11.y*c12.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c22.y-6*c10.y*c20.x*c13s.x*c13.y*c22.y-6*c10.y*c20.y*c13s.x*c22.x*c13.y-6*c10.y*c21.x*c13s.x*c21.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c22.y-2*c10.y*c12s.x*c12.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c22.y-2*c11.x*c11s.y*c13.x*c22.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c22.y-2*c20.x*c12.x*c12s.y*c13.x*c22.y-2*c20.x*c12.x*c12s.y*c22.x*c13.y-6*c20.x*c20.y*c13.x*c22.x*c13s.y-6*c20.x*c21.x*c13.x*c21.y*c13s.y+
+                3*c11.y*c20.y*c12.y*c13s.x*c22.x+3*c11.y*c21.x*c12.y*c13s.x*c21.y-2*c12.x*c20.y*c12s.y*c13.x*c22.x-2*c12.x*c21.x*c12s.y*c13.x*c21.y-c11s.y*c12.x*c12.y*c13.x*c22.x+2*c20.x*c12s.x*c12.y*c13.y*c22.y-3*c11.y*c21s.x*c12.y*c13.x*c13.y+6*c20.y*c21.x*c13s.x*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c22.y+c11s.x*c12.x*c12.y*c13.y*c22.y+2*c12s.x*c20.y*c12.y*c22.x*c13.y+2*c12s.x*c21.x*c12.y*c21.y*c13.y-3*c10.x*c21s.x*c13c.y+3*c20.x*c21s.x*c13c.y+3*c10s.x*c22.x*c13c.y-3*c10s.y*c13c.x*c22.y+3*c20s.x*c22.x*c13c.y+c21s.x*c12c.y*c13.x+c11c.y*c13s.x*c22.x-c11c.x*c13s.y*c22.y+3*c10.y*c21s.x*c13.x*c13s.y-c11.x*c11s.y*c13s.x*c22.y+c11.x*c21s.x*c12.y*c13s.y+2*c11.y*c12.x*c21s.x*c13s.y+c11s.x*c11.y*c22.x*c13s.y-c12.x*c21s.x*c12s.y*c13.y-3*c20.y*c21s.x*c13.x*c13s.y-3*c10s.x*c13.x*c13s.y*c22.y+3*c10s.y*c13s.x*c22.x*c13.y-c11s.x*c12s.y*c13.x*c22.y+c11s.y*c12s.x*c22.x*c13.y-3*c20s.x*c13.x*c13s.y*c22.y+3*c20s.y*c13s.x*c22.x*c13.y+
+                c12s.x*c12.y*c13.x*(2*c20.y*c22.y+c21s.y)+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c12c.x*c13.y*(-2*c20.y*c22.y-c21s.y)+c10.y*c13c.x*(6*c20.y*c22.y+3*c21s.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c22.y-c21s.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c22.y-2*c21s.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c22.y-3*c21s.y)+c20.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21s.y-c20s.y*c22.y-c20.y*(2*c20.y*c22.y+c21s.y));
+  PolyCoefs[8]:=-c10.x*c11.x*c12.y*c13.x*c21.y*c13.y+c10.x*c11.y*c12.x*c13.x*c21.y*c13.y+6*c10.x*c11.y*c21.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c21.y*c13.y-c10.y*c11.x*c21.x*c12.y*c13.x*c13.y+c10.y*c11.y*c12.x*c21.x*c13.x*c13.y-c11.x*c11.y*c12.x*c21.x*c12.y*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c21.y+c11.x*c20.x*c12.y*c13.x*c21.y*c13.y+6*c11.x*c12.x*c20.y*c13.x*c21.y*c13.y+c11.x*c20.y*c21.x*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c13.x*c21.y*c13.y-6*c20.x*c11.y*c21.x*c12.y*c13.x*c13.y-c11.y*c12.x*c20.y*c21.x*c13.x*c13.y-6*c10.x*c20.x*c21.x*c13c.y-2*c10.x*c21.x*c12c.y*c13.x+6*c10.y*c20.y*c13c.x*c21.y+2*c20.x*c21.x*c12c.y*c13.x+2*c10.y*c12c.x*c21.y*c13.y-2*c12c.x*c20.y*c21.y*c13.y-6*c10.x*c10.y*c21.x*c13.x*c13s.y+3*c10.x*c11.x*c12.x*c21.y*c13s.y-2*c10.x*c11.x*c21.x*c12.y*c13s.y-4*c10.x*c11.y*c12.x*c21.x*c13s.y+3*c10.y*c11.x*c12.x*c21.x*c13s.y+6*c10.x*c10.y*c13s.x*c21.y*c13.y+6*c10.x*c20.x*c13.x*c21.y*c13s.y-
+                3*c10.x*c11.y*c12.y*c13s.x*c21.y+2*c10.x*c12.x*c21.x*c12s.y*c13.y+2*c10.x*c12.x*c12s.y*c13.x*c21.y+6*c10.x*c20.y*c21.x*c13.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c21.y+6*c10.y*c20.x*c21.x*c13.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c21.y-3*c10.y*c11.y*c21.x*c12.y*c13s.x+2*c10.y*c12.x*c21.x*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c21.y*c13s.y+2*c11.x*c20.x*c21.x*c12.y*c13s.y+c11.x*c11.y*c21.x*c12s.y*c13.x-3*c11.x*c12.x*c20.y*c21.x*c13s.y+4*c20.x*c11.y*c12.x*c21.x*c13s.y-6*c10.x*c20.y*c13s.x*c21.y*c13.y-2*c10.x*c12s.x*c12.y*c21.y*c13.y-6*c10.y*c20.x*c13s.x*c21.y*c13.y-6*c10.y*c20.y*c21.x*c13s.x*c13.y-2*c10.y*c12s.x*c21.x*c12.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c21.y-c11.x*c11.y*c12s.x*c21.y*c13.y-4*c11.x*c20.y*c12.y*c13s.x*c21.y-2*c11.x*c11s.y*c21.x*c13.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c21.y-2*c20.x*c12.x*c21.x*c12s.y*c13.y-2*c20.x*c12.x*c12s.y*c13.x*c21.y-6*c20.x*c20.y*c21.x*c13.x*c13s.y-2*c11.y*c12.x*c20.y*c13s.x*c21.y+
+                3*c11.y*c20.y*c21.x*c12.y*c13s.x-2*c12.x*c20.y*c21.x*c12s.y*c13.x-c11s.y*c12.x*c21.x*c12.y*c13.x+6*c20.x*c20.y*c13s.x*c21.y*c13.y+2*c20.x*c12s.x*c12.y*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c21.y*c13.y+c11s.x*c12.x*c12.y*c21.y*c13.y+2*c12s.x*c20.y*c21.x*c12.y*c13.y+2*c12s.x*c20.y*c12.y*c13.x*c21.y+3*c10s.x*c21.x*c13c.y-3*c10s.y*c13c.x*c21.y+3*c20s.x*c21.x*c13c.y+c11c.y*c21.x*c13s.x-c11c.x*c21.y*c13s.y-3*c20s.y*c13c.x*c21.y-c11.x*c11s.y*c13s.x*c21.y+c11s.x*c11.y*c21.x*c13s.y-3*c10s.x*c13.x*c21.y*c13s.y+3*c10s.y*c21.x*c13s.x*c13.y-c11s.x*c12s.y*c13.x*c21.y+c11s.y*c12s.x*c21.x*c13.y-3*c20s.x*c13.x*c21.y*c13s.y+3*c20s.y*c21.x*c13s.x*c13.y;
+  PolyCoefs[9]:=c10.x*c10.y*c11.x*c12.y*c13.x*c13.y-c10.x*c10.y*c11.y*c12.x*c13.x*c13.y+c10.x*c11.x*c11.y*c12.x*c12.y*c13.y-c10.y*c11.x*c11.y*c12.x*c12.y*c13.x-c10.x*c11.x*c20.y*c12.y*c13.x*c13.y+6*c10.x*c20.x*c11.y*c12.y*c13.x*c13.y+c10.x*c11.y*c12.x*c20.y*c13.x*c13.y-c10.y*c11.x*c20.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c20.y*c13.x*c13.y+c10.y*c20.x*c11.y*c12.x*c13.x*c13.y-c11.x*c20.x*c11.y*c12.x*c12.y*c13.y+c11.x*c11.y*c12.x*c20.y*c12.y*c13.x+c11.x*c20.x*c20.y*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c20.y*c13.x*c13.y-2*c10.x*c20.x*c12c.y*c13.x+2*c10.y*c12c.x*c20.y*c13.y-3*c10.x*c10.y*c11.x*c12.x*c13s.y-6*c10.x*c10.y*c20.x*c13.x*c13s.y+3*c10.x*c10.y*c11.y*c12.y*c13s.x-2*c10.x*c10.y*c12.x*c12s.y*c13.x-2*c10.x*c11.x*c20.x*c12.y*c13s.y-c10.x*c11.x*c11.y*c12s.y*c13.x+3*c10.x*c11.x*c12.x*c20.y*c13s.y-4*c10.x*c20.x*c11.y*c12.x*c13s.y+3*c10.y*c11.x*c20.x*c12.x*c13s.y+6*c10.x*c10.y*c20.y*c13s.x*c13.y+2*c10.x*c10.y*c12s.x*c12.y*c13.y+
+                2*c10.x*c11.x*c11s.y*c13.x*c13.y+2*c10.x*c20.x*c12.x*c12s.y*c13.y+6*c10.x*c20.x*c20.y*c13.x*c13s.y-3*c10.x*c11.y*c20.y*c12.y*c13s.x+2*c10.x*c12.x*c20.y*c12s.y*c13.x+c10.x*c11s.y*c12.x*c12.y*c13.x+c10.y*c11.x*c11.y*c12s.x*c13.y+4*c10.y*c11.x*c20.y*c12.y*c13s.x-3*c10.y*c20.x*c11.y*c12.y*c13s.x+2*c10.y*c20.x*c12.x*c12s.y*c13.x+2*c10.y*c11.y*c12.x*c20.y*c13s.x+c11.x*c20.x*c11.y*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c20.y*c13s.y-2*c10.x*c12s.x*c20.y*c12.y*c13.y-6*c10.y*c20.x*c20.y*c13s.x*c13.y-2*c10.y*c20.x*c12s.x*c12.y*c13.y-2*c10.y*c11s.x*c11.y*c13.x*c13.y-c10.y*c11s.x*c12.x*c12.y*c13.y-2*c10.y*c12s.x*c20.y*c12.y*c13.x-2*c11.x*c20.x*c11s.y*c13.x*c13.y-c11.x*c11.y*c12s.x*c20.y*c13.y+3*c20.x*c11.y*c20.y*c12.y*c13s.x-2*c20.x*c12.x*c20.y*c12s.y*c13.x-c20.x*c11s.y*c12.x*c12.y*c13.x+3*c10s.y*c11.x*c12.x*c13.x*c13.y+3*c11.x*c12.x*c20s.y*c13.x*c13.y+2*c20.x*c12s.x*c20.y*c12.y*c13.y-3*c10s.x*c11.y*c12.y*c13.x*c13.y+
+                2*c11s.x*c11.y*c20.y*c13.x*c13.y+c11s.x*c12.x*c20.y*c12.y*c13.y-3*c20s.x*c11.y*c12.y*c13.x*c13.y-c10c.x*c13c.y+c10c.y*c13c.x+c20c.x*c13c.y-c20c.y*c13c.x-3*c10.x*c20s.x*c13c.y-c10.x*c11c.y*c13s.x+3*c10s.x*c20.x*c13c.y+c10.y*c11c.x*c13s.y+3*c10.y*c20s.y*c13c.x+c20.x*c11c.y*c13s.x+c10s.x*c12c.y*c13.x-3*c10s.y*c20.y*c13c.x-c10s.y*c12c.x*c13.y+c20s.x*c12c.y*c13.x-c11c.x*c20.y*c13s.y-c12c.x*c20s.y*c13.y-c10.x*c11s.x*c11.y*c13s.y+c10.y*c11.x*c11s.y*c13s.x-3*c10.x*c10s.y*c13s.x*c13.y-c10.x*c11s.y*c12s.x*c13.y+c10.y*c11s.x*c12s.y*c13.x-c11.x*c11s.y*c20.y*c13s.x+3*c10s.x*c10.y*c13.x*c13s.y+c10s.x*c11.x*c12.y*c13s.y+2*c10s.x*c11.y*c12.x*c13s.y-2*c10s.y*c11.x*c12.y*c13s.x-c10s.y*c11.y*c12.x*c13s.x+c11s.x*c20.x*c11.y*c13s.y-3*c10.x*c20s.y*c13s.x*c13.y+3*c10.y*c20s.x*c13.x*c13s.y+c11.x*c20s.x*c12.y*c13s.y-2*c11.x*c20s.y*c12.y*c13s.x+c20.x*c11s.y*c12s.x*c13.y-c11.y*c12.x*c20s.y*c13s.x-c10s.x*c12.x*c12s.y*c13.y-3*c10s.x*c20.y*c13.x*c13s.y+
+                3*c10s.y*c20.x*c13s.x*c13.y+c10s.y*c12s.x*c12.y*c13.x-c11s.x*c20.y*c12s.y*c13.x+2*c20s.x*c11.y*c12.x*c13s.y+3*c20.x*c20s.y*c13s.x*c13.y-c20s.x*c12.x*c12s.y*c13.y-3*c20s.x*c20.y*c13.x*c13s.y+c12s.x*c20s.y*c12.y*c13.x;
+  Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+  for Index:=0 to length(Roots)-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+         OutputPoint((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
+       end;
+      end;
+      if OK then begin
+       break;
+      end;
+     end;
+    end;
+   end;
+  end;
  end;
 var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
     Segment,OtherSegment:PpvVectorPathSegment;
