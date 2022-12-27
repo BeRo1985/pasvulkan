@@ -226,8 +226,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        constructor Create; reintroduce;
        constructor CreateFromSVGPath(const aCommands:TpvRawByteString);
+       constructor CreateFromShape(const aShape:TpvVectorPathShape);
        destructor Destroy; override;
-       procedure Assign(const aFrom:TpvVectorPath);
+       procedure Assign(const aFrom:TpvVectorPath); overload;
+       procedure Assign(const aShape:TpvVectorPathShape); overload;
        procedure MoveTo(const aX,aY:TpvDouble);
        procedure LineTo(const aX,aY:TpvDouble);
        procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
@@ -1471,6 +1473,12 @@ begin
  end;
 end;
 
+constructor TpvVectorPath.CreateFromShape(const aShape:TpvVectorPathShape);
+begin
+ Create;
+ Assign(aShape);
+end;
+
 destructor TpvVectorPath.Destroy;
 begin
  FreeAndNil(fCommands);
@@ -1487,6 +1495,65 @@ begin
   fCommands.Add(TpvVectorPathCommand.Create(SrcCmd.fCommandType,SrcCmd.fX0,SrcCmd.fY0,SrcCmd.fX1,SrcCmd.fY1,SrcCmd.fX2,SrcCmd.fY2));
  end;
  fFillRule:=aFrom.fFillRule;
+end;
+
+procedure TpvVectorPath.Assign(const aShape:TpvVectorPathShape);
+var Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
+    First:boolean;
+    Last,Start:TpvVectorPathVector;
+begin
+ fCommands.Clear;
+ if assigned(aShape) then begin
+  for Contour in aShape.fContours do begin
+   First:=true;
+   Last:=TpvVectorPathVector.Create(0.0,0.0);
+   Start:=TpvVectorPathVector.Create(0.0,0.0);
+   for Segment in Contour.fSegments do begin
+    case Segment.Type_ of
+     TpvVectorPathSegmentType.Line:begin
+      if First then begin
+       First:=false;
+       Start:=Segment.Points[0];
+       Last:=Start;
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end else if Last<>Segment.Points[0] then begin
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end;
+      fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.LineTo,Segment.Points[1].x,Segment.Points[1].y));
+      Last:=Segment.Points[1];
+     end;
+     TpvVectorPathSegmentType.QuadraticCurve:begin
+      if First then begin
+       First:=false;
+       Start:=Segment.Points[0];
+       Last:=Start;
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end else if Last<>Segment.Points[0] then begin
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end;
+      fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.QuadraticCurveTo,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y));
+      Last:=Segment.Points[2];
+     end;
+     else {TpvVectorPathSegmentType.CubicCurve:}begin
+      if First then begin
+       First:=false;
+       Start:=Segment.Points[0];
+       Last:=Start;
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end else if Last<>Segment.Points[0] then begin
+       fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,Segment.Points[0].x,Segment.Points[0].y));
+      end;
+      fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.CubicCurveTo,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y,Segment.Points[3].x,Segment.Points[3].y));
+      Last:=Segment.Points[3];
+     end;
+    end;
+   end;
+   if (not First) and Contour.fClosed then begin
+    fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
+   end;
+  end;
+ end;
 end;
 
 procedure TpvVectorPath.MoveTo(const aX,aY:TpvDouble);
