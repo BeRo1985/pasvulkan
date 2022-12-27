@@ -235,8 +235,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fSegments:TpvVectorPathSegments;
        fClosed:boolean;
       public
-       constructor Create; reintroduce;
+       constructor Create; reintroduce; overload;
+       constructor Create(const aContour:TpvVectorPathContour); overload;
        destructor Destroy; override;
+       procedure Assign(const aContour:TpvVectorPathContour);
+       function Clone:TpvVectorPathContour;
       published
        property Segments:TpvVectorPathSegments read fSegments;
        property Closed:boolean read fClosed write fClosed;
@@ -259,6 +262,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        destructor Destroy; override;
        procedure Assign(const aVectorPathShape:TpvVectorPathShape); overload;
        procedure Assign(const aVectorPath:TpvVectorPath); overload;
+       function Clone:TpvVectorPathShape;
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
@@ -605,10 +609,34 @@ begin
  fClosed:=false;
 end;
 
+constructor TpvVectorPathContour.Create(const aContour:TpvVectorPathContour);
+begin
+ inherited Create;
+ Assign(aContour);
+end;
+
 destructor TpvVectorPathContour.Destroy;
 begin
  FreeAndNil(fSegments);
  inherited Destroy;
+end;
+
+procedure TpvVectorPathContour.Assign(const aContour:TpvVectorPathContour);
+var Segment:TpvVectorPathSegment;
+begin
+ fSegments.Clear;
+ if assigned(aContour) and assigned(aContour.fSegments) then begin
+  for Segment in aContour.fSegments do begin
+   if assigned(Segment) then begin
+    fSegments.Add(Segment.Clone);
+   end;
+  end;
+ end;
+end;
+
+function TpvVectorPathContour.Clone:TpvVectorPathContour;
+begin
+ result:=TpvVectorPathContour.Create(self);
 end;
 
 { TpvVectorPathShape }
@@ -748,6 +776,11 @@ begin
    end;
   end;
  end;
+end;
+
+function TpvVectorPathShape.Clone:TpvVectorPathShape;
+begin
+ result:=TpvVectorPathShape.Create(self);
 end;
 
 function TpvVectorPathShape.GetBeginEndPoints:TpvVectorPathVectors;
