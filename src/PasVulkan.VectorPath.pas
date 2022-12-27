@@ -72,6 +72,7 @@ uses SysUtils,
      PasDblStrUtils,
      PasMP,
      PasVulkan.Types,
+     PasVulkan.Collections,
      PasVulkan.Math;
 
 type PpvVectorPathCommandType=^TpvVectorPathCommandType;
@@ -175,34 +176,45 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathSegmentType=^TpvVectorPathSegmentType;
 
-     TpvVectorPathSegment=record
+     TpvVectorPathSegment=class
       public
        Type_:TpvVectorPathSegmentType;
        Points:array[0..3] of TpvVectorPathVector;
      end;
 
-     PpvVectorPathSegment=^TpvVectorPathSegment;
-
-     TpvVectorPathSegments=array of TpvVectorPathSegment;
-
-     { TpvVectorContour }
+     TpvVectorPathSegments=TpvObjectGenericList<TpvVectorPathSegment>;
 
      { TpvVectorPathContour }
 
-     TpvVectorPathContour=record
+     TpvVectorPathContour=class
+      private
+       fSegments:TpvVectorPathSegments;
+       fClosed:boolean;
       public
-       Segments:TpvVectorPathSegments;
-       function GetBeginEndPoints:TpvVectorPathVectors;
-       function GetIntersectionPoints:TpvVectorPathVectors;
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+      published
+       property Segments:TpvVectorPathSegments read fSegments;
+       property Closed:boolean read fClosed write fClosed;
      end;
 
-     PpvVectorPathContour=^TpvVectorPathContour;
+     TpvVectorPathContours=TpvObjectGenericList<TpvVectorPathContour>;
 
-     TpvVectorPathContours=array of TpvVectorPathContour;
+     TpvVectorPath=class;
 
-     TpvVectorPathShape=record
+     { TpvVectorPathShape }
+
+     TpvVectorPathShape=class
+      private
+       fContours:TpvVectorPathContours;
+       procedure Assign(const aVectorPath: TpvVectorPath);
       public
-       Contours:TpvVectorPathContours;
+       constructor Create(const aVectorPath:TpvVectorPath=nil); reintroduce;
+       destructor Destroy; override;
+       function GetBeginEndPoints:TpvVectorPathVectors;
+       function GetIntersectionPoints:TpvVectorPathVectors;
+      published
+       property Contours:TpvVectorPathContours read fContours;
      end;
 
      { TpvVectorPath }
@@ -428,39 +440,199 @@ end;
 
 { TpvVectorPathContour }
 
-function TpvVectorPathContour.GetBeginEndPoints:TpvVectorPathVectors;
+constructor TpvVectorPathContour.Create;
+begin
+ inherited Create;
+ fSegments:=TpvVectorPathSegments.Create;
+ fSegments.OwnsObjects:=true;
+ fClosed:=false;
+end;
+
+destructor TpvVectorPathContour.Destroy;
+begin
+ FreeAndNil(fSegments);
+ inherited Destroy;
+end;
+
+{ TpvVectorPathShape }
+
+constructor TpvVectorPathShape.Create(const aVectorPath:TpvVectorPath);
+begin
+ inherited Create;
+ fContours:=TpvVectorPathContours.Create;
+ fContours.OwnsObjects:=true;
+ if assigned(aVectorPath) then begin
+  Assign(aVectorPath);
+ end;
+end;
+
+destructor TpvVectorPathShape.Destroy;
+begin
+ FreeAndNil(fContours);
+ inherited Destroy;
+end;
+
+procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
+var CommandIndex:TpvSizeInt;
+    Command:TpvVectorPathCommand;
+    Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
+    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
+begin
+ Contours.Clear;
+ if assigned(aVectorPath) then begin
+  Contour:=nil;
+  StartPoint.x:=0.0;
+  StartPoint.y:=0.0;
+  LastPoint.x:=0.0;
+  LastPoint.y:=0.0;
+  for CommandIndex:=0 to aVectorPath.fCommands.Count-1 do begin
+   Command:=aVectorPath.fCommands[CommandIndex];
+   case Command.CommandType of
+    TpvVectorPathCommandType.MoveTo:begin
+     if assigned(Contour) then begin
+      if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+       Segment:=TpvVectorPathSegment.Create;
+       try
+        Segment.Type_:=TpvVectorPathSegmentType.Line;
+        Segment.Points[0]:=LastPoint;
+        Segment.Points[1]:=StartPoint;
+       finally
+        Contour.fSegments.Add(Segment);
+       end;
+      end;
+     end;
+     Contour:=TpvVectorPathContour.Create;
+     fContours.Add(Contour);
+     LastPoint.x:=Command.x0;
+     LastPoint.y:=Command.y0;
+     StartPoint:=LastPoint;
+    end;
+    TpvVectorPathCommandType.LineTo:begin
+     if not assigned(Contour) then begin
+      Contour:=TpvVectorPathContour.Create;
+      fContours.Add(Contour);
+     end;
+     Point.x:=Command.x0;
+     Point.y:=Command.y0;
+     if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
+      Segment:=TpvVectorPathSegment.Create;
+      try
+       Segment.Type_:=TpvVectorPathSegmentType.Line;
+       Segment.Points[0]:=LastPoint;
+       Segment.Points[1]:=Point;
+      finally
+       Contour.fSegments.Add(Segment);
+      end;
+     end;
+     LastPoint:=Point;
+    end;
+    TpvVectorPathCommandType.QuadraticCurveTo:begin
+     if not assigned(Contour) then begin
+      Contour:=TpvVectorPathContour.Create;
+      fContours.Add(Contour);
+     end;
+     ControlPoint.x:=Command.x0;
+     ControlPoint.y:=Command.y0;
+     Point.x:=Command.x1;
+     Point.y:=Command.y1;
+     if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+                                   (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
+      Segment:=TpvVectorPathSegment.Create;
+      try
+       Segment.Type_:=TpvVectorPathSegmentType.QuadraticCurve;
+       Segment.Points[0]:=LastPoint;
+       Segment.Points[1]:=ControlPoint;
+       Segment.Points[2]:=Point;
+      finally
+       Contour.fSegments.Add(Segment);
+      end;
+     end;
+     LastPoint:=Point;
+    end;
+    TpvVectorPathCommandType.CubicCurveTo:begin
+     if not assigned(Contour) then begin
+      Contour:=TpvVectorPathContour.Create;
+      fContours.Add(Contour);
+     end;
+     ControlPoint.x:=Command.x0;
+     ControlPoint.y:=Command.y0;
+     OtherControlPoint.y:=Command.y1;
+     OtherControlPoint.y:=Command.y1;
+     Point.x:=Command.x2;
+     Point.y:=Command.y2;
+     if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+                                   (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y)) and
+                                   (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y))) then begin
+      Segment:=TpvVectorPathSegment.Create;
+      try
+       Segment.Type_:=TpvVectorPathSegmentType.CubicCurve;
+       Segment.Points[0]:=LastPoint;
+       Segment.Points[1]:=ControlPoint;
+       Segment.Points[2]:=OtherControlPoint;
+       Segment.Points[3]:=Point;
+      finally
+       Contour.fSegments.Add(Segment);
+      end;
+     end;
+     LastPoint:=Point;
+    end;
+    TpvVectorPathCommandType.Close:begin
+     if assigned(Contour) then begin
+      Contour.fClosed:=true;
+      if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+       Segment:=TpvVectorPathSegment.Create;
+       try
+        Segment.Type_:=TpvVectorPathSegmentType.Line;
+        Segment.Points[0]:=LastPoint;
+        Segment.Points[1]:=StartPoint;
+       finally
+        Contour.fSegments.Add(Segment);
+       end;
+      end;
+     end;
+     Contour:=nil;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvVectorPathShape.GetBeginEndPoints:TpvVectorPathVectors;
 var Count,SegmentIndex:TpvSizeInt;
-    Segment:PpvVectorPathSegment;
+    Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
 begin
  result:=nil;
  Count:=0;
  try
-  for SegmentIndex:=0 to length(Segments)-1 do begin
-   Segment:=@Segments[SegmentIndex];
-   case Segment^.Type_ of
-    TpvVectorPathSegmentType.Line:begin
-     if (Count+1)>=length(result) then begin
-      SetLength(result,(Count+2)*2);
+  for Contour in fContours do begin
+   for Segment in Contour.fSegments do begin
+    case Segment.Type_ of
+     TpvVectorPathSegmentType.Line:begin
+      if (Count+1)>=length(result) then begin
+       SetLength(result,(Count+2)*2);
+      end;
+      result[Count]:=Segment.Points[0];
+      result[Count+1]:=Segment.Points[1];
+      inc(Count,2);
      end;
-     result[Count]:=Segment^.Points[0];
-     result[Count+1]:=Segment^.Points[1];
-     inc(Count,2);
-    end;
-    TpvVectorPathSegmentType.QuadraticCurve:begin
-     if (Count+1)>=length(result) then begin
-      SetLength(result,(Count+2)*2);
+     TpvVectorPathSegmentType.QuadraticCurve:begin
+      if (Count+1)>=length(result) then begin
+       SetLength(result,(Count+2)*2);
+      end;
+      result[Count]:=Segment.Points[0];
+      result[Count+1]:=Segment.Points[2];
+      inc(Count,2);
      end;
-     result[Count]:=Segment^.Points[0];
-     result[Count+1]:=Segment^.Points[2];
-     inc(Count,2);
-    end;
-    else {TpvVectorPathSegmentType.CubicCurve:}begin
-     if (Count+1)>=length(result) then begin
-      SetLength(result,(Count+2)*2);
+     else {TpvVectorPathSegmentType.CubicCurve:}begin
+      if (Count+1)>=length(result) then begin
+       SetLength(result,(Count+2)*2);
+      end;
+      result[Count]:=Segment.Points[0];
+      result[Count+1]:=Segment.Points[3];
+      inc(Count,2);
      end;
-     result[Count]:=Segment^.Points[0];
-     result[Count+1]:=Segment^.Points[3];
-     inc(Count,2);
     end;
    end;
   end;
@@ -469,7 +641,7 @@ begin
  end;
 end;
 
-function TpvVectorPathContour.GetIntersectionPoints:TpvVectorPathVectors;
+function TpvVectorPathShape.GetIntersectionPoints:TpvVectorPathVectors;
 var Vectors:TpvVectorPathVectors;
     Count:TpvSizeInt;
  procedure OutputPoint(const aVector:TpvVectorPathVector);
@@ -480,31 +652,31 @@ var Vectors:TpvVectorPathVectors;
   Vectors[Count]:=aVector;
   inc(Count);
  end;
- procedure HandleLineLine(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleLineLine(const aSegment0,aSegment1:TpvVectorPathSegment);
  var a,b,Determinant:TpvDouble;
  begin
-  Determinant:=((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[1].x-aSegment0^.Points[0].x))-((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[1].y-aSegment0^.Points[0].y));
+  Determinant:=((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[1].x-aSegment0.Points[0].x))-((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[1].y-aSegment0.Points[0].y));
   if not IsZero(Determinant) then begin
-   a:=(((aSegment1^.Points[1].x-aSegment1^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment1^.Points[1].y-aSegment1^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x)))/Determinant;
-   b:=(((aSegment0^.Points[1].x-aSegment0^.Points[0].x)*(aSegment0^.Points[0].y-aSegment1^.Points[0].y))-((aSegment0^.Points[1].y-aSegment0^.Points[0].y)*(aSegment0^.Points[0].x-aSegment1^.Points[0].x)))/Determinant;
+   a:=(((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
+   b:=(((aSegment0.Points[1].x-aSegment0.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment0.Points[1].y-aSegment0.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
    if ((a>=0.0) and (a<=1.0)) and ((b>=0.0) and (b<=1.0)) then begin
-    OutputPoint(aSegment0^.Points[0].Lerp(aSegment0^.Points[1],a));
+    OutputPoint(aSegment0.Points[0].Lerp(aSegment0.Points[1],a));
    end;
   end;
  end;
- procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleLineQuadraticCurve(const aSegment0,aSegment1:TpvVectorPathSegment);
  var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
      a,cl,t:TpvDouble;
      Roots:array[0..1] of TpvDouble;
      RootIndex,CountRoots:TpvSizeInt;
  begin
-  Min_:=aSegment0^.Points[0].Minimum(aSegment0^.Points[1]);
-  Max_:=aSegment0^.Points[0].Maximum(aSegment0^.Points[1]);
-  c2:=aSegment1^.Points[0]+((aSegment1^.Points[1]*(-2.0))+aSegment1^.Points[2]);
-  c1:=(aSegment1^.Points[0]*(-2.0))+(aSegment1^.Points[1]*2.0);
-  c0:=TpvVectorPathVector.Create(aSegment1^.Points[0].x,aSegment1^.Points[0].y);
-  n:=TpvVectorPathVector.Create(aSegment0^.Points[0].y-aSegment0^.Points[1].y,aSegment0^.Points[1].x-aSegment0^.Points[0].x);
-  cl:=(aSegment0^.Points[0].x*aSegment0^.Points[1].y)-(aSegment0^.Points[1].x*aSegment0^.Points[0].y);
+  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
+  Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
+  c2:=aSegment1.Points[0]+((aSegment1.Points[1]*(-2.0))+aSegment1.Points[2]);
+  c1:=(aSegment1.Points[0]*(-2.0))+(aSegment1.Points[1]*2.0);
+  c0:=TpvVectorPathVector.Create(aSegment1.Points[0].x,aSegment1.Points[0].y);
+  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
+  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
   a:=n.Dot(c0)+cl;
   if IsZero(a) then begin
    CountRoots:=0;
@@ -514,12 +686,12 @@ var Vectors:TpvVectorPathVectors;
   for RootIndex:=0 to CountRoots-1 do begin
    t:=Roots[RootIndex];
    if (t>=0.0) and (t<=1.0) then begin
-    p:=(aSegment1^.Points[0].Lerp(aSegment1^.Points[1],t)).Lerp(aSegment1^.Points[1].Lerp(aSegment1^.Points[2],t),t);
-    if SameValue(aSegment0^.Points[0].x,aSegment0^.Points[1].x) then begin
+    p:=(aSegment1.Points[0].Lerp(aSegment1.Points[1],t)).Lerp(aSegment1.Points[1].Lerp(aSegment1.Points[2],t),t);
+    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
      if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
       OutputPoint(p);
      end;
-    end else if SameValue(aSegment0^.Points[0].y,aSegment0^.Points[1].y) then begin
+    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
      if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
       OutputPoint(p);
      end;
@@ -529,24 +701,24 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
- procedure HandleLineCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleLineCubicCurve(const aSegment0,aSegment1:TpvVectorPathSegment);
  var Min_,Max_,c0,c1,c2,c3,n,p,p1,p2,p3,p4,p5,p6,p7,p8,p9:TpvVectorPathVector;
      a,cl,t:TpvDouble;
      Roots:array[0..2] of TpvDouble;
      RootIndex,CountRoots:TpvSizeInt;
  begin
-  Min_:=aSegment0^.Points[0].Minimum(aSegment0^.Points[1]);
-  Max_:=aSegment0^.Points[0].Maximum(aSegment0^.Points[1]);
-  p1:=aSegment1^.Points[0];
-  p2:=aSegment1^.Points[1];
-  p3:=aSegment1^.Points[2];
-  p4:=aSegment1^.Points[3];
+  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
+  Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
+  p1:=aSegment1.Points[0];
+  p2:=aSegment1.Points[1];
+  p3:=aSegment1.Points[2];
+  p4:=aSegment1.Points[3];
   c0:=p1;
   c1:=(p1*(-3.0))+(p2*3.0);
   c2:=(p1*3.0)+((p2*(-6.0))+(p3*3.0));
   c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
-  n:=TpvVectorPathVector.Create(aSegment0^.Points[0].y-aSegment0^.Points[1].y,aSegment0^.Points[1].x-aSegment0^.Points[0].x);
-  cl:=(aSegment0^.Points[0].x*aSegment0^.Points[1].y)-(aSegment0^.Points[1].x*aSegment0^.Points[0].y);
+  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
+  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
   a:=n.Dot(c0)+cl;
   if IsZero(a) then begin
    CountRoots:=0;
@@ -562,11 +734,11 @@ var Vectors:TpvVectorPathVectors;
     p8:=p5.Lerp(p6,t);
     p9:=p6.Lerp(p7,t);
     p:=p8.Lerp(p9,t);
-    if SameValue(aSegment0^.Points[0].x,aSegment0^.Points[1].x) then begin
+    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
      if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
       OutputPoint(p);
      end;
-    end else if SameValue(aSegment0^.Points[0].y,aSegment0^.Points[1].y) then begin
+    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
      if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
       OutputPoint(p);
      end;
@@ -576,7 +748,7 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
- procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:TpvVectorPathSegment);
  var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
      v0,v1,v2,v3,v4,v5,v6,s,XRoot:TpvDouble;
      Roots:array[0..3] of TpvDouble;
@@ -584,12 +756,12 @@ var Vectors:TpvVectorPathVectors;
      CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
      OK:boolean;
  begin
-  a1:=aSegment0^.Points[0];
-  a2:=aSegment0^.Points[1];
-  a3:=aSegment0^.Points[2];
-  b1:=aSegment1^.Points[0];
-  b2:=aSegment1^.Points[1];
-  b3:=aSegment1^.Points[2];
+  a1:=aSegment0.Points[0];
+  a2:=aSegment0.Points[1];
+  a3:=aSegment0.Points[2];
+  b1:=aSegment1.Points[0];
+  b2:=aSegment1.Points[1];
+  b3:=aSegment1.Points[2];
   c10:=a1;
   c11:=(a1*(-2.0))+(a2*2.0);
   c12:=a1+((a2*(-2.0))+a3);
@@ -664,7 +836,7 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
- procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleQuadraticCurveCubicCurve(const aSegment0,aSegment1:TpvVectorPathSegment);
  var a1,a2,a3,b1,b2,b3,b4,
      c10,c11,c12,c20,c21,c22,c23,
      c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
@@ -675,13 +847,13 @@ var Vectors:TpvVectorPathVectors;
      OK:boolean;
      s,XRoot:TpvDouble;
  begin
-  a1:=aSegment0^.Points[0];
-  a2:=aSegment0^.Points[1];
-  a3:=aSegment0^.Points[2];
-  b1:=aSegment1^.Points[0];
-  b2:=aSegment1^.Points[1];
-  b3:=aSegment1^.Points[2];
-  b4:=aSegment1^.Points[3];
+  a1:=aSegment0.Points[0];
+  a2:=aSegment0.Points[1];
+  a3:=aSegment0.Points[2];
+  b1:=aSegment1.Points[0];
+  b2:=aSegment1.Points[1];
+  b3:=aSegment1.Points[2];
+  b4:=aSegment1.Points[3];
   c10:=a1;
   c11:=(a1*(-2.0))+(a2*2.0);
   c12:=(a1+(a2*(-2.0)))+a3;
@@ -740,7 +912,7 @@ var Vectors:TpvVectorPathVectors;
    end;
   end;
  end;
- procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:PpvVectorPathSegment);
+ procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:TpvVectorPathSegment);
  var a1,a2,a3,a4,b1,b2,b3,b4,
      c10,c11,c12,c13,c20,c21,c22,c23,
      c10s,c11s,c12s,c13s,c20s,c21s,c22s,c23s,
@@ -752,14 +924,14 @@ var Vectors:TpvVectorPathVectors;
      OK:boolean;
      s,XRoot:TpvDouble;
  begin
-  a1:=aSegment0^.Points[0];
-  a2:=aSegment0^.Points[1];
-  a3:=aSegment0^.Points[2];
-  a4:=aSegment0^.Points[3];
-  b1:=aSegment1^.Points[0];
-  b2:=aSegment1^.Points[1];
-  b3:=aSegment1^.Points[2];
-  b4:=aSegment1^.Points[3];
+  a1:=aSegment0.Points[0];
+  a2:=aSegment0.Points[1];
+  a3:=aSegment0.Points[2];
+  a4:=aSegment0.Points[3];
+  b1:=aSegment1.Points[0];
+  b2:=aSegment1.Points[1];
+  b3:=aSegment1.Points[2];
+  b4:=aSegment1.Points[3];
   c10:=a1;
   c11:=(a1*(-3.0))+(a2*3.0);
   c12:=((a1*3.0)+(a2*(-6.0)))+(a3*3.0);
@@ -847,60 +1019,73 @@ var Vectors:TpvVectorPathVectors;
   end;
  end;
 var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
-    Segment,OtherSegment:PpvVectorPathSegment;
+    Segment,OtherSegment:TpvVectorPathSegment;
+    Segments:TpvVectorPathSegments;
+    Contour:TpvVectorPathContour;
 begin
- Vectors:=nil;
- Count:=0;
+ Segments:=TpvVectorPathSegments.Create;
  try
-  for SegmentIndex:=0 to length(Segments)-1 do begin
-   Segment:=@Segments[SegmentIndex];
-   for OtherSegmentIndex:=SegmentIndex+1 to length(Segments)-1 do begin
-    OtherSegment:=@Segments[OtherSegmentIndex];
-    case Segment^.Type_ of
-     TpvVectorPathSegmentType.Line:begin
-      case OtherSegment^.Type_ of
-       TpvVectorPathSegmentType.Line:begin
-        HandleLineLine(Segment,OtherSegment);
-       end;
-       TpvVectorPathSegmentType.QuadraticCurve:begin
-        HandleLineQuadraticCurve(Segment,OtherSegment);
-       end;
-       else {TpvVectorPathSegmentType.CubicCurve:}begin
-        HandleLineCubicCurve(Segment,OtherSegment);
-       end;
-      end;
-     end;
-     TpvVectorPathSegmentType.QuadraticCurve:begin
-      case OtherSegment^.Type_ of
-       TpvVectorPathSegmentType.Line:begin
-        HandleLineQuadraticCurve(OtherSegment,Segment);
-       end;
-       TpvVectorPathSegmentType.QuadraticCurve:begin
-        HandleQuadraticCurveQuadraticCurve(Segment,OtherSegment);
-       end;
-       else {TpvVectorPathSegmentType.CubicCurve:}begin
-        HandleQuadraticCurveCubicCurve(Segment,OtherSegment);
+  Segments.OwnsObjects:=false;
+  for Contour in fContours do begin
+   for Segment in Contour.fSegments do begin
+    Segments.Add(Segment);
+   end;
+  end;
+  Vectors:=nil;
+  Count:=0;
+  try
+   for SegmentIndex:=0 to Segments.Count-1 do begin
+    Segment:=Segments[SegmentIndex];
+    for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
+     OtherSegment:=Segments[OtherSegmentIndex];
+     case Segment.Type_ of
+      TpvVectorPathSegmentType.Line:begin
+       case OtherSegment.Type_ of
+        TpvVectorPathSegmentType.Line:begin
+         HandleLineLine(Segment,OtherSegment);
+        end;
+        TpvVectorPathSegmentType.QuadraticCurve:begin
+         HandleLineQuadraticCurve(Segment,OtherSegment);
+        end;
+        else {TpvVectorPathSegmentType.CubicCurve:}begin
+         HandleLineCubicCurve(Segment,OtherSegment);
+        end;
        end;
       end;
-     end;
-     else {TpvVectorPathSegmentType.CubicCurve:}begin
-      case OtherSegment^.Type_ of
-       TpvVectorPathSegmentType.Line:begin
-        HandleLineCubicCurve(OtherSegment,Segment);
+      TpvVectorPathSegmentType.QuadraticCurve:begin
+       case OtherSegment.Type_ of
+        TpvVectorPathSegmentType.Line:begin
+         HandleLineQuadraticCurve(OtherSegment,Segment);
+        end;
+        TpvVectorPathSegmentType.QuadraticCurve:begin
+         HandleQuadraticCurveQuadraticCurve(Segment,OtherSegment);
+        end;
+        else {TpvVectorPathSegmentType.CubicCurve:}begin
+         HandleQuadraticCurveCubicCurve(Segment,OtherSegment);
+        end;
        end;
-       TpvVectorPathSegmentType.QuadraticCurve:begin
-        HandleQuadraticCurveCubicCurve(OtherSegment,Segment);
-       end;
-       else {TpvVectorPathSegmentType.CubicCurve:}begin
-        HandleCubicCurveCubicCurve(Segment,OtherSegment);
+      end;
+      else {TpvVectorPathSegmentType.CubicCurve:}begin
+       case OtherSegment.Type_ of
+        TpvVectorPathSegmentType.Line:begin
+         HandleLineCubicCurve(OtherSegment,Segment);
+        end;
+        TpvVectorPathSegmentType.QuadraticCurve:begin
+         HandleQuadraticCurveCubicCurve(OtherSegment,Segment);
+        end;
+        else {TpvVectorPathSegmentType.CubicCurve:}begin
+         HandleCubicCurveCubicCurve(Segment,OtherSegment);
+        end;
        end;
       end;
      end;
     end;
    end;
+  finally
+   SetLength(Vectors,Count);
   end;
  finally
-  SetLength(Vectors,Count);
+  FreeAndNil(Segments);
  end;
  result:=Vectors;
 end;
@@ -1778,156 +1963,8 @@ begin
 end;
 
 function TpvVectorPath.GetShape:TpvVectorPathShape;
-var CountContours,CommandIndex,CountPathSegments:TpvSizeInt;
-    Command:TpvVectorPathCommand;
-    Contour:PpvVectorPathContour;
-    Segment:PpvVectorPathSegment;
-    StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
 begin
- CountContours:=0;
- result.Contours:=nil;
- try
-  Contour:=nil;
-  try
-   CountPathSegments:=0;
-   StartPoint.x:=0.0;
-   StartPoint.y:=0.0;
-   LastPoint.x:=0.0;
-   LastPoint.y:=0.0;
-   for CommandIndex:=0 to fCommands.Count-1 do begin
-    Command:=fCommands[CommandIndex];
-    case Command.CommandType of
-     TpvVectorPathCommandType.MoveTo:begin
-      if assigned(Contour) then begin
-       if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-        if CountPathSegments>=length(Contour^.Segments) then begin
-         SetLength(Contour^.Segments,(CountPathSegments+1)*2);
-        end;
-        Segment:=@Contour^.Segments[CountPathSegments];
-        inc(CountPathSegments);
-        Segment^.Type_:=TpvVectorPathSegmentType.Line;
-        Segment^.Points[0]:=LastPoint;
-        Segment^.Points[1]:=StartPoint;
-       end;
-       SetLength(Contour^.Segments,CountPathSegments);
-       CountPathSegments:=0;
-      end;
-      if length(result.Contours)<(CountContours+1) then begin
-       SetLength(result.Contours,(CountContours+1)*2);
-      end;
-      Contour:=@result.Contours[CountContours];
-      inc(CountContours);
-      LastPoint.x:=Command.x0;
-      LastPoint.y:=Command.y0;
-      StartPoint:=LastPoint;
-     end;
-     TpvVectorPathCommandType.LineTo:begin
-      if not assigned(Contour) then begin
-       if length(result.Contours)<(CountContours+1) then begin
-        SetLength(result.Contours,(CountContours+1)*2);
-       end;
-       Contour:=@result.Contours[CountContours];
-       inc(CountContours);
-       CountPathSegments:=0;
-      end;
-      Point.x:=Command.x0;
-      Point.y:=Command.y0;
-      if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
-       if CountPathSegments>=length(Contour^.Segments) then begin
-        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
-       end;
-       Segment:=@Contour^.Segments[CountPathSegments];
-       inc(CountPathSegments);
-       Segment^.Type_:=TpvVectorPathSegmentType.Line;
-       Segment^.Points[0]:=LastPoint;
-       Segment^.Points[1]:=Point;
-      end;
-      LastPoint:=Point;
-     end;
-     TpvVectorPathCommandType.QuadraticCurveTo:begin
-      if not assigned(Contour) then begin
-       if length(result.Contours)<(CountContours+1) then begin
-        SetLength(result.Contours,(CountContours+1)*2);
-       end;
-       Contour:=@result.Contours[CountContours];
-       inc(CountContours);
-       CountPathSegments:=0;
-      end;
-      ControlPoint.x:=Command.x0;
-      ControlPoint.y:=Command.y0;
-      Point.x:=Command.x1;
-      Point.y:=Command.y1;
-      if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
-                                    (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
-       if CountPathSegments>=length(Contour^.Segments) then begin
-        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
-       end;
-       Segment:=@Contour^.Segments[CountPathSegments];
-       inc(CountPathSegments);
-       Segment^.Type_:=TpvVectorPathSegmentType.QuadraticCurve;
-       Segment^.Points[0]:=LastPoint;
-       Segment^.Points[1]:=ControlPoint;
-       Segment^.Points[2]:=Point;
-      end;
-      LastPoint:=Point;
-     end;
-     TpvVectorPathCommandType.CubicCurveTo:begin
-      if not assigned(Contour) then begin
-       if length(result.Contours)<(CountContours+1) then begin
-        SetLength(result.Contours,(CountContours+1)*2);
-       end;
-       Contour:=@result.Contours[CountContours];
-       inc(CountContours);
-       CountPathSegments:=0;
-      end;
-      ControlPoint.x:=Command.x0;
-      ControlPoint.y:=Command.y0;
-      OtherControlPoint.y:=Command.y1;
-      OtherControlPoint.y:=Command.y1;
-      Point.x:=Command.x2;
-      Point.y:=Command.y2;
-      if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
-                                    (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y)) and
-                                    (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y))) then begin
-       if CountPathSegments>=length(Contour^.Segments) then begin
-        SetLength(Contour^.Segments,(CountPathSegments+1)*2);
-       end;
-       Segment:=@Contour^.Segments[CountPathSegments];
-       inc(CountPathSegments);
-       Segment^.Type_:=TpvVectorPathSegmentType.CubicCurve;
-       Segment^.Points[0]:=LastPoint;
-       Segment^.Points[1]:=ControlPoint;
-       Segment^.Points[2]:=OtherControlPoint;
-       Segment^.Points[3]:=Point;
-      end;
-      LastPoint:=Point;
-     end;
-     TpvVectorPathCommandType.Close:begin
-      if assigned(Contour) then begin
-       if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-        if CountPathSegments>=length(Contour^.Segments) then begin
-         SetLength(Contour^.Segments,(CountPathSegments+1)*2);
-        end;
-        Segment:=@Contour^.Segments[CountPathSegments];
-        inc(CountPathSegments);
-        Segment^.Type_:=TpvVectorPathSegmentType.Line;
-        Segment^.Points[0]:=LastPoint;
-        Segment^.Points[1]:=StartPoint;
-       end;
-       SetLength(Contour^.Segments,CountPathSegments);
-      end;
-      Contour:=nil;
-     end;
-    end;
-   end;
-  finally
-   if assigned(Contour) then begin
-    SetLength(Contour^.Segments,CountPathSegments);
-   end;
-  end;
- finally
-  SetLength(result.Contours,CountContours);
- end;
+ result:=TpvVectorPathShape.Create(self);
 end;
 
 function TpvVectorPath.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
