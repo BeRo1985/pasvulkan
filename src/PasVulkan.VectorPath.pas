@@ -176,10 +176,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathSegmentType=^TpvVectorPathSegmentType;
 
+     { TpvVectorPathSegment }
+
      TpvVectorPathSegment=class
       public
        Type_:TpvVectorPathSegmentType;
        Points:array[0..3] of TpvVectorPathVector;
+      public
+       constructor Create; reintroduce; overload;
+       constructor Create(const aSegment:TpvVectorPathSegment); reintroduce; overload;
+       destructor Destroy; override;
      end;
 
      TpvVectorPathSegments=TpvObjectGenericList<TpvVectorPathSegment>;
@@ -207,10 +213,13 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathShape=class
       private
        fContours:TpvVectorPathContours;
-       procedure Assign(const aVectorPath: TpvVectorPath);
       public
        constructor Create(const aVectorPath:TpvVectorPath=nil); reintroduce;
        destructor Destroy; override;
+       procedure Assign(const aVectorPath:TpvVectorPath);
+       procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
+       procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
+       function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
        function GetBeginEndPoints:TpvVectorPathVectors;
        function GetIntersectionPoints:TpvVectorPathVectors;
       published
@@ -438,6 +447,27 @@ begin
  fY1:=aY1;
  fX2:=aX2;
  fY2:=aY2;
+end;
+
+{ TpvVectorPathSegment }
+
+constructor TpvVectorPathSegment.Create;
+begin
+ inherited Create;
+end;
+
+constructor TpvVectorPathSegment.Create(const aSegment:TpvVectorPathSegment);
+begin
+ Create;
+ if assigned(aSegment) then begin
+  Type_:=aSegment.Type_;
+  Points:=aSegment.Points;
+ end;
+end;
+
+destructor TpvVectorPathSegment.Destroy;
+begin
+ inherited Destroy;
 end;
 
 { TpvVectorPathContour }
@@ -1092,6 +1122,548 @@ begin
  result:=Vectors;
 end;
 
+procedure TpvVectorPathShape.ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble);
+var ValueOne,NearlyZeroValue,LengthScale:TpvDouble;
+    Contour:TpvVectorPathContour;
+ procedure ConvertCubicCurveToQuadraticCurve(const aP0,aP1,aP2,aP3:TpvVectorPathVector);
+ const MaxChoppedPoints=10;
+ type TChoppedPoints=array[0..MaxChoppedPoints-1] of TpvVectorPathVector;
+ var ChoppedPoints:TChoppedPoints;
+  procedure OutputLine(const aP0,aP1:TpvVectorPathVector);
+  var Segment:TpvVectorPathSegment;
+  begin
+   Segment:=TpvVectorPathSegment.Create;
+   try
+    Segment.Type_:=TpvVectorPathSegmentType.Line;
+    Segment.Points[0]:=aP0;
+    Segment.Points[1]:=aP1;
+   finally
+    Contour.fSegments.Add(Segment);
+   end;
+  end;
+  procedure OutputQuad(const aP0,aP1,aP2:TpvVectorPathVector);
+  var Segment:TpvVectorPathSegment;
+  begin
+   Segment:=TpvVectorPathSegment.Create;
+   try
+    Segment.Type_:=TpvVectorPathSegmentType.QuadraticCurve;
+    Segment.Points[0]:=aP0;
+    Segment.Points[1]:=aP1;
+    Segment.Points[2]:=aP2;
+   finally
+    Contour.fSegments.Add(Segment);
+   end;
+  end;
+  procedure ChopCubicAt(Src,Dst:PpvVectorPathRawVectors;const t:TpvDouble); overload;
+  var p0,p1,p2,p3,ab,bc,cd,abc,bcd,abcd:TpvVectorPathVector;
+  begin
+   if SameValue(t,1.0) then begin
+    Dst^[0]:=Src^[0];
+    Dst^[1]:=Src^[1];
+    Dst^[2]:=Src^[2];
+    Dst^[3]:=Src^[3];
+    Dst^[4]:=Src^[3];
+    Dst^[5]:=Src^[3];
+    Dst^[6]:=Src^[3];
+   end else begin
+    p0:=Src^[0];
+    p1:=Src^[1];
+    p2:=Src^[2];
+    p3:=Src^[3];
+    ab:=p0.Lerp(p1,t);
+    bc:=p1.Lerp(p2,t);
+    cd:=p2.Lerp(p3,t);
+    abc:=ab.Lerp(bc,t);
+    bcd:=bc.Lerp(cd,t);
+    abcd:=abc.Lerp(bcd,t);
+    Dst^[0]:=p0;
+    Dst^[1]:=ab;
+    Dst^[2]:=abc;
+    Dst^[3]:=abcd;
+    Dst^[4]:=bcd;
+    Dst^[5]:=cd;
+    Dst^[6]:=p3;
+   end;
+  end;
+  procedure ChopCubicAt(Src,Dst:PpvVectorPathRawVectors;const t0,t1:TpvDouble); overload;
+  var p0,p1,p2,p3,
+      ab0,bc0,cd0,abc0,bcd0,abcd0,
+      ab1,bc1,cd1,abc1,bcd1,abcd1,
+      Middle0,Middle1:TpvVectorPathVector;
+  begin
+   if SameValue(t1,1.0) then begin
+    ChopCubicAt(Src,Dst,t0);
+    Dst^[7]:=Src^[3];
+    Dst^[8]:=Src^[3];
+    Dst^[9]:=Src^[3];
+   end else begin
+    p0:=Src^[0];
+    p1:=Src^[1];
+    p2:=Src^[2];
+    p3:=Src^[3];
+    ab0:=p0.Lerp(p1,t0);
+    bc0:=p1.Lerp(p2,t0);
+    cd0:=p2.Lerp(p3,t0);
+    abc0:=ab0.Lerp(bc0,t0);
+    bcd0:=bc0.Lerp(cd0,t0);
+    abcd0:=abc0.Lerp(bcd0,t0);
+    ab1:=p0.Lerp(p1,t1);
+    bc1:=p1.Lerp(p2,t1);
+    cd1:=p2.Lerp(p3,t1);
+    abc1:=ab1.Lerp(bc1,t1);
+    bcd1:=bc1.Lerp(cd1,t1);
+    abcd1:=abc1.Lerp(bcd1,t1);
+    Middle0:=abc0.Lerp(bcd0,t1);
+    Middle1:=abc1.Lerp(bcd1,t0);
+    Dst^[0]:=p0;
+    Dst^[1]:=ab0;
+    Dst^[2]:=abc0;
+    Dst^[3]:=abcd0;
+    Dst^[4]:=Middle0;
+    Dst^[5]:=Middle1;
+    Dst^[6]:=abcd1;
+    Dst^[7]:=bcd1;
+    Dst^[8]:=cd1;
+    Dst^[9]:=p3;
+   end;
+  end;
+  function ChopCubicAtInflections(const aSrc:array of TpvVectorPathVector;out aDst:TChoppedPoints):TpvSizeInt;
+   function ValidUnitDivide(aNumerator,aDenominator:TpvDouble;out aRatio:TpvDouble):boolean;
+   begin
+    if aNumerator<0.0 then begin
+     aNumerator:=-aNumerator;
+     aDenominator:=-aDenominator;
+    end;
+    if IsZero(aNumerator) or IsZero(aDenominator) or (aNumerator>=aDenominator) then begin
+     result:=false;
+    end else begin
+     aRatio:=aNumerator/aDenominator;
+     if IsNaN(aRatio) or IsZero(aRatio) then begin
+      result:=false;
+     end else begin
+      result:=true;
+     end;
+    end;
+   end;
+   function FindUnitQuadRoots(const A,B,C:TpvDouble;out aRoot0,aRoot1:TpvDouble):TpvSizeInt;
+   var dr,Q:TpvDouble;
+   begin
+    if IsZero(A) then begin
+     if ValidUnitDivide(-C,B,aRoot0) then begin
+      result:=1;
+     end else begin
+      result:=0;
+     end;
+    end else begin
+     dr:=sqr(B)-(4.0*A*C);
+     if dr<0.0 then begin
+      result:=0;
+     end else begin
+      dr:=sqrt(dr);
+      if IsInfinite(dr) or IsNaN(dr) then begin
+       result:=0;
+      end else begin
+       if B<0.0 then begin
+        Q:=-(B-dr)*0.5;
+       end else begin
+        Q:=-(B+dr)*0.5;
+       end;
+       if ValidUnitDivide(Q,A,aRoot0) then begin
+        if ValidUnitDivide(C,Q,aRoot1) then begin
+         result:=2;
+         if aRoot0>aRoot1 then begin
+          Q:=aRoot0;
+          aRoot0:=aRoot1;
+          aRoot1:=Q;
+         end else if SameValue(aRoot0,aRoot1) then begin
+          dec(result);
+         end;
+        end else begin
+         result:=1;
+        end;
+       end else begin
+        if ValidUnitDivide(C,Q,aRoot0) then begin
+         result:=1;
+        end else begin
+         result:=0;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  var Index,Count:TpvSizeInt;
+      Times:array[0..1] of TpvDouble;
+      Ax,Ay,Bx,By,Cx,Cy,t0,t1,LastTime:TpvDouble;
+      Src:PpvVectorPathVector;
+      Dst:PpvVectorPathVector;
+  begin
+   Ax:=aSrc[1].x-aSrc[0].x;
+   Ay:=aSrc[1].y-aSrc[0].y;
+   Bx:=aSrc[2].x-(2.0*aSrc[1].x)+aSrc[0].x;
+   By:=aSrc[2].y-(2.0*aSrc[1].y)+aSrc[0].y;
+   Cx:=aSrc[3].x+(3.0*(aSrc[1].x-aSrc[2].x))-aSrc[0].x;
+   Cy:=aSrc[3].y+(3.0*(aSrc[1].y-aSrc[2].y))-aSrc[0].y;
+   Count:=FindUnitQuadRoots((Bx*Cy)-(By*Cx),(Ax*Cy)-(Ay*Cx),(Ax*By)-(Ay*Bx),Times[0],Times[1]);
+   if Count=0 then begin
+    aDst[0]:=aSrc[0];
+    aDst[1]:=aSrc[1];
+    aDst[2]:=aSrc[2];
+    aDst[3]:=aSrc[3];
+   end else begin
+    Src:=@aSrc[0];
+    Dst:=@aDst[0];
+    Index:=0;
+    while Index<(Count-1) do begin
+     t0:=Times[Index+0];
+     t1:=Times[Index+1];
+     if Index<>0 then begin
+      LastTime:=Times[Index-1];
+      t0:=Clamp(TpvDouble((t0-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+      t1:=Clamp(TpvDouble((t1-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+     end;
+     ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0,t1);
+     inc(Src,4);
+     inc(Dst,6);
+     inc(Index,2);
+    end;
+    if Index<Count then begin
+     t0:=Times[Index];
+     if Index<>0 then begin
+      LastTime:=Times[Index-1];
+      t0:=Clamp(TpvDouble((t0-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+     end;
+     ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0);
+    end;
+   end;
+   result:=Count+1;
+  end;
+  function IsNearlyZeroValue(const aValue:TpvDouble):Boolean;
+  begin
+   result:=(aValue<NearlyZeroValue) or IsZero(aValue);
+  end;
+  procedure ConvertNonInflectCubicToQuads(const aPoints:PpvVectorPathRawVectors;const aSquaredTolerance:TpvDouble;const aSubLevel:TpvSizeInt=0;const aPreserveFirstTangent:boolean=true;const aPreserveLastTangent:boolean=true);
+  const MaxSubdivisions=10;
+  var ab,dc,c0,c1,c:TpvVectorPathVector;
+      p:array[0..7] of TpvVectorPathVector;
+  begin
+   ab:=aPoints^[1]-aPoints^[0];
+   dc:=aPoints^[2]-aPoints^[3];
+   if IsNearlyZeroValue(ab.LengthSquared) then begin
+    if IsNearlyZeroValue(dc.LengthSquared) then begin
+     OutputLine(aPoints^[0],aPoints^[3]);
+     exit;
+    end else begin
+     ab:=aPoints^[2]-aPoints^[0];
+    end;
+   end;
+   if IsNearlyZeroValue(dc.LengthSquared) then begin
+    dc:=aPoints^[1]-aPoints^[3];
+   end;
+   ab.x:=ab.x*LengthScale;
+   ab.y:=ab.y*LengthScale;
+   dc.x:=dc.x*LengthScale;
+   dc.y:=dc.y*LengthScale;
+   c0:=aPoints^[0]+ab;
+   c1:=aPoints^[3]+dc;
+   if (aSubLevel>MaxSubdivisions) or ((c0-c1).LengthSquared<aSquaredTolerance) then begin
+    if aPreserveFirstTangent=aPreserveLastTangent then begin
+     c:=c0.Lerp(c1,0.5);
+    end else if aPreserveFirstTangent then begin
+     c:=c0;
+    end else begin
+     c:=c1;
+    end;
+    OutputQuad(aPoints^[0],c,aPoints^[3]);
+   end else begin
+    ChopCubicAt(aPoints,TpvPointer(@p[0]),0.5);
+    ConvertNonInflectCubicToQuads(TpvPointer(@p[0]),aSquaredTolerance,aSubLevel+1,aPreserveFirstTangent,false);
+    ConvertNonInflectCubicToQuads(TpvPointer(@p[3]),aSquaredTolerance,aSubLevel+1,false,aPreserveLastTangent);
+   end;
+  end;
+ var Count,Index:TpvSizeInt;
+     Points:array[0..3] of TpvVectorPathVector;
+ begin
+  Points[0]:=aP0;
+  Points[1]:=aP1;
+  Points[2]:=aP2;
+  Points[3]:=aP3;
+  if (IsNaN(Points[0].x) or IsInfinite(Points[0].x)) or
+     (IsNaN(Points[0].y) or IsInfinite(Points[0].y)) or
+     (IsNaN(Points[1].x) or IsInfinite(Points[1].x)) or
+     (IsNaN(Points[1].y) or IsInfinite(Points[1].y)) or
+     (IsNaN(Points[2].x) or IsInfinite(Points[2].x)) or
+     (IsNaN(Points[2].y) or IsInfinite(Points[2].y)) or
+     (IsNaN(Points[3].x) or IsInfinite(Points[3].x)) or
+     (IsNaN(Points[3].y) or IsInfinite(Points[3].y)) then begin
+   OutputLine(Points[0],Points[2]);
+  end else begin
+   Count:=ChopCubicAtInflections(Points,ChoppedPoints);
+   if Count>0 then begin
+    for Index:=0 to Count-1 do begin
+     ConvertNonInflectCubicToQuads(TpvPointer(@ChoppedPoints[Index*3]),ValueOne,0,true,true);
+    end;
+   end;
+  end;
+ end;
+var Segments:TpvVectorPathSegments;
+    Segment:TpvVectorPathSegment;
+begin
+ ValueOne:=aPixelRatio;
+ NearlyZeroValue:=ValueOne/TpvInt64(1 shl 18);
+ LengthScale:=ValueOne*1.5;
+ for Contour in fContours do begin
+  Segments:=Contour.fSegments;
+  try
+   Contour.fSegments:=TpvVectorPathSegments.Create;
+   Contour.fSegments.OwnsObjects:=true;
+   for Segment in Segments do begin
+    case Segment.Type_ of
+     TpvVectorPathSegmentType.CubicCurve:begin
+      ConvertCubicCurveToQuadraticCurve(Segment.Points[0],Segment.Points[1],Segment.Points[2],Segment.Points[3]);
+     end;
+     else begin
+      Contour.fSegments.Add(TpvVectorPathSegment.Create(Segment));
+     end;
+    end;
+   end;
+  finally
+   FreeAndNil(Segments);
+  end;
+ end;
+end;
+
+procedure TpvVectorPathShape.ConvertCurvesToLines(const aPixelRatio:TpvDouble);
+const CurveRecursionLimit=16;
+var Contour:TpvVectorPathContour;
+    CurveTessellationTolerance,CurveTessellationToleranceSquared,
+    LastX,LastY:TpvDouble;
+ procedure DoLineTo(const aToX,aToY:TpvDouble);
+ var Segment:TpvVectorPathSegment;
+ begin
+  if (not SameValue(LastX,aToX)) or (not SameValue(LastY,aToY)) then begin
+   Segment:=TpvVectorPathSegment.Create;
+   try
+    Segment.Type_:=TpvVectorPathSegmentType.Line;
+    Segment.Points[0]:=TpvVectorPathVector.Create(LastX,LastY);
+    Segment.Points[1]:=TpvVectorPathVector.Create(aToX,aToY);
+   finally
+    Contour.fSegments.Add(Segment);
+   end;
+  end;
+  LastX:=aToX;
+  LastY:=aToY;
+ end;
+ procedure DoQuadraticCurveTo(const aLX,aLY,aC0X,aC0Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    DoLineTo(x3,y3);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,Level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,Level+1);
+   end;
+  end;
+ begin
+  LastX:=aLX;
+  LastY:=aLY;
+  Recursive(aLX,aLY,aC0X,aC0Y,aA0X,aA0Y,0);
+  DoLineTo(aA0X,aA0Y);
+ end;
+ procedure DoCubicCurveTo(const aLX,aLY,aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+   dx:=x4-x1;
+   dy:=y4-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    DoLineTo(x4,y4);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
+ begin
+  LastX:=aLX;
+  LastY:=aLY;
+  Recursive(aLX,aLY,aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y,0);
+  DoLineTo(aA0X,aA0Y);
+ end;
+var Segments:TpvVectorPathSegments;
+    Segment:TpvVectorPathSegment;
+begin
+ CurveTessellationTolerance:=aPixelRatio*0.125;
+ CurveTessellationToleranceSquared:=CurveTessellationTolerance*CurveTessellationTolerance;
+ LastX:=0.0;
+ LastY:=0.0;
+ for Contour in fContours do begin
+  Segments:=Contour.fSegments;
+  try
+   Contour.fSegments:=TpvVectorPathSegments.Create;
+   Contour.fSegments.OwnsObjects:=true;
+   for Segment in Segments do begin
+    case Segment.Type_ of
+     TpvVectorPathSegmentType.QuadraticCurve:begin
+      DoQuadraticCurveTo(Segment.Points[0].x,Segment.Points[0].y,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y);
+     end;
+     TpvVectorPathSegmentType.CubicCurve:begin
+      DoCubicCurveTo(Segment.Points[0].x,Segment.Points[0].y,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y,Segment.Points[3].x,Segment.Points[3].y);
+     end;
+     else begin
+      Contour.fSegments.Add(TpvVectorPathSegment.Create(Segment));
+     end;
+    end;
+   end;
+  finally
+   FreeAndNil(Segments);
+  end;
+ end;
+end;
+
+function TpvVectorPathShape.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
+const CurveTessellationTolerance=0.25;
+      CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
+      CurveRecursionLimit=16;
+var ResultDistance,LastX,LastY:TpvDouble;
+ procedure LineDistance(const aPX,aPY,aAX,aAY,aBX,aBY:TpvDouble);
+ var pax,pay,bax,bay,t:TpvDouble;
+ begin
+  pax:=aPX-aAX;
+  pay:=aPY-aAY;
+  bax:=aBX-aAX;
+  bay:=aBY-aAY;
+  if ((aAY>aPY)<>(aBY>aPY)) and (pax<(bax*(pay/bay))) then begin
+   aInsideOutsideSign:=-aInsideOutsideSign;
+  end;
+  t:=sqr(bax)+sqr(bay);
+  if t>0.0 then begin
+   t:=Min(Max(((pax*bax)+(pay*bay))/t,0.0),1.0);
+  end else begin
+   t:=0.0;
+  end;
+  ResultDistance:=Min(ResultDistance,sqr(pax-(bax*t))+sqr(pay-(bay*t)));
+ end;
+ procedure DoLineTo(const aLX,aLY,aToX,aToY:TpvDouble);
+ begin
+  LineDistance(aX,aY,aLX,aLY,aToX,aToY);
+  LastX:=aToX;
+  LastY:=aToY;
+ end;
+ procedure DoQuadraticCurveTo(const aLX,aLY,aC0X,aC0Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    DoLineTo(LastX,LastY,x3,y3);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   end;
+  end;
+ begin
+  LastX:=aLX;
+  LastY:=aLY;
+  Recursive(aLX,aLY,aC0X,aC0Y,aA0X,aA0Y,0);
+  DoLineTo(LastX,LastY,aA0X,aA0Y);
+ end;
+ procedure DoCubicCurveTo(const aLX,aLY,aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+   dx:=x4-x1;
+   dy:=y4-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    DoLineTo(LastX,LastY,x4,y4);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
+ begin
+  LastX:=aLX;
+  LastY:=aLY;
+  Recursive(aLX,aLY,aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y,0);
+  DoLineTo(LastX,LastY,aA0X,aA0Y);
+ end;
+var Contour:TpvVectorPathContour;
+    Segments:TpvVectorPathSegments;
+    Segment:TpvVectorPathSegment;
+begin
+ ResultDistance:=Infinity;
+ aInsideOutsideSign:=1;
+ LastX:=0.0;
+ LastY:=0.0;
+ for Contour in fContours do begin
+  for Segment in Contour.fSegments do begin
+   case Segment.Type_ of
+    TpvVectorPathSegmentType.Line:begin
+     DoLineTo(Segment.Points[0].x,Segment.Points[0].y,Segment.Points[1].x,Segment.Points[1].y);
+    end;
+    TpvVectorPathSegmentType.QuadraticCurve:begin
+     DoQuadraticCurveTo(Segment.Points[0].x,Segment.Points[0].y,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y);
+    end;
+    TpvVectorPathSegmentType.CubicCurve:begin
+     DoCubicCurveTo(Segment.Points[0].x,Segment.Points[0].y,Segment.Points[1].x,Segment.Points[1].y,Segment.Points[2].x,Segment.Points[2].y,Segment.Points[3].x,Segment.Points[3].y);
+    end;
+    else begin
+    end;
+   end;
+  end;
+ end;
+ result:=sqrt(ResultDistance);
+end;
+
 { TpvVectorPath }
 
 constructor TpvVectorPath.Create;
@@ -1581,7 +2153,7 @@ begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
 end;
 
-procedure TpvVectorPath.ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
+procedure TpvVectorPath.ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble);
 var Index:TpvSizeInt;
     OldCommands:TpvVectorPathCommandList;
     OldCommand:TpvVectorPathCommand;
@@ -1910,7 +2482,7 @@ begin
  end;
 end;
 
-procedure TpvVectorPath.ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
+procedure TpvVectorPath.ConvertCurvesToLines(const aPixelRatio:TpvDouble);
 const CurveRecursionLimit=16;
 var Index:TpvSizeInt;
     OldCommands:TpvVectorPathCommandList;
