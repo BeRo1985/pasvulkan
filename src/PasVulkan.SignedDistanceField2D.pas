@@ -348,7 +348,7 @@ type TpvSignedDistanceField2DVariant=
        type TMSDFMatches=array of TpvInt8;
       private
        fPointInPolygonPathSegments:TpvSignedDistanceField2DPointInPolygonPathSegments;
-       fVectorPath:TpvVectorPath;
+       fVectorPathShape:TpvVectorPathShape;
        fScale:TpvDouble;
        fOffsetX:TpvDouble;
        fOffsetY:TpvDouble;
@@ -399,8 +399,8 @@ type TpvSignedDistanceField2DVariant=
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default);
-       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default); static;
+       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default);
+       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default); static;
      end;
 
 implementation
@@ -1496,7 +1496,7 @@ constructor TpvSignedDistanceField2DGenerator.Create;
 begin
  inherited Create;
  fPointInPolygonPathSegments:=nil;
- fVectorPath:=nil;
+ fVectorPathShape:=nil;
  fDistanceField:=nil;
  fVariant:=TpvSignedDistanceField2DVariant.Default;
 end;
@@ -1504,7 +1504,7 @@ end;
 destructor TpvSignedDistanceField2DGenerator.Destroy;
 begin
  fPointInPolygonPathSegments:=nil;
- fVectorPath:=nil;
+ fVectorPathShape:=nil;
  fDistanceField:=nil;
  inherited Destroy;
 end;
@@ -2092,41 +2092,41 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
-var VectorPathShape:TpvVectorPathShape;
-    VectorPathContour:TpvVectorPathContour;
-    VectorPathSegment:TpvVectorPathSegment;
+var LocalVectorPathShape:TpvVectorPathShape;
+    LocalVectorPathContour:TpvVectorPathContour;
+    LocalVectorPathSegment:TpvVectorPathSegment;
     Contour:PpvSignedDistanceField2DPathContour;
     Scale,Translate:TpvVectorPathVector;
 begin
  Scale:=TpvVectorPathVector.Create(fScale*DistanceField2DRasterizerToScreenScale);
  Translate:=TpvVectorPathVector.Create(fOffsetX,fOffsetY);
- VectorPathShape:=TpvVectorPathShape.Create(fVectorPath);
+ LocalVectorPathShape:=TpvVectorPathShape.Create(fVectorPathShape);
  try
   if DoSubdivideCurvesIntoLines then begin
-   VectorPathShape.ConvertCurvesToLines;
+   LocalVectorPathShape.ConvertCurvesToLines;
   end else begin
-   VectorPathShape.ConvertCubicCurvesToQuadraticCurves;
+   LocalVectorPathShape.ConvertCubicCurvesToQuadraticCurves;
   end;
   fShape.Contours:=nil;
   fShape.CountContours:=0;
   try
-   for VectorPathContour in VectorPathShape.Contours do begin
+   for LocalVectorPathContour in LocalVectorPathShape.Contours do begin
     if length(fShape.Contours)<(fShape.CountContours+1) then begin
      SetLength(fShape.Contours,(fShape.CountContours+1)*2);
     end;
     Contour:=@fShape.Contours[fShape.CountContours];
     inc(fShape.CountContours);
     try
-     for VectorPathSegment in VectorPathContour.Segments do begin
-      case VectorPathSegment.Type_ of
+     for LocalVectorPathSegment in LocalVectorPathContour.Segments do begin
+      case LocalVectorPathSegment.Type_ of
        TpvVectorPathSegmentType.Line:begin
-        AddLineToPathSegmentArray(Contour^,[(VectorPathSegment.Points[0]*Scale)+Translate,
-                                            (VectorPathSegment.Points[1]*Scale)+Translate]);
+        AddLineToPathSegmentArray(Contour^,[(LocalVectorPathSegment.Points[0]*Scale)+Translate,
+                                            (LocalVectorPathSegment.Points[1]*Scale)+Translate]);
        end;
        TpvVectorPathSegmentType.QuadraticCurve:begin
-        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[(VectorPathSegment.Points[0]*Scale)+Translate,
-                                                            (VectorPathSegment.Points[1]*Scale)+Translate,
-                                                            (VectorPathSegment.Points[2]*Scale)+Translate]);
+        AddQuadraticBezierCurveToPathSegmentArray(Contour^,[(LocalVectorPathSegment.Points[0]*Scale)+Translate,
+                                                            (LocalVectorPathSegment.Points[1]*Scale)+Translate,
+                                                            (LocalVectorPathSegment.Points[2]*Scale)+Translate]);
        end;
        TpvVectorPathSegmentType.CubicCurve:begin
         raise Exception.Create('Ups?!');
@@ -2141,7 +2141,7 @@ begin
    SetLength(fShape.Contours,fShape.CountContours);
   end;
  finally
-  FreeAndNil(VectorPathShape);
+  FreeAndNil(LocalVectorPathShape);
  end;
 end;
 
@@ -2434,7 +2434,7 @@ begin
      break;
     end;
    end;
-   case fVectorPath.FillRule of
+   case fVectorPathShape.FillRule of
     TpvVectorPathFillRule.NonZero:begin
      if WindingNumber<>0 then begin
       DistanceFieldSign:=1;
@@ -2523,7 +2523,7 @@ begin
 
 end;
 
-procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
+procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
 var PasMPInstance:TPasMP;
  procedure Generate;
  var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
@@ -2600,7 +2600,6 @@ var PasMPInstance:TPasMP;
 
    finally
     fDistanceField:=nil;
-    fVectorPath:=nil;
    end;
 
   finally
@@ -2712,7 +2711,7 @@ begin
 
  fDistanceField:=@aDistanceField;
 
- fVectorPath:=aVectorPath;
+ fVectorPathShape:=aVectorPathShape;
 
  fScale:=aScale;
 
@@ -2722,30 +2721,36 @@ begin
 
  fVariant:=aVariant;
 
- case aVariant of
+ try
 
-  TpvSignedDistanceField2DVariant.MSDF:begin
-   GenerateMSDF;
+  case aVariant of
+
+   TpvSignedDistanceField2DVariant.MSDF:begin
+    GenerateMSDF;
+   end;
+
+   else begin
+
+    fMSDFShape:=nil;
+    fMSDFImage:=nil;
+    Generate;
+
+   end;
+
   end;
 
-  else begin
-
-   fMSDFShape:=nil;
-   fMSDFImage:=nil;
-   Generate;
-
-  end;
-
+ finally
+  fVectorPathShape:=nil;
  end;
 
 end;
 
-class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
+class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
 var Generator:TpvSignedDistanceField2DGenerator;
 begin
  Generator:=TpvSignedDistanceField2DGenerator.Create;
  try
-  Generator.Execute(aDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,aVariant);
+  Generator.Execute(aDistanceField,aVectorPathShape,aScale,aOffsetX,aOffsetY,aVariant);
  finally
   Generator.Free;
  end;

@@ -1757,13 +1757,19 @@ end;
 
 function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aAutomaticTrim:boolean;const aPadding:TpvInt32;const aTrimPadding:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DVariant):TpvSprite;
 var SignedDistanceField:TpvSignedDistanceField2D;
+    VectorPathShape:TpvVectorPathShape;
 begin
  SignedDistanceField.Pixels:=nil;
  try
   SignedDistanceField.Width:=aImageWidth;
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
-  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY,aSDFVariant);
+  VectorPathShape:=TpvVectorPathShape.Create(aVectorPath);
+  try
+   TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,VectorPathShape,aScale,aOffsetX,aOffsetY,aSDFVariant);
+  finally
+   FreeAndNil(VectorPathShape);
+  end;
   result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
   result.SignedDistanceField:=true;
   result.SignedDistanceFieldVariant:=aSDFVariant;

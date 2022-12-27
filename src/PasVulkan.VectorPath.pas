@@ -212,17 +212,22 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathShape=class
       private
+       fFillRule:TpvVectorPathFillRule;
        fContours:TpvVectorPathContours;
       public
-       constructor Create(const aVectorPath:TpvVectorPath=nil); reintroduce;
+       constructor Create; reintroduce; overload;
+       constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
+       constructor Create(const aVectorPath:TpvVectorPath); reintroduce; overload;
        destructor Destroy; override;
-       procedure Assign(const aVectorPath:TpvVectorPath);
+       procedure Assign(const aVectorPathShape:TpvVectorPathShape); overload;
+       procedure Assign(const aVectorPath:TpvVectorPath); overload;
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
        function GetBeginEndPoints:TpvVectorPathVectors;
        function GetIntersectionPoints:TpvVectorPathVectors;
       published
+       property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Contours:TpvVectorPathContours read fContours;
      end;
 
@@ -485,11 +490,24 @@ end;
 
 { TpvVectorPathShape }
 
-constructor TpvVectorPathShape.Create(const aVectorPath:TpvVectorPath);
+constructor TpvVectorPathShape.Create;
 begin
  inherited Create;
  fContours:=TpvVectorPathContours.Create;
  fContours.OwnsObjects:=true;
+end;
+
+constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
+begin
+ Create;
+ if assigned(aVectorPathShape) then begin
+  Assign(aVectorPathShape);
+ end;
+end;
+
+constructor TpvVectorPathShape.Create(const aVectorPath:TpvVectorPath);
+begin
+ Create;
  if assigned(aVectorPath) then begin
   Assign(aVectorPath);
  end;
@@ -501,6 +519,31 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvVectorPathShape.Assign(const aVectorPathShape:TpvVectorPathShape);
+var SrcContour,NewContour:TpvVectorPathContour;
+    SrcSegment:TpvVectorPathSegment;
+begin
+ fContours.Clear;
+ if assigned(aVectorPathShape) then begin
+  fFillRule:=aVectorPathShape.fFillRule;
+  if assigned(aVectorPathShape.fContours) then begin
+   for SrcContour in aVectorPathShape.fContours do begin
+    NewContour:=TpvVectorPathContour.Create;
+    try
+     NewContour.fClosed:=SrcContour.fClosed;
+     if assigned(SrcContour.fSegments) then begin
+      for SrcSegment in SrcContour.fSegments do begin
+       NewContour.fSegments.Add(TpvVectorPathSegment.Create(SrcSegment));
+      end;
+     end;
+    finally
+     fContours.Add(NewContour);
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
 var CommandIndex:TpvSizeInt;
     Command:TpvVectorPathCommand;
@@ -508,8 +551,9 @@ var CommandIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
 begin
- Contours.Clear;
+ fContours.Clear;
  if assigned(aVectorPath) then begin
+  fFillRule:=aVectorPath.fFillRule;
   Contour:=nil;
   StartPoint:=TpvVectorPathVector.Create(0.0,0.0);
   LastPoint:=TpvVectorPathVector.Create(0.0,0.0);
@@ -2093,6 +2137,7 @@ var Contour:TpvVectorPathContour;
 begin
  fCommands.Clear;
  if assigned(aShape) then begin
+  fFillRule:=aShape.fFillRule;
   First:=true;
   Last:=TpvVectorPathVector.Create(0.0,0.0);
   Start:=TpvVectorPathVector.Create(0.0,0.0);

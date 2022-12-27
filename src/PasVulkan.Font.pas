@@ -1320,6 +1320,7 @@ const Scale=1.0/256.0;
 var CommandIndex,x,y:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
     VectorPath:TpvVectorPath;
+    VectorPathShape:TpvVectorPathShape;
     ConvexHull2DPixels:TpvConvexHull2DPixels;
     CenterX,CenterY,CenterRadius:TpvFloat;
 begin
@@ -1360,7 +1361,12 @@ begin
     end;
    end;
   end;
-  TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale,aOffsetX,aOffsetY,aSDFVariant);
+  VectorPathShape:=TpvVectorPathShape.Create(VectorPath);
+  try
+   TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPathShape,Scale,aOffsetX,aOffsetY,aSDFVariant);
+  finally
+   FreeAndNil(VectorPathShape);
+  end;
   if assigned(aTrimmedHullVectors) then begin
    ConvexHull2DPixels:=nil;
    try
@@ -1386,7 +1392,7 @@ begin
    end;
   end;
  finally
-  VectorPath.Free;
+  FreeAndNil(VectorPath);
  end;
 end;
 

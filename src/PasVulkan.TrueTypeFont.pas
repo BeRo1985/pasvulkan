@@ -10702,6 +10702,7 @@ var Index:TPasMPNativeInt;
     JobData:PpvTrueTypeFontSignedDistanceFieldJob;
     x0,y0,x1,y1,ox,oy:TpvDouble;
     VectorPath:TpvVectorPath;
+    VectorPathShape:TpvVectorPathShape;
     SignedDistanceField:TpvSignedDistanceField2D;
 begin
 
@@ -10733,15 +10734,22 @@ begin
 
     JobData^.PolygonBuffer.ConvertToVectorPath(VectorPath);
 
-    TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,
-                                               VectorPath,
-                                               Scale,
-                                               -ox,
-                                               -oy,
-                                               TpvSignedDistanceField2DVariant.SDF);
+    VectorPathShape:=TpvVectorPathShape.Create(VectorPath);
+    try
+
+     TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,
+                                                VectorPathShape,
+                                                Scale,
+                                                -ox,
+                                                -oy,
+                                                TpvSignedDistanceField2DVariant.SDF);
+
+    finally
+     FreeAndNil(VectorPathShape);
+    end;
 
    finally
-    VectorPath.Free;
+    FreeAndNil(VectorPath);
    end;
 
    xo:=round(((JobData^.Width-((JobData^.BoundsX0+JobData^.BoundsX1)*Scale))*0.5)+ox);
