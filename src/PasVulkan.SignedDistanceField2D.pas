@@ -2092,8 +2092,7 @@ begin
 end;
 
 procedure TpvSignedDistanceField2DGenerator.ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
-var VectorPathEx:TpvVectorPath;
-    VectorPathShape:TpvVectorPathShape;
+var VectorPathShape:TpvVectorPathShape;
     VectorPathContour:TpvVectorPathContour;
     VectorPathSegment:TpvVectorPathSegment;
     Contour:PpvSignedDistanceField2DPathContour;
@@ -2101,30 +2100,13 @@ var VectorPathEx:TpvVectorPath;
 begin
  Scale:=TpvVectorPathVector.Create(fScale*DistanceField2DRasterizerToScreenScale);
  Translate:=TpvVectorPathVector.Create(fOffsetX,fOffsetY);
- VectorPathEx:=TpvVectorPath.Create;
+ VectorPathShape:=TpvVectorPathShape.Create(fVectorPath);
  try
-{ VectorPathShape:=TpvVectorPathShape.Create(fVectorPath);
-  try
-   VectorPathEx.Assign(VectorPathShape);
-  finally
-   FreeAndNil(VectorPathShape);
-  end;}
-  VectorPathEx.Assign(fVectorPath);
   if DoSubdivideCurvesIntoLines then begin
-   VectorPathEx.ConvertCurvesToLines;
-  end else begin
-   VectorPathEx.ConvertCubicCurvesToQuadraticCurves;
-  end;
-  VectorPathShape:=TpvVectorPathShape.Create(VectorPathEx);
- finally
-  FreeAndNil(VectorPathEx);
- end;
- try
-{ if DoSubdivideCurvesIntoLines then begin
    VectorPathShape.ConvertCurvesToLines;
   end else begin
    VectorPathShape.ConvertCubicCurvesToQuadraticCurves;
-  end;}
+  end;
   fShape.Contours:=nil;
   fShape.CountContours:=0;
   try
