@@ -200,6 +200,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathContours=array of TpvVectorPathContour;
 
+     TpvVectorPathShape=record
+      public
+       Contours:TpvVectorPathContours;
+     end;
+
      { TpvVectorPath }
 
      TpvVectorPath=class
@@ -218,7 +223,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure Close;
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
-       function GetContours:TpvVectorPathContours;
+       function GetShape:TpvVectorPathShape;
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
@@ -1772,7 +1777,7 @@ begin
  end;
 end;
 
-function TpvVectorPath.GetContours:TpvVectorPathContours;
+function TpvVectorPath.GetShape:TpvVectorPathShape;
 var CountContours,CommandIndex,CountPathSegments:TpvSizeInt;
     Command:TpvVectorPathCommand;
     Contour:PpvVectorPathContour;
@@ -1780,7 +1785,7 @@ var CountContours,CommandIndex,CountPathSegments:TpvSizeInt;
     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvVectorPathVector;
 begin
  CountContours:=0;
- result:=nil;
+ result.Contours:=nil;
  try
   Contour:=nil;
   try
@@ -1807,10 +1812,10 @@ begin
        SetLength(Contour^.Segments,CountPathSegments);
        CountPathSegments:=0;
       end;
-      if length(result)<(CountContours+1) then begin
-       SetLength(result,(CountContours+1)*2);
+      if length(result.Contours)<(CountContours+1) then begin
+       SetLength(result.Contours,(CountContours+1)*2);
       end;
-      Contour:=@result[CountContours];
+      Contour:=@result.Contours[CountContours];
       inc(CountContours);
       LastPoint.x:=Command.x0;
       LastPoint.y:=Command.y0;
@@ -1818,10 +1823,10 @@ begin
      end;
      TpvVectorPathCommandType.LineTo:begin
       if not assigned(Contour) then begin
-       if length(result)<(CountContours+1) then begin
-        SetLength(result,(CountContours+1)*2);
+       if length(result.Contours)<(CountContours+1) then begin
+        SetLength(result.Contours,(CountContours+1)*2);
        end;
-       Contour:=@result[CountContours];
+       Contour:=@result.Contours[CountContours];
        inc(CountContours);
        CountPathSegments:=0;
       end;
@@ -1841,10 +1846,10 @@ begin
      end;
      TpvVectorPathCommandType.QuadraticCurveTo:begin
       if not assigned(Contour) then begin
-       if length(result)<(CountContours+1) then begin
-        SetLength(result,(CountContours+1)*2);
+       if length(result.Contours)<(CountContours+1) then begin
+        SetLength(result.Contours,(CountContours+1)*2);
        end;
-       Contour:=@result[CountContours];
+       Contour:=@result.Contours[CountContours];
        inc(CountContours);
        CountPathSegments:=0;
       end;
@@ -1868,10 +1873,10 @@ begin
      end;
      TpvVectorPathCommandType.CubicCurveTo:begin
       if not assigned(Contour) then begin
-       if length(result)<(CountContours+1) then begin
-        SetLength(result,(CountContours+1)*2);
+       if length(result.Contours)<(CountContours+1) then begin
+        SetLength(result.Contours,(CountContours+1)*2);
        end;
-       Contour:=@result[CountContours];
+       Contour:=@result.Contours[CountContours];
        inc(CountContours);
        CountPathSegments:=0;
       end;
@@ -1921,7 +1926,7 @@ begin
    end;
   end;
  finally
-  SetLength(result,CountContours);
+  SetLength(result.Contours,CountContours);
  end;
 end;
 
