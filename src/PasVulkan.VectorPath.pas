@@ -671,24 +671,15 @@ begin
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPathShape:TpvVectorPathShape);
-var SrcContour,NewContour:TpvVectorPathContour;
-    SrcSegment:TpvVectorPathSegment;
+var Contour:TpvVectorPathContour;
 begin
  fContours.Clear;
  if assigned(aVectorPathShape) then begin
   fFillRule:=aVectorPathShape.fFillRule;
   if assigned(aVectorPathShape.fContours) then begin
-   for SrcContour in aVectorPathShape.fContours do begin
-    NewContour:=TpvVectorPathContour.Create;
-    try
-     NewContour.fClosed:=SrcContour.fClosed;
-     if assigned(SrcContour.fSegments) then begin
-      for SrcSegment in SrcContour.fSegments do begin
-       NewContour.fSegments.Add(SrcSegment.Clone);
-      end;
-     end;
-    finally
-     fContours.Add(NewContour);
+   for Contour in aVectorPathShape.fContours do begin
+    if assigned(Contour) then begin
+     fContours.Add(Contour.Clone);
     end;
    end;
   end;
