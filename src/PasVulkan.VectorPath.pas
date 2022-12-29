@@ -141,6 +141,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        constructor Create(const aMin,aMax:TpvVectorPathVector);
        procedure Extend(const aVector:TpvVectorPathVector);
+       function Contains(const aVector:TpvVectorPathVector):Boolean;
       public
        case boolean of
         false:(
@@ -517,6 +518,12 @@ begin
  MinMax[1]:=MinMax[1].Maximum(aVector);
 end;
 
+function TpvVectorPathBoundingBox.Contains(const aVector:TpvVectorPathVector):Boolean;
+begin
+ result:=((aVector.x>=MinMax[0].x) and (aVector.y>=MinMax[0].y)) and
+         ((aVector.x<=MinMax[1].x) and (aVector.y<=MinMax[1].y));
+end;
+
 { TpvVectorPathCommand }
 
 constructor TpvVectorPathCommand.Create(const aCommandType:TpvVectorPathCommandType;
@@ -627,41 +634,28 @@ begin
 end;
 
 function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
-var Index,CountTimeValues:TpvSizeInt;
-    TimeValues:array[0..1] of TpvDouble;
-    a,b,c,t,b2ac,mt:Double;
+var t,s:TpvVectorPathVector;
 begin
- CountTimeValues:=0;
- for Index:=0 to 1 do begin
-  a:=(Points[0].xy[Index]-(2.0*Points[1].xy[Index]))+Points[2].xy[Index];
-  b:=((2.0*Points[0].xy[Index])-(4.0*Points[1].xy[Index]))+(2.0*Points[2].xy[Index]);
-  c:=Points[1].xy[Index]-Points[0].xy[Index];
-  if abs(a)<1e-12 then begin
-   if abs(b)>=1e-12 then begin
-    t:=-(c/b);
-    if (t>=0.0) and (t<=1.0) then begin
-     TimeValues[CountTimeValues]:=t;
-     inc(CountTimeValues);
-    end;
-   end;
-  end else begin
-   b2ac:=sqr(b)-(4.0*c*a);
-   if b2ac<0.0 then begin
-    if abs(b2ac)<1e-12 then begin
-     t:=-(b/(2.0*a));
-     if (t>=0.0) and (t<=1.0) then begin
-      TimeValues[CountTimeValues]:=t;
-      inc(CountTimeValues);
-     end;
-    end;
-   end;
-  end;
- end;
  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
- for Index:=0 to CountTimeValues-1 do begin
-  t:=TimeValues[Index];
-  mt:=1.0-t;
-  result.Extend((Points[0]*sqr(mt))+(Points[1]*(2.0*mt*t))+(Points[2]*sqr(t)));
+ if not result.Contains(Points[1]) then begin
+  // Since the bezier is quadratic, the bounding box can be compute here with a linear equation.
+  // p = (1-t)^2*p0 + 2(1-t)t*p1 + t^2*p2
+  // dp/dt = 2(t-1)*p0 + 2(1-2t)*p1 + 2t*p2 = t*(2*p0-4*p1+2*p2) + 2*(p1-p0)
+  // dp/dt = 0 -> t*(p0-2*p1+p2) = (p0-p1);
+  // Credits for the idea: Inigo Quilez
+  t:=(Points[0]-Points[1])/((Points[0]-(Points[1]*2.0))+Points[2]);
+  if t.x<=0.0 then begin
+   t.x:=0.0;
+  end else if t.x>=1.0 then begin
+   t.x:=1.0;
+  end;
+  if t.y<=0.0 then begin
+   t.y:=0.0;
+  end else if t.y>=1.0 then begin
+   t.y:=1.0;
+  end;
+  s:=TpvVectorPathVector.Create(1.0,1.0)-t;
+  result.Extend((Points[0]*(s*s))+(Points[1]*((t*s)*2.0))+(Points[2]*(t*t)));
  end;
 end;
 
