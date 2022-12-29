@@ -128,6 +128,24 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathRawVectors=^TpvVectorPathRawVectors;
 
+     { TpvVectorPathBoundingBox }
+
+     TpvVectorPathBoundingBox=record
+      public
+       constructor Create(const aMin,aMax:TpvVectorPathVector);
+      public
+       case boolean of
+        false:(
+         Min:TpvVectorPathVector;
+         Max:TpvVectorPathVector;
+        );
+        true:(
+         MinMax:array[0..1] of TpvVectorPathVector;
+        );
+     end;
+
+     PpvVectorPathBoundingBox=^TpvVectorPathBoundingBox;
+
      { TpvVectorPathVectorCommand }
 
      TpvVectorPathCommand=class
@@ -186,6 +204,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        destructor Destroy; override;
        procedure Assign(const aSegment:TpvVectorPathSegment); virtual;
        function Clone:TpvVectorPathSegment; virtual;
+       function GetBoundingBox:TpvVectorPathBoundingBox; virtual;
       published
        property Type_:TpvVectorPathSegmentType read fType;
      end;
@@ -200,6 +219,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aP0,aP1:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
+       function GetBoundingBox:TpvVectorPathBoundingBox; override;
      end;
 
      { TpvVectorPathSegmentQuadraticCurve }
@@ -212,6 +232,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aP0,aP1,aP2:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
+       function GetBoundingBox:TpvVectorPathBoundingBox; override;
      end;
 
      { TpvVectorPathSegmentCubicCurve }
@@ -224,6 +245,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aP0,aP1,aP2,aP3:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
+       function GetBoundingBox:TpvVectorPathBoundingBox; override;
      end;
 
      TpvVectorPathSegments=TpvObjectGenericList<TpvVectorPathSegment>;
@@ -473,6 +495,14 @@ begin
  result.y:=a.y;
 end;
 
+{ TpvVectorPathBoundingBox }
+
+constructor TpvVectorPathBoundingBox.Create(const aMin,aMax:TpvVectorPathVector);
+begin
+ MinMax[0]:=aMin;
+ MinMax[1]:=aMax;
+end;
+
 { TpvVectorPathCommand }
 
 constructor TpvVectorPathCommand.Create(const aCommandType:TpvVectorPathCommandType;
@@ -515,6 +545,12 @@ begin
  result.Assign(self);
 end;
 
+function TpvVectorPathSegment.GetBoundingBox:TpvVectorPathBoundingBox;
+begin
+ result:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
+                                         TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
+end;
+
 { TpvVectorPathSegmentLine }
 
 constructor TpvVectorPathSegmentLine.Create;
@@ -540,6 +576,12 @@ end;
 function TpvVectorPathSegmentLine.Clone:TpvVectorPathSegment;
 begin
  result:=TpvVectorPathSegmentLine.Create(Points[0],Points[1]);
+end;
+
+function TpvVectorPathSegmentLine.GetBoundingBox:TpvVectorPathBoundingBox;
+begin
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1]),
+                                         Points[0].Maximum(Points[1]));
 end;
 
 { TpvVectorPathSegmentQuadraticCurve }
@@ -570,6 +612,12 @@ begin
  result:=TpvVectorPathSegmentQuadraticCurve.Create(Points[0],Points[1],Points[2]);
 end;
 
+function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
+begin
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1].Minimum(Points[2])),
+                                         Points[0].Maximum(Points[1].Maximum(Points[2])));
+end;
+
 { TpvVectorPathSegmentCubicCurve }
 
 constructor TpvVectorPathSegmentCubicCurve.Create;
@@ -597,6 +645,12 @@ end;
 function TpvVectorPathSegmentCubicCurve.Clone:TpvVectorPathSegment;
 begin
  result:=TpvVectorPathSegmentCubicCurve.Create(Points[0],Points[1],Points[2],Points[3]);
+end;
+
+function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
+begin
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1].Minimum(Points[2].Minimum(Points[3]))),
+                                         Points[0].Maximum(Points[1].Maximum(Points[2].Maximum(Points[3]))));
 end;
 
 { TpvVectorPathContour }
