@@ -689,53 +689,65 @@ begin
 end;
 
 function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
-var Index,CountTimeValues:TpvSizeInt;
-    TimeValues:array[0..3] of TpvDouble;
-    a,b,c,t,b2ac,sqrtb2ac,mt:Double;
+var c,b,a,h:TpvVectorPathVector;
+    t,s,q:TpvDouble;
 begin
- CountTimeValues:=0;
- for Index:=0 to 1 do begin
-  a:=((((-3.0)*Points[0].xy[Index])+(9.0*Points[1].xy[Index]))-(9.0*Points[2].xy[Index]))+(3.0*Points[3].xy[Index]);
-  b:=((6.0*Points[0].xy[Index])-(12.0 *Points[1].xy[Index]))+(6*Points[2].xy[Index]);
-  c:=(3*Points[1].xy[Index])-(3.0*Points[0].xy[Index]);
-  if abs(a)<1e-12 then begin
-   if abs(b)>=1e-12 then begin
-    t:=-(c/b);
-    if (t>=0.0) and (t<=1.0) then begin
-     TimeValues[CountTimeValues]:=t;
-     inc(CountTimeValues);
-    end;
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
+ // Since the bezier is cubic, the bounding box can be compute here with a quadratic equation with
+ // pascal triangle coefficients. Credits for the idea: Inigo Quilez
+ a:=(((-Points[0])+(Points[1]*3.0))-(Points[2]*3.0))+Points[3];
+ b:=(Points[0]-(Points[1]*2.0))+Points[2];
+ c:=Points[1]-Points[0];
+ h:=(b*b)-(c*a);
+ if h.x>0.0 then begin
+  h.x:=sqrt(h.x);
+  t:=c.x/((-b.x)-h.x);
+  if (t>0.0) and (t<1.0) then begin
+   s:=1.0-t;
+   q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+   if result.Min.x<q then begin
+    result.Min.x:=q;
    end;
-  end else begin
-   b2ac:=sqr(b)-(4.0*c*a);
-   if b2ac<0.0 then begin
-    if abs(b2ac)<1e-12 then begin
-     t:=-(b/(2.0*a));
-     if (t>=0.0) and (t<=1.0) then begin
-      TimeValues[CountTimeValues]:=t;
-      inc(CountTimeValues);
-     end;
-    end;
-   end else begin
-    sqrtb2ac:=sqrt(b2ac);
-    t:=((-b)+sqrtb2ac)/(2.0*a);
-    if (t>=0.0) and (t<=1.0) then begin
-     TimeValues[CountTimeValues]:=t;
-     inc(CountTimeValues);
-    end;
-    t:=((-b)-sqrtb2ac)/(2.0*a);
-    if (t>=0.0) and (t<=1.0) then begin
-     TimeValues[CountTimeValues]:=t;
-     inc(CountTimeValues);
-    end;
+   if result.Max.x>q then begin
+    result.Max.x:=q;
+   end;
+  end;
+  t:=c.x/((-b.x)+h.x);
+  if (t>0.0) and (t<1.0) then begin
+   s:=1.0-t;
+   q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+   if result.Min.x<q then begin
+    result.Min.x:=q;
+   end;
+   if result.Max.x>q then begin
+    result.Max.x:=q;
    end;
   end;
  end;
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
- for Index:=0 to CountTimeValues-1 do begin
-  t:=TimeValues[Index];
-  mt:=1.0-t;
-  result.Extend((Points[0]*(sqr(mt)*mt))+(Points[1]*(3.0*sqr(mt)*t))+(Points[2]*(3.0*mt*sqr(t)))+(Points[3]*(sqr(t)*t)));
+ if h.y>0.0 then begin
+  h.y:=sqrt(h.y);
+  t:=c.y/((-b.y)-h.y);
+  if (t>0.0) and (t<1.0) then begin
+   s:=1.0-t;
+   q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+   if result.Min.y<q then begin
+    result.Min.y:=q;
+   end;
+   if result.Max.y>q then begin
+    result.Max.y:=q;
+   end;
+  end;
+  t:=c.y/((-b.y)+h.y);
+  if (t>0.0) and (t<1.0) then begin
+   s:=1.0-t;
+   q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+   if result.Min.y<q then begin
+    result.Min.y:=q;
+   end;
+   if result.Max.y>q then begin
+    result.Max.y:=q;
+   end;
+  end;
  end;
 end;
 
