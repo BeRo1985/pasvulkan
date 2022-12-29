@@ -636,6 +636,14 @@ end;
 function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var t,s:TpvVectorPathVector;
 begin
+ // This code calculates the bounding box for a quadratic bezier curve. It starts by initializing the
+ // bounding box to the minimum and maximum values of the start and end points of the curve. It then
+ // checks if the control point is already contained within the bounding box, and if it is not, it
+ // calculates the value of t at which the derivative of the curve (which is a linear equation) is
+ // equal to 0. If t is within the range of 0 to 1, the code calculates the corresponding point on the
+ // curve and extends the bounding box to include that point if necessary.
+ // Overall, this code appears to be well written and effective at calculating the bounding box for a
+ // quadratic bezier curve. It is concise and uses a clever method for finding the extrema of the curve.
  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
  if not result.Contains(Points[1]) then begin
   // Since the bezier is quadratic, the bounding box can be compute here with a linear equation.
@@ -692,6 +700,16 @@ function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var c,b,a,h:TpvVectorPathVector;
     t,s,q:TpvDouble;
 begin
+ // This code appears to be a correct implementation for computing the bounding box of a cubic bezier curve.
+ // It uses the fact that the bounding box of a cubic Bezier curve can be computed by finding the roots of
+ // quadratic equation formed from the bezier curve's coefficients. The roots of this equation correspond
+ // to the parameter values at which the curve reaches an extreme point (i.e., a minimum or maximum). The
+ // bounding box is then constructed by evaluating the curve at these parameter values and using the
+ // resulting points to extend the initial bounding box.
+ // One thing to note is that the code only handles the case where the roots of the quadratic equation are real.
+ // If the roots are complex, the bounding box is not extended. This is acceptable since complex roots do not
+ // correspond to physical points on the curve.
+ // Overall, I would rate this code as good and efficient for computing the bounding box of a cubic bezier curve.
  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
  // Since the bezier is cubic, the bounding box can be compute here with a quadratic equation with
  // pascal triangle coefficients. Credits for the idea: Inigo Quilez
