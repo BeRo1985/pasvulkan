@@ -89,8 +89,6 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathVector=record
       public
-       x:TpvDouble;
-       y:TpvDouble;
        constructor Create(const aValue:TpvDouble); overload;
        constructor Create(const aX,aY:TpvDouble); overload;
        function Length:TpvDouble; {$ifdef CANINLINE}inline;{$endif}
@@ -118,6 +116,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        class operator Divide(const a:TpvVectorPathVector;const b:TpvDouble):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
        class operator Negative(const a:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
        class operator Positive(const a:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+      public
+       case boolean of
+        false:(
+         x:TpvDouble;
+         y:TpvDouble;
+        );
+        true:(
+         xy:array[0..1] of TpvDouble;
+        );
      end;
 
      PpvVectorPathVector=^TpvVectorPathVector;
@@ -133,6 +140,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathBoundingBox=record
       public
        constructor Create(const aMin,aMax:TpvVectorPathVector);
+       procedure Extend(const aVector:TpvVectorPathVector);
       public
        case boolean of
         false:(
@@ -503,6 +511,12 @@ begin
  MinMax[1]:=aMax;
 end;
 
+procedure TpvVectorPathBoundingBox.Extend(const aVector:TpvVectorPathVector);
+begin
+ MinMax[0]:=MinMax[0].Minimum(aVector);
+ MinMax[1]:=MinMax[1].Maximum(aVector);
+end;
+
 { TpvVectorPathCommand }
 
 constructor TpvVectorPathCommand.Create(const aCommandType:TpvVectorPathCommandType;
@@ -613,9 +627,42 @@ begin
 end;
 
 function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
+var Index,CountTimeValues:TpvSizeInt;
+    TimeValues:array[0..1] of TpvDouble;
+    a,b,c,t,b2ac,mt:Double;
 begin
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1].Minimum(Points[2])),
-                                         Points[0].Maximum(Points[1].Maximum(Points[2])));
+ CountTimeValues:=0;
+ for Index:=0 to 1 do begin
+  a:=(Points[0].xy[Index]-(2.0*Points[1].xy[Index]))+Points[2].xy[Index];
+  b:=((2.0*Points[0].xy[Index])-(4.0*Points[1].xy[Index]))+(2.0*Points[2].xy[Index]);
+  c:=Points[1].xy[Index]-Points[0].xy[Index];
+  if abs(a)<1e-12 then begin
+   if abs(b)>=1e-12 then begin
+    t:=-(c/b);
+    if (t>=0.0) and (t<=1.0) then begin
+     TimeValues[CountTimeValues]:=t;
+     inc(CountTimeValues);
+    end;
+   end;
+  end else begin
+   b2ac:=sqr(b)-(4.0*c*a);
+   if b2ac<0.0 then begin
+    if abs(b2ac)<1e-12 then begin
+     t:=-(b/(2.0*a));
+     if (t>=0.0) and (t<=1.0) then begin
+      TimeValues[CountTimeValues]:=t;
+      inc(CountTimeValues);
+     end;
+    end;
+   end;
+  end;
+ end;
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
+ for Index:=0 to CountTimeValues-1 do begin
+  t:=TimeValues[Index];
+  mt:=1.0-t;
+  result.Extend((Points[0]*sqr(mt))+(Points[1]*(2.0*mt*t))+(Points[2]*sqr(t)));
+ end;
 end;
 
 { TpvVectorPathSegmentCubicCurve }
@@ -648,9 +695,54 @@ begin
 end;
 
 function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
+var Index,CountTimeValues:TpvSizeInt;
+    TimeValues:array[0..3] of TpvDouble;
+    a,b,c,t,b2ac,sqrtb2ac,mt:Double;
 begin
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1].Minimum(Points[2].Minimum(Points[3]))),
-                                         Points[0].Maximum(Points[1].Maximum(Points[2].Maximum(Points[3]))));
+ CountTimeValues:=0;
+ for Index:=0 to 1 do begin
+  a:=((((-3.0)*Points[0].xy[Index])+(9.0*Points[1].xy[Index]))-(9.0*Points[2].xy[Index]))+(3.0*Points[3].xy[Index]);
+  b:=((6.0*Points[0].xy[Index])-(12.0 *Points[1].xy[Index]))+(6*Points[2].xy[Index]);
+  c:=(3*Points[1].xy[Index])-(3.0*Points[0].xy[Index]);
+  if abs(a)<1e-12 then begin
+   if abs(b)>=1e-12 then begin
+    t:=-(c/b);
+    if (t>=0.0) and (t<=1.0) then begin
+     TimeValues[CountTimeValues]:=t;
+     inc(CountTimeValues);
+    end;
+   end;
+  end else begin
+   b2ac:=sqr(b)-(4.0*c*a);
+   if b2ac<0.0 then begin
+    if abs(b2ac)<1e-12 then begin
+     t:=-(b/(2.0*a));
+     if (t>=0.0) and (t<=1.0) then begin
+      TimeValues[CountTimeValues]:=t;
+      inc(CountTimeValues);
+     end;
+    end;
+   end else begin
+    sqrtb2ac:=sqrt(b2ac);
+    t:=((-b)+sqrtb2ac)/(2.0*a);
+    if (t>=0.0) and (t<=1.0) then begin
+     TimeValues[CountTimeValues]:=t;
+     inc(CountTimeValues);
+    end;
+    t:=((-b)-sqrtb2ac)/(2.0*a);
+    if (t>=0.0) and (t<=1.0) then begin
+     TimeValues[CountTimeValues]:=t;
+     inc(CountTimeValues);
+    end;
+   end;
+  end;
+ end;
+ result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
+ for Index:=0 to CountTimeValues-1 do begin
+  t:=TimeValues[Index];
+  mt:=1.0-t;
+  result.Extend((Points[0]*(sqr(mt)*mt))+(Points[1]*(3.0*sqr(mt)*t))+(Points[2]*(3.0*mt*sqr(t)))+(Points[3]*(sqr(t)*t)));
+ end;
 end;
 
 { TpvVectorPathContour }
