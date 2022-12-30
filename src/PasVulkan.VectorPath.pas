@@ -345,16 +345,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fHasCachedBoundingBox:TPasMPBool32;
        fCachedBoundingBoxLock:TPasMPInt32;
       protected
-       procedure GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
-       procedure GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
-       procedure GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
+       procedure GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
+       procedure GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
+       procedure GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
       public
        constructor Create; reintroduce; overload; virtual;
        destructor Destroy; override;
        procedure Assign(const aSegment:TpvVectorPathSegment); virtual;
        function Clone:TpvVectorPathSegment; virtual;
        function GetBoundingBox:TpvVectorPathBoundingBox; virtual;
-       procedure GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
+       procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
       public
        property BoundingBox:TpvVectorPathBoundingBox read GetBoundingBox;
       published
@@ -367,16 +367,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        Points:array[0..1] of TpvVectorPathVector;
       protected
-       procedure GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
       public
        constructor Create; overload; override;
        constructor Create(const aP0,aP1:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
-       procedure GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
      end;
 
      { TpvVectorPathSegmentQuadraticCurve }
@@ -385,16 +385,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        Points:array[0..2] of TpvVectorPathVector;
       protected
-       procedure GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
       public
        constructor Create; overload; override;
        constructor Create(const aP0,aP1,aP2:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
-       procedure GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
      end;
 
      { TpvVectorPathSegmentCubicCurve }
@@ -403,16 +403,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        Points:array[0..3] of TpvVectorPathVector;
       protected
-       procedure GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
-       procedure GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
       public
        constructor Create; overload; override;
        constructor Create(const aP0,aP1,aP2,aP3:TpvVectorPathVector); overload;
        procedure Assign(const aSegment:TpvVectorPathSegment); override;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
-       procedure GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
      end;
 
      TpvVectorPathSegments=TpvObjectGenericList<TpvVectorPathSegment>;
@@ -458,7 +458,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
        function GetBeginEndPoints:TpvVectorPathVectors;
-       function GetIntersectionPoints:TpvVectorPathVectors;
+       function GetSegmentIntersectionPoints:TpvVectorPathVectors;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Contours:TpvVectorPathContours read fContours;
@@ -2671,19 +2671,19 @@ begin
                                          TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
 end;
 
-procedure TpvVectorPathSegment.GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegment.GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
 end;
 
-procedure TpvVectorPathSegment.GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegment.GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
 end;
 
-procedure TpvVectorPathSegment.GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegment.GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
 end;
 
-procedure TpvVectorPathSegment.GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegment.GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
 
 end;
@@ -2741,25 +2741,25 @@ begin
  end;
 end;
 
-procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForLineLine(TpvVectorPathSegmentLine(self),TpvVectorPathSegmentLine(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForLineQuadraticCurve(TpvVectorPathSegmentLine(self),TpvVectorPathSegmentQuadraticCurve(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForLineCubicCurve(TpvVectorPathSegmentLine(self),TpvVectorPathSegmentCubicCurve(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentLine.GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentLine.GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  if assigned(self) and assigned(aWith) then begin
-  aWith.GetIntersectionPointsWithLine(self,aIntersectionPoints);
+  aWith.GetIntersectionPointsWithLineSegment(self,aIntersectionPoints);
  end;
 end;
 
@@ -2845,25 +2845,25 @@ begin
  end;
 end;
 
-procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForLineQuadraticCurve(TpvVectorPathSegmentLine(aWith),TpvVectorPathSegmentQuadraticCurve(self),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForQuadraticCurveQuadraticCurve(TpvVectorPathSegmentQuadraticCurve(self),TpvVectorPathSegmentQuadraticCurve(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(self),TpvVectorPathSegmentCubicCurve(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentQuadraticCurve.GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  if assigned(self) and assigned(aWith) then begin
-  aWith.GetIntersectionPointsWithQuadraticCurve(self,aIntersectionPoints);
+  aWith.GetIntersectionPointsWithQuadraticCurveSegment(self,aIntersectionPoints);
  end;
 end;
 
@@ -2989,25 +2989,25 @@ begin
  end;
 end;
 
-procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithLine(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForLineCubicCurve(TpvVectorPathSegmentLine(aWith),TpvVectorPathSegmentCubicCurve(self),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithQuadraticCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(aWith),TpvVectorPathSegmentCubicCurve(self),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithCubicCurve(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithCubicCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  GetIntersectionPointsForCubicCurveCubicCurve(TpvVectorPathSegmentCubicCurve(self),TpvVectorPathSegmentCubicCurve(aWith),aIntersectionPoints);
 end;
 
-procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPoints(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
+procedure TpvVectorPathSegmentCubicCurve.GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
  if assigned(self) and assigned(aWith) then begin
-  aWith.GetIntersectionPointsWithCubicCurve(self,aIntersectionPoints);
+  aWith.GetIntersectionPointsWithCubicCurveSegment(self,aIntersectionPoints);
  end;
 end;
 
@@ -3255,7 +3255,7 @@ begin
  end;
 end;
 
-function TpvVectorPathShape.GetIntersectionPoints:TpvVectorPathVectors;
+function TpvVectorPathShape.GetSegmentIntersectionPoints:TpvVectorPathVectors;
 var Count,SegmentIndex,OtherSegmentIndex:TpvSizeInt;
     Segment,OtherSegment:TpvVectorPathSegment;
     Segments:TpvVectorPathSegments;
@@ -3280,7 +3280,7 @@ begin
      Segment:=Segments[SegmentIndex];
      for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
       OtherSegment:=Segments[OtherSegmentIndex];
-      Segment.GetIntersectionPoints(OtherSegment,IntersectionPoints);
+      Segment.GetIntersectionPointsWithSegment(OtherSegment,IntersectionPoints);
      end;
     end;
    finally
