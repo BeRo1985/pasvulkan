@@ -4550,6 +4550,7 @@ var Segment:TpvVectorPathSegment;
     Vector:TpvVectorPathVector;
     LastY,CurrentY:TpvDouble;
     IntersectionPoints:TpvVectorPathVectorList;
+    DummyGridCellLeftSplitSegmentLine:TpvVectorPathSegmentLine;
 begin
  inherited Create;
 
@@ -4583,11 +4584,19 @@ begin
     end;
    end;
 
-   for SegmentIndex:=0 to IntersectionSegments.Count-1 do begin
-    Segment:=fSegments[SegmentIndex];
-    for OtherSegmentIndex:=SegmentIndex+1 to IntersectionSegments.Count-1 do begin
-     Segment.GetIntersectionPointsWithSegment(IntersectionSegments[OtherSegmentIndex],IntersectionPoints);
+   DummyGridCellLeftSplitSegmentLine:=TpvVectorPathSegmentLine.Create(fExtendedBoundingBox.MinMax[0],TpvVectorPathVector.Create(fExtendedBoundingBox.MinMax[0].x,fExtendedBoundingBox.MinMax[1].y));
+   try
+
+    for SegmentIndex:=0 to IntersectionSegments.Count-1 do begin
+     Segment:=fSegments[SegmentIndex];
+     Segment.GetIntersectionPointsWithSegment(DummyGridCellLeftSplitSegmentLine,IntersectionPoints);
+     for OtherSegmentIndex:=SegmentIndex+1 to IntersectionSegments.Count-1 do begin
+      Segment.GetIntersectionPointsWithSegment(IntersectionSegments[OtherSegmentIndex],IntersectionPoints);
+     end;
     end;
+
+   finally
+    FreeAndNil(DummyGridCellLeftSplitSegmentLine);
    end;
 
    IntersectionPoints.RemoveDuplicates;
