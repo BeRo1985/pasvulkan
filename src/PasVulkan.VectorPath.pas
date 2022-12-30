@@ -339,12 +339,16 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathSegment=class
       private
        fType:TpvVectorPathSegmentType;
+       fCachedBoundingBox:TpvVectorPathBoundingBox;
+       fHasCachedBoundingBox:boolean;
       public
        constructor Create; reintroduce; overload; virtual;
        destructor Destroy; override;
        procedure Assign(const aSegment:TpvVectorPathSegment); virtual;
        function Clone:TpvVectorPathSegment; virtual;
        function GetBoundingBox:TpvVectorPathBoundingBox; virtual;
+      public
+       property BoundingBox:TpvVectorPathBoundingBox read GetBoundingBox;
       published
        property Type_:TpvVectorPathSegmentType read fType;
      end;
@@ -465,7 +469,20 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathGPUShape=class
       public
-       type { TGridCell }
+       const HorizontalBandExtents=4.0;
+       type { THorizontalBand }
+            THorizontalBand=class
+             private
+              fVectorPathGPUShape:TpvVectorPathGPUShape;
+              fY0:TpvDouble;
+              fY1:TpvDouble;
+              fSegments:TpvVectorPathSegments;
+             public
+              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble); reintroduce;
+              destructor Destroy; override;
+            end;
+            THorizontalBands=TpvObjectGenericList<THorizontalBand>;
+            { TGridCell }
             TGridCell=class
              private
               fBoundingBox:TpvVectorPathBoundingBox;
@@ -478,10 +495,13 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
+       fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
+       fHorizontalBands:THorizontalBands;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
+
      end;
 
 
@@ -2228,6 +2248,7 @@ end;
 constructor TpvVectorPathSegment.Create;
 begin
  inherited Create;
+ fHasCachedBoundingBox:=false;
 end;
 
 destructor TpvVectorPathSegment.Destroy;
@@ -2280,8 +2301,14 @@ end;
 
 function TpvVectorPathSegmentLine.GetBoundingBox:TpvVectorPathBoundingBox;
 begin
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1]),
-                                         Points[0].Maximum(Points[1]));
+ if fHasCachedBoundingBox then begin
+  result:=fCachedBoundingBox;
+ end else begin
+  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[1]),
+                                          Points[0].Maximum(Points[1]));
+  fCachedBoundingBox:=result;
+  fHasCachedBoundingBox:=true;
+ end;
 end;
 
 { TpvVectorPathSegmentQuadraticCurve }
@@ -2315,34 +2342,40 @@ end;
 function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var t,s:TpvVectorPathVector;
 begin
- // This code calculates the bounding box for a quadratic bezier curve. It starts by initializing the
- // bounding box to the minimum and maximum values of the start and end points of the curve. It then
- // checks if the control point is already contained within the bounding box, and if it is not, it
- // calculates the value of t at which the derivative of the curve (which is a linear equation) is
- // equal to 0. If t is within the range of 0 to 1, the code calculates the corresponding point on the
- // curve and extends the bounding box to include that point if necessary.
- // Overall, this code appears to be well written and effective at calculating the bounding box for a
- // quadratic bezier curve. It is concise and uses a clever method for finding the extrema of the curve.
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
- if not result.Contains(Points[1]) then begin
-  // Since the bezier is quadratic, the bounding box can be compute here with a linear equation.
-  // p = (1-t)^2*p0 + 2(1-t)t*p1 + t^2*p2
-  // dp/dt = 2(t-1)*p0 + 2(1-2t)*p1 + 2t*p2 = t*(2*p0-4*p1+2*p2) + 2*(p1-p0)
-  // dp/dt = 0 -> t*(p0-2*p1+p2) = (p0-p1);
-  // Credits for the idea: Inigo Quilez
-  t:=(Points[0]-Points[1])/((Points[0]-(Points[1]*2.0))+Points[2]);
-  if t.x<=0.0 then begin
-   t.x:=0.0;
-  end else if t.x>=1.0 then begin
-   t.x:=1.0;
+ if fHasCachedBoundingBox then begin
+  result:=fCachedBoundingBox;
+ end else begin
+  // This code calculates the bounding box for a quadratic bezier curve. It starts by initializing the
+  // bounding box to the minimum and maximum values of the start and end points of the curve. It then
+  // checks if the control point is already contained within the bounding box, and if it is not, it
+  // calculates the value of t at which the derivative of the curve (which is a linear equation) is
+  // equal to 0. If t is within the range of 0 to 1, the code calculates the corresponding point on the
+  // curve and extends the bounding box to include that point if necessary.
+  // Overall, this code appears to be well written and effective at calculating the bounding box for a
+  // quadratic bezier curve. It is concise and uses a clever method for finding the extrema of the curve.
+  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
+  if not result.Contains(Points[1]) then begin
+   // Since the bezier is quadratic, the bounding box can be compute here with a linear equation.
+   // p = (1-t)^2*p0 + 2(1-t)t*p1 + t^2*p2
+   // dp/dt = 2(t-1)*p0 + 2(1-2t)*p1 + 2t*p2 = t*(2*p0-4*p1+2*p2) + 2*(p1-p0)
+   // dp/dt = 0 -> t*(p0-2*p1+p2) = (p0-p1);
+   // Credits for the idea: Inigo Quilez
+   t:=(Points[0]-Points[1])/((Points[0]-(Points[1]*2.0))+Points[2]);
+   if t.x<=0.0 then begin
+    t.x:=0.0;
+   end else if t.x>=1.0 then begin
+    t.x:=1.0;
+   end;
+   if t.y<=0.0 then begin
+    t.y:=0.0;
+   end else if t.y>=1.0 then begin
+    t.y:=1.0;
+   end;
+   s:=TpvVectorPathVector.Create(1.0,1.0)-t;
+   result.Extend((Points[0]*(s*s))+(Points[1]*((t*s)*2.0))+(Points[2]*(t*t)));
   end;
-  if t.y<=0.0 then begin
-   t.y:=0.0;
-  end else if t.y>=1.0 then begin
-   t.y:=1.0;
-  end;
-  s:=TpvVectorPathVector.Create(1.0,1.0)-t;
-  result.Extend((Points[0]*(s*s))+(Points[1]*((t*s)*2.0))+(Points[2]*(t*t)));
+  fCachedBoundingBox:=result;
+  fHasCachedBoundingBox:=true;
  end;
 end;
 
@@ -2379,72 +2412,78 @@ function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var c,b,a,h:TpvVectorPathVector;
     t,s,q:TpvDouble;
 begin
- // This code appears to be a correct implementation for computing the bounding box of a cubic bezier curve.
- // It uses the fact that the bounding box of a cubic Bezier curve can be computed by finding the roots of
- // quadratic equation formed from the bezier curve's coefficients. The roots of this equation correspond
- // to the parameter values at which the curve reaches an extreme point (i.e., a minimum or maximum). The
- // bounding box is then constructed by evaluating the curve at these parameter values and using the
- // resulting points to extend the initial bounding box.
- // One thing to note is that the code only handles the case where the roots of the quadratic equation are real.
- // If the roots are complex, the bounding box is not extended. This is acceptable since complex roots do not
- // correspond to physical points on the curve.
- // Overall, I would rate this code as good and efficient for computing the bounding box of a cubic bezier curve.
- result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
- // Since the bezier is cubic, the bounding box can be compute here with a quadratic equation with
- // pascal triangle coefficients. Credits for the idea: Inigo Quilez
- a:=(((-Points[0])+(Points[1]*3.0))-(Points[2]*3.0))+Points[3];
- b:=(Points[0]-(Points[1]*2.0))+Points[2];
- c:=Points[1]-Points[0];
- h:=(b*b)-(c*a);
- if h.x>0.0 then begin
-  h.x:=sqrt(h.x);
-  t:=c.x/((-b.x)-h.x);
-  if (t>0.0) and (t<1.0) then begin
-   s:=1.0-t;
-   q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-   if result.Min.x<q then begin
-    result.Min.x:=q;
+ if fHasCachedBoundingBox then begin
+  result:=fCachedBoundingBox;
+ end else begin
+  // This code appears to be a correct implementation for computing the bounding box of a cubic bezier curve.
+  // It uses the fact that the bounding box of a cubic Bezier curve can be computed by finding the roots of
+  // quadratic equation formed from the bezier curve's coefficients. The roots of this equation correspond
+  // to the parameter values at which the curve reaches an extreme point (i.e., a minimum or maximum). The
+  // bounding box is then constructed by evaluating the curve at these parameter values and using the
+  // resulting points to extend the initial bounding box.
+  // One thing to note is that the code only handles the case where the roots of the quadratic equation are real.
+  // If the roots are complex, the bounding box is not extended. This is acceptable since complex roots do not
+  // correspond to physical points on the curve.
+  // Overall, I would rate this code as good and efficient for computing the bounding box of a cubic bezier curve.
+  result:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
+  // Since the bezier is cubic, the bounding box can be compute here with a quadratic equation with
+  // pascal triangle coefficients. Credits for the idea: Inigo Quilez
+  a:=(((-Points[0])+(Points[1]*3.0))-(Points[2]*3.0))+Points[3];
+  b:=(Points[0]-(Points[1]*2.0))+Points[2];
+  c:=Points[1]-Points[0];
+  h:=(b*b)-(c*a);
+  if h.x>0.0 then begin
+   h.x:=sqrt(h.x);
+   t:=c.x/((-b.x)-h.x);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+    if result.Min.x<q then begin
+     result.Min.x:=q;
+    end;
+    if result.Max.x>q then begin
+     result.Max.x:=q;
+    end;
    end;
-   if result.Max.x>q then begin
-    result.Max.x:=q;
-   end;
-  end;
-  t:=c.x/((-b.x)+h.x);
-  if (t>0.0) and (t<1.0) then begin
-   s:=1.0-t;
-   q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-   if result.Min.x<q then begin
-    result.Min.x:=q;
-   end;
-   if result.Max.x>q then begin
-    result.Max.x:=q;
-   end;
-  end;
- end;
- if h.y>0.0 then begin
-  h.y:=sqrt(h.y);
-  t:=c.y/((-b.y)-h.y);
-  if (t>0.0) and (t<1.0) then begin
-   s:=1.0-t;
-   q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-   if result.Min.y<q then begin
-    result.Min.y:=q;
-   end;
-   if result.Max.y>q then begin
-    result.Max.y:=q;
+   t:=c.x/((-b.x)+h.x);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+    if result.Min.x<q then begin
+     result.Min.x:=q;
+    end;
+    if result.Max.x>q then begin
+     result.Max.x:=q;
+    end;
    end;
   end;
-  t:=c.y/((-b.y)+h.y);
-  if (t>0.0) and (t<1.0) then begin
-   s:=1.0-t;
-   q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-   if result.Min.y<q then begin
-    result.Min.y:=q;
+  if h.y>0.0 then begin
+   h.y:=sqrt(h.y);
+   t:=c.y/((-b.y)-h.y);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+    if result.Min.y<q then begin
+     result.Min.y:=q;
+    end;
+    if result.Max.y>q then begin
+     result.Max.y:=q;
+    end;
    end;
-   if result.Max.y>q then begin
-    result.Max.y:=q;
+   t:=c.y/((-b.y)+h.y);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+    if result.Min.y<q then begin
+     result.Min.y:=q;
+    end;
+    if result.Max.y>q then begin
+     result.Max.y:=q;
+    end;
    end;
   end;
+  fCachedBoundingBox:=result;
+  fHasCachedBoundingBox:=true;
  end;
 end;
 
@@ -4189,11 +4228,44 @@ begin
  result:=TpvVectorPathShape.Create(self);
 end;
 
+{ TpvVectorPathGPUShape.THorizontalBand }
+
+constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble);
+var Segment:TpvVectorPathSegment;
+    BoundingBox:TpvVectorPathBoundingBox;
+begin
+ inherited Create;
+
+ fVectorPathGPUShape:=aVectorPathGPUShape;
+
+ fY0:=aY0-TpvVectorPathGPUShape.HorizontalBandExtents;
+ fY1:=aY1+TpvVectorPathGPUShape.HorizontalBandExtents;
+
+ fSegments:=TpvVectorPathSegments.Create;
+ fSegments.OwnsObjects:=false;
+
+ for Segment in fVectorPathGPUShape.fSegments do begin
+  BoundingBox:=Segment.GetBoundingBox;
+  if (TpvVectorPath.MinMax[0].y<=aY1) and (aY0<=BoundingBox.MinMax[1].y) then begin
+   fSegments.Add(Segment);
+  end;
+ end;
+
+end;
+
+destructor TpvVectorPathGPUShape.THorizontalBand.Destroy;
+begin
+ FreeAndNil(fSegments);
+ inherited Destroy;
+end;
+
 { TpvVectorPathGPUShape }
 
 constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 var Contour:TpvVectorPathContour;
     Segment:TpvVectorPathSegment;
+    Index:TpvSizeInt;
+    t0,t1:TpvDouble;
 begin
 
  inherited Create;
@@ -4206,10 +4278,14 @@ begin
 
  fResolution:=aResolution;
 
+ fSegments:=TpvVectorPathSegments.Create;
+ fSegments.OwnsObjects:=false;
+
  fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
  try
   for Contour in fVectorPathShape.fContours do begin
    for Segment in Contour.fSegments do begin
+    fSegments.Add(Segment);
     fSegmentDynamicAABBTree.CreateProxy(Segment.GetBoundingBox,TpvPtrInt(TpvPointer(Segment)));
    end;
   end;
@@ -4217,11 +4293,24 @@ begin
   fSegmentDynamicAABBTree.Rebuild;
  end;
 
+ fHorizontalBands:=THorizontalBands.Create;
+ fHorizontalBands.OwnsObjects:=true;
+
+ for Index:=0 to fResolution-1 do begin
+  t0:=Index/fResolution;
+  t1:=(Index+1)/fResolution;
+  fHorizontalBands.Add(THorizontalBand.Create(self,
+                                              (fBoundingBox.MinMax[0].y*t0)+(fBoundingBox.MinMax[1].y*(1.0-t0)),
+                                              (fBoundingBox.MinMax[0].y*t1)+(fBoundingBox.MinMax[1].y*(1.0-t1))));
+ end;
+
 end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
+ FreeAndNil(fHorizontalBands);
  FreeAndNil(fSegmentDynamicAABBTree);
+ FreeAndNil(fSegments);
  FreeAndNil(fVectorPathShape);
  inherited Destroy;
 end;
