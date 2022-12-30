@@ -402,6 +402,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        destructor Destroy; override;
        procedure Assign(const aContour:TpvVectorPathContour);
        function Clone:TpvVectorPathContour;
+       function GetBoundingBox:TpvVectorPathBoundingBox;
       published
        property Segments:TpvVectorPathSegments read fSegments;
        property Closed:boolean read fClosed write fClosed;
@@ -425,6 +426,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure Assign(const aVectorPathShape:TpvVectorPathShape); overload;
        procedure Assign(const aVectorPath:TpvVectorPath); overload;
        function Clone:TpvVectorPathShape;
+       function GetBoundingBox:TpvVectorPathBoundingBox;
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
@@ -458,6 +460,19 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
+
+     { TpvVectorPathSegmentGrid }
+
+     TpvVectorPathSegmentGrid=class
+      private
+       fVectorPathShape:TpvVectorPathShape;
+       fBoundingBox:TpvVectorPathBoundingBox;
+       fResolution:TpvInt32;
+      public
+       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32); reintroduce;
+       destructor Destroy; override;
+     end;
+
 
 implementation
 
@@ -2462,6 +2477,18 @@ begin
  result:=TpvVectorPathContour.Create(self);
 end;
 
+function TpvVectorPathContour.GetBoundingBox:TpvVectorPathBoundingBox;
+var Segment:TpvVectorPathSegment;
+begin
+ result:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
+                                         TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
+ for Segment in fSegments do begin
+  if assigned(Segment) then begin
+   result:=result.Combine(Segment.GetBoundingBox);
+  end;
+ end;
+end;
+
 { TpvVectorPathShape }
 
 constructor TpvVectorPathShape.Create;
@@ -2595,6 +2622,18 @@ end;
 function TpvVectorPathShape.Clone:TpvVectorPathShape;
 begin
  result:=TpvVectorPathShape.Create(self);
+end;
+
+function TpvVectorPathShape.GetBoundingBox:TpvVectorPathBoundingBox;
+var Contour:TpvVectorPathContour;
+begin
+ result:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
+                                         TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
+ for Contour in fContours do begin
+  if assigned(Contour) then begin
+   result:=result.Combine(Contour.GetBoundingBox);
+  end;
+ end;
 end;
 
 function TpvVectorPathShape.GetBeginEndPoints:TpvVectorPathVectors;
@@ -4137,6 +4176,21 @@ end;
 function TpvVectorPath.GetShape:TpvVectorPathShape;
 begin
  result:=TpvVectorPathShape.Create(self);
+end;
+
+{ TpvVectorPathSegmentGrid }
+
+constructor TpvVectorPathSegmentGrid.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32);
+begin
+ inherited Create;
+ fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
+ fResolution:=aResolution;
+end;
+
+destructor TpvVectorPathSegmentGrid.Destroy;
+begin
+ FreeAndNil(fVectorPathShape);
+ inherited Destroy;
 end;
 
 end.
