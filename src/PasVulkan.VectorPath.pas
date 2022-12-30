@@ -72,6 +72,7 @@ uses SysUtils,
      PasDblStrUtils,
      PasMP,
      PasVulkan.Types,
+     PasVulkan.Utils,
      PasVulkan.Collections,
      PasVulkan.Math;
 
@@ -4489,10 +4490,20 @@ end;
 
 { TpvVectorPathGPUShape.THorizontalBand }
 
+function TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc(const a,b:TpvDouble):TpvInt32;
+begin
+ result:=Sign(a-b);
+end;
+
 constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble);
+type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
     BoundingBox:TpvVectorPathBoundingBox;
-    SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+    SegmentIndex,OtherSegmentIndex,YCoordinateIndex:TpvSizeInt;
+    YCoordinates:TpvDynamicArray<TpvDouble>;
+    YCoordinateHashMap:TYCoordinateHashMap;
+    Vector:TpvVectorPathVector;
+    LastY,CurrentY:TpvDouble;
 begin
  inherited Create;
 
@@ -4521,6 +4532,46 @@ begin
  end;
 
  fIntersectionPoints.RemoveDuplicates;
+
+ YCoordinates.Initialize;
+ try
+
+  YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
+  try
+   for Vector in fIntersectionPoints do begin
+    CurrentY:=Vector.y;
+    if not YCoordinateHashMap.ExistKey(CurrentY) then begin
+     YCoordinateHashMap.Add(CurrentY,true);
+     YCoordinates.Add(CurrentY);
+    end;
+   end;
+  finally
+   FreeAndNil(YCoordinateHashMap);
+  end;
+
+  if YCoordinates.Count>=2 then begin
+   TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc);
+  end;
+
+  LastY:=fY0;
+  for YCoordinateIndex:=0 to YCoordinates.Count do begin
+   if YCoordinateIndex<YCoordinates.Count then begin
+    CurrentY:=YCoordinates.Items[YCoordinateIndex];
+    if (CurrentY<fY0) or (CurrentY>fY1) then begin
+     continue;
+    end;
+   end else begin
+    CurrentY:=fY1;
+   end;
+   if not SameValue(CurrentY,LastY) then begin
+
+   end;
+   LastY:=CurrentY;
+  end;
+
+ finally
+  YCoordinates.Finalize;
+ end;
 
 end;
 
