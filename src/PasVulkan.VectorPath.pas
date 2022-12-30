@@ -506,6 +506,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               fY0:TpvDouble;
               fY1:TpvDouble;
               fSegments:TpvVectorPathSegments;
+              fIntersectionPoints:TpvVectorPathVectorList;
              public
               constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble); reintroduce;
               destructor Destroy; override;
@@ -4491,6 +4492,7 @@ end;
 constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble);
 var Segment:TpvVectorPathSegment;
     BoundingBox:TpvVectorPathBoundingBox;
+    SegmentIndex,OtherSegmentIndex:TpvSizeInt;
 begin
  inherited Create;
 
@@ -4502,6 +4504,8 @@ begin
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
 
+ fIntersectionPoints:=TpvVectorPathVectorList.Create;
+
  for Segment in fVectorPathGPUShape.fSegments do begin
   BoundingBox:=Segment.GetBoundingBox;
   if (BoundingBox.MinMax[0].y<=aY1) and (aY0<=BoundingBox.MinMax[1].y) then begin
@@ -4509,10 +4513,20 @@ begin
   end;
  end;
 
+ for SegmentIndex:=0 to fSegments.Count-1 do begin
+  Segment:=fSegments[SegmentIndex];
+  for OtherSegmentIndex:=SegmentIndex+1 to fSegments.Count-1 do begin
+   Segment.GetIntersectionPointsWithSegment(fSegments[OtherSegmentIndex],fIntersectionPoints);
+  end;
+ end;
+
+ fIntersectionPoints.RemoveDuplicates;
+
 end;
 
 destructor TpvVectorPathGPUShape.THorizontalBand.Destroy;
 begin
+ FreeAndNil(fIntersectionPoints);
  FreeAndNil(fSegments);
  inherited Destroy;
 end;
