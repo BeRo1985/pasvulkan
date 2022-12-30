@@ -458,7 +458,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
        function GetBeginEndPoints:TpvVectorPathVectors;
-       function GetSegmentIntersectionPoints:TpvVectorPathVectors;
+       procedure GetSegmentIntersectionPoints(const aIntersectionPoints:TpvVectorPathVectorList);
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Contours:TpvVectorPathContours read fContours;
@@ -3255,49 +3255,29 @@ begin
  end;
 end;
 
-function TpvVectorPathShape.GetSegmentIntersectionPoints:TpvVectorPathVectors;
-var Count,SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+procedure TpvVectorPathShape.GetSegmentIntersectionPoints(const aIntersectionPoints:TpvVectorPathVectorList);
+var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
     Segment,OtherSegment:TpvVectorPathSegment;
     Segments:TpvVectorPathSegments;
     Contour:TpvVectorPathContour;
-    IntersectionPoints:TpvVectorPathVectorList;
-    Vector:TpvVectorPathVector;
 begin
- result:=nil;
- Count:=0;
+ Segments:=TpvVectorPathSegments.Create;
  try
-  IntersectionPoints:=TpvVectorPathVectorList.Create;
-  try
-   Segments:=TpvVectorPathSegments.Create;
-   try
-    Segments.OwnsObjects:=false;
-    for Contour in fContours do begin
-     for Segment in Contour.fSegments do begin
-      Segments.Add(Segment);
-     end;
-    end;
-    for SegmentIndex:=0 to Segments.Count-1 do begin
-     Segment:=Segments[SegmentIndex];
-     for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
-      OtherSegment:=Segments[OtherSegmentIndex];
-      Segment.GetIntersectionPointsWithSegment(OtherSegment,IntersectionPoints);
-     end;
-    end;
-   finally
-    FreeAndNil(Segments);
+  Segments.OwnsObjects:=false;
+  for Contour in fContours do begin
+   for Segment in Contour.fSegments do begin
+    Segments.Add(Segment);
    end;
-   for Vector in IntersectionPoints do begin
-    if Count>=length(result) then begin
-     SetLength(result,(Count+1)*2);
-    end;
-    result[Count]:=Vector;
-    inc(Count);
+  end;
+  for SegmentIndex:=0 to Segments.Count-1 do begin
+   Segment:=Segments[SegmentIndex];
+   for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
+    OtherSegment:=Segments[OtherSegmentIndex];
+    Segment.GetIntersectionPointsWithSegment(OtherSegment,aIntersectionPoints);
    end;
-  finally
-   FreeAndNil(IntersectionPoints);
   end;
  finally
-  SetLength(result,Count);
+  FreeAndNil(Segments);
  end;
 end;
 
