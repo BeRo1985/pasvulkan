@@ -149,20 +149,20 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Area:TpvDouble;
        function Center:TpvVectorPathVector;
        function Contains(const aVector:TpvVectorPathVector):Boolean; overload;
-       class function Contains(const aMin,aMax:TpvVectorPathVector;const aWith:TpvVectorPathBoundingBox):Boolean; static; overload;
-       class function Contains(const aMin,aMax:TpvVector2;const aWith:TpvVectorPathBoundingBox):Boolean; static; overload;
+       class function Contains(const aMin,aMax:TpvVectorPathVector;const aWith:TpvVectorPathBoundingBox):Boolean; overload; static;
+       class function Contains(const aMin,aMax:TpvVector2;const aWith:TpvVectorPathBoundingBox):Boolean; overload; static;
        function Contains(const aBoundingBox:TpvVectorPathBoundingBox):Boolean; overload;
-       class function Contains(const aMin,aMax,aVector:TpvVectorPathVector):boolean; static; overload;
-       class function Contains(const aMin,aMax:TpvVector2;const aVector:TpvVectorPathVector):Boolean; static; overload;
+       class function Contains(const aMin,aMax,aVector:TpvVectorPathVector):boolean; overload; static;
+       class function Contains(const aMin,aMax:TpvVector2;const aVector:TpvVectorPathVector):Boolean; overload; static;
        function Intersect(const aWith:TpvVectorPathBoundingBox;const aThreshold:TpvDouble=EPSILON):Boolean; overload;
-       class function Intersect(const aMin,aMax:TpvVectorPathVector;const aWith:TpvVectorPathBoundingBox;const aThreshold:TpvDouble=EPSILON):Boolean; static; overload;
-       class function Intersect(const aMin,aMax:TpvVector2;const aWith:TpvVectorPathBoundingBox;const aThreshold:TpvDouble=EPSILON):Boolean; static; overload;
+       class function Intersect(const aMin,aMax:TpvVectorPathVector;const aWith:TpvVectorPathBoundingBox;const aThreshold:TpvDouble=EPSILON):Boolean; overload; static;
+       class function Intersect(const aMin,aMax:TpvVector2;const aWith:TpvVectorPathBoundingBox;const aThreshold:TpvDouble=EPSILON):Boolean; overload; static;
        function FastRayIntersection(const aOrigin,aDirection:TpvVectorPathVector):Boolean; overload;
-       class function FastRayIntersection(const aMin,aMax:TpvVectorPathVector;const aOrigin,aDirection:TpvVectorPathVector):Boolean; static; overload;
-       class function FastRayIntersection(const aMin,aMax:TpvVector2;const aOrigin,aDirection:TpvVectorPathVector):Boolean; static; overload;
+       class function FastRayIntersection(const aMin,aMax:TpvVectorPathVector;const aOrigin,aDirection:TpvVectorPathVector):Boolean; overload; static;
+       class function FastRayIntersection(const aMin,aMax:TpvVector2;const aOrigin,aDirection:TpvVectorPathVector):Boolean; overload; static;
        function LineIntersection(const aStartPoint,aEndPoint:TpvVectorPathVector):Boolean; overload;
-       class function LineIntersection(const aMin,aMax:TpvVectorPathVector;const aStartPoint,aEndPoint:TpvVectorPathVector):Boolean; static; overload;
-       class function LineIntersection(const aMin,aMax:TpvVector2;const aStartPoint,aEndPoint:TpvVectorPathVector):Boolean; static; overload;
+       class function LineIntersection(const aMin,aMax:TpvVectorPathVector;const aStartPoint,aEndPoint:TpvVectorPathVector):Boolean; overload; static;
+       class function LineIntersection(const aMin,aMax:TpvVector2;const aStartPoint,aEndPoint:TpvVectorPathVector):Boolean; overload; static;
       public
        case boolean of
         false:(
