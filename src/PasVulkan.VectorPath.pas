@@ -469,7 +469,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
       public
-       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32); reintroduce;
+       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
      end;
 
@@ -4180,10 +4180,13 @@ end;
 
 { TpvVectorPathSegmentGrid }
 
-constructor TpvVectorPathSegmentGrid.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32);
+constructor TpvVectorPathSegmentGrid.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 begin
  inherited Create;
  fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
+ fBoundingBox:=fVectorPathShape.GetBoundingBox;
+ fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
+ fBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
  fResolution:=aResolution;
 end;
 
