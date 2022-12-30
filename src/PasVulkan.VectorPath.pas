@@ -499,7 +499,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathGPUShape=class
       public
-       const HorizontalBandExtents=4.0;
+       const CoordinateExtents=4.0;
        type { THorizontalBand }
             THorizontalBand=class
              private
@@ -4496,21 +4496,16 @@ begin
 end;
 
 constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble);
-type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
     BoundingBox:TpvVectorPathBoundingBox;
-    SegmentIndex,OtherSegmentIndex,YCoordinateIndex:TpvSizeInt;
-    YCoordinates:TpvDynamicArray<TpvDouble>;
-    YCoordinateHashMap:TYCoordinateHashMap;
-    Vector:TpvVectorPathVector;
-    LastY,CurrentY:TpvDouble;
+    SegmentIndex,OtherSegmentIndex:TpvSizeInt;
 begin
  inherited Create;
 
  fVectorPathGPUShape:=aVectorPathGPUShape;
 
- fY0:=aY0-TpvVectorPathGPUShape.HorizontalBandExtents;
- fY1:=aY1+TpvVectorPathGPUShape.HorizontalBandExtents;
+ fY0:=aY0-TpvVectorPathGPUShape.CoordinateExtents;
+ fY1:=aY1+TpvVectorPathGPUShape.CoordinateExtents;
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
@@ -4533,46 +4528,6 @@ begin
 
  fIntersectionPoints.RemoveDuplicates;
 
- YCoordinates.Initialize;
- try
-
-  YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
-  try
-   for Vector in fIntersectionPoints do begin
-    CurrentY:=Vector.y;
-    if not YCoordinateHashMap.ExistKey(CurrentY) then begin
-     YCoordinateHashMap.Add(CurrentY,true);
-     YCoordinates.Add(CurrentY);
-    end;
-   end;
-  finally
-   FreeAndNil(YCoordinateHashMap);
-  end;
-
-  if YCoordinates.Count>=2 then begin
-   TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc);
-  end;
-
-  LastY:=fY0;
-  for YCoordinateIndex:=0 to YCoordinates.Count do begin
-   if YCoordinateIndex<YCoordinates.Count then begin
-    CurrentY:=YCoordinates.Items[YCoordinateIndex];
-    if (CurrentY<fY0) or (CurrentY>fY1) then begin
-     continue;
-    end;
-   end else begin
-    CurrentY:=fY1;
-   end;
-   if not SameValue(CurrentY,LastY) then begin
-
-   end;
-   LastY:=CurrentY;
-  end;
-
- finally
-  YCoordinates.Finalize;
- end;
-
 end;
 
 destructor TpvVectorPathGPUShape.THorizontalBand.Destroy;
@@ -4585,24 +4540,107 @@ end;
 { TpvVectorPathGPUShape.TGridCell }
 
 constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox);
+type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
+    IntersectionSegments:TpvVectorPathSegments;
     BoundingBox:TpvVectorPathBoundingBox;
+    YCoordinateIndex,SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+    YCoordinates:TpvDynamicArray<TpvDouble>;
+    YCoordinateHashMap:TYCoordinateHashMap;
+    Vector:TpvVectorPathVector;
+    LastY,CurrentY:TpvDouble;
+    IntersectionPoints:TpvVectorPathVectorList;
 begin
  inherited Create;
 
  fVectorPathGPUShape:=aVectorPathGPUShape;
 
  fBoundingBox:=aBoundingBox;
- fExtendedBoundingBox:=aBoundingBox;
+
+ fExtendedBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(TpvVectorPathGPUShape.CoordinateExtents,TpvVectorPathGPUShape.CoordinateExtents);
+ fExtendedBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(TpvVectorPathGPUShape.CoordinateExtents,TpvVectorPathGPUShape.CoordinateExtents);
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
 
- for Segment in fVectorPathGPUShape.fSegments do begin
-  BoundingBox:=Segment.GetBoundingBox;
-  if fExtendedBoundingBox.Intersect(BoundingBox) then begin
-   fSegments.Add(Segment);
+ IntersectionPoints:=TpvVectorPathVectorList.Create;
+ try
+
+  IntersectionSegments:=TpvVectorPathSegments.Create;
+  try
+
+   IntersectionSegments.OwnsObjects:=false;
+
+   for Segment in fVectorPathGPUShape.fSegments do begin
+    BoundingBox:=Segment.GetBoundingBox;
+    if fExtendedBoundingBox.Intersect(BoundingBox) then begin
+     fSegments.Add(Segment);
+    end;
+    if ((BoundingBox.MinMax[0].x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[0].x+TpvVectorPathBoundingBox.EPSILON)) and
+       ((BoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) and
+       ((fExtendedBoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(BoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) then begin
+     IntersectionSegments.Add(Segment);
+    end;
+   end;
+
+   for SegmentIndex:=0 to IntersectionSegments.Count-1 do begin
+    Segment:=fSegments[SegmentIndex];
+    for OtherSegmentIndex:=SegmentIndex+1 to IntersectionSegments.Count-1 do begin
+     Segment.GetIntersectionPointsWithSegment(IntersectionSegments[OtherSegmentIndex],IntersectionPoints);
+    end;
+   end;
+
+   IntersectionPoints.RemoveDuplicates;
+
+  finally
+   FreeAndNil(IntersectionSegments);
   end;
+
+  YCoordinates.Initialize;
+  try
+
+   YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
+   try
+    for Vector in IntersectionPoints do begin
+     if (Vector.y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
+      CurrentY:=Vector.y;
+      if not YCoordinateHashMap.ExistKey(CurrentY) then begin
+       YCoordinateHashMap.Add(CurrentY,true);
+       YCoordinates.Add(CurrentY);
+      end;
+     end;
+    end;
+   finally
+    FreeAndNil(YCoordinateHashMap);
+   end;
+
+   if YCoordinates.Count>=2 then begin
+    TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc);
+   end;
+
+   LastY:=fExtendedBoundingBox.MinMax[0].y;
+   for YCoordinateIndex:=0 to YCoordinates.Count do begin
+    if YCoordinateIndex<YCoordinates.Count then begin
+     CurrentY:=YCoordinates.Items[YCoordinateIndex];
+     if (CurrentY<fExtendedBoundingBox.MinMax[0].y) or (CurrentY>fExtendedBoundingBox.MinMax[1].y) then begin
+      continue;
+     end;
+    end else begin
+     CurrentY:=fExtendedBoundingBox.MinMax[1].y;
+    end;
+    if not SameValue(CurrentY,LastY) then begin
+
+
+    end;
+    LastY:=CurrentY;
+   end;
+
+  finally
+   YCoordinates.Finalize;
+  end;
+
+ finally
+  FreeAndNil(IntersectionPoints);
  end;
 
 end;
