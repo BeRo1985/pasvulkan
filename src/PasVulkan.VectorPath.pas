@@ -461,9 +461,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
 
-     { TpvVectorPathSegmentGrid }
+     { TpvVectorPathGPUShape }
 
-     TpvVectorPathSegmentGrid=class
+     TpvVectorPathGPUShape=class
       private
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
@@ -4178,9 +4178,9 @@ begin
  result:=TpvVectorPathShape.Create(self);
 end;
 
-{ TpvVectorPathSegmentGrid }
+{ TpvVectorPathGPUShape }
 
-constructor TpvVectorPathSegmentGrid.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
+constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 begin
  inherited Create;
  fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
@@ -4190,7 +4190,7 @@ begin
  fResolution:=aResolution;
 end;
 
-destructor TpvVectorPathSegmentGrid.Destroy;
+destructor TpvVectorPathGPUShape.Destroy;
 begin
  FreeAndNil(fVectorPathShape);
  inherited Destroy;
