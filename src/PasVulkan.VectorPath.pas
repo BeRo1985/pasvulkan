@@ -362,6 +362,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Clone:TpvVectorPathSegment; virtual;
        function GetBoundingBox:TpvVectorPathBoundingBox; virtual;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
+       function GetCompareHorizontalLowestXCoordinate:TpvDouble;
       public
        property BoundingBox:TpvVectorPathBoundingBox read GetBoundingBox;
       published
@@ -515,7 +516,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
             THorizontalBands=TpvObjectGenericList<THorizontalBand>;
             { TGridCell }
             TGridCell=class
+             public
+              type TKind=
+                    (
+                     Empty,
+                     HasContent
+                    );
              private
+              fKind:TKind;
               fVectorPathGPUShape:TpvVectorPathGPUShape;
               fBoundingBox:TpvVectorPathBoundingBox;
               fExtendedBoundingBox:TpvVectorPathBoundingBox;
@@ -2851,6 +2859,25 @@ end;
 procedure TpvVectorPathSegment.GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList);
 begin
 
+end;
+
+function TpvVectorPathSegment.GetCompareHorizontalLowestXCoordinate:TpvDouble;
+var OK:boolean;
+begin
+ OK:=false;
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fCachedBoundingBoxLock);
+ try
+  if fHasCachedBoundingBox then begin
+   result:=fCachedBoundingBox.MinMax[0].x;
+   OK:=true;
+  end;
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCachedBoundingBoxLock);
+ end;
+ if OK then begin
+  exit;
+ end;
+ result:=GetBoundingBox.MinMax[0].x;
 end;
 
 { TpvVectorPathSegmentLine }
