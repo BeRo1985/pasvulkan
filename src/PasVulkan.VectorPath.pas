@@ -131,6 +131,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathVectors=array of TpvVectorPathVector;
 
+     TpvVectorPathVectorList=TpvGenericList<TpvVectorPathVector>;
+
      TpvVectorPathRawVectors=array[0..65535] of TpvVectorPathVector;
 
      PpvVectorPathRawVectors=^TpvVectorPathRawVectors;
@@ -2247,6 +2249,378 @@ begin
  fY2:=aY2;
 end;
 
+procedure GetIntersectionsForLineLine(const aSegment0,aSegment1:TpvVectorPathSegmentLine;const aIntersectionPoints:TpvVectorPathVectorList);
+var a,b,Determinant:TpvDouble;
+begin
+ Determinant:=((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[1].x-aSegment0.Points[0].x))-((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[1].y-aSegment0.Points[0].y));
+ if not IsZero(Determinant) then begin
+  a:=(((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
+  b:=(((aSegment0.Points[1].x-aSegment0.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment0.Points[1].y-aSegment0.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
+  if ((a>=0.0) and (a<=1.0)) and ((b>=0.0) and (b<=1.0)) then begin
+   aIntersectionPoints.Add(aSegment0.Points[0].Lerp(aSegment0.Points[1],a));
+  end;
+ end;
+end;
+
+procedure GetIntersectionsForLineQuadraticCurve(const aSegment0:TpvVectorPathSegmentLine;const aSegment1:TpvVectorPathSegmentQuadraticCurve;const aIntersectionPoints:TpvVectorPathVectorList);
+var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
+    a,cl,t:TpvDouble;
+    Roots:array[0..1] of TpvDouble;
+    RootIndex,CountRoots:TpvSizeInt;
+begin
+ Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
+ Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
+ c2:=aSegment1.Points[0]+((aSegment1.Points[1]*(-2.0))+aSegment1.Points[2]);
+ c1:=(aSegment1.Points[0]*(-2.0))+(aSegment1.Points[1]*2.0);
+ c0:=TpvVectorPathVector.Create(aSegment1.Points[0].x,aSegment1.Points[0].y);
+ n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
+ cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
+ a:=n.Dot(c0)+cl;
+ if IsZero(a) then begin
+  CountRoots:=0;
+ end else begin
+  CountRoots:=SolveQuadratic(a,n.Dot(c1)/a,n.Dot(c2)/a,Roots[0],Roots[1]);
+ end;
+ for RootIndex:=0 to CountRoots-1 do begin
+  t:=Roots[RootIndex];
+  if (t>=0.0) and (t<=1.0) then begin
+   p:=(aSegment1.Points[0].Lerp(aSegment1.Points[1],t)).Lerp(aSegment1.Points[1].Lerp(aSegment1.Points[2],t),t);
+   if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
+    if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+     aIntersectionPoints.Add(p);
+    end;
+   end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
+    if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+     aIntersectionPoints.Add(p);
+    end;
+   end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
+    aIntersectionPoints.Add(p);
+   end;
+  end;
+ end;
+end;
+
+procedure GetIntersectionsForLineCubicCurve(const aSegment0:TpvVectorPathSegmentLine;const aSegment1:TpvVectorPathSegmentCubicCurve;const aIntersectionPoints:TpvVectorPathVectorList);
+var Min_,Max_,c0,c1,c2,c3,n,p,p1,p2,p3,p4,p5,p6,p7,p8,p9:TpvVectorPathVector;
+    a,cl,t:TpvDouble;
+    Roots:array[0..2] of TpvDouble;
+    RootIndex,CountRoots:TpvSizeInt;
+begin
+ Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
+ Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
+ p1:=aSegment1.Points[0];
+ p2:=aSegment1.Points[1];
+ p3:=aSegment1.Points[2];
+ p4:=aSegment1.Points[3];
+ c0:=p1;
+ c1:=(p1*(-3.0))+(p2*3.0);
+ c2:=(p1*3.0)+((p2*(-6.0))+(p3*3.0));
+ c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
+ n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
+ cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
+ a:=n.Dot(c0)+cl;
+ if IsZero(a) then begin
+  CountRoots:=0;
+ end else begin
+  CountRoots:=SolveCubic(a,n.Dot(c1),n.Dot(c2),n.Dot(c3),Roots[0],Roots[1],Roots[2]);
+ end;
+ for RootIndex:=0 to CountRoots-1 do begin
+  t:=Roots[RootIndex];
+  if (t>=0.0) and (t<=1.0) then begin
+   p5:=p1.Lerp(p2,t);
+   p6:=p2.Lerp(p3,t);
+   p7:=p3.Lerp(p4,t);
+   p8:=p5.Lerp(p6,t);
+   p9:=p6.Lerp(p7,t);
+   p:=p8.Lerp(p9,t);
+   if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
+    if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+     aIntersectionPoints.Add(p);
+    end;
+   end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
+    if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+     aIntersectionPoints.Add(p);
+    end;
+   end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
+    aIntersectionPoints.Add(p);
+   end;
+  end;
+ end;
+end;
+
+procedure GetIntersectionsForQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:TpvVectorPathSegmentQuadraticCurve;const aIntersectionPoints:TpvVectorPathVectorList);
+var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
+    v0,v1,v2,v3,v4,v5,v6,s,XRoot:TpvDouble;
+    Roots:array[0..3] of TpvDouble;
+    XRoots,YRoots:array[0..1] of TpvDouble;
+    CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+    OK:boolean;
+begin
+ a1:=aSegment0.Points[0];
+ a2:=aSegment0.Points[1];
+ a3:=aSegment0.Points[2];
+ b1:=aSegment1.Points[0];
+ b2:=aSegment1.Points[1];
+ b3:=aSegment1.Points[2];
+ c10:=a1;
+ c11:=(a1*(-2.0))+(a2*2.0);
+ c12:=a1+((a2*(-2.0))+a3);
+ c20:=b1;
+ c21:=(b1*(-2.0))+(b2*2.0);
+ c22:=b1+((b2*(-2.0))+b3);
+ if IsZero(c12.y) then begin
+  v0:=c12.x*(c10.y-c20.y);
+  v1:=v0-(c11.x*c11.y);
+  v2:=v0+v1;
+  v3:=c11.y*c11.y;
+  CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
+                           2.0*c12.x*c21.y*c22.y,
+                           (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
+                           (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
+                           ((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1),
+                           Roots[0],
+                           Roots[1],
+                           Roots[2],
+                           Roots[3]);
+ end else begin
+  v0:=(c12.x*c22.y)-(c12.y*c22.x);
+  v1:=(c12.x*c21.y)-(c21.x*c12.y);
+  v2:=(c11.x*c12.y)-(c11.y*c12.x);
+  v3:=c10.y-c20.y;
+  v4:=(c12.y*(c10.x-c20.x))-(c12.x*v3);
+  v5:=((-c11.y)*v2)+(c12.y*v4);
+  v6:=v2*v2;
+  CountRoots:=SolveQuartic(sqr(v0),
+                           2.0*v0*v1,
+                           ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
+                           ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
+                           ((v3*v6)+(v4*v5))/c12.y,
+                           Roots[0],
+                           Roots[1],
+                           Roots[2],
+                           Roots[3]);
+ end;
+ for Index:=0 to CountRoots-1 do begin
+  s:=Roots[Index];
+  if (s>=0.0) and (s<=1.0) then begin
+   CountXRoots:=SolveQuadratic(c12.x,
+                               c11.x,
+                               ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
+                               XRoots[0],
+                               XRoots[1]
+                              );
+   CountYRoots:=SolveQuadratic(c12.y,
+                               c11.y,
+                               ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
+                               YRoots[0],
+                               YRoots[1]
+                              );
+   if (CountXRoots>0) and (CountYRoots>0) then begin
+    OK:=false;
+    for XIndex:=0 to CountXRoots-1 do begin
+     XRoot:=XRoots[XIndex];
+     if (XRoot>=0.0) and (XRoot<=1.0) then begin
+      for YIndex:=0 to CountYRoots-1 do begin
+       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+        aIntersectionPoints.Add((c22*sqr(s))+(c21*s)+c20);
+        OK:=true;
+        break;
+       end;
+      end;
+     end;
+     if OK then begin
+      break;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure GetIntersectionsForQuadraticCurveCubicCurve(const aSegment0:TpvVectorPathSegmentQuadraticCurve;const aSegment1:TpvVectorPathSegmentCubicCurve;const aIntersectionPoints:TpvVectorPathVectorList);
+var a1,a2,a3,b1,b2,b3,b4,
+    c10,c11,c12,c20,c21,c22,c23,
+    c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
+    PolyCoefs:array[0..6] of TpvDouble;
+    Roots:TpvDoubleDynamicArray;
+    XRoots,YRoots:array[0..1] of TpvDouble;
+    CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+    OK:boolean;
+    s,XRoot:TpvDouble;
+begin
+ a1:=aSegment0.Points[0];
+ a2:=aSegment0.Points[1];
+ a3:=aSegment0.Points[2];
+ b1:=aSegment1.Points[0];
+ b2:=aSegment1.Points[1];
+ b3:=aSegment1.Points[2];
+ b4:=aSegment1.Points[3];
+ c10:=a1;
+ c11:=(a1*(-2.0))+(a2*2.0);
+ c12:=(a1+(a2*(-2.0)))+a3;
+ c20:=b1;
+ c21:=(b1*(-3.0))+(b2*3.0);
+ c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
+ c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
+ c10s:=c10*c10;
+ c11s:=c11*c11;
+ c12s:=c12*c12;
+ c20s:=c20*c20;
+ c21s:=c21*c21;
+ c22s:=c22*c22;
+ c23s:=c23*c23;
+ PolyCoefs[0]:=(((-2.0)*c12.x*c12.y*c23.x*c23.y)+(c12s.x*c23s.y))+(c12s.y*c23s.x);
+ PolyCoefs[1]:=((((-2.0)*c12.x*c12.y*c22.x*c23.y)-(2.0*c12.x*c12.y*c22.y*c23.x))+(2.0*c12s.y*c22.x*c23.x))+(2.0*c12s.x*c22.y*c23.y);
+ PolyCoefs[2]:=(((((((-2.0)*c12.x*c21.x*c12.y*c23.y)-(2.0*c12.x*c12.y*c21.y*c23.x))-(2.0*c12.x*c12.y*c22.x*c22.y))+(2.0*c21.x*c12s.y*c23.x))+(c12s.y*c22s.x))+(c12s.x*((2.0*c21.y*c23.y)+c22s.y)));
+ PolyCoefs[3]:=(((((((((((((((2.0*c10.x*c12.x*c12.y*c23.y)+(2.0*c10.y*c12.x*c12.y*c23.x))+(c11.x*c11.y*c12.x*c23.y))+(c11.x*c11.y*c12.y*c23.x))-(2.0*c20.x*c12.x*c12.y*c23.y))-(2.0*c12.x*c20.y*c12.y*c23.x))-(2.0*c12.x*c21.x*c12.y*c22.y))-(2.0*c12.x*c12.y*c21.y*c22.x))-(2.0*c10.x*c12s.y*c23.x))-(2.0*c10.y*c12s.x*c23.y))+(2.0*c20.x*c12s.y*c23.x))+(2.0*c21.x*c12s.y*c22.x))-(c11s.y*c12.x*c23.x))-(c11s.x*c12.y*c23.y))+(c12s.x*((2.0*c20.y*c23.y)+(2.0*c21.y*c22.y))));
+ PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
+ PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
+ PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
+ Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+ for Index:=0 to length(Roots)-1 do begin
+  s:=Roots[Index];
+  if (s>=0.0) and (s<=1.0) then begin
+   CountXRoots:=SolveQuadratic(c12.x,
+                               c11.x,
+                               (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                               XRoots[0],
+                               XRoots[1]
+                              );
+   CountYRoots:=SolveQuadratic(c12.y,
+                               c11.y,
+                               (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                               YRoots[0],
+                               YRoots[1]
+                              );
+   if (CountXRoots>0) and (CountYRoots>0) then begin
+    OK:=false;
+    for XIndex:=0 to CountXRoots-1 do begin
+     XRoot:=XRoots[XIndex];
+     if (XRoot>=0.0) and (XRoot<=1.0) then begin
+      for YIndex:=0 to CountYRoots-1 do begin
+       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+        aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+        OK:=true;
+        break;
+       end;
+      end;
+     end;
+     if OK then begin
+      break;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure GetIntersectionsForCubicCurveCubicCurve(const aSegment0,aSegment1:TpvVectorPathSegmentCubicCurve;const aIntersectionPoints:TpvVectorPathVectorList);
+var a1,a2,a3,a4,b1,b2,b3,b4,
+    c10,c11,c12,c13,c20,c21,c22,c23,
+    c10s,c11s,c12s,c13s,c20s,c21s,c22s,c23s,
+    c10c,c11c,c12c,c13c,c20c,c21c,c22c,c23c:TpvVectorPathVector;
+    PolyCoefs:array[0..9] of TpvDouble;
+    Roots:TpvDoubleDynamicArray;
+    XRoots,YRoots:array[0..1] of TpvDouble;
+    CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
+    OK:boolean;
+    s,XRoot:TpvDouble;
+begin
+ a1:=aSegment0.Points[0];
+ a2:=aSegment0.Points[1];
+ a3:=aSegment0.Points[2];
+ a4:=aSegment0.Points[3];
+ b1:=aSegment1.Points[0];
+ b2:=aSegment1.Points[1];
+ b3:=aSegment1.Points[2];
+ b4:=aSegment1.Points[3];
+ c10:=a1;
+ c11:=(a1*(-3.0))+(a2*3.0);
+ c12:=((a1*3.0)+(a2*(-6.0)))+(a3*3.0);
+ c13:=(((a1*(-1.0))+(a2*3.0))+(a3*(-3.0)))+a4;
+ c20:=b1;
+ c21:=(b1*(-3.0))+(b2*3.0);
+ c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
+ c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
+ c10s:=c10*c10;
+ c11s:=c11*c11;
+ c12s:=c12*c12;
+ c13s:=c13*c13;
+ c20s:=c20*c20;
+ c21s:=c21*c21;
+ c22s:=c22*c22;
+ c23s:=c23*c23;
+ c10c:=c10s*c10;
+ c11c:=c11s*c11;
+ c12c:=c12s*c12;
+ c13c:=c13s*c13;
+ c20c:=c20s*c20;
+ c21c:=c21s*c21;
+ c22c:=c22s*c22;
+ c23c:=c23s*c23;
+ PolyCoefs[0]:=-c13c.x*c23c.y+c13c.y*c23c.x-3*c13.x*c13s.y*c23s.x*c23.y+3*c13s.x*c13.y*c23.x*c23s.y;
+ PolyCoefs[1]:=-6*c13.x*c22.x*c13s.y*c23.x*c23.y+6*c13s.x*c13.y*c22.y*c23.x*c23.y+3*c22.x*c13c.y*c23s.x-3*c13c.x*c22.y*c23s.y-3*c13.x*c13s.y*c22.y*c23s.x+3*c13s.x*c22.x*c13.y*c23s.y;
+ PolyCoefs[2]:=-6*c21.x*c13.x*c13s.y*c23.x*c23.y-6*c13.x*c22.x*c13s.y*c22.y*c23.x+6*c13s.x*c22.x*c13.y*c22.y*c23.y+3*c21.x*c13c.y*c23s.x+3*c22s.x*c13c.y*c23.x+3*c21.x*c13s.x*c13.y*c23s.y-3*c13.x*c21.y*c13s.y*c23s.x-3*c13.x*c22s.x*c13s.y*c23.y+c13s.x*c13.y*c23.x*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-c21.y*c23s.y-2*c22s.y*c23.y-c23.y*(2*c21.y*c23.y+c22s.y));
+ PolyCoefs[3]:=c11.x*c12.y*c13.x*c13.y*c23.x*c23.y-c11.y*c12.x*c13.x*c13.y*c23.x*c23.y+6*c21.x*c22.x*c13c.y*c23.x+3*c11.x*c12.x*c13.x*c13.y*c23s.y+6*c10.x*c13.x*c13s.y*c23.x*c23.y-3*c11.x*c12.x*c13s.y*c23.x*c23.y-3*c11.y*c12.y*c13.x*c13.y*c23s.x-6*c10.y*c13s.x*c13.y*c23.x*c23.y-6*c20.x*c13.x*c13s.y*c23.x*c23.y+3*c11.y*c12.y*c13s.x*c23.x*c23.y-2*c12.x*c12s.y*c13.x*c23.x*c23.y-6*c21.x*c13.x*c22.x*c13s.y*c23.y-6*c21.x*c13.x*c13s.y*c22.y*c23.x-6*c13.x*c21.y*c22.x*c13s.y*c23.x+6*c21.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.y*c23.x*c23.y+c22c.x*c13c.y-3*c10.x*c13c.y*c23s.x+3*c10.y*c13c.x*c23s.y+3*c20.x*c13c.y*c23s.x+c12c.y*c13.x*c23s.x-c12c.x*c13.y*c23s.y-3*c10.x*c13s.x*c13.y*c23s.y+3*c10.y*c13.x*c13s.y*c23s.x-2*c11.x*c12.y*c13s.x*c23s.y+c11.x*c12.y*c13s.y*c23s.x-c11.y*c12.x*c13s.x*c23s.y+2*c11.y*c12.x*c13s.y*c23s.x+3*c20.x*c13s.x*c13.y*c23s.y-c12.x*c12s.y*c13.y*c23s.x-3*c20.y*c13.x*c13s.y*c23s.x+c12s.x*c12.y*c13.x*c23s.y-
+               3*c13.x*c22s.x*c13s.y*c22.y+c13s.x*c13.y*c23.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c22.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c21.y*c22.y*c23.y-c20.y*c23s.y-c22.y*(2*c21.y*c23.y+c22s.y)-c23.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+ PolyCoefs[4]:=6*c11.x*c12.x*c13.x*c13.y*c22.y*c23.y+c11.x*c12.y*c13.x*c22.x*c13.y*c23.y+c11.x*c12.y*c13.x*c13.y*c22.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c23.y-c11.y*c12.x*c13.x*c13.y*c22.y*c23.x-6*c11.y*c12.y*c13.x*c22.x*c13.y*c23.x-6*c10.x*c22.x*c13c.y*c23.x+6*c20.x*c22.x*c13c.y*c23.x+6*c10.y*c13c.x*c22.y*c23.y+2*c12c.y*c13.x*c22.x*c23.x-2*c12c.x*c13.y*c22.y*c23.y+6*c10.x*c13.x*c22.x*c13s.y*c23.y+6*c10.x*c13.x*c13s.y*c22.y*c23.x+6*c10.y*c13.x*c22.x*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c23.y-3*c11.x*c12.x*c13s.y*c22.y*c23.x+2*c11.x*c12.y*c22.x*c13s.y*c23.x+4*c11.y*c12.x*c22.x*c13s.y*c23.x-6*c10.x*c13s.x*c13.y*c22.y*c23.y-6*c10.y*c13s.x*c22.x*c13.y*c23.y-6*c10.y*c13s.x*c13.y*c22.y*c23.x-4*c11.x*c12.y*c13s.x*c22.y*c23.y-6*c20.x*c13.x*c22.x*c13s.y*c23.y-6*c20.x*c13.x*c13s.y*c22.y*c23.x-2*c11.y*c12.x*c13s.x*c22.y*c23.y+3*c11.y*c12.y*c13s.x*c22.x*c23.y+3*c11.y*c12.y*c13s.x*c22.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c23.y-
+               2*c12.x*c12s.y*c13.x*c22.y*c23.x-2*c12.x*c12s.y*c22.x*c13.y*c23.x-6*c20.y*c13.x*c22.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c13s.y*c23.x-6*c21.x*c13.x*c22.x*c13s.y*c22.y+6*c20.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.x*c22.y*c23.y+2*c12s.x*c12.y*c22.x*c13.y*c23.y+2*c12s.x*c12.y*c13.y*c22.y*c23.x+3*c21.x*c22s.x*c13c.y+3*c21s.x*c13c.y*c23.x-3*c13.x*c21.y*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c23.y+c13s.x*c22.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c13.y*c23.x*(6*c20.y*c22.y+3*c21s.y)+c21.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c22.y*c23.y-c23.y*(2*c20.y*c22.y+c21s.y)-c21.y*(2*c21.y*c23.y+c22s.y)-c22.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+ PolyCoefs[5]:=c11.x*c21.x*c12.y*c13.x*c13.y*c23.y+c11.x*c12.y*c13.x*c21.y*c13.y*c23.x+c11.x*c12.y*c13.x*c22.x*c13.y*c22.y-c11.y*c12.x*c21.x*c13.x*c13.y*c23.y-c11.y*c12.x*c13.x*c21.y*c13.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c22.y-6*c11.y*c21.x*c12.y*c13.x*c13.y*c23.x-6*c10.x*c21.x*c13c.y*c23.x+6*c20.x*c21.x*c13c.y*c23.x+2*c21.x*c12c.y*c13.x*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c23.y+6*c10.x*c13.x*c21.y*c13s.y*c23.x+6*c10.x*c13.x*c22.x*c13s.y*c22.y+6*c10.y*c21.x*c13.x*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c23.y-3*c11.x*c12.x*c21.y*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c22.y+2*c11.x*c21.x*c12.y*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c13s.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c23.y-6*c10.y*c13s.x*c21.y*c13.y*c23.x-6*c10.y*c13s.x*c22.x*c13.y*c22.y-6*c20.x*c21.x*c13.x*c13s.y*c23.y-6*c20.x*c13.x*c21.y*c13s.y*c23.x-6*c20.x*c13.x*c22.x*c13s.y*c22.y+3*c11.y*c21.x*c12.y*c13s.x*c23.y-3*c11.y*c12.y*c13.x*c22s.x*c13.y+3*c11.y*c12.y*c13s.x*c21.y*c23.x+
+               3*c11.y*c12.y*c13s.x*c22.x*c22.y-2*c12.x*c21.x*c12s.y*c13.x*c23.y-2*c12.x*c21.x*c12s.y*c13.y*c23.x-2*c12.x*c12s.y*c13.x*c21.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c22.y-6*c20.y*c21.x*c13.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c22.x*c13s.y+6*c20.y*c13s.x*c21.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c23.y+2*c12s.x*c12.y*c21.y*c13.y*c23.x+2*c12s.x*c12.y*c22.x*c13.y*c22.y-3*c10.x*c22s.x*c13c.y+3*c20.x*c22s.x*c13c.y+3*c21s.x*c22.x*c13c.y+c12c.y*c13.x*c22s.x+3*c10.y*c13.x*c22s.x*c13s.y+c11.x*c12.y*c22s.x*c13s.y+2*c11.y*c12.x*c22s.x*c13s.y-c12.x*c12s.y*c22s.x*c13.y-3*c20.y*c13.x*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c22.y+c12s.x*c12.y*c13.x*(2*c21.y*c23.y+c22s.y)+c11.x*c12.x*c13.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c21.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c21.y*c23.y-c22s.y)+c10.y*c13c.x*(6*c21.y*c23.y+3*c22s.y)+c11.y*c12.x*c13s.x*(-2*c21.y*c23.y-c22s.y)+
+               c11.x*c12.y*c13s.x*(-4*c21.y*c23.y-2*c22s.y)+c10.x*c13s.x*c13.y*(-6*c21.y*c23.y-3*c22s.y)+c13s.x*c22.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c20.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c21.y*c23.y-c22.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c21.y*c23.y+c22s.y)-c21.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+ PolyCoefs[6]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c23.y+c10.x*c11.y*c12.x*c13.x*c13.y*c23.y+6*c10.x*c11.y*c12.y*c13.x*c13.y*c23.x-6*c10.y*c11.x*c12.x*c13.x*c13.y*c23.y-c10.y*c11.x*c12.y*c13.x*c13.y*c23.x+c10.y*c11.y*c12.x*c13.x*c13.y*c23.x+c11.x*c11.y*c12.x*c12.y*c13.x*c23.y-c11.x*c11.y*c12.x*c12.y*c13.y*c23.x+c11.x*c20.x*c12.y*c13.x*c13.y*c23.y+c11.x*c20.y*c12.y*c13.x*c13.y*c23.x+c11.x*c21.x*c12.y*c13.x*c13.y*c22.y+c11.x*c12.y*c13.x*c21.y*c22.x*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c23.y-6*c20.x*c11.y*c12.y*c13.x*c13.y*c23.x-c11.y*c12.x*c20.y*c13.x*c13.y*c23.x-c11.y*c12.x*c21.x*c13.x*c13.y*c22.y-c11.y*c12.x*c13.x*c21.y*c22.x*c13.y-6*c11.y*c21.x*c12.y*c13.x*c22.x*c13.y-6*c10.x*c20.x*c13c.y*c23.x-6*c10.x*c21.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c23.x+6*c20.x*c21.x*c22.x*c13c.y+2*c20.x*c12c.y*c13.x*c23.x+2*c21.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c23.y-6*c10.x*c10.y*c13.x*c13s.y*c23.x+3*c10.x*c11.x*c12.x*c13s.y*c23.y-
+               2*c10.x*c11.x*c12.y*c13s.y*c23.x-4*c10.x*c11.y*c12.x*c13s.y*c23.x+3*c10.y*c11.x*c12.x*c13s.y*c23.x+6*c10.x*c10.y*c13s.x*c13.y*c23.y+6*c10.x*c20.x*c13.x*c13s.y*c23.y-3*c10.x*c11.y*c12.y*c13s.x*c23.y+2*c10.x*c12.x*c12s.y*c13.x*c23.y+2*c10.x*c12.x*c12s.y*c13.y*c23.x+6*c10.x*c20.y*c13.x*c13s.y*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c22.y+6*c10.x*c13.x*c21.y*c22.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c23.y+6*c10.y*c20.x*c13.x*c13s.y*c23.x+2*c10.y*c11.y*c12.x*c13s.x*c23.y-3*c10.y*c11.y*c12.y*c13s.x*c23.x+2*c10.y*c12.x*c12s.y*c13.x*c23.x+6*c10.y*c21.x*c13.x*c22.x*c13s.y-3*c11.x*c20.x*c12.x*c13s.y*c23.y+2*c11.x*c20.x*c12.y*c13s.y*c23.x+c11.x*c11.y*c12s.y*c13.x*c23.x-3*c11.x*c12.x*c20.y*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c22.y-3*c11.x*c12.x*c21.y*c22.x*c13s.y+2*c11.x*c21.x*c12.y*c22.x*c13s.y+4*c20.x*c11.y*c12.x*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c23.y-6*c10.y*c20.x*c13s.x*c13.y*c23.y-
+               6*c10.y*c20.y*c13s.x*c13.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c22.y-2*c10.y*c12s.x*c12.y*c13.x*c23.y-2*c10.y*c12s.x*c12.y*c13.y*c23.x-6*c10.y*c13s.x*c21.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c23.y-2*c11.x*c11s.y*c13.x*c13.y*c23.x+3*c20.x*c11.y*c12.y*c13s.x*c23.y-2*c20.x*c12.x*c12s.y*c13.x*c23.y-2*c20.x*c12.x*c12s.y*c13.y*c23.x-6*c20.x*c20.y*c13.x*c13s.y*c23.x-6*c20.x*c21.x*c13.x*c13s.y*c22.y-6*c20.x*c13.x*c21.y*c22.x*c13s.y+3*c11.y*c20.y*c12.y*c13s.x*c23.x+3*c11.y*c21.x*c12.y*c13s.x*c22.y+3*c11.y*c12.y*c13s.x*c21.y*c22.x-2*c12.x*c20.y*c12s.y*c13.x*c23.x-2*c12.x*c21.x*c12s.y*c13.x*c22.y-2*c12.x*c21.x*c12s.y*c22.x*c13.y-2*c12.x*c12s.y*c13.x*c21.y*c22.x-6*c20.y*c21.x*c13.x*c22.x*c13s.y-c11s.y*c12.x*c12.y*c13.x*c23.x+2*c20.x*c12s.x*c12.y*c13.y*c23.y+6*c20.y*c13s.x*c21.y*c22.x*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c23.y+c11s.x*c12.x*c12.y*c13.y*c23.y+2*c12s.x*c20.y*c12.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c22.y+
+               2*c12s.x*c12.y*c21.y*c22.x*c13.y+c21c.x*c13c.y+3*c10s.x*c13c.y*c23.x-3*c10s.y*c13c.x*c23.y+3*c20s.x*c13c.y*c23.x+c11c.y*c13s.x*c23.x-c11c.x*c13s.y*c23.y-c11.x*c11s.y*c13s.x*c23.y+c11s.x*c11.y*c13s.y*c23.x-3*c10s.x*c13.x*c13s.y*c23.y+3*c10s.y*c13s.x*c13.y*c23.x-c11s.x*c12s.y*c13.x*c23.y+c11s.y*c12s.x*c13.y*c23.x-3*c21s.x*c13.x*c21.y*c13s.y-3*c20s.x*c13.x*c13s.y*c23.y+3*c20s.y*c13s.x*c13.y*c23.x+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c20.y*c23.y-2*c21.y*c22.y)+c10.y*c13c.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c23.y-2*c21.y*c22.y)+c12s.x*c12.y*c13.x*(2*c20.y*c23.y+2*c21.y*c22.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c23.y-4*c21.y*c22.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c23.y-6*c21.y*c22.y)+c20.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c21.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21.y*c22.y-c20s.y*c23.y-c21.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c20.y*c23.y+2*c21.y*c22.y));
+ PolyCoefs[7]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c22.y+c10.x*c11.y*c12.x*c13.x*c13.y*c22.y+6*c10.x*c11.y*c12.y*c13.x*c22.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c13.y*c22.y-c10.y*c11.x*c12.y*c13.x*c22.x*c13.y+c10.y*c11.y*c12.x*c13.x*c22.x*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c22.y-c11.x*c11.y*c12.x*c12.y*c22.x*c13.y+c11.x*c20.x*c12.y*c13.x*c13.y*c22.y+c11.x*c20.y*c12.y*c13.x*c22.x*c13.y+c11.x*c21.x*c12.y*c13.x*c21.y*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c22.y-6*c20.x*c11.y*c12.y*c13.x*c22.x*c13.y-c11.y*c12.x*c20.y*c13.x*c22.x*c13.y-c11.y*c12.x*c21.x*c13.x*c21.y*c13.y-6*c10.x*c20.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c22.x+2*c20.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c22.y-6*c10.x*c10.y*c13.x*c22.x*c13s.y+3*c10.x*c11.x*c12.x*c13s.y*c22.y-2*c10.x*c11.x*c12.y*c22.x*c13s.y-4*c10.x*c11.y*c12.x*c22.x*c13s.y+3*c10.y*c11.x*c12.x*c22.x*c13s.y+6*c10.x*c10.y*c13s.x*c13.y*c22.y+6*c10.x*c20.x*c13.x*c13s.y*c22.y-3*c10.x*c11.y*c12.y*c13s.x*c22.y+
+               2*c10.x*c12.x*c12s.y*c13.x*c22.y+2*c10.x*c12.x*c12s.y*c22.x*c13.y+6*c10.x*c20.y*c13.x*c22.x*c13s.y+6*c10.x*c21.x*c13.x*c21.y*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c22.y+6*c10.y*c20.x*c13.x*c22.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c22.y-3*c10.y*c11.y*c12.y*c13s.x*c22.x+2*c10.y*c12.x*c12s.y*c13.x*c22.x-3*c11.x*c20.x*c12.x*c13s.y*c22.y+2*c11.x*c20.x*c12.y*c22.x*c13s.y+c11.x*c11.y*c12s.y*c13.x*c22.x-3*c11.x*c12.x*c20.y*c22.x*c13s.y-3*c11.x*c12.x*c21.x*c21.y*c13s.y+4*c20.x*c11.y*c12.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c22.y-6*c10.y*c20.x*c13s.x*c13.y*c22.y-6*c10.y*c20.y*c13s.x*c22.x*c13.y-6*c10.y*c21.x*c13s.x*c21.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c22.y-2*c10.y*c12s.x*c12.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c22.y-2*c11.x*c11s.y*c13.x*c22.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c22.y-2*c20.x*c12.x*c12s.y*c13.x*c22.y-2*c20.x*c12.x*c12s.y*c22.x*c13.y-6*c20.x*c20.y*c13.x*c22.x*c13s.y-6*c20.x*c21.x*c13.x*c21.y*c13s.y+
+               3*c11.y*c20.y*c12.y*c13s.x*c22.x+3*c11.y*c21.x*c12.y*c13s.x*c21.y-2*c12.x*c20.y*c12s.y*c13.x*c22.x-2*c12.x*c21.x*c12s.y*c13.x*c21.y-c11s.y*c12.x*c12.y*c13.x*c22.x+2*c20.x*c12s.x*c12.y*c13.y*c22.y-3*c11.y*c21s.x*c12.y*c13.x*c13.y+6*c20.y*c21.x*c13s.x*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c22.y+c11s.x*c12.x*c12.y*c13.y*c22.y+2*c12s.x*c20.y*c12.y*c22.x*c13.y+2*c12s.x*c21.x*c12.y*c21.y*c13.y-3*c10.x*c21s.x*c13c.y+3*c20.x*c21s.x*c13c.y+3*c10s.x*c22.x*c13c.y-3*c10s.y*c13c.x*c22.y+3*c20s.x*c22.x*c13c.y+c21s.x*c12c.y*c13.x+c11c.y*c13s.x*c22.x-c11c.x*c13s.y*c22.y+3*c10.y*c21s.x*c13.x*c13s.y-c11.x*c11s.y*c13s.x*c22.y+c11.x*c21s.x*c12.y*c13s.y+2*c11.y*c12.x*c21s.x*c13s.y+c11s.x*c11.y*c22.x*c13s.y-c12.x*c21s.x*c12s.y*c13.y-3*c20.y*c21s.x*c13.x*c13s.y-3*c10s.x*c13.x*c13s.y*c22.y+3*c10s.y*c13s.x*c22.x*c13.y-c11s.x*c12s.y*c13.x*c22.y+c11s.y*c12s.x*c22.x*c13.y-3*c20s.x*c13.x*c13s.y*c22.y+3*c20s.y*c13s.x*c22.x*c13.y+
+               c12s.x*c12.y*c13.x*(2*c20.y*c22.y+c21s.y)+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c12c.x*c13.y*(-2*c20.y*c22.y-c21s.y)+c10.y*c13c.x*(6*c20.y*c22.y+3*c21s.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c22.y-c21s.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c22.y-2*c21s.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c22.y-3*c21s.y)+c20.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21s.y-c20s.y*c22.y-c20.y*(2*c20.y*c22.y+c21s.y));
+ PolyCoefs[8]:=-c10.x*c11.x*c12.y*c13.x*c21.y*c13.y+c10.x*c11.y*c12.x*c13.x*c21.y*c13.y+6*c10.x*c11.y*c21.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c21.y*c13.y-c10.y*c11.x*c21.x*c12.y*c13.x*c13.y+c10.y*c11.y*c12.x*c21.x*c13.x*c13.y-c11.x*c11.y*c12.x*c21.x*c12.y*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c21.y+c11.x*c20.x*c12.y*c13.x*c21.y*c13.y+6*c11.x*c12.x*c20.y*c13.x*c21.y*c13.y+c11.x*c20.y*c21.x*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c13.x*c21.y*c13.y-6*c20.x*c11.y*c21.x*c12.y*c13.x*c13.y-c11.y*c12.x*c20.y*c21.x*c13.x*c13.y-6*c10.x*c20.x*c21.x*c13c.y-2*c10.x*c21.x*c12c.y*c13.x+6*c10.y*c20.y*c13c.x*c21.y+2*c20.x*c21.x*c12c.y*c13.x+2*c10.y*c12c.x*c21.y*c13.y-2*c12c.x*c20.y*c21.y*c13.y-6*c10.x*c10.y*c21.x*c13.x*c13s.y+3*c10.x*c11.x*c12.x*c21.y*c13s.y-2*c10.x*c11.x*c21.x*c12.y*c13s.y-4*c10.x*c11.y*c12.x*c21.x*c13s.y+3*c10.y*c11.x*c12.x*c21.x*c13s.y+6*c10.x*c10.y*c13s.x*c21.y*c13.y+6*c10.x*c20.x*c13.x*c21.y*c13s.y-
+               3*c10.x*c11.y*c12.y*c13s.x*c21.y+2*c10.x*c12.x*c21.x*c12s.y*c13.y+2*c10.x*c12.x*c12s.y*c13.x*c21.y+6*c10.x*c20.y*c21.x*c13.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c21.y+6*c10.y*c20.x*c21.x*c13.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c21.y-3*c10.y*c11.y*c21.x*c12.y*c13s.x+2*c10.y*c12.x*c21.x*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c21.y*c13s.y+2*c11.x*c20.x*c21.x*c12.y*c13s.y+c11.x*c11.y*c21.x*c12s.y*c13.x-3*c11.x*c12.x*c20.y*c21.x*c13s.y+4*c20.x*c11.y*c12.x*c21.x*c13s.y-6*c10.x*c20.y*c13s.x*c21.y*c13.y-2*c10.x*c12s.x*c12.y*c21.y*c13.y-6*c10.y*c20.x*c13s.x*c21.y*c13.y-6*c10.y*c20.y*c21.x*c13s.x*c13.y-2*c10.y*c12s.x*c21.x*c12.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c21.y-c11.x*c11.y*c12s.x*c21.y*c13.y-4*c11.x*c20.y*c12.y*c13s.x*c21.y-2*c11.x*c11s.y*c21.x*c13.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c21.y-2*c20.x*c12.x*c21.x*c12s.y*c13.y-2*c20.x*c12.x*c12s.y*c13.x*c21.y-6*c20.x*c20.y*c21.x*c13.x*c13s.y-2*c11.y*c12.x*c20.y*c13s.x*c21.y+
+               3*c11.y*c20.y*c21.x*c12.y*c13s.x-2*c12.x*c20.y*c21.x*c12s.y*c13.x-c11s.y*c12.x*c21.x*c12.y*c13.x+6*c20.x*c20.y*c13s.x*c21.y*c13.y+2*c20.x*c12s.x*c12.y*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c21.y*c13.y+c11s.x*c12.x*c12.y*c21.y*c13.y+2*c12s.x*c20.y*c21.x*c12.y*c13.y+2*c12s.x*c20.y*c12.y*c13.x*c21.y+3*c10s.x*c21.x*c13c.y-3*c10s.y*c13c.x*c21.y+3*c20s.x*c21.x*c13c.y+c11c.y*c21.x*c13s.x-c11c.x*c21.y*c13s.y-3*c20s.y*c13c.x*c21.y-c11.x*c11s.y*c13s.x*c21.y+c11s.x*c11.y*c21.x*c13s.y-3*c10s.x*c13.x*c21.y*c13s.y+3*c10s.y*c21.x*c13s.x*c13.y-c11s.x*c12s.y*c13.x*c21.y+c11s.y*c12s.x*c21.x*c13.y-3*c20s.x*c13.x*c21.y*c13s.y+3*c20s.y*c21.x*c13s.x*c13.y;
+ PolyCoefs[9]:=c10.x*c10.y*c11.x*c12.y*c13.x*c13.y-c10.x*c10.y*c11.y*c12.x*c13.x*c13.y+c10.x*c11.x*c11.y*c12.x*c12.y*c13.y-c10.y*c11.x*c11.y*c12.x*c12.y*c13.x-c10.x*c11.x*c20.y*c12.y*c13.x*c13.y+6*c10.x*c20.x*c11.y*c12.y*c13.x*c13.y+c10.x*c11.y*c12.x*c20.y*c13.x*c13.y-c10.y*c11.x*c20.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c20.y*c13.x*c13.y+c10.y*c20.x*c11.y*c12.x*c13.x*c13.y-c11.x*c20.x*c11.y*c12.x*c12.y*c13.y+c11.x*c11.y*c12.x*c20.y*c12.y*c13.x+c11.x*c20.x*c20.y*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c20.y*c13.x*c13.y-2*c10.x*c20.x*c12c.y*c13.x+2*c10.y*c12c.x*c20.y*c13.y-3*c10.x*c10.y*c11.x*c12.x*c13s.y-6*c10.x*c10.y*c20.x*c13.x*c13s.y+3*c10.x*c10.y*c11.y*c12.y*c13s.x-2*c10.x*c10.y*c12.x*c12s.y*c13.x-2*c10.x*c11.x*c20.x*c12.y*c13s.y-c10.x*c11.x*c11.y*c12s.y*c13.x+3*c10.x*c11.x*c12.x*c20.y*c13s.y-4*c10.x*c20.x*c11.y*c12.x*c13s.y+3*c10.y*c11.x*c20.x*c12.x*c13s.y+6*c10.x*c10.y*c20.y*c13s.x*c13.y+2*c10.x*c10.y*c12s.x*c12.y*c13.y+
+               2*c10.x*c11.x*c11s.y*c13.x*c13.y+2*c10.x*c20.x*c12.x*c12s.y*c13.y+6*c10.x*c20.x*c20.y*c13.x*c13s.y-3*c10.x*c11.y*c20.y*c12.y*c13s.x+2*c10.x*c12.x*c20.y*c12s.y*c13.x+c10.x*c11s.y*c12.x*c12.y*c13.x+c10.y*c11.x*c11.y*c12s.x*c13.y+4*c10.y*c11.x*c20.y*c12.y*c13s.x-3*c10.y*c20.x*c11.y*c12.y*c13s.x+2*c10.y*c20.x*c12.x*c12s.y*c13.x+2*c10.y*c11.y*c12.x*c20.y*c13s.x+c11.x*c20.x*c11.y*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c20.y*c13s.y-2*c10.x*c12s.x*c20.y*c12.y*c13.y-6*c10.y*c20.x*c20.y*c13s.x*c13.y-2*c10.y*c20.x*c12s.x*c12.y*c13.y-2*c10.y*c11s.x*c11.y*c13.x*c13.y-c10.y*c11s.x*c12.x*c12.y*c13.y-2*c10.y*c12s.x*c20.y*c12.y*c13.x-2*c11.x*c20.x*c11s.y*c13.x*c13.y-c11.x*c11.y*c12s.x*c20.y*c13.y+3*c20.x*c11.y*c20.y*c12.y*c13s.x-2*c20.x*c12.x*c20.y*c12s.y*c13.x-c20.x*c11s.y*c12.x*c12.y*c13.x+3*c10s.y*c11.x*c12.x*c13.x*c13.y+3*c11.x*c12.x*c20s.y*c13.x*c13.y+2*c20.x*c12s.x*c20.y*c12.y*c13.y-3*c10s.x*c11.y*c12.y*c13.x*c13.y+
+               2*c11s.x*c11.y*c20.y*c13.x*c13.y+c11s.x*c12.x*c20.y*c12.y*c13.y-3*c20s.x*c11.y*c12.y*c13.x*c13.y-c10c.x*c13c.y+c10c.y*c13c.x+c20c.x*c13c.y-c20c.y*c13c.x-3*c10.x*c20s.x*c13c.y-c10.x*c11c.y*c13s.x+3*c10s.x*c20.x*c13c.y+c10.y*c11c.x*c13s.y+3*c10.y*c20s.y*c13c.x+c20.x*c11c.y*c13s.x+c10s.x*c12c.y*c13.x-3*c10s.y*c20.y*c13c.x-c10s.y*c12c.x*c13.y+c20s.x*c12c.y*c13.x-c11c.x*c20.y*c13s.y-c12c.x*c20s.y*c13.y-c10.x*c11s.x*c11.y*c13s.y+c10.y*c11.x*c11s.y*c13s.x-3*c10.x*c10s.y*c13s.x*c13.y-c10.x*c11s.y*c12s.x*c13.y+c10.y*c11s.x*c12s.y*c13.x-c11.x*c11s.y*c20.y*c13s.x+3*c10s.x*c10.y*c13.x*c13s.y+c10s.x*c11.x*c12.y*c13s.y+2*c10s.x*c11.y*c12.x*c13s.y-2*c10s.y*c11.x*c12.y*c13s.x-c10s.y*c11.y*c12.x*c13s.x+c11s.x*c20.x*c11.y*c13s.y-3*c10.x*c20s.y*c13s.x*c13.y+3*c10.y*c20s.x*c13.x*c13s.y+c11.x*c20s.x*c12.y*c13s.y-2*c11.x*c20s.y*c12.y*c13s.x+c20.x*c11s.y*c12s.x*c13.y-c11.y*c12.x*c20s.y*c13s.x-c10s.x*c12.x*c12s.y*c13.y-3*c10s.x*c20.y*c13.x*c13s.y+
+               3*c10s.y*c20.x*c13s.x*c13.y+c10s.y*c12s.x*c12.y*c13.x-c11s.x*c20.y*c12s.y*c13.x+2*c20s.x*c11.y*c12.x*c13s.y+3*c20.x*c20s.y*c13s.x*c13.y-c20s.x*c12.x*c12s.y*c13.y-3*c20s.x*c20.y*c13.x*c13s.y+c12s.x*c20s.y*c12.y*c13.x;
+ Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+ for Index:=0 to length(Roots)-1 do begin
+  s:=Roots[Index];
+  if (s>=0.0) and (s<=1.0) then begin
+   CountXRoots:=SolveQuadratic(c12.x,
+                               c11.x,
+                               (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                               XRoots[0],
+                               XRoots[1]
+                              );
+   CountYRoots:=SolveQuadratic(c12.y,
+                               c11.y,
+                               (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                               YRoots[0],
+                               YRoots[1]
+                              );
+   if (CountXRoots>0) and (CountYRoots>0) then begin
+    OK:=false;
+    for XIndex:=0 to CountXRoots-1 do begin
+     XRoot:=XRoots[XIndex];
+     if (XRoot>=0.0) and (XRoot<=1.0) then begin
+      for YIndex:=0 to CountYRoots-1 do begin
+       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+        aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+        OK:=true;
+        break;
+       end;
+      end;
+     end;
+     if OK then begin
+      break;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 { TpvVectorPathSegment }
 
 constructor TpvVectorPathSegment.Create;
@@ -2779,460 +3153,97 @@ begin
 end;
 
 function TpvVectorPathShape.GetIntersectionPoints:TpvVectorPathVectors;
-var Vectors:TpvVectorPathVectors;
-    Count:TpvSizeInt;
- procedure OutputPoint(const aVector:TpvVectorPathVector);
- begin
-  if Count>=length(Vectors) then begin
-   SetLength(Vectors,(Count+1)*2);
-  end;
-  Vectors[Count]:=aVector;
-  inc(Count);
- end;
- procedure HandleLineLine(const aSegment0,aSegment1:TpvVectorPathSegmentLine);
- var a,b,Determinant:TpvDouble;
- begin
-  Determinant:=((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[1].x-aSegment0.Points[0].x))-((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[1].y-aSegment0.Points[0].y));
-  if not IsZero(Determinant) then begin
-   a:=(((aSegment1.Points[1].x-aSegment1.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment1.Points[1].y-aSegment1.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
-   b:=(((aSegment0.Points[1].x-aSegment0.Points[0].x)*(aSegment0.Points[0].y-aSegment1.Points[0].y))-((aSegment0.Points[1].y-aSegment0.Points[0].y)*(aSegment0.Points[0].x-aSegment1.Points[0].x)))/Determinant;
-   if ((a>=0.0) and (a<=1.0)) and ((b>=0.0) and (b<=1.0)) then begin
-    OutputPoint(aSegment0.Points[0].Lerp(aSegment0.Points[1],a));
-   end;
-  end;
- end;
- procedure HandleLineQuadraticCurve(const aSegment0:TpvVectorPathSegmentLine;const aSegment1:TpvVectorPathSegmentQuadraticCurve);
- var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
-     a,cl,t:TpvDouble;
-     Roots:array[0..1] of TpvDouble;
-     RootIndex,CountRoots:TpvSizeInt;
- begin
-  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
-  Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
-  c2:=aSegment1.Points[0]+((aSegment1.Points[1]*(-2.0))+aSegment1.Points[2]);
-  c1:=(aSegment1.Points[0]*(-2.0))+(aSegment1.Points[1]*2.0);
-  c0:=TpvVectorPathVector.Create(aSegment1.Points[0].x,aSegment1.Points[0].y);
-  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
-  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
-  a:=n.Dot(c0)+cl;
-  if IsZero(a) then begin
-   CountRoots:=0;
-  end else begin
-   CountRoots:=SolveQuadratic(a,n.Dot(c1)/a,n.Dot(c2)/a,Roots[0],Roots[1]);
-  end;
-  for RootIndex:=0 to CountRoots-1 do begin
-   t:=Roots[RootIndex];
-   if (t>=0.0) and (t<=1.0) then begin
-    p:=(aSegment1.Points[0].Lerp(aSegment1.Points[1],t)).Lerp(aSegment1.Points[1].Lerp(aSegment1.Points[2],t),t);
-    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
-     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
-      OutputPoint(p);
-     end;
-    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
-     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
-      OutputPoint(p);
-     end;
-    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
-     OutputPoint(p);
-    end;
-   end;
-  end;
- end;
- procedure HandleLineCubicCurve(const aSegment0:TpvVectorPathSegmentLine;aSegment1:TpvVectorPathSegmentCubicCurve);
- var Min_,Max_,c0,c1,c2,c3,n,p,p1,p2,p3,p4,p5,p6,p7,p8,p9:TpvVectorPathVector;
-     a,cl,t:TpvDouble;
-     Roots:array[0..2] of TpvDouble;
-     RootIndex,CountRoots:TpvSizeInt;
- begin
-  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
-  Max_:=aSegment0.Points[0].Maximum(aSegment0.Points[1]);
-  p1:=aSegment1.Points[0];
-  p2:=aSegment1.Points[1];
-  p3:=aSegment1.Points[2];
-  p4:=aSegment1.Points[3];
-  c0:=p1;
-  c1:=(p1*(-3.0))+(p2*3.0);
-  c2:=(p1*3.0)+((p2*(-6.0))+(p3*3.0));
-  c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
-  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
-  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
-  a:=n.Dot(c0)+cl;
-  if IsZero(a) then begin
-   CountRoots:=0;
-  end else begin
-   CountRoots:=SolveCubic(a,n.Dot(c1),n.Dot(c2),n.Dot(c3),Roots[0],Roots[1],Roots[2]);
-  end;
-  for RootIndex:=0 to CountRoots-1 do begin
-   t:=Roots[RootIndex];
-   if (t>=0.0) and (t<=1.0) then begin
-    p5:=p1.Lerp(p2,t);
-    p6:=p2.Lerp(p3,t);
-    p7:=p3.Lerp(p4,t);
-    p8:=p5.Lerp(p6,t);
-    p9:=p6.Lerp(p7,t);
-    p:=p8.Lerp(p9,t);
-    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
-     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
-      OutputPoint(p);
-     end;
-    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
-     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
-      OutputPoint(p);
-     end;
-    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
-     OutputPoint(p);
-    end;
-   end;
-  end;
- end;
- procedure HandleQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:TpvVectorPathSegmentQuadraticCurve);
- var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
-     v0,v1,v2,v3,v4,v5,v6,s,XRoot:TpvDouble;
-     Roots:array[0..3] of TpvDouble;
-     XRoots,YRoots:array[0..1] of TpvDouble;
-     CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
-     OK:boolean;
- begin
-  a1:=aSegment0.Points[0];
-  a2:=aSegment0.Points[1];
-  a3:=aSegment0.Points[2];
-  b1:=aSegment1.Points[0];
-  b2:=aSegment1.Points[1];
-  b3:=aSegment1.Points[2];
-  c10:=a1;
-  c11:=(a1*(-2.0))+(a2*2.0);
-  c12:=a1+((a2*(-2.0))+a3);
-  c20:=b1;
-  c21:=(b1*(-2.0))+(b2*2.0);
-  c22:=b1+((b2*(-2.0))+b3);
-  if IsZero(c12.y) then begin
-   v0:=c12.x*(c10.y-c20.y);
-   v1:=v0-(c11.x*c11.y);
-   v2:=v0+v1;
-   v3:=c11.y*c11.y;
-   CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
-                            2.0*c12.x*c21.y*c22.y,
-                            (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
-                            (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
-                            ((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1),
-                            Roots[0],
-                            Roots[1],
-                            Roots[2],
-                            Roots[3]);
-  end else begin
-   v0:=(c12.x*c22.y)-(c12.y*c22.x);
-   v1:=(c12.x*c21.y)-(c21.x*c12.y);
-   v2:=(c11.x*c12.y)-(c11.y*c12.x);
-   v3:=c10.y-c20.y;
-   v4:=(c12.y*(c10.x-c20.x))-(c12.x*v3);
-   v5:=((-c11.y)*v2)+(c12.y*v4);
-   v6:=v2*v2;
-   CountRoots:=SolveQuartic(sqr(v0),
-                            2.0*v0*v1,
-                            ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
-                            ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
-                            ((v3*v6)+(v4*v5))/c12.y,
-                            Roots[0],
-                            Roots[1],
-                            Roots[2],
-                            Roots[3]);
-  end;
-  for Index:=0 to CountRoots-1 do begin
-   s:=Roots[Index];
-   if (s>=0.0) and (s<=1.0) then begin
-    CountXRoots:=SolveQuadratic(c12.x,
-                                c11.x,
-                                ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
-                                XRoots[0],
-                                XRoots[1]
-                               );
-    CountYRoots:=SolveQuadratic(c12.y,
-                                c11.y,
-                                ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
-                                YRoots[0],
-                                YRoots[1]
-                               );
-    if (CountXRoots>0) and (CountYRoots>0) then begin
-     OK:=false;
-     for XIndex:=0 to CountXRoots-1 do begin
-      XRoot:=XRoots[XIndex];
-      if (XRoot>=0.0) and (XRoot<=1.0) then begin
-       for YIndex:=0 to CountYRoots-1 do begin
-        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-         OutputPoint((c22*sqr(s))+(c21*s)+c20);
-         OK:=true;
-         break;
-        end;
-       end;
-      end;
-      if OK then begin
-       break;
-      end;
-     end;
-    end;
-   end;
-  end;
- end;
- procedure HandleQuadraticCurveCubicCurve(const aSegment0:TpvVectorPathSegmentQuadraticCurve;aSegment1:TpvVectorPathSegmentCubicCurve);
- var a1,a2,a3,b1,b2,b3,b4,
-     c10,c11,c12,c20,c21,c22,c23,
-     c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
-     PolyCoefs:array[0..6] of TpvDouble;
-     Roots:TpvDoubleDynamicArray;
-     XRoots,YRoots:array[0..1] of TpvDouble;
-     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
-     OK:boolean;
-     s,XRoot:TpvDouble;
- begin
-  a1:=aSegment0.Points[0];
-  a2:=aSegment0.Points[1];
-  a3:=aSegment0.Points[2];
-  b1:=aSegment1.Points[0];
-  b2:=aSegment1.Points[1];
-  b3:=aSegment1.Points[2];
-  b4:=aSegment1.Points[3];
-  c10:=a1;
-  c11:=(a1*(-2.0))+(a2*2.0);
-  c12:=(a1+(a2*(-2.0)))+a3;
-  c20:=b1;
-  c21:=(b1*(-3.0))+(b2*3.0);
-  c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
-  c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
-  c10s:=c10*c10;
-  c11s:=c11*c11;
-  c12s:=c12*c12;
-  c20s:=c20*c20;
-  c21s:=c21*c21;
-  c22s:=c22*c22;
-  c23s:=c23*c23;
-  PolyCoefs[0]:=(((-2.0)*c12.x*c12.y*c23.x*c23.y)+(c12s.x*c23s.y))+(c12s.y*c23s.x);
-  PolyCoefs[1]:=((((-2.0)*c12.x*c12.y*c22.x*c23.y)-(2.0*c12.x*c12.y*c22.y*c23.x))+(2.0*c12s.y*c22.x*c23.x))+(2.0*c12s.x*c22.y*c23.y);
-  PolyCoefs[2]:=(((((((-2.0)*c12.x*c21.x*c12.y*c23.y)-(2.0*c12.x*c12.y*c21.y*c23.x))-(2.0*c12.x*c12.y*c22.x*c22.y))+(2.0*c21.x*c12s.y*c23.x))+(c12s.y*c22s.x))+(c12s.x*((2.0*c21.y*c23.y)+c22s.y)));
-  PolyCoefs[3]:=(((((((((((((((2.0*c10.x*c12.x*c12.y*c23.y)+(2.0*c10.y*c12.x*c12.y*c23.x))+(c11.x*c11.y*c12.x*c23.y))+(c11.x*c11.y*c12.y*c23.x))-(2.0*c20.x*c12.x*c12.y*c23.y))-(2.0*c12.x*c20.y*c12.y*c23.x))-(2.0*c12.x*c21.x*c12.y*c22.y))-(2.0*c12.x*c12.y*c21.y*c22.x))-(2.0*c10.x*c12s.y*c23.x))-(2.0*c10.y*c12s.x*c23.y))+(2.0*c20.x*c12s.y*c23.x))+(2.0*c21.x*c12s.y*c22.x))-(c11s.y*c12.x*c23.x))-(c11s.x*c12.y*c23.y))+(c12s.x*((2.0*c20.y*c23.y)+(2.0*c21.y*c22.y))));
-  PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
-  PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
-  PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
-  Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
-  for Index:=0 to length(Roots)-1 do begin
-   s:=Roots[Index];
-   if (s>=0.0) and (s<=1.0) then begin
-    CountXRoots:=SolveQuadratic(c12.x,
-                                c11.x,
-                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
-                                XRoots[0],
-                                XRoots[1]
-                               );
-    CountYRoots:=SolveQuadratic(c12.y,
-                                c11.y,
-                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
-                                YRoots[0],
-                                YRoots[1]
-                               );
-    if (CountXRoots>0) and (CountYRoots>0) then begin
-     OK:=false;
-     for XIndex:=0 to CountXRoots-1 do begin
-      XRoot:=XRoots[XIndex];
-      if (XRoot>=0.0) and (XRoot<=1.0) then begin
-       for YIndex:=0 to CountYRoots-1 do begin
-        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-         OutputPoint((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
-         OK:=true;
-         break;
-        end;
-       end;
-      end;
-      if OK then begin
-       break;
-      end;
-     end;
-    end;
-   end;
-  end;
- end;
- procedure HandleCubicCurveCubicCurve(const aSegment0,aSegment1:TpvVectorPathSegmentCubicCurve);
- var a1,a2,a3,a4,b1,b2,b3,b4,
-     c10,c11,c12,c13,c20,c21,c22,c23,
-     c10s,c11s,c12s,c13s,c20s,c21s,c22s,c23s,
-     c10c,c11c,c12c,c13c,c20c,c21c,c22c,c23c:TpvVectorPathVector;
-     PolyCoefs:array[0..9] of TpvDouble;
-     Roots:TpvDoubleDynamicArray;
-     XRoots,YRoots:array[0..1] of TpvDouble;
-     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
-     OK:boolean;
-     s,XRoot:TpvDouble;
- begin
-  a1:=aSegment0.Points[0];
-  a2:=aSegment0.Points[1];
-  a3:=aSegment0.Points[2];
-  a4:=aSegment0.Points[3];
-  b1:=aSegment1.Points[0];
-  b2:=aSegment1.Points[1];
-  b3:=aSegment1.Points[2];
-  b4:=aSegment1.Points[3];
-  c10:=a1;
-  c11:=(a1*(-3.0))+(a2*3.0);
-  c12:=((a1*3.0)+(a2*(-6.0)))+(a3*3.0);
-  c13:=(((a1*(-1.0))+(a2*3.0))+(a3*(-3.0)))+a4;
-  c20:=b1;
-  c21:=(b1*(-3.0))+(b2*3.0);
-  c22:=((b1*3.0)+(b2*(-6.0)))+(b3*3.0);
-  c23:=(((b1*(-1.0))+(b2*3.0))+(b3*(-3.0)))+b4;
-  c10s:=c10*c10;
-  c11s:=c11*c11;
-  c12s:=c12*c12;
-  c13s:=c13*c13;
-  c20s:=c20*c20;
-  c21s:=c21*c21;
-  c22s:=c22*c22;
-  c23s:=c23*c23;
-  c10c:=c10s*c10;
-  c11c:=c11s*c11;
-  c12c:=c12s*c12;
-  c13c:=c13s*c13;
-  c20c:=c20s*c20;
-  c21c:=c21s*c21;
-  c22c:=c22s*c22;
-  c23c:=c23s*c23;
-  PolyCoefs[0]:=-c13c.x*c23c.y+c13c.y*c23c.x-3*c13.x*c13s.y*c23s.x*c23.y+3*c13s.x*c13.y*c23.x*c23s.y;
-  PolyCoefs[1]:=-6*c13.x*c22.x*c13s.y*c23.x*c23.y+6*c13s.x*c13.y*c22.y*c23.x*c23.y+3*c22.x*c13c.y*c23s.x-3*c13c.x*c22.y*c23s.y-3*c13.x*c13s.y*c22.y*c23s.x+3*c13s.x*c22.x*c13.y*c23s.y;
-  PolyCoefs[2]:=-6*c21.x*c13.x*c13s.y*c23.x*c23.y-6*c13.x*c22.x*c13s.y*c22.y*c23.x+6*c13s.x*c22.x*c13.y*c22.y*c23.y+3*c21.x*c13c.y*c23s.x+3*c22s.x*c13c.y*c23.x+3*c21.x*c13s.x*c13.y*c23s.y-3*c13.x*c21.y*c13s.y*c23s.x-3*c13.x*c22s.x*c13s.y*c23.y+c13s.x*c13.y*c23.x*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-c21.y*c23s.y-2*c22s.y*c23.y-c23.y*(2*c21.y*c23.y+c22s.y));
-  PolyCoefs[3]:=c11.x*c12.y*c13.x*c13.y*c23.x*c23.y-c11.y*c12.x*c13.x*c13.y*c23.x*c23.y+6*c21.x*c22.x*c13c.y*c23.x+3*c11.x*c12.x*c13.x*c13.y*c23s.y+6*c10.x*c13.x*c13s.y*c23.x*c23.y-3*c11.x*c12.x*c13s.y*c23.x*c23.y-3*c11.y*c12.y*c13.x*c13.y*c23s.x-6*c10.y*c13s.x*c13.y*c23.x*c23.y-6*c20.x*c13.x*c13s.y*c23.x*c23.y+3*c11.y*c12.y*c13s.x*c23.x*c23.y-2*c12.x*c12s.y*c13.x*c23.x*c23.y-6*c21.x*c13.x*c22.x*c13s.y*c23.y-6*c21.x*c13.x*c13s.y*c22.y*c23.x-6*c13.x*c21.y*c22.x*c13s.y*c23.x+6*c21.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.y*c23.x*c23.y+c22c.x*c13c.y-3*c10.x*c13c.y*c23s.x+3*c10.y*c13c.x*c23s.y+3*c20.x*c13c.y*c23s.x+c12c.y*c13.x*c23s.x-c12c.x*c13.y*c23s.y-3*c10.x*c13s.x*c13.y*c23s.y+3*c10.y*c13.x*c13s.y*c23s.x-2*c11.x*c12.y*c13s.x*c23s.y+c11.x*c12.y*c13s.y*c23s.x-c11.y*c12.x*c13s.x*c23s.y+2*c11.y*c12.x*c13s.y*c23s.x+3*c20.x*c13s.x*c13.y*c23s.y-c12.x*c12s.y*c13.y*c23s.x-3*c20.y*c13.x*c13s.y*c23s.x+c12s.x*c12.y*c13.x*c23s.y-
-                3*c13.x*c22s.x*c13s.y*c22.y+c13s.x*c13.y*c23.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c22.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c21.y*c22.y*c23.y-c20.y*c23s.y-c22.y*(2*c21.y*c23.y+c22s.y)-c23.y*(2*c20.y*c23.y+2*c21.y*c22.y));
-  PolyCoefs[4]:=6*c11.x*c12.x*c13.x*c13.y*c22.y*c23.y+c11.x*c12.y*c13.x*c22.x*c13.y*c23.y+c11.x*c12.y*c13.x*c13.y*c22.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c23.y-c11.y*c12.x*c13.x*c13.y*c22.y*c23.x-6*c11.y*c12.y*c13.x*c22.x*c13.y*c23.x-6*c10.x*c22.x*c13c.y*c23.x+6*c20.x*c22.x*c13c.y*c23.x+6*c10.y*c13c.x*c22.y*c23.y+2*c12c.y*c13.x*c22.x*c23.x-2*c12c.x*c13.y*c22.y*c23.y+6*c10.x*c13.x*c22.x*c13s.y*c23.y+6*c10.x*c13.x*c13s.y*c22.y*c23.x+6*c10.y*c13.x*c22.x*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c23.y-3*c11.x*c12.x*c13s.y*c22.y*c23.x+2*c11.x*c12.y*c22.x*c13s.y*c23.x+4*c11.y*c12.x*c22.x*c13s.y*c23.x-6*c10.x*c13s.x*c13.y*c22.y*c23.y-6*c10.y*c13s.x*c22.x*c13.y*c23.y-6*c10.y*c13s.x*c13.y*c22.y*c23.x-4*c11.x*c12.y*c13s.x*c22.y*c23.y-6*c20.x*c13.x*c22.x*c13s.y*c23.y-6*c20.x*c13.x*c13s.y*c22.y*c23.x-2*c11.y*c12.x*c13s.x*c22.y*c23.y+3*c11.y*c12.y*c13s.x*c22.x*c23.y+3*c11.y*c12.y*c13s.x*c22.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c23.y-
-                2*c12.x*c12s.y*c13.x*c22.y*c23.x-2*c12.x*c12s.y*c22.x*c13.y*c23.x-6*c20.y*c13.x*c22.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c13s.y*c23.x-6*c21.x*c13.x*c22.x*c13s.y*c22.y+6*c20.x*c13s.x*c13.y*c22.y*c23.y+2*c12s.x*c12.y*c13.x*c22.y*c23.y+2*c12s.x*c12.y*c22.x*c13.y*c23.y+2*c12s.x*c12.y*c13.y*c22.y*c23.x+3*c21.x*c22s.x*c13c.y+3*c21s.x*c13c.y*c23.x-3*c13.x*c21.y*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c23.y+c13s.x*c22.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c13s.x*c13.y*c23.x*(6*c20.y*c22.y+3*c21s.y)+c21.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c22.y*c23.y-c23.y*(2*c20.y*c22.y+c21s.y)-c21.y*(2*c21.y*c23.y+c22s.y)-c22.y*(2*c20.y*c23.y+2*c21.y*c22.y));
-  PolyCoefs[5]:=c11.x*c21.x*c12.y*c13.x*c13.y*c23.y+c11.x*c12.y*c13.x*c21.y*c13.y*c23.x+c11.x*c12.y*c13.x*c22.x*c13.y*c22.y-c11.y*c12.x*c21.x*c13.x*c13.y*c23.y-c11.y*c12.x*c13.x*c21.y*c13.y*c23.x-c11.y*c12.x*c13.x*c22.x*c13.y*c22.y-6*c11.y*c21.x*c12.y*c13.x*c13.y*c23.x-6*c10.x*c21.x*c13c.y*c23.x+6*c20.x*c21.x*c13c.y*c23.x+2*c21.x*c12c.y*c13.x*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c23.y+6*c10.x*c13.x*c21.y*c13s.y*c23.x+6*c10.x*c13.x*c22.x*c13s.y*c22.y+6*c10.y*c21.x*c13.x*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c23.y-3*c11.x*c12.x*c21.y*c13s.y*c23.x-3*c11.x*c12.x*c22.x*c13s.y*c22.y+2*c11.x*c21.x*c12.y*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c13s.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c23.y-6*c10.y*c13s.x*c21.y*c13.y*c23.x-6*c10.y*c13s.x*c22.x*c13.y*c22.y-6*c20.x*c21.x*c13.x*c13s.y*c23.y-6*c20.x*c13.x*c21.y*c13s.y*c23.x-6*c20.x*c13.x*c22.x*c13s.y*c22.y+3*c11.y*c21.x*c12.y*c13s.x*c23.y-3*c11.y*c12.y*c13.x*c22s.x*c13.y+3*c11.y*c12.y*c13s.x*c21.y*c23.x+
-                3*c11.y*c12.y*c13s.x*c22.x*c22.y-2*c12.x*c21.x*c12s.y*c13.x*c23.y-2*c12.x*c21.x*c12s.y*c13.y*c23.x-2*c12.x*c12s.y*c13.x*c21.y*c23.x-2*c12.x*c12s.y*c13.x*c22.x*c22.y-6*c20.y*c21.x*c13.x*c13s.y*c23.x-6*c21.x*c13.x*c21.y*c22.x*c13s.y+6*c20.y*c13s.x*c21.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c23.y+2*c12s.x*c12.y*c21.y*c13.y*c23.x+2*c12s.x*c12.y*c22.x*c13.y*c22.y-3*c10.x*c22s.x*c13c.y+3*c20.x*c22s.x*c13c.y+3*c21s.x*c22.x*c13c.y+c12c.y*c13.x*c22s.x+3*c10.y*c13.x*c22s.x*c13s.y+c11.x*c12.y*c22s.x*c13s.y+2*c11.y*c12.x*c22s.x*c13s.y-c12.x*c12s.y*c22s.x*c13.y-3*c20.y*c13.x*c22s.x*c13s.y-3*c21s.x*c13.x*c13s.y*c22.y+c12s.x*c12.y*c13.x*(2*c21.y*c23.y+c22s.y)+c11.x*c12.x*c13.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c21.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c21.y*c23.y-c22s.y)+c10.y*c13c.x*(6*c21.y*c23.y+3*c22s.y)+c11.y*c12.x*c13s.x*(-2*c21.y*c23.y-c22s.y)+
-                c11.x*c12.y*c13s.x*(-4*c21.y*c23.y-2*c22s.y)+c10.x*c13s.x*c13.y*(-6*c21.y*c23.y-3*c22s.y)+c13s.x*c22.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c20.x*c13s.x*c13.y*(6*c21.y*c23.y+3*c22s.y)+c13c.x*(-2*c20.y*c21.y*c23.y-c22.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c21.y*c23.y+c22s.y)-c21.y*(2*c20.y*c23.y+2*c21.y*c22.y));
-  PolyCoefs[6]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c23.y+c10.x*c11.y*c12.x*c13.x*c13.y*c23.y+6*c10.x*c11.y*c12.y*c13.x*c13.y*c23.x-6*c10.y*c11.x*c12.x*c13.x*c13.y*c23.y-c10.y*c11.x*c12.y*c13.x*c13.y*c23.x+c10.y*c11.y*c12.x*c13.x*c13.y*c23.x+c11.x*c11.y*c12.x*c12.y*c13.x*c23.y-c11.x*c11.y*c12.x*c12.y*c13.y*c23.x+c11.x*c20.x*c12.y*c13.x*c13.y*c23.y+c11.x*c20.y*c12.y*c13.x*c13.y*c23.x+c11.x*c21.x*c12.y*c13.x*c13.y*c22.y+c11.x*c12.y*c13.x*c21.y*c22.x*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c23.y-6*c20.x*c11.y*c12.y*c13.x*c13.y*c23.x-c11.y*c12.x*c20.y*c13.x*c13.y*c23.x-c11.y*c12.x*c21.x*c13.x*c13.y*c22.y-c11.y*c12.x*c13.x*c21.y*c22.x*c13.y-6*c11.y*c21.x*c12.y*c13.x*c22.x*c13.y-6*c10.x*c20.x*c13c.y*c23.x-6*c10.x*c21.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c23.x+6*c20.x*c21.x*c22.x*c13c.y+2*c20.x*c12c.y*c13.x*c23.x+2*c21.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c23.y-6*c10.x*c10.y*c13.x*c13s.y*c23.x+3*c10.x*c11.x*c12.x*c13s.y*c23.y-
-                2*c10.x*c11.x*c12.y*c13s.y*c23.x-4*c10.x*c11.y*c12.x*c13s.y*c23.x+3*c10.y*c11.x*c12.x*c13s.y*c23.x+6*c10.x*c10.y*c13s.x*c13.y*c23.y+6*c10.x*c20.x*c13.x*c13s.y*c23.y-3*c10.x*c11.y*c12.y*c13s.x*c23.y+2*c10.x*c12.x*c12s.y*c13.x*c23.y+2*c10.x*c12.x*c12s.y*c13.y*c23.x+6*c10.x*c20.y*c13.x*c13s.y*c23.x+6*c10.x*c21.x*c13.x*c13s.y*c22.y+6*c10.x*c13.x*c21.y*c22.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c23.y+6*c10.y*c20.x*c13.x*c13s.y*c23.x+2*c10.y*c11.y*c12.x*c13s.x*c23.y-3*c10.y*c11.y*c12.y*c13s.x*c23.x+2*c10.y*c12.x*c12s.y*c13.x*c23.x+6*c10.y*c21.x*c13.x*c22.x*c13s.y-3*c11.x*c20.x*c12.x*c13s.y*c23.y+2*c11.x*c20.x*c12.y*c13s.y*c23.x+c11.x*c11.y*c12s.y*c13.x*c23.x-3*c11.x*c12.x*c20.y*c13s.y*c23.x-3*c11.x*c12.x*c21.x*c13s.y*c22.y-3*c11.x*c12.x*c21.y*c22.x*c13s.y+2*c11.x*c21.x*c12.y*c22.x*c13s.y+4*c20.x*c11.y*c12.x*c13s.y*c23.x+4*c11.y*c12.x*c21.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c23.y-6*c10.y*c20.x*c13s.x*c13.y*c23.y-
-                6*c10.y*c20.y*c13s.x*c13.y*c23.x-6*c10.y*c21.x*c13s.x*c13.y*c22.y-2*c10.y*c12s.x*c12.y*c13.x*c23.y-2*c10.y*c12s.x*c12.y*c13.y*c23.x-6*c10.y*c13s.x*c21.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c23.y-2*c11.x*c11s.y*c13.x*c13.y*c23.x+3*c20.x*c11.y*c12.y*c13s.x*c23.y-2*c20.x*c12.x*c12s.y*c13.x*c23.y-2*c20.x*c12.x*c12s.y*c13.y*c23.x-6*c20.x*c20.y*c13.x*c13s.y*c23.x-6*c20.x*c21.x*c13.x*c13s.y*c22.y-6*c20.x*c13.x*c21.y*c22.x*c13s.y+3*c11.y*c20.y*c12.y*c13s.x*c23.x+3*c11.y*c21.x*c12.y*c13s.x*c22.y+3*c11.y*c12.y*c13s.x*c21.y*c22.x-2*c12.x*c20.y*c12s.y*c13.x*c23.x-2*c12.x*c21.x*c12s.y*c13.x*c22.y-2*c12.x*c21.x*c12s.y*c22.x*c13.y-2*c12.x*c12s.y*c13.x*c21.y*c22.x-6*c20.y*c21.x*c13.x*c22.x*c13s.y-c11s.y*c12.x*c12.y*c13.x*c23.x+2*c20.x*c12s.x*c12.y*c13.y*c23.y+6*c20.y*c13s.x*c21.y*c22.x*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c23.y+c11s.x*c12.x*c12.y*c13.y*c23.y+2*c12s.x*c20.y*c12.y*c13.y*c23.x+2*c12s.x*c21.x*c12.y*c13.y*c22.y+
-                2*c12s.x*c12.y*c21.y*c22.x*c13.y+c21c.x*c13c.y+3*c10s.x*c13c.y*c23.x-3*c10s.y*c13c.x*c23.y+3*c20s.x*c13c.y*c23.x+c11c.y*c13s.x*c23.x-c11c.x*c13s.y*c23.y-c11.x*c11s.y*c13s.x*c23.y+c11s.x*c11.y*c13s.y*c23.x-3*c10s.x*c13.x*c13s.y*c23.y+3*c10s.y*c13s.x*c13.y*c23.x-c11s.x*c12s.y*c13.x*c23.y+c11s.y*c12s.x*c13.y*c23.x-3*c21s.x*c13.x*c21.y*c13s.y-3*c20s.x*c13.x*c13s.y*c23.y+3*c20s.y*c13s.x*c13.y*c23.x+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c12c.x*c13.y*(-2*c20.y*c23.y-2*c21.y*c22.y)+c10.y*c13c.x*(6*c20.y*c23.y+6*c21.y*c22.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c23.y-2*c21.y*c22.y)+c12s.x*c12.y*c13.x*(2*c20.y*c23.y+2*c21.y*c22.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c23.y-4*c21.y*c22.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c23.y-6*c21.y*c22.y)+c20.x*c13s.x*c13.y*(6*c20.y*c23.y+6*c21.y*c22.y)+c21.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21.y*c22.y-c20s.y*c23.y-c21.y*(2*c20.y*c22.y+c21s.y)-c20.y*(2*c20.y*c23.y+2*c21.y*c22.y));
-  PolyCoefs[7]:=-c10.x*c11.x*c12.y*c13.x*c13.y*c22.y+c10.x*c11.y*c12.x*c13.x*c13.y*c22.y+6*c10.x*c11.y*c12.y*c13.x*c22.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c13.y*c22.y-c10.y*c11.x*c12.y*c13.x*c22.x*c13.y+c10.y*c11.y*c12.x*c13.x*c22.x*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c22.y-c11.x*c11.y*c12.x*c12.y*c22.x*c13.y+c11.x*c20.x*c12.y*c13.x*c13.y*c22.y+c11.x*c20.y*c12.y*c13.x*c22.x*c13.y+c11.x*c21.x*c12.y*c13.x*c21.y*c13.y-c20.x*c11.y*c12.x*c13.x*c13.y*c22.y-6*c20.x*c11.y*c12.y*c13.x*c22.x*c13.y-c11.y*c12.x*c20.y*c13.x*c22.x*c13.y-c11.y*c12.x*c21.x*c13.x*c21.y*c13.y-6*c10.x*c20.x*c22.x*c13c.y-2*c10.x*c12c.y*c13.x*c22.x+2*c20.x*c12c.y*c13.x*c22.x+2*c10.y*c12c.x*c13.y*c22.y-6*c10.x*c10.y*c13.x*c22.x*c13s.y+3*c10.x*c11.x*c12.x*c13s.y*c22.y-2*c10.x*c11.x*c12.y*c22.x*c13s.y-4*c10.x*c11.y*c12.x*c22.x*c13s.y+3*c10.y*c11.x*c12.x*c22.x*c13s.y+6*c10.x*c10.y*c13s.x*c13.y*c22.y+6*c10.x*c20.x*c13.x*c13s.y*c22.y-3*c10.x*c11.y*c12.y*c13s.x*c22.y+
-                2*c10.x*c12.x*c12s.y*c13.x*c22.y+2*c10.x*c12.x*c12s.y*c22.x*c13.y+6*c10.x*c20.y*c13.x*c22.x*c13s.y+6*c10.x*c21.x*c13.x*c21.y*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c22.y+6*c10.y*c20.x*c13.x*c22.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c22.y-3*c10.y*c11.y*c12.y*c13s.x*c22.x+2*c10.y*c12.x*c12s.y*c13.x*c22.x-3*c11.x*c20.x*c12.x*c13s.y*c22.y+2*c11.x*c20.x*c12.y*c22.x*c13s.y+c11.x*c11.y*c12s.y*c13.x*c22.x-3*c11.x*c12.x*c20.y*c22.x*c13s.y-3*c11.x*c12.x*c21.x*c21.y*c13s.y+4*c20.x*c11.y*c12.x*c22.x*c13s.y-2*c10.x*c12s.x*c12.y*c13.y*c22.y-6*c10.y*c20.x*c13s.x*c13.y*c22.y-6*c10.y*c20.y*c13s.x*c22.x*c13.y-6*c10.y*c21.x*c13s.x*c21.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c22.y-2*c10.y*c12s.x*c12.y*c22.x*c13.y-c11.x*c11.y*c12s.x*c13.y*c22.y-2*c11.x*c11s.y*c13.x*c22.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c22.y-2*c20.x*c12.x*c12s.y*c13.x*c22.y-2*c20.x*c12.x*c12s.y*c22.x*c13.y-6*c20.x*c20.y*c13.x*c22.x*c13s.y-6*c20.x*c21.x*c13.x*c21.y*c13s.y+
-                3*c11.y*c20.y*c12.y*c13s.x*c22.x+3*c11.y*c21.x*c12.y*c13s.x*c21.y-2*c12.x*c20.y*c12s.y*c13.x*c22.x-2*c12.x*c21.x*c12s.y*c13.x*c21.y-c11s.y*c12.x*c12.y*c13.x*c22.x+2*c20.x*c12s.x*c12.y*c13.y*c22.y-3*c11.y*c21s.x*c12.y*c13.x*c13.y+6*c20.y*c21.x*c13s.x*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c13.y*c22.y+c11s.x*c12.x*c12.y*c13.y*c22.y+2*c12s.x*c20.y*c12.y*c22.x*c13.y+2*c12s.x*c21.x*c12.y*c21.y*c13.y-3*c10.x*c21s.x*c13c.y+3*c20.x*c21s.x*c13c.y+3*c10s.x*c22.x*c13c.y-3*c10s.y*c13c.x*c22.y+3*c20s.x*c22.x*c13c.y+c21s.x*c12c.y*c13.x+c11c.y*c13s.x*c22.x-c11c.x*c13s.y*c22.y+3*c10.y*c21s.x*c13.x*c13s.y-c11.x*c11s.y*c13s.x*c22.y+c11.x*c21s.x*c12.y*c13s.y+2*c11.y*c12.x*c21s.x*c13s.y+c11s.x*c11.y*c22.x*c13s.y-c12.x*c21s.x*c12s.y*c13.y-3*c20.y*c21s.x*c13.x*c13s.y-3*c10s.x*c13.x*c13s.y*c22.y+3*c10s.y*c13s.x*c22.x*c13.y-c11s.x*c12s.y*c13.x*c22.y+c11s.y*c12s.x*c22.x*c13.y-3*c20s.x*c13.x*c13s.y*c22.y+3*c20s.y*c13s.x*c22.x*c13.y+
-                c12s.x*c12.y*c13.x*(2*c20.y*c22.y+c21s.y)+c11.x*c12.x*c13.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c12c.x*c13.y*(-2*c20.y*c22.y-c21s.y)+c10.y*c13c.x*(6*c20.y*c22.y+3*c21s.y)+c11.y*c12.x*c13s.x*(-2*c20.y*c22.y-c21s.y)+c11.x*c12.y*c13s.x*(-4*c20.y*c22.y-2*c21s.y)+c10.x*c13s.x*c13.y*(-6*c20.y*c22.y-3*c21s.y)+c20.x*c13s.x*c13.y*(6*c20.y*c22.y+3*c21s.y)+c13c.x*(-2*c20.y*c21s.y-c20s.y*c22.y-c20.y*(2*c20.y*c22.y+c21s.y));
-  PolyCoefs[8]:=-c10.x*c11.x*c12.y*c13.x*c21.y*c13.y+c10.x*c11.y*c12.x*c13.x*c21.y*c13.y+6*c10.x*c11.y*c21.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c13.x*c21.y*c13.y-c10.y*c11.x*c21.x*c12.y*c13.x*c13.y+c10.y*c11.y*c12.x*c21.x*c13.x*c13.y-c11.x*c11.y*c12.x*c21.x*c12.y*c13.y+c11.x*c11.y*c12.x*c12.y*c13.x*c21.y+c11.x*c20.x*c12.y*c13.x*c21.y*c13.y+6*c11.x*c12.x*c20.y*c13.x*c21.y*c13.y+c11.x*c20.y*c21.x*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c13.x*c21.y*c13.y-6*c20.x*c11.y*c21.x*c12.y*c13.x*c13.y-c11.y*c12.x*c20.y*c21.x*c13.x*c13.y-6*c10.x*c20.x*c21.x*c13c.y-2*c10.x*c21.x*c12c.y*c13.x+6*c10.y*c20.y*c13c.x*c21.y+2*c20.x*c21.x*c12c.y*c13.x+2*c10.y*c12c.x*c21.y*c13.y-2*c12c.x*c20.y*c21.y*c13.y-6*c10.x*c10.y*c21.x*c13.x*c13s.y+3*c10.x*c11.x*c12.x*c21.y*c13s.y-2*c10.x*c11.x*c21.x*c12.y*c13s.y-4*c10.x*c11.y*c12.x*c21.x*c13s.y+3*c10.y*c11.x*c12.x*c21.x*c13s.y+6*c10.x*c10.y*c13s.x*c21.y*c13.y+6*c10.x*c20.x*c13.x*c21.y*c13s.y-
-                3*c10.x*c11.y*c12.y*c13s.x*c21.y+2*c10.x*c12.x*c21.x*c12s.y*c13.y+2*c10.x*c12.x*c12s.y*c13.x*c21.y+6*c10.x*c20.y*c21.x*c13.x*c13s.y+4*c10.y*c11.x*c12.y*c13s.x*c21.y+6*c10.y*c20.x*c21.x*c13.x*c13s.y+2*c10.y*c11.y*c12.x*c13s.x*c21.y-3*c10.y*c11.y*c21.x*c12.y*c13s.x+2*c10.y*c12.x*c21.x*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c21.y*c13s.y+2*c11.x*c20.x*c21.x*c12.y*c13s.y+c11.x*c11.y*c21.x*c12s.y*c13.x-3*c11.x*c12.x*c20.y*c21.x*c13s.y+4*c20.x*c11.y*c12.x*c21.x*c13s.y-6*c10.x*c20.y*c13s.x*c21.y*c13.y-2*c10.x*c12s.x*c12.y*c21.y*c13.y-6*c10.y*c20.x*c13s.x*c21.y*c13.y-6*c10.y*c20.y*c21.x*c13s.x*c13.y-2*c10.y*c12s.x*c21.x*c12.y*c13.y-2*c10.y*c12s.x*c12.y*c13.x*c21.y-c11.x*c11.y*c12s.x*c21.y*c13.y-4*c11.x*c20.y*c12.y*c13s.x*c21.y-2*c11.x*c11s.y*c21.x*c13.x*c13.y+3*c20.x*c11.y*c12.y*c13s.x*c21.y-2*c20.x*c12.x*c21.x*c12s.y*c13.y-2*c20.x*c12.x*c12s.y*c13.x*c21.y-6*c20.x*c20.y*c21.x*c13.x*c13s.y-2*c11.y*c12.x*c20.y*c13s.x*c21.y+
-                3*c11.y*c20.y*c21.x*c12.y*c13s.x-2*c12.x*c20.y*c21.x*c12s.y*c13.x-c11s.y*c12.x*c21.x*c12.y*c13.x+6*c20.x*c20.y*c13s.x*c21.y*c13.y+2*c20.x*c12s.x*c12.y*c21.y*c13.y+2*c11s.x*c11.y*c13.x*c21.y*c13.y+c11s.x*c12.x*c12.y*c21.y*c13.y+2*c12s.x*c20.y*c21.x*c12.y*c13.y+2*c12s.x*c20.y*c12.y*c13.x*c21.y+3*c10s.x*c21.x*c13c.y-3*c10s.y*c13c.x*c21.y+3*c20s.x*c21.x*c13c.y+c11c.y*c21.x*c13s.x-c11c.x*c21.y*c13s.y-3*c20s.y*c13c.x*c21.y-c11.x*c11s.y*c13s.x*c21.y+c11s.x*c11.y*c21.x*c13s.y-3*c10s.x*c13.x*c21.y*c13s.y+3*c10s.y*c21.x*c13s.x*c13.y-c11s.x*c12s.y*c13.x*c21.y+c11s.y*c12s.x*c21.x*c13.y-3*c20s.x*c13.x*c21.y*c13s.y+3*c20s.y*c21.x*c13s.x*c13.y;
-  PolyCoefs[9]:=c10.x*c10.y*c11.x*c12.y*c13.x*c13.y-c10.x*c10.y*c11.y*c12.x*c13.x*c13.y+c10.x*c11.x*c11.y*c12.x*c12.y*c13.y-c10.y*c11.x*c11.y*c12.x*c12.y*c13.x-c10.x*c11.x*c20.y*c12.y*c13.x*c13.y+6*c10.x*c20.x*c11.y*c12.y*c13.x*c13.y+c10.x*c11.y*c12.x*c20.y*c13.x*c13.y-c10.y*c11.x*c20.x*c12.y*c13.x*c13.y-6*c10.y*c11.x*c12.x*c20.y*c13.x*c13.y+c10.y*c20.x*c11.y*c12.x*c13.x*c13.y-c11.x*c20.x*c11.y*c12.x*c12.y*c13.y+c11.x*c11.y*c12.x*c20.y*c12.y*c13.x+c11.x*c20.x*c20.y*c12.y*c13.x*c13.y-c20.x*c11.y*c12.x*c20.y*c13.x*c13.y-2*c10.x*c20.x*c12c.y*c13.x+2*c10.y*c12c.x*c20.y*c13.y-3*c10.x*c10.y*c11.x*c12.x*c13s.y-6*c10.x*c10.y*c20.x*c13.x*c13s.y+3*c10.x*c10.y*c11.y*c12.y*c13s.x-2*c10.x*c10.y*c12.x*c12s.y*c13.x-2*c10.x*c11.x*c20.x*c12.y*c13s.y-c10.x*c11.x*c11.y*c12s.y*c13.x+3*c10.x*c11.x*c12.x*c20.y*c13s.y-4*c10.x*c20.x*c11.y*c12.x*c13s.y+3*c10.y*c11.x*c20.x*c12.x*c13s.y+6*c10.x*c10.y*c20.y*c13s.x*c13.y+2*c10.x*c10.y*c12s.x*c12.y*c13.y+
-                2*c10.x*c11.x*c11s.y*c13.x*c13.y+2*c10.x*c20.x*c12.x*c12s.y*c13.y+6*c10.x*c20.x*c20.y*c13.x*c13s.y-3*c10.x*c11.y*c20.y*c12.y*c13s.x+2*c10.x*c12.x*c20.y*c12s.y*c13.x+c10.x*c11s.y*c12.x*c12.y*c13.x+c10.y*c11.x*c11.y*c12s.x*c13.y+4*c10.y*c11.x*c20.y*c12.y*c13s.x-3*c10.y*c20.x*c11.y*c12.y*c13s.x+2*c10.y*c20.x*c12.x*c12s.y*c13.x+2*c10.y*c11.y*c12.x*c20.y*c13s.x+c11.x*c20.x*c11.y*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c20.y*c13s.y-2*c10.x*c12s.x*c20.y*c12.y*c13.y-6*c10.y*c20.x*c20.y*c13s.x*c13.y-2*c10.y*c20.x*c12s.x*c12.y*c13.y-2*c10.y*c11s.x*c11.y*c13.x*c13.y-c10.y*c11s.x*c12.x*c12.y*c13.y-2*c10.y*c12s.x*c20.y*c12.y*c13.x-2*c11.x*c20.x*c11s.y*c13.x*c13.y-c11.x*c11.y*c12s.x*c20.y*c13.y+3*c20.x*c11.y*c20.y*c12.y*c13s.x-2*c20.x*c12.x*c20.y*c12s.y*c13.x-c20.x*c11s.y*c12.x*c12.y*c13.x+3*c10s.y*c11.x*c12.x*c13.x*c13.y+3*c11.x*c12.x*c20s.y*c13.x*c13.y+2*c20.x*c12s.x*c20.y*c12.y*c13.y-3*c10s.x*c11.y*c12.y*c13.x*c13.y+
-                2*c11s.x*c11.y*c20.y*c13.x*c13.y+c11s.x*c12.x*c20.y*c12.y*c13.y-3*c20s.x*c11.y*c12.y*c13.x*c13.y-c10c.x*c13c.y+c10c.y*c13c.x+c20c.x*c13c.y-c20c.y*c13c.x-3*c10.x*c20s.x*c13c.y-c10.x*c11c.y*c13s.x+3*c10s.x*c20.x*c13c.y+c10.y*c11c.x*c13s.y+3*c10.y*c20s.y*c13c.x+c20.x*c11c.y*c13s.x+c10s.x*c12c.y*c13.x-3*c10s.y*c20.y*c13c.x-c10s.y*c12c.x*c13.y+c20s.x*c12c.y*c13.x-c11c.x*c20.y*c13s.y-c12c.x*c20s.y*c13.y-c10.x*c11s.x*c11.y*c13s.y+c10.y*c11.x*c11s.y*c13s.x-3*c10.x*c10s.y*c13s.x*c13.y-c10.x*c11s.y*c12s.x*c13.y+c10.y*c11s.x*c12s.y*c13.x-c11.x*c11s.y*c20.y*c13s.x+3*c10s.x*c10.y*c13.x*c13s.y+c10s.x*c11.x*c12.y*c13s.y+2*c10s.x*c11.y*c12.x*c13s.y-2*c10s.y*c11.x*c12.y*c13s.x-c10s.y*c11.y*c12.x*c13s.x+c11s.x*c20.x*c11.y*c13s.y-3*c10.x*c20s.y*c13s.x*c13.y+3*c10.y*c20s.x*c13.x*c13s.y+c11.x*c20s.x*c12.y*c13s.y-2*c11.x*c20s.y*c12.y*c13s.x+c20.x*c11s.y*c12s.x*c13.y-c11.y*c12.x*c20s.y*c13s.x-c10s.x*c12.x*c12s.y*c13.y-3*c10s.x*c20.y*c13.x*c13s.y+
-                3*c10s.y*c20.x*c13s.x*c13.y+c10s.y*c12s.x*c12.y*c13.x-c11s.x*c20.y*c12s.y*c13.x+2*c20s.x*c11.y*c12.x*c13s.y+3*c20.x*c20s.y*c13s.x*c13.y-c20s.x*c12.x*c12s.y*c13.y-3*c20s.x*c20.y*c13.x*c13s.y+c12s.x*c20s.y*c12.y*c13.x;
-  Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
-  for Index:=0 to length(Roots)-1 do begin
-   s:=Roots[Index];
-   if (s>=0.0) and (s<=1.0) then begin
-    CountXRoots:=SolveQuadratic(c12.x,
-                                c11.x,
-                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
-                                XRoots[0],
-                                XRoots[1]
-                               );
-    CountYRoots:=SolveQuadratic(c12.y,
-                                c11.y,
-                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
-                                YRoots[0],
-                                YRoots[1]
-                               );
-    if (CountXRoots>0) and (CountYRoots>0) then begin
-     OK:=false;
-     for XIndex:=0 to CountXRoots-1 do begin
-      XRoot:=XRoots[XIndex];
-      if (XRoot>=0.0) and (XRoot<=1.0) then begin
-       for YIndex:=0 to CountYRoots-1 do begin
-        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-         OutputPoint((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
-         OK:=true;
-         break;
-        end;
-       end;
-      end;
-      if OK then begin
-       break;
-      end;
-     end;
-    end;
-   end;
-  end;
- end;
-var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+var Count,SegmentIndex,OtherSegmentIndex:TpvSizeInt;
     Segment,OtherSegment:TpvVectorPathSegment;
     Segments:TpvVectorPathSegments;
     Contour:TpvVectorPathContour;
+    IntersectionPoints:TpvVectorPathVectorList;
+    Vector:TpvVectorPathVector;
 begin
- Segments:=TpvVectorPathSegments.Create;
+ result:=nil;
+ Count:=0;
  try
-  Segments.OwnsObjects:=false;
-  for Contour in fContours do begin
-   for Segment in Contour.fSegments do begin
-    Segments.Add(Segment);
-   end;
-  end;
-  Vectors:=nil;
-  Count:=0;
+  IntersectionPoints:=TpvVectorPathVectorList.Create;
   try
-   for SegmentIndex:=0 to Segments.Count-1 do begin
-    Segment:=Segments[SegmentIndex];
-    for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
-     OtherSegment:=Segments[OtherSegmentIndex];
-     case Segment.Type_ of
-      TpvVectorPathSegmentType.Line:begin
-       case OtherSegment.Type_ of
-        TpvVectorPathSegmentType.Line:begin
-         HandleLineLine(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentLine(OtherSegment));
-        end;
-        TpvVectorPathSegmentType.QuadraticCurve:begin
-         HandleLineQuadraticCurve(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentQuadraticCurve(OtherSegment));
-        end;
-        TpvVectorPathSegmentType.CubicCurve:begin
-         HandleLineCubicCurve(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment));
-        end;
-        else begin
-        end;
-       end;
-      end;
-      TpvVectorPathSegmentType.QuadraticCurve:begin
-       case OtherSegment.Type_ of
-        TpvVectorPathSegmentType.Line:begin
-         HandleLineQuadraticCurve(TpvVectorPathSegmentLine(OtherSegment),TpvVectorPathSegmentQuadraticCurve(Segment));
-        end;
-        TpvVectorPathSegmentType.QuadraticCurve:begin
-         HandleQuadraticCurveQuadraticCurve(TpvVectorPathSegmentQuadraticCurve(Segment),TpvVectorPathSegmentQuadraticCurve(OtherSegment));
-        end;
-        TpvVectorPathSegmentType.CubicCurve:begin
-         HandleQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment));
-        end;
-        else begin
+   Segments:=TpvVectorPathSegments.Create;
+   try
+    Segments.OwnsObjects:=false;
+    for Contour in fContours do begin
+     for Segment in Contour.fSegments do begin
+      Segments.Add(Segment);
+     end;
+    end;
+    for SegmentIndex:=0 to Segments.Count-1 do begin
+     Segment:=Segments[SegmentIndex];
+     for OtherSegmentIndex:=SegmentIndex+1 to Segments.Count-1 do begin
+      OtherSegment:=Segments[OtherSegmentIndex];
+      case Segment.Type_ of
+       TpvVectorPathSegmentType.Line:begin
+        case OtherSegment.Type_ of
+         TpvVectorPathSegmentType.Line:begin
+          GetIntersectionsForLineLine(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentLine(OtherSegment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.QuadraticCurve:begin
+          GetIntersectionsForLineQuadraticCurve(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentQuadraticCurve(OtherSegment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.CubicCurve:begin
+          GetIntersectionsForLineCubicCurve(TpvVectorPathSegmentLine(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment),IntersectionPoints);
+         end;
+         else begin
+         end;
         end;
        end;
-      end;
-      TpvVectorPathSegmentType.CubicCurve:begin
-       case OtherSegment.Type_ of
-        TpvVectorPathSegmentType.Line:begin
-         HandleLineCubicCurve(TpvVectorPathSegmentLine(OtherSegment),TpvVectorPathSegmentCubicCurve(Segment));
-        end;
-        TpvVectorPathSegmentType.QuadraticCurve:begin
-         HandleQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(OtherSegment),TpvVectorPathSegmentCubicCurve(Segment));
-        end;
-        TpvVectorPathSegmentType.CubicCurve:begin
-         HandleCubicCurveCubicCurve(TpvVectorPathSegmentCubicCurve(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment));
-        end;
-        else begin
+       TpvVectorPathSegmentType.QuadraticCurve:begin
+        case OtherSegment.Type_ of
+         TpvVectorPathSegmentType.Line:begin
+          GetIntersectionsForLineQuadraticCurve(TpvVectorPathSegmentLine(OtherSegment),TpvVectorPathSegmentQuadraticCurve(Segment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.QuadraticCurve:begin
+          GetIntersectionsForQuadraticCurveQuadraticCurve(TpvVectorPathSegmentQuadraticCurve(Segment),TpvVectorPathSegmentQuadraticCurve(OtherSegment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.CubicCurve:begin
+          GetIntersectionsForQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment),IntersectionPoints);
+         end;
+         else begin
+         end;
         end;
        end;
-      end;
-      else begin
+       TpvVectorPathSegmentType.CubicCurve:begin
+        case OtherSegment.Type_ of
+         TpvVectorPathSegmentType.Line:begin
+          GetIntersectionsForLineCubicCurve(TpvVectorPathSegmentLine(OtherSegment),TpvVectorPathSegmentCubicCurve(Segment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.QuadraticCurve:begin
+          GetIntersectionsForQuadraticCurveCubicCurve(TpvVectorPathSegmentQuadraticCurve(OtherSegment),TpvVectorPathSegmentCubicCurve(Segment),IntersectionPoints);
+         end;
+         TpvVectorPathSegmentType.CubicCurve:begin
+          GetIntersectionsForCubicCurveCubicCurve(TpvVectorPathSegmentCubicCurve(Segment),TpvVectorPathSegmentCubicCurve(OtherSegment),IntersectionPoints);
+         end;
+         else begin
+         end;
+        end;
+       end;
+       else begin
+       end;
       end;
      end;
     end;
+   finally
+    FreeAndNil(Segments);
+   end;
+   for Vector in IntersectionPoints do begin
+    if Count>=length(result) then begin
+     SetLength(result,(Count+1)*2);
+    end;
+    result[Count]:=Vector;
+    inc(Count);
    end;
   finally
-   SetLength(Vectors,Count);
+   FreeAndNil(IntersectionPoints);
   end;
  finally
-  FreeAndNil(Segments);
+  SetLength(result,Count);
  end;
- result:=Vectors;
 end;
 
 procedure TpvVectorPathShape.ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble);
