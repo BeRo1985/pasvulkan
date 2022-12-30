@@ -4246,7 +4246,7 @@ begin
 
  for Segment in fVectorPathGPUShape.fSegments do begin
   BoundingBox:=Segment.GetBoundingBox;
-  if (TpvVectorPath.MinMax[0].y<=aY1) and (aY0<=BoundingBox.MinMax[1].y) then begin
+  if (BoundingBox.MinMax[0].y<=aY1) and (aY0<=BoundingBox.MinMax[1].y) then begin
    fSegments.Add(Segment);
   end;
  end;
