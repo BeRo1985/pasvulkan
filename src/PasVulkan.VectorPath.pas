@@ -464,10 +464,21 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      { TpvVectorPathGPUShape }
 
      TpvVectorPathGPUShape=class
+      public
+       type { TGridCell }
+            TGridCell=class
+             private
+              fBoundingBox:TpvVectorPathBoundingBox;
+              fExtendedBoundingBox:TpvVectorPathBoundingBox;
+              fSegments:TpvVectorPathSegments;
+             public
+
+            end;
       private
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
+       fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -4181,17 +4192,36 @@ end;
 { TpvVectorPathGPUShape }
 
 constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
+var Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
 begin
+
  inherited Create;
+
  fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
+
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
  fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
  fBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
+
  fResolution:=aResolution;
+
+ fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
+ try
+  for Contour in fVectorPathShape.fContours do begin
+   for Segment in Contour.fSegments do begin
+    fSegmentDynamicAABBTree.CreateProxy(Segment.GetBoundingBox,TpvPtrInt(TpvPointer(Segment)));
+   end;
+  end;
+ finally
+  fSegmentDynamicAABBTree.Rebuild;
+ end;
+
 end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
+ FreeAndNil(fSegmentDynamicAABBTree);
  FreeAndNil(fVectorPathShape);
  inherited Destroy;
 end;
