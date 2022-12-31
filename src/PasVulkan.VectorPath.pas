@@ -501,6 +501,46 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
 
+     TpvVectorPathGPUSegmentData=packed record // 32 bytes per segment
+      public
+       const TypeUnknown=0;
+             TypeLine=1;
+             TypeQuadraticCurve=2;
+             TypeMetaWindingSettingLine=3;
+      public
+       // uvec4 typeFlagsXPoint0 - Begin
+       TypeWinding:TpvUInt32; // 2 bits = Type (0 = Unknown, 1 = Line, 2 = Quadratic curve, 3 = Meta-winding-setting line), 30 bits = Winding for type 3 (virtually 1-based, so -/+ 1)
+       x:TpvFloat;
+       Point0:TpvVector2;
+       // uvec4 kindFlagsPoint0 - End
+       // uvec4 point1Point2 - Begin
+       Point1:TpvVector2;
+       Point2:TpvVector2;
+       // uvec4 point1Point2 - End
+     end;
+
+     PpvVectorPathGPUSegmentData=^TpvVectorPathGPUSegmentData;
+
+     TpvVectorPathGPUIndirectSegmentData=packed record // 8 bytes per segment
+      // uvec2 xSegmentIndex - Begin
+      x:TpvFloat;
+      SegmentIndex:TpvUInt32;
+      // uvec2 xSegmentIndex - End
+     end;
+
+     PpvVectorPathGPUIndirectSegmentData=^TpvVectorPathGPUIndirectSegmentData;
+
+     TpvVectorPathGPUHorizontalSpanData=packed record // 8 bytes per segment
+      // uvec4 y0y1StartIndirectSegmentIndexCountIndirectSegments - Begin
+      y0:TpvFloat;
+      y1:TpvFloat;
+      StartIndirectSegmentIndex:TpvUInt32;
+      CountIndirectSegments:TpvUInt32;
+      // uvec4 y0y1StartSegmentIndexCountSegments - End
+     end;
+
+     PpvVectorPathGPUHorizontalSpanData=^TpvVectorPathGPUHorizontalSpanData;
+
      { TpvVectorPathGPUShape }
 
      TpvVectorPathGPUShape=class
@@ -552,7 +592,6 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
      end;
-
 
 implementation
 
