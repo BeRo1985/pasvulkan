@@ -423,7 +423,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
      end;
 
-     TpvVectorPathSegments=TpvObjectGenericList<TpvVectorPathSegment>;
+     { TpvVectorPathSegments }
+
+     TpvVectorPathSegments=class(TpvObjectGenericList<TpvVectorPathSegment>)
+      public
+       procedure SortHorizontal;
+     end;
 
      { TpvVectorPathContour }
 
@@ -500,17 +505,19 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathGPUShape=class
       public
-       const CoordinateExtents=4.0;
+       const CoordinateExtents=1.41421356237; // sqrt(2.0)
        type { THorizontalBand }
             THorizontalBand=class
              private
               fVectorPathGPUShape:TpvVectorPathGPUShape;
               fY0:TpvDouble;
               fY1:TpvDouble;
+              fSafeY0:TpvDouble;
+              fSafeY1:TpvDouble;
               fSegments:TpvVectorPathSegments;
               fIntersectionPoints:TpvVectorPathVectorList;
              public
-              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble); reintroduce;
+              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1,aSafeY0,aSafeY1:TpvDouble); reintroduce;
               destructor Destroy; override;
             end;
             THorizontalBands=TpvObjectGenericList<THorizontalBand>;
@@ -3203,6 +3210,147 @@ begin
  end;
 end;
 
+{ TpvVectorPathSegments }
+
+procedure TpvVectorPathSegments.SortHorizontal;
+type PByteArray=^TByteArray;
+     TByteArray=array[0..$3fffffff] of TpvUInt8;
+     PStackItem=^TStackItem;
+     TStackItem=record
+      Left,Right,Depth:TpvInt32;
+     end;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
+    StackItem:PStackItem;
+    Stack:array[0..31] of TStackItem;
+ function CompareItem(const a,b:TpvSizeInt):TpvSizeInt;
+ var SegmentA,SegmentB:TpvVectorPathSegment;
+ begin
+  SegmentA:=Items[a];
+  SegmentB:=Items[b];
+  result:=Sign(SegmentA.GetCompareHorizontalLowestXCoordinate-SegmentB.GetCompareHorizontalLowestXCoordinate);
+  if result=0 then begin
+   result:=Sign(a-b);
+  end;
+ end;
+begin
+ begin
+  if fCount>1 then begin
+   StackItem:=@Stack[0];
+   StackItem^.Left:=0;
+   StackItem^.Right:=fCount-1;
+   StackItem^.Depth:=IntLog2(fCount) shl 1;
+   inc(StackItem);
+   while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
+    dec(StackItem);
+    Left:=StackItem^.Left;
+    Right:=StackItem^.Right;
+    Depth:=StackItem^.Depth;
+    Size:=(Right-Left)+1;
+    if Size<16 then begin
+     // Insertion sort
+     iA:=Left;
+     iB:=iA+1;
+     while iB<=Right do begin
+      iC:=iB;
+      while (iA>=Left) and
+            (iC>=Left) and
+            (CompareItem(iA,iC)>0) do begin
+       Exchange(iA,iC);
+       dec(iA);
+       dec(iC);
+      end;
+      iA:=iB;
+      inc(iB);
+     end;
+    end else begin
+     if (Depth=0) or (TpvPtrUInt(TpvPointer(StackItem))>=TpvPtrUInt(TpvPointer(@Stack[high(Stack)-1]))) then begin
+      // Heap sort
+      i:=Size div 2;
+      repeat
+       if i>0 then begin
+        dec(i);
+       end else begin
+        dec(Size);
+        if Size>0 then begin
+         Exchange(Left+Size,Left);
+        end else begin
+         break;
+        end;
+       end;
+       Parent:=i;
+       repeat
+        Child:=(Parent*2)+1;
+        if Child<Size then begin
+         if (Child<(Size-1)) and (CompareItem(Left+Child,Left+Child+1)<0) then begin
+          inc(Child);
+         end;
+         if CompareItem(Left+Parent,Left+Child)<0 then begin
+          Exchange(Left+Parent,Left+Child);
+          Parent:=Child;
+          continue;
+         end;
+        end;
+        break;
+       until false;
+      until false;
+     end else begin
+      // Quick sort width median-of-three optimization
+      Middle:=Left+((Right-Left) shr 1);
+      if (Right-Left)>3 then begin
+       if CompareItem(Left,Middle)>0 then begin
+        Exchange(Left,Middle);
+       end;
+       if CompareItem(Left,Right)>0 then begin
+        Exchange(Left,Right);
+       end;
+       if CompareItem(Middle,Right)>0 then begin
+        Exchange(Middle,Right);
+       end;
+      end;
+      Pivot:=Middle;
+      i:=Left;
+      j:=Right;
+      repeat
+       while (i<Right) and (CompareItem(i,Pivot)<0) do begin
+        inc(i);
+       end;
+       while (j>=i) and (CompareItem(j,Pivot)>0) do begin
+        dec(j);
+       end;
+       if i>j then begin
+        break;
+       end else begin
+        if i<>j then begin
+         Exchange(i,j);
+         if Pivot=i then begin
+          Pivot:=j;
+         end else if Pivot=j then begin
+          Pivot:=i;
+         end;
+        end;
+        inc(i);
+        dec(j);
+       end;
+      until false;
+      if i<Right then begin
+       StackItem^.Left:=i;
+       StackItem^.Right:=Right;
+       StackItem^.Depth:=Depth-1;
+       inc(StackItem);
+      end;
+      if Left<j then begin
+       StackItem^.Left:=Left;
+       StackItem^.Right:=j;
+       StackItem^.Depth:=Depth-1;
+       inc(StackItem);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 { TpvVectorPathContour }
 
 constructor TpvVectorPathContour.Create;
@@ -4522,7 +4670,7 @@ begin
  result:=Sign(a-b);
 end;
 
-constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1:TpvDouble);
+constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1,aSafeY0,aSafeY1:TpvDouble);
 var Segment:TpvVectorPathSegment;
     BoundingBox:TpvVectorPathBoundingBox;
     SegmentIndex,OtherSegmentIndex:TpvSizeInt;
@@ -4531,8 +4679,11 @@ begin
 
  fVectorPathGPUShape:=aVectorPathGPUShape;
 
- fY0:=aY0-TpvVectorPathGPUShape.CoordinateExtents;
- fY1:=aY1+TpvVectorPathGPUShape.CoordinateExtents;
+ fY0:=aY0;
+ fY1:=aY1;
+
+ fSafeY0:=aSafeY0-TpvVectorPathGPUShape.CoordinateExtents;
+ fSafeY1:=aSafeY1+TpvVectorPathGPUShape.CoordinateExtents;
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
@@ -4541,10 +4692,12 @@ begin
 
  for Segment in fVectorPathGPUShape.fSegments do begin
   BoundingBox:=Segment.GetBoundingBox;
-  if (BoundingBox.MinMax[0].y<=aY1) and (aY0<=BoundingBox.MinMax[1].y) then begin
+  if (BoundingBox.MinMax[0].y<=fSafeY1) and (fSafeY0<=BoundingBox.MinMax[1].y) then begin
    fSegments.Add(Segment);
   end;
  end;
+
+ fSegments.SortHorizontal;
 
  for SegmentIndex:=0 to fSegments.Count-1 do begin
   Segment:=fSegments[SegmentIndex];
@@ -4610,6 +4763,10 @@ begin
      IntersectionSegments.Add(Segment);
     end;
    end;
+
+   fSegments.SortHorizontal;
+
+   IntersectionSegments.SortHorizontal;
 
    DummyGridCellLeftSplitSegmentLine:=TpvVectorPathSegmentLine.Create(fExtendedBoundingBox.MinMax[0],TpvVectorPathVector.Create(fExtendedBoundingBox.MinMax[0].x,fExtendedBoundingBox.MinMax[1].y));
    try
@@ -4729,7 +4886,9 @@ begin
   t1:=(Index+1)/fResolution;
   fHorizontalBands.Add(THorizontalBand.Create(self,
                                               (fBoundingBox.MinMax[0].y*t0)+(fBoundingBox.MinMax[1].y*(1.0-t0)),
-                                              (fBoundingBox.MinMax[0].y*t1)+(fBoundingBox.MinMax[1].y*(1.0-t1))));
+                                              (fBoundingBox.MinMax[0].y*t1)+(fBoundingBox.MinMax[1].y*(1.0-t1)),
+                                              fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index-0.125)/fResolution)),
+                                              fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index+1.125)/fResolution))));
  end;
 
 end;
