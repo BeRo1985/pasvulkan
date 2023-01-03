@@ -44,46 +44,34 @@ layout(set = 0, binding = 0) uniform sampler2D uTexture;
 
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
 
-struct vectorPathGPUSegment {
-  uvec4 typeWindingXPoint0;
+struct VectorPathGPUSegment {
+  uvec4 typeWindingPoint0;
   vec4 point1Point2;
 };
 
-#define vectorPathGPUIndirectSegment uint
+#define VectorPathGPUIndirectSegment uint
 
-struct vectorPathGPUHorizontalSpan {
-  vec4 y0y1safeY0safeY1;
-  uvec4 startIndirectSegmentIndexCountIndirectSegments;
-};
+#define VectorPathGPUGridCell uvec2
 
-struct vectorPathGPUGridCell {
-  vec4 minMax;
-  uvec4 horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments;
-};
-
-struct vectorPathGPUShape {
+struct VectorPathGPUShape {
   vec4 minMax;
   uvec4 flagsStartGridCellIndexGridCellSize;
 };
 
 layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
-  vectorPathGPUSegment vectorPathGPUSegments[];
+  VectorPathGPUSegment vectorPathGPUSegments[];
 };
 
 layout(std430, set = 1, binding = 1) buffer VectorPathGPUIndirectSegments {
-  vectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
+  VectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
 };
 
-layout(std430, set = 1, binding = 2) buffer VectorPathGPUHorizontalSpans {
-  vectorPathGPUHorizontalSpan vectorPathGPUHorizontalSpans[];
+layout(std430, set = 1, binding = 2) buffer VectorPathGPUGridCells {
+  VectorPathGPUGridCell vectorPathGPUGridCells[];
 };
 
-layout(std430, set = 1, binding = 3) buffer VectorPathGPUGridCells {
-  vectorPathGPUGridCell vectorPathGPUGridCells[];
-};
-
-layout(std430, set = 1, binding = 4) buffer VectorPathGPUShapes {
-  vectorPathGPUShape vectorPathGPUShapes[];
+layout(std430, set = 1, binding = 3) buffer VectorPathGPUShapes {
+  VectorPathGPUShape vectorPathGPUShapes[];
 };
 
 #endif
@@ -395,7 +383,7 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
   #define TVEC vec2
 #endif
 
-#if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH))
+#if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
 
 // In the best case effectively 5x (4+1) multisampled mono-SDF, otherwise just 1x in the worst case, depending on the texCoord gradient derivatives 
 float multiSampleSDF(const in TVEC texCoord){
@@ -577,6 +565,8 @@ bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
 
 float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout int winding) {   
 
+  vec2 lineSegment = B - A;
+
   // The following code calculates the winding number of a point (pos) relative to a
   // line segment formed by two points A and B. It does so by simulating a horizontal line 
   // at the y-coordinate of the point (pos) and checking whether this line intersects the 
@@ -596,7 +586,6 @@ float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout i
 
   // Distance
   vec2 pSubA = pos - A;
-  vec2 lineSegment = B - A;
   float squaredLineLength = dot(lineSegment, lineSegment);
   vec2 nearestPoint = mix(A, B, clamp(dot(pSubA, lineSegment) / squaredLineLength, 0.0, 1.0));
   vec2 nearestVector = nearestPoint - pos; 
@@ -690,52 +679,41 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 
 } 
 
-float sampleVectorPathShape(const vec3 texCoord){
-  float result = 0.0;
-  vec2 coord = texCoord.xy; 
-  int shape = int(texCoord.z + 0.5);
-  VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[shape];
-  bool useEvenOddRule = (vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.x & 1) != 0;
+float sampleVectorPathShape(const vec3 shapeCoord){
+  float signedDistance = 1e+32; 
+  VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
   uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.zw);
-  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((coord - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
+  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
   if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
-    uvec2 gridCellIndex = vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x);
-    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[gridCellIndex];
-    uint startIndirectSegmentIndex = vectorPathGPUGridCell.horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments.y;
-    uint countIndirectSegments = vectorPathGPUGridCell.horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments.z;
+    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
+    uint countIndirectSegments = vectorPathGPUGridCell.y;
     if(countIndirectSegments > 0u){
       int winding = 0;
-      float signedDistance = 1e+32; 
-      uint untilIndirectSegmentIndex = startIndirectSegmentIndex + (countIndirectSegments - 1u);
-      for(uint indirectSegmentIndex = startIndirectSegmentIndex; indirectSegmentIndex < untilIndirectSegmentIndex; indirectSegmentIndex++){
-        VectorPathGPUIndirectSegment vectorPathGPUIndirectSegment = vectorPathGPUIndirectSegments[indirectSegmentIndex];
-        VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegment.xSegmentIndex.y];
-        switch(vectorPathGPUSegment.typeWindingXPoint0.x){
+      for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + (countIndirectSegments - 1u);
+          indirectSegmentIndex < untilIndirectSegmentIndex; 
+          indirectSegmentIndex++){
+        VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[indirectSegmentIndex]];
+        switch(vectorPathGPUSegment.typeWindingPoint0.x){
           case 0u:{
             // Unknown 
             break;
           }
           case 1u:{
             // Line
-            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
-            vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
-            signedDistance = min(signedDistance, getLineDistanceAndUpdateWinding(coord, p0, p1, winding));
+            signedDistance = min(signedDistance, getLineDistanceAndUpdateWinding(shapeCoord.xy, uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw), vectorPathGPUSegment.point1Point2.xy, winding));
             break;
           }
           case 2u:{
             // Quadratic curve
-            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
-            vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
-            vec2 p2 = vectorPathGPUSegment.point1Point2.zw;
-            signedDistance = min(signedDistance, getQuadraticCurveDistanceAndUpdateWinding(coord, p0, p1, winding));
+            signedDistance = min(signedDistance, getQuadraticCurveDistanceAndUpdateWinding(shapeCoord.xy, uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw), vectorPathGPUSegment.point1Point2.xy, vectorPathGPUSegment.point1Point2.zw, winding));
             break;
           }
           case 3u:{
             // Meta winding setting line (winding only)
-            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
+            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw);
             vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
-            if((coord.y >= min(p0.y, p1.y)) && (coord.y < max(p0.y, p1.y))){
-              winding += int(vectorPathGPUSegment.typeWindingXPoint0.y);              
+            if((shapeCoord.y >= min(p0.y, p1.y)) && (shapeCoord.y < max(p0.y, p1.y))){
+              winding += int(vectorPathGPUSegment.typeWindingPoint0.y);              
             }
             break;
           }
@@ -744,9 +722,14 @@ float sampleVectorPathShape(const vec3 texCoord){
           }
         }                         
       }
+      signedDistance *= (((vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.x & 1) != 0) ?
+                         ((winding & 1) != 0) /* even odd rule */ : 
+                         (winding != 0) /* non-zero rule */
+                        ) ? -1.0 : 1.0;      
     }       
   }
-  return result;
+  float d = fwidth(signedDistance);
+  return linearstep(-d, d, signedDistance);
 }
 #endif
 
