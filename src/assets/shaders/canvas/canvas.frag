@@ -13,6 +13,7 @@
 #define FILLTYPE_NO_TEXTURE 0
 #define FILLTYPE_TEXTURE 1
 #define FILLTYPE_ATLAS_TEXTURE 2
+#define FILLTYPE_VECTOR_PATH 3
 
 #ifndef FILLTYPE
   #define FILLTYPE FILLTYPE_NO_TEXTURE
@@ -24,7 +25,7 @@ layout(early_fragment_tests) in;
 
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color (in linear space, NOT in sRGB non-linear color space!)
-#if (FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || defined(GUI_ELEMENTS) 
+#if (FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH) || defined(GUI_ELEMENTS) 
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
 #endif
 layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
@@ -36,9 +37,55 @@ layout(location = 5) in vec4 inMetaInfo; // Various stuff
 #endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
-layout(binding = 0) uniform sampler2DArray uTexture;
+layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 #elif FILLTYPE == FILLTYPE_TEXTURE
-layout(binding = 0) uniform sampler2D uTexture;
+layout(set = 0, binding = 0) uniform sampler2D uTexture;
+#endif
+
+#if FILLTYPE == FILLTYPE_VECTOR_PATH
+
+struct vectorPathGPUSegment {
+  uvec4 typeWindingXPoint0;
+  vec4 point1Point2;
+};
+
+#define vectorPathGPUIndirectSegment uint
+
+struct vectorPathGPUHorizontalSpan {
+  vec4 y0y1safeY0safeY1;
+  uvec4 startIndirectSegmentIndexCountIndirectSegments;
+};
+
+struct vectorPathGPUGridCell {
+  vec4 minMax;
+  uvec4 horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments;
+};
+
+struct vectorPathGPUShape {
+  vec4 minMax;
+  uvec4 flagsStartGridCellIndexGridCellSize;
+};
+
+layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
+  vectorPathGPUSegment vectorPathGPUSegments[];
+};
+
+layout(std430, set = 1, binding = 1) buffer VectorPathGPUIndirectSegments {
+  vectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
+};
+
+layout(std430, set = 1, binding = 2) buffer VectorPathGPUHorizontalSpans {
+  vectorPathGPUHorizontalSpan vectorPathGPUHorizontalSpans[];
+};
+
+layout(std430, set = 1, binding = 3) buffer VectorPathGPUGridCells {
+  vectorPathGPUGridCell vectorPathGPUGridCells[];
+};
+
+layout(std430, set = 1, binding = 4) buffer VectorPathGPUShapes {
+  vectorPathGPUShape vectorPathGPUShapes[];
+};
+
 #endif
 
 layout(location = 0) out vec4 outFragColor;
@@ -340,7 +387,7 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
 
 #endif
 
-#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
+#if (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH)
   #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
   #define TVEC vec3
 #else
@@ -348,7 +395,7 @@ vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
   #define TVEC vec2
 #endif
 
-#if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
+#if ((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH))
 
 // In the best case effectively 5x (4+1) multisampled mono-SDF, otherwise just 1x in the worst case, depending on the texCoord gradient derivatives 
 float multiSampleSDF(const in TVEC texCoord){
@@ -514,6 +561,195 @@ float multiSampleMSDF(const in TVEC texCoord){
 
 #endif
 
+#if FILLTYPE == FILLTYPE_VECTOR_PATH
+
+bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
+  if(p0.x == p1.x ){  // Line is vertical
+    return y0 <= max(p0.y, p1.y) && y1 >= min(p0.y, p1.y);   
+  }else if (p0.y == p1.y) {  // line is not vertical and lines are parallel
+    return false;
+  }else{ // Line is not vertical
+    // Calculate intersection point
+    float x = (((y1 - y0) * (p1.x - p0.x)) / (p1.y - p0.y)) + p0.x;
+    return (x >= min(p0.x, p1.x)) &&  (x <= max(p0.x, p1.x)) && (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));
+  }
+}
+
+float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout int winding) {   
+
+  // The following code calculates the winding number of a point (pos) relative to a
+  // line segment formed by two points A and B. It does so by simulating a horizontal line 
+  // at the y-coordinate of the point (pos) and checking whether this line intersects the 
+  // line segment. If the intersection occurs within the limits of the line segment, it
+  // increments or decrements the winding number by 1, depending on the orientation of
+  // the line segment. The winding number can be used to determine whether the point is 
+  // inside or outside a polygon. If the line intersects the polygon an even number of times,
+  // the winding number is 0, indicating that the point is outside the polygon. If the line 
+  // intersects the polygon an odd number of times, the winding number is either 1 (if the 
+  // polygon is oriented counter-clockwise) or -1 (if the polygon is oriented clockwise).  
+  if(abs(lineSegment.y) > 1e-8){
+    float t = -(A.y - pos.y) / lineSegment.y;
+    winding += ((t >= 0.0) && (t <= 1.0) && (mix(A.x, B.x, t) <= pos.x)) ?
+                 ((B.y < A.y) ? -1 : 1) :
+                 0;
+  }   
+
+  // Distance
+  vec2 pSubA = pos - A;
+  vec2 lineSegment = B - A;
+  float squaredLineLength = dot(lineSegment, lineSegment);
+  vec2 nearestPoint = mix(A, B, clamp(dot(pSubA, lineSegment) / squaredLineLength, 0.0, 1.0));
+  vec2 nearestVector = nearestPoint - pos; 
+  return length(nearestVector); 
+
+}
+
+float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, in vec2 C, inout int winding){
+  
+  // This following code calculates the winding number of a quadratic bezier curve at 
+  // a given point. The winding number is a measure of how many times a curve wraps 
+  // around a given point, and it is used in the implementation of the even-odd or 
+  // non-zero rule for determining whether a point is inside or outside of a path. 
+  // It does so by simulating a horizontal line at the y-coordinate of the point (pos) 
+  // and checking whether this horizontal line intersects the quadratic curve. 
+  // The code first calculates the coefficients of a quadratic equation in the form 
+  // "at^2 + bt + c = y", where "y" is the y-coordinate of the given point, and "t" is a 
+  // value that varies between 0 and 1. The coefficients are then used to solve the equation 
+  // using the quadratic formula, which gives the values of "t" at which the curve intersects
+  // the given y-coordinate. These values of "t" are then used to calculate the x-coordinates
+  // of the intersections, and the winding number is incremented or decremented by 1,
+  // depending on the orientation of the quadratic curve by evaluating the quadratic curve 
+  // tangents for the x-axis coordinates.
+  // Overall, the code is well-written and easy to understand. It effectively uses the quadratic 
+  // formula to find the intersections of the curve with a given y-coordinate, and then checks with
+  // help of quadratic tangents at time "t" on which side of the given point these intersections are 
+  // to determine the winding number.
+  { 
+    float a = (A.y - (2.0 * B.y)) + C.y;
+    float b = (-2.0 * A.y) + (2.0 * B.y);
+    float d = (b * b) - (4.0 * a * (A.y - pos.y));
+    if (d > 0.0) {
+      vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
+      vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
+      winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
+                   (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
+                   0;
+      winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
+                   (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
+                   0;
+    }          
+  } 
+
+  // Distance
+  vec2 a = B - A;
+  vec2 b = A - 2.0 * B + C;
+  vec2 c = a * 2.0;
+  vec2 d = A - pos;
+
+  float kk = 1.0 / dot(b, b);
+  float kx = kk * dot(a, b);
+  float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+  float kz = kk * dot(d, a);
+
+  float result = 0.0;
+  
+  float p  = ky - kx * kx;
+  float q  = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+  float p3 = p * p * p;
+  float q2 = q * q;
+  float h  = q2 + 4.0 * p3;
+
+  if(h >= 0.0) { // 1 root
+    h = sqrt(h);
+    vec2 x = (vec2(h, -h) - q) / 2.0;
+
+    // When p≈0 and p<0, h - q has catastrophic cancelation. So, we do
+    // h=√(q² + 4p³)=q·√(1 + 4p³/q²)=q·√(1 + w) instead. Now we approximate
+    // √ by a linear Taylor expansion into h≈q(1 + ½w) so that the q's
+    // cancel each other in h - q. Expanding and simplifying further we
+    // get x=vec2(p³/q, -p³/q - q). And using a second degree Taylor
+    // expansion instead: x=vec2(k, -k - q) with k=(1 - p³/q²)·p³/q
+    if(abs(abs(h/q) - 1.0) < 0.0001) {
+      float k = (1.0 - p3 / q2) * p3 / q;  // quadratic approx
+      x = vec2(k, -k - q);
+    }
+
+    vec2 uv = sign(x) * pow(abs(x), vec2(1.0/3.0));
+    float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+    return length(d + (c + b * t) * t);
+  } else { // 3 roots
+    float z = sqrt(-p);
+    float v = acos(q / (p * z * 2.0)) / 3.0;
+    float m = cos(v);
+    float n = sin(v) * 1.732050808;
+    vec3 t = clamp(vec3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
+    vec2 qx = d + (c + b * t.x) * t.x;
+    vec2 qy = d + (c + b * t.y) * t.y;
+    return sqrt(min(dot(qx, qx), dot(qy, qy)));    
+  }
+
+} 
+
+float sampleVectorPathShape(const vec3 texCoord){
+  float result = 0.0;
+  vec2 coord = texCoord.xy; 
+  int shape = int(texCoord.z + 0.5);
+  VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[shape];
+  bool useEvenOddRule = (vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.x & 1) != 0;
+  uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.zw);
+  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((coord - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
+  if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
+    uvec2 gridCellIndex = vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x);
+    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[gridCellIndex];
+    uint startIndirectSegmentIndex = vectorPathGPUGridCell.horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments.y;
+    uint countIndirectSegments = vectorPathGPUGridCell.horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments.z;
+    if(countIndirectSegments > 0u){
+      int winding = 0;
+      float signedDistance = 1e+32; 
+      uint untilIndirectSegmentIndex = startIndirectSegmentIndex + (countIndirectSegments - 1u);
+      for(uint indirectSegmentIndex = startIndirectSegmentIndex; indirectSegmentIndex < untilIndirectSegmentIndex; indirectSegmentIndex++){
+        VectorPathGPUIndirectSegment vectorPathGPUIndirectSegment = vectorPathGPUIndirectSegments[indirectSegmentIndex];
+        VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegment.xSegmentIndex.y];
+        switch(vectorPathGPUSegment.typeWindingXPoint0.x){
+          case 0u:{
+            // Unknown 
+            break;
+          }
+          case 1u:{
+            // Line
+            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
+            vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
+            signedDistance = min(signedDistance, getLineDistanceAndUpdateWinding(coord, p0, p1, winding));
+            break;
+          }
+          case 2u:{
+            // Quadratic curve
+            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
+            vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
+            vec2 p2 = vectorPathGPUSegment.point1Point2.zw;
+            signedDistance = min(signedDistance, getQuadraticCurveDistanceAndUpdateWinding(coord, p0, p1, winding));
+            break;
+          }
+          case 3u:{
+            // Meta winding setting line (winding only)
+            vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingXPoint0.zw);
+            vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
+            if((coord.y >= min(p0.y, p1.y)) && (coord.y < max(p0.y, p1.y))){
+              winding += int(vectorPathGPUSegment.typeWindingXPoint0.y);              
+            }
+            break;
+          }
+          default:{
+            break;
+          }
+        }                         
+      }
+    }       
+  }
+  return result;
+}
+#endif
+
 void main(void){
   vec4 color;
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
@@ -521,14 +757,17 @@ void main(void){
                                       pushConstants.fillMatrix[1].xy, 
                                       vec2(pushConstants.fillMatrix[0].z, pushConstants.fillMatrix[1].z));
 #endif
-#if !((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
+#if !((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH))
   color = inColor;
 #else 
-#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
+#if (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH)
   #define texCoord inTexCoord
 #else
   vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * vec3(inPosition, 1.0)).xy : inTexCoord.xy;
 #endif
+#if FILLTYPE == FILLTYPE_VECTOR_PATH
+  color = vec2(1.0, sampleVectorPathShape(texCoord)).xxxy * inColor;  
+#else
   switch(inState.x){ 
     case 1:{
       switch(inState.w & 0xf){ 
@@ -565,6 +804,7 @@ void main(void){
     }
   }
   color *= inColor; 
+#endif
 #endif
 #if FILLTYPE == FILLTYPE_NO_TEXTURE
   if((inState.z & 0x03) >= 0x02){

@@ -508,15 +508,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
              TypeQuadraticCurve=2;
              TypeMetaWindingSettingLine=3;
       public
-       // uvec4 typeFlagsXPoint0 - Begin
+       // uvec4 typeWindingXPoint0 - Begin
        TypeWinding:TpvUInt32; // 2 bits = Type (0 = Unknown, 1 = Line, 2 = Quadratic curve, 3 = Meta-winding-setting line), 30 bits = Winding for type 3 (virtually 1-based, so -/+ 1)
        x:TpvFloat;
        Point0:TpvVector2;
-       // uvec4 kindFlagsPoint0 - End
-       // uvec4 point1Point2 - Begin
+       // uvec4 typeWindingPoint0 - End
+       // vec4 point1Point2 - Begin
        Point1:TpvVector2;
        Point2:TpvVector2;
-       // uvec4 point1Point2 - End
+       // vec4 point1Point2 - End
      end;
 
      PpvVectorPathGPUSegmentData=^TpvVectorPathGPUSegmentData;
@@ -530,16 +530,52 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathGPUIndirectSegmentData=^TpvVectorPathGPUIndirectSegmentData;
 
-     TpvVectorPathGPUHorizontalSpanData=packed record // 8 bytes per segment
-      // uvec4 y0y1StartIndirectSegmentIndexCountIndirectSegments - Begin
+     TpvVectorPathGPUHorizontalSpanData=packed record // 32 bytes per segment
+      // vec4 y0y1safeY0safeY1 - Begin
       y0:TpvFloat;
       y1:TpvFloat;
+      safeY0:TpvFloat;
+      safeY1:TpvFloat;
+      // vec4 y0y1safeY0safeY1 - End
+      // uvec4 startIndirectSegmentIndexCountIndirectSegments - Begin
       StartIndirectSegmentIndex:TpvUInt32;
       CountIndirectSegments:TpvUInt32;
-      // uvec4 y0y1StartSegmentIndexCountSegments - End
+      Dummy0:TpvUInt32;
+      Dummy1:TpvUInt32;
+      // uvec4 startSegmentIndexCountSegments - End
      end;
 
      PpvVectorPathGPUHorizontalSpanData=^TpvVectorPathGPUHorizontalSpanData;
+
+     TpvVectorPathGPUGridCellData=packed record // 32 bytes per segment
+      // vec4 minMax - Begin
+      Min:TpvVector2;
+      Max:TpvVector2;
+      // vec4 minMax - End
+      // uvec4 horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments - Begin
+      HorizontalSpanIndex:TpvUInt32;
+      StartIndirectSegmentIndex:TpvUInt32;
+      CountIndirectSegments:TpvUInt32;
+      Dummy0:TpvUInt32;
+      // uvec4 horizontalSpanIndexStartIndirectSegmentIndexCountIndirectSegments - End
+     end;
+
+     PpvVectorPathGPUGridCellData=^TpvVectorPathGPUGridCellData;
+
+     TpvVectorPathGPUShapeData=packed record // 32 bytes per segment
+      // vec4 minMax - Begin
+      Min:TpvVector2;
+      Max:TpvVector2;
+      // vec4 minMax - End
+      // uvec4 flagsStartGridCellIndexGridCellSize - Begin
+      Flags:TpvUInt32;
+      StartGridCellIndex:TpvUInt32;
+      GridCellSizeX:TpvUInt32;
+      GridCellSizeY:TpvUInt32;
+      // uvec4 flagsStartGridCellIndexGridCellSize - End
+     end;
+
+     PpvVectorPathGPUShapeData=^TpvVectorPathGPUShapeData;
 
      { TpvVectorPathGPUShape }
 
