@@ -55,7 +55,7 @@ struct VectorPathGPUSegment {
 
 struct VectorPathGPUShape {
   vec4 minMax;
-  uvec4 flagsStartGridCellIndexGridCellSize;
+  uvec4 flagsStartGridCellIndexGridSize;
 };
 
 layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
@@ -682,10 +682,10 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 float sampleVectorPathShape(const vec3 shapeCoord){
   float signedDistance = 1e+32; 
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
-  uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.zw);
+  uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
   uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
   if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
-    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
+    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
     uint countIndirectSegments = vectorPathGPUGridCell.y;
     if(countIndirectSegments > 0u){
       int winding = 0;
@@ -722,7 +722,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
           }
         }                         
       }
-      signedDistance *= (((vectorPathGPUShape.flagsStartGridCellIndexGridCellSize.x & 1) != 0) ?
+      signedDistance *= (((vectorPathGPUShape.flagsStartGridCellIndexGridSize.x & 1) != 0) ?
                          ((winding & 1) != 0) /* even odd rule */ : 
                          (winding != 0) /* non-zero rule */
                         ) ? -1.0 : 1.0;      
