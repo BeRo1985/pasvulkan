@@ -701,6 +701,19 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 // multiplied by -1 if the point is inside the path according to the fill rule and 1 if it is outside. Finally, the function 
 // returns the result of a linear step function applied to the signedDistance value, which smooths out the transition between 
 // inside and outside values.
+// 
+// In this context, a "winding setting meta line" is a special type of line segment that is used to set the winding value for a 
+// particular simulated virtual scanline. The winding value is an integer that keeps track of the number of times the path 
+// crosses the horizontal line that a given point lies on. The winding value is used to determine whether the point is inside // or outside of the path based on the fill rule specified by the flagsStartGridCellIndexGridSize.x field of the 
+// vectorPathGPUShape. If the fill rule is the even-odd rule, the point is considered inside if the winding value is odd, and 
+// outside if it is even. If the fill rule is the non-zero rule, the point is considered inside if the winding value is 
+// non-zero, and outside if it is zero.
+// 
+// The purpose of the winding setting meta line is to ensure that the winding value is correctly initialized for a particular 
+// simulated virtual scanline. This is important because the winding value can change as the simulated virtual scanline moves 
+// across the path, and it is necessary to know the initial winding value in order to correctly determine whether a point on 
+// the simulated virtual scanline is inside or outside the path. The winding setting meta line works by adding a fixed value to // the winding value whenever the scanline passes through it. This allows the code to accurately track the winding value as the 
+// simulated virtual scanline moves across the path, even in a random access manner.
 float sampleVectorPathShape(const vec3 shapeCoord){
   float signedDistance = 1e+32; 
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
