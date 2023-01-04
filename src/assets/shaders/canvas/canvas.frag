@@ -679,6 +679,28 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 
 } 
 
+// This code is a function to calculate a signed distance field for a path described by a series of lines, quadratic 
+// curves, and winding setting meta lines. The signed distance field can be used to determine whether a given point is inside or 
+// outside of the path, and if it is inside, by how much. The input to the function is a 3D shapeCoord vector, where the x and y 
+// components describe a point in 2D space and the z component is an integer index into an array of vectorPathGPUShapes. The 
+// function returns a single float value representing the signed distance of the point described by shapeCoord from the path.
+//
+// The function starts by initializing a variable called signedDistance to a very large value, then it retrieves the 
+// vectorPathGPUShape at the index specified by the z component of shapeCoord. It calculates the dimensions of a grid in which 
+// the path is divided and the indices of the grid cell that shapeCoord falls into. If shapeCoord falls within the grid, the 
+// function retrieves the corresponding vectorPathGPUGridCell and iterates through a series of vectorPathGPUSegments contained 
+// within the grid cell, updating the signedDistance and winding values as it goes. The signedDistance value is updated by 
+// calling one of two functions depending on the type of segment: getLineDistanceAndUpdateWinding for line segments and 
+// getQuadraticCurveDistanceAndUpdateWinding for quadratic curve segments.
+// 
+// The winding value is an integer that keeps track of the number of times the path crosses the horizontal line that shapeCoord 
+// lies on. The winding value is used to determine whether the point is inside or outside of the path based on the fill rule 
+// specified by the flagsStartGridCellIndexGridSize.x field of the vectorPathGPUShape. If the fill rule is the even-odd rule, the 
+// point is considered inside if the winding value is odd, and outside if it is even. If the fill rule is the non-zero rule, the 
+// point is considered inside if the winding value is non-zero, and outside if it is zero. The final signedDistance value is then 
+// multiplied by -1 if the point is inside the path according to the fill rule and 1 if it is outside. Finally, the function 
+// returns the result of a linear step function applied to the signedDistance value, which smooths out the transition between 
+// inside and outside values.
 float sampleVectorPathShape(const vec3 shapeCoord){
   float signedDistance = 1e+32; 
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
