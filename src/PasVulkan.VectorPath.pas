@@ -4771,7 +4771,7 @@ type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
     IntersectionSegments:TpvVectorPathSegments;
     BoundingBox:TpvVectorPathBoundingBox;
-    YCoordinateIndex,SegmentIndex,OtherSegmentIndex:TpvSizeInt;
+    YCoordinateIndex,SegmentIndex,OtherSegmentIndex,PointIndex:TpvSizeInt;
     YCoordinates:TpvDynamicArray<TpvDouble>;
     YCoordinateHashMap:TYCoordinateHashMap;
     Vector:TpvVectorPathVector;
@@ -4832,6 +4832,13 @@ begin
 
    IntersectionPoints.RemoveDuplicates;
 
+   for PointIndex:=IntersectionPoints.Count-1 downto 0 do begin
+    Vector:=IntersectionPoints[PointIndex];
+    if Vector.x>fExtendedBoundingBox.MinMax[0].x then begin
+     IntersectionPoints.Delete(PointIndex);
+    end;
+   end;
+
   finally
    FreeAndNil(IntersectionSegments);
   end;
@@ -4842,7 +4849,8 @@ begin
    YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
    try
     for Vector in IntersectionPoints do begin
-     if (Vector.y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
+     //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
+     if Vector.x<=fExtendedBoundingBox.MinMax[0].x then begin
       CurrentY:=Vector.y;
       if not YCoordinateHashMap.ExistKey(CurrentY) then begin
        YCoordinateHashMap.Add(CurrentY,true);
@@ -4869,7 +4877,6 @@ begin
      CurrentY:=fExtendedBoundingBox.MinMax[1].y;
     end;
     if not SameValue(CurrentY,LastY) then begin
-
 
     end;
     LastY:=CurrentY;
