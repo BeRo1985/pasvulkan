@@ -387,6 +387,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
      end;
 
+     { TpvVectorPathSegmentMetaWindingSettingLine }
+     TpvVectorPathSegmentMetaWindingSettingLine=class(TpvVectorPathSegmentLine)
+      private
+       fWinding:TpvInt32;
+      published
+       property Winding:TpvInt32 read fWinding write fWinding;
+     end;
+
      { TpvVectorPathSegmentQuadraticCurve }
 
      TpvVectorPathSegmentQuadraticCurve=class(TpvVectorPathSegment)
@@ -4778,6 +4786,7 @@ var Segment:TpvVectorPathSegment;
     LastY,CurrentY:TpvDouble;
     IntersectionPoints:TpvVectorPathVectorList;
     DummyGridCellLeftSplitSegmentLine:TpvVectorPathSegmentLine;
+    SegmentMetaWindingSettingLine:TpvVectorPathSegmentMetaWindingSettingLine;
 begin
  inherited Create;
 
@@ -4877,7 +4886,12 @@ begin
      CurrentY:=fExtendedBoundingBox.MinMax[1].y;
     end;
     if not SameValue(CurrentY,LastY) then begin
-
+     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),TpvVectorPathVector.Create(-Infinity,CurrentY));
+     try
+      fSegments.Add(SegmentMetaWindingSettingLine);
+     finally
+      fVectorPathGPUShape.fSegments.Add(SegmentMetaWindingSettingLine);
+     end;
     end;
     LastY:=CurrentY;
    end;
@@ -4902,7 +4916,7 @@ end;
 
 constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 var Contour:TpvVectorPathContour;
-    Segment:TpvVectorPathSegment;
+    Segment,NewSegment:TpvVectorPathSegment;
     Index:TpvSizeInt;
     t0,t1:TpvDouble;
 begin
@@ -4918,14 +4932,18 @@ begin
  fResolution:=aResolution;
 
  fSegments:=TpvVectorPathSegments.Create;
- fSegments.OwnsObjects:=false;
+ fSegments.OwnsObjects:=true;
 
  fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
  try
   for Contour in fVectorPathShape.fContours do begin
    for Segment in Contour.fSegments do begin
-    fSegments.Add(Segment);
-    fSegmentDynamicAABBTree.CreateProxy(Segment.GetBoundingBox,TpvPtrInt(TpvPointer(Segment)));
+    NewSegment:=Segment.Clone;
+    try
+     fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
+    finally
+     fSegments.Add(NewSegment);
+    end;
    end;
   end;
  finally
