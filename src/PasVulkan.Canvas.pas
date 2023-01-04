@@ -542,28 +542,34 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCanvasFragmentNoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentVectorPathShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentGUINoTextureNoBlendingShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentNoTextureNoBlendingShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentTextureNoBlendingShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureNoBlendingShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentVectorPathNoBlendingShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentGUINoTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentNoTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageVertexNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentVectorPath:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlending:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlending:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentTextureNoBlending:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlending:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlending:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -2998,6 +3004,17 @@ begin
  end;
 
  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathClipDistanceSPIRVData,CanvasFragmentAtlasTextureClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
+ end;
+ try
+  fCanvasFragmentVectorPathShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
   Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRVData,CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRVDataSize);
  end else begin
   Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureNoBlendingSPIRVData,CanvasFragmentGUINoTextureNoBlendingSPIRVDataSize);
@@ -3037,6 +3054,17 @@ begin
  end;
  try
   fCanvasFragmentAtlasTextureNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingClipDistanceSPIRVData,CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingSPIRVData,CanvasFragmentAtlasTextureNoBlendingSPIRVDataSize);
+ end;
+ try
+  fCanvasFragmentVectorPathNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -3085,6 +3113,17 @@ begin
   Stream.Free;
  end;
 
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingClipDistanceNoDiscardSPIRVData,CanvasFragmentVectorPathNoBlendingClipDistanceNoDiscardSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingNoDiscardSPIRVData,CanvasFragmentVectorPathNoBlendingNoDiscardSPIRVDataSize);
+ end;
+ try
+  fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
  fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageVertexNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexNoTextureShaderModule,'main');
@@ -3097,6 +3136,8 @@ begin
 
  fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentAtlasTextureShaderModule,'main');
 
+ fVulkanPipelineCanvasShaderStageFragmentVectorPath:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentVectorPathShaderModule,'main');
+
  fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlending:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentGUINoTextureNoBlendingShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlending:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureNoBlendingShaderModule,'main');
@@ -3105,6 +3146,8 @@ begin
 
  fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlending:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentAtlasTextureNoBlendingShaderModule,'main');
 
+ fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlending:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentVectorPathNoBlendingShaderModule,'main');
+
  fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentGUINoTextureNoBlendingNoDiscardShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureNoBlendingNoDiscardShaderModule,'main');
@@ -3112,6 +3155,8 @@ begin
  fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentTextureNoBlendingNoDiscardShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule,'main');
+
+ fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule,'main');
 
 end;
 
@@ -3124,28 +3169,34 @@ begin
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentVectorPath);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlending);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlending);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTextureNoBlending);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlending);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlending);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard);
  FreeAndNil(fCanvasVertexShaderModule);
  FreeAndNil(fCanvasVertexNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentGUINoTextureShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentTextureShaderModule);
  FreeAndNil(fCanvasFragmentAtlasTextureShaderModule);
+ FreeAndNil(fCanvasFragmentVectorPathShaderModule);
  FreeAndNil(fCanvasFragmentGUINoTextureNoBlendingShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureNoBlendingShaderModule);
  FreeAndNil(fCanvasFragmentTextureNoBlendingShaderModule);
  FreeAndNil(fCanvasFragmentAtlasTextureNoBlendingShaderModule);
+ FreeAndNil(fCanvasFragmentVectorPathNoBlendingShaderModule);
  FreeAndNil(fCanvasFragmentGUINoTextureNoBlendingNoDiscardShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureNoBlendingNoDiscardShaderModule);
  FreeAndNil(fCanvasFragmentTextureNoBlendingNoDiscardShaderModule);
  FreeAndNil(fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule);
+ FreeAndNil(fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule);
  inherited Destroy;
 end;
 
