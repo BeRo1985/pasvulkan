@@ -687,9 +687,10 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 //
 // The function starts by initializing a variable called signedDistance to a very large value, then it retrieves the 
 // vectorPathGPUShape at the index specified by the z component of shapeCoord. It calculates the dimensions of a grid in which 
-// the path is divided and the indices of the grid cell that shapeCoord falls into. If shapeCoord falls within the grid, the 
-// function retrieves the corresponding vectorPathGPUGridCell and iterates through a series of vectorPathGPUSegments contained 
-// within the grid cell, updating the signedDistance and winding values as it goes. The signedDistance value is updated by 
+// the path is divided and the indices of the grid cell that shapeCoord falls into. To avoid numerical accuracy problems regarding 
+// grid cell boundaries, these grid cells are actually always a bit larger where the border is slightly outward. If shapeCoord falls 
+// within the grid, the function retrieves the corresponding vectorPathGPUGridCell and iterates through a series of vectorPathGPUSegments
+// contained within the grid cell, updating the signedDistance and winding values as it goes. The signedDistance value is updated by 
 // calling one of two functions depending on the type of segment: getLineDistanceAndUpdateWinding for line segments and 
 // getQuadraticCurveDistanceAndUpdateWinding for quadratic curve segments.
 // 
