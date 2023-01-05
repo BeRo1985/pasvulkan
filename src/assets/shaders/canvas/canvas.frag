@@ -679,11 +679,11 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 
 } 
 
-// This code is a function to calculate a signed distance field for a path described by a series of lines, quadratic 
-// curves, and winding setting meta lines. The signed distance field can be used to determine whether a given point is inside or 
-// outside of the path, and if it is inside, by how much. The input to the function is a 3D shapeCoord vector, where the x and y 
-// components describe a point in 2D space and the z component is an integer index into an array of vectorPathGPUShapes. The 
-// function returns a single float value representing the signed distance of the point described by shapeCoord from the path.
+// This code is a function to calculate a pixel value by using a signed distance field for a path described by a series of lines,
+// quadratic curves, and winding setting meta lines. The signed distance field can be used to determine whether a given point is
+// inside or outside of the path, and if it is inside, by how much. The input to the function is a 3D shapeCoord vector, where the
+// x and y components describe a point in 2D space and the z component is an integer index into an array of vectorPathGPUShapes. 
+// The function returns a single float value representing the signed distance of the point described by shapeCoord from the path.
 //
 // The function starts by initializing a variable called signedDistance to a very large value, then it retrieves the 
 // vectorPathGPUShape at the index specified by the z component of shapeCoord. It calculates the dimensions of a grid in which 
