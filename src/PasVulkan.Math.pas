@@ -1431,6 +1431,25 @@ type PpvScalar=^TpvScalar;
        property a:TpvScalar read GetA write SetA;
      end;
 
+     TpvPolynomial=record
+      public
+       Coefs:TpvDoubleDynamicArray;
+       constructor Create(const aCoefs:array of TpvDouble);
+       function GetDegree:TpvSizeInt;
+       function Eval(const aValue:TpvDouble):TpvDouble;
+       procedure SimplifyEquals(const aThreshold:TpvDouble=1e-12);
+       function GetDerivative:TpvPolynomial;
+       function GetLinearRoots:TpvDoubleDynamicArray;
+       function GetQuadraticRoots:TpvDoubleDynamicArray;
+       function GetCubicRoots:TpvDoubleDynamicArray;
+       function GetQuarticRoots:TpvDoubleDynamicArray;
+       function GetRoots:TpvDoubleDynamicArray;
+       function Bisection(aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+       function GetRootsInInterval(const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+     end;
+
+     PpvPolynomial=^TpvPolynomial;
+
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
@@ -18231,6 +18250,255 @@ begin
      end;
     end else begin
      if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end;
+   finally
+    SetLength(result,Count);
+   end;
+  end;
+ end;
+end;
+
+constructor TpvPolynomial.Create(const aCoefs:array of TpvDouble);
+begin
+ SetLength(Coefs,length(aCoefs));
+ if length(aCoefs)>0 then begin
+  Move(aCoefs[0],Coefs[0],length(aCoefs)*SizeOf(TpvDouble));
+ end;
+end;
+
+function TpvPolynomial.GetDegree:TpvSizeInt;
+begin
+ result:=length(Coefs)-1;
+end;
+
+function TpvPolynomial.Eval(const aValue:TpvDouble):TpvDouble;
+var Index:TpvSizeInt;
+begin
+ result:=0.0;
+ for Index:=0 to length(Coefs)-1 do begin
+  result:=(result*aValue)+Coefs[Index];
+ end;
+end;
+
+procedure TpvPolynomial.SimplifyEquals(const aThreshold:TpvDouble=1e-12);
+var Index,NewLength:TpvSizeInt;
+begin
+ NewLength:=length(Coefs);
+ for Index:=length(Coefs)-1 downto 0 do begin
+  if Coefs[Index]<=aThreshold then begin
+   NewLength:=Index;
+  end else begin
+   break;
+  end;
+ end;
+ if length(Coefs)<>NewLength then begin
+  SetLength(Coefs,NewLength);
+ end;
+end;
+
+function TpvPolynomial.GetDerivative:TpvPolynomial;
+var Index:TpvSizeInt;
+begin
+ result.Coefs:=nil;
+ SetLength(result.Coefs,length(Coefs)-1);
+ for Index:=1 to length(Coefs)-1 do begin
+  result.Coefs[Index-1]:=Coefs[Index]*Index;
+ end;
+end;
+
+function TpvPolynomial.GetLinearRoots:TpvDoubleDynamicArray;
+begin
+ result:=nil;
+ if not IsZero(Coefs[1]) then begin
+  SetLength(result,1);
+  result[0]:=-(Coefs[0]/Coefs[1]);
+ end;
+end;
+
+function TpvPolynomial.GetQuadraticRoots:TpvDoubleDynamicArray;
+var a,b,c,d:TpvDouble;
+begin
+ result:=nil;
+ if GetDegree=2 then begin
+  a:=Coefs[2];
+  b:=Coefs[1];
+  c:=Coefs[0];
+  d:=sqr(b)-(4.0*c);
+  if IsZero(d) then begin
+   SetLength(result,1);
+   result[0]:=(-0.5)*b;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   SetLength(result,2);
+   result[0]:=((-b)+d)*0.5;
+   result[1]:=((-b)-d)*0.5;
+  end;
+ end;
+end;
+
+function TpvPolynomial.GetCubicRoots:TpvDoubleDynamicArray;
+var c3,c2,c1,c0,a,b,Offset,d,hb,t,r,Distance,Angle,Cosinus,Sinus,Sqrt3:TpvDouble;
+begin
+ result:=nil;
+ if GetDegree=3 then begin
+  c3:=Coefs[3];
+  c2:=Coefs[2]/c3;
+  c1:=Coefs[1]/c3;
+  c0:=Coefs[0]/c3;
+  a:=((3.0*c1)-sqr(c2))/3.0;
+  b:=((((2.0*sqr(c2))*c2)-((9.0*c1)*c2))+(27.0*c0))/27.0;
+  Offset:=c2/3.0;
+  d:=(sqr(b)*0.25)+((sqr(a)*a)/27.0);
+  hb:=b*0.5;
+  if IsZero(abs(d)) then begin
+   if hb>=0.0 then begin
+    t:=-Power(hb,1.0/3.0);
+   end else begin
+    t:=Power(-hb,1.0/3.0);
+   end;
+   SetLength(result,2);
+   result[0]:=(2.0*t)-Offset;
+   result[1]:=(-t)-Offset;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   t:=(-hb)+d;
+   if t>=0.0 then begin
+    r:=Power(t,1.0/3.0);
+   end else begin
+    r:=Power(-t,1.0/3.0);
+   end;
+   t:=(-hb)-d;
+   if t>=0.0 then begin
+    r:=r+Power(t,1.0/3.0);
+   end else begin
+    r:=r-Power(-t,1.0/3.0);
+   end;
+   SetLength(result,1);
+   result[0]:=r-Offset;
+  end else if d<0.0 then begin
+   Distance:=sqrt((-a)/3.0);
+   Angle:=ArcTan2(sqrt(-d),-hb)/3.0;
+   Cosinus:=cos(Angle);
+   Sinus:=sin(Angle);
+   Sqrt3:=sqrt(3.0);
+   SetLength(result,3);
+   result[0]:=((2.0*Distance)*Cosinus)-Offset;
+   result[1]:=((-Distance)*(Cosinus+(Sqrt3*Sinus)))-Offset;
+   result[2]:=((-Distance)*(Cosinus-(Sqrt3*Sinus)))-Offset;
+  end;
+ end;
+end;
+
+function TpvPolynomial.GetQuarticRoots:TpvDoubleDynamicArray;
+begin
+end;
+
+function TpvPolynomial.GetRoots:TpvDoubleDynamicArray;
+begin
+ SimplifyEquals;
+ case GetDegree of
+  0:begin
+   result:=nil;
+  end;
+  1:begin
+   result:=GetLinearRoots;
+  end;
+  2:begin
+   result:=GetQuadraticRoots;
+  end;
+  3:begin
+   result:=GetCubicRoots;
+  end;
+  4:begin
+   result:=GetQuarticRoots;
+  end;
+  else begin
+   result:=nil;
+  end;
+ end;
+end;
+
+function TpvPolynomial.Bisection(aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+const TOLERANCE=1e-6;
+      ACCURACY=6;
+var MinValue,MaxValue,Value,t0,t1:TpvDouble;
+    Iterations,Index:TpvSizeInt;
+begin
+ MinValue:=Eval(aMin);
+ MaxValue:=Eval(aMax);
+ if abs(MinValue)<TOLERANCE then begin
+  aResult:=MinValue;
+  result:=true;
+ end else if abs(MaxValue)<TOLERANCE then begin
+  aResult:=MaxValue;
+  result:=true;
+ end else if (MinValue*MaxValue)<=0.0 then begin
+  t0:=ln(aMax-aMin);
+  t1:=ln(10.0)*ACCURACY;
+  Iterations:=Trunc(Ceil((t0+t1)/ln(2)));
+  for Index:=0 to Iterations-1 do begin
+   aResult:=(aMin+aMax)*0.5;
+   Value:=Eval(aResult);
+   if abs(Value)<TOLERANCE then begin
+    result:=true;
+    exit;
+   end;
+   if (Value*MinValue)<0.0 then begin
+    aMax:=aResult;
+    MaxValue:=Value;
+   end else begin
+    aMin:=aResult;
+    MinValue:=Value;
+   end;
+  end;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvPolynomial.GetRootsInInterval(const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+var Derivative:TpvPolynomial;
+    DerivativeRoots:TpvDoubleDynamicArray;
+    Count,Index:TpvSizeInt;
+    Root:TpvDouble;
+begin
+ result:=nil;
+ case length(Coefs) of
+  0:begin
+  end;
+  1..2:begin
+   if Bisection(aMin,aMax,Root) then begin
+    SetLength(result,1);
+    result[0]:=Root;
+   end;
+  end;
+  else begin
+   Count:=0;
+   try
+    SetLength(result,length(Coefs)+2);
+    Derivative:=GetDerivative;
+    DerivativeRoots:=Derivative.GetRootsInInterval(aMin,aMax);
+    if length(DerivativeRoots)>0 then begin
+     if Bisection(aMin,DerivativeRoots[0],Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+     for Index:=0 to length(DerivativeRoots)-2 do begin
+      if Bisection(DerivativeRoots[Index],DerivativeRoots[Index+1],Root) then begin
+       result[Count]:=Root;
+       inc(Count);
+      end;
+     end;
+     if Bisection(DerivativeRoots[length(DerivativeRoots)-1],aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end else begin
+     if Bisection(aMin,aMax,Root) then begin
       result[Count]:=Root;
       inc(Count);
      end;
