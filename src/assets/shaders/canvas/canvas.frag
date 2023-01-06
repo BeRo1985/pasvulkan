@@ -40,9 +40,7 @@ layout(location = 5) in vec4 inMetaInfo; // Various stuff
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 #elif FILLTYPE == FILLTYPE_TEXTURE
 layout(set = 0, binding = 0) uniform sampler2D uTexture;
-#endif
-
-#if FILLTYPE == FILLTYPE_VECTOR_PATH
+#elif FILLTYPE == FILLTYPE_VECTOR_PATH
 
 struct VectorPathGPUSegment {
   uvec4 typeWindingPoint0;
@@ -58,19 +56,19 @@ struct VectorPathGPUShape {
   uvec4 flagsStartGridCellIndexGridSize;
 };
 
-layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
+layout(std430, set = 0, binding = 0) buffer VectorPathGPUSegments {
   VectorPathGPUSegment vectorPathGPUSegments[];
 };
 
-layout(std430, set = 1, binding = 1) buffer VectorPathGPUIndirectSegments {
+layout(std430, set = 0, binding = 1) buffer VectorPathGPUIndirectSegments {
   VectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
 };
 
-layout(std430, set = 1, binding = 2) buffer VectorPathGPUGridCells {
+layout(std430, set = 0, binding = 2) buffer VectorPathGPUGridCells {
   VectorPathGPUGridCell vectorPathGPUGridCells[];
 };
 
-layout(std430, set = 1, binding = 3) buffer VectorPathGPUShapes {
+layout(std430, set = 0, binding = 3) buffer VectorPathGPUShapes {
   VectorPathGPUShape vectorPathGPUShapes[];
 };
 

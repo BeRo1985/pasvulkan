@@ -590,6 +590,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanDescriptorSetGUINoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanDescriptorSetVectorPathLayout:TpvVulkanDescriptorSetLayout;
        fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -3292,6 +3293,29 @@ begin
                                               []);
  fVulkanDescriptorSetTextureLayout.Initialize;
 
+ fVulkanDescriptorSetVectorPathLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(0,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(1,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(2,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(3,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.Initialize;
+
  fVulkanDescriptors:=TpvCanvasVulkanDescriptorLinkedListNode.Create;
 
  fCountVulkanDescriptors:=0;
@@ -3336,6 +3360,7 @@ begin
 
  FreeAndNil(fVulkanDescriptors);
 
+ FreeAndNil(fVulkanDescriptorSetVectorPathLayout);
  FreeAndNil(fVulkanDescriptorSetTextureLayout);
  FreeAndNil(fVulkanDescriptorSetNoTextureLayout);
  FreeAndNil(fVulkanDescriptorSetGUINoTextureLayout);
@@ -3385,8 +3410,11 @@ begin
       1..2:begin
        VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
       end;
-      else {3:}begin
+      3:begin
        VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetGUINoTextureLayout);
+      end;
+      else {4:}begin
+       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout);
       end;
      end;
      VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
