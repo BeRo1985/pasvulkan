@@ -2519,8 +2519,9 @@ end;
 
 procedure GetIntersectionPointsForLineQuadraticCurve(const aSegment0:TpvVectorPathSegmentLine;const aSegment1:TpvVectorPathSegmentQuadraticCurve;const aIntersectionPoints:TpvVectorPathVectorList);
 var Min_,Max_,c0,c1,c2,n,p:TpvVectorPathVector;
-    a,cl,t:TpvDouble;
-    Roots:array[0..1] of TpvDouble;
+    {a,}cl,t:TpvDouble;
+    Roots:TpvDoubleDynamicArray;
+//  Roots:array[0..1] of TpvDouble;
     RootIndex,CountRoots:TpvSizeInt;
 begin
  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
@@ -2530,35 +2531,42 @@ begin
  c0:=TpvVectorPathVector.Create(aSegment1.Points[0].x,aSegment1.Points[0].y);
  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
- a:=n.Dot(c0)+cl;
- if IsZero(a) then begin
-  CountRoots:=0;
- end else begin
-  CountRoots:=SolveQuadratic(a,n.Dot(c1)/a,n.Dot(c2)/a,Roots[0],Roots[1]);
- end;
- for RootIndex:=0 to CountRoots-1 do begin
-  t:=Roots[RootIndex];
-  if (t>=0.0) and (t<=1.0) then begin
-   p:=(aSegment1.Points[0].Lerp(aSegment1.Points[1],t)).Lerp(aSegment1.Points[1].Lerp(aSegment1.Points[2],t),t);
-   if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
-    if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+ Roots:=(TpvPolynomial.Create([n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl])).GetRoots;
+ try
+  CountRoots:=length(Roots);
+ {a:=n.Dot(c0)+cl;
+  if IsZero(a) then begin
+   CountRoots:=0;
+  end else begin
+   CountRoots:=SolveQuadratic(a,n.Dot(c1)/a,n.Dot(c2)/a,Roots[0],Roots[1]);
+  end;}
+  for RootIndex:=0 to CountRoots-1 do begin
+   t:=Roots[RootIndex];
+   if (t>=0.0) and (t<=1.0) then begin
+    p:=(aSegment1.Points[0].Lerp(aSegment1.Points[1],t)).Lerp(aSegment1.Points[1].Lerp(aSegment1.Points[2],t),t);
+    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
+     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+      aIntersectionPoints.Add(p);
+     end;
+    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
+     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+      aIntersectionPoints.Add(p);
+     end;
+    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
      aIntersectionPoints.Add(p);
     end;
-   end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
-    if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
-     aIntersectionPoints.Add(p);
-    end;
-   end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
-    aIntersectionPoints.Add(p);
    end;
   end;
+ finally
+  Roots:=nil;
  end;
 end;
 
 procedure GetIntersectionPointsForLineCubicCurve(const aSegment0:TpvVectorPathSegmentLine;const aSegment1:TpvVectorPathSegmentCubicCurve;const aIntersectionPoints:TpvVectorPathVectorList);
 var Min_,Max_,c0,c1,c2,c3,n,p,p1,p2,p3,p4,p5,p6,p7,p8,p9:TpvVectorPathVector;
-    a,cl,t:TpvDouble;
-    Roots:array[0..2] of TpvDouble;
+    {a,}cl,t:TpvDouble;
+    Roots:TpvDoubleDynamicArray;
+//  Roots:array[0..2] of TpvDouble;
     RootIndex,CountRoots:TpvSizeInt;
 begin
  Min_:=aSegment0.Points[0].Minimum(aSegment0.Points[1]);
@@ -2573,41 +2581,48 @@ begin
  c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
- a:=n.Dot(c0)+cl;
- if IsZero(a) then begin
-  CountRoots:=0;
- end else begin
-  CountRoots:=SolveCubic(a,n.Dot(c1),n.Dot(c2),n.Dot(c3),Roots[0],Roots[1],Roots[2]);
- end;
- for RootIndex:=0 to CountRoots-1 do begin
-  t:=Roots[RootIndex];
-  if (t>=0.0) and (t<=1.0) then begin
-   p5:=p1.Lerp(p2,t);
-   p6:=p2.Lerp(p3,t);
-   p7:=p3.Lerp(p4,t);
-   p8:=p5.Lerp(p6,t);
-   p9:=p6.Lerp(p7,t);
-   p:=p8.Lerp(p9,t);
-   if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
-    if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+ Roots:=(TpvPolynomial.Create([n.Dot(c3),n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl])).GetRoots;
+ try
+  CountRoots:=length(Roots);
+ {a:=n.Dot(c0)+cl;
+  if IsZero(a) then begin
+   CountRoots:=0;
+  end else begin
+   CountRoots:=SolveCubic(a,n.Dot(c1),n.Dot(c2),n.Dot(c3),Roots[0],Roots[1],Roots[2]);
+  end;}
+  for RootIndex:=0 to CountRoots-1 do begin
+   t:=Roots[RootIndex];
+   if (t>=0.0) and (t<=1.0) then begin
+    p5:=p1.Lerp(p2,t);
+    p6:=p2.Lerp(p3,t);
+    p7:=p3.Lerp(p4,t);
+    p8:=p5.Lerp(p6,t);
+    p9:=p6.Lerp(p7,t);
+    p:=p8.Lerp(p9,t);
+    if SameValue(aSegment0.Points[0].x,aSegment0.Points[1].x) then begin
+     if (p.y>=Min_.y) and (p.y<=Max_.y) then begin
+      aIntersectionPoints.Add(p);
+     end;
+    end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
+     if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
+      aIntersectionPoints.Add(p);
+     end;
+    end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
      aIntersectionPoints.Add(p);
     end;
-   end else if SameValue(aSegment0.Points[0].y,aSegment0.Points[1].y) then begin
-    if (p.x>=Min_.x) and (p.x<=Max_.x) then begin
-     aIntersectionPoints.Add(p);
-    end;
-   end else if ((p.x>=Min_.x) and (p.x<=Max_.x)) and ((p.y>=Min_.y) and (p.y<=Max_.y)) then begin
-    aIntersectionPoints.Add(p);
    end;
   end;
+ finally
+  Roots:=nil;
  end;
 end;
 
 procedure GetIntersectionPointsForQuadraticCurveQuadraticCurve(const aSegment0,aSegment1:TpvVectorPathSegmentQuadraticCurve;const aIntersectionPoints:TpvVectorPathVectorList);
 var a1,a2,a3,b1,b2,b3,c10,c11,c12,c20,c21,c22:TpvVectorPathVector;
     v0,v1,v2,v3,v4,v5,v6,s,XRoot:TpvDouble;
-    Roots:array[0..3] of TpvDouble;
-    XRoots,YRoots:array[0..1] of TpvDouble;
+    Roots,XRoots,YRoots:TpvDoubleDynamicArray;
+//  Roots:array[0..3] of TpvDouble;
+//  XRoots,YRoots:array[0..1] of TpvDouble;
     CountRoots,CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
     OK:boolean;
 begin
@@ -2628,7 +2643,12 @@ begin
   v1:=v0-(c11.x*c11.y);
   v2:=v0+v1;
   v3:=c11.y*c11.y;
-  CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
+  Roots:=(TpvPolynomial.Create([c12.x*c22.y*c22.y,
+                               2.0*c12.x*c21.y*c22.y,
+                               (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
+                               (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
+                               ((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1)])).GetRoots;
+{ CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
                            2.0*c12.x*c21.y*c22.y,
                            (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
                            (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
@@ -2636,7 +2656,7 @@ begin
                            Roots[0],
                            Roots[1],
                            Roots[2],
-                           Roots[3]);
+                           Roots[3]);}
  end else begin
   v0:=(c12.x*c22.y)-(c12.y*c22.x);
   v1:=(c12.x*c21.y)-(c21.x*c12.y);
@@ -2645,7 +2665,12 @@ begin
   v4:=(c12.y*(c10.x-c20.x))-(c12.x*v3);
   v5:=((-c11.y)*v2)+(c12.y*v4);
   v6:=v2*v2;
-  CountRoots:=SolveQuartic(sqr(v0),
+  Roots:=(TpvPolynomial.Create([sqr(v0),
+                                2.0*v0*v1,
+                                ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
+                                ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
+                                ((v3*v6)+(v4*v5))/c12.y])).GetRoots;
+{ CountRoots:=SolveQuartic(sqr(v0),
                            2.0*v0*v1,
                            ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
                            ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
@@ -2653,42 +2678,59 @@ begin
                            Roots[0],
                            Roots[1],
                            Roots[2],
-                           Roots[3]);
+                           Roots[3]);}
  end;
- for Index:=0 to CountRoots-1 do begin
-  s:=Roots[Index];
-  if (s>=0.0) and (s<=1.0) then begin
-   CountXRoots:=SolveQuadratic(c12.x,
-                               c11.x,
-                               ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
-                               XRoots[0],
-                               XRoots[1]
-                              );
-   CountYRoots:=SolveQuadratic(c12.y,
-                               c11.y,
-                               ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
-                               YRoots[0],
-                               YRoots[1]
-                              );
-   if (CountXRoots>0) and (CountYRoots>0) then begin
-    OK:=false;
-    for XIndex:=0 to CountXRoots-1 do begin
-     XRoot:=XRoots[XIndex];
-     if (XRoot>=0.0) and (XRoot<=1.0) then begin
-      for YIndex:=0 to CountYRoots-1 do begin
-       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-        aIntersectionPoints.Add((c22*sqr(s))+(c21*s)+c20);
-        OK:=true;
-        break;
+ XRoots:=nil;
+ YRoots:=nil;
+ try
+  CountRoots:=length(Roots);
+  for Index:=0 to CountRoots-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    XRoots:=(TpvPolynomial.Create([c12.x,
+                                   c11.x,
+                                   ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x)])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c11.y,
+                                   ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y)])).GetRoots;
+    CountXRoots:=length(XRoots);
+    CountYRoots:=length(YRoots);
+{   CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );}
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+         aIntersectionPoints.Add((c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
        end;
       end;
-     end;
-     if OK then begin
-      break;
+      if OK then begin
+       break;
+      end;
      end;
     end;
    end;
   end;
+ finally
+  Roots:=nil;
+  XRoots:=nil;
+  YRoots:=nil;
  end;
 end;
 
@@ -2697,8 +2739,8 @@ var a1,a2,a3,b1,b2,b3,b4,
     c10,c11,c12,c20,c21,c22,c23,
     c10s,c11s,c12s,c20s,c21s,c22s,c23s:TpvVectorPathVector;
     PolyCoefs:array[0..6] of TpvDouble;
-    Roots:TpvDoubleDynamicArray;
-    XRoots,YRoots:array[0..1] of TpvDouble;
+    Roots,XRoots,YRoots:TpvDoubleDynamicArray;
+    //XRoots,YRoots:array[0..1] of TpvDouble;
     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
     OK:boolean;
     s,XRoot:TpvDouble;
@@ -2731,41 +2773,58 @@ begin
  PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
  PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
  PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
- Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
- for Index:=0 to length(Roots)-1 do begin
-  s:=Roots[Index];
-  if (s>=0.0) and (s<=1.0) then begin
-   CountXRoots:=SolveQuadratic(c12.x,
-                               c11.x,
-                               (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
-                               XRoots[0],
-                               XRoots[1]
-                              );
-   CountYRoots:=SolveQuadratic(c12.y,
-                               c11.y,
-                               (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
-                               YRoots[0],
-                               YRoots[1]
-                              );
-   if (CountXRoots>0) and (CountYRoots>0) then begin
-    OK:=false;
-    for XIndex:=0 to CountXRoots-1 do begin
-     XRoot:=XRoots[XIndex];
-     if (XRoot>=0.0) and (XRoot<=1.0) then begin
-      for YIndex:=0 to CountYRoots-1 do begin
-       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-        aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
-        OK:=true;
-        break;
+ Roots:=(TpvPolynomial.Create([PolyCoefs[0],PolyCoefs[1],PolyCoefs[2],PolyCoefs[3],PolyCoefs[4],PolyCoefs[5],PolyCoefs[6]])).GetRootsInInterval(0.0,1.0);
+//Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+ XRoots:=nil;
+ YRoots:=nil;
+ try
+  for Index:=0 to length(Roots)-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    XRoots:=(TpvPolynomial.Create([c12.x,
+                                   c11.x,
+                                   (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x)])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c11.y,
+                                   (((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y)])).GetRoots;
+    CountXRoots:=length(XRoots);
+    CountYRoots:=length(YRoots);
+ {  CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );}
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+         aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
        end;
       end;
-     end;
-     if OK then begin
-      break;
+      if OK then begin
+       break;
+      end;
      end;
     end;
    end;
   end;
+ finally
+  Roots:=nil;
+  XRoots:=nil;
+  YRoots:=nil;
  end;
 end;
 
@@ -2775,8 +2834,8 @@ var a1,a2,a3,a4,b1,b2,b3,b4,
     c10s,c11s,c12s,c13s,c20s,c21s,c22s,c23s,
     c10c,c11c,c12c,c13c,c20c,c21c,c22c,c23c:TpvVectorPathVector;
     PolyCoefs:array[0..9] of TpvDouble;
-    Roots:TpvDoubleDynamicArray;
-    XRoots,YRoots:array[0..1] of TpvDouble;
+    Roots,XRoots,YRoots:TpvDoubleDynamicArray;
+//  XRoots,YRoots:array[0..1] of TpvDouble;
     CountXRoots,CountYRoots,Index,XIndex,YIndex:TpvSizeInt;
     OK:boolean;
     s,XRoot:TpvDouble;
@@ -2838,41 +2897,58 @@ begin
                2*c10.x*c11.x*c11s.y*c13.x*c13.y+2*c10.x*c20.x*c12.x*c12s.y*c13.y+6*c10.x*c20.x*c20.y*c13.x*c13s.y-3*c10.x*c11.y*c20.y*c12.y*c13s.x+2*c10.x*c12.x*c20.y*c12s.y*c13.x+c10.x*c11s.y*c12.x*c12.y*c13.x+c10.y*c11.x*c11.y*c12s.x*c13.y+4*c10.y*c11.x*c20.y*c12.y*c13s.x-3*c10.y*c20.x*c11.y*c12.y*c13s.x+2*c10.y*c20.x*c12.x*c12s.y*c13.x+2*c10.y*c11.y*c12.x*c20.y*c13s.x+c11.x*c20.x*c11.y*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c20.y*c13s.y-2*c10.x*c12s.x*c20.y*c12.y*c13.y-6*c10.y*c20.x*c20.y*c13s.x*c13.y-2*c10.y*c20.x*c12s.x*c12.y*c13.y-2*c10.y*c11s.x*c11.y*c13.x*c13.y-c10.y*c11s.x*c12.x*c12.y*c13.y-2*c10.y*c12s.x*c20.y*c12.y*c13.x-2*c11.x*c20.x*c11s.y*c13.x*c13.y-c11.x*c11.y*c12s.x*c20.y*c13.y+3*c20.x*c11.y*c20.y*c12.y*c13s.x-2*c20.x*c12.x*c20.y*c12s.y*c13.x-c20.x*c11s.y*c12.x*c12.y*c13.x+3*c10s.y*c11.x*c12.x*c13.x*c13.y+3*c11.x*c12.x*c20s.y*c13.x*c13.y+2*c20.x*c12s.x*c20.y*c12.y*c13.y-3*c10s.x*c11.y*c12.y*c13.x*c13.y+
                2*c11s.x*c11.y*c20.y*c13.x*c13.y+c11s.x*c12.x*c20.y*c12.y*c13.y-3*c20s.x*c11.y*c12.y*c13.x*c13.y-c10c.x*c13c.y+c10c.y*c13c.x+c20c.x*c13c.y-c20c.y*c13c.x-3*c10.x*c20s.x*c13c.y-c10.x*c11c.y*c13s.x+3*c10s.x*c20.x*c13c.y+c10.y*c11c.x*c13s.y+3*c10.y*c20s.y*c13c.x+c20.x*c11c.y*c13s.x+c10s.x*c12c.y*c13.x-3*c10s.y*c20.y*c13c.x-c10s.y*c12c.x*c13.y+c20s.x*c12c.y*c13.x-c11c.x*c20.y*c13s.y-c12c.x*c20s.y*c13.y-c10.x*c11s.x*c11.y*c13s.y+c10.y*c11.x*c11s.y*c13s.x-3*c10.x*c10s.y*c13s.x*c13.y-c10.x*c11s.y*c12s.x*c13.y+c10.y*c11s.x*c12s.y*c13.x-c11.x*c11s.y*c20.y*c13s.x+3*c10s.x*c10.y*c13.x*c13s.y+c10s.x*c11.x*c12.y*c13s.y+2*c10s.x*c11.y*c12.x*c13s.y-2*c10s.y*c11.x*c12.y*c13s.x-c10s.y*c11.y*c12.x*c13s.x+c11s.x*c20.x*c11.y*c13s.y-3*c10.x*c20s.y*c13s.x*c13.y+3*c10.y*c20s.x*c13.x*c13s.y+c11.x*c20s.x*c12.y*c13s.y-2*c11.x*c20s.y*c12.y*c13s.x+c20.x*c11s.y*c12s.x*c13.y-c11.y*c12.x*c20s.y*c13s.x-c10s.x*c12.x*c12s.y*c13.y-3*c10s.x*c20.y*c13.x*c13s.y+
                3*c10s.y*c20.x*c13s.x*c13.y+c10s.y*c12s.x*c12.y*c13.x-c11s.x*c20.y*c12s.y*c13.x+2*c20s.x*c11.y*c12.x*c13s.y+3*c20.x*c20s.y*c13s.x*c13.y-c20s.x*c12.x*c12s.y*c13.y-3*c20s.x*c20.y*c13.x*c13s.y+c12s.x*c20s.y*c12.y*c13.x;
- Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
- for Index:=0 to length(Roots)-1 do begin
-  s:=Roots[Index];
-  if (s>=0.0) and (s<=1.0) then begin
-   CountXRoots:=SolveQuadratic(c12.x,
-                               c11.x,
-                               (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
-                               XRoots[0],
-                               XRoots[1]
-                              );
-   CountYRoots:=SolveQuadratic(c12.y,
-                               c11.y,
-                               (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
-                               YRoots[0],
-                               YRoots[1]
-                              );
-   if (CountXRoots>0) and (CountYRoots>0) then begin
-    OK:=false;
-    for XIndex:=0 to CountXRoots-1 do begin
-     XRoot:=XRoots[XIndex];
-     if (XRoot>=0.0) and (XRoot<=1.0) then begin
-      for YIndex:=0 to CountYRoots-1 do begin
-       if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
-        aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
-        OK:=true;
-        break;
+ Roots:=(TpvPolynomial.Create([PolyCoefs[0],PolyCoefs[1],PolyCoefs[2],PolyCoefs[3],PolyCoefs[4],PolyCoefs[5],PolyCoefs[6],PolyCoefs[7],PolyCoefs[8],PolyCoefs[9]])).GetRootsInInterval(0.0,1.0);
+//Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
+ XRoots:=nil;
+ YRoots:=nil;
+ try
+  for Index:=0 to length(Roots)-1 do begin
+   s:=Roots[Index];
+   if (s>=0.0) and (s<=1.0) then begin
+    XRoots:=(TpvPolynomial.Create([c12.x,
+                                   c11.x,
+                                   (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x)])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c11.y,
+                                   (((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y)])).GetRoots;
+    CountXRoots:=length(XRoots);
+    CountYRoots:=length(YRoots);
+{   CountXRoots:=SolveQuadratic(c12.x,
+                                c11.x,
+                                (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
+                                XRoots[0],
+                                XRoots[1]
+                               );
+    CountYRoots:=SolveQuadratic(c12.y,
+                                c11.y,
+                                (((c10.x-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
+                                YRoots[0],
+                                YRoots[1]
+                               );}
+    if (CountXRoots>0) and (CountYRoots>0) then begin
+     OK:=false;
+     for XIndex:=0 to CountXRoots-1 do begin
+      XRoot:=XRoots[XIndex];
+      if (XRoot>=0.0) and (XRoot<=1.0) then begin
+       for YIndex:=0 to CountYRoots-1 do begin
+        if SameValue(XRoot,YRoots[XIndex],1e-4) then begin
+         aIntersectionPoints.Add((c23*(sqr(s)*s))+(c22*sqr(s))+(c21*s)+c20);
+         OK:=true;
+         break;
+        end;
        end;
       end;
-     end;
-     if OK then begin
-      break;
+      if OK then begin
+       break;
+      end;
      end;
     end;
    end;
   end;
+ finally
+  Roots:=nil;
+  XRoots:=nil;
+  YRoots:=nil;
  end;
 end;
 
