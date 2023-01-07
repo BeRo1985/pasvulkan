@@ -18393,7 +18393,72 @@ begin
 end;
 
 function TpvPolynomial.GetQuarticRoots:TpvDoubleDynamicArray;
+var c4,c3,c2,c1,c0,y,d,f,t2,t1,Plus,Minus:TpvDouble;
+    ResolveRoots:TpvDoubleDynamicArray;
 begin
+ result:=nil;
+ if GetDegree=4 then begin
+  c4:=Coefs[4];
+  c3:=Coefs[3]/c4;
+  c2:=Coefs[2]/c4;
+  c1:=Coefs[1]/c4;
+  c0:=Coefs[0]/c4;
+  ResolveRoots:=(TpvPolynomial.Create([1.0,-c2,(c3*c1)-(4.0*c0),((((-c3)*c3)*c0)+((4.0*c2)*c0))-sqr(c1)])).GetCubicRoots;
+  y:=ResolveRoots[0];
+  d:=((sqr(c3)*0.25)-c2)+y;
+  if IsZero(abs(d)) then begin
+   t2:=sqr(y)-(4.0*c0);
+   if (t2>=0.0) or IsZero(t2) then begin
+    if t2<0.0 then begin
+     t2:=0.0;
+    end;
+    t2:=2.0*sqrt(t2);
+    t1:=((3.0*c3)*c3)-(2.0*c2);
+    d:=t1+t2;
+    if (d>0.0) and not IsZero(d) then begin
+     d:=sqrt(d);
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+(d*0.5);
+     result[1]:=(c3*(-0.25))-(d*0.5);
+    end;
+    d:=t1-t2;
+    if (d>0.0) and not IsZero(d) then begin
+     d:=sqrt(d);
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+(d*0.5);
+     result[1]:=(c3*(-0.25))-(d*0.5);
+    end;
+   end;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   t1:=((((3.0*c3)*c3)*0.25)-sqr(d))-(2.0*c2);
+   t2:=((((4.0*c3)*c2)-(8.0*c1))-((c3*c3)*c3))/(4.0*d);
+   Plus:=t1+t2;
+   Minus:=t1-t2;
+   if not IsZero(Plus) then begin
+    f:=sqrt(Plus);
+    if not IsZero(Minus) then begin
+     SetLength(result,4);
+     result[0]:=(c3*(-0.25))+((d+f)*0.5);
+     result[1]:=(c3*(-0.25))+((d-f)*0.5);
+     f:=sqrt(Minus);
+     result[2]:=(c3*(-0.25))+((f-d)*0.5);
+     result[3]:=(c3*(-0.25))-((f+d)*0.5);
+    end else begin
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+((d+f)*0.5);
+     result[1]:=(c3*(-0.25))+((d-f)*0.5);
+    end;
+   end else if not IsZero(Minus) then begin
+    f:=sqrt(Minus);
+    SetLength(result,2);
+    result[0]:=(c3*(-0.25))+((f-d)*0.5);
+    result[1]:=(c3*(-0.25))-((f+d)*0.5);
+   end;
+  end else begin
+   // No roots
+  end;
+ end;
 end;
 
 function TpvPolynomial.GetRoots:TpvDoubleDynamicArray;
