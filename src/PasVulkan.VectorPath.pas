@@ -562,22 +562,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathGPUShape=class
       public
        const CoordinateExtents=1.41421356237; // sqrt(2.0)
-       type { THorizontalBand }
-            THorizontalBand=class
-             private
-              fVectorPathGPUShape:TpvVectorPathGPUShape;
-              fY0:TpvDouble;
-              fY1:TpvDouble;
-              fSafeY0:TpvDouble;
-              fSafeY1:TpvDouble;
-              fSegments:TpvVectorPathSegments;
-              fIntersectionPoints:TpvVectorPathVectorList;
-             public
-              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1,aSafeY0,aSafeY1:TpvDouble); reintroduce;
-              destructor Destroy; override;
-            end;
-            THorizontalBands=TpvObjectGenericList<THorizontalBand>;
-            { TGridCell }
+       type { TGridCell }
             TGridCell=class
              public
               type TKind=
@@ -602,7 +587,6 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fResolution:TpvInt32;
        fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
-       fHorizontalBands:THorizontalBands;
        fGridCells:TGridCells;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
@@ -4794,61 +4778,12 @@ begin
  result:=TpvVectorPathShape.Create(self);
 end;
 
-{ TpvVectorPathGPUShape.THorizontalBand }
+{ TpvVectorPathGPUShape.TGridCell }
 
-function TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc(const a,b:TpvDouble):TpvInt32;
+function TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc(const a,b:TpvDouble):TpvInt32;
 begin
  result:=Sign(a-b);
 end;
-
-constructor TpvVectorPathGPUShape.THorizontalBand.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aY0,aY1,aSafeY0,aSafeY1:TpvDouble);
-var Segment:TpvVectorPathSegment;
-    BoundingBox:TpvVectorPathBoundingBox;
-    SegmentIndex,OtherSegmentIndex:TpvSizeInt;
-begin
- inherited Create;
-
- fVectorPathGPUShape:=aVectorPathGPUShape;
-
- fY0:=aY0;
- fY1:=aY1;
-
- fSafeY0:=aSafeY0-TpvVectorPathGPUShape.CoordinateExtents;
- fSafeY1:=aSafeY1+TpvVectorPathGPUShape.CoordinateExtents;
-
- fSegments:=TpvVectorPathSegments.Create;
- fSegments.OwnsObjects:=false;
-
- fIntersectionPoints:=TpvVectorPathVectorList.Create;
-
- for Segment in fVectorPathGPUShape.fSegments do begin
-  BoundingBox:=Segment.GetBoundingBox;
-  if (BoundingBox.MinMax[0].y<=fSafeY1) and (fSafeY0<=BoundingBox.MinMax[1].y) then begin
-   fSegments.Add(Segment);
-  end;
- end;
-
- fSegments.SortHorizontal;
-
- for SegmentIndex:=0 to fSegments.Count-1 do begin
-  Segment:=fSegments[SegmentIndex];
-  for OtherSegmentIndex:=SegmentIndex+1 to fSegments.Count-1 do begin
-   Segment.GetIntersectionPointsWithSegment(fSegments[OtherSegmentIndex],fIntersectionPoints);
-  end;
- end;
-
- fIntersectionPoints.RemoveDuplicates;
-
-end;
-
-destructor TpvVectorPathGPUShape.THorizontalBand.Destroy;
-begin
- FreeAndNil(fIntersectionPoints);
- FreeAndNil(fSegments);
- inherited Destroy;
-end;
-
-{ TpvVectorPathGPUShape.TGridCell }
 
 constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox);
 type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
@@ -4948,7 +4883,7 @@ begin
    end;
 
    if YCoordinates.Count>=2 then begin
-    TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_THorizontalBand_YCoordinatesSortFunc);
+    TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc);
    end;
 
    LastY:=fExtendedBoundingBox.MinMax[0].y;
@@ -5026,10 +4961,10 @@ begin
   fSegmentDynamicAABBTree.Rebuild;
  end;
 
- fHorizontalBands:=THorizontalBands.Create;
- fHorizontalBands.OwnsObjects:=true;
+ fGridCells:=TGridCells.Create;
+ fGridCells.OwnsObjects:=true;
 
- for Index:=0 to fResolution-1 do begin
+{for Index:=0 to fResolution-1 do begin
   t0:=Index/fResolution;
   t1:=(Index+1)/fResolution;
   fHorizontalBands.Add(THorizontalBand.Create(self,
@@ -5037,13 +4972,13 @@ begin
                                               (fBoundingBox.MinMax[0].y*t1)+(fBoundingBox.MinMax[1].y*(1.0-t1)),
                                               fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index-0.125)/fResolution)),
                                               fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index+1.125)/fResolution))));
- end;
+ end;}
 
 end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
- FreeAndNil(fHorizontalBands);
+ FreeAndNil(fGridCells);
  FreeAndNil(fSegmentDynamicAABBTree);
  FreeAndNil(fSegments);
  FreeAndNil(fVectorPathShape);
