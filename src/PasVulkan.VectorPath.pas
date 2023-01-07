@@ -4919,7 +4919,7 @@ begin
 
    for PointIndex:=IntersectionPoints.Count-1 downto 0 do begin
     Vector:=IntersectionPoints[PointIndex];
-    if Vector.x>fExtendedBoundingBox.MinMax[0].x then begin
+    if Vector.x>=fExtendedBoundingBox.MinMax[0].x then begin
      IntersectionPoints.Delete(PointIndex);
     end;
    end;
@@ -4935,7 +4935,7 @@ begin
    try
     for Vector in IntersectionPoints do begin
      //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
-     if Vector.x<=fExtendedBoundingBox.MinMax[0].x then begin
+     if Vector.x<fExtendedBoundingBox.MinMax[0].x then begin
       CurrentY:=Vector.y;
       if not YCoordinateHashMap.ExistKey(CurrentY) then begin
        YCoordinateHashMap.Add(CurrentY,true);
