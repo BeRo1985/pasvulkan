@@ -4928,8 +4928,8 @@ end;
 constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 var Contour:TpvVectorPathContour;
     Segment,NewSegment:TpvVectorPathSegment;
-    Index:TpvSizeInt;
-    t0,t1:TpvDouble;
+    IndexX,IndexY:TpvSizeInt;
+    tx0,tx1,ty0,ty1:TpvDouble;
 begin
 
  inherited Create;
@@ -4964,15 +4964,19 @@ begin
  fGridCells:=TGridCells.Create;
  fGridCells.OwnsObjects:=true;
 
-{for Index:=0 to fResolution-1 do begin
-  t0:=Index/fResolution;
-  t1:=(Index+1)/fResolution;
-  fHorizontalBands.Add(THorizontalBand.Create(self,
-                                              (fBoundingBox.MinMax[0].y*t0)+(fBoundingBox.MinMax[1].y*(1.0-t0)),
-                                              (fBoundingBox.MinMax[0].y*t1)+(fBoundingBox.MinMax[1].y*(1.0-t1)),
-                                              fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index-0.125)/fResolution)),
-                                              fBoundingBox.MinMax[0].y-((fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y)*((Index+1.125)/fResolution))));
- end;}
+ for IndexY:=0 to fResolution-1 do begin
+  ty0:=IndexY/fResolution;
+  ty1:=(IndexY+1)/fResolution;
+  for IndexX:=0 to fResolution-1 do begin
+   tx0:=IndexX/fResolution;
+   tx1:=(IndexX+1)/fResolution;
+   fGridCells.Add(TGridCell.Create(self,
+                                   TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*tx0)+(fBoundingBox.MinMax[1].x*(1.0-tx0)),
+                                                                                              (fBoundingBox.MinMax[0].y*ty0)+(fBoundingBox.MinMax[1].y*(1.0-ty0))),
+                                                                   TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*tx1)+(fBoundingBox.MinMax[1].x*(1.0-tx1)),
+                                                                                              (fBoundingBox.MinMax[0].y*ty1)+(fBoundingBox.MinMax[1].y*(1.0-ty1))))));
+  end;
+ end;
 
 end;
 
