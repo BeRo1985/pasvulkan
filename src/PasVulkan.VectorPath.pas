@@ -796,11 +796,11 @@ var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
  end;
 begin
  begin
-  if fCount>1 then begin
+  if Count>1 then begin
    StackItem:=@Stack[0];
    StackItem^.Left:=0;
-   StackItem^.Right:=fCount-1;
-   StackItem^.Depth:=IntLog2(fCount) shl 1;
+   StackItem^.Right:=Count-1;
+   StackItem^.Depth:=IntLog2(Count) shl 1;
    inc(StackItem);
    while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
     dec(StackItem);
@@ -3349,11 +3349,11 @@ var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
  end;
 begin
  begin
-  if fCount>1 then begin
+  if Count>1 then begin
    StackItem:=@Stack[0];
    StackItem^.Left:=0;
-   StackItem^.Right:=fCount-1;
-   StackItem^.Depth:=IntLog2(fCount) shl 1;
+   StackItem^.Right:=Count-1;
+   StackItem^.Depth:=IntLog2(Count) shl 1;
    inc(StackItem);
    while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
     dec(StackItem);
