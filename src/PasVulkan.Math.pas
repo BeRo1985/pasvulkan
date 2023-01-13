@@ -1174,7 +1174,7 @@ type PpvScalar=^TpvScalar;
        class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        property Width:TpvFloat read GetWidth write SetWidth;

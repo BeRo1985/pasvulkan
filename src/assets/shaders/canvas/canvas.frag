@@ -771,6 +771,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
 
 void main(void){
   vec4 color;
+#ifndef GUI_ELEMENTS
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
   mat3x2 fillTransformMatrix = mat3x2(pushConstants.fillMatrix[0].xy, 
                                       pushConstants.fillMatrix[1].xy, 
@@ -895,6 +896,7 @@ void main(void){
       }
     }
   }
+#endif
 #endif
 #ifdef GUI_ELEMENTS
   {    

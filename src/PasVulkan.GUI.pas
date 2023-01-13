@@ -75,6 +75,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Collections,
+     PasVulkan.DataStructures.LinkedList,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -192,6 +193,7 @@ type TpvGUIObject=class;
                      DrawFilledRectangle
                     );
              private
+              fLinkedListHead:TpvLinkedListHead;
               fZIndex:TpvSizeInt;
               fState:TpvSizeInt;
               case fKind:TKind of
@@ -227,9 +229,6 @@ type TpvGUIObject=class;
             end;
             PBatchItem=^TBatchItem;
             TBatchItems=array of TBatchItem;
-            TBatchItemBoolean=Boolean;
-            PBatchItemBoolean=^TBatchItemBoolean;
-            TBatchItemBooleans=array of TBatchItemBoolean;
       private
        fInstance:TpvGUIInstance;
        fCanvas:TpvCanvas;
@@ -256,7 +255,6 @@ type TpvGUIObject=class;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
        fResortedTransparentBatchItems:TBatchItems;
-       fResortedTransparentBatchItemAddedBooleans:TBatchItemBooleans;
        fCountResortedTransparentBatchItems:TpvSizeInt;
        fDoNeedNewState:Boolean;
        fUseScissor:Boolean;
@@ -3465,7 +3463,6 @@ begin
  fCountTransparentBatchItems:=0;
 
  fResortedTransparentBatchItems:=nil;
- fResortedTransparentBatchItemAddedBooleans:=nil;
  fCountResortedTransparentBatchItems:=0;
 
  fCountTotalBatchItems:=0;
@@ -3492,7 +3489,6 @@ begin
  fOpaqueBatchItems:=nil;
  fTransparentBatchItems:=nil;
  fResortedTransparentBatchItems:=nil;
- fResortedTransparentBatchItemAddedBooleans:=nil;
  inherited Destroy;
 end;
 
@@ -3683,21 +3679,23 @@ begin
 end;
 
 procedure TpvGUIDrawEngine.Draw;
-var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
+var LastClipRect,LastModelMatrix,LastColor,LastState,LastZIndex:TpvSizeInt;
     State:TpvGUIDrawEngine.PState;
     InverseCountTotalBatchItems:TpvDouble;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
     LastScissorRect:TpvRect;
- procedure AddResortedBatchItem(const aBatchItem:TBatchItem;const aIndex:TpvSizeInt);
+    BatchItemLinkedListQueue:TBatchItem;
+    BatchItemLinkedListQueueItemA,
+    BatchItemLinkedListQueueItemB,NextBatchItemLinkedListQueueItemB,
+    BatchItemLinkedListQueueItemC,NextBatchItemLinkedListQueueItemC:PBatchItem;
+ procedure AddResortedBatchItem(const aBatchItem:TBatchItem); overload;
  begin
-  if not fResortedTransparentBatchItemAddedBooleans[aIndex] then begin
-   inc(fCountResortedTransparentBatchItems);
-   if length(fResortedTransparentBatchItems)<fCountResortedTransparentBatchItems then begin
-    SetLength(fResortedTransparentBatchItems,fCountResortedTransparentBatchItems*2);
-   end;
-   fResortedTransparentBatchItems[fCountResortedTransparentBatchItems-1]:=aBatchItem;
-   fResortedTransparentBatchItemAddedBooleans[aIndex]:=true;
+  inc(fCountResortedTransparentBatchItems);
+  if length(fResortedTransparentBatchItems)<fCountResortedTransparentBatchItems then begin
+   SetLength(fResortedTransparentBatchItems,fCountResortedTransparentBatchItems*2);
   end;
+  fResortedTransparentBatchItems[fCountResortedTransparentBatchItems-1]:=aBatchItem;
+  LastZIndex:=aBatchItem.fZIndex;
  end;
  function GetBatchItemRect(const aBatchItem:TBatchItem):TpvRect;
  begin
@@ -3722,53 +3720,6 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
    end;
    else begin
     result:=TpvRect.CreateAbsolute(1.0,1.0,-1.0,-1.0);
-   end;
-  end;
- end;
- function CombineBatchItem(const aBatchItem,aOtherBatchItem:TBatchItem;const aIndex,aOtherIndex:TpvSizeInt):boolean;
- begin
-  case aOtherBatchItem.fKind of
-   TBatchItem.TKind.DrawVulkanCanvas:begin
-    result:=false;
-   end;
-   else begin
-    result:=true;
-    case aBatchItem.fKind of
-     TBatchItem.TKind.DrawVulkanCanvas:begin
-      result:=false;
-     end;
-     else begin
-      if ((aBatchItem.fKind in [TBatchItem.TKind.DrawFilledRectangle]) and
-          (aOtherBatchItem.fKind=TBatchItem.TKind.DrawSprite)) or
-         ((aBatchItem.fKind=TBatchItem.TKind.DrawSprite) and
-          (aOtherBatchItem.fKind in [TBatchItem.TKind.DrawFilledRectangle])) or
-         GetBatchItemRect(aBatchItem).Intersect(GetBatchItemRect(aOtherBatchItem)) then begin
-       result:=false;
-      end;
-     end;
-    end;
-    if result and
-       (not fResortedTransparentBatchItemAddedBooleans[aOtherIndex]) and
-       (aBatchItem.fKind=aOtherBatchItem.fKind) then begin
-     case aBatchItem.fKind of
-      TBatchItem.TKind.DrawVulkanCanvas:begin
-       result:=false;
-      end;
-      TBatchItem.TKind.DrawInvisibleDepthRect:begin
-       if not aBatchItem.fDrawInvisibleDepthRect.Intersect(aOtherBatchItem.fDrawInvisibleDepthRect) then begin
-        AddResortedBatchItem(aOtherBatchItem,aOtherIndex);
-       end;
-      end;
-      TBatchItem.TKind.DrawSprite:begin
-       if (aBatchItem.fDrawSpriteSprite.ArrayTexture=aOtherBatchItem.fDrawSpriteSprite.ArrayTexture) and
-          not aBatchItem.fDrawSpriteDestRect.Intersect(aOtherBatchItem.fDrawSpriteDestRect) then begin
-        AddResortedBatchItem(aOtherBatchItem,aOtherIndex);
-       end;
-      end;
-      else begin
-      end;
-     end;
-    end;
    end;
   end;
  end;
@@ -3856,7 +3807,8 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
    end;
   end;
  end;
-var Index,OtherIndex:TpvSizeInt;
+var Index,OtherIndex,Count:TpvSizeInt;
+    OK:boolean;
     LastScissor:TVkRect2D;
 begin
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
@@ -3888,30 +3840,60 @@ begin
  end;
  if fCountTransparentBatchItems>0 then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-{ if fStrategy=TStrategy.TwoPassBidirectional then begin
+  if {fStrategy=TStrategy.TwoPassBidirectional} false then begin
+   LastZIndex:=Low(TpvSizeInt);
    if length(fResortedTransparentBatchItems)<length(fTransparentBatchItems) then begin
     SetLength(fResortedTransparentBatchItems,length(fTransparentBatchItems));
    end;
-   if length(fResortedTransparentBatchItemAddedBooleans)<length(fTransparentBatchItems) then begin
-    SetLength(fResortedTransparentBatchItemAddedBooleans,length(fTransparentBatchItems));
-   end;
    fCountResortedTransparentBatchItems:=0;
-   for Index:=0 to fCountTransparentBatchItems-1 do begin
-    fResortedTransparentBatchItemAddedBooleans[Index]:=false;
-   end;
-   for Index:=0 to fCountTransparentBatchItems-1 do begin
-    AddResortedBatchItem(fTransparentBatchItems[Index],Index);
-    for OtherIndex:=Index+1 to fCountTransparentBatchItems-1 do begin
-     if not CombineBatchItem(fTransparentBatchItems[Index],fTransparentBatchItems[OtherIndex],Index,OtherIndex) then begin
-      break;
+   Count:=0;
+   LinkedListInitialize(@BatchItemLinkedListQueue.fLinkedListHead);
+   begin
+    for Index:=0 to fCountTransparentBatchItems-1 do begin
+     LinkedListPushBack(@BatchItemLinkedListQueue.fLinkedListHead,@fTransparentBatchItems[Index].fLinkedListHead);
+    end;
+    while LinkedListPopFront(@BatchItemLinkedListQueue.fLinkedListHead,BatchItemLinkedListQueueItemA) do begin
+     AddResortedBatchItem(BatchItemLinkedListQueueItemA^);
+     inc(Count);
+     if not LinkedListEmpty(@BatchItemLinkedListQueue.fLinkedListHead) then begin
+      BatchItemLinkedListQueueItemB:=PBatchItem(LinkedListHead(@BatchItemLinkedListQueue.fLinkedListHead));
+      while assigned(BatchItemLinkedListQueueItemB) do begin
+       NextBatchItemLinkedListQueueItemB:=PBatchItem(LinkedListNext(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
+       if ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or (BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawVulkanCanvas)) or
+          ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawFilledRectangle)<>(BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawFilledRectangle)) or
+          (LastZIndex>BatchItemLinkedListQueueItemB^.fZIndex) then begin
+        // Barrier
+        break;
+       end else begin
+        OK:=BatchItemLinkedListQueueItemA^.fKind=BatchItemLinkedListQueueItemB^.fKind;
+        if OK then begin
+         BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
+         while assigned(BatchItemLinkedListQueueItemC) do begin
+          if (BatchItemLinkedListQueueItemC^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or
+             GetBatchItemRect(BatchItemLinkedListQueueItemB^).Intersect(GetBatchItemRect(BatchItemLinkedListQueueItemC^)) then begin
+           OK:=false;
+           break;
+          end;
+          BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemC^.fLinkedListHead));
+         end;
+        end;
+        if OK then begin
+         LinkedListRemove(@BatchItemLinkedListQueueItemB^.fLinkedListHead);
+         AddResortedBatchItem(BatchItemLinkedListQueueItemB^);
+        end else begin
+         break;
+        end;
+        BatchItemLinkedListQueueItemB:=NextBatchItemLinkedListQueueItemB;
+       end;
+      end;
      end;
     end;
    end;
    for Index:=0 to fCountResortedTransparentBatchItems-1 do begin
     DrawBatchItem(fResortedTransparentBatchItems[Index]);
    end;
-   writeln(fCountTransparentBatchItems,' ',fCountResortedTransparentBatchItems);
-  end else}begin
+// writeln(fCountTransparentBatchItems,' ',fCountResortedTransparentBatchItems,' ',Count);
+  end else begin
    for Index:=0 to fCountTransparentBatchItems-1 do begin
     DrawBatchItem(fTransparentBatchItems[Index]);
    end;
