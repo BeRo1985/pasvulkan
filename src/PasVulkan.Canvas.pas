@@ -3005,9 +3005,9 @@ begin
  end;
 
  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
-  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathClipDistanceSPIRVData,CanvasFragmentAtlasTextureClipDistanceSPIRVDataSize);
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathClipDistanceSPIRVData,CanvasFragmentVectorPathClipDistanceSPIRVDataSize);
  end else begin
-  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathSPIRVData,CanvasFragmentVectorPathSPIRVDataSize);
  end;
  try
   fCanvasFragmentVectorPathShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
@@ -3060,9 +3060,9 @@ begin
  end;
 
  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
-  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingClipDistanceSPIRVData,CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRVDataSize);
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingClipDistanceSPIRVData,CanvasFragmentVectorPathNoBlendingClipDistanceSPIRVDataSize);
  end else begin
-  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingSPIRVData,CanvasFragmentAtlasTextureNoBlendingSPIRVDataSize);
+  Stream:=TpvDataStream.Create(@CanvasFragmentVectorPathNoBlendingSPIRVData,CanvasFragmentVectorPathNoBlendingSPIRVDataSize);
  end;
  try
   fCanvasFragmentVectorPathNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);

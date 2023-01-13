@@ -7580,8 +7580,8 @@ begin
 end;
 
 function TpvVulkanPhysicalDevice.GetBestSupportedDepthFormat(const aWithStencil:boolean):TVkFormat;
-const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
-                                        VK_FORMAT_D32_SFLOAT,
+const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT,
+                                        VK_FORMAT_D32_SFLOAT_S8_UINT,
                                         VK_FORMAT_D24_UNORM_S8_UINT,
                                         VK_FORMAT_D16_UNORM_S8_UINT,
                                         VK_FORMAT_D16_UNORM);
@@ -7599,7 +7599,7 @@ begin
    fInstance.fVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,Format,@FormatProperties);
    if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
     result:=Format;
-    exit;
+    break;
    end;
   end;
  end else begin
@@ -7608,10 +7608,13 @@ begin
    fInstance.fVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,Format,@FormatProperties);
    if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
     result:=Format;
-    exit;
+    break;
    end;
   end;
  end;
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
+ VulkanDebugLn('GetBestSupportedDepthFormat, Format: '+IntToStr(TpvUInt64(result)));
+{$ifend}
 end;
 
 function TpvVulkanPhysicalDevice.GetQueueNodeIndex(const aSurface:TpvVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TpvInt32;

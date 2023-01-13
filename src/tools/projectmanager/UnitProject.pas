@@ -515,8 +515,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      case BuildMode of
       TBuildMode.Debug:begin
        Parameters.Add('-g');
+       Parameters.Add('-gw');
        Parameters.Add('-gl');
-       Parameters.Add('-gw3');
        Parameters.Add('-Xm');
        Parameters.Add('-dDEBUG');
       end;
