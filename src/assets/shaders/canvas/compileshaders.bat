@@ -53,7 +53,7 @@ for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const %%f -o %%f
   rem spirv-opt -O %%f -o %%f
-  spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
+  rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
 )
 
 for %%f in (*.glsl) do (
@@ -95,11 +95,11 @@ for %%f in (*.glsl) do (
   )
   
   "%VULKAN_SDK%/Bin/glslangValidator.exe" -S !stage! -V "!glslfile!" -o "!spvfile!" && (
-    "%VULKAN_SDK%/Bin/spirv-opt.exe" --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const "!spvfile!" -o "!spvfile!" && (
-      echo "!spvfile! generated . . ."
-    ) || (
-      goto :Error
-    )
+rem    "%VULKAN_SDK%/Bin/spirv-opt.exe" --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const "!spvfile!" -o "!spvfile!" && (
+rem      echo "!spvfile! generated . . ."
+rem    ) || (
+rem      goto :Error
+rem    )
   ) || (
     goto :Error
   )

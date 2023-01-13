@@ -80,7 +80,7 @@ type TpvSignedDistanceField2DVariant=
        SSAASDF=1,  // Supersampling Antialiased SDF
        GSDF=2,     // Gradient SDF
        MSDF=3,     // Multi Channel SDF
-       Default=0   // Mono SDF as default
+       Default=1   // SSAASDF as default
       );
      PpvSignedDistanceField2DVariant=^TpvSignedDistanceField2DVariant;
 
