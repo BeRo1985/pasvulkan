@@ -227,6 +227,9 @@ type TpvGUIObject=class;
             end;
             PBatchItem=^TBatchItem;
             TBatchItems=array of TBatchItem;
+            TBatchItemBoolean=Boolean;
+            PBatchItemBoolean=^TBatchItemBoolean;
+            TBatchItemBooleans=array of TBatchItemBoolean;
       private
        fInstance:TpvGUIInstance;
        fCanvas:TpvCanvas;
@@ -252,6 +255,9 @@ type TpvGUIObject=class;
        fTransparentBatchItems:TBatchItems;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
+       fResortedTransparentBatchItems:TBatchItems;
+       fResortedTransparentBatchItemAddedBooleans:TBatchItemBooleans;
+       fCountResortedTransparentBatchItems:TpvSizeInt;
        fDoNeedNewState:Boolean;
        fUseScissor:Boolean;
        procedure AcquireNewStateIfNeeded;
@@ -3431,6 +3437,8 @@ begin
   end;
  end;
 
+ fStrategy:=TStrategy.TwoPassBidirectional;
+
  fUseScissor:=pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0;
 
 {$endif}
@@ -3456,6 +3464,10 @@ begin
  fTransparentBatchItems:=nil;
  fCountTransparentBatchItems:=0;
 
+ fResortedTransparentBatchItems:=nil;
+ fResortedTransparentBatchItemAddedBooleans:=nil;
+ fCountResortedTransparentBatchItems:=0;
+
  fCountTotalBatchItems:=0;
 
  SetLength(fClipRects,1);
@@ -3479,6 +3491,8 @@ begin
  fForcedBackToFrontOpaqueBatchItems:=nil;
  fOpaqueBatchItems:=nil;
  fTransparentBatchItems:=nil;
+ fResortedTransparentBatchItems:=nil;
+ fResortedTransparentBatchItemAddedBooleans:=nil;
  inherited Destroy;
 end;
 
@@ -3674,6 +3688,90 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     InverseCountTotalBatchItems:TpvDouble;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
     LastScissorRect:TpvRect;
+ procedure AddResortedBatchItem(const aBatchItem:TBatchItem;const aIndex:TpvSizeInt);
+ begin
+  if not fResortedTransparentBatchItemAddedBooleans[aIndex] then begin
+   inc(fCountResortedTransparentBatchItems);
+   if length(fResortedTransparentBatchItems)<fCountResortedTransparentBatchItems then begin
+    SetLength(fResortedTransparentBatchItems,fCountResortedTransparentBatchItems*2);
+   end;
+   fResortedTransparentBatchItems[fCountResortedTransparentBatchItems-1]:=aBatchItem;
+   fResortedTransparentBatchItemAddedBooleans[aIndex]:=true;
+  end;
+ end;
+ function GetBatchItemRect(const aBatchItem:TBatchItem):TpvRect;
+ begin
+  case aBatchItem.fKind of
+   TBatchItem.TKind.DrawVulkanCanvas:begin
+    result:=aBatchItem.fDrawVulkanCanvas.fDrawRects[0];
+   end;
+   TBatchItem.TKind.DrawInvisibleDepthRect:begin
+    result:=aBatchItem.fDrawInvisibleDepthRect;
+   end;
+   TBatchItem.TKind.DrawGUIElement:begin
+    result:=TpvRect.CreateAbsolute(aBatchItem.fDrawGUIElementMin,aBatchItem.fDrawGUIElementMax);
+   end;
+   TBatchItem.TKind.DrawSprite:begin
+    result:=aBatchItem.fDrawSpriteDestRect;
+   end;
+   TBatchItem.TKind.DrawTexturedRectangle:begin
+    result:=aBatchItem.fDrawTexturedRectangleRect;
+   end;
+   TBatchItem.TKind.DrawFilledRectangle:begin
+    result:=aBatchItem.fDrawFilledRectangleRect;
+   end;
+   else begin
+    result:=TpvRect.CreateAbsolute(1.0,1.0,-1.0,-1.0);
+   end;
+  end;
+ end;
+ function CombineBatchItem(const aBatchItem,aOtherBatchItem:TBatchItem;const aIndex,aOtherIndex:TpvSizeInt):boolean;
+ begin
+  case aOtherBatchItem.fKind of
+   TBatchItem.TKind.DrawVulkanCanvas:begin
+    result:=false;
+   end;
+   else begin
+    result:=true;
+    case aBatchItem.fKind of
+     TBatchItem.TKind.DrawVulkanCanvas:begin
+      result:=false;
+     end;
+     else begin
+      if ((aBatchItem.fKind in [TBatchItem.TKind.DrawFilledRectangle]) and
+          (aOtherBatchItem.fKind=TBatchItem.TKind.DrawSprite)) or
+         ((aBatchItem.fKind=TBatchItem.TKind.DrawSprite) and
+          (aOtherBatchItem.fKind in [TBatchItem.TKind.DrawFilledRectangle])) or
+         GetBatchItemRect(aBatchItem).Intersect(GetBatchItemRect(aOtherBatchItem)) then begin
+       result:=false;
+      end;
+     end;
+    end;
+    if result and
+       (not fResortedTransparentBatchItemAddedBooleans[aOtherIndex]) and
+       (aBatchItem.fKind=aOtherBatchItem.fKind) then begin
+     case aBatchItem.fKind of
+      TBatchItem.TKind.DrawVulkanCanvas:begin
+       result:=false;
+      end;
+      TBatchItem.TKind.DrawInvisibleDepthRect:begin
+       if not aBatchItem.fDrawInvisibleDepthRect.Intersect(aOtherBatchItem.fDrawInvisibleDepthRect) then begin
+        AddResortedBatchItem(aOtherBatchItem,aOtherIndex);
+       end;
+      end;
+      TBatchItem.TKind.DrawSprite:begin
+       if (aBatchItem.fDrawSpriteSprite.ArrayTexture=aOtherBatchItem.fDrawSpriteSprite.ArrayTexture) and
+          not aBatchItem.fDrawSpriteDestRect.Intersect(aOtherBatchItem.fDrawSpriteDestRect) then begin
+        AddResortedBatchItem(aOtherBatchItem,aOtherIndex);
+       end;
+      end;
+      else begin
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  var ClipRect:TpvRect;
      ClipRect2D:TVkRect2D;
@@ -3758,7 +3856,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
    end;
   end;
  end;
-var Index:TpvSizeInt;
+var Index,OtherIndex:TpvSizeInt;
     LastScissor:TVkRect2D;
 begin
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
@@ -3790,8 +3888,33 @@ begin
  end;
  if fCountTransparentBatchItems>0 then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-  for Index:=0 to fCountTransparentBatchItems-1 do begin
-   DrawBatchItem(fTransparentBatchItems[Index]);
+{ if fStrategy=TStrategy.TwoPassBidirectional then begin
+   if length(fResortedTransparentBatchItems)<length(fTransparentBatchItems) then begin
+    SetLength(fResortedTransparentBatchItems,length(fTransparentBatchItems));
+   end;
+   if length(fResortedTransparentBatchItemAddedBooleans)<length(fTransparentBatchItems) then begin
+    SetLength(fResortedTransparentBatchItemAddedBooleans,length(fTransparentBatchItems));
+   end;
+   fCountResortedTransparentBatchItems:=0;
+   for Index:=0 to fCountTransparentBatchItems-1 do begin
+    fResortedTransparentBatchItemAddedBooleans[Index]:=false;
+   end;
+   for Index:=0 to fCountTransparentBatchItems-1 do begin
+    AddResortedBatchItem(fTransparentBatchItems[Index],Index);
+    for OtherIndex:=Index+1 to fCountTransparentBatchItems-1 do begin
+     if not CombineBatchItem(fTransparentBatchItems[Index],fTransparentBatchItems[OtherIndex],Index,OtherIndex) then begin
+      break;
+     end;
+    end;
+   end;
+   for Index:=0 to fCountResortedTransparentBatchItems-1 do begin
+    DrawBatchItem(fResortedTransparentBatchItems[Index]);
+   end;
+   writeln(fCountTransparentBatchItems,' ',fCountResortedTransparentBatchItems);
+  end else}begin
+   for Index:=0 to fCountTransparentBatchItems-1 do begin
+    DrawBatchItem(fTransparentBatchItems[Index]);
+   end;
   end;
  end;
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
