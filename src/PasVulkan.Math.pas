@@ -1174,7 +1174,11 @@ type PpvScalar=^TpvScalar;
        class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithRect:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -14913,10 +14917,37 @@ begin
  result:=a.Vector4<>b.Vector4;
 end;
 
+function TpvRect.Cost:TpvScalar;
+begin
+ result:=(Max.x-Min.x)+(Max.y-Min.y); // Manhattan distance
+end;
+
+function TpvRect.Center:TpvVector2;
+begin
+ result.x:=(Min.x*0.5)+(Max.x*0.5);
+ result.y:=(Min.y*0.5)+(Max.y*0.5);
+end;
+
+function TpvRect.Combine(const aWithRect:TpvRect):TpvRect;
+begin
+ result.Min.x:=Math.Min(Min.x,aWithRect.Min.x);
+ result.Min.y:=Math.Min(Min.y,aWithRect.Min.y);
+ result.Max.x:=Math.Max(Max.x,aWithRect.Max.x);
+ result.Max.y:=Math.Max(Max.y,aWithRect.Max.y);
+end;
+
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
 begin
  result:=(((Max.x+Threshold)>=(aWithRect.Min.x-Threshold)) and ((Min.x-Threshold)<=(aWithRect.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(aWithRect.Min.y-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y+Threshold)));
+end;
+
+function TpvRect.Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=((Min.x-Threshold)<=(aWithRect.Min.x+Threshold)) and ((Min.y-Threshold)<=(aWithRect.Min.y+Threshold)) and
+         ((Max.x+Threshold)>=(aWithRect.Min.x+Threshold)) and ((Max.y+Threshold)>=(aWithRect.Min.y+Threshold)) and
+         ((Min.x-Threshold)<=(aWithRect.Max.x-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y-Threshold)) and
+         ((Max.x+Threshold)>=(aWithRect.Max.x-Threshold)) and ((Max.y+Threshold)>=(aWithRect.Max.y-Threshold));
 end;
 
 function TpvRect.GetIntersection(const WithAABB:TpvRect):TpvRect;

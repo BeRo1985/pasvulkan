@@ -76,6 +76,7 @@ uses SysUtils,
      PasVulkan.Utils,
      PasVulkan.Collections,
      PasVulkan.DataStructures.LinkedList,
+     PasVulkan.BVH.DynamicRectTree,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -3695,7 +3696,6 @@ var LastClipRect,LastModelMatrix,LastColor,LastState,LastZIndex:TpvSizeInt;
    SetLength(fResortedTransparentBatchItems,fCountResortedTransparentBatchItems*2);
   end;
   fResortedTransparentBatchItems[fCountResortedTransparentBatchItems-1]:=aBatchItem;
-  LastZIndex:=aBatchItem.fZIndex;
  end;
  function GetBatchItemRect(const aBatchItem:TBatchItem):TpvRect;
  begin
@@ -3840,7 +3840,7 @@ begin
  end;
  if fCountTransparentBatchItems>0 then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-  if {fStrategy=TStrategy.TwoPassBidirectional} false then begin
+  if fStrategy=TStrategy.TwoPassBidirectional then begin
    LastZIndex:=Low(TpvSizeInt);
    if length(fResortedTransparentBatchItems)<length(fTransparentBatchItems) then begin
     SetLength(fResortedTransparentBatchItems,length(fTransparentBatchItems));
@@ -3859,14 +3859,14 @@ begin
       BatchItemLinkedListQueueItemB:=PBatchItem(LinkedListHead(@BatchItemLinkedListQueue.fLinkedListHead));
       while assigned(BatchItemLinkedListQueueItemB) do begin
        NextBatchItemLinkedListQueueItemB:=PBatchItem(LinkedListNext(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
-       if ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or (BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawVulkanCanvas)) or
-          ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawFilledRectangle)<>(BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawFilledRectangle)) or
-          (LastZIndex>BatchItemLinkedListQueueItemB^.fZIndex) then begin
+       if ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or
+           (BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawVulkanCanvas)) then begin
         // Barrier
         break;
        end else begin
-        OK:=BatchItemLinkedListQueueItemA^.fKind=BatchItemLinkedListQueueItemB^.fKind;
-        if OK then begin
+        if BatchItemLinkedListQueueItemA^.fKind=BatchItemLinkedListQueueItemB^.fKind then begin
+         OK:=true;
+//         LastZIndex:=BatchItemLinkedListQueueItemC^.fZIndex;
          BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
          while assigned(BatchItemLinkedListQueueItemC) do begin
           if (BatchItemLinkedListQueueItemC^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or
@@ -3876,12 +3876,12 @@ begin
           end;
           BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemC^.fLinkedListHead));
          end;
-        end;
-        if OK then begin
-         LinkedListRemove(@BatchItemLinkedListQueueItemB^.fLinkedListHead);
-         AddResortedBatchItem(BatchItemLinkedListQueueItemB^);
-        end else begin
-         break;
+         if OK then begin
+          LinkedListRemove(@BatchItemLinkedListQueueItemB^.fLinkedListHead);
+          AddResortedBatchItem(BatchItemLinkedListQueueItemB^);
+         end else begin
+//         break;
+         end;
         end;
         BatchItemLinkedListQueueItemB:=NextBatchItemLinkedListQueueItemB;
        end;
