@@ -201,6 +201,7 @@ type { TpvBVHDynamicRectTree }
        function ValidateStructure:boolean;
        function ValidateMetrics:boolean;
        function Validate:boolean;
+       function IntersectionQueryCheck(const aRect:TpvRect):boolean;
        function IntersectionQuery(const aRect:TpvRect):TpvBVHDynamicRectTree.TUserDataArray;
        function ContainQuery(const aRect:TpvRect):TpvBVHDynamicRectTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector2):TpvBVHDynamicRectTree.TUserDataArray; overload;
@@ -1144,6 +1145,44 @@ begin
     end;
     result:=(NodeCount+FreeCount)=NodeCapacity;
    end;
+  end;
+ end;
+end;
+
+function TpvBVHDynamicRectTree.IntersectionQueryCheck(const aRect:TpvRect):boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+     end;
+     TStack=TpvDynamicStack<TStackItem>;
+var Stack:TStack;
+    StackItem,NewStackItem:TStackItem;
+    Node:TpvBVHDynamicRectTree.PTreeNode;
+begin
+ result:=false;
+ if (NodeCount>0) and (Root>=0) then begin
+  Stack.Initialize;
+  try
+   NewStackItem.NodeID:=Root;
+   Stack.Push(NewStackItem);
+   while Stack.Pop(StackItem) do begin
+    Node:=@Nodes[StackItem.NodeID];
+    if Node^.Rect.Intersect(aRect) then begin
+     if Node^.UserData<>0 then begin
+      result:=true;
+      break;
+     end;
+     if (Node^.Children[1]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[1];
+      Stack.Push(NewStackItem);
+     end;
+     if (Node^.Children[0]>=0) then begin
+      NewStackItem.NodeID:=Node^.Children[0];
+      Stack.Push(NewStackItem);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
   end;
  end;
 end;

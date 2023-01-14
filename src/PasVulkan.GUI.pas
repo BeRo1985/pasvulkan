@@ -194,7 +194,6 @@ type TpvGUIObject=class;
                      DrawFilledRectangle
                     );
              private
-              fLinkedListHead:TpvLinkedListHead;
               fZIndex:TpvSizeInt;
               fState:TpvSizeInt;
               case fKind:TKind of
@@ -3680,15 +3679,11 @@ begin
 end;
 
 procedure TpvGUIDrawEngine.Draw;
-var LastClipRect,LastModelMatrix,LastColor,LastState,LastZIndex:TpvSizeInt;
+var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     State:TpvGUIDrawEngine.PState;
     InverseCountTotalBatchItems:TpvDouble;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
     LastScissorRect:TpvRect;
-    BatchItemLinkedListQueue:TBatchItem;
-    BatchItemLinkedListQueueItemA,
-    BatchItemLinkedListQueueItemB,NextBatchItemLinkedListQueueItemB,
-    BatchItemLinkedListQueueItemC,NextBatchItemLinkedListQueueItemC:PBatchItem;
  procedure AddResortedBatchItem(const aBatchItem:TBatchItem); overload;
  begin
   inc(fCountResortedTransparentBatchItems);
@@ -3807,8 +3802,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState,LastZIndex:TpvSizeInt;
    end;
   end;
  end;
-var Index,OtherIndex,Count:TpvSizeInt;
-    OK:boolean;
+var Index:TpvSizeInt;
     LastScissor:TVkRect2D;
 begin
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
@@ -3840,63 +3834,8 @@ begin
  end;
  if fCountTransparentBatchItems>0 then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-  if fStrategy=TStrategy.TwoPassBidirectional then begin
-   LastZIndex:=Low(TpvSizeInt);
-   if length(fResortedTransparentBatchItems)<length(fTransparentBatchItems) then begin
-    SetLength(fResortedTransparentBatchItems,length(fTransparentBatchItems));
-   end;
-   fCountResortedTransparentBatchItems:=0;
-   Count:=0;
-   LinkedListInitialize(@BatchItemLinkedListQueue.fLinkedListHead);
-   begin
-    for Index:=0 to fCountTransparentBatchItems-1 do begin
-     LinkedListPushBack(@BatchItemLinkedListQueue.fLinkedListHead,@fTransparentBatchItems[Index].fLinkedListHead);
-    end;
-    while LinkedListPopFront(@BatchItemLinkedListQueue.fLinkedListHead,BatchItemLinkedListQueueItemA) do begin
-     AddResortedBatchItem(BatchItemLinkedListQueueItemA^);
-     inc(Count);
-     if not LinkedListEmpty(@BatchItemLinkedListQueue.fLinkedListHead) then begin
-      BatchItemLinkedListQueueItemB:=PBatchItem(LinkedListHead(@BatchItemLinkedListQueue.fLinkedListHead));
-      while assigned(BatchItemLinkedListQueueItemB) do begin
-       NextBatchItemLinkedListQueueItemB:=PBatchItem(LinkedListNext(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
-       if ((BatchItemLinkedListQueueItemA^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or
-           (BatchItemLinkedListQueueItemB^.fKind=TBatchItem.TKind.DrawVulkanCanvas)) then begin
-        // Barrier
-        break;
-       end else begin
-        if BatchItemLinkedListQueueItemA^.fKind=BatchItemLinkedListQueueItemB^.fKind then begin
-         OK:=true;
-//         LastZIndex:=BatchItemLinkedListQueueItemC^.fZIndex;
-         BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemB^.fLinkedListHead));
-         while assigned(BatchItemLinkedListQueueItemC) do begin
-          if (BatchItemLinkedListQueueItemC^.fKind=TBatchItem.TKind.DrawVulkanCanvas) or
-             GetBatchItemRect(BatchItemLinkedListQueueItemB^).Intersect(GetBatchItemRect(BatchItemLinkedListQueueItemC^)) then begin
-           OK:=false;
-           break;
-          end;
-          BatchItemLinkedListQueueItemC:=PBatchItem(LinkedListPrevious(@BatchItemLinkedListQueue.fLinkedListHead,@BatchItemLinkedListQueueItemC^.fLinkedListHead));
-         end;
-         if OK then begin
-          LinkedListRemove(@BatchItemLinkedListQueueItemB^.fLinkedListHead);
-          AddResortedBatchItem(BatchItemLinkedListQueueItemB^);
-         end else begin
-//         break;
-         end;
-        end;
-        BatchItemLinkedListQueueItemB:=NextBatchItemLinkedListQueueItemB;
-       end;
-      end;
-     end;
-    end;
-   end;
-   for Index:=0 to fCountResortedTransparentBatchItems-1 do begin
-    DrawBatchItem(fResortedTransparentBatchItems[Index]);
-   end;
-// writeln(fCountTransparentBatchItems,' ',fCountResortedTransparentBatchItems,' ',Count);
-  end else begin
-   for Index:=0 to fCountTransparentBatchItems-1 do begin
-    DrawBatchItem(fTransparentBatchItems[Index]);
-   end;
+  for Index:=0 to fCountTransparentBatchItems-1 do begin
+   DrawBatchItem(fTransparentBatchItems[Index]);
   end;
  end;
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
