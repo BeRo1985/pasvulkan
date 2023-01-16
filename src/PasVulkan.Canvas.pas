@@ -232,6 +232,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath; overload;
      end;
 
+     { TpvCanvasState }
+
      TpvCanvasState=class(TPersistent)
       private
        fBlendingMode:TpvCanvasBlendingMode;
@@ -245,6 +247,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fFillWrapMode:TpvCanvasFillWrapMode;
        fColor:TpvVector4;
        fClipRect:TpvRect;
+       fClipSpaceClipRect:TpvRect;
        fScissor:TVkRect2D;
        fProjectionMatrix:TpvMatrix4x4;
        fViewMatrix:TpvMatrix4x4;
@@ -259,6 +262,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fAtlasTexture:TObject;
        fGUIElementMode:boolean;
        fStrokePattern:TpvCanvasStrokePattern;
+       procedure UpdateClipSpaceClipRect(const aCanvas:TpvCanvas);
        function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1215,6 +1219,7 @@ constructor TpvCanvasState.Create;
 begin
  inherited Create;
  fClipRect:=TpvRect.CreateAbsolute(-MaxSingle,-MaxSingle,MaxSingle,MaxSingle);
+ fClipSpaceClipRect:=TpvRect.CreateAbsolute(-MaxSingle,-MaxSingle,MaxSingle,MaxSingle);
  fScissor:=TVkRect2D.Create(TVkOffset2D.Create(0,0),TVkExtent2D.Create($7fffffff,$7fffffff));
  fProjectionMatrix:=TpvMatrix4x4.Identity;
  fPath:=TpvCanvasPath.Create;
@@ -1225,6 +1230,15 @@ destructor TpvCanvasState.Destroy;
 begin
  FreeAndNil(fPath);
  inherited Destroy;
+end;
+
+procedure TpvCanvasState.UpdateClipSpaceClipRect(const aCanvas:TpvCanvas);
+const Add:TpvVector2=(x:-1.0;y:-1.0);
+var Mul:TpvVector2;
+begin
+ Mul:=TpvVector2.InlineableCreate(2.0/aCanvas.fWidth,2.0/aCanvas.fHeight);
+ fClipSpaceClipRect.Min:=(fClipRect.Min*Mul)+Add;
+ fClipSpaceClipRect.Max:=(fClipRect.Max*Mul)+Add;
 end;
 
 function TpvCanvasState.GetColor:TpvVector4;
@@ -1328,6 +1342,7 @@ begin
   fFillStyle:=TpvCanvasState(aSource).fFillStyle;
   fColor:=TpvCanvasState(aSource).fColor;
   fClipRect:=TpvCanvasState(aSource).fClipRect;
+  fClipSpaceClipRect:=TpvCanvasState(aSource).fClipSpaceClipRect;
   fScissor:=TpvCanvasState(aSource).fScissor;
   fProjectionMatrix:=TpvCanvasState(aSource).fProjectionMatrix;
   fViewMatrix:=TpvCanvasState(aSource).fViewMatrix;
@@ -3746,17 +3761,20 @@ procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
  fState.fClipRect.LeftTop:=TpvVector2.InlineableCreate(aClipRect.offset.x,aClipRect.offset.y);
  fState.fClipRect.RightBottom:=TpvVector2.InlineableCreate(aClipRect.offset.x+(aClipRect.extent.width+0.0),aClipRect.offset.y+(aClipRect.extent.height+0.0));
+ fState.UpdateClipSpaceClipRect(self);
 end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
 begin
  fState.fClipRect:=aClipRect;
+ fState.UpdateClipSpaceClipRect(self);
 end;
 
 procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
  fState.fClipRect.LeftTop:=TpvVector2.InlineableCreate(aLeft,aTop);
  fState.fClipRect.RightBottom:=TpvVector2.InlineableCreate(aLeft+aWidth,aTop+aHeight);
+ fState.UpdateClipSpaceClipRect(self);
 end;
 
 function TpvCanvas.GetBlendingMode:TpvCanvasBlendingMode;
@@ -4043,6 +4061,7 @@ begin
  fState.fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
  fState.fClipRect:=TpvRect.CreateAbsolute(0.0,0.0,fWidth,fHeight);
+ fState.UpdateClipSpaceClipRect(self);
 
  fState.fProjectionMatrix:=TpvMatrix4x4.CreateOrtho(0.0,fWidth,0.0,fHeight,-100.0,100.0);
 
@@ -4701,7 +4720,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipSpaceClipRect;
    inc(fCurrentCountVertices);
   end;
 
@@ -4750,7 +4769,7 @@ begin
                                                                                 SrcRect.Components[SrcRectPositionComponents[aSprite.Rotated,1,Index]])*SpriteAtlasArrayTexture.InverseSize,
                                                     aSprite.Layer);
   Vertex^.State:=VertexState;
-  Vertex^.ClipRect:=fState.fClipRect;
+  Vertex^.ClipRect:=fState.fClipSpaceClipRect;
 { PpvInt64(pointer(@Vertex^.MetaInfo.x))^:=0;
   PpvInt64(pointer(@Vertex^.MetaInfo.z))^:=0;}
   inc(Vertex);
@@ -5127,28 +5146,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius.x,-aRadius.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius.x,aRadius.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius.x,aRadius.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5189,28 +5208,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius,-aRadius)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius,aRadius)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius,aRadius)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5250,28 +5269,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,-aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5311,28 +5330,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*TpvVector2.InlineableCreate(aRect.Right,aRect.Top),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*TpvVector2.InlineableCreate(aRect.Right,aRect.Bottom),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*TpvVector2.InlineableCreate(aRect.Left,aRect.Bottom),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5379,28 +5398,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,-aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(1.0,0.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(1.0,1.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,aBounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,1.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5452,28 +5471,28 @@ begin
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(Bounds.x,-Bounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(Bounds.x,Bounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(-Bounds.x,Bounds.y)),fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
- CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
  fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
@@ -5523,7 +5542,7 @@ begin
     CanvasVertex^.Color:=VertexColor;
     CanvasVertex^.TextureCoord:=TpvVector3.Null;
     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipRect;
+    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
    end;
   end else begin
@@ -5536,7 +5555,7 @@ begin
     CanvasVertex^.Color:=VertexColor;
     CanvasVertex^.TextureCoord:=TpvVector3.Null;
     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipRect;
+    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
     case CacheVertex^.ObjectMode of
      pcvvaomRoundLineCapCircle:begin

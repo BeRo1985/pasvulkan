@@ -22,7 +22,8 @@ layout(location = 3) flat out ivec4 outState;
 layout(location = 4) out vec4 outMetaInfo; 
 #else
 layout(location = 4) out vec4 outClipRect; 
-layout(location = 5) out vec4 outMetaInfo; 
+layout(location = 5) out vec2 outClipSpacePosition; 
+layout(location = 6) out vec4 outMetaInfo; 
 #endif
 
 layout(push_constant) uniform PushConstants {
@@ -52,11 +53,14 @@ void main(void){
 #endif
   outMetaInfo = inMetaInfo;
   vec4 p = pushConstants.transformMatrix * vec4(inPosition.xy, 0.0, 1.0);
-  gl_Position = vec4(vec2(p.xy / p.w), 1.0 - inPosition.z, 1.0);
+  vec2 clipSpacePosition = p.xy / p.w;
+  gl_Position = vec4(clipSpacePosition, 1.0 - inPosition.z, 1.0);
 #if USECLIPDISTANCE
-  gl_ClipDistance[0] = inPosition.x - inClipRect.x;
-  gl_ClipDistance[1] = inPosition.y - inClipRect.y;
-  gl_ClipDistance[2] = inClipRect.z - inPosition.x;
-  gl_ClipDistance[3] = inClipRect.w - inPosition.y;
+  gl_ClipDistance[0] = clipSpacePosition.x - inClipRect.x;
+  gl_ClipDistance[1] = clipSpacePosition.y - inClipRect.y;
+  gl_ClipDistance[2] = inClipRect.z - clipSpacePosition.x;
+  gl_ClipDistance[3] = inClipRect.w - clipSpacePosition.y;
+#else
+  outClipSpacePosition = clipSpacePosition;
 #endif
 }

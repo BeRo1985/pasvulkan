@@ -33,7 +33,8 @@ layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object ty
 layout(location = 4) in vec4 inMetaInfo; // Various stuff
 #else
 layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
-layout(location = 5) in vec4 inMetaInfo; // Various stuff
+layout(location = 5) in vec2 inClipSpacePosition;  // xy
+layout(location = 6) in vec4 inMetaInfo; // Various stuff
 #endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
@@ -1524,11 +1525,11 @@ void main(void){
 #endif
 #if !USECLIPDISTANCE
 #if BLENDING 
-  color *= step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w);
+  color *= step(inClipRect.x, inClipSpacePosition.x) * step(inClipRect.y, inClipSpacePosition.y) * step(inClipSpacePosition.x, inClipRect.z) * step(inClipSpacePosition.y, inClipRect.w);
 #elif !USENODISCARD
-//if(step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w)) < 0.5){
-  if(any(lessThan(inPosition.xy, inClipRect.xy)) || 
-     any(greaterThan(inPosition.xy, inClipRect.zw))){
+//if(step(inClipRect.x, inClipSpacePosition.x) * step(inClipRect.y, inClipSpacePosition.y) * step(inClipSpacePosition.x, inClipRect.z) * step(inClipSpacePosition.y, inClipRect.w)) < 0.5){
+  if(any(lessThan(inClipSpacePosition.xy, inClipRect.xy)) || 
+     any(greaterThan(inClipSpacePosition.xy, inClipRect.zw))){
     discard;
   }
 #endif  
