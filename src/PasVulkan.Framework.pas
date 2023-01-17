@@ -3081,6 +3081,8 @@ type EpvVulkanException=class(Exception);
        fFilterMode:TpvVulkanTextureFilterMode;
        fBorderColor:TVkBorderColor;
        fMaxAnisotropy:double;
+       fStreaming:boolean;
+       fStagingBuffer:TpvVulkanBuffer;
       public
        constructor Create; reintroduce;
        constructor CreateFromMemory(const aDevice:TpvVulkanDevice;
@@ -3105,7 +3107,8 @@ type EpvVulkanException=class(Exception);
                                     const aSwapEndianness:boolean;
                                     const aSwapEndiannessTexels:TpvInt32;
                                     const aDDSStructure:boolean=true;
-                                    const aAdditionalSRGB:boolean=false);
+                                    const aAdditionalSRGB:boolean=false;
+                                    const aStreaming:boolean=false);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -19623,7 +19626,8 @@ constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
                                               const aSwapEndianness:boolean;
                                               const aSwapEndiannessTexels:TpvInt32;
                                               const aDDSStructure:boolean;
-                                              const aAdditionalSRGB:boolean);
+                                              const aAdditionalSRGB:boolean;
+                                              const aStreaming:boolean);
 var MaxDimension,MaxMipMapLevels:TpvInt32;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
@@ -19638,6 +19642,8 @@ begin
  inherited Create;
 
  fDevice:=aDevice;
+
+ fStreaming:=aStreaming;
 
  fFormat:=VK_FORMAT_UNDEFINED;
 
@@ -20035,7 +20041,6 @@ begin
                                             0,
                                             Max(1,fTotalCountArrayLayers));
  end;
-
 
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
@@ -22847,19 +22852,18 @@ procedure TpvVulkanTexture.Upload(const aGraphicsQueue:TpvVulkanQueue;
                                   const aTransferFence:TpvVulkanFence;
                                   const aData:TpvPointer;
                                   const aDataSize:TVkSizeInt;
-                                  const aMipMapSizeStored:boolean=false;
-                                  const aSwapEndianness:boolean=false;
-                                  const aSwapEndiannessTexels:TpvInt32=0;
-                                  const aDDSStructure:boolean=true;
-                                  const aStagingBuffer:TpvVulkanBuffer=nil;
-                                  const aCommandBufferResetAndExecute:boolean=true);
+                                  const aMipMapSizeStored:boolean;
+                                  const aSwapEndianness:boolean;
+                                  const aSwapEndiannessTexels:TpvInt32;
+                                  const aDDSStructure:boolean;
+                                  const aStagingBuffer:TpvVulkanBuffer;
+                                  const aCommandBufferResetAndExecute:boolean);
 type PpvUInt8Array=^TpvUInt8Array;
      TpvUInt8Array=array[0..65535] of TpvUInt8;
 var BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
     LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TpvInt32;
     DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TpvUInt32;
     Compressed:boolean;
-    StagingBuffer:TpvVulkanBuffer;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     BufferImageCopyArray:TVkBufferImageCopyArray;
     BufferImageCopy:PVkBufferImageCopy;
@@ -22876,7 +22880,7 @@ begin
   end;
 
   if assigned(aStagingBuffer) then begin
-   StagingBuffer:=aStagingBuffer;
+   fStagingBuffer:=aStagingBuffer;
   end else begin
    if aGraphicsQueue.fQueueFamilyIndex=aTransferQueue.fQueueFamilyIndex then begin
     SharingMode:=VK_SHARING_MODE_EXCLUSIVE;
@@ -22888,21 +22892,26 @@ begin
                          aTransferQueue.fQueueFamilyIndex];
    end;
    try
-    StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                          aDataSize,
-                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                          SharingMode,
-                                          QueueFamilyIndices,
-                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                           TpvVulkanBufferFlag.DedicatedAllocation]);
+    if fStreaming and assigned(fStagingBuffer) and (fStagingBuffer.Size=aDataSize) then begin
+     // Nothing, just keep the existent staging buffer
+    end else begin
+     FreeAndNil(fStagingBuffer);
+     fStagingBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                            aDataSize,
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                            SharingMode,
+                                            QueueFamilyIndices,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                             TpvVulkanBufferFlag.DedicatedAllocation]);
+    end;
    finally
     QueueFamilyIndices:=nil;
    end;
@@ -22927,13 +22936,13 @@ begin
                     aDDSStructure);
     end;
 
-    StagingBuffer.UploadData(aTransferQueue,
-                             aTransferCommandBuffer,
-                             aTransferFence,
-                             aData^,
-                             0,
-                             aDataSize,
-                             TpvVulkanBufferUseTemporaryStagingBufferMode.No);
+    fStagingBuffer.UploadData(aTransferQueue,
+                              aTransferCommandBuffer,
+                              aTransferFence,
+                              aData^,
+                              0,
+                              aDataSize,
+                              TpvVulkanBufferUseTemporaryStagingBufferMode.No);
 
      if aGraphicsQueue.fQueueFamilyIndex<>aTransferQueue.fQueueFamilyIndex then begin
       if aCommandBufferResetAndExecute then begin
@@ -22948,8 +22957,8 @@ begin
        BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
        BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
-       BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
+       BufferMemoryBarrier.buffer:=fStagingBuffer.fBufferHandle;
+       BufferMemoryBarrier.offset:=fStagingBuffer.Memory.fOffset;
        BufferMemoryBarrier.size:=aDataSize;
        aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -22967,8 +22976,8 @@ begin
        BufferMemoryBarrier.dstAccessMask:=0;
        BufferMemoryBarrier.srcQueueFamilyIndex:=aTransferQueue.fQueueFamilyIndex;
        BufferMemoryBarrier.dstQueueFamilyIndex:=aGraphicsQueue.fQueueFamilyIndex;
-       BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
-       BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
+       BufferMemoryBarrier.buffer:=fStagingBuffer.fBufferHandle;
+       BufferMemoryBarrier.offset:=fStagingBuffer.Memory.fOffset;
        BufferMemoryBarrier.size:=aDataSize;
        aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -23031,8 +23040,8 @@ begin
       BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
       BufferMemoryBarrier.srcQueueFamilyIndex:=aTransferQueue.fQueueFamilyIndex;
       BufferMemoryBarrier.dstQueueFamilyIndex:=aGraphicsQueue.fQueueFamilyIndex;
-      BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
-      BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
+      BufferMemoryBarrier.buffer:=fStagingBuffer.fBufferHandle;
+      BufferMemoryBarrier.offset:=fStagingBuffer.Memory.fOffset;
       BufferMemoryBarrier.size:=aDataSize;
       aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -23050,8 +23059,8 @@ begin
       BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
       BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
       BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
-      BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
+      BufferMemoryBarrier.buffer:=fStagingBuffer.fBufferHandle;
+      BufferMemoryBarrier.offset:=fStagingBuffer.Memory.fOffset;
       BufferMemoryBarrier.size:=aDataSize;
       aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -23154,7 +23163,7 @@ begin
 
      Assert(TVkSizeInt(DataOffset)=TVkSizeInt(aDataSize));
 
-     aGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+     aGraphicsCommandBuffer.CmdCopyBufferToImage(fStagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
      if fCountMipMaps<1 then begin
 
@@ -23271,8 +23280,8 @@ begin
    end;
 
   finally
-   if (StagingBuffer<>aStagingBuffer) or not assigned(aStagingBuffer) then begin
-    FreeAndNil(StagingBuffer);
+   if ((fStagingBuffer<>aStagingBuffer) or not assigned(aStagingBuffer)) and not fStreaming then begin
+    FreeAndNil(fStagingBuffer);
    end;
   end;
 
