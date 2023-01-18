@@ -1030,6 +1030,7 @@ type PpvScalar=^TpvScalar;
        Center:TpvVector3;
        Extents:TpvVector3;
        procedure ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
+       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean;
        function RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Penetration:TpvScalar):boolean; overload;
        function TriangleIntersection(const ppvTriangle:TpvTriangle;const MTV:PpvVector3=nil):boolean; overload;
@@ -13178,6 +13179,33 @@ begin
                    abs(Vector.Dot(Axis[2])*Extents.z);
  OBBMin:=ProjectionCenter-ProjectionRadius;
  OBBMax:=ProjectionCenter+ProjectionRadius;
+end;
+
+function TpvOBB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean;
+var Index:TpvSizeInt;
+    Distance:TpvVector3;
+begin
+ Distance:=Center-aWith.Center;
+
+ // Check the separation on each axis
+ if ((abs(Distance.Dot(Axis[0]))-(Extents.x+aWith.Extents.x))>aThreshold) or
+    ((abs(Distance.Dot(Axis[1]))-(Extents.y+aWith.Extents.y))>aThreshold) or
+    ((abs(Distance.Dot(Axis[2]))-(Extents.z+aWith.Extents.z))>aThreshold) then begin
+  result:=false;
+  exit;
+ end;
+
+ // Check the separation on the cross-axes
+ for Index:=0 to 2 do begin
+  if ((abs(Distance.Dot(Axis[0].Cross(aWith.Axis[Index])))-(Extents.x+aWith.Extents[Index]))>aThreshold) or
+     ((abs(Distance.Dot(Axis[1].Cross(aWith.Axis[Index])))-(Extents.y+aWith.Extents[Index]))>aThreshold) or
+     ((abs(Distance.Dot(Axis[2].Cross(aWith.Axis[Index])))-(Extents.z+aWith.Extents[Index]))>aThreshold) then begin
+   result:=false;
+   exit;
+  end;
+ end;
+
+ result:=true;
 end;
 
 function TpvOBB.RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
