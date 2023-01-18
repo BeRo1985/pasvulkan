@@ -13182,30 +13182,35 @@ begin
 end;
 
 function TpvOBB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean;
-var Index:TpvSizeInt;
-    Distance:TpvVector3;
+ function Check(const aRelativePosition,aAxis:TpvVector3):boolean; {$ifdef fpc}inline;{$endif}
+ begin
+   result:=abs(aRelativePosition.Dot(aAxis))<=
+           ((abs((Axis[0]*Extents.x).Dot(aAxis))+
+             abs((Axis[1]*Extents.y).Dot(aAxis))+
+             abs((Axis[2]*Extents.z).Dot(aAxis))+
+             abs((aWith.Axis[0]*aWith.Extents.x).Dot(aAxis))+
+             abs((aWith.Axis[1]*aWith.Extents.y).Dot(aAxis))+
+             abs((aWith.Axis[2]*aWith.Extents.z).Dot(aAxis)))+
+             aThreshold);
+ end;
+var RelativePosition:TpvVector3;
 begin
- Distance:=Center-aWith.Center;
-
- // Check the separation on each axis
- if ((abs(Distance.Dot(Axis[0]))-(Extents.x+aWith.Extents.x))>aThreshold) or
-    ((abs(Distance.Dot(Axis[1]))-(Extents.y+aWith.Extents.y))>aThreshold) or
-    ((abs(Distance.Dot(Axis[2]))-(Extents.z+aWith.Extents.z))>aThreshold) then begin
-  result:=false;
-  exit;
- end;
-
- // Check the separation on the cross-axes
- for Index:=0 to 2 do begin
-  if ((abs(Distance.Dot(Axis[0].Cross(aWith.Axis[Index])))-(Extents.x+aWith.Extents[Index]))>aThreshold) or
-     ((abs(Distance.Dot(Axis[1].Cross(aWith.Axis[Index])))-(Extents.y+aWith.Extents[Index]))>aThreshold) or
-     ((abs(Distance.Dot(Axis[2].Cross(aWith.Axis[Index])))-(Extents.z+aWith.Extents[Index]))>aThreshold) then begin
-   result:=false;
-   exit;
-  end;
- end;
-
- result:=true;
+ RelativePosition:=aWith.Center-Center;
+ result:=Check(RelativePosition,Axis[0]) and
+         Check(RelativePosition,Axis[1]) and
+         Check(RelativePosition,Axis[2]) and
+         Check(RelativePosition,aWith.Axis[0]) and
+         Check(RelativePosition,aWith.Axis[1]) and
+         Check(RelativePosition,aWith.Axis[2]) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[2])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[2])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[2]));
 end;
 
 function TpvOBB.RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
