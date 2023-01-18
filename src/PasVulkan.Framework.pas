@@ -19657,6 +19657,8 @@ begin
 
  fMemoryBlock:=nil;
 
+ fStagingBuffer:=nil;
+
  fWidth:=0;
  fHeight:=0;
  fDepth:=0;
@@ -22378,6 +22380,7 @@ begin
   fMemoryBlock:=nil;
  end;
  FreeAndNil(fImage);
+ FreeAndNil(fStagingBuffer);
  inherited Destroy;
 end;
 
