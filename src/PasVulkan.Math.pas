@@ -1030,7 +1030,7 @@ type PpvScalar=^TpvScalar;
        Center:TpvVector3;
        Extents:TpvVector3;
        procedure ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
-       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean;
+       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Penetration:TpvScalar):boolean; overload;
        function TriangleIntersection(const ppvTriangle:TpvTriangle;const MTV:PpvVector3=nil):boolean; overload;
@@ -1063,6 +1063,7 @@ type PpvScalar=^TpvScalar;
        function DistanceTo(const ToAABB:TpvAABB):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13600,14 +13601,24 @@ begin
  result:=(Min=WithAABB.Min) and (Max=WithAABB.Max);
 end;
 
-function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean;
+function TpvAABB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean;
+var OBBCenterToAABBCenter,AABBHalfExtents:TpvVector3;
+begin
+ OBBCenterToAABBCenter:=aWith.Center-Min.Lerp(Max,0.5);
+ AABBHalfExtents:=(Max-Min)*0.5;
+ result:=((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[0]))-AABBHalfExtents.Dot(aWith.Axis[0]))<=(aWith.Extents.Dot(aWith.Axis[0])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[1]))-AABBHalfExtents.Dot(aWith.Axis[1]))<=(aWith.Extents.Dot(aWith.Axis[1])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[2]))-AABBHalfExtents.Dot(aWith.Axis[2]))<=(aWith.Extents.Dot(aWith.Axis[2])+aThreshold));
+end;
+
+function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar):boolean;
 begin
  result:=(((Max.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((Min.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((Min.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
          (((Max.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((Min.z-Threshold)<=(WithAABB.Max.z+Threshold)));
 end;
 
-class function TpvAABB.Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean;
+class function TpvAABB.Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar):boolean;
 begin
  result:=(((aAABBMax.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((aAABBMin.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
          (((aAABBMax.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((aAABBMin.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
