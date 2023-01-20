@@ -2787,6 +2787,8 @@ type TpvGUIObject=class;
        procedure Process;
      end;
 
+     TpvGUIMultiLineTextEditOnLineColor=function(const aLine:TpvSizeInt;out aColor:TpvVector4):Boolean of object;
+
      { TpvGUIMultiLineTextEdit }
 
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
@@ -2842,6 +2844,8 @@ type TpvGUIObject=class;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
+       fOnLeftSideBarLineColor:TpvGUIMultiLineTextEditOnLineColor;
+       fOnLineColor:TpvGUIMultiLineTextEditOnLineColor;
        procedure SetViewDirty;
        procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
@@ -2907,6 +2911,8 @@ type TpvGUIObject=class;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnStatusChange:TpvGUIOnEvent read fOnStatusChange write fOnStatusChange;
+       property OnLeftSideBarLineColor:TpvGUIMultiLineTextEditOnLineColor read fOnLeftSideBarLineColor write fOnLeftSideBarLineColor;
+       property OnLineColor:TpvGUIMultiLineTextEditOnLineColor read fOnLineColor write fOnLineColor;
      end;
 
      TpvGUIMultiLineTextEditSearchReplaceWindow=class(TpvGUIWindow)
@@ -11120,7 +11126,7 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 var ViewBufferX,ViewBufferY,ViewBufferIndex,StartViewBufferX,Index:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
-    CurrentFontColor,Color:TpvVector4;
+    CurrentFontColor,Color,TemporaryColor,LineColor:TpvVector4;
     Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     OldClipRect,TextClipRect,Rect:TpvRect;
@@ -11183,9 +11189,30 @@ begin
 
  if aMultiLineTextEdit.fLeftSideBar then begin
   Color:=CurrentFontColor;
+  if assigned(aMultiLineTextEdit.fOnLeftSideBarLineColor) then begin
+   LineColor:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+   for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+    if (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+       aMultiLineTextEdit.fOnLeftSideBarLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+     aDrawEngine.Color:=LineColor;
+     Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                  TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
+                                  aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                  TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
+     aDrawEngine.Transparent:=true;
+     aDrawEngine.DrawFilledRectangle(Rect);
+    end;
+   end;
+  end;
   if (aMultiLineTextEdit.fViewBufferCursorY>=0) and
      (aMultiLineTextEdit.fViewBufferCursorY<aMultiLineTextEdit.fViewBufferHeight) then begin
-   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+   TemporaryColor:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+   if assigned(aMultiLineTextEdit.fOnLeftSideBarLineColor) and
+      (aMultiLineTextEdit.fViewBufferLineIndices[aMultiLineTextEdit.fViewBufferCursorY]>=0) and
+       aMultiLineTextEdit.fOnLeftSideBarLineColor(aMultiLineTextEdit.fViewBufferLineIndices[aMultiLineTextEdit.fViewBufferCursorY],LineColor) then begin
+    TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+   end;
+   aDrawEngine.Color:=TemporaryColor;
 // aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
    Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                 TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*aMultiLineTextEdit.fViewBufferCursorY),
@@ -11229,6 +11256,20 @@ begin
 
  aDrawEngine.Transparent:=true;
 
+ if assigned(aMultiLineTextEdit.fOnLineColor) then begin
+  LineColor:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+   if (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+      aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+    aDrawEngine.Color:=LineColor;
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                           (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(0,ViewBufferY)),
+                                                           aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                           (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferWidth,ViewBufferY+1.0))));
+   end;
+  end;
+ end;
+
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   ViewBufferX:=0;
@@ -11242,7 +11283,13 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     TemporaryColor:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     if assigned(aMultiLineTextEdit.fOnLineColor) and
+        (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+         aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+      TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+     end;
+     aDrawEngine.Color:=TemporaryColor;
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
                                                             aMultiLineTextEdit.fTextAreaRect.Offset+
@@ -11255,7 +11302,13 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+     TemporaryColor:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+     if assigned(aMultiLineTextEdit.fOnLineColor) and
+        (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+         aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+      TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+     end;
+     aDrawEngine.Color:=TemporaryColor;
 //   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
@@ -21549,6 +21602,10 @@ begin
  fSearchReplaceState:=nil;
 
  fGoToLineWindow:=nil;
+
+ fOnLeftSideBarLineColor:=nil;
+
+ fOnLineColor:=nil;
 
 end;
 
