@@ -1066,8 +1066,8 @@ type PpvScalar=^TpvScalar;
        function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const AABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const aOBB:TpvOBB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13626,20 +13626,36 @@ begin
          (((aAABBMax.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((aAABBMin.z-Threshold)<=(WithAABB.Max.z+Threshold)));
 end;
 
-function TpvAABB.Contains(const AABB:TpvAABB):boolean;
+function TpvAABB.Contains(const AABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean;
 begin
- result:=((Min.x-EPSILON)<=(AABB.Min.x+EPSILON)) and ((Min.y-EPSILON)<=(AABB.Min.y+EPSILON)) and ((Min.z-EPSILON)<=(AABB.Min.z+EPSILON)) and
-         ((Max.x+EPSILON)>=(AABB.Min.x+EPSILON)) and ((Max.y+EPSILON)>=(AABB.Min.y+EPSILON)) and ((Max.z+EPSILON)>=(AABB.Min.z+EPSILON)) and
-         ((Min.x-EPSILON)<=(AABB.Max.x-EPSILON)) and ((Min.y-EPSILON)<=(AABB.Max.y-EPSILON)) and ((Min.z-EPSILON)<=(AABB.Max.z-EPSILON)) and
-         ((Max.x+EPSILON)>=(AABB.Max.x-EPSILON)) and ((Max.y+EPSILON)>=(AABB.Max.y-EPSILON)) and ((Max.z+EPSILON)>=(AABB.Max.z-EPSILON));
+ result:=((Min.x-aThreshold)<=(AABB.Min.x+aThreshold)) and
+         ((Min.y-aThreshold)<=(AABB.Min.y+aThreshold)) and
+         ((Min.z-aThreshold)<=(AABB.Min.z+aThreshold)) and
+         ((Max.x+aThreshold)>=(AABB.Min.x-aThreshold)) and
+         ((Max.y+aThreshold)>=(AABB.Min.y-aThreshold)) and
+         ((Max.z+aThreshold)>=(AABB.Min.z-aThreshold)) and
+         ((Min.x-aThreshold)<=(AABB.Max.x+aThreshold)) and
+         ((Min.y-aThreshold)<=(AABB.Max.y+aThreshold)) and
+         ((Min.z-aThreshold)<=(AABB.Max.z+aThreshold)) and
+         ((Max.x+aThreshold)>=(AABB.Max.x-aThreshold)) and
+         ((Max.y+aThreshold)>=(AABB.Max.y-aThreshold)) and
+         ((Max.z+aThreshold)>=(AABB.Max.z-aThreshold));
 end;
 
-class function TpvAABB.Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean;
+class function TpvAABB.Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean;
 begin
- result:=((aAABBMin.x-EPSILON)<=(aAABB.Min.x+EPSILON)) and ((aAABBMin.y-EPSILON)<=(aAABB.Min.y+EPSILON)) and ((aAABBMin.z-EPSILON)<=(aAABB.Min.z+EPSILON)) and
-         ((aAABBMax.x+EPSILON)>=(aAABB.Min.x+EPSILON)) and ((aAABBMax.y+EPSILON)>=(aAABB.Min.y+EPSILON)) and ((aAABBMax.z+EPSILON)>=(aAABB.Min.z+EPSILON)) and
-         ((aAABBMin.x-EPSILON)<=(aAABB.Max.x-EPSILON)) and ((aAABBMin.y-EPSILON)<=(aAABB.Max.y-EPSILON)) and ((aAABBMin.z-EPSILON)<=(aAABB.Max.z-EPSILON)) and
-         ((aAABBMax.x+EPSILON)>=(aAABB.Max.x-EPSILON)) and ((aAABBMax.y+EPSILON)>=(aAABB.Max.y-EPSILON)) and ((aAABBMax.z+EPSILON)>=(aAABB.Max.z-EPSILON));
+ result:=((aAABBMin.x-aThreshold)<=(aAABB.Min.x+aThreshold)) and
+         ((aAABBMin.y-aThreshold)<=(aAABB.Min.y+aThreshold)) and
+         ((aAABBMin.z-aThreshold)<=(aAABB.Min.z+aThreshold)) and
+         ((aAABBMax.x+aThreshold)>=(aAABB.Min.x-aThreshold)) and
+         ((aAABBMax.y+aThreshold)>=(aAABB.Min.y-aThreshold)) and
+         ((aAABBMax.z+aThreshold)>=(aAABB.Min.z-aThreshold)) and
+         ((aAABBMin.x-aThreshold)<=(aAABB.Max.x+aThreshold)) and
+         ((aAABBMin.y-aThreshold)<=(aAABB.Max.y+aThreshold)) and
+         ((aAABBMin.z-aThreshold)<=(aAABB.Max.z+aThreshold)) and
+         ((aAABBMax.x+aThreshold)>=(aAABB.Max.x-aThreshold)) and
+         ((aAABBMax.y+aThreshold)>=(aAABB.Max.y-aThreshold)) and
+         ((aAABBMax.z+aThreshold)>=(aAABB.Max.z-aThreshold));
 end;
 
 function TpvAABB.Contains(const Vector:TpvVector3):boolean;
