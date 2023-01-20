@@ -1028,7 +1028,7 @@ type PpvScalar=^TpvScalar;
      TpvOBB=packed record
       public
        Center:TpvVector3;
-       Extents:TpvVector3;
+       HalfExtents:TpvVector3;
        procedure ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
        function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
@@ -1070,6 +1070,7 @@ type PpvScalar=^TpvScalar;
        class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aOBB:TpvOBB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13175,9 +13176,9 @@ procedure TpvOBB.ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvSc
 var ProjectionCenter,ProjectionRadius:TpvScalar;
 begin
  ProjectionCenter:=Center.Dot(Vector);
- ProjectionRadius:=abs(Vector.Dot(Axis[0])*Extents.x)+
-                   abs(Vector.Dot(Axis[1])*Extents.y)+
-                   abs(Vector.Dot(Axis[2])*Extents.z);
+ ProjectionRadius:=abs(Vector.Dot(Axis[0])*HalfExtents.x)+
+                   abs(Vector.Dot(Axis[1])*HalfExtents.y)+
+                   abs(Vector.Dot(Axis[2])*HalfExtents.z);
  OBBMin:=ProjectionCenter-ProjectionRadius;
  OBBMax:=ProjectionCenter+ProjectionRadius;
 end;
@@ -13186,12 +13187,12 @@ function TpvOBB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean
  function Check(const aRelativePosition,aAxis:TpvVector3):boolean; {$ifdef fpc}inline;{$endif}
  begin
    result:=abs(aRelativePosition.Dot(aAxis))<=
-           ((abs((Axis[0]*Extents.x).Dot(aAxis))+
-             abs((Axis[1]*Extents.y).Dot(aAxis))+
-             abs((Axis[2]*Extents.z).Dot(aAxis))+
-             abs((aWith.Axis[0]*aWith.Extents.x).Dot(aAxis))+
-             abs((aWith.Axis[1]*aWith.Extents.y).Dot(aAxis))+
-             abs((aWith.Axis[2]*aWith.Extents.z).Dot(aAxis)))+
+           ((abs((Axis[0]*HalfExtents.x).Dot(aAxis))+
+             abs((Axis[1]*HalfExtents.y).Dot(aAxis))+
+             abs((Axis[2]*HalfExtents.z).Dot(aAxis))+
+             abs((aWith.Axis[0]*aWith.HalfExtents.x).Dot(aAxis))+
+             abs((aWith.Axis[1]*aWith.HalfExtents.y).Dot(aAxis))+
+             abs((aWith.Axis[2]*aWith.HalfExtents.z).Dot(aAxis)))+
              aThreshold);
  end;
 var RelativePosition:TpvVector3;
@@ -13229,7 +13230,7 @@ begin
  max_:=1e+34;
 
  p:=Center-ppvRelativeSegment.Origin;
-//h:=Extents;
+//h:=HalfExtents;
 
  dirMax:=0;
  dirMin:=0;
@@ -13238,8 +13239,8 @@ begin
   e:=Axis[Dir].Dot(p);
   f:=Axis[Dir].Dot(ppvRelativeSegment.Delta);
   if abs(f)>EPSILON then begin
-   t1:=(e+Extents.RawComponents[dir])/f;
-   t2:=(e-Extents.RawComponents[dir])/f;
+   t1:=(e+HalfExtents.RawComponents[dir])/f;
+   t2:=(e-HalfExtents.RawComponents[dir])/f;
    if t1>t2 then begin
     t:=t1;
     t1:=t2;
@@ -13256,7 +13257,7 @@ begin
    if (min_>max_) or (max_<0.0) then begin
     exit;
    end;
-  end else if (((-e)-Extents.RawComponents[dir])>0.0) or (((-e)+Extents.RawComponents[dir])<0.0) then begin
+  end else if (((-e)-HalfExtents.RawComponents[dir])>0.0) or (((-e)+HalfExtents.RawComponents[dir])<0.0) then begin
    exit;
   end;
  end;
@@ -13308,21 +13309,21 @@ begin
  result:=false;
 
  // ---
- OBBVertices[0]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[0]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*(-self.HalfExtents.z));
  // +--
- OBBVertices[1]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[1]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*(-self.HalfExtents.z));
  // ++-
- OBBVertices[2]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[2]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*(-self.HalfExtents.z));
  // -+-
- OBBVertices[3]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[3]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*(-self.HalfExtents.z));
  // --+
- OBBVertices[4]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[4]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
  // +-+
- OBBVertices[5]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[5]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
  // +++
- OBBVertices[6]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*self.Extents.z);
+ OBBVertices[6]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*self.HalfExtents.z);
  // -++
- OBBVertices[7]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[7]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
 
  TriangleVertices[0]:=Triangle.Points[0];
  TriangleVertices[1]:=Triangle.Points[1];
@@ -13445,8 +13446,8 @@ begin
   TheAxis:=self.Axis[OBBAxisIndex];
   ppvTriangle.ProjectToVector(TheAxis,TriangleMin,TriangleMax);
   Projection:=TheAxis.Dot(Center);
-  OBBMin:=Projection-Extents.RawComponents[OBBAxisIndex];
-  OBBMax:=Projection+Extents.RawComponents[OBBAxisIndex];
+  OBBMin:=Projection-HalfExtents.RawComponents[OBBAxisIndex];
+  OBBMax:=Projection+HalfExtents.RawComponents[OBBAxisIndex];
   if (TriangleMin>OBBMax) or (TriangleMax<OBBMin) then begin
    exit;
   end;
@@ -13489,9 +13490,9 @@ end;
 constructor TpvAABB.CreateFromOBB(const OBB:TpvOBB);
 var t:TpvVector3;
 begin
- t.x:=abs((OBB.Matrix[0,0]*OBB.Extents.x)+(OBB.Matrix[1,0]*OBB.Extents.y)+(OBB.Matrix[2,0]*OBB.Extents.z));
- t.y:=abs((OBB.Matrix[0,1]*OBB.Extents.x)+(OBB.Matrix[1,1]*OBB.Extents.y)+(OBB.Matrix[2,1]*OBB.Extents.z));
- t.z:=abs((OBB.Matrix[0,2]*OBB.Extents.x)+(OBB.Matrix[1,2]*OBB.Extents.y)+(OBB.Matrix[2,2]*OBB.Extents.z));
+ t.x:=abs((OBB.Matrix[0,0]*OBB.HalfExtents.x)+(OBB.Matrix[1,0]*OBB.HalfExtents.y)+(OBB.Matrix[2,0]*OBB.HalfExtents.z));
+ t.y:=abs((OBB.Matrix[0,1]*OBB.HalfExtents.x)+(OBB.Matrix[1,1]*OBB.HalfExtents.y)+(OBB.Matrix[2,1]*OBB.HalfExtents.z));
+ t.z:=abs((OBB.Matrix[0,2]*OBB.HalfExtents.x)+(OBB.Matrix[1,2]*OBB.HalfExtents.y)+(OBB.Matrix[2,2]*OBB.HalfExtents.z));
  Min.x:=OBB.Center.x-t.x;
  Min.y:=OBB.Center.y-t.y;
  Min.z:=OBB.Center.z-t.z;
@@ -13606,9 +13607,9 @@ var OBBCenterToAABBCenter,AABBHalfExtents:TpvVector3;
 begin
  OBBCenterToAABBCenter:=aWith.Center-Min.Lerp(Max,0.5);
  AABBHalfExtents:=(Max-Min)*0.5;
- result:=((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[0]))-AABBHalfExtents.Dot(aWith.Axis[0]))<=(aWith.Extents.Dot(aWith.Axis[0])+aThreshold)) and
-         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[1]))-AABBHalfExtents.Dot(aWith.Axis[1]))<=(aWith.Extents.Dot(aWith.Axis[1])+aThreshold)) and
-         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[2]))-AABBHalfExtents.Dot(aWith.Axis[2]))<=(aWith.Extents.Dot(aWith.Axis[2])+aThreshold));
+ result:=((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[0]))-AABBHalfExtents.Dot(aWith.Axis[0]))<=(aWith.HalfExtents.Dot(aWith.Axis[0])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[1]))-AABBHalfExtents.Dot(aWith.Axis[1]))<=(aWith.HalfExtents.Dot(aWith.Axis[1])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[2]))-AABBHalfExtents.Dot(aWith.Axis[2]))<=(aWith.HalfExtents.Dot(aWith.Axis[2])+aThreshold));
 end;
 
 function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar):boolean;
@@ -13653,6 +13654,17 @@ begin
  result:=((aVector.x>=(aAABBMin.x-EPSILON)) and (aVector.x<=(aAABBMax.x+EPSILON))) and
          ((aVector.y>=(aAABBMin.y-EPSILON)) and (aVector.y<=(aAABBMax.y+EPSILON))) and
          ((aVector.z>=(aAABBMin.z-EPSILON)) and (aVector.z<=(aAABBMax.z+EPSILON)));
+end;
+
+function TpvAABB.Contains(const aOBB:TpvOBB):boolean;
+var Axes:array[0..3] of TpvVector3;
+begin
+ Axes[0]:=aOBB.Axis[0]*aOBB.HalfExtents.x;
+ Axes[1]:=aOBB.Axis[1]*aOBB.HalfExtents.y;
+ Axes[2]:=aOBB.Axis[2]*aOBB.HalfExtents.z;
+ Axes[3]:=Axes[0]+Axes[1]+Axes[2];
+ result:=Contains(aOBB.Center-Axes[0]) and Contains(aOBB.Center-Axes[1]) and Contains(aOBB.Center-Axes[2]) and Contains(aOBB.Center-Axes[3]) and
+         Contains(aOBB.Center+Axes[0]) and Contains(aOBB.Center+Axes[1]) and Contains(aOBB.Center+Axes[2]) and Contains(aOBB.Center+Axes[3]);
 end;
 
 function TpvAABB.Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean;
@@ -16425,9 +16437,9 @@ var DistanceVector:TpvVector3;
 begin
  DistanceVector:=Point-OBB.Center;
  ClosestPoint:=OBB.Center+
-               (OBB.Axis[0]*Min(Max(DistanceVector.Dot(OBB.Axis[0]),-OBB.Extents.RawComponents[0]),OBB.Extents.RawComponents[0]))+
-               (OBB.Axis[1]*Min(Max(DistanceVector.Dot(OBB.Axis[1]),-OBB.Extents.RawComponents[1]),OBB.Extents.RawComponents[1]))+
-               (OBB.Axis[2]*Min(Max(DistanceVector.Dot(OBB.Axis[2]),-OBB.Extents.RawComponents[2]),OBB.Extents.RawComponents[2]));
+               (OBB.Axis[0]*Min(Max(DistanceVector.Dot(OBB.Axis[0]),-OBB.HalfExtents.RawComponents[0]),OBB.HalfExtents.RawComponents[0]))+
+               (OBB.Axis[1]*Min(Max(DistanceVector.Dot(OBB.Axis[1]),-OBB.HalfExtents.RawComponents[1]),OBB.HalfExtents.RawComponents[1]))+
+               (OBB.Axis[2]*Min(Max(DistanceVector.Dot(OBB.Axis[2]),-OBB.HalfExtents.RawComponents[2]),OBB.HalfExtents.RawComponents[2]));
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
