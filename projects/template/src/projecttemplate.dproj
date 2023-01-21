@@ -83,7 +83,7 @@
         <SanitizedProjectName>projecttemplate</SanitizedProjectName>
         <VerInfo_Locale>1031</VerInfo_Locale>
         <DCC_E>false</DCC_E>
-        <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
+        <Icon_MainIcon>projecttemplate.ico</Icon_MainIcon>
         <DCC_F>false</DCC_F>
         <DCC_K>false</DCC_K>
         <DCC_SymbolReferenceInfo>1</DCC_SymbolReferenceInfo>
