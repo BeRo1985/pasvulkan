@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="physics2dtest"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <Icon Value="0"/>
     </General>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
@@ -40,7 +42,7 @@
       <Filename Value=".\..\bin\physics2dtest"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);.\;..\..\..\src"/>
+      <IncludeFiles Value="$(ProjOutDir);.;..\..\..\src"/>
       <OtherUnitFiles Value="..\..\..\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasmp\src;..\..\..\externals\pasjson\src;..\..\..\externals\kraft\src;..\..\..\externals\rnl\src;..\..\..\externals\pasgltf\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
@@ -77,6 +79,7 @@ end;
     </CodeGeneration>
     <Linking>
       <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
     </Linking>
