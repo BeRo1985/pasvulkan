@@ -1178,7 +1178,9 @@ type EpvApplication=class(Exception)
        fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
+       fCurrentCatchMouseOnButton:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
+       fCurrentEffectiveCatchMouse:TpvInt32;
        fCurrentRelativeMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
        fCurrentAcceptDragDropFiles:TpvInt32;
@@ -1197,7 +1199,9 @@ type EpvApplication=class(Exception)
        fProcessingMode:TpvApplicationProcessingMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
+       fCatchMouseOnButton:boolean;
        fCatchMouse:boolean;
+       fEffectiveCatchMouse:boolean;
        fRelativeMouse:boolean;
        fHideSystemBars:boolean;
        fAcceptDragDropFiles:boolean;
@@ -1741,6 +1745,8 @@ type EpvApplication=class(Exception)
        property Resizable:boolean read fResizable write fResizable;
 
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
+
+       property CatchMouseOnButton:boolean read fCatchMouseOnButton write fCatchMouseOnButton;
 
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
@@ -6576,7 +6582,9 @@ begin
  fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
+ fCurrentCatchMouseOnButton:=-1;
  fCurrentCatchMouse:=-1;
+ fCurrentEffectiveCatchMouse:=-1;
  fCurrentRelativeMouse:=-1;
  fCurrentHideSystemBars:=-1;
  fCurrentAcceptDragDropFiles:=-1;
@@ -6596,7 +6604,9 @@ begin
  fProcessingMode:=TpvApplicationProcessingMode.Flexible;
  fResizable:=true;
  fVisibleMouseCursor:=false;
+ fCatchMouseOnButton:=false;
  fCatchMouse:=false;
+ fEffectiveCatchMouse:=false;
  fRelativeMouse:=false;
  fHideSystemBars:=false;
  fAcceptDragDropFiles:=false;
@@ -9567,14 +9577,31 @@ begin
 
  if fCurrentCatchMouse<>ord(fCatchMouse) then begin
   fCurrentCatchMouse:=ord(fCatchMouse);
+ end;
+
+ fEffectiveCatchMouse:=fCatchMouse;
+
+ if fCurrentCatchMouseOnButton<>ord(fCatchMouseOnButton) then begin
+  fCurrentCatchMouseOnButton:=ord(fCatchMouseOnButton);
+  fEffectiveCatchMouse:=fCatchMouseOnButton and (fInput.fMouseDown<>[]);
+ end else if fCatchMouseOnButton then begin
+  fEffectiveCatchMouse:=fInput.fMouseDown<>[];
+ end;
+
+ if fEffectiveCatchMouse and not IsVisibleToUser then begin
+  fEffectiveCatchMouse:=false;
+ end;
+
+ if fCurrentEffectiveCatchMouse<>ord(fEffectiveCatchMouse) then begin
+  fCurrentEffectiveCatchMouse:=ord(fEffectiveCatchMouse);
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-  if fCatchMouse then begin
+  if fEffectiveCatchMouse then begin
    SDL_SetRelativeMouseMode(1);
   end else begin
    SDL_SetRelativeMouseMode(0);
   end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-  if fCatchMouse then begin
+  if fEffectiveCatchMouse then begin
    SetForegroundWindow(fWin32Handle);
    Windows.SetFocus(fWin32Handle);
    SetCapture(fWin32Handle);
