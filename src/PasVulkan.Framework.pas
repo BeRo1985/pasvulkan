@@ -3061,6 +3061,7 @@ type EpvVulkanException=class(Exception);
        fSRGBImageView:TpvVulkanImageView;
        fImageViewType:TVkImageViewType;
        fSampler:TpvVulkanSampler;
+       fExternalSampler:Boolean;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fWidth:TpvInt32;
@@ -3083,6 +3084,7 @@ type EpvVulkanException=class(Exception);
        fMaxAnisotropy:double;
        fStreaming:boolean;
        fStagingBuffer:TpvVulkanBuffer;
+       procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
        constructor Create; reintroduce;
        constructor CreateFromMemory(const aDevice:TpvVulkanDevice;
@@ -3291,7 +3293,8 @@ type EpvVulkanException=class(Exception);
        property ImageView:TpvVulkanImageView read fImageView;
        property SRGBImageView:TpvVulkanImageView read fSRGBImageView;
        property ImageViewType:TVkImageViewType read fImageViewType;
-       property Sampler:TpvVulkanSampler read fSampler;
+       property Sampler:TpvVulkanSampler read fSampler write SetSampler;
+       property ExternalSampler:Boolean read fExternalSampler;
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
        property Width:TpvInt32 read fWidth;
        property Height:TpvInt32 read fHeight;
@@ -19655,6 +19658,8 @@ begin
 
  fSampler:=nil;
 
+ fExternalSampler:=false;
+
  fMemoryBlock:=nil;
 
  fStagingBuffer:=nil;
@@ -22371,7 +22376,9 @@ end;
 
 destructor TpvVulkanTexture.Destroy;
 begin
- FreeAndNil(fSampler);
+ if not fExternalSampler then begin
+  FreeAndNil(fSampler);
+ end;
  FreeAndNil(fSRGBImageView);
  FreeAndNil(fImageView);
  if assigned(fMemoryBlock) then begin
@@ -23335,6 +23342,17 @@ begin
 
 end;
 
+procedure TpvVulkanTexture.SetSampler(const aSampler:TpvVulkanSampler);
+begin
+ if fSampler<>aSampler then begin
+  if not fExternalSampler then begin
+   FreeAndNil(fSampler);
+  end;
+  fExternalSampler:=true;
+  fSampler:=aSampler;
+ end;
+end;
+
 procedure TpvVulkanTexture.UpdateSampler;
 var MagFilter:TVkFilter;
     MinFilter:TVkFilter;
@@ -23344,7 +23362,10 @@ var MagFilter:TVkFilter;
     AddressModeW:TVkSamplerAddressMode;
     AnisotropyEnable:boolean;
 begin
- FreeAndNil(fSampler);
+ if not fExternalSampler then begin
+  FreeAndNil(fSampler);
+ end;
+ fExternalSampler:=false;
  case fFilterMode of
   TpvVulkanTextureFilterMode.Nearest:begin
    MagFilter:=VK_FILTER_NEAREST;
