@@ -23348,8 +23348,14 @@ begin
   if not fExternalSampler then begin
    FreeAndNil(fSampler);
   end;
-  fExternalSampler:=true;
   fSampler:=aSampler;
+  if assigned(fSampler) then begin
+   fExternalSampler:=true;
+   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
+  end else begin
+   fExternalSampler:=false;
+   fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
+  end;
  end;
 end;
 
