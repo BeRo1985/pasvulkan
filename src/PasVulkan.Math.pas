@@ -1221,6 +1221,9 @@ type PpvScalar=^TpvScalar;
         7:(
          Components:array[0..3] of TpvFloat;
         );
+        8:(
+         MinMax:array[0..1] of TpvVector2;
+        );
      end;
 
      TpvRectArray=array of TpvRect;
