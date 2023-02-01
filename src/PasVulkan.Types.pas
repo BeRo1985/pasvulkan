@@ -142,6 +142,8 @@ type PPpvInt8=^PpvInt8;
 
      TpvDoubles=array of TpvDouble;
 
+     TpvInt32DynamicArray=array of TpvInt32;
+
 {    PPTime=^PTime;
      PTime=^TTime;
      TTime=TpvInt64;}
