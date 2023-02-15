@@ -1526,6 +1526,8 @@ type EpvApplication=class(Exception)
        fWin32TouchIDCounter:TpvUInt32;
        fWin32TouchLastX:array[0..$1fff] of TpvDouble;
        fWin32TouchLastY:array[0..$1fff] of TpvDouble;
+       fWin32MainFiber:LPVOID;
+       fWin32MessageFiber:LPVOID;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -1548,6 +1550,10 @@ type EpvApplication=class(Exception)
 
        procedure InitializeAudio;
        procedure DeinitializeAudio;
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+       procedure ProcessWin32APIMessages;
+{$ifend}
 
       protected
 
@@ -6486,6 +6492,18 @@ end;
 {$else}
 {$ifend}
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplicationMessageFiberProc(const lpFiberParameter:LPVOID); stdcall;
+var Application:TpvApplication;
+begin
+ Application:=TpvApplication(lpFiberParameter);
+ repeat
+  Application.ProcessWin32APIMessages;
+  SwitchToFiber(Application.fWin32MainFiber);
+ until false;
+end;
+{$ifend}
+
 constructor TpvApplication.Create;
 var FrameIndex:TpvInt32;
 begin
@@ -9508,6 +9526,17 @@ begin
 end;
 {$ifend}
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplication.ProcessWin32APIMessages;
+var Msg:TMsg;
+begin
+ while PeekMessageW(Msg,0,0,0,PM_REMOVE) do begin
+  TranslateMessage(Msg);
+  DispatchMessageW(Msg);
+ end;
+end;
+{$ifend}
+
 procedure TpvApplication.ProcessMessages;
 {-$define TpvApplicationUpdateJobOnMainThread}
 {$define TpvApplicationDrawJobOnMainThread}
@@ -9518,7 +9547,6 @@ var Index,Counter,Tries:TpvInt32;
     SDLGameController:PSDL_GameController;
 {$else}
  {$if defined(Windows) and not defined(PasVulkanHeadless)}
-    Msg:TMsg;
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
     Rect:TRect;
     Point:TPoint;
@@ -9997,10 +10025,11 @@ begin
     end;
    end;
 
-{$if defined(Windows) and not defined(PasVulkanHeadless)}
-   while PeekMessageW(Msg,0,0,0,PM_REMOVE) do begin
-    TranslateMessage(Msg);
-    DispatchMessageW(Msg);
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+   if assigned(fWin32MainFiber) then begin
+    SwitchToFiber(fWin32MessageFiber);
+   end else begin
+    ProcessWin32APIMessages;
    end;
 {$ifend}
 
@@ -10606,6 +10635,7 @@ begin
 end;
 
 {$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+
 function TpvApplicationWin32WndProc(aHWnd:HWND;uMsg:UINT;wParam:WParam;lParam:LParam):LRESULT; {$ifdef cpu386}stdcall;{$endif}
 var WindowPtr:LONG_PTR;
     Application:TpvApplication;
@@ -11887,9 +11917,33 @@ begin
            end;
            try
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+           fWin32MainFiber:=LPVOID(ConvertThreadToFiberEx(nil,$1{FIBER_FLAG_FLOAT_SWITCH}));
+           if not assigned(fWin32MainFiber) then begin
+            raise EpvApplication.Create('Internal error','ConvertThreadToFiberEx failed',LOG_ERROR);
+           end;
+
+           fWin32MessageFiber:=LPVOID(CreateFiber(0,@TpvApplicationMessageFiberProc,self));
+           if not assigned(fWin32MessageFiber) then begin
+            raise EpvApplication.Create('Internal error','CreateFiber failed',LOG_ERROR);
+           end;
+{$ifend}
+           try
+
             while not fTerminated do begin
              ProcessMessages;
             end;
+
+           finally
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+           if assigned(fWin32MessageFiber) then begin
+            DeleteFiber(fWin32MessageFiber);
+            ConvertFiberToThread;
+           end;
+{$ifend}
+
+           end;
 
            finally
             if assigned(fAudio) then begin
