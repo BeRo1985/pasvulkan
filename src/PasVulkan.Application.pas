@@ -10020,7 +10020,7 @@ begin
        end else begin
         // Reenqueue for as next event
         fNativeEventLocalQueue.Enqueue(fEvent.NativeEvent);
-        continue;
+        break;
        end;
       end;
       fCurrentWidth:=fWidth;
