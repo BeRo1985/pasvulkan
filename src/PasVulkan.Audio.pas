@@ -728,8 +728,6 @@ type PpvAudioInt32=^TpvInt32;
 
 implementation
 
-uses PasVulkan.Application;
-
 const PositionShift=32;
       PositionFactor:TpvInt64=$100000000;//(1 shl PositionShift);
       PositionMask=$ffffffff;//TpvInt64(1 shl PositionShift)-1;
@@ -737,6 +735,8 @@ const PositionShift=32;
 
       SpatializationlRemainBits=14;
       SpatializationlRemainFactor=1 shl SpatializationlRemainBits;
+
+var AudioInstance:TpvAudio=nil;
 
 function SwapWordLittleEndian(Value:TpvUInt16):TpvUInt16; {$ifdef cpu386}register;{$endif}
 begin
@@ -2910,17 +2910,17 @@ end;
 function TpvAudioSoundSampleResource.BeginLoad(const aStream:TStream):boolean;
 begin
  if assigned(MetaData) then begin
-  fSample:=pvApplication.Audio.Samples.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
-                                            aStream,
-                                            false,
-                                            TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['polyphony'],1),
-                                            TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['loop'],1));
+  fSample:=AudioInstance.Samples.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
+                                      aStream,
+                                      false,
+                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['polyphony'],1),
+                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['loop'],1));
  end else begin
-  fSample:=pvApplication.Audio.Samples.Load(FileName,
-                                            aStream,
-                                            false,
-                                            1,
-                                            1);
+  fSample:=AudioInstance.Samples.Load(FileName,
+                                      aStream,
+                                      false,
+                                      1,
+                                      1);
  end;
  result:=assigned(fSample);
 end;
@@ -3000,13 +3000,13 @@ end;
 function TpvAudioSoundOGGResource.BeginLoad(const aStream:TStream):boolean;
 begin
  if assigned(MetaData) then begin
-  fOGG:=pvApplication.Audio.OGGs.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
-                                      aStream,
-                                      false);
+  fOGG:=AudioInstance.OGGs.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
+                                aStream,
+                                false);
  end else begin
-  fOGG:=pvApplication.Audio.OGGs.Load(FileName,
-                                      aStream,
-                                      false);
+  fOGG:=AudioInstance.OGGs.Load(FileName,
+                                aStream,
+                                false);
  end;
  result:=assigned(fOGG);
 end;
@@ -4244,6 +4244,7 @@ var i,TableLengthSize:TpvInt32;
     X,TableLength:{$ifdef cpuarm}TpvFloat{$else}TpvDouble{$endif};
 begin
  inherited Create;
+ AudioInstance:=self;
  CriticalSection:=TCriticalSection.Create;
  SampleRate:=ASampleRate;
  Channels:=AChannels;
@@ -4343,6 +4344,7 @@ begin
  FreeMem(EffectMixingBuffer);
  FreeMem(OutputBuffer);
  CriticalSection.Destroy;
+ AudioInstance:=nil;
  inherited Destroy;
 end;
 

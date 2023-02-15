@@ -843,7 +843,9 @@ type EpvApplication=class(Exception)
 
      PpvApplicationNativeEvent=^TpvApplicationNativeEvent;
 
-     TpvApplicationNativeEventQueue=TpvDynamicQueue<TpvApplicationNativeEvent>;
+     TpvApplicationNativeEventQueue=TPasMPUnboundedQueue<TpvApplicationNativeEvent>;
+
+     TpvApplicationNativeEventLocalQueue=TpvDynamicQueue<TpvApplicationNativeEvent>;
 
 {$ifend}
 
@@ -1486,6 +1488,8 @@ type EpvApplication=class(Exception)
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
+
+       fNativeEventLocalQueue:TpvApplicationNativeEventLocalQueue;
 {$ifend}
 
 {$if not defined(PasVulkanHeadless)}
@@ -6663,7 +6667,9 @@ begin
 {$ifend}
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
- fNativeEventQueue.Initialize;
+ fNativeEventQueue:=TpvApplicationNativeEventQueue.Create;
+
+ fNativeEventLocalQueue.Initialize;
 {$ifend}
 
 {fVulkanCountCommandQueues:=0;
@@ -6765,7 +6771,9 @@ destructor TpvApplication.Destroy;
 begin
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
- fNativeEventQueue.Finalize;
+ fNativeEventLocalQueue.Finalize;
+
+ FreeAndNil(fNativeEventQueue);
 {$ifend}
 
 FreeAndNil(fLifecycleListenerList);
@@ -9996,15 +10004,24 @@ begin
    end;
 {$ifend}
 
-   while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+   while fNativeEventLocalQueue.Dequeue(fEvent.NativeEvent) or
+         fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
     case fEvent.NativeEvent.Kind of
+     TpvApplicationNativeEventKind.None:begin
+      break;
+     end;
      TpvApplicationNativeEventKind.Resize:begin
       fWidth:=fEvent.NativeEvent.ResizeWidth;
       fHeight:=fEvent.NativeEvent.ResizeHeight;
-      while fNativeEventQueue.Peek(fEvent.NativeEvent) and (fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize) do begin
-       fWidth:=fEvent.NativeEvent.ResizeWidth;
-       fHeight:=fEvent.NativeEvent.ResizeHeight;
-       fNativeEventQueue.Dequeue;
+      while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+       if fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize then begin
+        fWidth:=fEvent.NativeEvent.ResizeWidth;
+        fHeight:=fEvent.NativeEvent.ResizeHeight;
+       end else begin
+        // Reenqueue for as next event
+        fNativeEventLocalQueue.Enqueue(fEvent.NativeEvent);
+        continue;
+       end;
       end;
       fCurrentWidth:=fWidth;
       fCurrentHeight:=fHeight;
