@@ -71,6 +71,7 @@ uses {$if defined(Unix)}
       ctypes,
      {$elseif defined(Windows)}
       Windows,
+      {$ifdef fpc}jwawinbase,{$endif}
       {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}Messages,{$ifend}
       MMSystem,
       Registry,
@@ -1528,6 +1529,8 @@ type EpvApplication=class(Exception)
        fWin32TouchLastY:array[0..$1fff] of TpvDouble;
        fWin32MainFiber:LPVOID;
        fWin32MessageFiber:LPVOID;
+       fWin32NCMouseButton:UINT;
+       fWin32NCMousePos:LParam;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -10667,7 +10670,44 @@ begin
  end else if (uMsg=WM_SYSCOMMAND) and (wParam=SC_KEYMENU) then begin
   // Don't forward the menu system command, so that pressing ALT or F10 doesn't steal the focus
   result:=0;
+ end else if (uMsg=WM_NCLBUTTONDOWN) and (wParam=HTCAPTION) then begin
+  Application.fWin32NCMouseButton:=uMsg;
+  Application.fWin32NCMousePos:=lParam;
+  result:=0;
  end else begin
+  case uMsg of
+   WM_NCMOUSEMOVE:begin
+    if Application.fWin32NCMouseButton<>0 then begin
+     if Application.fWin32NCMousePos<>lParam then begin
+      DefWindowProcW(aHWnd,Application.fWin32NCMouseButton,HTCAPTION,Application.fWin32NCMousePos);
+      Application.fWin32NCMouseButton:=0;
+     end;
+    end;
+   end;
+   WM_MOUSEMOVE:begin
+    if Application.fWin32NCMouseButton<>0 then begin
+     if Application.fWin32NCMousePos<>lParam then begin
+      DefWindowProcW(aHWnd,Application.fWin32NCMouseButton,HTCAPTION,Application.fWin32NCMousePos);
+      Application.fWin32NCMouseButton:=0;
+     end;
+    end;
+   end;
+   WM_ENTERSIZEMOVE,WM_ENTERMENULOOP:begin
+    if assigned(Application.fWin32MainFiber) then begin
+     SetTimer(aHWnd,1,1,nil);
+    end;
+   end;
+   WM_EXITSIZEMOVE,WM_EXITMENULOOP:begin
+    if assigned(Application.fWin32MainFiber) then begin
+     KillTimer(aHWnd,1);
+    end;
+   end;
+   WM_TIMER:begin
+    if assigned(Application.fWin32MainFiber) and (wParam=1) then begin
+     SwitchToFiber(Application.fWin32MainFiber);
+    end;
+   end;
+  end;
   result:=DefWindowProcW(aHWnd,uMsg,wParam,lParam);
  end;
 end;
