@@ -680,9 +680,9 @@ type EpvApplication=class(Exception)
 
      TpvApplicationJoystick=class
       private
-       fIndex:TpvInt32;
-       fID:TpvInt32;
+       fID:TpvInt64;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+       fIndex:TpvInt32;
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
 {$elseif not defined(PasVulkanHeadless)}
@@ -703,9 +703,9 @@ type EpvApplication=class(Exception)
        procedure Initialize;
       public
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-       constructor Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
+       constructor Create(const aID:TpvInt64;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
 {$else}
-       constructor Create(const aIndex:TpvInt32); reintroduce;
+       constructor Create(const aID:TpvInt64); reintroduce;
 {$ifend}
        destructor Destroy; override;
        function IsGameController:boolean;
@@ -729,6 +729,10 @@ type EpvApplication=class(Exception)
        function GetGameControllerName:TpvApplicationRawByteString;
        function GetGameControllerMapping:TpvApplicationRawByteString;
      end;
+
+     TpvApplicationJoysticks=class(TpvObjectGenericList<TpvApplicationJoystick>);
+
+     TpvApplicationJoystickIDHashMap=class(TpvHashMap<TpvInt32,TpvApplicationJoystick>);
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
@@ -890,7 +894,8 @@ type EpvApplication=class(Exception)
        fMouseDeltaY:TpvInt32;
        fJustTouched:longbool;
        fMaxPointerID:TpvInt32;
-       fJoysticks:TList;
+       fJoysticks:TpvApplicationJoysticks;
+       fJoystickIDHashMap:TpvApplicationJoystickIDHashMap;
        fMainJoystick:TpvApplicationJoystick;
        fTextInput:longbool;
        fLastTextInput:longbool;
@@ -944,7 +949,9 @@ type EpvApplication=class(Exception)
        function IsCursorCatched:boolean;
        procedure SetCursorPosition(const pX,pY:TpvInt32);
        function GetJoystickCount:TpvInt32;
-       function GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
+       function GetJoystick(const aID:TpvInt64=-1):TpvApplicationJoystick;
+       function GetJoystickByID(const aID:TpvInt64=-1):TpvApplicationJoystick;
+       function GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
      end;
 
      TpvApplicationLifecycleListener=class
@@ -1361,6 +1368,8 @@ type EpvApplication=class(Exception)
 
        fHasLastTime:boolean;
 
+       fDoUpdateMainJoystick:boolean;
+
        fLastTime:TpvHighResolutionTime;
        fNowTime:TpvHighResolutionTime;
        fDeltaTime:TpvHighResolutionTime;
@@ -1512,7 +1521,6 @@ type EpvApplication=class(Exception)
        fWin32MouseCoordY:TpvInt32;
        fWin32AudioThread:TPasMPThread;
        fWin32HasFocus:Boolean;
-       fWin32CountJoysticks:TpvInt32;
        fWin32OldLeft:TpvInt32;
        fWin32OldTop:TpvInt32;
        fWin32OldWidth:TpvInt32;
@@ -1557,6 +1565,8 @@ type EpvApplication=class(Exception)
 {$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
        procedure ProcessWin32APIMessages;
 {$ifend}
+
+       procedure UpdateJoysticks;
 
       protected
 
@@ -3143,33 +3153,26 @@ begin
 end;
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
 begin
  inherited Create;
- fIndex:=aIndex;
  fJoystick:=aJoystick;
  fGameController:=aGameController;
- if assigned(fJoystick) then begin
-  fID:=SDL_JoystickInstanceID(fJoystick);
- end else begin
-  fID:=-1;
- end;
+ fID:=aID;
 end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32);
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64);
 begin
  inherited Create;
- fIndex:=aIndex;
- fJoystick:=aIndex;
+ fJoystick:=aID;
  fID:=fJoystick;
  GetMem(fState,SizeOf(TXINPUT_STATE));
 end;
 {$else}
-constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32);
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64);
 begin
  inherited Create;
- fIndex:=aIndex;
- fID:=-1;
+ fID:=aID;
 end;
 {$ifend}
 
@@ -3243,7 +3246,7 @@ end;
 
 function TpvApplicationJoystick.Index:TpvInt32;
 begin
- result:=fIndex;
+ result:=pvApplication.Input.fJoysticks.IndexOf(self);
 end;
 
 function TpvApplicationJoystick.ID:TpvInt32;
@@ -3594,7 +3597,8 @@ begin
   result:=false;
  end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=(fJoystick>=XUSER_MAX_COUNT) or (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS);
+ result:=((fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS)) or
+         ((fJoystick>=XUSER_MAX_COUNT) and (joyGetDevCapsW(fJoystick-XUSER_MAX_COUNT,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR));
 {$else}
  result:=false;
 {$ifend}
@@ -4063,7 +4067,9 @@ begin
  fMaxPointerID:=-1;
  SetLength(fEvents,1024);
  SetLength(fEventTimes,1024);
- fJoysticks:=TList.Create;
+ fJoysticks:=TpvApplicationJoysticks.Create;
+ fJoysticks.OwnsObjects:=true;
+ fJoystickIDHashMap:=TpvApplicationJoystickIDHashMap.Create(nil);
  fMainJoystick:=nil;
  fTextInput:=false;
  fLastTextInput:=false;
@@ -4071,12 +4077,9 @@ end;
 
 destructor TpvApplicationInput.Destroy;
 begin
- while fJoysticks.Count>0 do begin
-  TpvApplicationJoystick(fJoysticks[fJoysticks.Count-1]).Free;
-  fJoysticks.Delete(fJoysticks.Count-1);
- end;
- fJoysticks.Free;
- SetLength(fEvents,0);
+ FreeAndNil(fJoysticks);
+ FreeAndNil(fJoystickIDHashMap);
+ fEvents:=nil;
  fCriticalSection.Free;
  inherited Destroy;
 end;
@@ -5891,48 +5894,42 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_NumJoysticks;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=Max(joyGetNumDevs,0);
+ result:=Max(fJoysticks.Count,0);
 {$else}
  result:=0;
 {$ifend}
 end;
 
-function TpvApplicationInput.GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
-{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-var ListIndex:TpvInt32;
+function TpvApplicationInput.GetJoystick(const aID:TpvInt64=-1):TpvApplicationJoystick;
 begin
- if (aIndex>=0) and (aIndex<SDL_NumJoysticks) then begin
-  result:=nil;
-  for ListIndex:=0 to fJoysticks.Count-1 do begin
-   if TpvApplicationJoystick(fJoysticks[ListIndex]).fIndex=aIndex then begin
-    result:=TpvApplicationJoystick(fJoysticks[ListIndex]);
-    exit;
-   end;
+ if aID>=0 then begin
+  result:=fJoystickIDHashMap[aID];
+ end else begin
+  result:=fMainJoystick;
+ end;
+end;
+
+function TpvApplicationInput.GetJoystickByID(const aID:TpvInt64=-1):TpvApplicationJoystick;
+begin
+ if aID>=0 then begin
+  result:=fJoystickIDHashMap[aID];
+ end else begin
+  result:=fMainJoystick;
+ end;
+end;
+
+function TpvApplicationInput.GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
+begin
+ if aIndex>=0 then begin
+  if aIndex<fJoysticks.Count then begin
+   result:=fJoysticks[aIndex];
+  end else begin
+   result:=nil;
   end;
  end else begin
   result:=fMainJoystick;
  end;
 end;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-var ListIndex:TpvInt32;
-begin
- if (aIndex>=0) and (aIndex<joyGetNumDevs) then begin
-  result:=nil;
-  for ListIndex:=0 to fJoysticks.Count-1 do begin
-   if TpvApplicationJoystick(fJoysticks[ListIndex]).fIndex=aIndex then begin
-    result:=TpvApplicationJoystick(fJoysticks[ListIndex]);
-    exit;
-   end;
-  end;
- end else begin
-  result:=fMainJoystick;
- end;
-end;
-{$else}
-begin
- result:=fMainJoystick;
-end;
-{$ifend}
 
 constructor TpvApplicationLifecycleListener.Create;
 begin
@@ -9540,14 +9537,76 @@ begin
 end;
 {$ifend}
 
+procedure TpvApplication.UpdateJoysticks;
+var Index:TpvSizeInt;
+    Joystick:TpvApplicationJoystick;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+    IDCounter:TpvSizeInt;
+    XInputCapabilities:TXINPUT_CAPABILITIES;
+    JoyCaps:TJOYCAPSW;
+    Attached:boolean;
+{$ifend}
+begin
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+ for IDCounter:=0 to (XUSER_MAX_COUNT+joyGetNumDevs)-1 do begin
+  if IDCounter<XUSER_MAX_COUNT then begin
+   Attached:=XInputGetCapabilities(IDCounter,0,@XInputCapabilities)=ERROR_SUCCESS;
+  end else begin
+   Attached:=joyGetDevCapsW(IDCounter-XUSER_MAX_COUNT,@JoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR;
+  end;
+  Joystick:=fInput.fJoystickIDHashMap[IDCounter];
+  if assigned(Joystick) and not Attached then begin
+   try
+    fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+   finally
+    fInput.fJoysticks.Remove(Joystick);
+   end;
+   fDoUpdateMainJoystick:=true;
+  end else if Attached and not assigned(Joystick) then begin
+   Joystick:=TpvApplicationJoystick.Create(IDCounter);
+   try
+    Joystick.Initialize;
+   finally
+    try
+     fInput.fJoysticks.Add(Joystick);
+    finally
+     fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+    end;
+   end;
+   fDoUpdateMainJoystick:=true;
+  end;
+ end;
+{$ifend}
+ if fDoUpdateMainJoystick then begin
+  fInput.fMainJoystick:=nil;
+  if fInput.fJoysticks.Count>0 then begin
+   for Index:=0 to fInput.fJoysticks.Count-1 do begin
+    Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Index]);
+    if assigned(Joystick) then begin
+     fInput.fMainJoystick:=Joystick;
+     break;
+    end;
+   end;
+  end;
+ end;
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+ for Index:=0 to fInput.fJoysticks.Count-1 do begin
+  Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Index]);
+  if assigned(Joystick) then begin
+   Joystick.Update;
+  end;
+ end;
+{$ifend}
+end;
+
 procedure TpvApplication.ProcessMessages;
 {-$define TpvApplicationUpdateJobOnMainThread}
 {$define TpvApplicationDrawJobOnMainThread}
 var Index,Counter,Tries:TpvInt32;
-    Joystick:TpvApplicationJoystick;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
+    Joystick:TpvApplicationJoystick;
 {$else}
  {$if defined(Windows) and not defined(PasVulkanHeadless)}
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
@@ -9556,7 +9615,7 @@ var Index,Counter,Tries:TpvInt32;
     MonitorInfo:TMonitorInfo;
  {$ifend}
 {$ifend}
-    OK,Found,DoUpdateMainJoystick:boolean;
+    OK,Found:boolean;
 {$if defined(TpvApplicationUpdateJobOnMainThread)}
     DrawJob:PPasMPJob;
 {$elseif defined(TpvApplicationDrawJobOnMainThread)}
@@ -9573,7 +9632,7 @@ begin
 
  ProcessRunnables;
 
- DoUpdateMainJoystick:=false;
+ fDoUpdateMainJoystick:=false;
 
  if TPasMPInterlocked.CompareExchange(fHasNewWindowTitle,false,true) then begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
@@ -9884,7 +9943,7 @@ begin
       Found:=false;
       for Counter:=0 to fInput.fJoysticks.Count-1 do begin
        Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-       if assigned(Joystick) and (Joystick.Index=Index) then begin
+       if assigned(Joystick) and (Joystick.fIndex=Index) then begin
         Found:=true;
         break;
        end;
@@ -9902,27 +9961,31 @@ begin
         SDLJoystick:=SDL_JoystickOpen(Index);
        end;
        if assigned(SDLJoystick) then begin
-        Joystick:=TpvApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
-        if Index<fInput.fJoysticks.Count then begin
-         fInput.fJoysticks.Items[Index]:=Joystick;
-        end else begin
-         while fInput.fJoysticks.Count<Index do begin
-          fInput.fJoysticks.Add(nil);
+        Joystick:=TpvApplicationJoystick.Create(SDL_JoystickInstanceID(SDLJoystick),SDLJoystick,SDLGameController);
+        try
+         Joystick.fIndex:=Index;
+         Joystick.Initialize;
+        finally
+         try
+          fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+         finally
+          fInput.fJoysticks.Add(Joystick);
          end;
-         fInput.fJoysticks.Add(Joystick);
         end;
-        Joystick.Initialize;
-        DoUpdateMainJoystick:=true;
+        fDoUpdateMainJoystick:=true;
        end;
       end;
      end;
      SDL_JOYDEVICEREMOVED:begin
       for Counter:=0 to fInput.fJoysticks.Count-1 do begin
        Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-       if assigned(Joystick) and (Joystick.ID=fEvent.SDLEvent.jdevice.which) then begin
-        Joystick.Free;
-        fInput.fJoysticks.Delete(Counter);
-        DoUpdateMainJoystick:=true;
+       if assigned(Joystick) and (Joystick.fIndex=fEvent.SDLEvent.jdevice.which) then begin
+        try
+         fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+        finally
+         fInput.fJoysticks.Delete(Counter);
+        end;
+        fDoUpdateMainJoystick:=true;
         break;
        end;
       end;
@@ -10234,42 +10297,8 @@ begin
      end;
     end;
    end;
-{$if defined(Windows) and not defined(PasVulkanHeadless)}
-   fWin32CountJoysticks:=XUSER_MAX_COUNT+joyGetNumDevs;
-   if fWin32CountJoysticks<>fInput.fJoysticks.Count then begin
-    fInput.fJoysticks.Clear;
-    for Counter:=0 to fWin32CountJoysticks-1 do begin
-     Joystick:=TpvApplicationJoystick.Create(Counter);
-     try
-      Joystick.Initialize;
-     finally
-      fInput.fJoysticks.Add(Joystick);
-     end;
-    end;
-    DoUpdateMainJoystick:=true;
-   end;
 {$ifend}
-{$ifend}
-   if DoUpdateMainJoystick then begin
-    fInput.fMainJoystick:=nil;
-    if fInput.fJoysticks.Count>0 then begin
-     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-      if assigned(Joystick) then begin
-       fInput.fMainJoystick:=Joystick;
-       break;
-      end;
-     end;
-    end;
-   end;
-{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
-   for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-    Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-    if assigned(Joystick) then begin
-     Joystick.Update;
-    end;
-   end;
-{$ifend}
+   UpdateJoysticks;
    fInput.ProcessEvents;
   finally
    fInput.fCriticalSection.Release;
@@ -11912,6 +11941,9 @@ begin
 
    CreateVulkanInstance;
    try
+
+    fDoUpdateMainJoystick:=false;
+    UpdateJoysticks;
 
     Start;
     try
