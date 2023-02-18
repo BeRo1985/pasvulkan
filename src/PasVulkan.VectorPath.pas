@@ -595,6 +595,17 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
 implementation
 
+function Clamp(const Value,MinValue,MaxValue:TpvDouble):TpvDouble;
+begin
+ if Value<=MinValue then begin
+  result:=MinValue;
+ end else if Value>=MaxValue then begin
+  result:=MaxValue;
+ end else begin
+  result:=Value;
+ end;
+end;
+
 { TpvVectorPathVector }
 
 constructor TpvVectorPathVector.Create(const aValue:TpvDouble);
