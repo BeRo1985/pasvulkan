@@ -75,7 +75,7 @@ uses {$if defined(Unix)}
       {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}Messages,{$ifend}
       MMSystem,
       Registry,
-      {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}MultiMon,ShellAPI,{$ifend}
+      {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}MultiMon,ShellAPI,PasVulkan.Win32.GameInput,{$ifend}
      {$ifend}
      SysUtils,
      Classes,
@@ -691,6 +691,9 @@ type EpvApplication=class(Exception)
        fState:Pointer;
        fJoyCaps:TJOYCAPSW;
        fJoyInfoEx:TJoyInfoEx;
+       fWin32GameInputDevice:IGameInputDevice;
+       fWin32GameInputDeviceName:TpvUTF8String;
+       fWin32GameInputDeviceGUID:TGUID;
 {$ifend}
        fAxes:array[0..GAME_CONTROLLER_AXIS_MAX-1] of TpvInt32;
        fButtons:TpvUInt32;
@@ -732,7 +735,7 @@ type EpvApplication=class(Exception)
 
      TpvApplicationJoysticks=class(TpvObjectGenericList<TpvApplicationJoystick>);
 
-     TpvApplicationJoystickIDHashMap=class(TpvHashMap<TpvInt32,TpvApplicationJoystick>);
+     TpvApplicationJoystickIDHashMap=class(TpvHashMap<TpvInt64,TpvApplicationJoystick>);
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
@@ -749,6 +752,18 @@ type EpvApplication=class(Exception)
       cyContact:DWORD;
      end;
      PpvApplicationTOUCHINPUT=^TpvApplicationTOUCHINPUT;
+
+     TpvApplicationWin32GameInputDeviceCallbackQueueItem=record
+      Device:IGameInputDevice;
+      Timestamp:TpvUInt64;
+      CurrentStatus:TGameInputDeviceStatus;
+      PreviousStatus:TGameInputDeviceStatus;
+     end;
+
+     PpvApplicationWin32GameInputDeviceCallbackQueueItem=^TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+
+     TpvApplicationWin32GameInputDeviceCallbackQueue=TPasMPUnboundedQueue<TpvApplicationWin32GameInputDeviceCallbackQueueItem>;
+
 {$ifend}
 
      TpvApplicationNativeEventKind=
@@ -1539,6 +1554,10 @@ type EpvApplication=class(Exception)
        fWin32MessageFiber:LPVOID;
        fWin32NCMouseButton:UINT;
        fWin32NCMousePos:LParam;
+       fWin32HasGameInput:boolean;
+       fWin32GameInput:IGameInput;
+       fWin32GameInputDeviceCallbackQueue:TpvApplicationWin32GameInputDeviceCallbackQueue;
+       fWin32GameInputDeviceCallbackToken:TGameInputCallbackToken;
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 
@@ -3167,6 +3186,7 @@ begin
  fJoystick:=aID;
  fID:=fJoystick;
  GetMem(fState,SizeOf(TXINPUT_STATE));
+ fWin32GameInputDevice:=nil;
 end;
 {$else}
 constructor TpvApplicationJoystick.Create(const aID:TpvInt64);
@@ -3192,11 +3212,15 @@ begin
    fState:=nil;
   end;
  end;
+ fWin32GameInputDevice:=nil;
 {$ifend}
  inherited Destroy;
 end;
 
 procedure TpvApplicationJoystick.Initialize;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+var GameInputDeviceInfo:PGameInputDeviceInfo;
+{$ifend}
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  fCountAxes:=SDL_JoystickNumAxes(fJoystick);
@@ -3204,7 +3228,41 @@ begin
  fCountHats:=SDL_JoystickNumHats(fJoystick);
  fCountButtons:=SDL_JoystickNumButtons(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- if fJoystick<XUSER_MAX_COUNT then begin
+ if assigned(fWin32GameInputDevice) then begin
+  fWin32GameInputDeviceName:='';
+  FillChar(fWin32GameInputDeviceGUID,SizeOf(TGUID),#0);
+  GameInputDeviceInfo:=fWin32GameInputDevice.GetDeviceInfo;
+  if assigned(GameInputDeviceInfo) then begin
+   if assigned(GameInputDeviceInfo^.displayName) then begin
+    SetString(fWin32GameInputDeviceName,GameInputDeviceInfo^.displayName^.data,GameInputDeviceInfo^.displayName^.sizeInBytes);
+   end;
+   if length(fWin32GameInputDeviceName)=0 then begin
+    fWin32GameInputDeviceName:='GameInput device';
+   end;
+   fWin32GameInputDeviceGUID.D1:=(TpvUInt32(GameInputDeviceInfo.revisionNumber) shl 16) or
+                                 (TpvUInt32(GameInputDeviceInfo.interfaceNumber) shl 8) or
+                                 (TpvUInt32(GameInputDeviceInfo.collectionNumber) shl 0);
+   fWin32GameInputDeviceGUID.D2:=GameInputDeviceInfo.vendorId;
+   fWin32GameInputDeviceGUID.D3:=GameInputDeviceInfo.productId;
+   fWin32GameInputDeviceGUID.D4[0]:=GameInputDeviceInfo.deviceId.value[0];
+   fWin32GameInputDeviceGUID.D4[1]:=GameInputDeviceInfo.deviceId.value[1];
+   fWin32GameInputDeviceGUID.D4[2]:=GameInputDeviceInfo.deviceId.value[2];
+   fWin32GameInputDeviceGUID.D4[3]:=GameInputDeviceInfo.deviceId.value[3];
+   fWin32GameInputDeviceGUID.D4[4]:=GameInputDeviceInfo.deviceId.value[4];
+   fWin32GameInputDeviceGUID.D4[5]:=GameInputDeviceInfo.deviceId.value[5];
+   fWin32GameInputDeviceGUID.D4[6]:=GameInputDeviceInfo.deviceId.value[6];
+   fWin32GameInputDeviceGUID.D4[7]:=GameInputDeviceInfo.deviceId.value[7];
+   fCountAxes:=GameInputDeviceInfo^.controllerAxisCount;
+   fCountBalls:=0;
+   fCountHats:=GameInputDeviceInfo^.controllerSwitchCount;
+   fCountButtons:=GameInputDeviceInfo^.controllerButtonCount;
+  end else begin
+   fCountAxes:=0;
+   fCountBalls:=0;
+   fCountHats:=0;
+   fCountButtons:=0;
+  end;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
   // The XInput API has a hard coded button/axis mapping, so we just match it
   fCountAxes:=6;
   fCountBalls:=0;
@@ -3234,7 +3292,9 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=assigned(fGameController);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- if (fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS) then begin
+ if assigned(fWin32GameInputDevice) then begin
+  result:=true;
+ end else if (fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS) then begin
   result:=Capabilities.SubType=XINPUT_DEVSUBTYPE_GAMEPAD;
  end else begin
   result:=false;
@@ -3265,7 +3325,9 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickName(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- if fJoystick<XUSER_MAX_COUNT then begin
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceName;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
   result:='XInput'+IntToStr(fJoystick);
  end else begin
   result:=PUCUUTF16ToUTF8(PWideChar(@fJoyCaps.szPname[0]));
@@ -3280,13 +3342,17 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetGUID(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- FillChar(result,SizeOf(TGUID),#0);
- if fJoystick<XUSER_MAX_COUNT then begin
-  result.D1:=TpvUInt32($10000000) or fJoystick;
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceGUID;
  end else begin
-  result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
-  result.D2:=fJoyCaps.wMid;
-  result.D3:=fJoyCaps.wPid;
+  FillChar(result,SizeOf(TGUID),#0);
+  if fJoystick<XUSER_MAX_COUNT then begin
+   result.D1:=TpvUInt32($10000000) or fJoystick;
+  end else begin
+   result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+   result.D2:=fJoyCaps.wMid;
+   result.D3:=fJoyCaps.wPid;
+  end;
  end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
@@ -3298,13 +3364,17 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- FillChar(result,SizeOf(TGUID),#0);
- if fJoystick<XUSER_MAX_COUNT then begin
-  result.D1:=TpvUInt32($10000000) or fJoystick;
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceGUID;
  end else begin
-  result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
-  result.D2:=fJoyCaps.wMid;
-  result.D3:=fJoyCaps.wPid;
+  FillChar(result,SizeOf(TGUID),#0);
+  if fJoystick<XUSER_MAX_COUNT then begin
+   result.D1:=TpvUInt32($10000000) or fJoystick;
+  end else begin
+   result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+   result.D2:=fJoyCaps.wMid;
+   result.D3:=fJoyCaps.wPid;
+  end;
  end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
@@ -3332,6 +3402,10 @@ begin
 end;
 
 procedure TpvApplicationJoystick.Update;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+var GameInputReading:IGameInputReading;
+    GameInputGamepadState:TGameInputGamepadState;
+{$ifend}
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_JoystickUpdate;
@@ -3345,7 +3419,69 @@ begin
  fButtons:=0;
  fHats:=0;
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
- if fJoystick<XUSER_MAX_COUNT then begin
+ if assigned(fWin32GameInputDevice) then begin
+  GameInputReading:=nil;
+  try
+   if pvApplication.fWin32GameInput.GetCurrentReading(GameInputKindGamepad,fWin32GameInputDevice,GameInputReading)=NO_ERROR then begin
+    if GameInputReading.GetGamepadState(@GameInputGamepadState) then begin
+     fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=round(GameInputGamepadState.leftThumbstickX*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=round(GameInputGamepadState.leftThumbstickY*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=round(GameInputGamepadState.rightThumbstickX*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=round(GameInputGamepadState.rightThumbstickY*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=round(GameInputGamepadState.leftTrigger*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=round(GameInputGamepadState.rightTrigger*32768.0);
+     if (GameInputGamepadState.buttons and GameInputGamepadA)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_A;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadB)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_B;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadX)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_X;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadY)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_Y;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadMenu)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_BACK;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadView)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_START;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadLeftThumbstick)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSTICK;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadRightThumbstick)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSTICK;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadLeftShoulder)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_LEFTSHOULDER;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadRightShoulder)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSHOULDER;
+     end;
+     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadUp)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_UP;
+      fHats:=fHats or JOYSTICK_HAT_UP;
+     end;
+     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadDown)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_DOWN;
+      fHats:=fHats or JOYSTICK_HAT_DOWN;
+     end;
+     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadLeft)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_LEFT;
+      fHats:=fHats or JOYSTICK_HAT_LEFT;
+     end;
+     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadRight)<>0 then begin
+      fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_RIGHT;
+      fHats:=fHats or JOYSTICK_HAT_RIGHT;
+     end;
+    end;
+   end;
+  finally
+   GameInputReading:=nil;
+  end;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
   if XInputGetState(fJoystick,fState)=ERROR_SUCCESS then begin
    fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=PXINPUT_STATE(fState)^.Gamepad.sThumbLX;
    fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbLY);
@@ -9545,35 +9681,82 @@ var Index:TpvSizeInt;
     XInputCapabilities:TXINPUT_CAPABILITIES;
     JoyCaps:TJOYCAPSW;
     Attached:boolean;
+    DeviceCallbackQueueItem:TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+    Device:IGameInputDevice;
 {$ifend}
 begin
 {$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
- for IDCounter:=0 to (XUSER_MAX_COUNT+joyGetNumDevs)-1 do begin
-  if IDCounter<XUSER_MAX_COUNT then begin
-   Attached:=XInputGetCapabilities(IDCounter,0,@XInputCapabilities)=ERROR_SUCCESS;
-  end else begin
-   Attached:=joyGetDevCapsW(IDCounter-XUSER_MAX_COUNT,@JoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR;
-  end;
-  Joystick:=fInput.fJoystickIDHashMap[IDCounter];
-  if assigned(Joystick) and not Attached then begin
-   try
-    fInput.fJoystickIDHashMap.Delete(Joystick.fID);
-   finally
-    fInput.fJoysticks.Remove(Joystick);
-   end;
-   fDoUpdateMainJoystick:=true;
-  end else if Attached and not assigned(Joystick) then begin
-   Joystick:=TpvApplicationJoystick.Create(IDCounter);
-   try
-    Joystick.Initialize;
-   finally
+ if fWin32HasGameInput then begin
+  Device:=nil;
+  try
+   while fWin32GameInputDeviceCallbackQueue.Dequeue(DeviceCallbackQueueItem) do begin
     try
-     fInput.fJoysticks.Add(Joystick);
+     Device:=DeviceCallbackQueueItem.Device;
+     if assigned(Device) then begin
+      IDCounter:=TpvInt64(TpvPtrInt(Device));
+      Joystick:=fInput.fJoystickIDHashMap[IDCounter];
+      Attached:=(DeviceCallbackQueueItem.CurrentStatus and GameInputDeviceConnected)<>0;
+      if assigned(Joystick) and not Attached then begin
+       try
+        Joystick.fWin32GameInputDevice:=nil;
+       finally
+        try
+         fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+        finally
+         fInput.fJoysticks.Remove(Joystick);
+        end;
+       end;
+       fDoUpdateMainJoystick:=true;
+      end else if Attached and not assigned(Joystick) then begin
+       Joystick:=TpvApplicationJoystick.Create(IDCounter);
+       try
+        Joystick.fWin32GameInputDevice:=Device;
+        Joystick.Initialize;
+       finally
+        try
+         fInput.fJoysticks.Add(Joystick);
+        finally
+         fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+        end;
+       end;
+       fDoUpdateMainJoystick:=true;
+      end;
+     end;
     finally
-     fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+     DeviceCallbackQueueItem.Device:=nil;
     end;
    end;
-   fDoUpdateMainJoystick:=true;
+  finally
+   Device:=nil;
+  end;
+ end else begin
+  for IDCounter:=0 to (XUSER_MAX_COUNT+joyGetNumDevs)-1 do begin
+   if IDCounter<XUSER_MAX_COUNT then begin
+    Attached:=XInputGetCapabilities(IDCounter,0,@XInputCapabilities)=ERROR_SUCCESS;
+   end else begin
+    Attached:=joyGetDevCapsW(IDCounter-XUSER_MAX_COUNT,@JoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR;
+   end;
+   Joystick:=fInput.fJoystickIDHashMap[IDCounter];
+   if assigned(Joystick) and not Attached then begin
+    try
+     fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+    finally
+     fInput.fJoysticks.Remove(Joystick);
+    end;
+    fDoUpdateMainJoystick:=true;
+   end else if Attached and not assigned(Joystick) then begin
+    Joystick:=TpvApplicationJoystick.Create(IDCounter);
+    try
+     Joystick.Initialize;
+    finally
+     try
+      fInput.fJoysticks.Add(Joystick);
+     finally
+      fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+     end;
+    end;
+    fDoUpdateMainJoystick:=true;
+   end;
   end;
  end;
 {$ifend}
@@ -11426,6 +11609,22 @@ end;
 
 {$ifend}
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplicationWin32GameInputOnDeviceEnumerated(callbackToken:TGameInputCallbackToken;context:TpvPointer;device:IGameInputDevice;timestamp:TpvUInt64;currentStatus,previousStatus:TGameInputDeviceStatus); {$ifdef cpu386}stdcall;{$endif}
+var Application:TpvApplication;
+    DeviceCallbackQueueItem:TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+begin
+ Application:=TpvApplication(context);
+ if assigned(Application) and (callbackToken=Application.fWin32GameInputDeviceCallbackToken) then begin
+  DeviceCallbackQueueItem.Device:=device;
+  DeviceCallbackQueueItem.Timestamp:=timestamp;
+  DeviceCallbackQueueItem.CurrentStatus:=currentStatus;
+  DeviceCallbackQueueItem.PreviousStatus:=previousStatus;
+  Application.fWin32GameInputDeviceCallbackQueue.Enqueue(DeviceCallbackQueueItem);
+ end;
+end;
+{$ifend}
+
 procedure TpvApplication.Run;
 var Index:TpvInt32;
     ExceptionString:String;
@@ -11896,6 +12095,28 @@ begin
   Windows.SetForegroundWindow(fWin32Handle);
   Windows.SetFocus(fWin32Handle);}
 
+  fWin32GameInput:=nil;
+
+  fWin32HasGameInput:=GameInputCreate(fWin32GameInput)=NO_ERROR;
+  fWin32HasGameInput:=fWin32HasGameInput and assigned(fWin32GameInput);
+
+  fWin32GameInputDeviceCallbackQueue:=TpvApplicationWin32GameInputDeviceCallbackQueue.Create;
+
+  fWin32GameInputDeviceCallbackToken:=GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE;
+
+  if fWin32HasGameInput then begin
+   if fWin32GameInput.RegisterDeviceCallback(nil,
+                                             GameInputKindGamepad,
+                                             GameInputDeviceAnyStatus,
+                                             GameInputAsyncEnumeration,
+                                             self,
+                                             TpvApplicationWin32GameInputOnDeviceEnumerated,
+                                             @fWin32GameInputDeviceCallbackToken)<>NO_ERROR then begin
+    fWin32GameInputDeviceCallbackToken:=GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE;
+    fWin32HasGameInput:=false;
+   end;
+  end;
+
 {$else}
 {$ifend}
 
@@ -12108,6 +12329,16 @@ begin
     fSurfaceWindow:=nil;
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+
+   if fWin32HasGameInput then begin
+    if fWin32GameInputDeviceCallbackToken<>GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE then begin
+     fWin32GameInput.UnregisterCallback(fWin32GameInputDeviceCallbackToken,1000);
+    end;
+   end;
+
+   FreeAndNil(fWin32GameInputDeviceCallbackQueue);
+
+   fWin32GameInput:=nil;
 
    if fWin32Icon<>0 then begin
     DestroyIcon(fWin32Icon);
