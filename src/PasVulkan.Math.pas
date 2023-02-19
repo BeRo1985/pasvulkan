@@ -5504,7 +5504,7 @@ asm
 {$ifdef Windows}
  movups dqword ptr [rdx],xmm2
 {$else}
- movups dqword ptr [rax],xmm2
+ movups dqword ptr [result],xmm2
 {$endif}
 end;
 {$else}
@@ -10829,7 +10829,7 @@ asm
  movaps xmm6,dqword ptr [rsp+32]
  subps xmm5,xmm6
  shufps xmm5,xmm5,$4e
- movaps xmm6,[esp+128]
+ movaps xmm6,[rsp+128]
  mulps xmm6,xmm7
  subps xmm6,xmm5
  movaps xmm5,dqword ptr [rsp+112]
