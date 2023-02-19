@@ -1585,7 +1585,7 @@ type EpvApplication=class(Exception)
        procedure ProcessWin32APIMessages;
 {$ifend}
 
-       procedure UpdateJoysticks;
+       procedure UpdateJoysticks(const aInitial:boolean);
 
       protected
 
@@ -9674,10 +9674,13 @@ begin
 end;
 {$ifend}
 
-procedure TpvApplication.UpdateJoysticks;
+procedure TpvApplication.UpdateJoysticks(const aInitial:boolean);
 var Index:TpvSizeInt;
     Joystick:TpvApplicationJoystick;
-{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+    SDLJoystick:PSDL_Joystick;
+    SDLGameController:PSDL_GameController;
+{$elseif defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
     IDCounter:TpvSizeInt;
     XInputCapabilities:TXINPUT_CAPABILITIES;
     JoyCaps:TJOYCAPSW;
@@ -9686,7 +9689,37 @@ var Index:TpvSizeInt;
     Device:IGameInputDevice;
 {$ifend}
 begin
-{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ if aInitial then begin
+  for Index:=0 to SDL_NumJoysticks-1 do begin
+   if SDL_IsGameController(Index)<>0 then begin
+    SDLGameController:=SDL_GameControllerOpen(Index);
+    if assigned(SDLGameController) then begin
+     SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
+    end else begin
+     SDLJoystick:=nil;
+    end;
+   end else begin
+    SDLGameController:=nil;
+    SDLJoystick:=SDL_JoystickOpen(Index);
+   end;
+   if assigned(SDLJoystick) then begin
+    Joystick:=TpvApplicationJoystick.Create(SDL_JoystickInstanceID(SDLJoystick),SDLJoystick,SDLGameController);
+    try
+     Joystick.fIndex:=Index;
+     Joystick.Initialize;
+    finally
+     try
+      fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+     finally
+      fInput.fJoysticks.Add(Joystick);
+     end;
+    end;
+    fDoUpdateMainJoystick:=true;
+   end;
+  end;
+ end;
+{$elseif defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
  if fWin32HasGameInput then begin
   Device:=nil;
   try
@@ -10482,7 +10515,7 @@ begin
     end;
    end;
 {$ifend}
-   UpdateJoysticks;
+   UpdateJoysticks(false);
    fInput.ProcessEvents;
   finally
    fInput.fCriticalSection.Release;
@@ -11873,7 +11906,12 @@ begin
  if WaitForReadyState then begin
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-  SDL2Flags:=SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER;
+  SDL2Flags:=SDL_INIT_VIDEO or
+             SDL_INIT_EVENTS or
+             SDL_INIT_TIMER or
+             SDL_INIT_JOYSTICK or
+             SDL_INIT_HAPTIC or
+             SDL_INIT_GAMECONTROLLER;
   if fUseAudio then begin
    SDL2Flags:=SDL2Flags or SDL_INIT_AUDIO;
   end;
@@ -12165,7 +12203,7 @@ begin
    try
 
     fDoUpdateMainJoystick:=false;
-    UpdateJoysticks;
+    UpdateJoysticks(true);
 
     Start;
     try
