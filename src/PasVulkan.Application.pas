@@ -3733,7 +3733,8 @@ begin
   result:=false;
  end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
- result:=((fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS)) or
+ result:=assigned(fWin32GameInputDevice) or
+         ((fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS)) or
          ((fJoystick>=XUSER_MAX_COUNT) and (joyGetDevCapsW(fJoystick-XUSER_MAX_COUNT,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR));
 {$else}
  result:=false;
