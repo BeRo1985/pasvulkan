@@ -126,13 +126,14 @@ type EpvFrameGraph=class(Exception);
              );
             TLoadOp=record
              public
-              type TKind=
+              type TLoadOpKind=
                     (
                      Load,
                      Clear,
                      DontCare
                     );
-              const Values:array[TKind] of TVkAttachmentLoadOp=
+                    TKind=TLoadOpKind;
+              const Values:array[TLoadOpKind] of TVkAttachmentLoadOp=
                      (
                       VK_ATTACHMENT_LOAD_OP_LOAD,
                       VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -148,11 +149,12 @@ type EpvFrameGraph=class(Exception);
             PLoadOp=^TLoadOp;
             TStoreOp=record
              public
-              type TKind=
+              type TStoreOpKind=
                     (
                      Store,
                      DontCare
                     );
+                   TKind=TStoreOpKind;
               const Values:array[TKind] of TVkAttachmentStoreOp=
                      (
                       VK_ATTACHMENT_STORE_OP_STORE,
@@ -180,12 +182,14 @@ type EpvFrameGraph=class(Exception);
             PImageType=^TImageType;
             TImageSize=packed record
              public
-              type TKind=
+              type TImageSizeKind=
                     (
                      Undefined,
                      Absolute,
                      SurfaceDependent
                     );
+                   PImageSizeKind=^TImageSizeKind;
+                   TKind=TImageSizeKind;
                    PKind=^TKind;
              public
               Kind:TKind;
@@ -566,7 +570,7 @@ type EpvFrameGraph=class(Exception);
             TPass=class;
             TResourceTransition=class
              public
-              type TKind=
+              type TResourceTransitionKind=
                     (
                      ImageInput,
                      ImageOutput,
@@ -576,18 +580,20 @@ type EpvFrameGraph=class(Exception);
                      BufferInput,
                      BufferOutput
                     );
-                    PKind=^TKind;
-                    TKinds=set of TKind;
-                    PKinds=^TKinds;
-                    TFlag=
+                   TKind=TResourceTransitionKind;
+                   PKind=^TKind;
+                   TKinds=set of TKind;
+                   PKinds=^TKinds;
+                   TResourceTransitionFlag=
                     (
                      Attachment,
                      PreviousFrameInput,
                      NextFrameOutput
                     );
-                    PFlag=^TFlag;
-                    TFlags=set of TFlag;
-                    PFlags=^TFlags;
+                   TFlag=TResourceTransitionFlag;
+                   PFlag=^TFlag;
+                   TFlags=set of TFlag;
+                   PFlags=^TFlags;
                 const AllImages=
                        [
                         TKind.ImageInput,

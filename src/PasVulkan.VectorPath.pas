@@ -3929,8 +3929,8 @@ var ValueOne,NearlyZeroValue,LengthScale:TpvDouble;
      t1:=Times[Index+1];
      if Index<>0 then begin
       LastTime:=Times[Index-1];
-      t0:=Clamp(TpvDouble((t0-LastTime)/(TpvDouble(1.0)-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
-      t1:=Clamp(TpvDouble((t1-LastTime)/(TpvDouble(1.0)-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+      t0:=Clamp((t0-LastTime)/(1.0-LastTime),0.0,1.0);
+      t1:=Clamp((t1-LastTime)/(1.0-LastTime),0.0,1.0);
      end;
      ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0,t1);
      inc(Src,4);
@@ -3941,7 +3941,7 @@ var ValueOne,NearlyZeroValue,LengthScale:TpvDouble;
      t0:=Times[Index];
      if Index<>0 then begin
       LastTime:=Times[Index-1];
-      t0:=Clamp(TpvDouble((t0-LastTime)/(1.0-LastTime)),TpvDouble(0.0),TpvDouble(1.0));
+      t0:=Clamp((t0-LastTime)/(1.0-LastTime),0.0,1.0);
      end;
      ChopCubicAt(TpvPointer(Src),TpvPointer(Dst),t0);
     end;
