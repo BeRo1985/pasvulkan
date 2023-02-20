@@ -5613,7 +5613,7 @@ begin
    TpvScene3D.TLightData.TType.Spot:begin
     OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
     OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5);
-    OBB.Extents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
+    OBB.HalfExtents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
     OBB.Matrix:=fMatrix.ToMatrix3x3;
     AABB:=TpvAABB.CreateFromOBB(OBB);
    end;
