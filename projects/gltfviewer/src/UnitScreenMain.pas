@@ -590,7 +590,7 @@ begin
      end;
      for Result_ in fRendererInstance.FrameGraph.LastTimerQueryResults do begin
       if Result_.Valid then begin
-       writeln(Result_.Name:MaxLen,': ',Result_.Duration:1:5,' ms');
+       writeln(Result_.Name:MaxLen,': ',Result_.Duration*1000.0:1:5,' ms');
       end;
      end;
     end;
