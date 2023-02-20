@@ -18571,8 +18571,8 @@ end;
 
 destructor TpvVulkanPipelineDepthStencilState.Destroy;
 begin
- fFrontStencilOpState.Free;
- fBackStencilOpState.Free;
+ FreeAndNil(fFrontStencilOpState);
+ FreeAndNil(fBackStencilOpState);
  inherited Destroy;
 end;
 
@@ -18995,15 +18995,15 @@ end;
 destructor TpvVulkanGraphicsPipelineConstructor.Destroy;
 begin
  SetLength(fStages,0);
- fVertexInputState.Free;
- fInputAssemblyState.Free;
- fTessellationState.Free;
- fViewPortState.Free;
- fRasterizationState.Free;
- fMultisampleState.Free;
- fDepthStencilState.Free;
- fColorBlendState.Free;
- fDynamicState.Free;
+ FreeAndNil(fVertexInputState);
+ FreeAndNil(fInputAssemblyState);
+ FreeAndNil(fTessellationState);
+ FreeAndNil(fViewPortState);
+ FreeAndNil(fRasterizationState);
+ FreeAndNil(fMultisampleState);
+ FreeAndNil(fDepthStencilState);
+ FreeAndNil(fColorBlendState);
+ FreeAndNil(fDynamicState);
  inherited Destroy;
 end;
 
@@ -19294,14 +19294,14 @@ constructor TpvVulkanGraphicsPipeline.Create(const aDevice:TpvVulkanDevice;
 begin
  inherited Create(aDevice);
  fGraphicsPipelineConstructor:=TpvVulkanGraphicsPipelineConstructor.Create(fDevice,
-                                                                         aCache,
-                                                                         aFlags,
-                                                                         aStages,
-                                                                         aLayout,
-                                                                         aRenderPass,
-                                                                         aSubPass,
-                                                                         aBasePipelineHandle,
-                                                                         aBasePipelineIndex);
+                                                                           aCache,
+                                                                           aFlags,
+                                                                           aStages,
+                                                                           aLayout,
+                                                                           aRenderPass,
+                                                                           aSubPass,
+                                                                           aBasePipelineHandle,
+                                                                           aBasePipelineIndex);
 end;
 
 destructor TpvVulkanGraphicsPipeline.Destroy;
