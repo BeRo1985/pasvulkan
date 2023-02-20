@@ -1747,7 +1747,8 @@ type EpvVulkanException=class(Exception);
                           const aRenderPass:TpvVulkanRenderPass;
                           const aWidth:TpvUInt32;
                           const aHeight:TpvUInt32;
-                          const aLayers:TpvUInt32); reintroduce; overload;
+                          const aLayers:TpvUInt32;
+                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aRenderPass:TpvVulkanRenderPass;
                           const aWidth:TpvUInt32;
@@ -14066,7 +14067,8 @@ constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
                                         const aRenderPass:TpvVulkanRenderPass;
                                         const aWidth:TpvUInt32;
                                         const aHeight:TpvUInt32;
-                                        const aLayers:TpvUInt32);
+                                        const aLayers:TpvUInt32;
+                                        const aDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
