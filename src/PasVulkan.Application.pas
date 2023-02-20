@@ -695,7 +695,7 @@ type EpvApplication=class(Exception)
        fWin32GameInputDeviceName:TpvUTF8String;
        fWin32GameInputDeviceGUID:TGUID;
 {$ifend}
-       fAxes:array[0..GAME_CONTROLLER_AXIS_MAX-1] of TpvInt32;
+       fAxes:array[0..GAME_CONTROLLER_AXIS_MAX-1] of TpvFloat;
        fButtons:TpvUInt32;
        fHats:TpvUInt32;
 {$ifend}
@@ -722,12 +722,12 @@ type EpvApplication=class(Exception)
        function CountHats:TpvInt32;
        function CountButtons:TpvInt32;
        procedure Update;
-       function GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
+       function GetAxis(const aAxisIndex:TpvInt32):TpvFloat;
        function GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
        function GetHat(const aHatIndex:TpvInt32):TpvInt32;
        function GetButton(const aButtonIndex:TpvInt32):boolean;
        function IsGameControllerAttached:boolean;
-       function GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
+       function GetGameControllerAxis(const aAxis:TpvInt32):TpvFloat;
        function GetGameControllerButton(const aButton:TpvInt32):boolean;
        function GetGameControllerName:TpvApplicationRawByteString;
        function GetGameControllerMapping:TpvApplicationRawByteString;
@@ -3410,12 +3410,12 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_JoystickUpdate;
 {$elseif not defined(PasVulkanHeadless)}
- fAxes[0]:=0;
- fAxes[1]:=0;
- fAxes[2]:=0;
- fAxes[3]:=0;
- fAxes[4]:=0;
- fAxes[5]:=0;
+ fAxes[0]:=0.0;
+ fAxes[1]:=0.0;
+ fAxes[2]:=0.0;
+ fAxes[3]:=0.0;
+ fAxes[4]:=0.0;
+ fAxes[5]:=0.0;
  fButtons:=0;
  fHats:=0;
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
@@ -3424,12 +3424,12 @@ begin
   try
    if pvApplication.fWin32GameInput.GetCurrentReading(GameInputKindGamepad,fWin32GameInputDevice,GameInputReading)=NO_ERROR then begin
     if GameInputReading.GetGamepadState(@GameInputGamepadState) then begin
-     fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=round(GameInputGamepadState.leftThumbstickX*32768.0);
-     fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=round(GameInputGamepadState.leftThumbstickY*32768.0);
-     fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=round(GameInputGamepadState.rightThumbstickX*32768.0);
-     fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=round(GameInputGamepadState.rightThumbstickY*32768.0);
-     fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=round(GameInputGamepadState.leftTrigger*32768.0);
-     fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=round(GameInputGamepadState.rightTrigger*32768.0);
+     fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=GameInputGamepadState.leftThumbstickX;
+     fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=-GameInputGamepadState.leftThumbstickY;
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=GameInputGamepadState.rightThumbstickX;
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=-GameInputGamepadState.rightThumbstickY;
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=GameInputGamepadState.leftTrigger;
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=GameInputGamepadState.rightTrigger;
      if (GameInputGamepadState.buttons and GameInputGamepadA)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_A;
      end;
@@ -3460,19 +3460,19 @@ begin
      if (GameInputGamepadState.buttons and GameInputGamepadRightShoulder)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_RIGHTSHOULDER;
      end;
-     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadUp)<>0 then begin
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadUp)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_UP;
       fHats:=fHats or JOYSTICK_HAT_UP;
      end;
-     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadDown)<>0 then begin
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadDown)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_DOWN;
       fHats:=fHats or JOYSTICK_HAT_DOWN;
      end;
-     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadLeft)<>0 then begin
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadLeft)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_LEFT;
       fHats:=fHats or JOYSTICK_HAT_LEFT;
      end;
-     if (PXINPUT_STATE(fState)^.Gamepad.wButtons and GameInputGamepadDPadRight)<>0 then begin
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadRight)<>0 then begin
       fButtons:=fButtons or GAME_CONTROLLER_BUTTON_DPAD_RIGHT;
       fHats:=fHats or JOYSTICK_HAT_RIGHT;
      end;
@@ -3483,12 +3483,12 @@ begin
   end;
  end else if fJoystick<XUSER_MAX_COUNT then begin
   if XInputGetState(fJoystick,fState)=ERROR_SUCCESS then begin
-   fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=PXINPUT_STATE(fState)^.Gamepad.sThumbLX;
-   fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbLY);
-   fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=PXINPUT_STATE(fState)^.Gamepad.sThumbRX;
-   fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbRY);
-   fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=TpvInt32(PXINPUT_STATE(fState)^.Gamepad.bLeftTrigger*257{65535 div 255})-32768;
-   fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=TpvInt32(PXINPUT_STATE(fState)^.Gamepad.bRightTrigger*257{65535 div 255})-32768;
+   fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.sThumbLX/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=Min(Max(TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbLY)/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.sThumbRX/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=Min(Max(TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbRY)/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bLeftTrigger/255.0,0.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bRightTrigger/255.0,0.0),1.0);
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_A)<>0 then begin
     fButtons:=fButtons or GAME_CONTROLLER_BUTTON_A;
    end;
@@ -3544,32 +3544,32 @@ begin
   fJoyInfoEx.dwFlags:=JOY_RETURNALL;
   if joyGetPosEx(fJoystick-XUSER_MAX_COUNT,@fJoyInfoEx)=JOYERR_NOERROR then begin
    if CountAxes>0 then begin
-    fAxes[0]:=round((((fJoyInfoEx.wXpos-fJoyCaps.wXmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wXmin)))-1.0)*32768);
+    fAxes[0]:=((fJoyInfoEx.wXpos-fJoyCaps.wXmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wXmin)))-1.0;
    end else begin
     fAxes[0]:=0;
    end;
    if CountAxes>1 then begin
-    fAxes[1]:=round((((fJoyInfoEx.wYpos-fJoyCaps.wYmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wYmin)))-1.0)*32768);
+    fAxes[1]:=-(((fJoyInfoEx.wYpos-fJoyCaps.wYmin)*(2.0/(fJoyCaps.wYmax-fJoyCaps.wYmin)))-1.0);
    end else begin
     fAxes[1]:=0;
    end;
    if CountAxes>2 then begin
-    fAxes[2]:=round((((fJoyInfoEx.wZpos-fJoyCaps.wZmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wZmin)))-1.0)*32768);
+    fAxes[2]:=((fJoyInfoEx.wZpos-fJoyCaps.wZmin)*(2.0/(fJoyCaps.wZmax-fJoyCaps.wZmin)))-1.0;
    end else begin
     fAxes[2]:=0;
    end;
    if CountAxes>3 then begin
-    fAxes[3]:=round((((fJoyInfoEx.dwRpos-fJoyCaps.wRmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wRmin)))-1.0)*32768);
+    fAxes[3]:=-(((fJoyInfoEx.dwRpos-fJoyCaps.wRmin)*(2.0/(fJoyCaps.wRmax-fJoyCaps.wRmin)))-1.0);
    end else begin
     fAxes[3]:=0;
    end;
    if CountAxes>4 then begin
-    fAxes[4]:=round((((fJoyInfoEx.dwUpos-fJoyCaps.wUmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wUmin)))-1.0)*32768);
+    fAxes[4]:=((fJoyInfoEx.dwUpos-fJoyCaps.wUmin)*(2.0/(fJoyCaps.wUmax-fJoyCaps.wUmin)))-1.0;
    end else begin
     fAxes[4]:=0;
    end;
    if CountAxes>5 then begin
-    fAxes[5]:=round((((fJoyInfoEx.dwVpos-fJoyCaps.wVmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wVmin)))-1.0)*32768);
+    fAxes[5]:=((fJoyInfoEx.dwVpos-fJoyCaps.wVmin)*(2.0/(fJoyCaps.wVmax-fJoyCaps.wVmin)))-1.0;
    end else begin
     fAxes[5]:=0;
    end;
@@ -3644,10 +3644,10 @@ begin
 {$ifend}
 end;
 
-function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvFloat;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
- result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
+ result:=Min(Max(SDL_JoystickGetAxis(fJoystick,aAxisIndex)/32767.0,-1.0),1.0);
 {$elseif not defined(PasVulkanHeadless)}
  if aAxisIndex in [0..GAME_CONTROLLER_AXIS_MAX-1] then begin
   result:=fAxes[aAxisIndex];
@@ -3741,28 +3741,28 @@ begin
 {$ifend}
 end;
 
-function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvFloat;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   case aAxis of
    GAME_CONTROLLER_AXIS_LEFTX:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTX);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTX)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_LEFTY:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTY);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTY)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_RIGHTX:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTX);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTX)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_RIGHTY:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTY);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTY)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_TRIGGERLEFT:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERLEFT)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_TRIGGERRIGHT:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)/32767.0,-1.0),1.0);
    end;
    else begin
     result:=0;
