@@ -14091,6 +14091,8 @@ begin
 
  fDoDestroy:=true;
 
+ fDoDestroyAttachments:=aDoDestroyAttachments;
+
 end;
 
 constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
