@@ -400,7 +400,7 @@ begin
   end else begin
    FrameTime:=0.0;
   end;
-  Str(FrameTime:1:5,fFrameTimeString);
+  Str(FrameTime*1000.0:1:5,fFrameTimeString);
  end;
 
  if abs(fOldFPS-FPS)>=100 then begin
