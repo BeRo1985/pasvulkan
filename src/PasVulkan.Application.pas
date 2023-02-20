@@ -12136,7 +12136,7 @@ begin
 
   fWin32GameInput:=nil;
 
-  fWin32HasGameInput:=GameInputCreate(fWin32GameInput)=NO_ERROR;
+  fWin32HasGameInput:=assigned(GameInputCreate) and (GameInputCreate(fWin32GameInput)=NO_ERROR);
   fWin32HasGameInput:=fWin32HasGameInput and assigned(fWin32GameInput);
 
   fWin32GameInputDeviceCallbackQueue:=TpvApplicationWin32GameInputDeviceCallbackQueue.Create;
