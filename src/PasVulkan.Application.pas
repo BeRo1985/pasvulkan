@@ -425,15 +425,15 @@ const MaxSwapChainImages=3;
       PERIPHERAL_VIBRATOR=5;
 
       JOYSTICK_HAT_NONE=0;
-      JOYSTICK_HAT_LEFTUP=1;
-      JOYSTICK_HAT_UP=2;
-      JOYSTICK_HAT_RIGHTUP=3;
-      JOYSTICK_HAT_LEFT=4;
-      JOYSTICK_HAT_CENTERED=5;
-      JOYSTICK_HAT_RIGHT=6;
-      JOYSTICK_HAT_LEFTDOWN=7;
-      JOYSTICK_HAT_DOWN=8;
-      JOYSTICK_HAT_RIGHTDOWN=9;
+      JOYSTICK_HAT_LEFT=1 shl 0;
+      JOYSTICK_HAT_RIGHT=1 shl 1;
+      JOYSTICK_HAT_UP=1 shl 2;
+      JOYSTICK_HAT_DOWN=1 shl 3;
+      JOYSTICK_HAT_LEFTUP=JOYSTICK_HAT_LEFT or JOYSTICK_HAT_UP;
+      JOYSTICK_HAT_RIGHTUP=JOYSTICK_HAT_RIGHT or JOYSTICK_HAT_UP;
+      JOYSTICK_HAT_LEFTDOWN=JOYSTICK_HAT_LEFT or JOYSTICK_HAT_DOWN;
+      JOYSTICK_HAT_RIGHTDOWN=JOYSTICK_HAT_RIGHT or JOYSTICK_HAT_DOWN;
+      JOYSTICK_HAT_CENTERED=1 shl 4;
 
       GAME_CONTROLLER_BINDTYPE_NONE=0;
       GAME_CONTROLLER_BINDTYPE_BUTTON=1;
@@ -3431,49 +3431,49 @@ begin
      fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=GameInputGamepadState.leftTrigger;
      fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=GameInputGamepadState.rightTrigger;
      if (GameInputGamepadState.buttons and GameInputGamepadA)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_A);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadB)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_B);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadX)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_X);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadY)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_Y);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadMenu)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_BACK);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadView)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_START);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadLeftThumbstick)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadRightThumbstick)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadLeftShoulder)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadRightShoulder)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadDPadUp)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_UP);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_UP);
       fHats:=fHats or JOYSTICK_HAT_UP;
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadDPadDown)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
       fHats:=fHats or JOYSTICK_HAT_DOWN;
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadDPadLeft)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
       fHats:=fHats or JOYSTICK_HAT_LEFT;
      end;
      if (GameInputGamepadState.buttons and GameInputGamepadDPadRight)<>0 then begin
-      fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
       fHats:=fHats or JOYSTICK_HAT_RIGHT;
      end;
     end;
@@ -3490,52 +3490,52 @@ begin
    fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bLeftTrigger/255.0,0.0),1.0);
    fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bRightTrigger/255.0,0.0),1.0);
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_A)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_A);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_B)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_B);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_X)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_X);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_Y)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_Y);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_BACK)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_BACK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_GUIDE)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_GUIDE);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_GUIDE);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_START)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_START);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_THUMB)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_THUMB)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_SHOULDER)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_SHOULDER)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_UP)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_UP);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_UP);
     fHats:=fHats or JOYSTICK_HAT_UP;
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_DOWN)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
     fHats:=fHats or JOYSTICK_HAT_DOWN;
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_LEFT)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
     fHats:=fHats or JOYSTICK_HAT_LEFT;
    end;
    if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_RIGHT)<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
     fHats:=fHats or JOYSTICK_HAT_RIGHT;
    end;
   end;
@@ -3606,37 +3606,37 @@ begin
     end;
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 0))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_A);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 1))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_B);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 2))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_X);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 3))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_Y);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 4))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_BACK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 5))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_GUIDE);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_GUIDE);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 6))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_START);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 7))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 8))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 9))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
    end;
    if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 10))<>0 then begin
-    fButtons:=fButtons or (1 shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
    end;
   end;
  end;
