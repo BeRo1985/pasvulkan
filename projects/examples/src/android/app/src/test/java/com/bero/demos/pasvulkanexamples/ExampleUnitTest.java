@@ -1,4 +1,4 @@
-package com.pasvulkan.examples;
+package com.pasvulkan.tastyrush;
 
 import org.junit.Test;
 

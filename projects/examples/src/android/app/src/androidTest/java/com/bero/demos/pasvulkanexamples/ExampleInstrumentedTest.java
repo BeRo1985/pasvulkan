@@ -1,4 +1,4 @@
-package com.pasvulkan.examples;
+package com.pasvulkan.tastyrush;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
