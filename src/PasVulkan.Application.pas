@@ -11134,6 +11134,12 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
     TouchInput:PpvApplicationTOUCHINPUT;
     x,y:TpvDouble;
     Point:TPoint;
+ function IsTouchOrPenMouseEvent:boolean;
+ var MessageExtraInfo:TpvUInt32;
+ begin
+  MessageExtraInfo:=GetMessageExtraInfo;
+  result:=((MessageExtraInfo and $ffffff00)=$ff515700) or ((MessageExtraInfo and $82)=$82);
+ end;
  procedure TranslateKeyEvent;
  var VirtualKey:WPARAM;
      ScanCode:DWORD;
@@ -11733,42 +11739,52 @@ begin
   WM_LBUTTONDOWN,
   WM_MBUTTONDOWN,
   WM_XBUTTONDOWN:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonDown;
-   TranslateMouseEvent;
-   TranslateMouseButtonEvent;
-   fNativeEventQueue.Enqueue(NativeEvent);
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonDown;
+    TranslateMouseEvent;
+    TranslateMouseButtonEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
   end;
   WM_RBUTTONUP,
   WM_LBUTTONUP,
   WM_MBUTTONUP,
   WM_XBUTTONUP:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonUp;
-   TranslateMouseEvent;
-   TranslateMouseButtonEvent;
-   fNativeEventQueue.Enqueue(NativeEvent);
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonUp;
+    TranslateMouseEvent;
+    TranslateMouseButtonEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
   end;
   WM_MOUSEMOVE:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseMoved;
-   NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
-   TranslateMouseEvent;
-   if not fWin32MouseInside then begin
-    fWin32MouseInside:=true;
-    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseEnter;
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseMoved;
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+    TranslateMouseEvent;
+    if not fWin32MouseInside then begin
+     fWin32MouseInside:=true;
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseEnter;
+    end;
+    fNativeEventQueue.Enqueue(NativeEvent);
    end;
-   fNativeEventQueue.Enqueue(NativeEvent);
   end;
   WM_MOUSELEAVE:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseLeave;
-   TranslateMouseEvent;
-   fNativeEventQueue.Enqueue(NativeEvent);
-   fWin32MouseInside:=false;
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseLeave;
+    TranslateMouseEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    fWin32MouseInside:=false;
+   end;
   end;
   WM_MOUSEWHEEL,
   WM_MOUSEHWHEEL:begin
-   NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseWheel;
-   TranslateMouseEvent;
-   TranslateMouseWheelEvent;
-   fNativeEventQueue.Enqueue(NativeEvent);
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseWheel;
+    TranslateMouseEvent;
+    TranslateMouseWheelEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
   end;
 { WM_SYSCOMMAND:begin
    case aWParam of
