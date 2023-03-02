@@ -2076,6 +2076,18 @@ const Win32ClassName='PasVulkanWindow';
       PT_MOUSE=4;
       PT_TOUCHPAD=5;
 
+      POINTER_MESSAGE_FLAG_NEW=$00000001;
+      POINTER_MESSAGE_FLAG_INRANGE=$00000002;
+      POINTER_MESSAGE_FLAG_INCONTACT=$00000004;
+      POINTER_MESSAGE_FLAG_FIRSTBUTTON=$00000010;
+      POINTER_MESSAGE_FLAG_SECONDBUTTON=$00000020;
+      POINTER_MESSAGE_FLAG_THIRDBUTTON=$00000040;
+      POINTER_MESSAGE_FLAG_FOURTHBUTTON=$00000080;
+      POINTER_MESSAGE_FLAG_FIFTHBUTTON=$00000100;
+      POINTER_MESSAGE_FLAG_PRIMARY=$00000200;
+      POINTER_MESSAGE_FLAG_CONFIDENCE=$00000400;
+      POINTER_MESSAGE_FLAG_CANCELED=$0000800;
+
       POINTER_FLAG_NONE=$00000000;
       POINTER_FLAG_NEW=$00000001;
       POINTER_FLAG_INRANGE=$00000002;
@@ -11587,15 +11599,15 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
      x:=fWin32TouchLastX[TouchID];
      y:=fWin32TouchLastY[TouchID];
     end;
-    if (aMsg=WM_POINTERDOWN) or ((aWParam and (POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT))=(POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT)) then begin
+    if (aMsg=WM_POINTERDOWN) or ((PointerInfo.pointerInfo.pointerFlags and (POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT))=(POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT)) then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
      fWin32TouchLastX[TouchID]:=x;
      fWin32TouchLastY[TouchID]:=y;
-    end else if (aMsg=WM_POINTERUP) or ((aWParam and POINTER_FLAG_UP)<>0) or ((aWParam and POINTER_FLAG_INCONTACT)=0) then begin
+    end else if (aMsg=WM_POINTERUP) or ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) or ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)=0) then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
      fWin32TouchIDHashMap.Delete(PointerID);
      fWin32TouchIDFreeList.Enqueue(TouchID);
-    end else if (TouchInput^.dwFlags and POINTER_FLAG_INCONTACT)<>0 then begin
+    end else if (PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0 then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
     end else begin
      exit;
