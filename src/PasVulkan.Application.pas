@@ -753,6 +753,72 @@ type EpvApplication=class(Exception)
      end;
      PpvApplicationTOUCHINPUT=^TpvApplicationTOUCHINPUT;
 
+     TpvApplicationPOINTER_INPUT_TYPE=TpvUInt32;
+     PpvApplicationPOINTER_INPUT_TYPE=^TpvApplicationPOINTER_INPUT_TYPE;
+
+     TpvApplicationPOINTER_FLAGS=TpvUInt32;
+     PpvApplicationPOINTER_FLAGS=^TpvApplicationPOINTER_FLAGS;
+
+     TpvApplicationPOINTER_BUTTON_CHANGE_TYPE=TpvUInt32;
+     PpvApplicationPOINTER_BUTTON_CHANGE_TYPE=^TpvApplicationPOINTER_BUTTON_CHANGE_TYPE;
+
+     TpvApplicationPOINTER_INFO=record
+      pointerType:TpvApplicationPOINTER_INPUT_TYPE;
+      pointerId:TpvUInt32;
+      frameId:TpvUInt32;
+      pointerFlags:TpvApplicationPOINTER_FLAGS;
+      sourceDevice:THandle;
+      hwndTarget:HWND;
+      ptPixelLocation:TPoint;
+      ptHimetricLocation:TPoint;
+      ptPixelLocationRaw:TPoint;
+      ptHimetricLocationRaw:TPoint;
+      dwTime:DWORD;
+      historyCount:TpvUInt32;
+      InputData:TpvInt32;
+      dwKeyStates:DWORD;
+      PerformanceCount:TpvUInt64;
+      ButtonChangeType:TpvApplicationPOINTER_BUTTON_CHANGE_TYPE;
+     end;
+
+     PpvApplicationPOINTER_INFO=^TpvApplicationPOINTER_INFO;
+
+     TpvApplicationTOUCH_FLAGS=TpvUInt32;
+     PpvApplicationTOUCH_FLAGS=^TpvApplicationTOUCH_FLAGS;
+
+     TpvApplicationTOUCH_MASK=TpvUInt32;
+     PpvApplicationTOUCH_MASK=^TpvApplicationTOUCH_MASK;
+
+     TpvApplicationPOINTER_TOUCH_INFO=record
+      pointerInfo:TpvApplicationPOINTER_INFO;
+      touchFlags:TpvApplicationTOUCH_FLAGS;
+      touchMask:TpvApplicationTOUCH_MASK;
+      rcContact:TRect;
+      rcContactRaw:TRect;
+      orientation:TpvUInt32;
+      pressure:TpvUInt32;
+     end;
+
+     PpvApplicationPOINTER_TOUCH_INFO=^TpvApplicationPOINTER_TOUCH_INFO;
+
+     TpvApplicationPEN_FLAGS=TpvUInt32;
+     PpvApplicationPEN_FLAGS=^TpvApplicationPEN_FLAGS;
+
+     TpvApplicationPEN_MASK=TpvUInt32;
+     PpvApplicationPEN_MASK=^TpvApplicationPEN_MASK;
+
+     TpvApplicationPOINTER_PEN_INFO=record
+      pointerInfo:TpvApplicationPOINTER_INFO;
+      penFlags:TpvApplicationPEN_FLAGS;
+      penMask:TpvApplicationPEN_MASK;
+      pressure:TpvUInt32;
+      rotation:TpvUInt32;
+      tiltX:TpvInt32;
+      tiltY:TpvInt32;
+     end;
+
+     PpvApplicationPOINTER_PEN_INFO=^TpvApplicationPOINTER_PEN_INFO;
+
      TpvApplicationWin32GameInputDeviceCallbackQueueItem=record
       Device:IGameInputDevice;
       Timestamp:TpvUInt64;
@@ -1988,6 +2054,65 @@ const Win32ClassName='PasVulkanWindow';
 
       Win32CursorMaskAND:TpvUInt8=$ff;
       Win32CursorMaskXOR:TpvUInt8=$00;
+
+      PT_POINTER=1;
+      PT_TOUCH=2;
+      PT_PEN=3;
+      PT_MOUSE=4;
+      PT_TOUCHPAD=5;
+
+      POINTER_FLAG_NONE=$00000000;
+      POINTER_FLAG_NEW=$00000001;
+      POINTER_FLAG_INRANGE=$00000002;
+      POINTER_FLAG_INCONTACT=$00000004;
+      POINTER_FLAG_FIRSTBUTTON=$00000010;
+      POINTER_FLAG_SECONDBUTTON=$00000020;
+      POINTER_FLAG_THIRDBUTTON=$00000040;
+      POINTER_FLAG_FOURTHBUTTON=$00000080;
+      POINTER_FLAG_FIFTHBUTTON=$00000100;
+      POINTER_FLAG_PRIMARY=$00002000;
+      POINTER_FLAG_CONFIDENCE=$00004000;
+      POINTER_FLAG_CANCELED=$00008000;
+      POINTER_FLAG_DOWN=$00010000;
+      POINTER_FLAG_UPDATE=$00020000;
+      POINTER_FLAG_UP=$00040000;
+      POINTER_FLAG_WHEEL=$00080000;
+      POINTER_FLAG_HWHEEL=$00100000;
+      POINTER_FLAG_CAPTURECHANGED=$00200000;
+      POINTER_FLAG_HASTRANSFORM=$00400000;
+
+      POINTER_MOD_SHIFT=$0004;
+      POINTER_MOD_CTRL=$0008;
+
+      POINTER_CHANGE_NONE=0;
+      POINTER_CHANGE_FIRSTBUTTON_DOWN=1;
+      POINTER_CHANGE_FIRSTBUTTON_UP=2;
+      POINTER_CHANGE_SECONDBUTTON_DOWN=3;
+      POINTER_CHANGE_SECONDBUTTON_UP=4;
+      POINTER_CHANGE_THIRDBUTTON_DOWN=5;
+      POINTER_CHANGE_THIRDBUTTON_UP=6;
+      POINTER_CHANGE_FOURTHBUTTON_DOWN=7;
+      POINTER_CHANGE_FOURTHBUTTON_UP=8;
+      POINTER_CHANGE_FIFTHBUTTON_DOWN=9;
+      POINTER_CHANGE_FIFTHBUTTON_UP=10;
+
+      TOUCH_FLAG_NONE=$00000000;
+
+      TOUCH_MASK_NONE=$00000000;
+      TOUCH_MASK_CONTACTAREA=$00000001;
+      TOUCH_MASK_ORIENTATION=$00000002;
+      TOUCH_MASK_PRESSURE=$00000004;
+
+      PEN_FLAG_NONE=$00000000;
+      PEN_FLAG_BARREL=$00000001;
+      PEN_FLAG_INVERTED=$00000002;
+      PEN_FLAG_ERASER=$00000004;
+
+      PEN_MASK_NONE=$00000000;
+      PEN_MASK_PRESSURE=$00000001;
+      PEN_MASK_ROTATION=$00000002;
+      PEN_MASK_TILT_X=$00000004;
+      PEN_MASK_TILT_Y=$00000008;
 
       TWF_FINETOUCH=$00000001;
       TWF_WANTPALM=$00000002;
