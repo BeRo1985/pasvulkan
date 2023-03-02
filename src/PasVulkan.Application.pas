@@ -819,6 +819,21 @@ type EpvApplication=class(Exception)
 
      PpvApplicationPOINTER_PEN_INFO=^TpvApplicationPOINTER_PEN_INFO;
 
+     TpvApplicationCOMBINED_POINTER_INFO=record
+      case TpvUInt8 of
+       0:(
+        pointerInfo:TpvApplicationPOINTER_INFO;
+       );
+       1:(
+        pointerTouchInfo:TpvApplicationPOINTER_TOUCH_INFO;
+       );
+       2:(
+        pointerPenInfo:TpvApplicationPOINTER_PEN_INFO;
+       );
+     end;
+
+     PpvApplicationCOMBINED_POINTER_INFO=^TpvApplicationCOMBINED_POINTER_INFO;
+
      TpvApplicationWin32GameInputDeviceCallbackQueueItem=record
       Device:IGameInputDevice;
       Timestamp:TpvUInt64;
@@ -2125,6 +2140,7 @@ const Win32ClassName='PasVulkanWindow';
       WM_POINTERUPDATE=$00000245;
       WM_POINTERDOWN=$00000246;
       WM_POINTERUP=$00000247;
+      WM_POINTERCAPTURECHANGED=$0000024c;
       WM_TABLET_QUERYSYSTEMGESTURESTATUS=$000002cc;
 
       TOUCHEVENTF_MOVE=$0001;
@@ -2313,6 +2329,18 @@ procedure XInputEnable(Enable:BOOL); {$ifdef cpu386}stdcall;{$endif} external XI
 function XInputGetAudioDeviceIds(dwUserIndex:TpvUInt32;pRenderDeviceId:PLPWSTR;pRenderCount:PUINT;pCaptureDeviceId:PLPWSTR;pCaptureCount:PUINT):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetAudioDeviceIds';
 function XInputGetBatteryInformation(dwUserIndex:TpvUInt32;devType:TpvUInt8;pBatteryInformation:PXINPUT_BATTERY_INFORMATION):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetBatteryInformation';
 function XInputGetKeystroke(dwUserIndex,dwReserved:TpvUInt32;pKeystroke:PXINPUT_KEYSTROKE):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetKeystroke';
+
+type TGetPointerType=function(pointerId:TpvUInt32;pointerType:PpvApplicationPOINTER_INPUT_TYPE):BOOL; stdcall;
+     TGetPointerTouchInfo=function(pointerId:TpvUInt32;touchInfo:PpvApplicationPOINTER_TOUCH_INFO):BOOL; stdcall;
+     TGetPointerPenInfo=function(pointerId:TpvUInt32;penInfo:PpvApplicationPOINTER_PEN_INFO):BOOL; stdcall;
+     TEnableMouseInPointer=function(fEnable:BOOL):BOOL; stdcall;
+
+var GetPointerType:TGetPointerType=nil;
+    GetPointerTouchInfo:TGetPointerTouchInfo=nil;
+    GetPointerPenInfo:TGetPointerPenInfo=nil;
+    EnableMouseInPointer:TEnableMouseInPointer=nil;
+
+    Win32HasGetPointer:boolean=false;
 
 {$ifend}
 {$ifend}
@@ -11085,7 +11113,7 @@ end;
 
 function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
 var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
-    TouchID:TpvUInt32;
+    PointerID,TouchID:TpvUInt32;
     NativeEvent:TpvApplicationNativeEvent;
     Rect:TRect;
     DropHandle:HDROP;
@@ -11504,6 +11532,90 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
    NativeEvent.MouseScrollOffsetY:=0.0;
   end;
  end;
+ function TranslatePointer:boolean;
+ var PointerType:TpvApplicationPOINTER_INPUT_TYPE;
+     PointerInfo:TpvApplicationCOMBINED_POINTER_INFO;
+     Pressure:TpvFloat;
+ begin
+  result:=false;
+  if (aMsg<>WM_POINTERUPDATE) or ((aWParam and POINTER_MESSAGE_FLAG_INCONTACT)<>0) then begin
+   Pressure:=0.0;
+   PointerID:=LOWORD(aWParam);
+   PointerType:=PT_POINTER;
+   if not GetPointerType(PointerID,@PointerType) then begin
+    PointerType:=PT_POINTER;
+   end;
+   case PointerType of
+    PT_TOUCH:begin
+     if not GetPointerTouchInfo(PointerID,@PointerInfo.pointerTouchInfo) then begin
+      exit;
+     end;
+     Pressure:=Min(Max(PointerInfo.pointerTouchInfo.pressure/1024.0,0.0),1.0);
+    end;
+    PT_PEN:begin
+     if not GetPointerPenInfo(PointerID,@PointerInfo.pointerPenInfo) then begin
+      exit;
+     end;
+     if PointerInfo.pointerPenInfo.pressure=0 then begin
+      Pressure:=1.0;
+     end else begin
+      Pressure:=Min(Max(PointerInfo.pointerPenInfo.pressure/1024.0,0.0),1.0);
+     end;
+    end;
+    else begin
+     exit;
+    end;
+   end;
+   TouchID:=$ffffffff;
+   if not fWin32TouchIDHashMap.TryGet(PointerID,TouchID) then begin
+    if not fWin32TouchIDFreeList.Dequeue(TouchID) then begin
+     repeat
+      TouchID:=fWin32TouchIDCounter;
+      inc(fWin32TouchIDCounter);
+     until TouchID=0;
+    end;
+    fWin32TouchIDHashMap.Add(PointerID,TouchID);
+   end;
+   if (TouchID<>$ffffffff) and
+      (TpvSizeInt(TouchID)<length(fWin32TouchLastX)) and
+      (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
+    Point:=PointerInfo.pointerInfo.ptPixelLocation;
+    if ScreenToClient(fWin32Handle,Point) then begin
+     x:=Point.x;
+     y:=Point.y;
+    end else begin
+     x:=fWin32TouchLastX[TouchID];
+     y:=fWin32TouchLastY[TouchID];
+    end;
+    if (aMsg=WM_POINTERDOWN) or ((aWParam and (POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT))=(POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT)) then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
+     fWin32TouchLastX[TouchID]:=x;
+     fWin32TouchLastY[TouchID]:=y;
+    end else if (aMsg=WM_POINTERUP) or ((aWParam and POINTER_FLAG_UP)<>0) or ((aWParam and POINTER_FLAG_INCONTACT)=0) then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
+     fWin32TouchIDHashMap.Delete(PointerID);
+     fWin32TouchIDFreeList.Enqueue(TouchID);
+    end else if (TouchInput^.dwFlags and POINTER_FLAG_INCONTACT)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
+    end else begin
+     exit;
+    end;
+    NativeEvent.TouchID:=TouchID;
+    NativeEvent.TouchX:=x;
+    NativeEvent.TouchY:=y;
+    NativeEvent.TouchDeltaX:=x-fWin32TouchLastX[TouchID];
+    NativeEvent.TouchDeltaY:=y-fWin32TouchLastY[TouchID];
+    NativeEvent.TouchPressure:=Pressure;
+    NativeEvent.TouchPen:=PointerType=PT_PEN;
+    fWin32TouchLastX[TouchID]:=x;
+    fWin32TouchLastY[TouchID]:=y;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end else begin
+    exit;
+   end;
+  end;
+  result:=true;
+ end;
 begin
  result:=-1;
  case aMsg of
@@ -11691,8 +11803,18 @@ begin
     end;
    end;
   end;
+  WM_POINTERUPDATE,
+  WM_POINTERDOWN,
+  WM_POINTERUP,
+  WM_POINTERCAPTURECHANGED:begin
+   if fWin32TouchActive and Win32HasGetPointer then begin
+    if TranslatePointer then begin
+     result:=0;
+    end;
+   end;
+  end;
   WM_TOUCH:begin
-   if fWin32TouchActive then begin
+   if fWin32TouchActive and not Win32HasGetPointer then begin
     CountInputs:=LOWORD(aWParam);
     if CountInputs>0 then begin
      if length(fWin32TouchInputs)<CountInputs then begin
@@ -11725,8 +11847,8 @@ begin
              (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
            if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
             NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
-            fWin32TouchLastX[TouchID]:=0;
-            fWin32TouchLastY[TouchID]:=0;
+            fWin32TouchLastX[TouchID]:=x;
+            fWin32TouchLastY[TouchID]:=y;
            end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
             NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
             fWin32TouchIDHashMap.Delete(TouchInput^.dwID);
@@ -12213,7 +12335,11 @@ begin
    SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
   end;
 
-  fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH);
+  fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
+
+  if Win32HasGetPointer then begin
+   EnableMouseInPointer(false);
+  end;
 
   fWin32TouchInputs:=nil;
 
@@ -13946,6 +14072,14 @@ end;
 {$ifdef Windows}
 initialization
  timeBeginPeriod(1);
+ @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
+ @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
+ @GetPointerPenInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerPenInfo');
+ @EnableMouseInPointer:=GetProcAddress(LoadLibrary('user32.dll'),'EnableMouseInPointer');
+ Win32HasGetPointer:=assigned(GetPointerType) and
+                     assigned(GetPointerTouchInfo) and
+                     assigned(GetPointerPenInfo) and
+                     assigned(EnableMouseInPointer);
 finalization
  timeEndPeriod(1);
 {$endif}
