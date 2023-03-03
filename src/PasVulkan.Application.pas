@@ -11554,9 +11554,10 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
  var PointerType:TpvApplicationPOINTER_INPUT_TYPE;
      PointerInfo:TpvApplicationCOMBINED_POINTER_INFO;
      Pressure:TpvFloat;
+     IsNewTouchID:boolean;
  begin
   result:=false;
-  if (aMsg<>WM_POINTERUPDATE) or ((aWParam and POINTER_MESSAGE_FLAG_INCONTACT)<>0) then begin
+  begin
    Pressure:=0.0;
    PointerID:=LOWORD(aWParam);
    PointerType:=PT_POINTER;
@@ -11585,12 +11586,13 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
     end;
    end;
    TouchID:=$ffffffff;
-   if not fWin32TouchIDHashMap.TryGet(PointerID,TouchID) then begin
+   IsNewTouchID:=not fWin32TouchIDHashMap.TryGet(PointerID,TouchID);
+   if IsNewTouchID then begin
     if not fWin32TouchIDFreeList.Dequeue(TouchID) then begin
      repeat
       TouchID:=fWin32TouchIDCounter;
       inc(fWin32TouchIDCounter);
-     until TouchID=0;
+     until TouchID<>0;
     end;
     fWin32TouchIDHashMap.Add(PointerID,TouchID);
    end;
@@ -11605,17 +11607,33 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
      x:=fWin32TouchLastX[TouchID];
      y:=fWin32TouchLastY[TouchID];
     end;
-    if (aMsg=WM_POINTERDOWN) or ((PointerInfo.pointerInfo.pointerFlags and (POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT))=(POINTER_FLAG_DOWN and POINTER_FLAG_INCONTACT)) then begin
+{$if false}
+    writeln('Msg: ',aMsg:16,' - ',
+            'Pressure: ',Pressure:1:8,' - ',
+            'Flags: $',IntToHex(TpvInt64(PointerInfo.pointerInfo.pointerFlags),8),' - ',
+            'InContact: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0) and 1):1,' - ',
+            'Down: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_DOWN)<>0) and 1):1,' - ',
+            'Up: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) and 1):1,' - ',
+            'PointerID: ',PointerID:8,' - ',
+            'TouchID: ',TouchID:8,' - ',
+            '');
+{$ifend}
+    if (aMsg=WM_POINTERDOWN) or
+       ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_DOWN)<>0) or
+       (((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0) and IsNewTouchID) then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
      fWin32TouchLastX[TouchID]:=x;
      fWin32TouchLastY[TouchID]:=y;
-    end else if (aMsg=WM_POINTERUP) or ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) or ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)=0) then begin
+    end else if (aMsg=WM_POINTERUP) or
+                ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) or
+                ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)=0) then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
      fWin32TouchIDHashMap.Delete(PointerID);
      fWin32TouchIDFreeList.Enqueue(TouchID);
     end else if (PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0 then begin
      NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
     end else begin
+     // Ignore
      exit;
     end;
     NativeEvent.TouchID:=TouchID;
@@ -11835,7 +11853,7 @@ begin
   WM_POINTERDOWN,
   WM_POINTERUP,
   WM_POINTERCAPTURECHANGED:begin
-   if fWin32TouchActive and Win32HasGetPointer then begin
+   if Win32HasGetPointer then begin
     if TranslatePointer then begin
      result:=0;
     end;
@@ -11866,7 +11884,7 @@ begin
             repeat
              TouchID:=fWin32TouchIDCounter;
              inc(fWin32TouchIDCounter);
-            until TouchID=0;
+            until TouchID<>0;
            end;
            fWin32TouchIDHashMap.Add(TouchInput^.dwID,TouchID);
           end;
@@ -12363,10 +12381,11 @@ begin
    SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
   end;
 
-  fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
-
   if Win32HasGetPointer then begin
    EnableMouseInPointer(false);
+   fWin32TouchActive:=false;
+  end else begin
+   fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
   end;
 
   fWin32TouchInputs:=nil;
@@ -12377,7 +12396,7 @@ begin
 
   fWin32TouchIDCounter:=0;
 
-  if fWin32TouchActive then begin
+  if fWin32TouchActive or Win32HasGetPointer then begin
    SetPropA(fWin32Handle,
             'MicrosoftTabletPenServiceProperty',
             THANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
