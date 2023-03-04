@@ -870,7 +870,7 @@ type PpvScalar=^TpvScalar;
        function SimpleSlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleElerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSqlerp(const aB,aC,aD:TpvMatrix4x4;const aTime:TpvScalar):TpvMatrix4x4;
-       function Lerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE_}inline;{$endif}
        function Nlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Elerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -2839,7 +2839,11 @@ asm
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + y*y + x*x
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -2882,7 +2886,11 @@ asm
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + x*x
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm0,xmm1         // xmm0 = ?, ?, ?, z*z + y*y + x*x
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3018,7 +3026,11 @@ asm
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + y*y + x*x
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3109,7 +3121,11 @@ asm
 {$endif}
  addss xmm0,xmm1
  addss xmm0,xmm2
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3857,7 +3873,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3892,7 +3912,11 @@ asm
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -4002,7 +4026,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -4072,7 +4100,11 @@ asm
  addps xmm0,xmm1
  movhlps xmm1,xmm0
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5425,7 +5457,11 @@ asm
  pshufd xmm1,xmm0,$01
  addss xmm1,xmm0
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5456,7 +5492,11 @@ asm
  addps xmm0,xmm1
  pshufd xmm1,xmm0,$01
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5560,7 +5600,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5667,7 +5711,11 @@ asm
  addps xmm0,xmm1
  movhlps xmm1,xmm0
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -10471,7 +10519,11 @@ asm
  movaps xmm6,xmm5
  shufps xmm6,xmm6,$01
  addss xmm5,xmm6
+{$ifdef fpc}
  movss dword ptr [result],xmm5
+{$else}
+ movaps xmm0,xmm5
+{$endif}
 {$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
