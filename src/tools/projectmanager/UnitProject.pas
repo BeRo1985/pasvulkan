@@ -749,7 +749,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
     end;
     TTargetOS.Windows:begin
      Parameters.Add('-dPasVulkanPasMP');
-     Parameters.Add('-dPasVulkanUseSDL2');
+     //Parameters.Add('-dPasVulkanUseSDL2');
      if SDL2StaticLinking then begin
       Parameters.Add('-dSTATICLINK');
      end else begin

@@ -14119,6 +14119,7 @@ end;
 {$ifdef Windows}
 initialization
  timeBeginPeriod(1);
+{$ifndef PasVulkanUseSDL2}
  @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
  @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
  @GetPointerPenInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerPenInfo');
@@ -14127,6 +14128,7 @@ initialization
                      assigned(GetPointerTouchInfo) and
                      assigned(GetPointerPenInfo) and
                      assigned(EnableMouseInPointer);
+{$endif}
 finalization
  timeEndPeriod(1);
 {$endif}

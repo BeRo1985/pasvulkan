@@ -82,7 +82,7 @@ end;
       </Debugging>
     </Linking>
     <Other>
-      <CustomOptions Value="-dDEBUG"/>
+      <CustomOptions Value="-dDEBUG -dPasVulkanUseSDL2"/>
     </Other>
   </CompilerOptions>
   <Debugging>
