@@ -10675,6 +10675,9 @@ begin
      TpvApplicationNativeEventKind.TouchMotion:begin
       fInput.AddEvent(fEvent);
      end;
+     TpvApplicationNativeEventKind.DropFile:Begin
+      fInput.AddEvent(fEvent);
+     end;
      else begin
      end;
     end;
