@@ -147,6 +147,10 @@ type TpvGUIObject=class;
 
      TpvGUIListView=class;
 
+     TpvGUITreeNode=class;
+
+     TpvGUITreeView=class;
+
      TpvGUIFileDialog=class;
 
      EpvGUIWidget=class(Exception);
@@ -396,7 +400,7 @@ type TpvGUIObject=class;
 
      TpvGUIObjectGarbageDisposer=class
       private
-       // This is NOT a garbage collector, it's reallly just a Directed-Acyclic-Graph-
+       // This is NOT a garbage collector, it's really just a Directed-Acyclic-Graph-
        // Topological-Sort-based garbage disposer for TpvGUIObject object instances,
        // so that all garbage objects are freed in a controlled topological order
        // relatively to each another.
@@ -3266,6 +3270,73 @@ type TpvGUIObject=class;
        property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawItem:TpvGUIListViewOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
+     end;
+
+     TpvGUITreeNodes=class(TpvObjectGenericList<TpvGUITreeNode>);
+
+     TpvGUITreeNode=class
+      public
+       type TFlag=
+             (
+              Selected,
+              Expanded
+             );
+            PFlag=^TFlag;
+            TFlags=set of TFlag;
+      private
+       fTreeView:TpvGUITreeView;
+       fParent:TpvGUITreeNode;
+       fChildren:TpvGUITreeNodes;
+       fCaption:TpvUTF8String;
+       fCachedCaption:TpvUTF8String;
+       fFlags:TFlags;
+       fDepth:TpvSizeInt;
+       fDisplayed:TpvSizeInt;
+       fWidgets:TpvGUIObjectList;
+       fTag:TpvPtrUInt;
+       fData:TObject;
+       function GetIndex:TpvSizeInt;
+       procedure SetParent(const aParent:TpvGUITreeNode);
+       procedure SetDisplayed(const aDisplayed:TpvSizeInt);
+       procedure ResetCache;
+      public
+       constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
+       destructor Destroy; override;
+       function Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+       function Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
+       function Remove(const aIndex:TpvSizeInt):TpvGUITreeNode; overload;
+       function Remove(const aNode:TpvGUITreeNode):TpvGUITreeNode; overload;
+       function Remove:TpvGUITreeNode; overload;
+       procedure Clear;
+       procedure Select;
+       procedure Expand(aState:boolean);
+       procedure ExpandAll;
+       procedure EnsureVisible;
+      published
+      public
+       property TreeView:TpvGUITreeView read fTreeView write fTreeView;
+       property Parent:TpvGUITreeNode read fParent write SetParent;
+       property Children:TpvGUITreeNodes read fChildren;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Flags:TFlags read fFlags write fFlags;
+       property Depth:TpvSizeInt read fDepth write fDepth;
+       property Displayed:TpvSizeInt read fDisplayed write SetDisplayed;
+       property Widgets:TpvGUIObjectList read fWidgets;
+       property Tag:TpvPtrUInt read fTag write fTag;
+       property Data:TObject read fData write fData;
+     end;
+
+     TpvGUITreeView=class(TpvGUIWidget)
+      private
+       fDirty:boolean;
+       fHideRootNode:boolean;
+       fRoot:TpvGUITreeNode;
+       fSelected:TpvGUITreeNode;
+       fItemHeight:TpvFloat;
+       procedure ResetCache(const aTreeNode:TpvGUITreeNode); overload;
+       procedure ResetCache; overload;
+      public
+       procedure ClearSelection;
      end;
 
      TpvGUIFileDialogOverwritePromptMessageDialog=class(TpvGUIMessageDialog)
@@ -24597,6 +24668,296 @@ begin
  UpdateScrollBar;
  Skin.DrawListView(fInstance.DrawEngine,self);
  inherited Draw;
+end;
+
+constructor TpvGUITreeNode.Create(const aParent:TpvGUITreeNode;const aIndex:TpvSizeInt);
+begin
+ inherited Create;
+
+ SetParent(aParent);
+
+ fChildren:=TpvGUITreeNodes.Create;
+ fChildren.OwnsObjects:=true;
+
+ fWidgets:=TpvGUIObjectList.Create(true);
+
+ fCaption:='';
+
+ fCachedCaption:='';
+
+ fTag:=0;
+
+ fData:=nil;
+
+ fDisplayed:=1;
+
+ if assigned(fParent) then begin
+  if aIndex<0 then begin
+   fParent.fChildren.Add(self);
+  end else begin
+   fParent.fChildren.Insert(aIndex,self);
+  end;
+  if TpvGUITreeNode.TFlag.Expanded in fParent.fFlags then begin
+   fParent.SetDisplayed(fParent.fDisplayed+fDisplayed);
+  end;
+ end;
+
+end;
+
+destructor TpvGUITreeNode.Destroy;
+begin
+
+ if assigned(fTreeView) then begin
+  fTreeView.ResetCache(self);
+ end;
+
+ if assigned(fParent) then begin
+  if TpvGUITreeNode.TFlag.Expanded in fFlags then begin
+   fParent.SetDisplayed(fParent.fDisplayed-fDisplayed);
+  end;
+  if assigned(fTreeView) and (fTreeView.fSelected=self) then begin
+   fTreeView.fSelected:=nil;
+  end;
+  fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
+  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode)) then begin
+   Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
+ end;
+
+ fParent:=nil;
+
+ fTreeView:=nil;
+
+ fCaption:='';
+
+ fCachedCaption:='';
+
+ FreeAndNil(fData);
+
+ FreeAndNil(fWidgets);
+
+ FreeAndNil(fChildren);
+
+ inherited Destroy;
+
+end;
+
+function TpvGUITreeNode.GetIndex:TpvSizeInt;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.fChildren.IndexOf(self);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TpvGUITreeNode.SetParent(const aParent:TpvGUITreeNode);
+var Index:TpvSizeInt;
+begin
+ if (fParent<>aParent) or (assigned(aParent) and (fDepth<>(fParent.fDepth+1))) then begin
+  if assigned(fParent) and (fParent<>aParent) then begin
+   fParent.Remove(self);
+  end;
+  fTreeView:=fParent.fTreeView;
+  fParent:=aParent;
+  fDepth:=fParent.fDepth+1;
+  Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
+  for Index:=0 to fChildren.Count-1 do begin
+   fChildren[Index].SetParent(self);
+  end;
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeNode.SetDisplayed(const aDisplayed:TpvSizeInt);
+var Node:TpvGUITreeNode;
+begin
+ if fDisplayed<>aDisplayed then begin
+  Node:=fParent;
+  while assigned(Node) do begin
+   if TpvGUITreeNode.TFlag.Expanded in Node.fFlags then begin
+    inc(Node.fDisplayed,aDisplayed-fDisplayed);
+    Node:=Node.fParent;
+   end else begin
+    break;
+   end;
+  end;
+  fDisplayed:=aDisplayed;
+ end;
+end;
+
+function TpvGUITreeNode.Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ aNode.fTreeView:=fTreeView;
+ aNode.SetParent(self);
+ fChildren.Add(aNode);
+ if TpvGUITreeNode.TFlag.Expanded in fFlags then begin
+  SetDisplayed(fDisplayed+aNode.fDisplayed);
+ end;
+ result:=aNode;
+end;
+
+function TpvGUITreeNode.Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ aNode.fTreeView:=fTreeView;
+ aNode.SetParent(self);
+ fChildren.Insert(aIndex,aNode);
+ if TpvGUITreeNode.TFlag.Expanded in fFlags then begin
+  SetDisplayed(fDisplayed+aNode.fDisplayed);
+ end;
+ result:=aNode;
+end;
+
+function TpvGUITreeNode.Remove(const aIndex:TpvSizeInt):TpvGUITreeNode;
+begin
+ if (aIndex>=0) and (aIndex<fChildren.Count) then begin
+  result:=fChildren[aIndex];
+  if TpvGUITreeNode.TFlag.Expanded in result.fFlags then begin
+   SetDisplayed(fDisplayed-result.fDisplayed);
+  end;
+  if assigned(fTreeView) and (fTreeView.fSelected=result) then begin
+   fTreeView.fSelected:=nil;
+  end;
+  if assigned(fTreeView) then begin
+   fTreeView.ResetCache(self);
+  end;
+  result.fParent:=nil;
+  result.fTreeView:=nil;
+  fChildren.Delete(aIndex);   
+  if (fChildren.Count=0) and (assigned(fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode)) then begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvGUITreeNode.Remove(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ result:=Remove(fChildren.IndexOf(aNode));
+end;
+
+function TpvGUITreeNode.Remove:TpvGUITreeNode;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.Remove(self);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvGUITreeNode.Clear;
+begin
+ if fChildren.Count>0 then begin
+  fChildren.Clear;
+  if assigned(fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode) then begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  SetDisplayed(1);
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+   fTreeView.fSelected:=nil;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeNode.Select;
+begin
+ if assigned(fTreeView) and (fTreeView.fSelected<>self) then begin
+  fTreeView.ClearSelection;
+  fTreeView.fSelected:=self;
+  Include(fFlags,TpvGUITreeNode.TFlag.Selected);
+ end;
+end;
+
+procedure TpvGUITreeNode.Expand(aState:boolean);
+var Index,NewDisplayed:TpvSizeInt;
+    IsHiddenRootNode:boolean;
+begin
+ IsHiddenRootNode:=(not assigned(fParent)) and (assigned(fTreeView) and fTreeView.fHideRootNode);
+ if IsHiddenRootNode then begin
+  aState:=true;
+ end else if fChildren.Count=0 then begin
+  aState:=false;
+ end;
+ if aState and not (TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+  Include(fFlags,TpvGUITreeNode.TFlag.Expanded);
+ end else if (not aState) and (TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+  Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+ end;
+ if IsHiddenRootNode then begin
+  NewDisplayed:=1;
+ end else begin
+  NewDisplayed:=0;
+ end;
+ if aState then begin
+  for Index:=0 to fChildren.Count-1 do begin
+   inc(NewDisplayed,fChildren[Index].fDisplayed);
+  end;
+ end else begin
+  for Index:=0 to fChildren.Count-1 do begin
+   fChildren[Index].ResetCache;
+  end;
+ end;
+ SetDisplayed(NewDisplayed);
+ if assigned(fTreeView) then begin
+  fTreeView.fDirty:=true;
+ end;
+end;
+
+procedure TpvGUITreeNode.ExpandAll;
+var Index:TpvSizeInt;
+begin
+ Expand(true);
+ for Index:=0 to fChildren.Count-1 do begin
+  fChildren[Index].ExpandAll;
+ end;
+end;
+
+procedure TpvGUITreeNode.EnsureVisible;
+begin
+ if assigned(fParent) then begin
+  fParent.ExpandAll;
+  fParent.EnsureVisible;
+ end;
+end;
+
+procedure TpvGUITreeNode.ResetCache;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to fChildren.Count-1 do begin
+  fChildren[Index].ResetCache;
+ end;
+end;
+
+procedure TpvGUITreeView.ResetCache(const aTreeNode:TpvGUITreeNode);
+begin
+ if assigned(aTreeNode) then begin
+  aTreeNode.ResetCache;
+ end;
+end;
+
+procedure TpvGUITreeView.ResetCache;
+begin
+ if assigned(fRoot) then begin
+  fRoot.ResetCache;
+ end;
+end;
+
+procedure TpvGUITreeView.ClearSelection;
+begin
+ if assigned(fSelected) then begin
+  Exclude(fSelected.fFlags,TpvGUITreeNode.TFlag.Selected);
+  fSelected:=nil;
+ end;
 end;
 
 constructor TpvGUIFileDialogOverwritePromptMessageDialog.Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;aPath:TpvUTF8String);
