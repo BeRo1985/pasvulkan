@@ -128,7 +128,7 @@ begin
 {$else}
  StartScreen:=TScreenMainMenu;
 {$endif}
- StartScreen:=TScreenExampleGUI;
+ //StartScreen:=TScreenExampleGUI;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
@@ -147,7 +147,7 @@ begin
 (*{$else}
  PresentMode:=TpvApplicationPresentMode.Mailbox;
 {$endif}*)
- PresentMode:=TpvApplicationPresentMode.VSync;
+ //PresentMode:=TpvApplicationPresentMode.VSync;
 end;
 
 procedure TApplication.Start;
