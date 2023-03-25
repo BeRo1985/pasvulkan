@@ -3295,9 +3295,13 @@ type TpvGUIObject=class;
        fWidgets:TpvGUIObjectList;
        fTag:TpvPtrUInt;
        fData:TObject;
-       function GetIndex:TpvSizeInt;
+       function GetIndex:TpvSizeInt; inline;
        procedure SetParent(const aParent:TpvGUITreeNode);
        procedure SetDisplayed(const aDisplayed:TpvSizeInt);
+       function GetSelected:boolean; inline;
+       procedure SetSelected(const aSelected:boolean);
+       function GetExpanded:boolean; inline;
+       procedure SetExpanded(const aExpanded:boolean);
        procedure ResetCache;
       public
        constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
@@ -3312,7 +3316,6 @@ type TpvGUIObject=class;
        procedure Expand(aState:boolean);
        procedure ExpandAll;
        procedure EnsureVisible;
-      published
       public
        property TreeView:TpvGUITreeView read fTreeView write fTreeView;
        property Parent:TpvGUITreeNode read fParent write SetParent;
@@ -3324,6 +3327,9 @@ type TpvGUIObject=class;
        property Widgets:TpvGUIObjectList read fWidgets;
        property Tag:TpvPtrUInt read fTag write fTag;
        property Data:TObject read fData write fData;
+      published
+       property Selected:boolean read GetSelected write SetSelected;
+       property Expanded:boolean read GetExpanded write SetExpanded;
      end;
 
      TpvGUITreeView=class(TpvGUIWidget)
@@ -24788,6 +24794,38 @@ begin
    end;
   end;
   fDisplayed:=aDisplayed;
+ end;
+end;
+
+function TpvGUITreeNode.GetSelected:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Selected in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetSelected(const aSelected:boolean);
+begin
+ if aSelected<>(TpvGUITreeNode.TFlag.Selected in fFlags) then begin
+  if aSelected then begin
+   Select;
+   Include(fFlags,TpvGUITreeNode.TFlag.Selected);
+  end else begin
+   if assigned(fTreeView) then begin
+    fTreeView.ClearSelection;
+   end;
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetExpanded:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Expanded in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetExpanded(const aExpanded:boolean);
+begin
+ if aExpanded<>(TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+  Expand(aExpanded);
  end;
 end;
 
