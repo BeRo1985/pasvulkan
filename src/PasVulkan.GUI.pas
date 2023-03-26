@@ -20941,7 +20941,7 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
-     fPopupButton.SetDown(false);
+     fPopupButton.SetDown(not fPopupButton.Down);
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
