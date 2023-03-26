@@ -3279,7 +3279,8 @@ type TpvGUIObject=class;
        type TFlag=
              (
               Selected,
-              Expanded
+              Expanded,
+              Visible
              );
             PFlag=^TFlag;
             TFlags=set of TFlag;
@@ -3303,6 +3304,8 @@ type TpvGUIObject=class;
        procedure SetSelected(const aSelected:boolean);
        function GetExpanded:boolean; inline;
        procedure SetExpanded(const aExpanded:boolean);
+       function GetVisible:boolean; inline;
+       procedure SetVisible(const aVisible:boolean);
        procedure ResetCache;
       public
        constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
@@ -3334,6 +3337,7 @@ type TpvGUIObject=class;
       published
        property Selected:boolean read GetSelected write SetSelected;
        property Expanded:boolean read GetExpanded write SetExpanded;
+       property Visible:boolean read GetVisible write SetVisible;
      end;
 
      TpvGUITreeView=class(TpvGUIWidget)
@@ -24707,6 +24711,8 @@ begin
 
  fCachedNodeIndex:=-1;
 
+ fFlags:=[TpvGUITreeNode.TFlag.Visible];
+
  if assigned(fParent) then begin
   if aIndex<0 then begin
    fParent.fChildren.Add(self);
@@ -24850,6 +24856,9 @@ begin
    end;
    Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
   end;
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
  end;
 end;
 
@@ -24862,6 +24871,31 @@ procedure TpvGUITreeNode.SetExpanded(const aExpanded:boolean);
 begin
  if aExpanded<>(TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
   Expand(aExpanded);
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetVisible:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Visible in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetVisible(const aVisible:boolean);
+begin
+ if aVisible<>(TpvGUITreeNode.TFlag.Visible in fFlags) then begin
+  if aVisible then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.Visible);
+   if assigned(fParent) then begin
+    fParent.SetVisible(true);
+   end;
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Visible);
+  end;
+  if assigned(fTreeView) then begin
+   fTreeView.fDirty:=true;
+  end;
  end;
 end;
 
@@ -25084,19 +25118,23 @@ begin
       TreeNodeStack.Push(fRoot);
       while TreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
-        if (TreeNode<>fRoot) or fShowRootNode then begin
-         TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
-        end else begin
-         TreeNode.fCachedNodeIndex:=-1;
-        end;
-        if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
-         for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
-          TreeNodeStack.Push(TreeNode.fChildren[Index]);
+        if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
+         if (TreeNode<>fRoot) or fShowRootNode then begin
+          TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
+         end else begin
+          TreeNode.fCachedNodeIndex:=-1;
+         end;
+         if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
+          for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
+           TreeNodeStack.Push(TreeNode.fChildren[Index]);
+          end;
+         end else begin
+          for Index:=0 to TreeNode.fChildren.Count-1 do begin
+           InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
+          end;
          end;
         end else begin
-         for Index:=0 to TreeNode.fChildren.Count-1 do begin
-          InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
-         end;
+         InvisibleTreeNodeStack.Push(TreeNode);
         end;
        end;
       end;
