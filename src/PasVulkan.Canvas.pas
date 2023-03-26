@@ -58,6 +58,9 @@ unit PasVulkan.Canvas;
   {$ifend}
  {$endif}
 {$endif}
+{$if defined(fpc) and (defined(cpux86_64) or defined(cpuamd64))}
+ {$optimization off,level1}
+{$ifend}
 
 interface
 
