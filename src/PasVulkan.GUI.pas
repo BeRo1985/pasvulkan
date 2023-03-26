@@ -25070,8 +25070,8 @@ end;
 procedure TpvGUITreeView.UpdateCache;
 type TTreeNodeStack=TpvDynamicStack<TpvGUITreeNode>;
 var Index:TpvSizeInt;
-    TreeNodeStack:TTreeNodeStack;
-    TreeNode,ChildTreeNode:TpvGUITreeNode;
+    TreeNodeStack,InvisibleTreeNodeStack:TTreeNodeStack;
+    TreeNode:TpvGUITreeNode;
 begin
  if fDirty or (fCachedNodes.Count=0) then begin
   try
@@ -25079,21 +25079,37 @@ begin
    if assigned(fRoot) then begin
     TreeNodeStack.Initialize;
     try
-     TreeNodeStack.Push(fRoot);
-     while TreeNodeStack.Pop(TreeNode) do begin
-      if assigned(TreeNode) then begin
-       if (TreeNode<>fRoot) or fShowRootNode then begin
-        TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
-       end else begin
-        TreeNode.fCachedNodeIndex:=-1;
-       end;
-       if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
-        for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
-         ChildTreeNode:=TreeNode.fChildren[Index];
-         TreeNodeStack.Push(ChildTreeNode);
+     InvisibleTreeNodeStack.Initialize;
+     try
+      TreeNodeStack.Push(fRoot);
+      while TreeNodeStack.Pop(TreeNode) do begin
+       if assigned(TreeNode) then begin
+        if (TreeNode<>fRoot) or fShowRootNode then begin
+         TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
+        end else begin
+         TreeNode.fCachedNodeIndex:=-1;
+        end;
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
+         for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
+          TreeNodeStack.Push(TreeNode.fChildren[Index]);
+         end;
+        end else begin
+         for Index:=0 to TreeNode.fChildren.Count-1 do begin
+          InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
+         end;
         end;
        end;
       end;
+      while InvisibleTreeNodeStack.Pop(TreeNode) do begin
+       if assigned(TreeNode) then begin
+        TreeNode.fCachedNodeIndex:=-1;
+        for Index:=0 to TreeNode.fChildren.Count-1 do begin
+         InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
+        end;
+       end;
+      end;
+     finally
+      InvisibleTreeNodeStack.Finalize;
      end;
     finally
      TreeNodeStack.Finalize;
