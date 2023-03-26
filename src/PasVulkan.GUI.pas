@@ -3339,7 +3339,7 @@ type TpvGUIObject=class;
      TpvGUITreeView=class(TpvGUIWidget)
       private
        fDirty:boolean;
-       fHideRootNode:boolean;
+       fShowRootNode:boolean;
        fRoot:TpvGUITreeNode;
        fSelected:TpvGUITreeNode;
        fItemHeight:TpvFloat;
@@ -24741,7 +24741,7 @@ begin
    fTreeView.fSelected:=nil;
   end;
   fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
-  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode)) then begin
+  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode)) then begin
    Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
  end;
@@ -24922,7 +24922,7 @@ begin
   result.fParent:=nil;
   result.fTreeView:=nil;
   fChildren.Delete(aIndex);   
-  if (fChildren.Count=0) and (assigned(fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode)) then begin
+  if (fChildren.Count=0) and (assigned(fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode)) then begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   if assigned(fTreeView) then begin
@@ -24951,7 +24951,7 @@ procedure TpvGUITreeNode.Clear;
 begin
  if fChildren.Count>0 then begin
   fChildren.Clear;
-  if assigned(fParent) or not (assigned(fTreeView) and fTreeView.fHideRootNode) then begin
+  if assigned(fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode) then begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   SetDerivedVisibleCount(1);
@@ -24975,7 +24975,7 @@ procedure TpvGUITreeNode.Expand(aState:boolean);
 var Index,NewDerivedVisibleCount:TpvSizeInt;
     IsHiddenRootNode:boolean;
 begin
- IsHiddenRootNode:=(not assigned(fParent)) and (assigned(fTreeView) and fTreeView.fHideRootNode);
+ IsHiddenRootNode:=(not assigned(fParent)) and not (assigned(fTreeView) and fTreeView.fShowRootNode);
  if IsHiddenRootNode then begin
   aState:=true;
  end else if fChildren.Count=0 then begin
@@ -25082,7 +25082,7 @@ begin
      TreeNodeStack.Push(fRoot);
      while TreeNodeStack.Pop(TreeNode) do begin
       if assigned(TreeNode) then begin
-       if (TreeNode<>fRoot) or not fHideRootNode then begin
+       if (TreeNode<>fRoot) or fShowRootNode then begin
         TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
        end else begin
         TreeNode.fCachedNodeIndex:=-1;
