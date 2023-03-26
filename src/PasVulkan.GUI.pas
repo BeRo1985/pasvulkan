@@ -3292,6 +3292,7 @@ type TpvGUIObject=class;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
        fDerivedVisibleCount:TpvSizeInt;
+       fCachedNodeIndex:TpvSizeInt;
        fGUIObjects:TpvGUIObjectList;
        fTag:TpvPtrUInt;
        fData:TObject;
@@ -3326,6 +3327,7 @@ type TpvGUIObject=class;
        property Flags:TFlags read fFlags write fFlags;
        property Depth:TpvSizeInt read fDepth write fDepth;
        property DerivedVisibleCount:TpvSizeInt read fDerivedVisibleCount write SetDerivedVisibleCount;
+       property CachedNodeIndex:TpvSizeInt read fCachedNodeIndex;
        property GUIObjects:TpvGUIObjectList read fGUIObjects;
        property Tag:TpvPtrUInt read fTag write fTag;
        property Data:TObject read fData write fData;
@@ -3341,9 +3343,13 @@ type TpvGUIObject=class;
        fRoot:TpvGUITreeNode;
        fSelected:TpvGUITreeNode;
        fItemHeight:TpvFloat;
+       fCachedNodes:TpvGUITreeNodes;
        procedure ResetCache(const aTreeNode:TpvGUITreeNode); overload;
        procedure ResetCache; overload;
+       procedure UpdateCache;
       public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
        procedure ClearSelection;
      end;
 
@@ -24699,6 +24705,8 @@ begin
 
  fDerivedVisibleCount:=1;
 
+ fCachedNodeIndex:=-1;
+
  if assigned(fParent) then begin
   if aIndex<0 then begin
    fParent.fChildren.Add(self);
@@ -25018,14 +25026,35 @@ end;
 procedure TpvGUITreeNode.ResetCache;
 var Index:TpvSizeInt;
 begin
+ fCachedNodeIndex:=-1;
  for Index:=0 to fChildren.Count-1 do begin
   fChildren[Index].ResetCache;
  end;
 end;
 
+constructor TpvGUITreeView.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fCachedNodes:=TpvGUITreeNodes.Create;
+ fCachedNodes.OwnsObjects:=false;
+
+end;
+
+destructor TpvGUITreeView.Destroy;
+begin
+
+ FreeAndNil(fCachedNodes);
+
+ inherited Destroy;
+
+end;
+
 procedure TpvGUITreeView.ResetCache(const aTreeNode:TpvGUITreeNode);
 begin
  if assigned(aTreeNode) then begin
+  fCachedNodes.Clear;
   aTreeNode.ResetCache;
  end;
 end;
@@ -25033,7 +25062,46 @@ end;
 procedure TpvGUITreeView.ResetCache;
 begin
  if assigned(fRoot) then begin
+  fCachedNodes.Clear;
   fRoot.ResetCache;
+ end;
+end;
+
+procedure TpvGUITreeView.UpdateCache;
+type TTreeNodeStack=TpvDynamicStack<TpvGUITreeNode>;
+var Index:TpvSizeInt;
+    TreeNodeStack:TTreeNodeStack;
+    TreeNode,ChildTreeNode:TpvGUITreeNode;
+begin
+ if fDirty or (fCachedNodes.Count=0) then begin
+  try
+   fCachedNodes.Clear;
+   if assigned(fRoot) then begin
+    TreeNodeStack.Initialize;
+    try
+     TreeNodeStack.Push(fRoot);
+     while TreeNodeStack.Pop(TreeNode) do begin
+      if assigned(TreeNode) then begin
+       if (TreeNode<>fRoot) or not fHideRootNode then begin
+        TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
+       end else begin
+        TreeNode.fCachedNodeIndex:=-1;
+       end;
+       if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
+        for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
+         ChildTreeNode:=TreeNode.fChildren[Index];
+         TreeNodeStack.Push(ChildTreeNode);
+        end;
+       end;
+      end;
+     end;
+    finally
+     TreeNodeStack.Finalize;
+    end;
+   end;
+  finally
+   fDirty:=false;
+  end;
  end;
 end;
 
