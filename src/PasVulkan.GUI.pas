@@ -25104,9 +25104,13 @@ begin
     try
      InvisibleTreeNodeStack.Initialize;
      try
+      fRoot.fDepth:=0;
       TreeNodeStack.Push(fRoot);
       while TreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
+        if assigned(TreeNode.fParent) then begin
+         TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
+        end;
         if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
          if (TreeNode<>fRoot) or fShowRootNode then begin
           TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
@@ -25131,6 +25135,9 @@ begin
       end;
       while InvisibleTreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
+        if assigned(TreeNode.fParent) then begin
+         TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
+        end;
         TreeNode.fCachedNodeIndex:=-1;
         TreeNode.fDerivedVisibleCount:=0;
         for Index:=0 to TreeNode.fChildren.Count-1 do begin
