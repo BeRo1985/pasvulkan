@@ -26190,7 +26190,12 @@ begin
      TpvApplicationInputKeyEventType.Typed:begin
       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
        TreeNode:=fNodes[fNodeIndex];
-       TreeNode.SetExpanded(false);
+       if TreeNode.Expanded and (TreeNode.fChildren.Count>0) then begin
+        TreeNode.SetExpanded(false);
+       end else if assigned(TreeNode.fParent) and TreeNode.fParent.Expanded and ((TreeNode.fParent<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags)) then begin
+        TreeNode.fParent.SetExpanded(false);
+        SetNodeIndex(TreeNode.fParent.fNodeIndex);
+       end;
        UpdateNodes;
        if assigned(fOnChange) then begin
         fOnChange(self);
@@ -26200,7 +26205,7 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+   KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
