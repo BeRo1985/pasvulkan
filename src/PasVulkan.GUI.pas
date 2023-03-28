@@ -872,6 +872,7 @@ type TpvGUIObject=class;
        fIconTreeViewCloseLU:TObject;
        fIconTreeViewCloseU:TObject;
        fIconTreeViewL_H:TObject;
+       fIconTreeViewL_H_S:TObject;
        fIconTreeViewL_HV_L:TObject;
        fIconTreeViewL_HV_LU:TObject;
        fIconTreeViewL_HV_U:TObject;
@@ -1046,6 +1047,7 @@ type TpvGUIObject=class;
        property IconTreeViewCloseLU:TObject read fIconTreeViewCloseLU write fIconTreeViewCloseLU;
        property IconTreeViewCloseU:TObject read fIconTreeViewCloseU write fIconTreeViewCloseU;
        property IconTreeViewL_H:TObject read fIconTreeViewL_H write fIconTreeViewL_H;
+       property IconTreeViewL_H_S:TObject read fIconTreeViewL_H_S write fIconTreeViewL_H_S;
        property IconTreeViewL_HV_L:TObject read fIconTreeViewL_HV_L write fIconTreeViewL_HV_L;
        property IconTreeViewL_HV_LU:TObject read fIconTreeViewL_HV_LU write fIconTreeViewL_HV_LU;
        property IconTreeViewL_HV_U:TObject read fIconTreeViewL_HV_U write fIconTreeViewL_HV_U;
@@ -6994,6 +6996,7 @@ begin
  fIconTreeViewCloseLU:=nil;
  fIconTreeViewCloseU:=nil;
  fIconTreeViewL_H:=nil;
+ fIconTreeViewL_H_S:=nil;
  fIconTreeViewL_HV_L:=nil;
  fIconTreeViewL_HV_LU:=nil;
  fIconTreeViewL_HV_U:=nil;
@@ -7260,7 +7263,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{C76972BC-7A04-40F3-9864-D199DE12822C}';
+const CacheVersionGUID:TGUID='{C76972BC-7A04-40F3-9864-D199DE12823C}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:Boolean;
@@ -8164,6 +8167,18 @@ begin
                                                                                   2,
                                                                                   1);
 
+  fIconTreeViewL_H_S:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_H_S',
+                                                                                    'M 0,11 v 2 h 3 v -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
   fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_L',
                                                                                      'M 11,11 h 2 v 13 h -2 z M 13,11 v 2 h 11.5 v -2 z',
                                                                                      48,
@@ -8374,6 +8389,7 @@ begin
   fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseLU'];
   fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseU'];
   fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H'];
+  fIconTreeViewL_H_S:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H_S'];
   fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_L'];
   fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_LU'];
   fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_U'];
@@ -12685,6 +12701,15 @@ begin
        aDrawEngine.DrawSprite(Sprite,
                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
                               TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+      end;
+      if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) and (TreeNode.fChildren.Count>0) then begin
+       SpriteEx:=Skin.fIconTreeViewL_H_S;
+       if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+        Sprite:=TpvSprite(SpriteEx);
+        aDrawEngine.DrawSprite(Sprite,
+                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                               TpvRect.CreateRelative(DrawRect.Left+((IndentIndex+1)*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+       end;
       end;
      end;
      if TreeNode.fChildren.Count>0 then begin
