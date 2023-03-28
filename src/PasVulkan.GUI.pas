@@ -12385,12 +12385,12 @@ begin
 
   if assigned(TreeNode) then begin
 
-   Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fIndentWidth;
+   Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
 
    if not (assigned(aTreeView.fOnDrawTreeNode) and
            aTreeView.fOnDrawTreeNode(aTreeView,
                                      TreeNode,
-                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left+(Indent+aTreeView.IndentWidth),
+                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left+(Indent+aTreeView.fWorkIndentWidth),
                                                                                         Position.y),
                                                             TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                         Position.y+RowHeight)))) then begin
@@ -12417,7 +12417,7 @@ begin
 
     aDrawEngine.Transparent:=true;
 
-    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.IndentWidth,RowHeight*0.5));
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth,RowHeight*0.5));
 
     if aTreeView.fNodeIndex=NodeIndex then begin
      if aTreeView.Focused then begin
@@ -25394,6 +25394,7 @@ begin
 
  fRoot:=TpvGUITreeNode.Create(nil,-1);
  fRoot.fTreeView:=self;
+ fRoot.SetExpanded(true);
 
  fOnChange:=nil;
 
