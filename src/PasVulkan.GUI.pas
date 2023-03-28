@@ -12734,18 +12734,8 @@ begin
     if assigned(Skin) then begin
      for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
       if NodeIndex=(aTreeView.fNodes.Count-1) then begin
-(*      if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) {and (TreeNode.fChildren.Count>0)} then begin
-        SpriteEx:=Skin.fIconTreeViewL_HV_U;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewL_V_U;
-       end;*)
        SpriteEx:=Skin.fIconTreeViewL_V_U;
       end else begin
-(*     if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) {and (TreeNode.fChildren.Count>0)} then begin
-        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewL_V_LU;
-       end;*)
        SpriteEx:=Skin.fIconTreeViewL_V_LU;
       end;
       if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
@@ -12754,15 +12744,6 @@ begin
                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
                               TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
       end;
-{     if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) and (TreeNode.fChildren.Count>0) then begin
-       SpriteEx:=Skin.fIconTreeViewL_H_S;
-       if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
-        Sprite:=TpvSprite(SpriteEx);
-        aDrawEngine.DrawSprite(Sprite,
-                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
-                               TpvRect.CreateRelative(DrawRect.Left+((IndentIndex+1)*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
-       end;
-      end; }
      end;
      if TreeNode.fChildren.Count>0 then begin
       case TreeNode.fVisualKind of
@@ -12799,7 +12780,7 @@ begin
       case TreeNode.fVisualKind of
        TpvGUITreeNode.TVisualKind.First:begin
         if assigned(TreeNode.fParent) then begin
-         SpriteEx:=Skin.fIconTreeViewL_HV_L_F;
+         SpriteEx:=Skin.fIconTreeViewL_HV_LU;
         end else begin
          SpriteEx:=Skin.fIconTreeViewL_HV_L;
         end;
