@@ -25363,6 +25363,8 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
+ fFlags:=[TpvGUITreeViewFlag.MultiSelect];
+
  fHorziontalScrollBar:=TpvGUIScrollBar.Create(self);
  fHorziontalScrollBar.Visible:=false;
  fHorziontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
@@ -25673,15 +25675,17 @@ function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Bo
  procedure DoSelection(const aForce:Boolean);
  var CurrentNodeIndex:TpvSizeInt;
  begin
-  if aForce or (fAction in [TpvGUITreeViewAction.PreMark,TpvGUITreeViewAction.Mark]) then begin
-   fAction:=TpvGUITreeViewAction.Mark;
-   fActionStopIndex:=fNodeIndex;
-   InternalClearSelection;
-   for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-    fNodes[CurrentNodeIndex].SetSelected(true);
-   end;
-   if assigned(fOnChangeSelection) then begin
-    fOnChangeSelection(self);
+  if MultiSelect then begin
+   if aForce or (fAction in [TpvGUITreeViewAction.PreMark,TpvGUITreeViewAction.Mark]) then begin
+    fAction:=TpvGUITreeViewAction.Mark;
+    fActionStopIndex:=fNodeIndex;
+    InternalClearSelection;
+    for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+     fNodes[CurrentNodeIndex].SetSelected(true);
+    end;
+    if assigned(fOnChangeSelection) then begin
+     fOnChangeSelection(self);
+    end;
    end;
   end;
  end;
@@ -25709,7 +25713,37 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+   KEYCODE_LEFT,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       TreeNode.SetExpanded(false);
+       UpdateNodes;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       TreeNode.SetExpanded(true);
+       UpdateNodes;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_UP:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetNodeIndex(Min(Max(fNodeIndex-1,0),fNodes.Count-1));
@@ -25718,7 +25752,7 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+   KEYCODE_DOWN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetNodeIndex(Min(Max(fNodeIndex+1,0),fNodes.Count-1));
@@ -25766,9 +25800,7 @@ begin
    KEYCODE_BACKSPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       ClearSelection;
-      end;
+      ClearSelection;
      end;
     end;
     result:=true;
@@ -25776,14 +25808,15 @@ begin
    KEYCODE_SPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(not TreeNode.Selected);
-        if assigned(fOnChangeSelection) then begin
-         fOnChangeSelection(self);
-        end;
-       end;
+      if not MultiSelect then begin
+       InternalClearSelection;
+      end;
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       TreeNode.SetSelected(not TreeNode.Selected);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
       end;
      end;
     end;
@@ -25809,12 +25842,15 @@ begin
      fAction:=TpvGUITreeViewAction.None;
      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+      if not MultiSelect then begin
+       InternalClearSelection;
+      end;
       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
        TreeNode:=fNodes[fNodeIndex];
        TreeNode.SetSelected(not TreeNode.Selected);
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
       end;
      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
       fAction:=TpvGUITreeViewAction.Mark;
@@ -25841,8 +25877,15 @@ begin
       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
       fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-       fNodes[CurrentNodeIndex].SetSelected(true);
+      if MultiSelect then begin
+       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+        fNodes[CurrentNodeIndex].SetSelected(true);
+       end;
+      end else begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(true);
+       end;
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
@@ -25868,8 +25911,15 @@ begin
       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
       fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-       fNodes[CurrentNodeIndex].SetSelected(true);
+      if MultiSelect then begin
+       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+        fNodes[CurrentNodeIndex].SetSelected(true);
+       end;
+      end else begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(true);
+       end;
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
@@ -25882,8 +25932,15 @@ begin
       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
       fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-       fNodes[CurrentNodeIndex].SetSelected(true);
+      if MultiSelect then begin
+       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+        fNodes[CurrentNodeIndex].SetSelected(true);
+       end;
+      end else begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(true);
+       end;
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
