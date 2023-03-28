@@ -3320,7 +3320,9 @@ type TpvGUIObject=class;
              (
               Selected,
               Expanded,
-              Visible
+              Visible,
+              First,
+              Last
              );
             PFlag=^TFlag;
             TFlags=set of TFlag;
@@ -12634,7 +12636,15 @@ begin
    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
 
    if assigned(Skin) then begin
-    SpriteEx:=Skin.fIconTreeViewL_H;
+    if TreeNode.fChildren.Count>0 then begin
+     if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+      SpriteEx:=Skin.fIconTreeViewCloseLU;
+     end else begin
+      SpriteEx:=Skin.fIconTreeViewOpenLU;
+     end;
+    end else begin
+     SpriteEx:=Skin.fIconTreeViewL_V_LU;
+    end;
     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
      Sprite:=TpvSprite(SpriteEx);
      aDrawEngine.DrawSprite(Sprite,
@@ -25755,6 +25765,7 @@ begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
         if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
+         TreeNode.fFlags:=TreeNode.fFlags-[TpvGUITreeNode.TFlag.First,TpvGUITreeNode.TFlag.Last];
          if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
           TreeNode.fNodeIndex:=fNodes.Add(TreeNode);
           TreeNode.fDerivedVisibleCount:=1;
@@ -25778,6 +25789,7 @@ begin
       end;
       while InvisibleTreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
+        TreeNode.fFlags:=TreeNode.fFlags-[TpvGUITreeNode.TFlag.First,TpvGUITreeNode.TFlag.Last];
         if assigned(TreeNode.fParent) then begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
