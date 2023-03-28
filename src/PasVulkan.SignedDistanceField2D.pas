@@ -399,8 +399,8 @@ type TpvSignedDistanceField2DVariant=
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default);
-       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default); static;
+       procedure Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default;const aProtectBorder:boolean=false);
+       class procedure Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default;const aProtectBorder:boolean=false); static;
      end;
 
 implementation
@@ -2523,7 +2523,7 @@ begin
 
 end;
 
-procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
+procedure TpvSignedDistanceField2DGenerator.Execute(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant;const aProtectBorder:boolean);
 var PasMPInstance:TPasMP;
  procedure Generate;
  var TryIteration,ColorChannelIndex,CountColorChannels:TpvInt32;
@@ -2705,6 +2705,7 @@ var PasMPInstance:TPasMP;
   end;
 
  end;
+var x,y:TpvSizeInt;
 begin
 
  PasMPInstance:=TPasMP.GetGlobalInstance;
@@ -2743,14 +2744,28 @@ begin
   fVectorPathShape:=nil;
  end;
 
+ if aProtectBorder and (aDistanceField.Width>=4) and (aDistanceField.Height>=4) then begin
+
+  for y:=0 to aDistanceField.Height-1 do begin
+   aDistanceField.Pixels[(y*aDistanceField.Width)+0]:=aDistanceField.Pixels[(y*aDistanceField.Width)+1];
+   aDistanceField.Pixels[(y*aDistanceField.Width)+(aDistanceField.Width-1)]:=aDistanceField.Pixels[(y*aDistanceField.Width)+(aDistanceField.Width-2)];
+  end;
+
+  for x:=0 to aDistanceField.Width-1 do begin
+   aDistanceField.Pixels[(aDistanceField.Width*0)+x]:=aDistanceField.Pixels[(aDistanceField.Width*1)+x];
+   aDistanceField.Pixels[(aDistanceField.Width*(aDistanceField.Height-1))+x]:=aDistanceField.Pixels[(aDistanceField.Width*(aDistanceField.Height-2))+x];
+  end;
+
+ end;
+
 end;
 
-class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant);
+class procedure TpvSignedDistanceField2DGenerator.Generate(var aDistanceField:TpvSignedDistanceField2D;const aVectorPathShape:TpvVectorPathShape;const aScale:TpvDouble;const aOffsetX:TpvDouble;const aOffsetY:TpvDouble;const aVariant:TpvSignedDistanceField2DVariant;const aProtectBorder:boolean);
 var Generator:TpvSignedDistanceField2DGenerator;
 begin
  Generator:=TpvSignedDistanceField2DGenerator.Create;
  try
-  Generator.Execute(aDistanceField,aVectorPathShape,aScale,aOffsetX,aOffsetY,aVariant);
+  Generator.Execute(aDistanceField,aVectorPathShape,aScale,aOffsetX,aOffsetY,aVariant,aProtectBorder);
  finally
   Generator.Free;
  end;
