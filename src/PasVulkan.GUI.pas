@@ -944,6 +944,9 @@ type TpvGUIObject=class;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; virtual;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); virtual;
       public
+       function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; virtual;
+       procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -1127,6 +1130,9 @@ type TpvGUIObject=class;
        procedure ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2); override;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; override;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); override;
+      public
+       function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; override;
+       procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -3342,28 +3348,98 @@ type TpvGUIObject=class;
        property Visible:boolean read GetVisible write SetVisible;
      end;
 
+     TpvGUITreeViewAction=
+      (
+       None,
+       PreMark,
+       Mark
+      );
+     PpvGUITreeViewAction=^TpvGUITreeViewAction;
+
+     TpvGUITreeViewOnDrawTreeNode=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aRect:TpvRect):Boolean of object;
+
+     TpvGUITreeViewOnGetTreeNodeText=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode):TpvUTF8String of object;
+
+     TpvGUITreeViewFlag=
+      (
+       ShowRootNode,
+       MultiSelect
+      );
+
+     PpvGUITreeViewFlag=^TpvGUITreeViewFlag;
+
+     TpvGUITreeViewFlags=set of TpvGUITreeViewFlag;
+
+     PpvGUITreeViewFlags=^TpvGUITreeViewFlags;
+
+     { TpvGUITreeView }
+
      TpvGUITreeView=class(TpvGUIWidget)
       private
        fHorziontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
-       fItemIndex:TpvSizeInt;
+       fCachedNodeIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkRowHeight:TpvFloat;
        fDirty:boolean;
-       fShowRootNode:boolean;
+       fFlags:TpvGUITreeViewFlags;
        fRoot:TpvGUITreeNode;
        fSelected:TpvGUITreeNode;
        fItemHeight:TpvFloat;
        fCachedNodes:TpvGUITreeNodes;
+       fOnChange:TpvGUIOnEvent;
+       fOnChangeCachedNodeIndex:TpvGUIOnEvent;
+       fOnChangeSelection:TpvGUIOnEvent;
+       fOnDoubleClick:TpvGUIOnEvent;
+       fOnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode;
+       fOnGetTreeNodeText:TpvGUITreeViewOnGetTreeNodeText;
+       fAction:TpvGUITreeViewAction;
+       fActionStartIndex:TpvSizeInt;
+       fActionStopIndex:TpvSizeInt;
+       fDoubleClickTimeAccumulator:double;
+       fDoubleClickCounter:TpvSizeInt;
+       function GetShowRootNode:Boolean;
+       procedure SetShowRootNode(const aValue:Boolean);
+       function GetMultiSelect:Boolean;
+       procedure SetMultiSelect(const aValue:Boolean);
        procedure UpdateCache;
+      protected
+       function GetHighlightRect:TpvRect; override;
+       function GetPreferredSize:TpvVector2; override;
+      private
+       function GetCountVisibleItems:TpvSizeInt;
+       procedure AdjustScrollBars;
+       procedure UpdateScrollBars;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure ClearSelection;
+       procedure PerformLayout; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure Check; override;
+       procedure Draw; override;
       published
        property HorziontalScrollBar:TpvGUIScrollBar read fHorziontalScrollBar;
        property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
+       property Root:TpvGUITreeNode read fRoot;
+       property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property ShowRootNode:Boolean read GetShowRootNode write SetShowRootNode;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeCachedNodeIndex:TpvGUIOnEvent read fOnChangeCachedNodeIndex write fOnChangeCachedNodeIndex;
+       property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
+       property OnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode read fOnDrawTreeNode write fOnDrawTreeNode;
+       property OnGetTreeNodeText:TpvGUITreeViewOnGetTreeNodeText read fOnGetTreeNodeText write fOnGetTreeNodeText;
      end;
 
      TpvGUIFileDialogOverwritePromptMessageDialog=class(TpvGUIMessageDialog)
@@ -7102,6 +7178,16 @@ begin
 
 end;
 
+function TpvGUISkin.GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aTreeView);
+end;
+
+procedure TpvGUISkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+begin
+
+end;
+
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
@@ -10693,7 +10779,6 @@ begin
 
 end;
 
-
 function TpvGUIDefaultVectorBasedSkin.GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2;
 var CurrentFont:TpvFont;
     CurrentFontSize,RowHeight:TpvFloat;
@@ -12156,6 +12241,195 @@ begin
    end;
 
   end;
+ end;
+
+ aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2;
+var CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight:TpvFloat;
+begin
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ result:=TpvVector2.InlineableCreate((BoxCornerMargin*2.0)+100.0,
+                                     (RowHeight*8.0)+(BoxCornerMargin*2.0));
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+var Element:TpvInt32;
+    CachedNodeIndex:TpvSizeInt;
+    CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight:TpvFloat;
+    Position:TpvVector2;
+    FontColor:TpvVector4;
+    ClipRect,DrawRect,Rect:TpvRect;
+    ItemText:TpvUTF8String;
+    TreeNode:TpvGUITreeNode;
+begin
+
+ aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
+
+ ClipRect:=aTreeView.fClipRect;
+
+ if aTreeView.fHorziontalScrollBar.Visible then begin
+  ClipRect.Bottom:=ClipRect.Bottom-aTreeView.fHorziontalScrollBar.fSize.y;
+ end;
+
+ if aTreeView.fVerticalScrollBar.Visible then begin
+  ClipRect.Right:=ClipRect.Right-aTreeView.fVerticalScrollBar.fSize.x;
+ end;
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ aDrawEngine.Font:=CurrentFont;
+
+ aDrawEngine.FontSize:=CurrentFontSize;
+
+ if aTreeView.Enabled then begin
+  FontColor:=aTreeView.FontColor;
+  if aTreeView.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+  FontColor:=TpvVector4.InlineableCreate(aTreeView.FontColor.rgb,aTreeView.FontColor.a*0.25);
+ end;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aTreeView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aTreeView.fClipRect.LeftTop;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ aDrawEngine.Color:=FontColor;
+
+ ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aTreeView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aTreeView.fClipRect.LeftTop;
+
+ for CachedNodeIndex:=aTreeView.fVerticalScrollBar.Value to aTreeView.fCachedNodes.Count-1 do begin
+
+  TreeNode:=aTreeView.fCachedNodes[CachedNodeIndex];
+
+  if assigned(TreeNode) then begin
+
+   if not (assigned(aTreeView.fOnDrawTreeNode) and
+           aTreeView.fOnDrawTreeNode(aTreeView,
+                                     TreeNode,
+                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                        Position.y),
+                                                            TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                        Position.y+RowHeight)))) then begin
+
+    aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+    aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+    if TpvGUITreeNode.TFlag.Selected in TreeNode.fFlags then begin
+     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     aDrawEngine.Transparent:=true;
+     aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                        Position.y),
+                                                            TpvVector2.InlineableCreate(aTreeView.fSize.x-(BoxCornerMargin*2.0),
+                                                                                        RowHeight)));
+     aDrawEngine.Color:=FontColor;
+    end;
+
+    if assigned(aTreeView.fOnGetTreeNodeText) then begin
+     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
+    end else begin
+     ItemText:=TpvUTF8String(TreeNode.fCaption);
+    end;
+
+    aDrawEngine.Transparent:=true;
+
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+
+    if aTreeView.fCachedNodeIndex=CachedNodeIndex then begin
+     if aTreeView.Focused then begin
+      Element:=GUI_ELEMENT_FOCUSED;
+     end else begin
+      Element:=GUI_ELEMENT_HOVERED;
+     end;
+     Rect:=ClipRect;
+     Rect.Left:=ClipRect.Left-1.0;
+     Rect.Right:=ClipRect.Right+1.0;
+     aDrawEngine.ClipRect:=Rect;
+     Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                              Position.y),
+                                  TpvVector2.InlineableCreate(DrawRect.Right,
+                                                              Position.y+RowHeight));
+     aDrawEngine.Transparent:=true;
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    true,
+                                                    Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                    Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                    Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                    Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                    true);
+     aDrawEngine.ClipRect:=ClipRect;
+    end;
+
+   end;
+
+   Position.y:=Position.y+RowHeight;
+
+   if Position.y>aTreeView.fSize.y then begin
+    break;
+   end;
+
+  end;
+
  end;
 
  aDrawEngine.Next;
@@ -24746,7 +25020,7 @@ begin
    fTreeView.fSelected:=nil;
   end;
   fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
-  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode)) then begin
+  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
    Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
  end;
@@ -24854,7 +25128,7 @@ var State,IsHiddenRootNode:boolean;
 begin
  if aExpanded<>(TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
   State:=aExpanded;
-  IsHiddenRootNode:=(not assigned(fParent)) and not (assigned(fTreeView) and fTreeView.fShowRootNode);
+  IsHiddenRootNode:=(not assigned(fParent)) and not (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags));
   if IsHiddenRootNode then begin
    State:=true;
   end else if fChildren.Count=0 then begin
@@ -24940,7 +25214,7 @@ begin
   result.fParent:=nil;
   result.fTreeView:=nil;
   fChildren.Delete(aIndex);   
-  if (fChildren.Count=0) and (assigned(fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode)) then begin
+  if (fChildren.Count=0) and (assigned(fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   if assigned(fTreeView) then begin
@@ -24969,7 +25243,7 @@ procedure TpvGUITreeNode.Clear;
 begin
  if fChildren.Count>0 then begin
   fChildren.Clear;
-  if assigned(fParent) or (assigned(fTreeView) and fTreeView.fShowRootNode) then begin
+  if assigned(fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags)) then begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   if assigned(fTreeView) then begin
@@ -25069,7 +25343,7 @@ begin
  fVerticalScrollBar.MinimumValue:=0;
  fVerticalScrollBar.MaximumValue:=1;
 
- fItemIndex:=-1;
+ fCachedNodeIndex:=-1;
 
  fRowHeight:=0.0;
 
@@ -25080,6 +25354,27 @@ begin
  fCachedNodes:=TpvGUITreeNodes.Create;
  fCachedNodes.OwnsObjects:=false;
 
+ fRoot:=TpvGUITreeNode.Create(nil,-1);
+ fRoot.fTreeView:=self;
+
+ fOnChange:=nil;
+
+ fOnChangeCachedNodeIndex:=nil;
+
+ fOnChangeSelection:=nil;
+
+ fOnDoubleClick:=nil;
+
+ fOnDrawTreeNode:=nil;
+
+ fOnGetTreeNodeText:=nil;
+
+ fAction:=TpvGUITreeViewAction.None;
+
+ fDoubleClickTimeAccumulator:=0.0;
+
+ fDoubleClickCounter:=0;
+
 end;
 
 destructor TpvGUITreeView.Destroy;
@@ -25087,8 +25382,45 @@ begin
 
  FreeAndNil(fCachedNodes);
 
+ FreeAndNil(fRoot);
+
  inherited Destroy;
 
+end;
+
+function TpvGUITreeView.GetShowRootNode:Boolean;
+begin
+ result:=TpvGUITreeViewFlag.ShowRootNode in fFlags;
+end;
+
+procedure TpvGUITreeView.SetShowRootNode(const aValue:Boolean);
+begin
+ if aValue<>(TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
+  if aValue then begin
+   Include(fFlags,TpvGUITreeViewFlag.ShowRootNode);
+  end else begin
+   Exclude(fFlags,TpvGUITreeViewFlag.ShowRootNode);
+  end;
+  fDirty:=true;
+ end;
+end;
+
+function TpvGUITreeView.GetMultiSelect:Boolean;
+begin
+ result:=TpvGUITreeViewFlag.MultiSelect in fFlags;
+end;
+
+procedure TpvGUITreeView.SetMultiSelect(const aValue:Boolean);
+begin
+ if aValue<>(TpvGUITreeViewFlag.MultiSelect in fFlags) then begin
+  if aValue then begin
+   Include(fFlags,TpvGUITreeViewFlag.MultiSelect);
+  end else begin
+   Exclude(fFlags,TpvGUITreeViewFlag.MultiSelect);
+  end;
+  ClearSelection;
+  fDirty:=true;
+ end;
 end;
 
 procedure TpvGUITreeView.UpdateCache;
@@ -25112,7 +25444,7 @@ begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
         if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
-         if (TreeNode<>fRoot) or fShowRootNode then begin
+         if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
           TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
           TreeNode.fDerivedVisibleCount:=1;
          end else begin
@@ -25164,12 +25496,139 @@ begin
  end;
 end;
 
+function TpvGUITreeView.GetHighlightRect:TpvRect;
+begin
+ if fHorziontalScrollBar.Visible or fVerticalScrollBar.Visible then begin
+  if (fHorziontalScrollBar.Focused and fHorziontalScrollBar.PointerFocused) or
+     (fVerticalScrollBar.Focused and fVerticalScrollBar.PointerFocused) then begin
+   result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(-16777216.0,-16777216.0),TpvVector2.Null);
+  end else if fHorziontalScrollBar.Visible then begin
+   if fVerticalScrollBar.Visible then begin
+    result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y));
+   end else begin
+    result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(0,fHorziontalScrollBar.fSize.y));
+   end;
+  end else begin
+   result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,0));
+  end;
+ end else begin
+  result:=inherited GetHighlightRect;
+ end;
+end;
+
+function TpvGUITreeView.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetTreeViewPreferredSize(self);
+end;
+
+function TpvGUITreeView.GetCountVisibleItems:TpvSizeInt;
+begin
+ result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+end;
+
+procedure TpvGUITreeView.AdjustScrollBars;
+begin
+
+end;
+
+procedure TpvGUITreeView.UpdateScrollBars;
+begin
+
+end;
+
 procedure TpvGUITreeView.ClearSelection;
 begin
  if assigned(fSelected) then begin
   Exclude(fSelected.fFlags,TpvGUITreeNode.TFlag.Selected);
   fSelected:=nil;
  end;
+end;
+
+procedure TpvGUITreeView.PerformLayout;
+var HorziontalScrollBarSize,
+    VerticalScrollBarSize:TpvVector2;
+begin
+ fHorziontalScrollBar.Visible:=false;
+ fVerticalScrollBar.Visible:=false;
+ inherited PerformLayout;
+ fHorziontalScrollBar.Visible:=true;
+ fVerticalScrollBar.Visible:=true;
+ HorziontalScrollBarSize:=fHorziontalScrollBar.GetPreferredSize;
+ fHorziontalScrollBar.fPosition:=TpvVector2.InlineableCreate(0,fSize.y-HorziontalScrollBarSize.y);
+ fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,HorziontalScrollBarSize.y);
+ VerticalScrollBarSize:=fVerticalScrollBar.GetPreferredSize;
+ fVerticalScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarSize.x,0);
+ fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarSize.x,fSize.y);
+ UpdateScrollBars;
+ AdjustScrollBars;
+end;
+
+function TpvGUITreeView.Enter:Boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUITreeView.Leave:Boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUITreeView.PointerEnter:Boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUITreeView.PointerLeave:Boolean;
+begin
+ fAction:=TpvGUITreeViewAction.None;
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUITreeView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITreeView.DragReleaseEvent:Boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+begin
+ UpdateCache;
+ result:=false;
+end;
+
+function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+begin
+ UpdateCache;
+ result:=false;
+end;
+
+function TpvGUITreeView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
+begin
+ UpdateCache;
+ result:=false;
+end;
+
+procedure TpvGUITreeView.Check;
+begin
+ UpdateCache;
+ fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
+ if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
+  fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
+  fDoubleClickCounter:=0;
+ end;
+ inherited Check;
+end;
+
+procedure TpvGUITreeView.Draw;
+begin
+ UpdateCache;
+ UpdateScrollBars;
+ Skin.DrawTreeView(fInstance.DrawEngine,self);
+ inherited Draw;
 end;
 
 constructor TpvGUIFileDialogOverwritePromptMessageDialog.Create(const aParent:TpvGUIObject;const aFileDialog:TpvGUIFileDialog;aPath:TpvUTF8String);
