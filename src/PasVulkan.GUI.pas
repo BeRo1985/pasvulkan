@@ -25001,7 +25001,15 @@ constructor TpvGUITreeNode.Create(const aParent:TpvGUITreeNode;const aIndex:TpvS
 begin
  inherited Create;
 
- SetParent(aParent);
+ fParent:=aParent;
+
+ if assigned(fParent) then begin
+  fTreeView:=fParent.fTreeView;
+  fDepth:=fParent.fDepth+1;
+ end else begin
+  fTreeView:=nil;
+  fDepth:=0;
+ end;
 
  fChildren:=TpvGUITreeNodes.Create;
  fChildren.OwnsObjects:=true;
@@ -25041,7 +25049,7 @@ var Index:TpvSizeInt;
     GUIObject:TpvGUIObject;
 begin
 
- if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+ if assigned(fTreeView) and assigned(fTreeView.fNodes) and (fTreeView.fNodeIndex=fNodeIndex) then begin
   fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
  end;
 
@@ -25049,7 +25057,7 @@ begin
   fTreeView.fTreeNodeSelectedHashMap.Delete(self);
  end;
 
- if assigned(fParent) then begin
+ if assigned(fParent) and assigned(fParent.fChildren) then begin
   fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
   if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
    Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
@@ -25110,10 +25118,14 @@ procedure TpvGUITreeNode.SetParent(const aParent:TpvGUITreeNode);
 var Index:TpvSizeInt;
 begin
  if (fParent<>aParent) or (assigned(aParent) and (fDepth<>(fParent.fDepth+1))) then begin
-  if assigned(fParent) and (fParent<>aParent) then begin
-   fParent.Remove(self);
+  if assigned(fParent) then begin
+   if fParent<>aParent then begin
+    fParent.Remove(self);
+   end;
+   fTreeView:=fParent.fTreeView;
+  end else begin
+   fTreeView:=nil;
   end;
-  fTreeView:=fParent.fTreeView;
   fParent:=aParent;
   fDepth:=fParent.fDepth+1;
   Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
