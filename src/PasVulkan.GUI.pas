@@ -3320,12 +3320,17 @@ type TpvGUIObject=class;
              (
               Selected,
               Expanded,
-              Visible,
-              First,
-              Last
+              Visible
              );
             PFlag=^TFlag;
             TFlags=set of TFlag;
+            TVisualKind=
+             (
+              None,
+              First,
+              Both,
+              Last
+             );
       private
        fTreeView:TpvGUITreeView;
        fParent:TpvGUITreeNode;
@@ -3339,6 +3344,9 @@ type TpvGUIObject=class;
        fGUIObjects:TpvGUIObjectList;
        fTag:TpvPtrUInt;
        fData:TObject;
+       fVisualKind:TpvGUITreeNode.TVisualKind;
+       fFirstVisualChild:TpvGUITreeNode;
+       fLastVisualChild:TpvGUITreeNode;
        function GetIndex:TpvSizeInt; inline;
        procedure SetParent(const aParent:TpvGUITreeNode);
        function GetSelected:boolean; inline;
@@ -8361,13 +8369,13 @@ begin
   fIconSaveMove:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveMove'];
   fIconSaveSettings:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveSettings'];
   fIconFolderOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderOpen'];
-  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewClose'];
-  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseL'];
-  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseLU'];
-  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseU'];
+  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewClose'];
+  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseL'];
+  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseLU'];
+  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseU'];
   fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H'];
   fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_L'];
-  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_LV'];
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_LU'];
   fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_U'];
   fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_L'];
   fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_LU'];
@@ -12528,7 +12536,7 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
 var Element:TpvInt32;
-    NodeIndex,IndentOffset:TpvSizeInt;
+    NodeIndex,IndentOffset,IndentIndex:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,RowHeight,Indent:TpvFloat;
     Position:TpvVector2;
@@ -12636,14 +12644,61 @@ begin
    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
 
    if assigned(Skin) then begin
+    for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
+     SpriteEx:=Skin.fIconTreeViewL_V_LU;
+     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+      Sprite:=TpvSprite(SpriteEx);
+      aDrawEngine.DrawSprite(Sprite,
+                             TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                             TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+     end;
+    end;
     if TreeNode.fChildren.Count>0 then begin
-     if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-      SpriteEx:=Skin.fIconTreeViewCloseLU;
-     end else begin
-      SpriteEx:=Skin.fIconTreeViewOpenLU;
+     case TreeNode.fVisualKind of
+      TpvGUITreeNode.TVisualKind.First:begin
+       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+        SpriteEx:=Skin.fIconTreeViewCloseL;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewOpenL;
+       end;
+      end;
+      TpvGUITreeNode.TVisualKind.Both:begin
+       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+        SpriteEx:=Skin.fIconTreeViewClose;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewOpen;
+       end;
+      end;
+      TpvGUITreeNode.TVisualKind.Last:begin
+       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+        SpriteEx:=Skin.fIconTreeViewCloseU;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewOpenU;
+       end;
+      end;
+      else {TpvGUITreeNode.TVisualKind.None:}begin
+       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+        SpriteEx:=Skin.fIconTreeViewCloseLU;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewOpenLU;
+       end;
+      end;
      end;
     end else begin
-     SpriteEx:=Skin.fIconTreeViewL_V_LU;
+     case TreeNode.fVisualKind of
+      TpvGUITreeNode.TVisualKind.First:begin
+       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+      end;
+      TpvGUITreeNode.TVisualKind.Both:begin
+       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+      end;
+      TpvGUITreeNode.TVisualKind.Last:begin
+       SpriteEx:=Skin.fIconTreeViewL_HV_U;
+      end;
+      else {TpvGUITreeNode.TVisualKind.None:}begin
+       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+      end;
+     end;
     end;
     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
      Sprite:=TpvSprite(SpriteEx);
@@ -25765,7 +25820,9 @@ begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
         if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
-         TreeNode.fFlags:=TreeNode.fFlags-[TpvGUITreeNode.TFlag.First,TpvGUITreeNode.TFlag.Last];
+         TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+         TreeNode.fFirstVisualChild:=nil;
+         TreeNode.fLastVisualChild:=nil;
          if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
           TreeNode.fNodeIndex:=fNodes.Add(TreeNode);
           TreeNode.fDerivedVisibleCount:=1;
@@ -25789,7 +25846,9 @@ begin
       end;
       while InvisibleTreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
-        TreeNode.fFlags:=TreeNode.fFlags-[TpvGUITreeNode.TFlag.First,TpvGUITreeNode.TFlag.Last];
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+        TreeNode.fFirstVisualChild:=nil;
+        TreeNode.fLastVisualChild:=nil;
         if assigned(TreeNode.fParent) then begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
@@ -25806,9 +25865,31 @@ begin
     finally
      TreeNodeStack.Finalize;
     end;
+    for Index:=0 to fNodes.Count-1 do begin
+     TreeNode:=fNodes[Index];
+     if assigned(TreeNode) and assigned(TreeNode.fParent) then begin
+      if not assigned(TreeNode.fParent.fFirstVisualChild) then begin
+       TreeNode.fParent.fFirstVisualChild:=TreeNode;
+      end;
+      TreeNode.fParent.fLastVisualChild:=TreeNode;
+     end;
+    end;
     for Index:=fNodes.Count-1 downto 0 do begin
      TreeNode:=fNodes[Index];
      if assigned(TreeNode) and assigned(TreeNode.fParent) then begin
+      if TreeNode.fParent.fFirstVisualChild=TreeNode then begin
+       if TreeNode.fParent.fLastVisualChild=TreeNode then begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.Both;
+       end else begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.First;
+       end;
+      end else begin
+       if TreeNode.fParent.fLastVisualChild=TreeNode then begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.Last;
+       end else begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+       end;
+      end;
       inc(TreeNode.fParent.fDerivedVisibleCount,TreeNode.fDerivedVisibleCount);
      end;
     end;
