@@ -3456,7 +3456,7 @@ type TpvGUIObject=class;
        function GetPreferredSize:TpvVector2; override;
        procedure InternalClearSelection;
       private
-       function GetCountVisibleItems:TpvSizeInt;
+       function GetCountVisibleNodes:TpvSizeInt;
        procedure AdjustScrollBars;
        procedure UpdateScrollBars;
       public
@@ -26016,19 +26016,51 @@ begin
  result:=Skin.GetTreeViewPreferredSize(self);
 end;
 
-function TpvGUITreeView.GetCountVisibleItems:TpvSizeInt;
+function TpvGUITreeView.GetCountVisibleNodes:TpvSizeInt;
 begin
  result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
 end;
 
 procedure TpvGUITreeView.AdjustScrollBars;
+var VisibleNodes:TpvSizeInt;
 begin
-
+ if fVerticalScrollBar.Visible then begin
+  if (fNodeIndex-fVerticalScrollBar.Value)<0 then begin
+   fVerticalScrollBar.Value:=fNodeIndex;
+  end else begin
+   VisibleNodes:=GetCountVisibleNodes;
+   if ((fNodeIndex-fVerticalScrollBar.Value)+1)>=VisibleNodes then begin
+    fVerticalScrollBar.Value:=Max(0,(fNodeIndex-VisibleNodes)+1);
+   end;
+  end;
+ end else begin
+  fVerticalScrollBar.Value:=0;
+ end;
 end;
 
 procedure TpvGUITreeView.UpdateScrollBars;
+var VisibleNodes:TpvSizeInt;
 begin
-
+ VisibleNodes:=GetCountVisibleNodes;
+ fVerticalScrollBar.Visible:=fNodes.Count>VisibleNodes;
+ fVerticalScrollBar.MaximumValue:=Max(1,fNodes.Count-VisibleNodes);
+ if not fVerticalScrollBar.Visible then begin
+  fVerticalScrollBar.Value:=0;
+ end;
+ fHorziontalScrollBar.Visible:=false;
+ if fHorziontalScrollBar.Visible then begin
+  if fVerticalScrollBar.Visible then begin
+   fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x-fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y);
+   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y-fHorziontalScrollBar.fSize.x);
+  end else begin
+   fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,fHorziontalScrollBar.fSize.y);
+  end;
+ end else begin
+  if fVerticalScrollBar.Visible then begin
+   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y);
+  end else begin
+  end;
+ end;
 end;
 
 procedure TpvGUITreeView.InternalClearSelection;
