@@ -26267,7 +26267,7 @@ begin
 end;
 
 function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
-var CurrentNodeIndex:TpvSizeInt;
+var CurrentNodeIndex,IndentOffset:TpvSizeInt;
     TreeNode:TpvGUITreeNode;
 begin
  UpdateNodes;
@@ -26276,69 +26276,97 @@ begin
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
+   if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
+    IndentOffset:=0;
+   end else begin
+    IndentOffset:=1;
+   end;
    case aPointerEvent.PointerEventType of
     TpvApplicationInputPointerEventType.Down:begin
      RequestFocus;
      fAction:=TpvGUITreeViewAction.None;
      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-     if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-      if not MultiSelect then begin
-       InternalClearSelection;
-      end;
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       TreeNode.SetSelected(not TreeNode.Selected);
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
-     end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-      fAction:=TpvGUITreeViewAction.Mark;
-      fActionStartIndex:=fNodeIndex;
-      fActionStopIndex:=fNodeIndex;
-      InternalClearSelection;
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       TreeNode.SetSelected(not TreeNode.Selected);
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
+     if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+      TreeNode:=fNodes[fNodeIndex];
+     end else begin
+      TreeNode:=nil;
      end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter=0 then begin
-       fDoubleClickTimeAccumulator:=0.0;
+     if assigned(TreeNode) and
+        (aPointerEvent.Position.x>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
+        (aPointerEvent.Position.x<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
+      TreeNode.Expanded:=not TreeNode.Expanded;
+      UpdateNodes;
+     end else begin
+      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+       if not MultiSelect then begin
+        InternalClearSelection;
+       end;
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(not TreeNode.Selected);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+       fAction:=TpvGUITreeViewAction.Mark;
+       fActionStartIndex:=fNodeIndex;
+       fActionStopIndex:=fNodeIndex;
+       InternalClearSelection;
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(not TreeNode.Selected);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter=0 then begin
+        fDoubleClickTimeAccumulator:=0.0;
+       end;
       end;
      end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
-     if fAction=TpvGUITreeViewAction.Mark then begin
-      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fNodeIndex;
-      InternalClearSelection;
-      if MultiSelect then begin
-       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-        fNodes[CurrentNodeIndex].SetSelected(true);
-       end;
-      end else begin
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(true);
-       end;
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
+     if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+      TreeNode:=fNodes[fNodeIndex];
+     end else begin
+      TreeNode:=nil;
      end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter<2 then begin
-       inc(fDoubleClickCounter);
-       if fDoubleClickCounter=2 then begin
-        fDoubleClickCounter:=0;
-        fDoubleClickTimeAccumulator:=0.0;
-        if assigned(fOnDoubleClick) then begin
-         fOnDoubleClick(self);
+     if assigned(TreeNode) and
+        (aPointerEvent.Position.x>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
+        (aPointerEvent.Position.x<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
+      // Nothing
+     end else begin
+      if fAction=TpvGUITreeViewAction.Mark then begin
+       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+       fActionStopIndex:=fNodeIndex;
+       InternalClearSelection;
+       if MultiSelect then begin
+        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+         fNodes[CurrentNodeIndex].SetSelected(true);
+        end;
+       end else begin
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(true);
+        end;
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter<2 then begin
+        inc(fDoubleClickCounter);
+        if fDoubleClickCounter=2 then begin
+         fDoubleClickCounter:=0;
+         fDoubleClickTimeAccumulator:=0.0;
+         if assigned(fOnDoubleClick) then begin
+          fOnDoubleClick(self);
+         end;
         end;
        end;
       end;
