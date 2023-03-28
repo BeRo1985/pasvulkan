@@ -3303,7 +3303,7 @@ type TpvGUIObject=class;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
        fDerivedVisibleCount:TpvSizeInt;
-       fCachedNodeIndex:TpvSizeInt;
+       fNodeIndex:TpvSizeInt;
        fGUIObjects:TpvGUIObjectList;
        fTag:TpvPtrUInt;
        fData:TObject;
@@ -3339,7 +3339,7 @@ type TpvGUIObject=class;
        property Flags:TFlags read fFlags write fFlags;
        property Depth:TpvSizeInt read fDepth;
        property DerivedVisibleCount:TpvSizeInt read fDerivedVisibleCount;
-       property CachedNodeIndex:TpvSizeInt read fCachedNodeIndex;
+       property NodeIndex:TpvSizeInt read fNodeIndex;
        property GUIObjects:TpvGUIObjectList read fGUIObjects;
        property Tag:TpvPtrUInt read fTag write fTag;
        property Data:TObject read fData write fData;
@@ -3379,7 +3379,7 @@ type TpvGUIObject=class;
       private
        fHorziontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
-       fCachedNodeIndex:TpvSizeInt;
+       fNodeIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkRowHeight:TpvFloat;
@@ -3388,10 +3388,10 @@ type TpvGUIObject=class;
        fDirty:boolean;
        fFlags:TpvGUITreeViewFlags;
        fRoot:TpvGUITreeNode;
-       fCachedNodes:TpvGUITreeNodes;
+       fNodes:TpvGUITreeNodes;
        fTreeNodeSelectedHashMap:TpvGUITreeNodeBooleanHashMap;
        fOnChange:TpvGUIOnEvent;
-       fOnChangeCachedNodeIndex:TpvGUIOnEvent;
+       fOnChangeNodeIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDoubleClick:TpvGUIOnEvent;
        fOnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode;
@@ -3405,8 +3405,8 @@ type TpvGUIObject=class;
        procedure SetShowRootNode(const aValue:Boolean);
        function GetMultiSelect:Boolean; inline;
        procedure SetMultiSelect(const aValue:Boolean);
-       procedure SetCachedNodeIndex(const aCachedNodeIndex:TpvSizeInt);
-       procedure UpdateCache;
+       procedure SetNodeIndex(const aNodeIndex:TpvSizeInt);
+       procedure UpdateNodes;
       protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
@@ -3439,9 +3439,9 @@ type TpvGUIObject=class;
        property IndentWidth:TpvFloat read fIndentWidth write fIndentWidth;
        property ShowRootNode:Boolean read GetShowRootNode write SetShowRootNode;
        property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
-       property CachedNodeIndex:TpvSizeInt read fCachedNodeIndex write SetCachedNodeIndex;
+       property NodeIndex:TpvSizeInt read fNodeIndex write SetNodeIndex;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
-       property OnChangeCachedNodeIndex:TpvGUIOnEvent read fOnChangeCachedNodeIndex write fOnChangeCachedNodeIndex;
+       property OnChangeNodeIndex:TpvGUIOnEvent read fOnChangeNodeIndex write fOnChangeNodeIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode read fOnDrawTreeNode write fOnDrawTreeNode;
@@ -12285,7 +12285,7 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
 var Element:TpvInt32;
-    CachedNodeIndex,IndentOffset:TpvSizeInt;
+    NodeIndex,IndentOffset:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,RowHeight,Indent:TpvFloat;
     Position:TpvVector2;
@@ -12379,9 +12379,9 @@ begin
   IndentOffset:=1;
  end;
 
- for CachedNodeIndex:=aTreeView.fVerticalScrollBar.Value to aTreeView.fCachedNodes.Count-1 do begin
+ for NodeIndex:=aTreeView.fVerticalScrollBar.Value to aTreeView.fNodes.Count-1 do begin
 
-  TreeNode:=aTreeView.fCachedNodes[CachedNodeIndex];
+  TreeNode:=aTreeView.fNodes[NodeIndex];
 
   if assigned(TreeNode) then begin
 
@@ -12419,7 +12419,7 @@ begin
 
     aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.IndentWidth,RowHeight*0.5));
 
-    if aTreeView.fCachedNodeIndex=CachedNodeIndex then begin
+    if aTreeView.fNodeIndex=NodeIndex then begin
      if aTreeView.Focused then begin
       Element:=GUI_ELEMENT_FOCUSED;
      end else begin
@@ -25018,7 +25018,7 @@ begin
 
  fDerivedVisibleCount:=1;
 
- fCachedNodeIndex:=-1;
+ fNodeIndex:=-1;
 
  fFlags:=[TpvGUITreeNode.TFlag.Visible];
 
@@ -25041,8 +25041,8 @@ var Index:TpvSizeInt;
     GUIObject:TpvGUIObject;
 begin
 
- if assigned(fTreeView) and (fTreeView.fCachedNodeIndex=fCachedNodeIndex) then begin
-  fTreeView.fCachedNodeIndex:=Min(fTreeView.fCachedNodeIndex,fTreeView.fCachedNodes.Count-2);
+ if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+  fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
  end;
 
  if assigned(fTreeView) and assigned(fTreeView.fTreeNodeSelectedHashMap) and fTreeView.fTreeNodeSelectedHashMap.ExistKey(self) then begin
@@ -25238,8 +25238,8 @@ function TpvGUITreeNode.Remove(const aIndex:TpvSizeInt):TpvGUITreeNode;
 begin
  if (aIndex>=0) and (aIndex<fChildren.Count) then begin
   result:=fChildren[aIndex];
-  if assigned(fTreeView) and (fTreeView.fCachedNodeIndex=fCachedNodeIndex) then begin
-   fTreeView.fCachedNodeIndex:=Min(fTreeView.fCachedNodeIndex,fTreeView.fCachedNodes.Count-2);
+  if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+   fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
   end;
   result.fParent:=nil;
   result.fTreeView:=nil;
@@ -25363,7 +25363,7 @@ begin
  fVerticalScrollBar.MinimumValue:=0;
  fVerticalScrollBar.MaximumValue:=1;
 
- fCachedNodeIndex:=-1;
+ fNodeIndex:=-1;
 
  fRowHeight:=0.0;
 
@@ -25375,8 +25375,8 @@ begin
 
  fWorkIndentWidth:=0.0;
 
- fCachedNodes:=TpvGUITreeNodes.Create;
- fCachedNodes.OwnsObjects:=false;
+ fNodes:=TpvGUITreeNodes.Create;
+ fNodes.OwnsObjects:=false;
 
  fTreeNodeSelectedHashMap:=TpvGUITreeNodeBooleanHashMap.Create(false);
 
@@ -25385,7 +25385,7 @@ begin
 
  fOnChange:=nil;
 
- fOnChangeCachedNodeIndex:=nil;
+ fOnChangeNodeIndex:=nil;
 
  fOnChangeSelection:=nil;
 
@@ -25408,7 +25408,7 @@ begin
 
  FreeAndNil(fTreeNodeSelectedHashMap);
 
- FreeAndNil(fCachedNodes);
+ FreeAndNil(fNodes);
 
  FreeAndNil(fRoot);
 
@@ -25451,26 +25451,26 @@ begin
  end;
 end;
 
-procedure TpvGUITreeView.SetCachedNodeIndex(const aCachedNodeIndex:TpvSizeInt);
+procedure TpvGUITreeView.SetNodeIndex(const aNodeIndex:TpvSizeInt);
 begin
- UpdateCache;
- if fCachedNodeIndex<>aCachedNodeIndex then begin
-  fCachedNodeIndex:=Min(Max(aCachedNodeIndex,-1),fCachedNodes.Count-1);
+ UpdateNodes;
+ if fNodeIndex<>aNodeIndex then begin
+  fNodeIndex:=Min(Max(aNodeIndex,-1),fNodes.Count-1);
   AdjustScrollBars;
-  if assigned(fOnChangeCachedNodeIndex) then begin
-   fOnChangeCachedNodeIndex(self);
+  if assigned(fOnChangeNodeIndex) then begin
+   fOnChangeNodeIndex(self);
   end;
  end;
 end;
 
-procedure TpvGUITreeView.UpdateCache;
+procedure TpvGUITreeView.UpdateNodes;
 var Index:TpvSizeInt;
     TreeNodeStack,InvisibleTreeNodeStack:TpvGUITreeNodeStack;
     TreeNode:TpvGUITreeNode;
 begin
- if fDirty or (fCachedNodes.Count=0) then begin
+ if fDirty or (fNodes.Count=0) then begin
   try
-   fCachedNodes.Clear;
+   fNodes.Clear;
    if assigned(fRoot) then begin
     TreeNodeStack.Initialize;
     try
@@ -25485,10 +25485,10 @@ begin
         end;
         if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
          if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
-          TreeNode.fCachedNodeIndex:=fCachedNodes.Add(TreeNode);
+          TreeNode.fNodeIndex:=fNodes.Add(TreeNode);
           TreeNode.fDerivedVisibleCount:=1;
          end else begin
-          TreeNode.fCachedNodeIndex:=-1;
+          TreeNode.fNodeIndex:=-1;
           TreeNode.fDerivedVisibleCount:=0;
          end;
          if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
@@ -25510,7 +25510,7 @@ begin
         if assigned(TreeNode.fParent) then begin
          TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
         end;
-        TreeNode.fCachedNodeIndex:=-1;
+        TreeNode.fNodeIndex:=-1;
         TreeNode.fDerivedVisibleCount:=0;
         for Index:=0 to TreeNode.fChildren.Count-1 do begin
          InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
@@ -25523,8 +25523,8 @@ begin
     finally
      TreeNodeStack.Finalize;
     end;
-    for Index:=fCachedNodes.Count-1 downto 0 do begin
-     TreeNode:=fCachedNodes[Index];
+    for Index:=fNodes.Count-1 downto 0 do begin
+     TreeNode:=fNodes[Index];
      if assigned(TreeNode) and assigned(TreeNode.fParent) then begin
       inc(TreeNode.fParent.fDerivedVisibleCount,TreeNode.fDerivedVisibleCount);
      end;
@@ -25658,14 +25658,14 @@ end;
 
 function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
  procedure DoSelection(const aForce:Boolean);
- var CurrentCachedNodeIndex:TpvSizeInt;
+ var CurrentNodeIndex:TpvSizeInt;
  begin
   if aForce or (fAction in [TpvGUITreeViewAction.PreMark,TpvGUITreeViewAction.Mark]) then begin
    fAction:=TpvGUITreeViewAction.Mark;
-   fActionStopIndex:=fCachedNodeIndex;
+   fActionStopIndex:=fNodeIndex;
    InternalClearSelection;
-   for CurrentCachedNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fCachedNodes.Count-1) do begin
-    fCachedNodes[CurrentCachedNodeIndex].SetSelected(true);
+   for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+    fNodes[CurrentNodeIndex].SetSelected(true);
    end;
    if assigned(fOnChangeSelection) then begin
     fOnChangeSelection(self);
@@ -25674,7 +25674,7 @@ function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Bo
  end;
 var TreeNode:TpvGUITreeNode;
 begin
- UpdateCache;
+ UpdateNodes;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
@@ -25682,8 +25682,8 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Down:begin
       fAction:=TpvGUITreeViewAction.PreMark;
-      fActionStartIndex:=fCachedNodeIndex;
-      fActionStopIndex:=fCachedNodeIndex;
+      fActionStartIndex:=fNodeIndex;
+      fActionStopIndex:=fNodeIndex;
      end;
      TpvApplicationInputKeyEventType.Up:begin
       if fAction=TpvGUITreeViewAction.Mark then begin
@@ -25699,7 +25699,7 @@ begin
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(Min(Max(fCachedNodeIndex-1,0),fCachedNodes.Count-1));
+      SetNodeIndex(Min(Max(fNodeIndex-1,0),fNodes.Count-1));
       DoSelection(false);
      end;
     end;
@@ -25708,7 +25708,7 @@ begin
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(Min(Max(fCachedNodeIndex+1,0),fCachedNodes.Count-1));
+      SetNodeIndex(Min(Max(fNodeIndex+1,0),fNodes.Count-1));
       DoSelection(false);
      end;
     end;
@@ -25717,7 +25717,7 @@ begin
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(Min(Max(fCachedNodeIndex+4,0),fCachedNodes.Count-1));
+      SetNodeIndex(Min(Max(fNodeIndex+4,0),fNodes.Count-1));
       DoSelection(false);
      end;
     end;
@@ -25726,7 +25726,7 @@ begin
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(Min(Max(fCachedNodeIndex-4,0),fCachedNodes.Count-1));
+      SetNodeIndex(Min(Max(fNodeIndex-4,0),fNodes.Count-1));
       DoSelection(false);
      end;
     end;
@@ -25735,7 +25735,7 @@ begin
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(Min(0,fCachedNodes.Count-1));
+      SetNodeIndex(Min(0,fNodes.Count-1));
       DoSelection(false);
      end;
     end;
@@ -25744,7 +25744,7 @@ begin
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetCachedNodeIndex(fCachedNodes.Count-1);
+      SetNodeIndex(fNodes.Count-1);
       DoSelection(false);
      end;
     end;
@@ -25764,8 +25764,8 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       if MultiSelect then begin
-       if (fCachedNodeIndex>=0) and (fCachedNodeIndex<fCachedNodes.Count) then begin
-        TreeNode:=fCachedNodes[fCachedNodeIndex];
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
         TreeNode.SetSelected(not TreeNode.Selected);
         if assigned(fOnChangeSelection) then begin
          fOnChangeSelection(self);
@@ -25781,10 +25781,10 @@ begin
 end;
 
 function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
-var CurrentCachedNodeIndex:TpvSizeInt;
+var CurrentNodeIndex:TpvSizeInt;
     TreeNode:TpvGUITreeNode;
 begin
- UpdateCache;
+ UpdateNodes;
  UpdateScrollBars;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -25794,10 +25794,10 @@ begin
     TpvApplicationInputPointerEventType.Down:begin
      RequestFocus;
      fAction:=TpvGUITreeViewAction.None;
-     SetCachedNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+     SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-      if (fCachedNodeIndex>=0) and (fCachedNodeIndex<fCachedNodes.Count) then begin
-       TreeNode:=fCachedNodes[fCachedNodeIndex];
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
        TreeNode.SetSelected(not TreeNode.Selected);
        if assigned(fOnChangeSelection) then begin
         fOnChangeSelection(self);
@@ -25805,11 +25805,11 @@ begin
       end;
      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
       fAction:=TpvGUITreeViewAction.Mark;
-      fActionStartIndex:=fCachedNodeIndex;
-      fActionStopIndex:=fCachedNodeIndex;
+      fActionStartIndex:=fNodeIndex;
+      fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      if (fCachedNodeIndex>=0) and (fCachedNodeIndex<fCachedNodes.Count) then begin
-       TreeNode:=fCachedNodes[fCachedNodeIndex];
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
        TreeNode.SetSelected(not TreeNode.Selected);
       end;
       if assigned(fOnChangeSelection) then begin
@@ -25825,11 +25825,11 @@ begin
     end;
     TpvApplicationInputPointerEventType.Up:begin
      if fAction=TpvGUITreeViewAction.Mark then begin
-      SetCachedNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fCachedNodeIndex;
+      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+      fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentCachedNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fCachedNodes.Count-1) do begin
-       fCachedNodes[CurrentCachedNodeIndex].SetSelected(true);
+      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+       fNodes[CurrentNodeIndex].SetSelected(true);
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
@@ -25852,11 +25852,11 @@ begin
     end;
     TpvApplicationInputPointerEventType.Motion:begin
      if fAction=TpvGUITreeViewAction.Mark then begin
-      SetCachedNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fCachedNodeIndex;
+      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+      fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentCachedNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fCachedNodes.Count-1) do begin
-       fCachedNodes[CurrentCachedNodeIndex].SetSelected(true);
+      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+       fNodes[CurrentNodeIndex].SetSelected(true);
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
@@ -25866,11 +25866,11 @@ begin
     end;
     TpvApplicationInputPointerEventType.Drag:begin
      if fAction=TpvGUITreeViewAction.Mark then begin
-      SetCachedNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fCachedNodeIndex;
+      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+      fActionStopIndex:=fNodeIndex;
       InternalClearSelection;
-      for CurrentCachedNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fCachedNodes.Count-1) do begin
-       fCachedNodes[CurrentCachedNodeIndex].SetSelected(true);
+      for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+       fNodes[CurrentNodeIndex].SetSelected(true);
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
@@ -25887,24 +25887,24 @@ function TpvGUITreeView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- UpdateCache;
+ UpdateNodes;
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  TemporaryValue:=fCachedNodeIndex;
+  TemporaryValue:=fNodeIndex;
   v:=aRelativeAmount.x-aRelativeAmount.y;
   if v<0.0 then begin
    Step:=floor(v);
   end else begin
    Step:=ceil(v);
   end;
-  SetCachedNodeIndex(Min(Max(fCachedNodeIndex+Step,0),fCachedNodes.Count-1));
+  SetNodeIndex(Min(Max(fNodeIndex+Step,0),fNodes.Count-1));
   result:=true;
  end;
 end;
 
 procedure TpvGUITreeView.Check;
 begin
- UpdateCache;
+ UpdateNodes;
  fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
  if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
   fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
@@ -25915,7 +25915,7 @@ end;
 
 procedure TpvGUITreeView.Draw;
 begin
- UpdateCache;
+ UpdateNodes;
  UpdateScrollBars;
  Skin.DrawTreeView(fInstance.DrawEngine,self);
  inherited Draw;
