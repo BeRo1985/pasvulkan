@@ -8363,17 +8363,17 @@ begin
   fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseL'];
   fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseLU'];
   fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseU'];
-  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_H'];
-  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_L'];
-  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_LV'];
-  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_U'];
-  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_L'];
-  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_LU'];
-  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_U'];
-  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpen'];
-  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenL'];
-  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenLU'];
-  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenU'];
+  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H'];
+  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_L'];
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_LV'];
+  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_U'];
+  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_L'];
+  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_LU'];
+  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_U'];
+  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpen'];
+  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenL'];
+  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenLU'];
+  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenU'];
 
  end;
 
@@ -12534,7 +12534,12 @@ var Element:TpvInt32;
     ClipRect,DrawRect,Rect:TpvRect;
     ItemText:TpvUTF8String;
     TreeNode:TpvGUITreeNode;
+    SpriteEx:TObject;
+    Sprite:TpvSprite;
+    Skin:TpvGUISkin;
 begin
+
+ Skin:=aTreeView.Skin;
 
  aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
 
@@ -12627,6 +12632,16 @@ begin
   if assigned(TreeNode) then begin
 
    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+   if assigned(Skin) then begin
+    SpriteEx:=Skin.fIconTreeViewL_H;
+    if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+     Sprite:=TpvSprite(SpriteEx);
+     aDrawEngine.DrawSprite(Sprite,
+                            TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                            TpvRect.CreateRelative(DrawRect.Left+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+    end;
+   end;
 
    if not (assigned(aTreeView.fOnDrawTreeNode) and
            aTreeView.fOnDrawTreeNode(aTreeView,
