@@ -12643,71 +12643,6 @@ begin
 
    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
 
-   if assigned(Skin) then begin
-    for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
-     SpriteEx:=Skin.fIconTreeViewL_V_LU;
-     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
-      Sprite:=TpvSprite(SpriteEx);
-      aDrawEngine.DrawSprite(Sprite,
-                             TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
-                             TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
-     end;
-    end;
-    if TreeNode.fChildren.Count>0 then begin
-     case TreeNode.fVisualKind of
-      TpvGUITreeNode.TVisualKind.First:begin
-       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-        SpriteEx:=Skin.fIconTreeViewCloseL;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewOpenL;
-       end;
-      end;
-      TpvGUITreeNode.TVisualKind.Both:begin
-       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-        SpriteEx:=Skin.fIconTreeViewClose;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewOpen;
-       end;
-      end;
-      TpvGUITreeNode.TVisualKind.Last:begin
-       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-        SpriteEx:=Skin.fIconTreeViewCloseU;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewOpenU;
-       end;
-      end;
-      else {TpvGUITreeNode.TVisualKind.None:}begin
-       if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-        SpriteEx:=Skin.fIconTreeViewCloseLU;
-       end else begin
-        SpriteEx:=Skin.fIconTreeViewOpenLU;
-       end;
-      end;
-     end;
-    end else begin
-     case TreeNode.fVisualKind of
-      TpvGUITreeNode.TVisualKind.First:begin
-       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
-      end;
-      TpvGUITreeNode.TVisualKind.Both:begin
-       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
-      end;
-      TpvGUITreeNode.TVisualKind.Last:begin
-       SpriteEx:=Skin.fIconTreeViewL_HV_U;
-      end;
-      else {TpvGUITreeNode.TVisualKind.None:}begin
-       SpriteEx:=Skin.fIconTreeViewL_HV_LU;
-      end;
-     end;
-    end;
-    if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
-     Sprite:=TpvSprite(SpriteEx);
-     aDrawEngine.DrawSprite(Sprite,
-                            TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
-                            TpvRect.CreateRelative(DrawRect.Left+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
-    end;
-   end;
-
    if not (assigned(aTreeView.fOnDrawTreeNode) and
            aTreeView.fOnDrawTreeNode(aTreeView,
                                      TreeNode,
@@ -12728,6 +12663,83 @@ begin
                                                             TpvVector2.InlineableCreate(aTreeView.fSize.x-(BoxCornerMargin*2.0),
                                                                                         RowHeight)));
      aDrawEngine.Color:=FontColor;
+    end;
+
+    if assigned(Skin) then begin
+     for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
+      if NodeIndex=(aTreeView.fNodes.Count-1) then begin
+       if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) and (TreeNode.fChildren.Count>0) then begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_U;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewL_V_U;
+       end;
+      end else begin
+       if (IndentIndex=((TreeNode.fDepth-IndentOffset)-1)) and (TreeNode.fVisualKind=TpvGUITreeNode.TVisualKind.First) and (TreeNode.fChildren.Count>0) then begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+       end else begin
+        SpriteEx:=Skin.fIconTreeViewL_V_LU;
+       end;
+      end;
+      if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+       Sprite:=TpvSprite(SpriteEx);
+       aDrawEngine.DrawSprite(Sprite,
+                              TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                              TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+      end;
+     end;
+     if TreeNode.fChildren.Count>0 then begin
+      case TreeNode.fVisualKind of
+       TpvGUITreeNode.TVisualKind.First:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=Skin.fIconTreeViewCloseL;
+        end else begin
+         SpriteEx:=Skin.fIconTreeViewOpenL;
+        end;
+       end;
+       TpvGUITreeNode.TVisualKind.Both:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=Skin.fIconTreeViewCloseLU;
+        end else begin
+         SpriteEx:=Skin.fIconTreeViewOpenLU;
+        end;
+       end;
+       TpvGUITreeNode.TVisualKind.Last:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=Skin.fIconTreeViewCloseU;
+        end else begin
+         SpriteEx:=Skin.fIconTreeViewOpenU;
+        end;
+       end;
+       else {TpvGUITreeNode.TVisualKind.None:}begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=Skin.fIconTreeViewCloseLU;
+        end else begin
+         SpriteEx:=Skin.fIconTreeViewOpenLU;
+        end;
+       end;
+      end;
+     end else begin
+      case TreeNode.fVisualKind of
+       TpvGUITreeNode.TVisualKind.First:begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+       end;
+       TpvGUITreeNode.TVisualKind.Both:begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+       end;
+       TpvGUITreeNode.TVisualKind.Last:begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_U;
+       end;
+       else {TpvGUITreeNode.TVisualKind.None:}begin
+        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+       end;
+      end;
+     end;
+     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+      Sprite:=TpvSprite(SpriteEx);
+      aDrawEngine.DrawSprite(Sprite,
+                             TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                             TpvRect.CreateRelative(DrawRect.Left+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+     end;
     end;
 
     if assigned(aTreeView.fOnGetTreeNodeText) then begin
