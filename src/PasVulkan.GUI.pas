@@ -867,6 +867,21 @@ type TpvGUIObject=class;
        fIconSaveMove:TObject;
        fIconSaveSettings:TObject;
        fIconFolderOpen:TObject;
+       fIconTreeViewClose:TObject;
+       fIconTreeViewCloseL:TObject;
+       fIconTreeViewCloseLU:TObject;
+       fIconTreeViewCloseU:TObject;
+       fIconTreeViewL_H:TObject;
+       fIconTreeViewL_HV_L:TObject;
+       fIconTreeViewL_HV_LU:TObject;
+       fIconTreeViewL_HV_U:TObject;
+       fIconTreeViewL_V_L:TObject;
+       fIconTreeViewL_V_LU:TObject;
+       fIconTreeViewL_V_U:TObject;
+       fIconTreeViewOpen:TObject;
+       fIconTreeViewOpenL:TObject;
+       fIconTreeViewOpenLU:TObject;
+       fIconTreeViewOpenU:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -1026,6 +1041,21 @@ type TpvGUIObject=class;
        property IconSaveMove:TObject read fIconSaveMove write fIconSaveMove;
        property IconSaveSettings:TObject read fIconSaveSettings write fIconSaveSettings;
        property IconFolderOpen:TObject read fIconFolderOpen write fIconFolderOpen;
+       property IconTreeViewClose:TObject read fIconTreeViewClose write fIconTreeViewClose;
+       property IconTreeViewCloseL:TObject read fIconTreeViewCloseL write fIconTreeViewCloseL;
+       property IconTreeViewCloseLU:TObject read fIconTreeViewCloseLU write fIconTreeViewCloseLU;
+       property IconTreeViewCloseU:TObject read fIconTreeViewCloseU write fIconTreeViewCloseU;
+       property IconTreeViewL_H:TObject read fIconTreeViewL_H write fIconTreeViewL_H;
+       property IconTreeViewL_HV_L:TObject read fIconTreeViewL_HV_L write fIconTreeViewL_HV_L;
+       property IconTreeViewL_HV_LU:TObject read fIconTreeViewL_HV_LU write fIconTreeViewL_HV_LU;
+       property IconTreeViewL_HV_U:TObject read fIconTreeViewL_HV_U write fIconTreeViewL_HV_U;
+       property IconTreeViewL_V_L:TObject read fIconTreeViewL_V_L write fIconTreeViewL_V_L;
+       property IconTreeViewL_V_LU:TObject read fIconTreeViewL_V_LU write fIconTreeViewL_V_LU;
+       property IconTreeViewL_V_U:TObject read fIconTreeViewL_V_U write fIconTreeViewL_V_U;
+       property IconTreeViewOpen:TObject read fIconTreeViewOpen write fIconTreeViewOpen;
+       property IconTreeViewOpenL:TObject read fIconTreeViewOpenL write fIconTreeViewOpenL;
+       property IconTreeViewOpenLU:TObject read fIconTreeViewOpenLU write fIconTreeViewOpenLU;
+       property IconTreeViewOpenU:TObject read fIconTreeViewOpenU write fIconTreeViewOpenU;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -6949,6 +6979,21 @@ begin
  fIconSaveMove:=nil;
  fIconSaveSettings:=nil;
  fIconFolderOpen:=nil;
+ fIconTreeViewClose:=nil;
+ fIconTreeViewCloseL:=nil;
+ fIconTreeViewCloseLU:=nil;
+ fIconTreeViewCloseU:=nil;
+ fIconTreeViewL_H:=nil;
+ fIconTreeViewL_HV_L:=nil;
+ fIconTreeViewL_HV_LU:=nil;
+ fIconTreeViewL_HV_U:=nil;
+ fIconTreeViewL_V_L:=nil;
+ fIconTreeViewL_V_LU:=nil;
+ fIconTreeViewL_V_U:=nil;
+ fIconTreeViewOpen:=nil;
+ fIconTreeViewOpenL:=nil;
+ fIconTreeViewOpenLU:=nil;
+ fIconTreeViewOpenU:=nil;
  Setup;
 end;
 
@@ -7205,7 +7250,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA2790D}';
+const CacheVersionGUID:TGUID='{C76972BC-7A04-40F3-9864-D199DE12822C}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:Boolean;
@@ -8049,6 +8094,187 @@ begin
                                                                                  2,
                                                                                  1);
 
+  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewClose',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseL',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,19 h 2 v 5 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseLU',
+                                                                                      'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,0 h 2 v 3 h -2 z M 11,19 h 2 v 5 h -2 z',
+                                                                                      48,
+                                                                                      48,
+                                                                                      48.0/24.0,
+                                                                                      0.0,
+                                                                                      0.0,
+                                                                                      TpvVectorPathFillRule.NonZero,
+                                                                                      true,
+                                                                                      2,
+                                                                                      1);
+
+  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseU',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,0 h 2 v 3 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_H',
+                                                                                  'M 11,11 v 2 h 13.5 v -2 z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
+
+  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_L',
+                                                                                     'M 11,11 h 2 v 13 h -2 z M 13,11 v 2 h 11.5 v -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_LU',
+                                                                                      'M 11,0 h 2 v 24 h -2 z M 13,11 v 2 h 11.5 v -2 z',
+                                                                                      48,
+                                                                                      48,
+                                                                                      48.0/24.0,
+                                                                                      0.0,
+                                                                                      0.0,
+                                                                                      TpvVectorPathFillRule.NonZero,
+                                                                                      true,
+                                                                                      2,
+                                                                                      1);
+
+  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_U',
+                                                                                     'M 11,0 h 2 v 13 h -2 z M 13,11 v 2 h 11.5 v -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_L',
+                                                                                    'M 11,11 h 2 v 13 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_LU',
+                                                                                     'M 11,0 h 2 v 24 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_U',
+                                                                                    'M 11,0 h 2 v 13 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpen',
+                                                                                   'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z',
+                                                                                   48,
+                                                                                   48,
+                                                                                   48.0/24.0,
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   TpvVectorPathFillRule.NonZero,
+                                                                                   true,
+                                                                                   2,
+                                                                                   1);
+
+  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenL',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,19 h 2 v 5 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenLU',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,19 h 2 v 5 h -2 z M 11,0 h 2 v 3 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+
+  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenU',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,0 h 2 v 3 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
   if length(CacheStoragePath)>0 then begin
 
    fSignedDistanceFieldSpriteAtlas.SaveToFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip',true);
@@ -8133,6 +8359,21 @@ begin
   fIconSaveMove:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveMove'];
   fIconSaveSettings:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveSettings'];
   fIconFolderOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderOpen'];
+  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewClose'];
+  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseL'];
+  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseLU'];
+  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewCloseU'];
+  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_H'];
+  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_L'];
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_LV'];
+  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_HV_U'];
+  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_L'];
+  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_LU'];
+  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewL_V_U'];
+  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpen'];
+  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenL'];
+  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenLU'];
+  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderTreeViewOpenU'];
 
  end;
 
