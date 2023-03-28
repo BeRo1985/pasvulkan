@@ -3383,11 +3383,11 @@ type TpvGUIObject=class;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkRowHeight:TpvFloat;
+       fIndentWidth:TpvFloat;
+       fWorkIndentWidth:TpvFloat;
        fDirty:boolean;
        fFlags:TpvGUITreeViewFlags;
        fRoot:TpvGUITreeNode;
-//       fSelected:TpvGUITreeNode;
-       fItemHeight:TpvFloat;
        fCachedNodes:TpvGUITreeNodes;
        fTreeNodeSelectedHashMap:TpvGUITreeNodeBooleanHashMap;
        fOnChange:TpvGUIOnEvent;
@@ -3436,6 +3436,7 @@ type TpvGUIObject=class;
        property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
        property Root:TpvGUITreeNode read fRoot;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property IndentWidth:TpvFloat read fIndentWidth write fIndentWidth;
        property ShowRootNode:Boolean read GetShowRootNode write SetShowRootNode;
        property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
        property CachedNodeIndex:TpvSizeInt read fCachedNodeIndex write SetCachedNodeIndex;
@@ -12271,6 +12272,12 @@ begin
 
  aTreeView.fWorkRowHeight:=RowHeight;
 
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
+
  result:=TpvVector2.InlineableCreate((BoxCornerMargin*2.0)+100.0,
                                      (RowHeight*8.0)+(BoxCornerMargin*2.0));
 
@@ -12348,6 +12355,12 @@ begin
  aTreeView.fWorkYOffset:=BoxCornerMargin;
 
  aTreeView.fWorkRowHeight:=RowHeight;
+
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
 
  aDrawEngine.Color:=FontColor;
 
@@ -25349,6 +25362,10 @@ begin
  fWorkRowHeight:=0.0;
 
  fWorkYOffset:=0.0;
+
+ fIndentWidth:=0.0;
+
+ fWorkIndentWidth:=0.0;
 
  fCachedNodes:=TpvGUITreeNodes.Create;
  fCachedNodes.OwnsObjects:=false;
