@@ -7398,8 +7398,6 @@ begin
 
  end;
 
- RecreateCacheFiles:=true;
-
  if RecreateCacheFiles then begin
 
   Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
