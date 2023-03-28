@@ -25024,6 +25024,10 @@ begin
   fTreeView.fCachedNodeIndex:=Min(fTreeView.fCachedNodeIndex,fTreeView.fCachedNodes.Count-2);
  end;
 
+ if assigned(fTreeView) and assigned(fTreeView.fTreeNodeSelectedHashMap) and fTreeView.fTreeNodeSelectedHashMap.ExistKey(self) then begin
+  fTreeView.fTreeNodeSelectedHashMap.Delete(self);
+ end;
+
  if assigned(fParent) then begin
   fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
   if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
@@ -25563,6 +25567,7 @@ begin
     TreeNode.SetSelected(false);
    end;
   end;
+  fTreeNodeSelectedHashMap.Clear;
  finally
   TreeNodeStack.Finalize;
  end;
