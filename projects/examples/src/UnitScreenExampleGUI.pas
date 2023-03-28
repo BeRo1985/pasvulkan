@@ -297,6 +297,15 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        destructor Destroy; override;
      end;
 
+     TScreenExampleGUITreeView=class(TpvGUIWindow)
+      private
+       fFillLayout:TpvGUIFillLayout;
+       fTreeView:TpvGUITreeView;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
      TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
@@ -1616,6 +1625,67 @@ begin
  fColorPicker.SRGB:=fSRGBModeRadioCheckBox.Checked;
 end;
 
+constructor TScreenExampleGUITreeView.Create(const aParent:TpvGUIObject);
+var TreeNodeA,TreeNodeB,TreeNodeC:TpvGUITreeNode;
+begin
+
+ inherited Create(aParent);
+
+ Left:=150;
+ Top:=150;
+ Title:='Window with TreeView';
+ fFillLayout:=TpvGUIFillLayout.Create(Content,4.0);
+ Content.Layout:=fFillLayout;
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ AutoSize:=false;
+
+ Width:=350;
+ Height:=350;
+
+ fTreeView:=TpvGUITreeView.Create(self);
+
+ TreeNodeA:=TpvGUITreeNode.Create(fTreeView.Root);
+ TreeNodeA.Caption:='Test A1';
+
+ TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B1';
+
+ TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B2';
+
+ TreeNodeA:=TpvGUITreeNode.Create(fTreeView.Root);
+ TreeNodeA.Caption:='Test A2';
+
+ TreeNodeA:=TpvGUITreeNode.Create(fTreeView.Root);
+ TreeNodeA.Caption:='Test A3';
+
+ TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B1';
+
+ TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
+ TreeNodeC.Caption:='Test C1';
+
+ TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
+ TreeNodeC.Caption:='Test C2';
+
+ TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
+ TreeNodeC.Caption:='Test C3';
+
+ TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B2';
+
+ fTreeView.Root.ExpandAll;
+
+end;
+
+destructor TScreenExampleGUITreeView.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TScreenExampleGUI.Create;
 begin
  inherited Create;
@@ -1967,6 +2037,8 @@ begin
  TScreenExampleGUIDragon.Create(fGUIInstance);
 
  TScreenExampleGUIColorPicker.Create(fGUIInstance);
+
+ TScreenExampleGUITreeView.Create(fGUIInstance);
 
 end;
 
