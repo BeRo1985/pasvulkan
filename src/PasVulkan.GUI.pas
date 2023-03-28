@@ -3337,7 +3337,7 @@ type TpvGUIObject=class;
        property Children:TpvGUITreeNodes read fChildren;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Flags:TFlags read fFlags write fFlags;
-       property Depth:TpvSizeInt read fDepth write fDepth;
+       property Depth:TpvSizeInt read fDepth;
        property DerivedVisibleCount:TpvSizeInt read fDerivedVisibleCount;
        property CachedNodeIndex:TpvSizeInt read fCachedNodeIndex;
        property GUIObjects:TpvGUIObjectList read fGUIObjects;
@@ -12285,9 +12285,9 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
 var Element:TpvInt32;
-    CachedNodeIndex:TpvSizeInt;
+    CachedNodeIndex,IndentOffset:TpvSizeInt;
     CurrentFont:TpvFont;
-    CurrentFontSize,RowHeight:TpvFloat;
+    CurrentFontSize,RowHeight,Indent:TpvFloat;
     Position:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect:TpvRect;
@@ -12373,16 +12373,24 @@ begin
  DrawRect.LeftTop:=ClipRect.LeftTop-aTreeView.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aTreeView.fClipRect.LeftTop;
 
+ if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+  IndentOffset:=0;
+ end else begin
+  IndentOffset:=1;
+ end;
+
  for CachedNodeIndex:=aTreeView.fVerticalScrollBar.Value to aTreeView.fCachedNodes.Count-1 do begin
 
   TreeNode:=aTreeView.fCachedNodes[CachedNodeIndex];
 
   if assigned(TreeNode) then begin
 
+   Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fIndentWidth;
+
    if not (assigned(aTreeView.fOnDrawTreeNode) and
            aTreeView.fOnDrawTreeNode(aTreeView,
                                      TreeNode,
-                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left+(Indent+aTreeView.IndentWidth),
                                                                                         Position.y),
                                                             TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                         Position.y+RowHeight)))) then begin
@@ -12409,7 +12417,7 @@ begin
 
     aDrawEngine.Transparent:=true;
 
-    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.IndentWidth,RowHeight*0.5));
 
     if aTreeView.fCachedNodeIndex=CachedNodeIndex then begin
      if aTreeView.Focused then begin
