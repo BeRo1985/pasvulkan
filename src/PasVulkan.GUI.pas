@@ -962,6 +962,7 @@ type TpvGUIObject=class;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); virtual;
       public
        function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; virtual;
+       procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
        procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
       public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
@@ -1166,6 +1167,7 @@ type TpvGUIObject=class;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); override;
       public
        function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; override;
+       procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
        procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
@@ -3429,7 +3431,11 @@ type TpvGUIObject=class;
        fWorkRowHeight:TpvFloat;
        fIndentWidth:TpvFloat;
        fWorkIndentWidth:TpvFloat;
-       fDirty:boolean;
+       fMaximumContentWidth:TpvFloat;
+       fCurrentGeneration:TpvUInt64;
+       fLastProcessedGeneration:TpvUInt64;
+       fCurrentCheckGeneration:TpvUInt64;
+       fLastCheckedGeneration:TpvUInt64;
        fFlags:TpvGUITreeViewFlags;
        fRoot:TpvGUITreeNode;
        fNodes:TpvGUITreeNodes;
@@ -3459,6 +3465,7 @@ type TpvGUIObject=class;
        function GetCountVisibleNodes:TpvSizeInt;
        procedure AdjustScrollBars;
        procedure UpdateScrollBars;
+       procedure CheckNodeWidths;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -7248,6 +7255,10 @@ end;
 function TpvGUISkin.GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aTreeView);
+end;
+
+procedure TpvGUISkin.CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+begin
 end;
 
 procedure TpvGUISkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
@@ -12600,12 +12611,74 @@ begin
 
 end;
 
+procedure TpvGUIDefaultVectorBasedSkin.CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+var IndentOffset,IndentIndex:TpvSizeInt;
+    TreeNode:TpvGUITreeNode;
+    CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight,Indent:TpvFloat;
+    ItemText:TpvUTF8String;
+begin
+
+ aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
+
+ if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+  IndentOffset:=0;
+ end else begin
+  IndentOffset:=1;
+ end;
+
+ aTreeView.fMaximumContentWidth:=0.0;
+
+ if assigned(CurrentFont) then begin
+
+  for TreeNode in aTreeView.fNodes do begin
+
+   if assigned(TreeNode) then begin
+
+    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+    if assigned(aTreeView.fOnGetTreeNodeText) then begin
+     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
+    end else begin
+     ItemText:=TpvUTF8String(TreeNode.fCaption);
+    end;
+
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,(Indent+aTreeView.fWorkIndentWidth)+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
 var Element:TpvInt32;
     NodeIndex,IndentOffset,IndentIndex:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,RowHeight,Indent:TpvFloat;
-    Position:TpvVector2;
+    Offset,Position:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect:TpvRect;
     ItemText:TpvUTF8String;
@@ -12666,7 +12739,9 @@ begin
                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
                                                 true);
 
- Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+ Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,0);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin)-Offset;
 
  if aTreeView.fRowHeight>0.0 then begin
   RowHeight:=aTreeView.fRowHeight;
@@ -12712,7 +12787,7 @@ begin
    if not (assigned(aTreeView.fOnDrawTreeNode) and
            aTreeView.fOnDrawTreeNode(aTreeView,
                                      TreeNode,
-                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left+(Indent+aTreeView.fWorkIndentWidth),
+                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
                                                                                         Position.y),
                                                             TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                         Position.y+RowHeight)))) then begin
@@ -12742,7 +12817,7 @@ begin
        Sprite:=TpvSprite(SpriteEx);
        aDrawEngine.DrawSprite(Sprite,
                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
-                              TpvRect.CreateRelative(DrawRect.Left+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+                              TpvRect.CreateRelative((DrawRect.Left-Offset.x)+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
       end;
      end;
      if TreeNode.fChildren.Count>0 then begin
@@ -12800,7 +12875,7 @@ begin
       Sprite:=TpvSprite(SpriteEx);
       aDrawEngine.DrawSprite(Sprite,
                              TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
-                             TpvRect.CreateRelative(DrawRect.Left+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+                             TpvRect.CreateRelative((DrawRect.Left-Offset.x)+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
      end;
     end;
 
@@ -25434,7 +25509,7 @@ begin
  end;
 
  if assigned(fTreeView) then begin
-  fTreeView.fDirty:=true;
+  inc(fTreeView.fCurrentGeneration);
  end;
 
 end;
@@ -25460,7 +25535,7 @@ begin
  end;
 
  if assigned(fTreeView) then begin
-  fTreeView.fDirty:=true;
+  inc(fTreeView.fCurrentGeneration);
  end;
 
  fParent:=nil;
@@ -25528,7 +25603,7 @@ begin
    fChildren[Index].SetParent(self);
   end;
   if assigned(fTreeView) then begin
-   fTreeView.fDirty:=true;
+   inc(fTreeView.fCurrentGeneration);
   end;
  end;
 end;
@@ -25578,7 +25653,7 @@ begin
     Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
    end;
    if assigned(fTreeView) then begin
-    fTreeView.fDirty:=true;
+    inc(fTreeView.fCurrentGeneration);
    end;
   end;
  end;
@@ -25601,7 +25676,7 @@ begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Visible);
   end;
   if assigned(fTreeView) then begin
-   fTreeView.fDirty:=true;
+   inc(fTreeView.fCurrentGeneration);
   end;
  end;
 end;
@@ -25612,7 +25687,7 @@ begin
  aNode.SetParent(self);
  fChildren.Add(aNode);
  if assigned(fTreeView) then begin
-  fTreeView.fDirty:=true;
+  inc(fTreeView.fCurrentGeneration);
  end;
  result:=aNode;
 end;
@@ -25623,7 +25698,7 @@ begin
  aNode.SetParent(self);
  fChildren.Insert(aIndex,aNode);
  if assigned(fTreeView) then begin
-  fTreeView.fDirty:=true;
+  inc(fTreeView.fCurrentGeneration);
  end;
  result:=aNode;
 end;
@@ -25632,7 +25707,7 @@ procedure TpvGUITreeNode.Exchange(const aIndex,aWithIndex:TpvSizeInt);
 begin
  fChildren.Exchange(aIndex,aWithIndex);
  if assigned(fTreeView) then begin
-  fTreeView.fDirty:=true;
+  inc(fTreeView.fCurrentGeneration);
  end;
 end;
 
@@ -25655,7 +25730,7 @@ begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   if assigned(fTreeView) then begin
-   fTreeView.fDirty:=true;
+   inc(fTreeView.fCurrentGeneration);
   end;
  end else begin
   result:=nil;
@@ -25684,7 +25759,7 @@ begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
   end;
   if assigned(fTreeView) then begin
-   fTreeView.fDirty:=true;
+   inc(fTreeView.fCurrentGeneration);
   end;
  end;
 end;
@@ -25772,6 +25847,14 @@ begin
  fVerticalScrollBar.MinimumValue:=0;
  fVerticalScrollBar.MaximumValue:=1;
 
+ fCurrentGeneration:=1;
+
+ fLastProcessedGeneration:=0;
+
+ fCurrentCheckGeneration:=1;
+
+ fLastCheckedGeneration:=0;
+
  fNodeIndex:=-1;
 
  fRowHeight:=0.0;
@@ -25839,7 +25922,7 @@ begin
   end else begin
    Exclude(fFlags,TpvGUITreeViewFlag.ShowRootNode);
   end;
-  fDirty:=true;
+  inc(fCurrentGeneration);
  end;
 end;
 
@@ -25857,7 +25940,7 @@ begin
    Exclude(fFlags,TpvGUITreeViewFlag.MultiSelect);
   end;
   ClearSelection;
-  fDirty:=true;
+  inc(fCurrentGeneration);
  end;
 end;
 
@@ -25878,7 +25961,7 @@ var Index:TpvSizeInt;
     TreeNodeStack,InvisibleTreeNodeStack:TpvGUITreeNodeStack;
     TreeNode:TpvGUITreeNode;
 begin
- if fDirty or (fNodes.Count=0) then begin
+ if (fLastProcessedGeneration<>fCurrentGeneration) or (fNodes.Count=0) then begin
   try
    fNodes.Clear;
    if assigned(fRoot) then begin
@@ -25969,7 +26052,11 @@ begin
     end;
    end;
   finally
-   fDirty:=false;
+   try
+    fLastProcessedGeneration:=fCurrentGeneration;
+   finally
+    inc(fCurrentCheckGeneration);
+   end;
   end;
  end;
 end;
@@ -26001,12 +26088,24 @@ end;
 
 function TpvGUITreeView.GetCountVisibleNodes:TpvSizeInt;
 begin
- result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+ result:=trunc(((fSize.y-(fWorkYOffset*2.0))-IfThen(fHorziontalScrollBar.Visible,fHorziontalScrollBar.Size.y,0.0))/Max(fWorkRowHeight,1));
 end;
 
 procedure TpvGUITreeView.AdjustScrollBars;
-var VisibleNodes:TpvSizeInt;
+var VisibleNodes,w:TpvSizeInt;
 begin
+ if fHorziontalScrollBar.Visible then begin
+  w:=Trunc(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
+  if (w-fHorziontalScrollBar.Value)<0 then begin
+   fVerticalScrollBar.Value:=w;
+  end else begin
+{  if ((w-fVerticalScrollBar.Value)+1)>=fMaximumContentWidth then begin
+    fVerticalScrollBar.Value:=Max(0,(fNodeIndex-fMaximumContentWidth)+1);
+   end;}
+  end;
+ end else begin
+  fHorziontalScrollBar.Value:=0;
+ end;
  if fVerticalScrollBar.Visible then begin
   if (fNodeIndex-fVerticalScrollBar.Value)<0 then begin
    fVerticalScrollBar.Value:=fNodeIndex;
@@ -26021,20 +26120,36 @@ begin
  end;
 end;
 
+procedure TpvGUITreeView.CheckNodeWidths;
+begin
+ if fLastCheckedGeneration<>fCurrentCheckGeneration then begin
+  try
+   Skin.CheckTreeView(fInstance.DrawEngine,self);
+  finally
+   fLastCheckedGeneration:=fCurrentCheckGeneration;
+  end;
+ end;
+end;
+
 procedure TpvGUITreeView.UpdateScrollBars;
 var VisibleNodes:TpvSizeInt;
 begin
+ CheckNodeWidths;
  VisibleNodes:=GetCountVisibleNodes;
  fVerticalScrollBar.Visible:=fNodes.Count>VisibleNodes;
  fVerticalScrollBar.MaximumValue:=Max(1,fNodes.Count-VisibleNodes);
  if not fVerticalScrollBar.Visible then begin
   fVerticalScrollBar.Value:=0;
  end;
- fHorziontalScrollBar.Visible:=false;
+ fHorziontalScrollBar.Visible:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
+ fHorziontalScrollBar.MaximumValue:=Max(1,Trunc(fMaximumContentWidth-(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0))));
+ if not fHorziontalScrollBar.Visible then begin
+  fHorziontalScrollBar.Value:=0;
+ end;
  if fHorziontalScrollBar.Visible then begin
   if fVerticalScrollBar.Visible then begin
    fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x-fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y);
-   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y-fHorziontalScrollBar.fSize.x);
+   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y-fHorziontalScrollBar.fSize.y);
   end else begin
    fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,fHorziontalScrollBar.fSize.y);
   end;
@@ -26312,8 +26427,8 @@ begin
       TreeNode:=nil;
      end;
      if assigned(TreeNode) and
-        (aPointerEvent.Position.x>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
-        (aPointerEvent.Position.x<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
+        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
+        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
       TreeNode.Expanded:=not TreeNode.Expanded;
       UpdateNodes;
      end else begin
@@ -26356,8 +26471,8 @@ begin
       TreeNode:=nil;
      end;
      if assigned(TreeNode) and
-        (aPointerEvent.Position.x>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
-        (aPointerEvent.Position.x<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
+        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
+        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
       // Nothing
      end else begin
       if fAction=TpvGUITreeViewAction.Mark then begin
@@ -26463,6 +26578,7 @@ end;
 procedure TpvGUITreeView.Check;
 begin
  UpdateNodes;
+ UpdateScrollBars;
  fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
  if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
   fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
