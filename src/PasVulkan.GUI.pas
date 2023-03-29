@@ -12663,7 +12663,7 @@ begin
      ItemText:=TpvUTF8String(TreeNode.fCaption);
     end;
 
-    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,(Indent+aTreeView.fWorkIndentWidth)+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+(Indent+aTreeView.fWorkIndentWidth)+CurrentFont.TextWidth(ItemText,CurrentFontSize));
 
    end;
 
@@ -26092,17 +26092,17 @@ begin
 end;
 
 procedure TpvGUITreeView.AdjustScrollBars;
-var VisibleNodes,w:TpvSizeInt;
+var VisibleNodes{,w}:TpvSizeInt;
 begin
  if fHorziontalScrollBar.Visible then begin
-  w:=Trunc(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
+{ w:=Trunc(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
   if (w-fHorziontalScrollBar.Value)<0 then begin
-   fVerticalScrollBar.Value:=w;
+   fHorziontalScrollBar.Value:=w;
   end else begin
-{  if ((w-fVerticalScrollBar.Value)+1)>=fMaximumContentWidth then begin
+   if ((w-fVerticalScrollBar.Value)+1)>=fMaximumContentWidth then begin
     fVerticalScrollBar.Value:=Max(0,(fNodeIndex-fMaximumContentWidth)+1);
-   end;}
-  end;
+   end;
+  end; }
  end else begin
   fHorziontalScrollBar.Value:=0;
  end;
@@ -26141,8 +26141,8 @@ begin
  if not fVerticalScrollBar.Visible then begin
   fVerticalScrollBar.Value:=0;
  end;
- fHorziontalScrollBar.Visible:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
- fHorziontalScrollBar.MaximumValue:=Max(1,Trunc(fMaximumContentWidth-(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0))));
+ fHorziontalScrollBar.Visible:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0));
+ fHorziontalScrollBar.MaximumValue:=Max(1,Trunc(fMaximumContentWidth-(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0))));
  if not fHorziontalScrollBar.Visible then begin
   fHorziontalScrollBar.Value:=0;
  end;
