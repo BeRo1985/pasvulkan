@@ -1677,6 +1677,9 @@ begin
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B2';
 
+ TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B3 with a really very long text for testing';
+
  fTreeView.Root.ExpandAll;
 
 end;
