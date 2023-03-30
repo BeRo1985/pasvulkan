@@ -964,6 +964,8 @@ type TpvGUIObject=class;
        function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; virtual;
        procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
        procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
+       function IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; virtual;
+       function IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; virtual;
       public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
@@ -1073,6 +1075,8 @@ type TpvGUIObject=class;
              TabButtonSize=24;
              BoxCornerMargin=3.0;
              ListBoxHorizontalMargin=2.0;
+             ListViewHorizontalMargin=2.0;
+             TreeViewHorizontalMargin=2.0;
              ComboBoxHorizontalMargin=2.0;
              MultiLineTextEditorMargin=4.0;
       protected
@@ -1169,6 +1173,8 @@ type TpvGUIObject=class;
        function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; override;
        procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
        procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
+       function IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; override;
+       function IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -7280,7 +7286,16 @@ end;
 
 procedure TpvGUISkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
 begin
+end;
 
+function TpvGUISkin.IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUISkin.IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
 end;
 
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
@@ -12074,7 +12089,7 @@ begin
    end;
    TpvGUIListView.TViewMode.Report:begin
 
-    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
     if TpvGUIListViewFlag.Header in aListView.fFlags then begin
 
@@ -12162,8 +12177,8 @@ begin
      if aListView.fColumns.Count=0 then begin
 
       Item.fColumnRects[0]:=Item.fRect;
-      Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
-      Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+      Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListViewHorizontalMargin;
+      Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListViewHorizontalMargin;
 
      end else begin
 
@@ -12173,9 +12188,9 @@ begin
 
        if Column.fVisible then begin
 
-        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListBoxHorizontalMargin,
+        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListViewHorizontalMargin,
                                                                                  Item.fRect.Top),
-                                                               TpvVector2.Create(Column.fRect.Width-(ListBoxHorizontalMargin*2.0),
+                                                               TpvVector2.Create(Column.fRect.Width-(ListViewHorizontalMargin*2.0),
                                                                                  Item.fRect.Height));
 
        end else begin
@@ -12197,7 +12212,7 @@ begin
 
    TpvGUIListView.TViewMode.List:begin
 
-    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
     Position.y:=Position.y-(aListView.fScrollBar.Value*aListView.fWorkItemHeight);
 
@@ -12217,8 +12232,8 @@ begin
      end;
 
      Item.fColumnRects[0]:=Item.fRect;
-     Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
-     Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+     Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListViewHorizontalMargin;
+     Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListViewHorizontalMargin;
 
      Position.y:=Position.y+aListView.fWorkItemHeight;
 
@@ -12316,7 +12331,7 @@ begin
                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
                                                 true);
 
- Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
@@ -12677,10 +12692,14 @@ begin
 
     Left:=Indent+aTreeView.fWorkIndentWidth;
 
-    if assigned(aTreeView.fOnGetTreeNodeText) then begin
-     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
-    end else begin
-     ItemText:=TpvUTF8String(TreeNode.fCaption);
+    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+     Left:=Left+TreeNode.IconPaddingLeft;
+     if TreeNode.fIconHeight>0.0 then begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
+     end else begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
+     end;
+     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
     end;
 
     if assigned(TreeNode.fIcon) then begin
@@ -12704,17 +12723,13 @@ begin
      IconSize:=TpvVector2.Null;
     end;
 
-    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
-     Left:=Left+TreeNode.IconPaddingLeft;
-     if TreeNode.fIconHeight>0.0 then begin
-      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
-     end else begin
-      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
-     end;
-     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
+    if assigned(aTreeView.fOnGetTreeNodeText) then begin
+     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
+    end else begin
+     ItemText:=TpvUTF8String(TreeNode.fCaption);
     end;
 
-    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+Left+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+TreeViewHorizontalMargin)*2.0)+Left+CurrentFont.TextWidth(ItemText,CurrentFontSize));
 
    end;
 
@@ -12789,7 +12804,7 @@ begin
 
  Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,0);
 
- Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin)-Offset;
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin)-Offset;
 
  if aTreeView.fRowHeight>0.0 then begin
   RowHeight:=aTreeView.fRowHeight;
@@ -13023,11 +13038,11 @@ begin
        aDrawEngine.DrawSprite(TpvSprite(TreeNode.fIcon),
                               TpvRect.CreateRelative(TpvVector2.Null,
                                                      TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height)),
-                              TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
+                              TpvRect.CreateRelative(IconRect.LeftTop,IconRect.Size));
       end else if TreeNode.fIcon is TpvVulkanTexture then begin
        aDrawEngine.Transparent:=true;
        aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(TreeNode.fIcon),
-                                         TpvRect.CreateAbsolute(Offset+IconRect.LeftTop,Offset+IconRect.RightBottom));
+                                         TpvRect.CreateAbsolute(IconRect.LeftTop,Offset+IconRect.RightBottom));
       end;
      end;
      Left:=Left+(IconSize.x+TreeNode.fIconPaddingRight);
@@ -13078,6 +13093,78 @@ begin
  end;
 
  aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+var IndentOffset:TpvSizeInt;
+    Indent,Left:TpvFloat;
+    Offset,Position:TpvVector2;
+begin
+
+ result:=false;
+
+ if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) then begin
+
+  if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+   IndentOffset:=0;
+  end else begin
+   IndentOffset:=1;
+  end;
+
+  Indent:=(aTreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+  Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,aTreeView.fVerticalScrollBar.fValue*aTreeView.fWorkRowHeight);
+
+  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin+(aTreeNode.fNodeIndex*aTreeView.fWorkRowHeight))-Offset;
+
+  Left:=Indent;
+
+  if TpvRect.CreateRelative(Position.x+Left,Position.y,aTreeView.fWorkRowHeight,aTreeView.fWorkIndentWidth).Touched(aPosition) then begin
+   result:=true;
+  end;
+
+ end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+var IndentOffset:TpvSizeInt;
+    Indent,Left:TpvFloat;
+    Offset,Position,CheckBoxSize:TpvVector2;
+begin
+
+ result:=false;
+
+ if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) then begin
+
+  if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+   IndentOffset:=0;
+  end else begin
+   IndentOffset:=1;
+  end;
+
+  Indent:=(aTreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+  Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,aTreeView.fVerticalScrollBar.fValue*aTreeView.fWorkRowHeight);
+
+  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin+(aTreeNode.fNodeIndex*aTreeView.fWorkRowHeight))-Offset;
+
+  Left:=Indent+aTreeView.fWorkIndentWidth;
+
+  if TpvGUITreeNode.TFlag.CheckBox in aTreeNode.fFlags then begin
+   Left:=Left+aTreeNode.IconPaddingLeft;
+   if aTreeNode.fIconHeight>0.0 then begin
+    CheckBoxSize:=TpvVector2.Create(1.0)*aTreeNode.fIconHeight;
+   end else begin
+    CheckBoxSize:=TpvVector2.Create(1.0)*(aTreeView.fWorkRowHeight-(aTreeNode.IconPaddingVertical*2));
+   end;
+   if TpvRect.CreateRelative(Position.x+Left,Position.y,CheckBoxSize.x,CheckBoxSize.y).Touched(aPosition) then begin
+    result:=true;
+   end;
+  end;
+
+ end;
 
 end;
 
@@ -26591,77 +26678,113 @@ end;
 function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentNodeIndex,IndentOffset:TpvSizeInt;
     TreeNode:TpvGUITreeNode;
+    Skin:TpvGUISkin;
 begin
- UpdateNodes;
- UpdateScrollBars;
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ Skin:=GetSkin;
+ if assigned(Skin) then begin
+  UpdateNodes;
+  UpdateScrollBars;
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
-    IndentOffset:=0;
-   end else begin
-    IndentOffset:=1;
-   end;
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     RequestFocus;
-     fAction:=TpvGUITreeViewAction.None;
-     SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-     if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-      TreeNode:=fNodes[fNodeIndex];
-     end else begin
-      TreeNode:=nil;
-     end;
-     if assigned(TreeNode) and
-        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
-        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
-      TreeNode.Expanded:=not TreeNode.Expanded;
-      UpdateNodes;
-     end else begin
-      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-       if not MultiSelect then begin
-        InternalClearSelection;
-       end;
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(not TreeNode.Selected);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-       fAction:=TpvGUITreeViewAction.Mark;
-       fActionStartIndex:=fNodeIndex;
-       fActionStopIndex:=fNodeIndex;
-       InternalClearSelection;
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(not TreeNode.Selected);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end;
-      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-       if fDoubleClickCounter=0 then begin
-        fDoubleClickTimeAccumulator:=0.0;
-       end;
-      end;
-     end;
-     result:=true;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
+     IndentOffset:=0;
+    end else begin
+     IndentOffset:=1;
     end;
-    TpvApplicationInputPointerEventType.Up:begin
-     if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-      TreeNode:=fNodes[fNodeIndex];
-     end else begin
-      TreeNode:=nil;
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      RequestFocus;
+      fAction:=TpvGUITreeViewAction.None;
+      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+      end else begin
+       TreeNode:=nil;
+      end;
+      if assigned(TreeNode) and
+         Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
+       TreeNode.Expanded:=not TreeNode.Expanded;
+       UpdateNodes;
+      end else begin
+       if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+        if not MultiSelect then begin
+         InternalClearSelection;
+        end;
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(not TreeNode.Selected);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+        fAction:=TpvGUITreeViewAction.Mark;
+        fActionStartIndex:=fNodeIndex;
+        fActionStopIndex:=fNodeIndex;
+        InternalClearSelection;
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(not TreeNode.Selected);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end;
+       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+        if fDoubleClickCounter=0 then begin
+         fDoubleClickTimeAccumulator:=0.0;
+        end;
+       end;
+      end;
+      result:=true;
      end;
-     if assigned(TreeNode) and
-        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)>=((TreeNode.fDepth-IndentOffset)*fWorkIndentWidth)) and
-        ((aPointerEvent.Position.x+fHorziontalScrollBar.fValue)<(((TreeNode.fDepth+1)-IndentOffset)*fWorkIndentWidth)) then begin
-      // Nothing
-     end else begin
+     TpvApplicationInputPointerEventType.Up:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+      end else begin
+       TreeNode:=nil;
+      end;
+      if assigned(TreeNode) and
+         Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
+       // Nothing
+      end else begin
+       if fAction=TpvGUITreeViewAction.Mark then begin
+        SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+        fActionStopIndex:=fNodeIndex;
+        InternalClearSelection;
+        if MultiSelect then begin
+         for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+          fNodes[CurrentNodeIndex].SetSelected(true);
+         end;
+        end else begin
+         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+          TreeNode:=fNodes[fNodeIndex];
+          TreeNode.SetSelected(true);
+         end;
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end;
+       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+        if fDoubleClickCounter<2 then begin
+         inc(fDoubleClickCounter);
+         if fDoubleClickCounter=2 then begin
+          fDoubleClickCounter:=0;
+          fDoubleClickTimeAccumulator:=0.0;
+          if assigned(fOnDoubleClick) then begin
+           fOnDoubleClick(self);
+          end;
+         end;
+        end;
+       end;
+      end;
+      fAction:=TpvGUITreeViewAction.None;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
       if fAction=TpvGUITreeViewAction.Mark then begin
        SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
        fActionStopIndex:=fNodeIndex;
@@ -26680,63 +26803,29 @@ begin
         fOnChangeSelection(self);
        end;
       end;
-      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-       if fDoubleClickCounter<2 then begin
-        inc(fDoubleClickCounter);
-        if fDoubleClickCounter=2 then begin
-         fDoubleClickCounter:=0;
-         fDoubleClickTimeAccumulator:=0.0;
-         if assigned(fOnDoubleClick) then begin
-          fOnDoubleClick(self);
-         end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      if fAction=TpvGUITreeViewAction.Mark then begin
+       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+       fActionStopIndex:=fNodeIndex;
+       InternalClearSelection;
+       if MultiSelect then begin
+        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+         fNodes[CurrentNodeIndex].SetSelected(true);
+        end;
+       end else begin
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(true);
         end;
        end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
+      result:=true;
      end;
-     fAction:=TpvGUITreeViewAction.None;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if fAction=TpvGUITreeViewAction.Mark then begin
-      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fNodeIndex;
-      InternalClearSelection;
-      if MultiSelect then begin
-       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-        fNodes[CurrentNodeIndex].SetSelected(true);
-       end;
-      end else begin
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(true);
-       end;
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     if fAction=TpvGUITreeViewAction.Mark then begin
-      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      fActionStopIndex:=fNodeIndex;
-      InternalClearSelection;
-      if MultiSelect then begin
-       for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-        fNodes[CurrentNodeIndex].SetSelected(true);
-       end;
-      end else begin
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(true);
-       end;
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
-     end;
-     result:=true;
     end;
    end;
   end;
