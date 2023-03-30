@@ -13104,7 +13104,7 @@ begin
 
  result:=false;
 
- if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) then begin
+ if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) and (aTreeNode.fChildren.Count>0) then begin
 
   if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
    IndentOffset:=0;
@@ -26707,6 +26707,9 @@ begin
          Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
        TreeNode.Expanded:=not TreeNode.Expanded;
        UpdateNodes;
+      end else if assigned(TreeNode) and
+                  Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position) then begin
+       TreeNode.Checked:=not TreeNode.Checked;
       end else begin
        if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
         if not MultiSelect then begin
@@ -26747,7 +26750,8 @@ begin
        TreeNode:=nil;
       end;
       if assigned(TreeNode) and
-         Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
+         (Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) or
+          Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position)) then begin
        // Nothing
       end else begin
        if fAction=TpvGUITreeViewAction.Mark then begin
