@@ -26698,15 +26698,24 @@ begin
    KEYCODE_SPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      if not MultiSelect then begin
-       InternalClearSelection;
-      end;
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       TreeNode.SetSelected(not TreeNode.Selected);
-      end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       if not MultiSelect then begin
+        InternalClearSelection;
+       end;
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(not TreeNode.Selected);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end else begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+         TreeNode.SetChecked(not TreeNode.Checked);
+        end;
+       end;
       end;
      end;
     end;
