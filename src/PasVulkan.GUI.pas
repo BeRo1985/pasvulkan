@@ -3330,6 +3330,7 @@ type TpvGUIObject=class;
       public
        type TFlag=
              (
+              OwnsData,
               Selected,
               Expanded,
               Visible,
@@ -3367,6 +3368,8 @@ type TpvGUIObject=class;
        fLastVisualChild:TpvGUITreeNode;
        function GetIndex:TpvSizeInt; inline;
        procedure SetParent(const aParent:TpvGUITreeNode);
+       function GetOwnsData:boolean; inline;
+       procedure SetOwnsData(const aOwnsData:boolean);
        function GetSelected:boolean; inline;
        procedure SetSelected(const aSelected:boolean);
        function GetExpanded:boolean; inline;
@@ -3377,6 +3380,11 @@ type TpvGUIObject=class;
        procedure SetCheckBox(const aCheckBox:boolean);
        function GetChecked:boolean; inline;
        procedure SetChecked(const aChecked:boolean);
+      protected
+       procedure CreateGUIObjects; virtual;
+       procedure DestroyGUIObjects; virtual;
+       procedure UpdateGUIObjects; virtual;
+       procedure DrawGUIObjects; virtual;
       public
        constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
        destructor Destroy; override;
@@ -3411,6 +3419,7 @@ type TpvGUIObject=class;
        property IconPaddingRight:TpvFloat read fIconPaddingRight write fIconPaddingRight;
        property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
       published
+       property OwnsData:boolean read GetOwnsData write SetOwnsData;
        property Selected:boolean read GetSelected write SetSelected;
        property Expanded:boolean read GetExpanded write SetExpanded;
        property Visible:boolean read GetVisible write SetVisible;
@@ -25769,9 +25778,9 @@ begin
 end;
 
 destructor TpvGUITreeNode.Destroy;
-var Index:TpvSizeInt;
-    GUIObject:TpvGUIObject;
 begin
+
+ DestroyGUIObjects;
 
  if assigned(fTreeView) and assigned(fTreeView.fNodes) and (fTreeView.fNodeIndex=fNodeIndex) then begin
   fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
@@ -25798,25 +25807,10 @@ begin
 
  fCaption:='';
 
- FreeAndNil(fData);
-
- for Index:=0 to fGUIObjects.Count-1 do begin
-  GUIObject:=fGUIObjects[Index];
-  try
-   if assigned(GUIObject) then begin
-    if GUIObject is TpvGUIWidget then begin
-     try
-      TpvGUIWidget(GUIObject).Release;
-     finally
-      GUIObject:=nil;
-     end;
-    end else begin
-     FreeAndNil(GUIObject);
-    end;
-   end;
-  finally
-   fGUIObjects[Index]:=nil;
-  end;
+ if TpvGUITreeNode.TFlag.OwnsData in fFlags then begin
+  FreeAndNil(fData);
+ end else begin
+  fData:=nil;
  end;
 
  FreeAndNil(fGUIObjects);
@@ -25825,6 +25819,65 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvGUITreeNode.CreateGUIObjects;
+begin
+
+end;
+
+procedure TpvGUITreeNode.DestroyGUIObjects;
+var Index:TpvSizeInt;
+    GUIObject:TpvGUIObject;
+begin
+ try
+  for Index:=0 to fGUIObjects.Count-1 do begin
+   GUIObject:=fGUIObjects[Index];
+   try
+    if assigned(GUIObject) then begin
+     if GUIObject is TpvGUIWidget then begin
+      try
+       TpvGUIWidget(GUIObject).Release;
+      finally
+       GUIObject:=nil;
+      end;
+     end else begin
+      FreeAndNil(GUIObject);
+     end;
+    end;
+   finally
+    fGUIObjects[Index]:=nil;
+   end;
+  end;
+ finally
+  fGUIObjects.Clear;
+ end;
+end;
+
+procedure TpvGUITreeNode.UpdateGUIObjects;
+var Index:TpvSizeInt;
+    GUIObject:TpvGUIObject;
+begin
+ for Index:=0 to fGUIObjects.Count-1 do begin
+  GUIObject:=fGUIObjects[Index];
+  if assigned(GUIObject) then begin
+   if GUIObject is TpvGUIWidget then begin
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeNode.DrawGUIObjects;
+var Index:TpvSizeInt;
+    GUIObject:TpvGUIObject;
+begin
+ for Index:=0 to fGUIObjects.Count-1 do begin
+  GUIObject:=fGUIObjects[Index];
+  if assigned(GUIObject) then begin
+   if GUIObject is TpvGUIWidget then begin
+   end;
+  end;
+ end;
 end;
 
 function TpvGUITreeNode.GetIndex:TpvSizeInt;
@@ -25856,6 +25909,22 @@ begin
   end;
   if assigned(fTreeView) then begin
    inc(fTreeView.fCurrentGeneration);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetOwnsData:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.OwnsData in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetOwnsData(const aOwnsData:boolean);
+begin
+ if aOwnsData<>(TpvGUITreeNode.TFlag.OwnsData in fFlags) then begin
+  if aOwnsData then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.OwnsData);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.OwnsData);
   end;
  end;
 end;
