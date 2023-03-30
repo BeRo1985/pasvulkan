@@ -3326,7 +3326,9 @@ type TpvGUIObject=class;
              (
               Selected,
               Expanded,
-              Visible
+              Visible,
+              CheckBox,
+              Checked
              );
             PFlag=^TFlag;
             TFlags=set of TFlag;
@@ -3365,6 +3367,10 @@ type TpvGUIObject=class;
        procedure SetExpanded(const aExpanded:boolean);
        function GetVisible:boolean; inline;
        procedure SetVisible(const aVisible:boolean);
+       function GetCheckBox:boolean; inline;
+       procedure SetCheckBox(const aCheckBox:boolean);
+       function GetChecked:boolean; inline;
+       procedure SetChecked(const aChecked:boolean);
       public
        constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
        destructor Destroy; override;
@@ -3402,6 +3408,8 @@ type TpvGUIObject=class;
        property Selected:boolean read GetSelected write SetSelected;
        property Expanded:boolean read GetExpanded write SetExpanded;
        property Visible:boolean read GetVisible write SetVisible;
+       property CheckBox:boolean read GetCheckBox write SetCheckBox;
+       property Checked:boolean read GetChecked write SetChecked;
      end;
 
      TpvGUITreeViewAction=
@@ -12624,9 +12632,9 @@ procedure TpvGUIDefaultVectorBasedSkin.CheckTreeView(const aDrawEngine:TpvGUIDra
 var IndentOffset,IndentIndex:TpvSizeInt;
     TreeNode:TpvGUITreeNode;
     CurrentFont:TpvFont;
-    CurrentFontSize,RowHeight,Indent:TpvFloat;
+    CurrentFontSize,RowHeight,Indent,Left:TpvFloat;
     ItemText:TpvUTF8String;
-    IconSize:TpvVector2;
+    IconSize,CheckBoxSize:TpvVector2;
 begin
 
  aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
@@ -12667,6 +12675,8 @@ begin
 
     Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
 
+    Left:=Indent+aTreeView.fWorkIndentWidth;
+
     if assigned(aTreeView.fOnGetTreeNodeText) then begin
      ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
     end else begin
@@ -12681,6 +12691,7 @@ begin
      end else begin
       IconSize:=TpvVector2.Null;
      end;
+     Left:=Left+TreeNode.fIconPaddingLeft;
      if TreeNode.fIconHeight>0.0 then begin
       IconSize.x:=(IconSize.x*TreeNode.fIconHeight)/IconSize.y;
       IconSize.y:=TreeNode.fIconHeight;
@@ -12688,12 +12699,22 @@ begin
       IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
       IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
      end;
-     IconSize.x:=IconSize.x+(TreeNode.fIconPaddingLeft+TreeNode.fIconPaddingRight);
+     Left:=Left+(IconSize.x+TreeNode.fIconPaddingRight);
     end else begin
      IconSize:=TpvVector2.Null;
     end;
 
-    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+(Indent+aTreeView.fWorkIndentWidth)+IconSize.x+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+     Left:=Left+TreeNode.IconPaddingLeft;
+     if TreeNode.fIconHeight>0.0 then begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
+     end else begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
+     end;
+     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
+    end;
+
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+Left+CurrentFont.TextWidth(ItemText,CurrentFontSize));
 
    end;
 
@@ -12707,18 +12728,15 @@ procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDraw
 var Element:TpvInt32;
     NodeIndex,IndentOffset,IndentIndex:TpvSizeInt;
     CurrentFont:TpvFont;
-    CurrentFontSize,RowHeight,Indent:TpvFloat;
-    Offset,Position,IconSize:TpvVector2;
+    CurrentFontSize,RowHeight,Indent,Left:TpvFloat;
+    Offset,Position,IconSize,CheckBoxSize,CheckBoxPosition:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect,IconRect:TpvRect;
     ItemText:TpvUTF8String;
     TreeNode:TpvGUITreeNode;
     SpriteEx:TObject;
     Sprite:TpvSprite;
-    Skin:TpvGUISkin;
 begin
-
- Skin:=aTreeView.Skin;
 
  aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
 
@@ -12822,13 +12840,15 @@ begin
                                                             TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                         Position.y+RowHeight)))) then begin
 
+    Left:=Indent+aTreeView.fWorkIndentWidth;
+
     aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
     aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
     if TpvGUITreeNode.TFlag.Selected in TreeNode.fFlags then begin
      aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-     aDrawEngine.Transparent:=true;
+     aDrawEngine.Transparent:=false;
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
                                                                                         Position.y),
                                                             TpvVector2.InlineableCreate(aTreeView.fSize.x-(BoxCornerMargin*2.0),
@@ -12836,15 +12856,16 @@ begin
      aDrawEngine.Color:=FontColor;
     end;
 
-    if assigned(Skin) then begin
+    begin
      for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
       if NodeIndex=(aTreeView.fNodes.Count-1) then begin
-       SpriteEx:=Skin.fIconTreeViewL_V_U;
+       SpriteEx:=fIconTreeViewL_V_U;
       end else begin
-       SpriteEx:=Skin.fIconTreeViewL_V_LU;
+       SpriteEx:=fIconTreeViewL_V_LU;
       end;
       if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
        Sprite:=TpvSprite(SpriteEx);
+       aDrawEngine.Transparent:=true;
        aDrawEngine.DrawSprite(Sprite,
                               TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
                               TpvRect.CreateRelative((DrawRect.Left-Offset.x)+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
@@ -12854,30 +12875,30 @@ begin
       case TreeNode.fVisualKind of
        TpvGUITreeNode.TVisualKind.First:begin
         if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-         SpriteEx:=Skin.fIconTreeViewCloseL;
+         SpriteEx:=fIconTreeViewCloseL;
         end else begin
-         SpriteEx:=Skin.fIconTreeViewOpenL;
+         SpriteEx:=fIconTreeViewOpenL;
         end;
        end;
        TpvGUITreeNode.TVisualKind.Both:begin
         if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-         SpriteEx:=Skin.fIconTreeViewCloseLU;
+         SpriteEx:=fIconTreeViewCloseLU;
         end else begin
-         SpriteEx:=Skin.fIconTreeViewOpenLU;
+         SpriteEx:=fIconTreeViewOpenLU;
         end;
        end;
        TpvGUITreeNode.TVisualKind.Last:begin
         if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-         SpriteEx:=Skin.fIconTreeViewCloseLU;
+         SpriteEx:=fIconTreeViewCloseLU;
         end else begin
-         SpriteEx:=Skin.fIconTreeViewOpenU;
+         SpriteEx:=fIconTreeViewOpenU;
         end;
        end;
        else {TpvGUITreeNode.TVisualKind.None:}begin
         if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
-         SpriteEx:=Skin.fIconTreeViewCloseLU;
+         SpriteEx:=fIconTreeViewCloseLU;
         end else begin
-         SpriteEx:=Skin.fIconTreeViewOpenLU;
+         SpriteEx:=fIconTreeViewOpenLU;
         end;
        end;
       end;
@@ -12885,24 +12906,25 @@ begin
       case TreeNode.fVisualKind of
        TpvGUITreeNode.TVisualKind.First:begin
         if assigned(TreeNode.fParent) then begin
-         SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+         SpriteEx:=fIconTreeViewL_HV_LU;
         end else begin
-         SpriteEx:=Skin.fIconTreeViewL_HV_L;
+         SpriteEx:=fIconTreeViewL_HV_L;
         end;
        end;
        TpvGUITreeNode.TVisualKind.Both:begin
-        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+        SpriteEx:=fIconTreeViewL_HV_LU;
        end;
        TpvGUITreeNode.TVisualKind.Last:begin
-        SpriteEx:=Skin.fIconTreeViewL_HV_U;
+        SpriteEx:=fIconTreeViewL_HV_U;
        end;
        else {TpvGUITreeNode.TVisualKind.None:}begin
-        SpriteEx:=Skin.fIconTreeViewL_HV_LU;
+        SpriteEx:=fIconTreeViewL_HV_LU;
        end;
       end;
      end;
      if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
       Sprite:=TpvSprite(SpriteEx);
+      aDrawEngine.Transparent:=true;
       aDrawEngine.DrawSprite(Sprite,
                              TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
                              TpvRect.CreateRelative((DrawRect.Left-Offset.x)+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
@@ -12915,7 +12937,67 @@ begin
      ItemText:=TpvUTF8String(TreeNode.fCaption);
     end;
 
-    aDrawEngine.Transparent:=true;
+    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+
+     if aTreeView.Enabled then begin
+      aDrawEngine.Color:=FontColor;
+     end else begin
+      aDrawEngine.Color:=TpvVector4.InlineableCreate(FontColor.rgb,FontColor.a*0.25);
+     end;
+
+     if not aTreeView.Enabled then begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
+
+     end else if aTreeView.Focused and (aTreeView.fNodeIndex=NodeIndex) then begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
+
+     end else begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
+
+     end;
+
+     Left:=Left+TreeNode.IconPaddingLeft;
+
+     if TreeNode.fIconHeight>0.0 then begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
+     end else begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
+     end;
+
+     CheckBoxPosition:=Position+TpvVector2.InlineableCreate(Left,(RowHeight-CheckBoxSize.y)*0.5);
+
+     aDrawEngine.Transparent:=false;
+
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    Element=GUI_ELEMENT_BOX_DARK_FOCUSED,
+                                                    CheckBoxPosition,
+                                                    CheckBoxPosition+CheckBoxSize,
+                                                    CheckBoxPosition,
+                                                    CheckBoxPosition+CheckBoxSize,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                    true);{}
+
+     if TpvGUITreeNode.TFlag.Checked in TreeNode.fFlags then begin
+
+      Sprite:=TpvSprite(fIconCheck);
+
+      aDrawEngine.Transparent:=true;
+
+      aDrawEngine.DrawSprite(Sprite,
+                             TpvRect.CreateRelative(0.0,0.0,TpvSprite(Sprite).Width,TpvSprite(Sprite).Height),
+                             TpvRect.CreateRelative(CheckBoxPosition,CheckBoxSize));
+
+     end;
+
+     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
+
+     aDrawEngine.Color:=FontColor;
+
+    end;
 
     if assigned(TreeNode.fIcon) then begin
      if TreeNode.fIcon is TpvSprite then begin
@@ -12932,25 +13014,29 @@ begin
       IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
       IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
      end;
-     IconRect:=TpvRect.CreateRelative(Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth+TreeNode.fIconPaddingLeft,(RowHeight-IconSize.y)*0.5),
+     Left:=Left+TreeNode.fIconPaddingLeft;
+     IconRect:=TpvRect.CreateRelative(Position+TpvVector2.InlineableCreate(Left,(RowHeight-IconSize.y)*0.5),
                                       IconSize);
      if assigned(TreeNode.fIcon) then begin
       if TreeNode.fIcon is TpvSprite then begin
+       aDrawEngine.Transparent:=true;
        aDrawEngine.DrawSprite(TpvSprite(TreeNode.fIcon),
                               TpvRect.CreateRelative(TpvVector2.Null,
                                                      TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height)),
                               TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
       end else if TreeNode.fIcon is TpvVulkanTexture then begin
+       aDrawEngine.Transparent:=true;
        aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(TreeNode.fIcon),
                                          TpvRect.CreateAbsolute(Offset+IconRect.LeftTop,Offset+IconRect.RightBottom));
       end;
      end;
-     IconSize.x:=IconSize.x+(TreeNode.fIconPaddingLeft+TreeNode.fIconPaddingRight);
+     Left:=Left+(IconSize.x+TreeNode.fIconPaddingRight);
     end else begin
      IconSize:=TpvVector2.Null;
     end;
 
-    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth+IconSize.x,RowHeight*0.5));
+    aDrawEngine.Transparent:=true;
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Left,RowHeight*0.5));
 
     if aTreeView.fNodeIndex=NodeIndex then begin
      if aTreeView.Focused then begin
@@ -25746,6 +25832,38 @@ begin
   end;
   if assigned(fTreeView) then begin
    inc(fTreeView.fCurrentGeneration);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetCheckBox:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.CheckBox in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetCheckBox(const aCheckBox:boolean);
+begin
+ if aCheckBox<>(TpvGUITreeNode.TFlag.CheckBox in fFlags) then begin
+  if aCheckBox then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.CheckBox);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.CheckBox);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetChecked:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Checked in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetChecked(const aChecked:boolean);
+begin
+ if aChecked<>(TpvGUITreeNode.TFlag.Checked in fFlags) then begin
+  if aChecked then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.Checked);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Checked);
   end;
  end;
 end;

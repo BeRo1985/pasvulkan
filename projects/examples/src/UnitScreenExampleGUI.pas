@@ -1667,6 +1667,8 @@ begin
  TreeNodeB.Icon:=Skin.IconContentPaste;
 
  TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
+ TreeNodeC.CheckBox:=true;
+ TreeNodeC.Checked:=true;
  TreeNodeC.Caption:='Test C1';
 
  TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
@@ -1683,6 +1685,7 @@ begin
 
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B3 with a really very long text for testing';
+ TreeNodeB.CheckBox:=true;
  TreeNodeB.Icon:=Skin.IconContentCopy;
 
  fTreeView.Root.ExpandAll;
