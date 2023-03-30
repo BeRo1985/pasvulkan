@@ -3426,6 +3426,8 @@ type TpvGUIObject=class;
       );
      PpvGUITreeViewAction=^TpvGUITreeViewAction;
 
+     TpvGUIOnTreeViewNodeEvent=procedure(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode) of object;
+
      TpvGUITreeViewOnDrawTreeNode=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aRect:TpvRect):Boolean of object;
 
      TpvGUITreeViewOnGetTreeNodeText=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode):TpvUTF8String of object;
@@ -3464,6 +3466,8 @@ type TpvGUIObject=class;
        fNodes:TpvGUITreeNodes;
        fTreeNodeSelectedHashMap:TpvGUITreeNodeBooleanHashMap;
        fOnChange:TpvGUIOnEvent;
+       fOnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent;
+       fOnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent;
        fOnChangeNodeIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDoubleClick:TpvGUIOnEvent;
@@ -3515,6 +3519,8 @@ type TpvGUIObject=class;
        property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
        property NodeIndex:TpvSizeInt read fNodeIndex write SetNodeIndex;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeExpandCollapse write fOnChangeNodeExpandCollapse;
+       property OnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeCheckBox write fOnChangeNodeCheckBox;
        property OnChangeNodeIndex:TpvGUIOnEvent read fOnChangeNodeIndex write fOnChangeNodeIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
@@ -25896,6 +25902,11 @@ begin
    end;
    if assigned(fTreeView) then begin
     inc(fTreeView.fCurrentGeneration);
+    if assigned(fTreeView.fOnChangeNodeExpandCollapse) then begin
+     fTreeView.UpdateNodes;
+     fTreeView.fOnChangeNodeExpandCollapse(fTreeView,self);
+     fTreeView.UpdateNodes;
+    end;
    end;
   end;
  end;
@@ -25951,6 +25962,9 @@ begin
    Include(fFlags,TpvGUITreeNode.TFlag.Checked);
   end else begin
    Exclude(fFlags,TpvGUITreeNode.TFlag.Checked);
+  end;
+  if assigned(fTreeView) and assigned(fTreeView.fOnChangeNodeCheckBox) then begin
+   fTreeView.fOnChangeNodeCheckBox(fTreeView,self);
   end;
  end;
 end;
@@ -26151,6 +26165,10 @@ begin
  fRoot.SetExpanded(true);
 
  fOnChange:=nil;
+
+ fOnChangeNodeExpandCollapse:=nil;
+
+ fOnChangeNodeCheckBox:=nil;
 
  fOnChangeNodeIndex:=nil;
 
