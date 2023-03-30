@@ -3330,7 +3330,7 @@ type TpvGUIObject=class;
       public
        type TFlag=
              (
-              OwnsData,
+              OwnsDataObject,
               Selected,
               Expanded,
               Visible,
@@ -3362,14 +3362,14 @@ type TpvGUIObject=class;
        fNodeIndex:TpvSizeInt;
        fGUIObjects:TpvGUIObjectList;
        fTag:TpvPtrUInt;
-       fData:TObject;
+       fDataObject:TObject;
        fVisualKind:TpvGUITreeNode.TVisualKind;
        fFirstVisualChild:TpvGUITreeNode;
        fLastVisualChild:TpvGUITreeNode;
        function GetIndex:TpvSizeInt; inline;
        procedure SetParent(const aParent:TpvGUITreeNode);
-       function GetOwnsData:boolean; inline;
-       procedure SetOwnsData(const aOwnsData:boolean);
+       function GetOwnsDataObject:boolean; inline;
+       procedure SetOwnsDataObject(const aOwnsDataObject:boolean);
        function GetSelected:boolean; inline;
        procedure SetSelected(const aSelected:boolean);
        function GetExpanded:boolean; inline;
@@ -3412,14 +3412,14 @@ type TpvGUIObject=class;
        property NodeIndex:TpvSizeInt read fNodeIndex;
        property GUIObjects:TpvGUIObjectList read fGUIObjects;
        property Tag:TpvPtrUInt read fTag write fTag;
-       property Data:TObject read fData write fData;
+       property DataObject:TObject read fDataObject write fDataObject;
        property Icon:TObject read fIcon write fIcon;
        property IconHeight:TpvFloat read fIconHeight write fIconHeight;
        property IconPaddingLeft:TpvFloat read fIconPaddingLeft write fIconPaddingLeft;
        property IconPaddingRight:TpvFloat read fIconPaddingRight write fIconPaddingRight;
        property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
       published
-       property OwnsData:boolean read GetOwnsData write SetOwnsData;
+       property OwnsDataObject:boolean read GetOwnsDataObject write SetOwnsDataObject;
        property Selected:boolean read GetSelected write SetSelected;
        property Expanded:boolean read GetExpanded write SetExpanded;
        property Visible:boolean read GetVisible write SetVisible;
@@ -25755,7 +25755,7 @@ begin
 
  fTag:=0;
 
- fData:=nil;
+ fDataObject:=nil;
 
  fDerivedVisibleCount:=1;
 
@@ -25807,10 +25807,10 @@ begin
 
  fCaption:='';
 
- if TpvGUITreeNode.TFlag.OwnsData in fFlags then begin
-  FreeAndNil(fData);
+ if TpvGUITreeNode.TFlag.OwnsDataObject in fFlags then begin
+  FreeAndNil(fDataObject);
  end else begin
-  fData:=nil;
+  fDataObject:=nil;
  end;
 
  FreeAndNil(fGUIObjects);
@@ -25913,18 +25913,18 @@ begin
  end;
 end;
 
-function TpvGUITreeNode.GetOwnsData:boolean;
+function TpvGUITreeNode.GetOwnsDataObject:boolean;
 begin
- result:=TpvGUITreeNode.TFlag.OwnsData in fFlags;
+ result:=TpvGUITreeNode.TFlag.OwnsDataObject in fFlags;
 end;
 
-procedure TpvGUITreeNode.SetOwnsData(const aOwnsData:boolean);
+procedure TpvGUITreeNode.SetOwnsDataObject(const aOwnsDataObject:boolean);
 begin
- if aOwnsData<>(TpvGUITreeNode.TFlag.OwnsData in fFlags) then begin
-  if aOwnsData then begin
-   Include(fFlags,TpvGUITreeNode.TFlag.OwnsData);
+ if aOwnsDataObject<>(TpvGUITreeNode.TFlag.OwnsDataObject in fFlags) then begin
+  if aOwnsDataObject then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
   end else begin
-   Exclude(fFlags,TpvGUITreeNode.TFlag.OwnsData);
+   Exclude(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
   end;
  end;
 end;
