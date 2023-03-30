@@ -3468,7 +3468,7 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent;
        fOnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent;
-       fOnChangeNodeIndex:TpvGUIOnEvent;
+       fOnChangeNode:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDoubleClick:TpvGUIOnEvent;
        fOnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode;
@@ -3483,6 +3483,8 @@ type TpvGUIObject=class;
        function GetMultiSelect:Boolean; inline;
        procedure SetMultiSelect(const aValue:Boolean);
        procedure SetNodeIndex(const aNodeIndex:TpvSizeInt);
+       function GetNode:TpvGUITreeNode; inline;
+       procedure SetNode(const aNode:TpvGUITreeNode);
        procedure UpdateNodes;
       protected
        function GetHighlightRect:TpvRect; override;
@@ -3517,11 +3519,13 @@ type TpvGUIObject=class;
        property IndentWidth:TpvFloat read fIndentWidth write fIndentWidth;
        property ShowRootNode:Boolean read GetShowRootNode write SetShowRootNode;
        property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
+       property CurrentNode:TpvGUITreeNode read GetNode write SetNode;
+       property Node:TpvGUITreeNode read GetNode write SetNode;
        property NodeIndex:TpvSizeInt read fNodeIndex write SetNodeIndex;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeExpandCollapse write fOnChangeNodeExpandCollapse;
        property OnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeCheckBox write fOnChangeNodeCheckBox;
-       property OnChangeNodeIndex:TpvGUIOnEvent read fOnChangeNodeIndex write fOnChangeNodeIndex;
+       property OnChangeNode:TpvGUIOnEvent read fOnChangeNode write fOnChangeNode;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode read fOnDrawTreeNode write fOnDrawTreeNode;
@@ -26170,7 +26174,7 @@ begin
 
  fOnChangeNodeCheckBox:=nil;
 
- fOnChangeNodeIndex:=nil;
+ fOnChangeNode:=nil;
 
  fOnChangeSelection:=nil;
 
@@ -26242,11 +26246,30 @@ begin
  if fNodeIndex<>aNodeIndex then begin
   fNodeIndex:=Min(Max(aNodeIndex,-1),fNodes.Count-1);
   AdjustScrollBars;
-  if assigned(fOnChangeNodeIndex) then begin
-   fOnChangeNodeIndex(self);
+  if assigned(fOnChangeNode) then begin
+   fOnChangeNode(self);
   end;
  end;
 end;
+
+function TpvGUITreeView.GetNode:TpvGUITreeNode;
+begin
+ if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+  result:=fNodes[fNodeIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvGUITreeView.SetNode(const aNode:TpvGUITreeNode);
+begin
+ if assigned(aNode) then begin
+  SetNodeIndex(aNode.fNodeIndex);
+ end else begin
+  SetNodeIndex(-1);
+ end;
+end;
+
 
 procedure TpvGUITreeView.UpdateNodes;
 var Index:TpvSizeInt;
