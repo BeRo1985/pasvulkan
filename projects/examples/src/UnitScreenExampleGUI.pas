@@ -1664,21 +1664,26 @@ begin
 
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B1';
+ TreeNodeB.Icon:=Skin.IconContentPaste;
 
  TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
  TreeNodeC.Caption:='Test C1';
 
  TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
  TreeNodeC.Caption:='Test C2';
+ TreeNodeC.Icon:=Skin.IconContentCopy;
 
  TreeNodeC:=TpvGUITreeNode.Create(TreeNodeB);
  TreeNodeC.Caption:='Test C3';
+ TreeNodeC.Icon:=Skin.IconContentCopy;
 
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B2';
+ TreeNodeB.Icon:=Skin.IconContentCopy;
 
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B3 with a really very long text for testing';
+ TreeNodeB.Icon:=Skin.IconContentCopy;
 
  fTreeView.Root.ExpandAll;
 

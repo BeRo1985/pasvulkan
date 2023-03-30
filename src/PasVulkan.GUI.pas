@@ -3342,7 +3342,11 @@ type TpvGUIObject=class;
        fParent:TpvGUITreeNode;
        fChildren:TpvGUITreeNodes;
        fCaption:TpvUTF8String;
-       fCachedCaption:TpvUTF8String;
+       fIcon:TObject;
+       fIconHeight:TpvFloat;
+       fIconPaddingLeft:TpvFloat;
+       fIconPaddingRight:TpvFloat;
+       fIconPaddingVertical:TpvFloat;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
        fDerivedVisibleCount:TpvSizeInt;
@@ -3389,6 +3393,11 @@ type TpvGUIObject=class;
        property GUIObjects:TpvGUIObjectList read fGUIObjects;
        property Tag:TpvPtrUInt read fTag write fTag;
        property Data:TObject read fData write fData;
+       property Icon:TObject read fIcon write fIcon;
+       property IconHeight:TpvFloat read fIconHeight write fIconHeight;
+       property IconPaddingLeft:TpvFloat read fIconPaddingLeft write fIconPaddingLeft;
+       property IconPaddingRight:TpvFloat read fIconPaddingRight write fIconPaddingRight;
+       property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
       published
        property Selected:boolean read GetSelected write SetSelected;
        property Expanded:boolean read GetExpanded write SetExpanded;
@@ -12617,6 +12626,7 @@ var IndentOffset,IndentIndex:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,RowHeight,Indent:TpvFloat;
     ItemText:TpvUTF8String;
+    IconSize:TpvVector2;
 begin
 
  aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
@@ -12663,7 +12673,27 @@ begin
      ItemText:=TpvUTF8String(TreeNode.fCaption);
     end;
 
-    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+(Indent+aTreeView.fWorkIndentWidth)+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+    if assigned(TreeNode.fIcon) then begin
+     if TreeNode.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height);
+     end else if TreeNode.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(TreeNode.fIcon).Width,TpvVulkanTexture(TreeNode.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     if TreeNode.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*TreeNode.fIconHeight)/IconSize.y;
+      IconSize.y:=TreeNode.fIconHeight;
+     end else if aTreeView.fWorkRowHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
+      IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
+     end;
+     IconSize.x:=IconSize.x+(TreeNode.fIconPaddingLeft+TreeNode.fIconPaddingRight);
+    end else begin
+     IconSize:=TpvVector2.Null;
+    end;
+
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+ListBoxHorizontalMargin)*2.0)+(Indent+aTreeView.fWorkIndentWidth)+IconSize.x+CurrentFont.TextWidth(ItemText,CurrentFontSize));
 
    end;
 
@@ -12678,9 +12708,9 @@ var Element:TpvInt32;
     NodeIndex,IndentOffset,IndentIndex:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,RowHeight,Indent:TpvFloat;
-    Offset,Position:TpvVector2;
+    Offset,Position,IconSize:TpvVector2;
     FontColor:TpvVector4;
-    ClipRect,DrawRect,Rect:TpvRect;
+    ClipRect,DrawRect,Rect,IconRect:TpvRect;
     ItemText:TpvUTF8String;
     TreeNode:TpvGUITreeNode;
     SpriteEx:TObject;
@@ -12887,7 +12917,40 @@ begin
 
     aDrawEngine.Transparent:=true;
 
-    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth,RowHeight*0.5));
+    if assigned(TreeNode.fIcon) then begin
+     if TreeNode.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height);
+     end else if TreeNode.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(TreeNode.fIcon).Width,TpvVulkanTexture(TreeNode.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     if TreeNode.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*TreeNode.fIconHeight)/IconSize.y;
+      IconSize.y:=TreeNode.fIconHeight;
+     end else if aTreeView.fWorkRowHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
+      IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
+     end;
+     IconRect:=TpvRect.CreateRelative(Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth+TreeNode.fIconPaddingLeft,(RowHeight-IconSize.y)*0.5),
+                                      IconSize);
+     if assigned(TreeNode.fIcon) then begin
+      if TreeNode.fIcon is TpvSprite then begin
+       aDrawEngine.DrawSprite(TpvSprite(TreeNode.fIcon),
+                              TpvRect.CreateRelative(TpvVector2.Null,
+                                                     TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height)),
+                              TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
+      end else if TreeNode.fIcon is TpvVulkanTexture then begin
+       aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(TreeNode.fIcon),
+                                         TpvRect.CreateAbsolute(Offset+IconRect.LeftTop,Offset+IconRect.RightBottom));
+      end;
+     end;
+     IconSize.x:=IconSize.x+(TreeNode.fIconPaddingLeft+TreeNode.fIconPaddingRight);
+    end else begin
+     IconSize:=TpvVector2.Null;
+    end;
+
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Indent+aTreeView.fWorkIndentWidth+IconSize.x,RowHeight*0.5));
 
     if aTreeView.fNodeIndex=NodeIndex then begin
      if aTreeView.Focused then begin
@@ -25488,7 +25551,15 @@ begin
 
  fCaption:='';
 
- fCachedCaption:='';
+ fIcon:=nil;
+
+ fIconHeight:=0;
+
+ fIconPaddingLeft:=0;
+
+ fIconPaddingRight:=2;
+
+ fIconPaddingVertical:=2;
 
  fTag:=0;
 
@@ -25543,8 +25614,6 @@ begin
  fTreeView:=nil;
 
  fCaption:='';
-
- fCachedCaption:='';
 
  FreeAndNil(fData);
 
