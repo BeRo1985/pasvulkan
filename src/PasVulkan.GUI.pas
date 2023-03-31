@@ -3356,6 +3356,8 @@ type TpvGUIObject=class;
        fIconPaddingLeft:TpvFloat;
        fIconPaddingRight:TpvFloat;
        fIconPaddingVertical:TpvFloat;
+       fGUIObjectMargin:TpvFloat;
+       fGUIObjectPadding:TpvFloat;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
        fDerivedVisibleCount:TpvSizeInt;
@@ -3418,6 +3420,8 @@ type TpvGUIObject=class;
        property IconPaddingLeft:TpvFloat read fIconPaddingLeft write fIconPaddingLeft;
        property IconPaddingRight:TpvFloat read fIconPaddingRight write fIconPaddingRight;
        property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
+       property GUIObjectMargin:TpvFloat read fGUIObjectMargin write fGUIObjectMargin;
+       property GUIObjectPadding:TpvFloat read fGUIObjectPadding write fGUIObjectPadding;
       published
        property OwnsDataObject:boolean read GetOwnsDataObject write SetOwnsDataObject;
        property Selected:boolean read GetSelected write SetSelected;
@@ -3459,6 +3463,8 @@ type TpvGUIObject=class;
       private
        fHorziontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
+       fClipContentPanel:TpvGUIPanel;
+       fContent:TpvGUIPanel;
        fNodeIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
@@ -3470,9 +3476,12 @@ type TpvGUIObject=class;
        fLastProcessedGeneration:TpvUInt64;
        fCurrentCheckGeneration:TpvUInt64;
        fLastCheckedGeneration:TpvUInt64;
+       fCurrentContentGeneration:TpvUInt64;
+       fLastContentGeneration:TpvUInt64;
        fFlags:TpvGUITreeViewFlags;
        fRoot:TpvGUITreeNode;
        fNodes:TpvGUITreeNodes;
+       fAllNodes:TpvGUITreeNodes;
        fTreeNodeSelectedHashMap:TpvGUITreeNodeBooleanHashMap;
        fOnChange:TpvGUIOnEvent;
        fOnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent;
@@ -3487,6 +3496,7 @@ type TpvGUIObject=class;
        fActionStopIndex:TpvSizeInt;
        fDoubleClickTimeAccumulator:double;
        fDoubleClickCounter:TpvSizeInt;
+       fLastSize:TpvVector2;
        function GetShowRootNode:Boolean; inline;
        procedure SetShowRootNode(const aValue:Boolean);
        function GetMultiSelect:Boolean; inline;
@@ -3504,6 +3514,8 @@ type TpvGUIObject=class;
        procedure AdjustScrollBars;
        procedure UpdateScrollBars;
        procedure CheckNodeWidths;
+       procedure UpdateGUIObjects;
+       procedure UpdateContent;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -3523,6 +3535,7 @@ type TpvGUIObject=class;
       published
        property HorziontalScrollBar:TpvGUIScrollBar read fHorziontalScrollBar;
        property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
+       property Content:TpvGUIPanel read fContent;
        property Root:TpvGUITreeNode read fRoot;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
        property IndentWidth:TpvFloat read fIndentWidth write fIndentWidth;
@@ -12918,7 +12931,7 @@ begin
         if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
          SpriteEx:=fIconTreeViewCloseLU;
         end else begin
-         SpriteEx:=fIconTreeViewOpenLU;
+         SpriteEx:=fIconTreeViewOpenU;
         end;
        end;
        TpvGUITreeNode.TVisualKind.Last:begin
@@ -12946,7 +12959,7 @@ begin
         end;
        end;
        TpvGUITreeNode.TVisualKind.Both:begin
-        SpriteEx:=fIconTreeViewL_HV_LU;
+        SpriteEx:=fIconTreeViewL_HV_U;
        end;
        TpvGUITreeNode.TVisualKind.Last:begin
         SpriteEx:=fIconTreeViewL_HV_U;
@@ -25753,6 +25766,10 @@ begin
 
  fIconPaddingVertical:=2;
 
+ fGUIObjectMargin:=8;
+
+ fGUIObjectPadding:=8;
+
  fTag:=0;
 
  fDataObject:=nil;
@@ -25774,6 +25791,8 @@ begin
  if assigned(fTreeView) then begin
   inc(fTreeView.fCurrentGeneration);
  end;
+
+ CreateGUIObjects;
 
 end;
 
@@ -25857,11 +25876,41 @@ end;
 procedure TpvGUITreeNode.UpdateGUIObjects;
 var Index:TpvSizeInt;
     GUIObject:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
+    Visible:boolean;
+    CurrentX:TpvFloat;
 begin
- for Index:=0 to fGUIObjects.Count-1 do begin
-  GUIObject:=fGUIObjects[Index];
-  if assigned(GUIObject) then begin
-   if GUIObject is TpvGUIWidget then begin
+ if assigned(fTreeView) then begin
+  Visible:=fNodeIndex>=0;
+  CurrentX:=fTreeView.fClipContentPanel.fSize.x-fGUIObjectMargin;
+  for Index:=fGUIObjects.Count-1 downto 0 do begin
+   GUIObject:=fGUIObjects[Index];
+   if assigned(GUIObject) then begin
+    if GUIObject is TpvGUIWidget then begin
+     TpvGUIWidget(GUIObject).Visible:=Visible;
+     if Visible and assigned(fTreeView) then begin
+      ChildWidget:=TpvGUIWidget(GUIObject);
+      ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
+      ChildWidgetFixedSize:=ChildWidget.GetFixedSize;
+      if ChildWidgetFixedSize.x>0.0 then begin
+       ChildWidgetSize.x:=ChildWidgetFixedSize.x;
+      end else begin
+       ChildWidgetSize.x:=ChildWidgetPreferredSize.x;
+      end;
+      if ChildWidgetFixedSize.y>0.0 then begin
+       ChildWidgetSize.y:=ChildWidgetFixedSize.y;
+      end else begin
+       ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
+      end;
+      ChildWidget.fSize:=ChildWidgetSize;
+      ChildWidget.PerformLayout;
+      CurrentX:=CurrentX-ChildWidget.fSize.x;
+      ChildWidget.fPosition:=TpvVector2.InlineableCreate(CurrentX,
+                                                         fTreeView.fWorkYOffset+(fTreeView.fWorkRowHeight*fNodeIndex)+((fTreeView.fWorkRowHeight-ChildWidget.fSize.y)*0.5));
+      CurrentX:=CurrentX-fGUIObjectPadding;
+     end;
+    end;
    end;
   end;
  end;
@@ -25897,8 +25946,19 @@ begin
    if fParent<>aParent then begin
     fParent.Remove(self);
    end;
-   fTreeView:=fParent.fTreeView;
+   if fGUIObjects.Count>0 then begin
+    if fTreeView<>fParent.fTreeView then begin
+     DestroyGUIObjects;
+     fTreeView:=fParent.fTreeView;
+     CreateGUIObjects;
+    end;
+   end else begin
+    fTreeView:=fParent.fTreeView;
+   end;
   end else begin
+   if (fGUIObjects.Count>0) and assigned(fTreeView) then begin
+    DestroyGUIObjects;
+   end;
    fTreeView:=nil;
   end;
   fParent:=aParent;
@@ -26193,6 +26253,7 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+//Include(fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  fFlags:=[TpvGUITreeViewFlag.MultiSelect];
 
@@ -26208,6 +26269,14 @@ begin
  fVerticalScrollBar.MinimumValue:=0;
  fVerticalScrollBar.MaximumValue:=1;
 
+ fClipContentPanel:=TpvGUIPanel.Create(self);
+ fClipContentPanel.fBackground:=false;
+ Include(fClipContentPanel.fWidgetFlags,TpvGUIWidgetFlag.Scissor);
+
+ fContent:=TpvGUIPanel.Create(fClipContentPanel);
+//fContent.Layout:=TpvGUIBoxLayout.Create(fContent,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,4.0);
+ fContent.fBackground:=false;
+
  fCurrentGeneration:=1;
 
  fLastProcessedGeneration:=0;
@@ -26215,6 +26284,10 @@ begin
  fCurrentCheckGeneration:=1;
 
  fLastCheckedGeneration:=0;
+
+ fCurrentContentGeneration:=1;
+
+ fLastContentGeneration:=0;
 
  fNodeIndex:=-1;
 
@@ -26230,6 +26303,9 @@ begin
 
  fNodes:=TpvGUITreeNodes.Create;
  fNodes.OwnsObjects:=false;
+
+ fAllNodes:=TpvGUITreeNodes.Create;
+ fAllNodes.OwnsObjects:=false;
 
  fTreeNodeSelectedHashMap:=TpvGUITreeNodeBooleanHashMap.Create(false);
 
@@ -26265,6 +26341,8 @@ destructor TpvGUITreeView.Destroy;
 begin
 
  FreeAndNil(fTreeNodeSelectedHashMap);
+
+ FreeAndNil(fAllNodes);
 
  FreeAndNil(fNodes);
 
@@ -26339,15 +26417,15 @@ begin
  end;
 end;
 
-
 procedure TpvGUITreeView.UpdateNodes;
 var Index:TpvSizeInt;
     TreeNodeStack,InvisibleTreeNodeStack:TpvGUITreeNodeStack;
     TreeNode:TpvGUITreeNode;
 begin
- if (fLastProcessedGeneration<>fCurrentGeneration) or (fNodes.Count=0) then begin
+ if (fLastProcessedGeneration<>fCurrentGeneration) or (fAllNodes.Count=0) then begin
   try
    fNodes.Clear;
+   fAllNodes.Clear;
    if assigned(fRoot) then begin
     TreeNodeStack.Initialize;
     try
@@ -26364,6 +26442,7 @@ begin
          TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
          TreeNode.fFirstVisualChild:=nil;
          TreeNode.fLastVisualChild:=nil;
+         fAllNodes.Add(TreeNode);
          if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
           TreeNode.fNodeIndex:=fNodes.Add(TreeNode);
           TreeNode.fDerivedVisibleCount:=1;
@@ -26387,6 +26466,7 @@ begin
       end;
       while InvisibleTreeNodeStack.Pop(TreeNode) do begin
        if assigned(TreeNode) then begin
+        fAllNodes.Add(TreeNode);
         TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
         TreeNode.fFirstVisualChild:=nil;
         TreeNode.fLastVisualChild:=nil;
@@ -26440,6 +26520,7 @@ begin
     fLastProcessedGeneration:=fCurrentGeneration;
    finally
     inc(fCurrentCheckGeneration);
+    inc(fCurrentContentGeneration);
    end;
   end;
  end;
@@ -26515,17 +26596,36 @@ begin
  end;
 end;
 
+procedure TpvGUITreeView.UpdateGUIObjects;
+var TreeNode:TpvGUITreeNode;
+begin
+ for TreeNode in fAllNodes do begin
+  if assigned(TreeNode) then begin
+   TreeNode.UpdateGUIObjects;
+  end;
+ end;
+end;
+
 procedure TpvGUITreeView.UpdateScrollBars;
 var VisibleNodes:TpvSizeInt;
+    b:boolean;
 begin
  CheckNodeWidths;
  VisibleNodes:=GetCountVisibleNodes;
- fVerticalScrollBar.Visible:=fNodes.Count>VisibleNodes;
+ b:=fNodes.Count>VisibleNodes;
+ if fVerticalScrollBar.Visible<>b then begin
+  inc(fCurrentContentGeneration);
+ end;
+ fVerticalScrollBar.Visible:=b;
  fVerticalScrollBar.MaximumValue:=Max(1,fNodes.Count-VisibleNodes);
  if not fVerticalScrollBar.Visible then begin
   fVerticalScrollBar.Value:=0;
  end;
- fHorziontalScrollBar.Visible:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0));
+ b:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0));
+ if fHorziontalScrollBar.Visible<>b then begin
+  inc(fCurrentContentGeneration);
+ end;
+ fHorziontalScrollBar.Visible:=b;
  fHorziontalScrollBar.MaximumValue:=Max(1,Trunc(fMaximumContentWidth-(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0))));
  if not fHorziontalScrollBar.Visible then begin
   fHorziontalScrollBar.Value:=0;
@@ -26575,23 +26675,80 @@ begin
  end;
 end;
 
+procedure TpvGUITreeView.UpdateContent;
+var AvailiableSize,ContentSize:TpvVector2;
+begin
+
+ if fSize<>fLastSize then begin
+  fLastSize:=fSize;
+  inc(fCurrentContentGeneration);
+ end;
+
+ if fLastContentGeneration<>fCurrentContentGeneration then begin
+
+  try
+
+   if fHorziontalScrollBar.Visible then begin
+    if fVerticalScrollBar.Visible then begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y);
+    end else begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(0,fHorziontalScrollBar.fSize.y);
+    end;
+   end else begin
+    if fVerticalScrollBar.Visible then begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,0);
+    end else begin
+     ContentSize:=fSize;
+    end;
+   end;
+
+   fClipContentPanel.fPosition:=TpvVector2.Null;
+   fClipContentPanel.fSize:=ContentSize;
+
+   ContentSize.y:=Max(ContentSize.y,fWorkYOffset+(fWorkRowHeight*fNodes.Count));
+
+   fContent.fPosition:=TpvVector2.Null;
+   if fContent.fSize<>ContentSize then begin
+    fContent.fSize:=ContentSize;
+    fContent.PerformLayout;
+   end;
+
+   UpdateGUIObjects;
+
+  finally
+   fLastContentGeneration:=fCurrentContentGeneration;
+  end;
+
+ end;
+
+ fContent.fPosition:=TpvVector2.InlineableCreate(-fHorziontalScrollBar.fValue,-fVerticalScrollBar.Value*fWorkRowHeight);
+
+end;
+
 procedure TpvGUITreeView.PerformLayout;
 var HorziontalScrollBarSize,
     VerticalScrollBarSize:TpvVector2;
 begin
+
  fHorziontalScrollBar.Visible:=false;
  fVerticalScrollBar.Visible:=false;
  inherited PerformLayout;
  fHorziontalScrollBar.Visible:=true;
  fVerticalScrollBar.Visible:=true;
+
  HorziontalScrollBarSize:=fHorziontalScrollBar.GetPreferredSize;
  fHorziontalScrollBar.fPosition:=TpvVector2.InlineableCreate(0,fSize.y-HorziontalScrollBarSize.y);
  fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,HorziontalScrollBarSize.y);
+
  VerticalScrollBarSize:=fVerticalScrollBar.GetPreferredSize;
  fVerticalScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarSize.x,0);
  fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarSize.x,fSize.y);
+
  UpdateScrollBars;
  AdjustScrollBars;
+
+ UpdateContent;
+
 end;
 
 function TpvGUITreeView.Enter:Boolean;
@@ -26646,6 +26803,7 @@ function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Bo
 var TreeNode:TpvGUITreeNode;
 begin
  UpdateNodes;
+ UpdateContent;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
@@ -26764,6 +26922,19 @@ begin
     end;
     result:=true;
    end;
+   KEYCODE_DELETE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       if assigned(TreeNode.fParent) then begin
+        TreeNode.fParent.Remove(TreeNode);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
    KEYCODE_SPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
@@ -26803,6 +26974,7 @@ begin
  if assigned(Skin) then begin
   UpdateNodes;
   UpdateScrollBars;
+  UpdateContent;
   result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
    result:=inherited PointerEvent(aPointerEvent);
@@ -26978,6 +27150,7 @@ procedure TpvGUITreeView.Check;
 begin
  UpdateNodes;
  UpdateScrollBars;
+ UpdateContent;
  fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
  if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
   fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
@@ -26990,6 +27163,7 @@ procedure TpvGUITreeView.Draw;
 begin
  UpdateNodes;
  UpdateScrollBars;
+ UpdateContent;
  Skin.DrawTreeView(fInstance.DrawEngine,self);
  inherited Draw;
 end;

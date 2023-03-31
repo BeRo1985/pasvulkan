@@ -1625,6 +1625,70 @@ begin
  fColorPicker.SRGB:=fSRGBModeRadioCheckBox.Checked;
 end;
 
+type { TScreenExampleGUITreeViewWidgetTreeNode }
+     TScreenExampleGUITreeViewWidgetTreeNode=class(TpvGUITreeNode)
+      protected
+       procedure CreateGUIObjects; override;
+       procedure DestroyGUIObjects; override;
+       procedure UpdateGUIObjects; override;
+       procedure DrawGUIObjects; override;
+     end;
+
+{ TScreenExampleGUITreeViewWidgetTreeNode }
+
+procedure TScreenExampleGUITreeViewWidgetTreeNode.CreateGUIObjects;
+var Button:TpvGUIButton;
+begin
+
+ inherited CreateGUIObjects;
+
+ if assigned(TreeView) then begin
+
+  Button:=TpvGUIButton.Create(TreeView.Content);
+  try
+   Button.AutoSize:=true;
+   Button.Caption:='Hello';
+  finally
+   GUIObjects.Add(Button);
+  end;
+
+ end;
+
+end;
+
+procedure TScreenExampleGUITreeViewWidgetTreeNode.DestroyGUIObjects;
+begin
+
+ if assigned(TreeView) then begin
+
+ end;
+
+ inherited DestroyGUIObjects;
+
+end;
+
+procedure TScreenExampleGUITreeViewWidgetTreeNode.UpdateGUIObjects;
+begin
+
+ inherited UpdateGUIObjects;
+
+ if assigned(TreeView) then begin
+
+ end;
+
+end;
+
+procedure TScreenExampleGUITreeViewWidgetTreeNode.DrawGUIObjects;
+begin
+
+ inherited DrawGUIObjects;
+
+ if assigned(TreeView) then begin
+
+ end;
+
+end;
+
 constructor TScreenExampleGUITreeView.Create(const aParent:TpvGUIObject);
 var TreeNodeA,TreeNodeB,TreeNodeC:TpvGUITreeNode;
 begin
@@ -1687,6 +1751,15 @@ begin
  TreeNodeB.Caption:='Test B3 with a really very long text for testing';
  TreeNodeB.CheckBox:=true;
  TreeNodeB.Icon:=Skin.IconContentCopy;
+
+ TreeNodeA:=TpvGUITreeNode.Create(fTreeView.Root);
+ TreeNodeA.Caption:='Test A4';
+
+ TreeNodeB:=TScreenExampleGUITreeViewWidgetTreeNode.Create(TreeNodeA);
+ TreeNodeB.Caption:='Test B1';
+ TreeNodeB.Icon:=Skin.IconContentPaste;
+
+// TreeNodeA.Remove(TreeNodeB);
 
  fTreeView.Root.ExpandAll;
 
