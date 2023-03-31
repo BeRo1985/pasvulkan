@@ -1631,7 +1631,6 @@ type { TScreenExampleGUITreeViewWidgetTreeNode }
        procedure CreateGUIObjects; override;
        procedure DestroyGUIObjects; override;
        procedure UpdateGUIObjects; override;
-       procedure DrawGUIObjects; override;
      end;
 
 { TScreenExampleGUITreeViewWidgetTreeNode }
@@ -1671,17 +1670,6 @@ procedure TScreenExampleGUITreeViewWidgetTreeNode.UpdateGUIObjects;
 begin
 
  inherited UpdateGUIObjects;
-
- if assigned(TreeView) then begin
-
- end;
-
-end;
-
-procedure TScreenExampleGUITreeViewWidgetTreeNode.DrawGUIObjects;
-begin
-
- inherited DrawGUIObjects;
 
  if assigned(TreeView) then begin
 

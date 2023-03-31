@@ -3387,7 +3387,6 @@ type TpvGUIObject=class;
        procedure CreateGUIObjects; virtual;
        procedure DestroyGUIObjects; virtual;
        procedure UpdateGUIObjects; virtual;
-       procedure DrawGUIObjects; virtual;
       public
        constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
        destructor Destroy; override;
@@ -25937,19 +25936,6 @@ begin
       CurrentX:=CurrentX-fGUIObjectPadding;
      end;
     end;
-   end;
-  end;
- end;
-end;
-
-procedure TpvGUITreeNode.DrawGUIObjects;
-var Index:TpvSizeInt;
-    GUIObject:TpvGUIObject;
-begin
- for Index:=0 to fGUIObjects.Count-1 do begin
-  GUIObject:=fGUIObjects[Index];
-  if assigned(GUIObject) then begin
-   if GUIObject is TpvGUIWidget then begin
    end;
   end;
  end;
