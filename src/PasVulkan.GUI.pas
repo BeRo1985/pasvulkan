@@ -3358,6 +3358,7 @@ type TpvGUIObject=class;
        fIconPaddingVertical:TpvFloat;
        fGUIObjectMargin:TpvFloat;
        fGUIObjectPadding:TpvFloat;
+       fGUIObjectVerticalAlignment:TpvGUILayoutAlignment;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
        fDerivedVisibleCount:TpvSizeInt;
@@ -3422,6 +3423,7 @@ type TpvGUIObject=class;
        property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
        property GUIObjectMargin:TpvFloat read fGUIObjectMargin write fGUIObjectMargin;
        property GUIObjectPadding:TpvFloat read fGUIObjectPadding write fGUIObjectPadding;
+       property GUIObjectVerticalAlignment:TpvGUILayoutAlignment read fGUIObjectVerticalAlignment write fGUIObjectVerticalAlignment;
       published
        property OwnsDataObject:boolean read GetOwnsDataObject write SetOwnsDataObject;
        property Selected:boolean read GetSelected write SetSelected;
@@ -25770,6 +25772,8 @@ begin
 
  fGUIObjectPadding:=8;
 
+ fGUIObjectVerticalAlignment:=TpvGUILayoutAlignment.Middle;
+
  fTag:=0;
 
  fDataObject:=nil;
@@ -25879,7 +25883,7 @@ var Index:TpvSizeInt;
     ChildWidget:TpvGUIWidget;
     ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
     Visible:boolean;
-    CurrentX:TpvFloat;
+    CurrentX,YOffset:TpvFloat;
 begin
  if assigned(fTreeView) then begin
   Visible:=fNodeIndex>=0;
@@ -25901,13 +25905,31 @@ begin
       if ChildWidgetFixedSize.y>0.0 then begin
        ChildWidgetSize.y:=ChildWidgetFixedSize.y;
       end else begin
-       ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
+       if fGUIObjectVerticalAlignment=TpvGUILayoutAlignment.Fill then begin
+        ChildWidgetSize.y:=fTreeView.fWorkRowHeight;
+       end else begin
+        ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
+       end;
       end;
       ChildWidget.fSize:=ChildWidgetSize;
       ChildWidget.PerformLayout;
       CurrentX:=CurrentX-ChildWidget.fSize.x;
+      case fGUIObjectVerticalAlignment of
+       TpvGUILayoutAlignment.Leading:begin
+        YOffset:=0.0;
+       end;
+       TpvGUILayoutAlignment.Middle:begin
+        YOffset:=(fTreeView.fWorkRowHeight-ChildWidget.fSize.y)*0.5;
+       end;
+       TpvGUILayoutAlignment.Tailing:begin
+        YOffset:=fTreeView.fWorkRowHeight-ChildWidget.fSize.y;
+       end;
+       else {TpvGUILayoutAlignment.Fill:}begin
+        YOffset:=0.0;
+       end;
+      end;
       ChildWidget.fPosition:=TpvVector2.InlineableCreate(CurrentX,
-                                                         fTreeView.fWorkYOffset+(fTreeView.fWorkRowHeight*fNodeIndex)+((fTreeView.fWorkRowHeight-ChildWidget.fSize.y)*0.5));
+                                                         fTreeView.fWorkYOffset+(fTreeView.fWorkRowHeight*fNodeIndex)+YOffset);
       CurrentX:=CurrentX-fGUIObjectPadding;
      end;
     end;
@@ -26705,7 +26727,7 @@ begin
    fClipContentPanel.fPosition:=TpvVector2.Null;
    fClipContentPanel.fSize:=ContentSize;
 
-   ContentSize.y:=Max(ContentSize.y,fWorkYOffset+(fWorkRowHeight*fNodes.Count));
+   ContentSize.y:=Max(ContentSize.y,fWorkYOffset+((fWorkRowHeight+1)*fNodes.Count));
 
    fContent.fPosition:=TpvVector2.Null;
    if fContent.fSize<>ContentSize then begin
