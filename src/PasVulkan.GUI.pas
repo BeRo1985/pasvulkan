@@ -25801,6 +25801,7 @@ begin
 end;
 
 destructor TpvGUITreeNode.Destroy;
+var Index:TpvSizeInt;
 begin
 
  DestroyGUIObjects;
@@ -25814,9 +25815,12 @@ begin
  end;
 
  if assigned(fParent) and assigned(fParent.fChildren) then begin
-  fParent.fChildren.Extract(fParent.fChildren.IndexOf(self));
-  if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
-   Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
+  Index:=fParent.fChildren.IndexOf(self);
+  if Index>=0 then begin
+   fParent.fChildren.Extract(Index);
+   if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
+    Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
+   end;
   end;
  end;
 
@@ -26944,7 +26948,7 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_DELETE:begin
+{  KEYCODE_DELETE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
@@ -26956,7 +26960,7 @@ begin
      end;
     end;
     result:=true;
-   end;
+   end;}
    KEYCODE_SPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
