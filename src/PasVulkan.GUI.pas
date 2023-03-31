@@ -3388,7 +3388,7 @@ type TpvGUIObject=class;
        procedure DestroyGUIObjects; virtual;
        procedure UpdateGUIObjects; virtual;
       public
-       constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1); reintroduce;
+       constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1;const aCaption:TpvUTF8String='';const aTag:TpvPtrUInt=0;const aDataObject:TObject=nil;const aOwnsDataObject:boolean=false); reintroduce;
        destructor Destroy; override;
        function Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
        function Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
@@ -25736,7 +25736,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUITreeNode.Create(const aParent:TpvGUITreeNode;const aIndex:TpvSizeInt);
+constructor TpvGUITreeNode.Create(const aParent:TpvGUITreeNode;const aIndex:TpvSizeInt;const aCaption:TpvUTF8String;const aTag:TpvPtrUInt;const aDataObject:TObject;const aOwnsDataObject:boolean);
 begin
  inherited Create;
 
@@ -25755,7 +25755,7 @@ begin
 
  fGUIObjects:=TpvGUIObjectList.Create(false);
 
- fCaption:='';
+ fCaption:=aCaption;
 
  fIcon:=nil;
 
@@ -25773,15 +25773,19 @@ begin
 
  fGUIObjectVerticalAlignment:=TpvGUILayoutAlignment.Middle;
 
- fTag:=0;
+ fTag:=aTag;
 
- fDataObject:=nil;
+ fDataObject:=aDataObject;
 
  fDerivedVisibleCount:=1;
 
  fNodeIndex:=-1;
 
  fFlags:=[TpvGUITreeNode.TFlag.Visible];
+
+ if aOwnsDataObject then begin
+  Include(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
+ end;
 
  if assigned(fParent) then begin
   if aIndex<0 then begin
