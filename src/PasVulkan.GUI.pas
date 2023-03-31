@@ -26173,22 +26173,28 @@ end;
 
 function TpvGUITreeNode.Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
 begin
- aNode.fTreeView:=fTreeView;
  aNode.SetParentEx(self);
+ aNode.fTreeView:=fTreeView;
  fChildren.Add(aNode);
  if assigned(fTreeView) then begin
   inc(fTreeView.fCurrentGeneration);
+  if aNode.fGUIObjects.Count=0 then begin
+   aNode.CreateGUIObjects;
+  end;
  end;
  result:=aNode;
 end;
 
 function TpvGUITreeNode.Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
 begin
- aNode.fTreeView:=fTreeView;
  aNode.SetParentEx(self);
+ aNode.fTreeView:=fTreeView;
  fChildren.Insert(aIndex,aNode);
  if assigned(fTreeView) then begin
   inc(fTreeView.fCurrentGeneration);
+  if aNode.fGUIObjects.Count=0 then begin
+   aNode.CreateGUIObjects;
+  end;
  end;
  result:=aNode;
 end;
@@ -26212,6 +26218,9 @@ begin
   result:=fChildren[aIndex];
   if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
    fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
+  end;
+  if assigned(result) and (result.fGUIObjects.Count>0) then begin
+   result.DestroyGUIObjects;
   end;
   result.fParent:=nil;
   result.fTreeView:=nil;
@@ -26247,6 +26256,9 @@ begin
   result:=fChildren[aIndex];
   if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
    fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
+  end;
+  if assigned(result) and (result.fGUIObjects.Count>0) then begin
+   result.DestroyGUIObjects;
   end;
   result.fParent:=nil;
   result.fTreeView:=nil;
