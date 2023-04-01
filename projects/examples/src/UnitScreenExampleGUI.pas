@@ -1702,7 +1702,7 @@ begin
  TreeNodeA:=TpvGUITreeNode.Create(fTreeView.Root);
  TreeNodeA.Caption:='Test A1';
 
- TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
+ TreeNodeB:=TScreenExampleGUITreeViewWidgetTreeNode.Create(TreeNodeA);
  TreeNodeB.Caption:='Test B1';
 
  TreeNodeB:=TpvGUITreeNode.Create(TreeNodeA);
