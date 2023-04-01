@@ -3358,6 +3358,7 @@ type TpvGUIObject=class;
        fIconPaddingVertical:TpvFloat;
        fGUIObjectMargin:TpvFloat;
        fGUIObjectPadding:TpvFloat;
+       fGUIObjectHorziontalAlignment:TpvGUILayoutAlignment;
        fGUIObjectVerticalAlignment:TpvGUILayoutAlignment;
        fFlags:TFlags;
        fDepth:TpvSizeInt;
@@ -3426,6 +3427,7 @@ type TpvGUIObject=class;
        property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
        property GUIObjectMargin:TpvFloat read fGUIObjectMargin write fGUIObjectMargin;
        property GUIObjectPadding:TpvFloat read fGUIObjectPadding write fGUIObjectPadding;
+       property GUIObjectHorziontalAlignment:TpvGUILayoutAlignment read fGUIObjectHorziontalAlignment write fGUIObjectHorziontalAlignment;
        property GUIObjectVerticalAlignment:TpvGUILayoutAlignment read fGUIObjectVerticalAlignment write fGUIObjectVerticalAlignment;
       published
        property OwnsDataObject:boolean read GetOwnsDataObject write SetOwnsDataObject;
@@ -25775,6 +25777,8 @@ begin
 
  fGUIObjectPadding:=8;
 
+ fGUIObjectHorziontalAlignment:=TpvGUILayoutAlignment.Tailing;
+
  fGUIObjectVerticalAlignment:=TpvGUILayoutAlignment.Middle;
 
  fTag:=aTag;
@@ -25897,17 +25901,22 @@ var Index:TpvSizeInt;
     ChildWidget:TpvGUIWidget;
     ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
     Visible:boolean;
-    CurrentX,YOffset:TpvFloat;
+    CurrentX,TotalWidth,YOffset,Scale:TpvFloat;
 begin
+
  if assigned(fTreeView) then begin
+
   Visible:=fNodeIndex>=0;
-  CurrentX:=fTreeView.fClipContentPanel.fSize.x-fGUIObjectMargin;
-  for Index:=fGUIObjects.Count-1 downto 0 do begin
+
+  // Pass 1
+  CurrentX:=0;
+  TotalWidth:=0.0;
+  for Index:=0 to fGUIObjects.Count-1 do begin
    GUIObject:=fGUIObjects[Index];
    if assigned(GUIObject) then begin
     if GUIObject is TpvGUIWidget then begin
      TpvGUIWidget(GUIObject).Visible:=Visible;
-     if Visible and assigned(fTreeView) then begin
+     if Visible then begin
       ChildWidget:=TpvGUIWidget(GUIObject);
       ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
       ChildWidgetFixedSize:=ChildWidget.GetFixedSize;
@@ -25926,8 +25935,6 @@ begin
        end;
       end;
       ChildWidget.fSize:=ChildWidgetSize;
-      ChildWidget.PerformLayout;
-      CurrentX:=CurrentX-ChildWidget.fSize.x;
       case fGUIObjectVerticalAlignment of
        TpvGUILayoutAlignment.Leading:begin
         YOffset:=0.0;
@@ -25942,14 +25949,75 @@ begin
         YOffset:=0.0;
        end;
       end;
+      if not IsZero(TotalWidth) then begin
+       TotalWidth:=TotalWidth+fGUIObjectPadding;
+      end;
       ChildWidget.fPosition:=TpvVector2.InlineableCreate(CurrentX,
                                                          fTreeView.fWorkYOffset+(fTreeView.fWorkRowHeight*fNodeIndex)+YOffset);
-      CurrentX:=CurrentX-fGUIObjectPadding;
+      CurrentX:=CurrentX+(ChildWidget.fSize.x+fGUIObjectPadding);
+      TotalWidth:=TotalWidth+ChildWidget.fSize.x;
      end;
     end;
    end;
   end;
+
+  if Visible then begin
+
+   // Pass 2
+   case fGUIObjectHorziontalAlignment of
+    TpvGUILayoutAlignment.Leading:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+fGUIObjectMargin;
+      end;
+     end;
+    end;
+    TpvGUILayoutAlignment.Middle:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+((fTreeView.fContent.fSize.x-TotalWidth)*0.5);
+      end;
+     end;
+    end;
+    TpvGUILayoutAlignment.Tailing:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+(fTreeView.fContent.fSize.x-(TotalWidth+fGUIObjectMargin));
+      end;
+     end;
+    end;
+    else {TpvGUILayoutAlignment.Fill:}begin
+     Scale:=(fTreeView.fContent.fSize.x-(fGUIObjectMargin*2.0))/Max(1,TotalWidth);
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=(ChildWidget.fPosition.x*Scale)+fGUIObjectMargin;
+       ChildWidget.fSize.x:=(ChildWidget.fSize.x*Scale);
+      end;
+     end;
+    end;
+   end;
+
+   // Pass 3
+   for Index:=0 to fGUIObjects.Count-1 do begin
+    GUIObject:=fGUIObjects[Index];
+    if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+     ChildWidget:=TpvGUIWidget(GUIObject);
+     ChildWidget.PerformLayout;
+    end;
+   end;
+
+  end;
+
  end;
+
 end;
 
 function TpvGUITreeNode.GetIndex:TpvSizeInt;
