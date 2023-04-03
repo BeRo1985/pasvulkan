@@ -182,7 +182,6 @@ vec3 doToneMapping(vec3 color) {
 }
 
 #if 1
-#if 1
 const mat3 RGB2XYZ = mat3(
   0.4124564, 0.2126729, 0.0193339,
   0.3575761, 0.7151522, 0.1191920,
@@ -207,6 +206,7 @@ const mat3 XYZ2RGB = mat3(
   0.0556434, -0.2040259, 1.0572252
 );
 #endif
+
 vec3 convertRGB2Yxy(vec3 c){
   vec3 XYZ = RGB2XYZ * c;
   return vec3(XYZ.y, XYZ.xy / dot(XYZ, vec3(1.0)));
@@ -216,27 +216,18 @@ vec3 convertYxy2RGB(vec3 c){
   return XYZ2RGB * (vec3(c.yx, ((1.0 - c.y) - c.z)) * vec2(c.x / c.z, 1.0).xyx);
 }
 
-#else
-vec3 convertRGB2Yxy(vec3 c){
-  return vec3(dot(vec3(0.2126, 0.7152, 0.0722), c), vec2(c.x, c.y) / vec2(c.x + c.y + c.z));
-}
-
-vec3 convertYxy2RGB(vec3 c){
-  vec3 XYZ = vec3(c.x, vec2(c.x / c.z) * vec2(c.y, (1.0 - c.y) - c.z)).yxz;
-  return vec3(dot(vec3(3.2406, -1.5372, -0.4986), XYZ), 
-              dot(vec3(-0.9689, 1.8758, 0.0415), XYZ), 
-              dot(vec3(0.0557, -0.2040, 1.0570), XYZ));
-}
-#endif
-
 void main() {
 #if 1
   vec4 c = subpassLoad(uSubpassInput);
+#if 1
+  float Lmax = 9.6 * histogramLuminance; // optimized from (78 / (0.65 * 100)) * pow(2, log2(histogramLuminance * (100 / 12.5)));
+#else
   float S = 100.0;
   float K = 12.5;
   float q = 0.65;
   float EV100 = log2(histogramLuminance * (S / K));
   float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
+#endif
   c.xyz = convertYxy2RGB(convertRGB2Yxy(c.xyz) * vec2(1.0 / max(1e-4, Lmax), 1.0).xyy);
   outColor = vec4(doToneMapping(c.xyz), c.w);
 #else
