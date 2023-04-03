@@ -16,7 +16,7 @@ layout (std430, set = 0, binding = 0) buffer HistogramBuffer {
   uint histogramBuffer[];
 };
 
-layout (std430, set = 0, binding = 1) buffer LastHistogramLuminance {
+layout (std430, set = 0, binding = 1) readonly buffer LastHistogramLuminance {
   float lastHistogramLuminance;
 };
 
@@ -57,11 +57,12 @@ void main() {
   }
 
   if(gl_LocalInvocationIndex == 0){
-    histogramLuminance = mix(lastHistogramLuminance, 
-                             exp2(fma((float(sharedHistogram[0]) / max(1.0, float(pushConstants.countPixels - countForThisBin))) - 1.0, 
-                                      pushConstants.logLuminanceRange, 
-                                      pushConstants.minLogLuminance)), 
-                             pushConstants.timeCoefficient);
+    float newHistogramLuminance = mix(lastHistogramLuminance, 
+                                      exp2(fma((float(sharedHistogram[0]) / max(1.0, float(pushConstants.countPixels - countForThisBin))) - 1.0, 
+                                                pushConstants.logLuminanceRange / 254.0, 
+                                                pushConstants.minLogLuminance)), 
+                                      pushConstants.timeCoefficient);
+    histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 0.0 : newHistogramLuminance;
   }
 
 }
