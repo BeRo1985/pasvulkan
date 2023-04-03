@@ -185,6 +185,14 @@ type { TpvScene3DRendererInstance }
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
             TLuminanceVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TLuminancePushConstants=record
+             MinLogLuminance:TpvFloat;
+             LogLuminanceRange:TpvFloat;
+             InverseLogLuminanceRange:TpvFloat;
+             TimeCoefficient:TpvFloat;
+             CountPixels:TpvUInt32;
+            end;
+            PLuminancePushConstants=^TLuminancePushConstants;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -265,6 +273,7 @@ type { TpvScene3DRendererInstance }
        fLuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers;
        fLuminanceVulkanBuffers:TLuminanceVulkanBuffers;
       public
+       fLuminancePushConstants:TLuminancePushConstants;
        fLuminanceEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fLuminanceEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
@@ -2303,6 +2312,12 @@ begin
  fLightGridPushConstants.ZMax:=fLightGridSizeZ-1;
 
  fLightGridGlobalsVulkanBuffers[aInFlightFrameIndex].UpdateData(fLightGridPushConstants,0,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants));
+
+ fLuminancePushConstants.MinLogLuminance:=Renderer.MinLogLuminance;
+ fLuminancePushConstants.LogLuminanceRange:=Renderer.MaxLogLuminance-Renderer.MinLogLuminance;
+ fLuminancePushConstants.InverseLogLuminanceRange:=1.0/fLuminancePushConstants.LogLuminanceRange;
+ fLuminancePushConstants.TimeCoefficient:=1.0-exp(pvApplication.DeltaTime*(-TwoPI));
+ fLuminancePushConstants.CountPixels:=fWidth*fHeight*fCountSurfaceViews;
 
  fFrameGraph.Draw(aSwapChainImageIndex,
                   aInFlightFrameIndex,

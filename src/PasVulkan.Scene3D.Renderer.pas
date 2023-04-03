@@ -128,6 +128,8 @@ type TpvScene3DRenderer=class;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fLensMode:TpvScene3DRendererLensMode;
+       fMinLogLuminance:TpvFloat;
+       fMaxLogLuminance:TpvFloat;
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
@@ -184,6 +186,8 @@ type TpvScene3DRenderer=class;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
+       property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
+       property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA write fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
@@ -338,6 +342,10 @@ begin
  fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
 
  fLensMode:=TpvScene3DRendererLensMode.Auto;
+
+ fMinLogLuminance:=-8.0;
+
+ fMaxLogLuminance:=3.5;
 
  fMaxMSAA:=0;
 
