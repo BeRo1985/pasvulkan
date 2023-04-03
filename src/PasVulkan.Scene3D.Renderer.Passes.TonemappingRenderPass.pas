@@ -377,8 +377,10 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesTonemappingRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+//var ShutterSpeed,EV100,LMax:TpvFloat;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+ //ShutterSpeed:=1.0/fInstance.CameraPreset.FNumber;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

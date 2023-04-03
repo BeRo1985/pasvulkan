@@ -232,7 +232,12 @@ vec3 convertYxy2RGB(vec3 c){
 void main() {
 #if 1
   vec4 c = subpassLoad(uSubpassInput);
-  c.xyz = convertYxy2RGB(convertRGB2Yxy(c.xyz) * vec2(1.0 / fma(histogramLuminance, 9.6, 1e-4), 1.0).xyy);
+  float S = 100.0;
+  float K = 12.5;
+  float q = 0.65;
+  float EV100 = log2(histogramLuminance * (S / K));
+  float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
+  c.xyz = convertYxy2RGB(convertRGB2Yxy(c.xyz) * vec2(1.0 / max(1e-4, Lmax), 1.0).xyy);
   outColor = vec4(doToneMapping(c.xyz), c.w);
 #else
   outColor = vec4(1.0);
