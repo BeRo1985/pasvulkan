@@ -136,9 +136,9 @@ begin
  inherited AcquirePersistentResources;
 
  if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram_multiview.comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram_multiview_comp.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram.comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram_comp.spv');
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
