@@ -1180,6 +1180,22 @@ begin
    fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                           0,
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                          TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+   fVulkanRenderPass.AddSubpassDependency(0,
+                                          VK_SUBPASS_EXTERNAL,
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                          TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                          TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                          TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+(*   fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                          0,
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
@@ -1200,6 +1216,7 @@ begin
                                           TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
                                           TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
                                           TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+*)
 {  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                           0,
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
