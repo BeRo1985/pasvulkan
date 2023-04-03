@@ -41,6 +41,11 @@ compileshaderarguments=(
   '-V dof_gather.frag -DPASS2 -o dof_gather_pass2_frag.spv'
   '-V dof_resolve.frag -o dof_resolve_frag.spv'
 
+  '-V luminance_histogram.comp -o luminance_histogram.comp.spv'
+  '-V luminance_histogram.comp -DMULTIVIEW -o luminance_histogram_multiview_comp.spv'
+
+  '-V luminance_average.comp -o luminance_average.comp.spv'
+
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   '-V lightclustergridbuild.comp -DREVERSEDZ -o lightclustergridbuild_reversedz_comp.spv'
   '-V lightclusterassign.comp -o lightclusterassign_comp.spv'

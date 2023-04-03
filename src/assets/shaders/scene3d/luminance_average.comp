@@ -1,0 +1,66 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_control_flow_attributes : enable
+
+// A bilinear 13-tap 2x downsampler (equals to a 36-tap non-bilinear 2x downsampler)
+// Idea is of the http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare slides
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout (std430, set = 0, binding = 0) buffer HistogramBuffer {
+  uint histogramBuffer[];
+};
+
+layout (std430, set = 0, binding = 1) buffer LastHistogramLuminance {
+  float lastHistogramLuminance;
+};
+
+layout (std430, set = 0, binding = 2) buffer HistogramLuminance {
+  float histogramLuminance;
+};
+
+layout(push_constant, std140, row_major) uniform PushConstants {
+  float minLogLuminance;
+  float inverseLogLuminanceRange;
+  float timeCoefficient;
+  uint countPixels;
+} pushConstants;
+
+/* clang-format on */
+
+shared uint sharedHistogram[16 * 16];
+
+#ifdef MULTIVIEW
+#endif
+
+void main() {
+
+  uint countForThisBin = histogramBuffer[gl_LocalInvocationIndex];  
+  sharedHistogram[gl_LocalInvocationIndex] = countForThisBin * gl_LocalInvocationIndex;
+  
+  groupMemoryBarrier();
+
+  histogramBuffer[gl_LocalInvocationIndex] = 0;
+
+  [[unroll]] 
+  for(uint binIndex = ((16 * 16) >> 1); binIndex > 0; binIndex >>= 1){
+    if(uint(gl_LocalInvocationIndex) < binIndex){
+      sharedHistogram[gl_LocalInvocationIndex] += sharedHistogram[gl_LocalInvocationIndex + binIndex];
+    }
+    groupMemoryBarrier();
+  }
+
+  if(gl_LocalInvocationIndex == 0){
+    histogramLuminance = mix(lastHistogramLuminance, 
+                             exp2(fma((float(sharedHistogram[0]) / max(1.0, float(pushConstants.countPixels - countForThisBin))) - 1.0, 
+                                      pushConstants.inverseLogLuminanceRange, 
+                                      pushConstants.minLogLuminance)), 
+                             pushConstants.timeCoefficient);
+  }
+
+}
