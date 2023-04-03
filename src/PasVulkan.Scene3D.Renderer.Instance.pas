@@ -184,6 +184,7 @@ type { TpvScene3DRendererInstance }
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
+            TLuminanceVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -261,6 +262,12 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapInverseProjectionMatrices:array[0..7] of TpvMatrix4x4;
        fCascadedShadowMapViewSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
       private
+       fLuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers;
+       fLuminanceVulkanBuffers:TLuminanceVulkanBuffers;
+      public
+       fLuminanceEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+       fLuminanceEventReady:array[0..MaxInFlightFrames-1] of boolean;
+      private
        fTAAHistoryColorImages:TArray2DImages;
        fTAAHistoryDepthImages:TArray2DImages;
       public
@@ -333,6 +340,9 @@ type { TpvScene3DRendererInstance }
       public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property SceneMipmappedArray2DImages:TMipmappedArray2DImages read fSceneMipmappedArray2DImages;
+      public
+       property LuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceHistogramVulkanBuffers;
+       property LuminanceVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceVulkanBuffers;
       public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
@@ -1637,6 +1647,54 @@ begin
 
      end;
 
+     for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+      fLuminanceHistogramVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                   SizeOf(TpvUInt32)*256,
+                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                   [],
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   []);
+      fLuminanceHistogramVulkanBuffers[InFlightFrameIndex].ClearData(pvApplication.VulkanDevice.UniversalQueue,
+                                                                     UniversalCommandBuffer,
+                                                                     UniversalFence,
+                                                                     0,
+                                                                     SizeOf(TpvUInt32)*256,
+                                                                     TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+
+      fLuminanceVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                          SizeOf(TpvFloat),
+                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                          [],
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                          0,
+                                                                          0,
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          []);
+      fLuminanceVulkanBuffers[InFlightFrameIndex].ClearData(pvApplication.VulkanDevice.UniversalQueue,
+                                                            UniversalCommandBuffer,
+                                                            UniversalFence,
+                                                            0,
+                                                            SizeOf(TpvFloat),
+                                                            TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+
+      fLuminanceEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+      fLuminanceEventReady[InFlightFrameIndex]:=false;
+     end;
+
     finally
      FreeAndNil(UniversalFence);
     end;
@@ -1688,6 +1746,12 @@ begin
    FreeAndNil(fTAAHistoryDepthImages[InFlightFrameIndex]);
    FreeAndNil(fTAAEvents[InFlightFrameIndex]);
   end;
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fLuminanceHistogramVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLuminanceVulkanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fLuminanceEvents[InFlightFrameIndex]);
  end;
 
  if assigned(fExternalOutputImageData) then begin
