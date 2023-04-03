@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.LuminanceHistogramComputePass;
+unit PasVulkan.Scene3D.Renderer.Passes.LuminanceAverageComputePass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -77,14 +77,11 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererPassesLuminanceHistogramComputePass }
-     TpvScene3DRendererPassesLuminanceHistogramComputePass=class(TpvFrameGraph.TComputePass)
+type { TpvScene3DRendererPassesLuminanceAverageComputePass }
+     TpvScene3DRendererPassesLuminanceAverageComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
-       fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fComputeShaderModule:TpvVulkanShaderModule;
-       fVulkanSampler:TpvVulkanSampler;
-       fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -100,46 +97,34 @@ type { TpvScene3DRendererPassesLuminanceHistogramComputePass }
        procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
-      published
-       property ResourceInput:TpvFrameGraph.TPass.TUsedImageResource read fResourceInput;
      end;
 
 implementation
 
-{ TpvScene3DRendererPassesLuminanceHistogramComputePass }
+{ TpvScene3DRendererPassesLuminanceAverageComputePass }
 
-constructor TpvScene3DRendererPassesLuminanceHistogramComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesLuminanceAverageComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='LuminanceHistogramComputePass';
-
- fResourceInput:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
-                               fInstance.LastOutputResource.Resource.Name,
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                              );
+ Name:='LuminanceAverageComputePass';
 
 end;
 
-destructor TpvScene3DRendererPassesLuminanceHistogramComputePass.Destroy;
+destructor TpvScene3DRendererPassesLuminanceAverageComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
  inherited AcquirePersistentResources;
 
- if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram_multiview.comp.spv');
- end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_histogram.comp.spv');
- end;
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_average.comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -150,51 +135,37 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvInt32;
-    ImageViewType:TVkImageViewType;
 begin
 
  inherited AcquireVolatileResources;
 
- fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         0.0,
-                                         false,
-                                         0.0,
-                                         false,
-                                         VK_COMPARE_OP_ALWAYS,
-                                         0.0,
-                                         0.0,
-                                         VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
-                                         false);
-
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       fInstance.Renderer.CountInFlightFrames*2);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames);
+                                                       fInstance.Renderer.CountInFlightFrames*3);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames*3);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(1,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(2,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -214,41 +185,10 @@ begin
                                             nil,
                                             0);
 
- if fInstance.CountSurfaceViews>1 then begin
-  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
- end else begin
-  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
- end;
-
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                   fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                   ImageViewType,
-                                                                   TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                   0,
-                                                                   1,
-                                                                   0,
-                                                                   fInstance.CountSurfaceViews
-                                                                  );
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fVulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                fResourceInput.ResourceTransition.Layout)],
-                                                                 [],
-                                                                 [],
-                                                                 false
-                                                                );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -257,91 +197,55 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fInstance.LuminanceVulkanBuffers[(InFlightFrameIndex+(FrameGraph.CountInFlightFrames-1)) mod FrameGraph.CountInFlightFrames].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fInstance.LuminanceVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false
+                                                                );
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
-  FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
- FreeAndNil(fVulkanSampler);
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesLuminanceHistogramComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PreviousInFlightFrameIndex,InFlightFrameIndex:TpvInt32;
+procedure TpvScene3DRendererPassesLuminanceAverageComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var InFlightFrameIndex:TpvInt32;
     MemoryBarrier:TVkMemoryBarrier;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
-
  InFlightFrameIndex:=aInFlightFrameIndex;
-
- FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
- MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
- MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-
- if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fInstance.fLuminanceEventReady[PreviousInFlightFrameIndex] then begin
-  fInstance.fLuminanceEventReady[PreviousInFlightFrameIndex]:=false;
-  aCommandBuffer.CmdWaitEvents(1,
-                               @fInstance.fLuminanceEvents[PreviousInFlightFrameIndex].Handle,
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                               1,@MemoryBarrier,
-                               0,nil,
-                               0,nil);
-  aCommandBuffer.CmdResetEvent(fInstance.fLuminanceEvents[PreviousInFlightFrameIndex].Handle,
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
- end else begin
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                    1,@MemoryBarrier,
-                                    0,nil,
-                                    0,nil);
- end;
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
@@ -359,9 +263,39 @@ begin
                                  SizeOf(TpvScene3DRendererInstance.TLuminancePushConstants),
                                  @fInstance.fLuminancePushConstants);
 
- aCommandBuffer.CmdDispatch(Max(1,(fInstance.Width+((1 shl 4)-1)) shr 4),
-                            Max(1,(fInstance.Height+((1 shl 4)-1)) shr 4),
-                            1);//fInstance.CountSurfaceViews);
+ aCommandBuffer.CmdDispatch(1,1,1);
+
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                   1,@MemoryBarrier,
+                                   0,nil,
+                                   0,nil);
+
+ if fInstance.fLuminanceEventReady[aInFlightFrameIndex] then begin
+  Assert(false);
+ end;
+
+ aCommandBuffer.CmdSetEvent(fInstance.fLuminanceEvents[aInFlightFrameIndex].Handle,
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+ fInstance.fLuminanceEventReady[aInFlightFrameIndex]:=true;
 
 end;
 
