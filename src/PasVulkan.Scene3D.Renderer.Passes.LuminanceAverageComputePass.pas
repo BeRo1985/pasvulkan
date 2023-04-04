@@ -124,7 +124,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_average.comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('luminance_average_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

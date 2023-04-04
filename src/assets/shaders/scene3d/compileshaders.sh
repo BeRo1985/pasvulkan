@@ -44,7 +44,7 @@ compileshaderarguments=(
   '-V luminance_histogram.comp -o luminance_histogram_comp.spv'
   '-V luminance_histogram.comp -DMULTIVIEW -o luminance_histogram_multiview_comp.spv'
 
-  '-V luminance_average.comp -o luminance_average.comp.spv'
+  '-V luminance_average.comp -o luminance_average_comp.spv'
 
   '-V lightclustergridbuild.comp -o lightclustergridbuild_comp.spv'
   '-V lightclustergridbuild.comp -DREVERSEDZ -o lightclustergridbuild_reversedz_comp.spv'
