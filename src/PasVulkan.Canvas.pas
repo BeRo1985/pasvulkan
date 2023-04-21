@@ -4339,80 +4339,82 @@ var Index:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
 begin
- CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
- if assigned(CurrentBuffer) and (CurrentBuffer^.fCountUsedBuffers>0) then begin
-  while TPasMPInterlocked.CompareExchange(CurrentBuffer^.fSpinLock,-1,0)<>0 do begin
-  end;
-  try
-   for Index:=0 to CurrentBuffer^.fCountUsedBuffers-1 do begin
-    if CurrentBuffer^.fVertexBufferSizes[Index]>0 then begin
-     VulkanBuffer:=CurrentBuffer^.fVulkanVertexBuffers[Index];
-     if not assigned(VulkanBuffer) then begin
-      VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                           SizeOf(TpvCanvasVertexBuffer),
-                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                           [],
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           [TpvVulkanBufferFlag.PersistentMapped]
-                                          );
-      CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
-     end;
-     if assigned(VulkanBuffer) then begin
-      VulkanBuffer.UploadData(aVulkanTransferQueue,
-                              aVulkanTransferCommandBuffer,
-                              aVulkanTransferCommandBufferFence,
-                              CurrentBuffer^.fVertexBuffers[Index,0],
-                              0,
-                              CurrentBuffer^.fVertexBufferSizes[Index],
-                              TpvVulkanBufferUseTemporaryStagingBufferMode.No);
-     end;
-    end;
-    if CurrentBuffer^.fIndexBufferSizes[Index]>0 then begin
-     VulkanBuffer:=CurrentBuffer^.fVulkanIndexBuffers[Index];
-     if not assigned(VulkanBuffer) then begin
-      VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                           SizeOf(TpvCanvasIndexBuffer),
-                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                           [],
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           [TpvVulkanBufferFlag.PersistentMapped]
-                                          );
-      CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
-     end;
-     if assigned(VulkanBuffer) then begin
-      VulkanBuffer.UploadData(aVulkanTransferQueue,
-                              aVulkanTransferCommandBuffer,
-                              aVulkanTransferCommandBufferFence,
-                              CurrentBuffer^.fIndexBuffers[Index,0],
-                              0,
-                              CurrentBuffer^.fIndexBufferSizes[Index],
-                              TpvVulkanBufferUseTemporaryStagingBufferMode.No);
-     end;
-    end;
+ if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
+  CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+  if assigned(CurrentBuffer) and (CurrentBuffer^.fCountUsedBuffers>0) then begin
+   while TPasMPInterlocked.CompareExchange(CurrentBuffer^.fSpinLock,-1,0)<>0 do begin
    end;
-  finally
-   TPasMPInterlocked.Exchange(CurrentBuffer^.fSpinLock,0);
+   try
+    for Index:=0 to CurrentBuffer^.fCountUsedBuffers-1 do begin
+     if CurrentBuffer^.fVertexBufferSizes[Index]>0 then begin
+      VulkanBuffer:=CurrentBuffer^.fVulkanVertexBuffers[Index];
+      if not assigned(VulkanBuffer) then begin
+       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                            SizeOf(TpvCanvasVertexBuffer),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            [],
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.PersistentMapped]
+                                           );
+       CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
+      end;
+      if assigned(VulkanBuffer) then begin
+       VulkanBuffer.UploadData(aVulkanTransferQueue,
+                               aVulkanTransferCommandBuffer,
+                               aVulkanTransferCommandBufferFence,
+                               CurrentBuffer^.fVertexBuffers[Index,0],
+                               0,
+                               CurrentBuffer^.fVertexBufferSizes[Index],
+                               TpvVulkanBufferUseTemporaryStagingBufferMode.No);
+      end;
+     end;
+     if CurrentBuffer^.fIndexBufferSizes[Index]>0 then begin
+      VulkanBuffer:=CurrentBuffer^.fVulkanIndexBuffers[Index];
+      if not assigned(VulkanBuffer) then begin
+       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                            SizeOf(TpvCanvasIndexBuffer),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            [],
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.PersistentMapped]
+                                           );
+       CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
+      end;
+      if assigned(VulkanBuffer) then begin
+       VulkanBuffer.UploadData(aVulkanTransferQueue,
+                               aVulkanTransferCommandBuffer,
+                               aVulkanTransferCommandBufferFence,
+                               CurrentBuffer^.fIndexBuffers[Index,0],
+                               0,
+                               CurrentBuffer^.fIndexBufferSizes[Index],
+                               TpvVulkanBufferUseTemporaryStagingBufferMode.No);
+      end;
+     end;
+    end;
+   finally
+    TPasMPInterlocked.Exchange(CurrentBuffer^.fSpinLock,0);
+   end;
+ { aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                             TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                             TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));//}
   end;
-{ aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                            TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
-                                            TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));//}
  end;
 end;
 
