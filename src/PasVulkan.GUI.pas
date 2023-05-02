@@ -1448,7 +1448,7 @@ type TpvGUIObject=class;
        fDrawWidgetBounds:Boolean;
        fWindowTabbing:Boolean;
        fSwapChainReady:Boolean;
-       fRenderDirtyBitMask:TPasMPUInt32;
+       fRenderDirtyBitMask:{$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif};
        fRenderDirtyCounter:TPasMPUInt32;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
@@ -15180,13 +15180,13 @@ end;
 
 procedure TpvGUIInstance.ResetRenderDirty;
 begin
- TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($00000000));
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,{$ifdef cpu64}TPasMPUInt64($0000000000000000){$else}TpvUInt32($00000000){$endif});
  TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000000));
 end;
 
 procedure TpvGUIInstance.SetRenderDirty;
 begin
- TPasMPInterlocked.Write(fRenderDirtyBitMask,TpvUInt32($ffffffff));
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,{$ifdef cpu64}TPasMPUInt64($ffffffffffffffff){$else}TpvUInt32($ffffffff){$endif});
  TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000010));
 end;
 
@@ -15199,10 +15199,11 @@ begin
 end;
 
 function TpvGUIInstance.CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean):Boolean;
-var Index,Mask:TpvUInt32;
+var Index:TpvUInt32;
+    Mask:{$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif};
 begin
- Index:=(aInFlightFrameIndex*MaxSwapChainImages)+aSwapChainImageIndex;
- Mask:=TpvUInt32(1) shl Index;
+ Index:=(aInFlightFrameIndex*pvApplication.CountSwapChainImages)+aSwapChainImageIndex;
+ Mask:={$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif}(1) shl Index;
  if aReset then begin
   result:=(TPasMPInterlocked.ExchangeBitwiseAnd(fRenderDirtyBitMask,not Mask) and Mask)<>0;
  end else begin

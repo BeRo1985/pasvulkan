@@ -463,8 +463,8 @@ type EpvFrameGraph=class(Exception);
               fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
               fVulkanAdditionalFormatImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
               fVulkanMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
-              fVulkanSurfaceImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
-              fVulkanSurfaceImageViews:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
+              fVulkanSurfaceImages:array of TpvVulkanImage;
+              fVulkanSurfaceImageViews:array of TpvVulkanImageView;
               function GetVulkanImage(const aIndex:TpvSizeInt):TpvVulkanImage; inline;
               function GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
               function GetVulkanAdditionalFormatImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
@@ -887,7 +887,7 @@ type EpvFrameGraph=class(Exception);
               fAttachmentReferences:TAttachmentReferences;
               fFinalLayouts:TResourcelLayoutHashMap;
               fVulkanRenderPass:TpvVulkanRenderPass;
-              fVulkanSurfaceFrameBuffers:array[0..MaxInFlightFrames-1,0..MaxSwapChainImages-1] of TpvVulkanFrameBuffer;
+              fVulkanSurfaceFrameBuffers:array[0..MaxInFlightFrames-1] of array of TpvVulkanFrameBuffer;
               fVulkanFrameBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanFrameBuffer;
               fSize:TImageSize;
              public
@@ -1882,7 +1882,7 @@ begin
    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
   end;
   if fIsSurface then begin
-   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   for SwapChainImageIndex:=0 to length(fVulkanSurfaceImages)-1 do begin
     FreeAndNil(fVulkanSurfaceImageViews[SwapChainImageIndex]);
     fVulkanSurfaceImages[SwapChainImageIndex]:=nil;
    end;
@@ -1909,6 +1909,8 @@ begin
    end;
   end;
  end;
+ fVulkanSurfaceImageViews:=nil;
+ fVulkanSurfaceImages:=nil;
  inherited Destroy;
 end;
 
@@ -2014,7 +2016,10 @@ begin
 
   fFormat:=fFrameGraph.fSurfaceColorFormat;
 
-  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSurfaceImages,1),MaxSwapChainImages)-1 do begin
+  SetLength(fVulkanSurfaceImageViews,Max(fFrameGraph.fCountSurfaceImages,1));
+  SetLength(fVulkanSurfaceImages,Max(fFrameGraph.fCountSurfaceImages,1));
+
+  for SwapChainImageIndex:=0 to Max(fFrameGraph.fCountSurfaceImages,1)-1 do begin
    fVulkanSurfaceImages[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex];
    fVulkanSurfaceImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                             fVulkanSurfaceImages[SwapChainImageIndex],
@@ -2261,7 +2266,7 @@ begin
    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
   end;
   if fIsSurface then begin
-   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   for SwapChainImageIndex:=0 to length(fVulkanSurfaceImageViews)-1 do begin
     FreeAndNil(fVulkanSurfaceImageViews[SwapChainImageIndex]);
     fVulkanSurfaceImages[SwapChainImageIndex]:=nil;
    end;
@@ -2288,6 +2293,8 @@ begin
    end;
   end;
  end;
+ fVulkanSurfaceImageViews:=nil;
+ fVulkanSurfaceImages:=nil;
  inherited ReleaseVolatileResources;
 end;
 
@@ -3850,9 +3857,10 @@ begin
  fFinalLayouts:=TResourcelLayoutHashMap.Create(VK_IMAGE_LAYOUT_UNDEFINED);
  fVulkanRenderPass:=nil;
  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-  for SurfaceIndex:=0 to MaxSwapChainImages-1 do begin
+  for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
    fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]:=nil;
   end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
   fVulkanFrameBuffers[InFlightFrameIndex]:=nil;
  end;
 end;
@@ -3864,10 +3872,11 @@ begin
  fSubpassDependencies.Finalize;
  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   if fHasVulkanSurfaceFrameBuffers then begin
-   for SurfaceIndex:=0 to MaxSwapChainImages-1 do begin
+   for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
     FreeAndNil(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]);
    end;
   end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
   FreeAndNil(fVulkanFrameBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanRenderPass);
@@ -4038,6 +4047,7 @@ begin
  if fHasVulkanSurfaceFrameBuffers then begin
 
   for InFlightFrameIndex:=0 to fFrameGraph.fCountInFlightFrames-1 do begin
+   SetLength(fVulkanSurfaceFrameBuffers[InFlightFrameIndex],Max(1,fFrameGraph.fCountSurfaceImages));
    for SurfaceIndex:=0 to fFrameGraph.fCountSurfaceImages-1 do begin
     fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
                                                                                              fVulkanRenderPass,
@@ -4112,10 +4122,11 @@ begin
 
  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   if fHasVulkanSurfaceFrameBuffers then begin
-   for SurfaceIndex:=0 to MaxSwapChainImages-1 do begin
+   for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
     FreeAndNil(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]);
    end;
   end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
   FreeAndNil(fVulkanFrameBuffers[InFlightFrameIndex]);
  end;
 
