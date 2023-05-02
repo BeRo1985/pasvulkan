@@ -7286,13 +7286,13 @@ begin
  try
   if assigned(fVulkanDevice) then begin
    fVulkanDevice.WaitIdle;
-   for Index:=0 to fCountSwapChainImages-1 do begin
-    if fVulkanPresentCompleteFencesReady[Index] then begin
+   for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
+    if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
      fVulkanPresentCompleteFences[Index].WaitFor;
      fVulkanPresentCompleteFences[Index].Reset;
      fVulkanPresentCompleteFencesReady[Index]:=false;
     end;
-    if fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
+    if (Index<length(fVulkanWaitFencesReady)) and fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
      fVulkanWaitFences[Index].WaitFor;
      fVulkanWaitFences[Index].Reset;
      fVulkanWaitFencesReady[Index]:=false;
