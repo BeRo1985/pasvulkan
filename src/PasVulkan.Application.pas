@@ -1535,15 +1535,15 @@ type EpvApplication=class(Exception)
 
        fVulkanInFlightFenceIndices:array[0..MaxInFlightFrames-1] of TpvInt32;
 
-       fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
+       fVulkanWaitFences:array of TpvVulkanFence;
 
-       fVulkanWaitFencesReady:array[0..MaxSwapChainImages-1] of boolean;
+       fVulkanWaitFencesReady:array of boolean;
 
-       fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanPresentCompleteSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanPresentCompleteFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
+       fVulkanPresentCompleteFences:array of TpvVulkanFence;
 
-       fVulkanPresentCompleteFencesReady:array[0..MaxSwapChainImages-1] of boolean;
+       fVulkanPresentCompleteFencesReady:array of boolean;
 
        fVulkanDepthImageFormat:TVkFormat;
 
@@ -1561,30 +1561,30 @@ type EpvApplication=class(Exception)
 
        fVulkanSurfaceRecreated:boolean;
 
-       fVulkanBlankCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanBlankCommandBuffers:array of TpvVulkanCommandBuffer;
 
-       fVulkanBlankCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanBlankCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
        fVulkanFrameFences:array[0..3] of TpvVulkanFence;
        fVulkanFrameFencesReady:TpvUInt32;
        fVulkanFrameFenceCounter:TpvUInt32;
-       fVulkanFrameFenceCommandBuffers:array[0..MaxSwapChainImages-1,0..3] of TpvVulkanCommandBuffer;
-       fVulkanFrameFenceSemaphores:array[0..MaxSwapChainImages-1,0..3] of TpvVulkanSemaphore;
+       fVulkanFrameFenceCommandBuffers:array of array[0..3] of TpvVulkanCommandBuffer;
+       fVulkanFrameFenceSemaphores:array of array[0..3] of TpvVulkanSemaphore;
 
-       fVulkanWaitFenceCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanWaitFenceSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanWaitFenceCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanWaitFenceSemaphores:array of TpvVulkanSemaphore;
 
        fVulkanNVIDIADiagnosticConfigExtensionFound:boolean;
 
@@ -8142,6 +8142,12 @@ begin
   fVulkanInFlightFenceIndices[Index]:=-1;
  end;
 
+ SetLength(fVulkanWaitFences,fCountSwapChainImages);
+ SetLength(fVulkanWaitFencesReady,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteSemaphores,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteFences,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteFencesReady,fCountSwapChainImages);
+
  for Index:=0 to fCountSwapChainImages-1 do begin
   fVulkanWaitFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
   fVulkanWaitFencesReady[Index]:=false;
@@ -8161,13 +8167,26 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanSwapChain');
 {$ifend}
- for Index:=0 to fCountSwapChainImages-1 do begin
+ for Index:=0 to length(fVulkanWaitFencesReady)-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteFencesReady)-1 do begin
   fVulkanPresentCompleteFencesReady[Index]:=false;
+ end;
+ for Index:=0 to length(fVulkanWaitFences)-1 do begin
   FreeAndNil(fVulkanWaitFences[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteFences)-1 do begin
   FreeAndNil(fVulkanPresentCompleteFences[Index]);
  end;
+ fVulkanWaitFences:=nil;
+ fVulkanWaitFencesReady:=nil;
+ fVulkanPresentCompleteSemaphores:=nil;
+ fVulkanPresentCompleteFences:=nil;
+ fVulkanPresentCompleteFencesReady:=nil;
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanInFlightFenceIndices[Index]:=-1;
  end;
@@ -8400,6 +8419,21 @@ begin
 
  DestroyVulkanCommandBuffers;
 
+ SetLength(fVulkanFrameFenceCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanFrameFenceSemaphores,CountSwapChainImages);
+ SetLength(fVulkanWaitFenceCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanWaitFenceSemaphores,CountSwapChainImages);
+ SetLength(fVulkanBlankCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanBlankCommandBufferSemaphores,CountSwapChainImages);
+ SetLength(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores,CountSwapChainImages);
+ SetLength(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores,CountSwapChainImages);
+ SetLength(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores,CountSwapChainImages);
+ SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers,CountSwapChainImages);
+ SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores,CountSwapChainImages);
+
  fVulkanPresentCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                         fVulkanDevice.PresentQueueFamilyIndex,
                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -8605,27 +8639,65 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanCommandBuffers');
 {$ifend}
- for Index:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
-  FreeAndNil(fVulkanFrameFences[Index]);
- end;
- for Index:=0 to CountSwapChainImages-1 do begin
-  for OtherIndex:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+ for OtherIndex:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+  FreeAndNil(fVulkanFrameFences[OtherIndex]);
+  for Index:=0 to length(fVulkanFrameFenceCommandBuffers)-1 do begin
    FreeAndNil(fVulkanFrameFenceCommandBuffers[Index,OtherIndex]);
+  end;
+  for Index:=0 to length(fVulkanFrameFenceSemaphores)-1 do begin
    FreeAndNil(fVulkanFrameFenceSemaphores[Index,OtherIndex]);
   end;
+ end;
+ for Index:=0 to length(fVulkanFrameFenceSemaphores)-1 do begin
   FreeAndNil(fVulkanWaitFenceCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanWaitFenceSemaphores)-1 do begin
   FreeAndNil(fVulkanWaitFenceSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanBlankCommandBuffers)-1 do begin
   FreeAndNil(fVulkanBlankCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanBlankCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanBlankCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]);
  end;
+ fVulkanFrameFenceCommandBuffers:=nil;
+ fVulkanFrameFenceSemaphores:=nil;
+ fVulkanWaitFenceCommandBuffers:=nil;
+ fVulkanWaitFenceSemaphores:=nil;
+ fVulkanBlankCommandBuffers:=nil;
+ fVulkanBlankCommandBufferSemaphores:=nil;
+ fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:=nil;
+ fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:=nil;
+ fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:=nil;
+ fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:=nil;
+ fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:=nil;
+ fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:=nil;
  FreeAndNil(fVulkanPresentCommandPool);
  FreeAndNil(fVulkanGraphicsCommandPool);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
