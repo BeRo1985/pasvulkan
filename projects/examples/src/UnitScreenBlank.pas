@@ -32,7 +32,7 @@ type TScreenBlank=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1,0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of array of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       public
 
@@ -83,7 +83,8 @@ begin
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxInFlightFrames-1 do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  SetLength(fVulkanRenderCommandBuffers[Index],pvApplication.CountSwapChainImages);
+  for SwapChainImageIndex:=0 to pvApplication.CountSwapChainImages-1 do begin
    fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   end;
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
@@ -98,9 +99,10 @@ var Index,SwapChainImageIndex:TpvInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxInFlightFrames-1 do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers[Index])-1 do begin
    FreeAndNil(fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]);
   end;
+  fVulkanRenderCommandBuffers[Index]:=nil;
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
@@ -184,7 +186,13 @@ begin
 
  for Index:=0 to pvApplication.CountInFlightFrames-1 do begin
 
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers[Index])-1 do begin
+   FreeAndNil(fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]);
+  end;
+
+  SetLength(fVulkanRenderCommandBuffers[Index],pvApplication.CountSwapChainImages);
+
+  for SwapChainImageIndex:=0 to pvApplication.CountSwapChainImages-1 do begin
 
    FreeAndNil(fVulkanRenderCommandBuffers[Index,SwapChainImageIndex]);
 
