@@ -13522,7 +13522,7 @@ begin
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
           (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-       InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
+        InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and

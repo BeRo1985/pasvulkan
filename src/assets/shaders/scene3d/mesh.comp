@@ -158,9 +158,14 @@ void main() {
       position = p.xyz / p.w;
 
       {
+		
+		/*if(determinant(modelNodeMatrix) < 0.0){
+		  tangentSpace = -tangentSpace;
+		}*/
+	  
         vec3 tangent = normalize(tangentSpace[0]);
         vec3 bitangent = normalize(tangentSpace[1]);
-        vec3 normal = normalize(tangentSpace[2]);
+        vec3 normal = normalize(tangentSpace[2]) * ((determinant(modelNodeMatrix) < 0.0) ? -1.0 : 1.0);
 
         float tbnSign = (dot(normalize(cross(normal, tangent)), bitangent) < 0.0) ? -1.0 : 1.0;
 
