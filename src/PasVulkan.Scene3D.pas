@@ -13465,7 +13465,7 @@ var IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
     CountDrawChoreographyBatchItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
-    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     DoubleSided,InverseFrontFaces,Culling,FirstFlush:boolean;
     VisibleBit:TpvUInt32;
@@ -13501,9 +13501,9 @@ begin
        (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
        (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-     InstanceNode:=fNodes[DrawChoreographyBatchItem.Node.fIndex];
+     InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
-     if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) then begin
+     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) then begin
 
       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
@@ -13512,7 +13512,7 @@ begin
 
       DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
 
-      InverseFrontFaces:=InstanceNode.InverseFrontFaces;
+      InverseFrontFaces:=InstanceNode^.InverseFrontFaces;
 
       while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
@@ -13522,12 +13522,12 @@ begin
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
           (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-       InstanceNode:=fNodes[DrawChoreographyBatchItem.Node.fIndex];
+       InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
-           (InstanceNode.InverseFrontFaces=InverseFrontFaces) and
            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
+           (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
            ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
 
          inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
