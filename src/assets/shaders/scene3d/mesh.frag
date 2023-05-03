@@ -319,6 +319,8 @@ layout (std430, set = 1, binding = 7) readonly buffer LightGridClusters {
 
 /* clang-format on */
 
+vec3 workTangent, workBitangent, workNormal;
+
 float sq(float t){
   return t * t; //
 }
@@ -867,7 +869,7 @@ vec2 computeReceiverPlaneDepthBias(const vec3 position) {
 vec3 getOffsetedBiasedWorldPositionForShadowMapping(const in vec4 values, const in vec3 lightDirection){
   vec3 worldSpacePosition = inWorldSpacePosition;
   {
-    vec3 worldSpaceNormal = inNormal;
+    vec3 worldSpaceNormal = workNormal;
     float cos_alpha = clamp(dot(worldSpaceNormal, lightDirection), 0.0, 1.0);
     float offset_scale_N = sqrt(1.0 - (cos_alpha * cos_alpha));   // sin(acos(L·N))
     float offset_scale_L = offset_scale_N / max(5e-4, cos_alpha); // tan(acos(L·N))
@@ -1265,7 +1267,7 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
                         0.1549679261, 0.1394629426, 0.7963415838, -0.172282317,                                           //
                         0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811,                                          //
                         0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-    float depthBias = clamp(0.005 * fastTanArcCos(clamp(dot(inNormal, -lightDirection), -1.0, 1.0)), 0.0, 0.1) * 0.15;
+    float depthBias = clamp(0.005 * fastTanArcCos(clamp(dot(workNormal, -lightDirection), -1.0, 1.0)), 0.0, 0.1) * 0.15;
     return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
   } else {
     return 1.0;
@@ -1329,6 +1331,12 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 #endif
 
 void main() {
+  {
+	float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
+	workTangent = inTangent * frontFacingSign;
+	workBitangent = inBitangent * frontFacingSign;
+	workNormal = inNormal * frontFacingSign;
+  }
 #if !(defined(NOBUFFERREFERENCE) || defined(USEINT64))
   material = uMaterials.materials;
   {
@@ -1408,7 +1416,7 @@ void main() {
       const float minimumRoughness = 0.0525;
       float geometryRoughness;
       {
-        vec3 dxy = max(abs(dFdx(inNormal)), abs(dFdy(inNormal)));
+        vec3 dxy = max(abs(dFdx(workNormal)), abs(dFdy(workNormal)));
         geometryRoughness = max(max(dxy.x, dxy.y), dxy.z);
       }
 
@@ -1428,7 +1436,7 @@ void main() {
       float kernelRoughness;
       {
         const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
-        vec3 dx = dFdx(inNormal), dy = dFdy(inNormal);
+        vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
         kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
         float roughness = perceptualRoughness * perceptualRoughness;
         perceptualRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
@@ -1441,11 +1449,11 @@ void main() {
       if ((textureFlags.x & (1 << 2)) != 0) {
         vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
         normal = normalize(                                                                                                                      //
-            mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) *                                                            //
+            mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *                                                            //
             normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
         );
       } else {
-        normal = normalize(inNormal);
+        normal = normalize(workNormal);
       }
       normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
@@ -1528,7 +1536,7 @@ void main() {
         float kernelRoughness;
         {
           const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
-          vec3 dx = dFdx(inNormal), dy = dFdy(inNormal);
+          vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
           kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
           float roughness = sheenRoughness * sheenRoughness;
           sheenRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
@@ -1553,9 +1561,9 @@ void main() {
         }
         if ((textureFlags.x & (1 << 9)) != 0) {
           vec4 normalTexture = textureFetch(9, vec2(0.0, 1.0).xxyx, false);
-          clearcoatNormal = normalize(mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
+          clearcoatNormal = normalize(mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) * normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0)));
         } else {
-          clearcoatNormal = normalize(inNormal);
+          clearcoatNormal = normalize(workNormal);
         }
         clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 #ifdef UseGeometryRoughness        
@@ -2321,7 +2329,7 @@ void main() {
 #ifdef VELOCITY
   outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
 
-  vec3 normal = normalize(inNormal);
+  vec3 normal = normalize(workNormal);
   normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
   outFragNormal = normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)));  
 #endif
@@ -2329,6 +2337,6 @@ void main() {
 }
 
 /*oid main() {
-  outFragColor = vec4(vec3(mix(0.25, 1.0, max(0.0, dot(inNormal, vec3(0.0, 0.0, 1.0))))), 1.0);
-//outFragColor = vec4(texture(uTexture, inTexCoord)) * vec4(vec3(mix(0.25, 1.0, max(0.0, dot(inNormal, vec3(0.0, 0.0, 1.0))))), 1.0);
+  outFragColor = vec4(vec3(mix(0.25, 1.0, max(0.0, dot(workNormal, vec3(0.0, 0.0, 1.0))))), 1.0);
+//outFragColor = vec4(texture(uTexture, inTexCoord)) * vec4(vec3(mix(0.25, 1.0, max(0.0, dot(workNormal, vec3(0.0, 0.0, 1.0))))), 1.0);
 }*/

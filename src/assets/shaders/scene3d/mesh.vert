@@ -80,7 +80,7 @@ void main() {
   tangentSpace[0] = normalize(tangentSpace[0]);
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
-  
+    
   View view = uView.views[viewIndex];
 
 #if 1

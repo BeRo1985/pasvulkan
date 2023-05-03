@@ -107,8 +107,6 @@ void main() {
 
       mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
 	  
-	  float inversedFrontFaceSign = (determinant(mat3(modelNodeMatrix)) < 0.0) ? -1.0 : 1.0;
-
       vec3 position = inPosition;
 
       mat3 tangentSpace;
@@ -163,7 +161,7 @@ void main() {
 	  
         vec3 tangent = normalize(tangentSpace[0]);
         vec3 bitangent = normalize(tangentSpace[1]);
-        vec3 normal = normalize(tangentSpace[2]) * inversedFrontFaceSign;
+        vec3 normal = normalize(tangentSpace[2]);
 
         float tbnSign = (dot(normalize(cross(normal, tangent)), bitangent) < 0.0) ? -1.0 : 1.0;
 
