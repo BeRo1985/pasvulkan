@@ -115,12 +115,19 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashMask=LightClusterGridHashSize-1;
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             TDoubleSided=boolean;
+            TFrontFacesInversed=boolean;
+            TFaceCullingMode=
+             (
+              None,
+              Normal,
+              Inversed
+             );
             TBufferStreamingMode=
              (
               Direct,
               Staging
              );
-            TGraphicsPipelines=array[TPrimitiveTopology,TDoubleSided] of TpvVulkanPipeline;
+            TGraphicsPipelines=array[TPrimitiveTopology,TFaceCullingMode] of TpvVulkanPipeline;
             TTextureRawIndex=
              (
               None=-1,
@@ -1548,8 +1555,15 @@ type EpvScene3D=class(Exception);
                                  end;
                                  POverwrite=^TOverwrite;
                                  TOverwrites=array of TOverwrite;
+                                 TFlag=
+                                  (
+                                   InverseFrontFaces
+                                  );
+                                 PFlag=^TFlag;
+                                 TFlags=set of TFlag;
                            public
                             Processed:LongBool;
+                            Flags:TFlags;
                             Overwrites:TOverwrites;
                             CountOverwrites:TpvSizeInt;
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
@@ -1563,6 +1577,8 @@ type EpvScene3D=class(Exception);
                             CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             CacheVerticesGeneration:TpvUInt64;
                             CacheVerticesDirtyCounter:TpvUInt32;
+                           public
+                            function InverseFrontFaces:boolean; inline;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           PNode=^TInstanceNode;
@@ -2064,6 +2080,12 @@ type EpvScene3D=class(Exception);
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
+      public
+       const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
+              (
+               (TFaceCullingMode.Normal,TFaceCullingMode.Inversed),
+               (TFaceCullingMode.None,TFaceCullingMode.None)
+              );
       private
        fLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
@@ -9630,6 +9652,13 @@ begin
  end;
 end;
 
+{ TpvScene3D.TGroup.TInstance.TNode }
+
+function TpvScene3D.TGroup.TInstance.TNode.InverseFrontFaces:boolean;
+begin
+ result:=TpvScene3D.TGroup.TInstance.TNode.TFlag.InverseFrontFaces in Flags;
+end;
+
 { TpvScene3D.TGroup.TInstance.TLight }
 
 constructor TpvScene3D.TGroup.TInstance.TLight.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aLight:TpvScene3D.TGroup.TLight);
@@ -10625,6 +10654,7 @@ begin
   InstanceNode:=@fNodes[Index];
   Node:=fGroup.fNodes[Index];
   InstanceNode^.Processed:=false;
+  InstanceNode^.Flags:=[];
   SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
   SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
   SetLength(InstanceNode^.Overwrites,fGroup.fAnimations.Count+1);
@@ -12482,6 +12512,11 @@ var CullFace,Blend:TPasGLTFInt32;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
   if assigned(Node.fMesh) then begin
+   if Matrix.Determinant<0.0 then begin
+    Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TFlag.InverseFrontFaces);
+   end else begin
+    Exclude(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TFlag.InverseFrontFaces);
+   end;
    if {SkinUsed and} assigned(Node.fSkin) then begin
     fSkins[Node.fSkin.Index].Used:=true;
    end;
@@ -13430,8 +13465,9 @@ var IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
     CountDrawChoreographyBatchItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    DoubleSided,Culling,FirstFlush:boolean;
+    DoubleSided,InverseFrontFaces,Culling,FirstFlush:boolean;
     VisibleBit:TpvUInt32;
     DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     Pipeline:TpvVulkanPipeline;
@@ -13448,6 +13484,8 @@ begin
 
    FirstFlush:=true;
 
+   InverseFrontFaces:=false;
+
    IndicesStart:=0;
    IndicesCount:=0;
 
@@ -13461,65 +13499,78 @@ begin
 
     if DrawChoreographyBatchItem.fMaterial.fVisible and
        (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-       (DrawChoreographyBatchItem.fCountIndices>0) and
-       ((not Culling) or
-        ((fNodes[DrawChoreographyBatchItem.Node.fIndex].VisibleBitmap and VisibleBit)<>0)) then begin
+       (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-     IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-     IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
+     InstanceNode:=fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
-     PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
+     if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) then begin
 
-     DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
+      IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+      IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
 
-     while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+      PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
 
-      DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+      DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
 
-      if DrawChoreographyBatchItem.fMaterial.fVisible and
-         (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-         (DrawChoreographyBatchItem.fCountIndices>0) and
-         ((not Culling) or
-          ((fNodes[DrawChoreographyBatchItem.Node.fIndex].VisibleBitmap and VisibleBit)<>0)) and
-         (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
-         (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
-         ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+      InverseFrontFaces:=InstanceNode.InverseFrontFaces;
 
-       inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-       inc(DrawChoreographyBatchItemIndex);
+      while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
-      end else begin
+       DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+
+       if DrawChoreographyBatchItem.fMaterial.fVisible and
+          (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+          (DrawChoreographyBatchItem.fCountIndices>0) then begin
+
+       InstanceNode:=fNodes[DrawChoreographyBatchItem.Node.fIndex];
+
+        if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
+           (InstanceNode.InverseFrontFaces=InverseFrontFaces) and
+           (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
+           (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
+           ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+
+         inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+         inc(DrawChoreographyBatchItemIndex);
+
+         continue;
+
+        end;
+
+       end;
+
        break;
+
       end;
 
-     end;
+      if IndicesCount>0 then begin
 
-     if IndicesCount>0 then begin
-
-      Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSided];
-      if aPipeline<>Pipeline then begin
-       aPipeline:=Pipeline;
-       if assigned(Pipeline) then begin
-        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-       end;
-      end;
-
-      if FirstFlush then begin
-
-       FirstFlush:=false;
-
-       fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
-
-       fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-       if assigned(aOnSetRenderPassResources) then begin
-        aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+       Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSidedFaceCullingModes[DoubleSided,InverseFrontFaces]];
+       if aPipeline<>Pipeline then begin
+        aPipeline:=Pipeline;
+        if assigned(Pipeline) then begin
+         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+        end;
        end;
 
-      end;
+       if FirstFlush then begin
 
-      if assigned(aPipeline) then begin
-       aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+        FirstFlush:=false;
+
+        fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+
+        fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+        if assigned(aOnSetRenderPassResources) then begin
+         aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+        end;
+
+       end;
+
+       if assigned(aPipeline) then begin
+        aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+       end;
+
       end;
 
      end;
