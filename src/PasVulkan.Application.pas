@@ -1373,6 +1373,8 @@ type EpvApplication=class(Exception)
 
        fFullscreenFocusNeeded:boolean;
 
+       fStayActiveRegardlessOfVisibility:boolean;
+
        fGraphicsReady:boolean;
 
        fReinitializeGraphics:boolean;
@@ -1854,6 +1856,8 @@ type EpvApplication=class(Exception)
        property ExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode read fExclusiveFullScreenMode write fExclusiveFullScreenMode;
 
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
+
+       property StayActiveRegardlessOfVisibility:boolean read fStayActiveRegardlessOfVisibility write fStayActiveRegardlessOfVisibility;
 
        property ReinitializeGraphics:boolean read fReinitializeGraphics write fReinitializeGraphics;
 
@@ -8759,7 +8763,7 @@ var Target,TimeOut:TpvUInt64;
     PrepreviousFrameFrence:TpvVulkanFence;
 begin
 
- if fGraphicsReady and IsVisibleToUser then begin
+ if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
   // Frame present waiting part
   if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
@@ -10856,7 +10860,7 @@ begin
 
  end;
 
- if fGraphicsReady and IsVisibleToUser then begin
+ if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
   if fReinitializeGraphics then begin
    try
