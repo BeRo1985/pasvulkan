@@ -213,27 +213,27 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TpvVector3.Swizzle.Definitions.inc}
@@ -244,14 +244,14 @@ type PpvScalar=^TpvScalar;
        function Flip:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function OneUnitOrthogonalVector:TpvVector3;
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const aToVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
@@ -286,27 +286,27 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvVector4): TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TpvVector4.Swizzle.Definitions.inc}
@@ -316,14 +316,14 @@ type PpvScalar=^TpvScalar;
       public
        function Flip:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Abs:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const b:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
@@ -487,31 +487,31 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvQuaternion): TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector3;const b:TpvQuaternion):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector4;const b:TpvQuaternion):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
       private
        function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -527,16 +527,16 @@ type PpvScalar=^TpvScalar;
        function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Conjugate:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Inverse:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
@@ -811,39 +811,39 @@ type PpvScalar=^TpvScalar;
        constructor CreateConstructZ(const zAxis:TpvVector3);
        constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TpvPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
-       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
       private
        function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -853,10 +853,10 @@ type PpvScalar=^TpvScalar;
        function GetRow(const pIndex:TpvInt32):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -930,9 +930,9 @@ type PpvScalar=^TpvScalar;
        class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Positive(const a:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Conjugate:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Inverse:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        case TpvUInt8 of
         0:(RawQuaternions:array[0..1] of TpvQuaternion);
         1:(QuaternionR,QuaternionD:TpvQuaternion);
@@ -2822,15 +2822,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
- movss xmm0,dword ptr [rdi+0]
- movss xmm1,dword ptr [rdi+4]
- movss xmm2,dword ptr [rdi+8]
-{$endif}
+//{$else}
+// movss xmm0,dword ptr [rdi+0]
+// movss xmm1,dword ptr [rdi+4]
+// movss xmm2,dword ptr [rdi+8]
+//{$endif}
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -2870,15 +2870,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -2931,15 +2931,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  movaps xmm2,xmm0
@@ -3003,21 +3003,21 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
  subss xmm0,dword ptr [rdx+0]
  subss xmm1,dword ptr [rdx+4]
  subss xmm2,dword ptr [rdx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
  subss xmm0,dword ptr [rsi+0]
  subss xmm1,dword ptr [rsi+4]
  subss xmm2,dword ptr [rsi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -3059,15 +3059,15 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  xorps xmm1,xmm1
@@ -3104,21 +3104,21 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
  mulss xmm0,dword ptr [rdx+0]
  mulss xmm1,dword ptr [rdx+4]
  mulss xmm2,dword ptr [rdx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
  mulss xmm0,dword ptr [rsi+0]
  mulss xmm1,dword ptr [rsi+4]
  mulss xmm2,dword ptr [rsi+8]
-{$endif}
+{$endif}*)
  addss xmm0,xmm1
  addss xmm0,xmm2
 {$ifdef fpc}
@@ -3211,7 +3211,7 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
 {$ifdef SSEVector3CrossOtherVariant}
-{$ifdef Windows}
+//{$ifdef Windows}
  xorps xmm2,xmm2
  xorps xmm4,xmm4
  movss xmm0,dword ptr [rcx+0]
@@ -3224,7 +3224,7 @@ asm
  movss xmm4,dword ptr [r8+8]
  movlhps xmm2,xmm3
  shufps xmm2,xmm4,$88
-{$else}
+(*{$else}
  xorps xmm2,xmm2
  xorps xmm4,xmm4
  movss xmm0,dword ptr [rdi+0]
@@ -3237,7 +3237,7 @@ asm
  movss xmm4,dword ptr [rsi+8]
  movlhps xmm2,xmm3
  shufps xmm2,xmm4,$88
-{$endif}
+{$endif}*)
  movaps xmm1,xmm0
  movaps xmm3,xmm2
  shufps xmm0,xmm0,$c9
@@ -3251,17 +3251,17 @@ asm
  movaps xmm2,xmm0
  shufps xmm1,xmm1,$55
  shufps xmm2,xmm2,$aa
-{$ifdef Windows}
+//{$ifdef Windows}
  movss dword ptr [rdx+0],xmm0
  movss dword ptr [rdx+4],xmm1
  movss dword ptr [rdx+8],xmm2
-{$else}
+(*{$else}
  movss dword ptr [rax+0],xmm0
  movss dword ptr [rax+4],xmm1
  movss dword ptr [rax+8],xmm2
-{$endif}
+{$endif}*)
 {$else}
-{$ifdef Windows}
+//{$ifdef Windows}
  xorps xmm2,xmm2
  xorps xmm3,xmm3
  movss xmm0,dword ptr [rcx+0]
@@ -3274,7 +3274,7 @@ asm
  movss xmm3,dword ptr [r8+8]
  movlhps xmm1,xmm2
  shufps xmm1,xmm3,$88
-{$else}
+(*{$else}
  xorps xmm2,xmm2
  xorps xmm3,xmm3
  movss xmm0,dword ptr [rdi+0]
@@ -3287,7 +3287,7 @@ asm
  movss xmm3,dword ptr [rsi+8]
  movlhps xmm1,xmm2
  shufps xmm1,xmm3,$88
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  movaps xmm3,xmm1
  shufps xmm0,xmm0,$12
@@ -3301,15 +3301,15 @@ asm
  movaps xmm1,xmm2
  shufps xmm1,xmm1,$55
  shufps xmm2,xmm2,$aa
-{$ifdef Windows}
+//{$ifdef Windows}
  movss dword ptr [rdx+0],xmm0
  movss dword ptr [rdx+4],xmm1
  movss dword ptr [rdx+8],xmm2
-{$else}
+(*{$else}
  movss dword ptr [rax+0],xmm0
  movss dword ptr [rax+4],xmm1
  movss dword ptr [rax+8],xmm2
-{$endif}
+{$endif}*)
 {$endif}
 end;
 {$else}
@@ -3860,11 +3860,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$4e    // xmm1 = z*z, w*w, x*x, y*y
@@ -3900,11 +3900,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$4e    // xmm1 = z*z, w*w, x*x, y*y
@@ -3947,11 +3947,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -3967,11 +3967,11 @@ asm
  subps xmm1,xmm2
  cmpps xmm1,xmm2,7
  andps xmm2,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm2
-{$endif}
+{$endif}*)
 end;
 {$else}
 var Factor:TpvScalar;
@@ -4010,13 +4010,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  subps xmm0,xmm1
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -4049,19 +4049,19 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  xorps xmm1,xmm1
  subps xmm1,xmm0
  maxps xmm0,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 end;
 {$else}
 begin
@@ -4087,13 +4087,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm1
  movaps xmm1,xmm0
  shufps xmm1,xmm0,$b1
@@ -4173,13 +4173,13 @@ const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000)
       OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
 asm
 {$ifdef SSEVector3CrossOtherVariant}
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm2,dqword ptr [r8]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm2,dqword ptr [rsi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm4,dqword ptr [rip+AndMask]
  movups xmm5,dqword ptr [rip+OrMask]
@@ -4200,19 +4200,19 @@ asm
  subps xmm0,xmm1
  andps xmm0,xmm4
  orps xmm0,xmm5
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 {$else}
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [r8]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm4,dqword ptr [rip+AndMask]
  movups xmm5,dqword ptr [rip+OrMask]
@@ -4233,11 +4233,11 @@ asm
  subps xmm2,xmm0
  andps xmm2,xmm4
  orps xmm2,xmm5
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm2
-{$endif}
+{$endif}*)
 {$endif}
 end;
 {$else}
@@ -4847,14 +4847,14 @@ end;
 class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  // q = a
  // v = b
@@ -4927,10 +4927,10 @@ asm
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm1
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -4954,14 +4954,14 @@ class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  // q = a
  // v = b
@@ -5034,10 +5034,10 @@ asm
 
  movups dqword ptr [result],xmm1
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -5353,11 +5353,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+XORMask]
 {$else}
@@ -5396,11 +5396,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm2,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm2,dqword ptr [rdi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm3,dqword ptr [rip+XORMask]
 {$else}
@@ -5446,11 +5446,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
  addps xmm0,xmm1
@@ -5482,11 +5482,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
  addps xmm0,xmm1
@@ -5524,11 +5524,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
@@ -5541,11 +5541,11 @@ asm
  subps xmm1,xmm2
  cmpps xmm1,xmm0,7
  andps xmm2,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
+(*{$else}
  movups dqword ptr [result],xmm2
-{$endif}
+{$endif}*)
 end;
 {$else}
 var Factor:TpvScalar;
@@ -5584,13 +5584,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  subps xmm0,xmm1
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -5623,19 +5623,19 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  xorps xmm1,xmm1
  subps xmm1,xmm0
  maxps xmm0,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 end;
 {$else}
 begin
@@ -5698,13 +5698,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm1
  movaps xmm1,xmm0
  shufps xmm1,xmm0,$b1
@@ -9341,14 +9341,14 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
@@ -9367,10 +9367,10 @@ asm
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -9435,14 +9435,14 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9460,10 +9460,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9488,14 +9488,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
@@ -9512,10 +9512,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9579,14 +9579,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9604,10 +9604,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9632,14 +9632,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  movups xmm0,dqword ptr [b+0]
  movups xmm1,dqword ptr [b+16]
@@ -9702,10 +9702,10 @@ asm
  addps xmm4,xmm6
  movups dqword ptr [result+48],xmm4
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -9770,14 +9770,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9795,10 +9795,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9837,14 +9837,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [b+0]
  movss xmm1,dword ptr [b+4]
@@ -9892,10 +9892,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9909,14 +9909,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
@@ -9960,10 +9960,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9975,14 +9975,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [b]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -10003,10 +10003,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10019,14 +10019,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [a]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -10043,10 +10043,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10114,14 +10114,14 @@ end;
 
 class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -10139,10 +10139,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10211,14 +10211,14 @@ end;
 
 class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -10236,10 +10236,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10324,14 +10324,14 @@ end;
 
 class operator TpvMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm0,xmm0
  xorps xmm1,xmm1
  xorps xmm2,xmm2
@@ -10348,10 +10348,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10464,23 +10464,23 @@ asm
  movss dword ptr [result],xmm5
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
-{$ifdef Windows}
+{-$endif}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx+32]
  movups xmm1,dqword ptr [rcx+48]
  movups xmm2,dqword ptr [rcx+16]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi+32]
  movups xmm1,dqword ptr [rdi+48]
  movups xmm2,dqword ptr [rdi+16]
-{$endif}
+{$endif}*)
  movaps xmm3,xmm0
  movaps xmm4,xmm0
  movaps xmm6,xmm1
@@ -10508,11 +10508,11 @@ asm
  mulps xmm0,xmm7
  addps xmm5,xmm3
  subps xmm5,xmm0
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm6,dqword ptr [rcx+0]
-{$else}
+(*{$else}
  movups xmm6,dqword ptr [rdi+0]
-{$endif}
+{$endif}*)
  mulps xmm5,xmm6
  movhlps xmm7,xmm5
  addps xmm5,xmm7
@@ -10524,10 +10524,10 @@ asm
 {$else}
  movaps xmm0,xmm5
 {$endif}
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+//{$endif}
 end;
 {$else}
 begin
@@ -10730,19 +10730,19 @@ asm
  mov esp,ecx
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  mov r9,rsp
  mov r8,$fffffffffffffff0
  and rsp,r8
  sub rsp,$b0
-{$ifdef Windows}
+//{$ifdef Windows}
  movlps xmm2,qword ptr [rcx+8]
  movlps xmm4,qword ptr [rcx+40]
  movhps xmm2,qword ptr [rcx+24]
@@ -10751,7 +10751,7 @@ asm
  movlps xmm1,qword ptr [rcx]
  movhps xmm3,qword ptr [rcx+48]
  movhps xmm1,qword ptr [rcx+16]
-{$else}
+(*{$else}
  movlps xmm2,qword ptr [rdi+8]
  movlps xmm4,qword ptr [rdi+40]
  movhps xmm2,qword ptr [rdi+24]
@@ -10760,7 +10760,7 @@ asm
  movlps xmm1,qword ptr [rdi]
  movhps xmm3,qword ptr [rdi+48]
  movhps xmm1,qword ptr [rdi+16]
-{$endif}
+{$endif}*)
  movaps xmm5,xmm2
  shufps xmm5,xmm4,$88
  shufps xmm4,xmm2,$dd
@@ -10917,10 +10917,10 @@ asm
  movups dqword ptr [result+32],xmm6
  movups dqword ptr [result+48],xmm5
  mov rsp,r9
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 var t0,t4,t8,t12,d:TpvScalar;
@@ -10977,24 +10977,24 @@ asm
  movups dqword ptr [result+48],xmm6
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave],xmm6
-{$endif}
-{$ifdef Windows}
+{-$endif}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx+0]
  movups xmm4,dqword ptr [rcx+16]
  movups xmm2,dqword ptr [rcx+32]
  movups xmm5,dqword ptr [rcx+48]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi+0]
  movups xmm4,dqword ptr [rdi+16]
  movups xmm2,dqword ptr [rdi+32]
  movups xmm5,dqword ptr [rdi+48]
-{$endif}
+{$endif}*)
  movaps xmm1,xmm0
  movaps xmm3,xmm2
  unpcklps xmm0,xmm4
@@ -11011,9 +11011,9 @@ asm
  movups dqword ptr [result+16],xmm4
  movups dqword ptr [result+32],xmm1
  movups dqword ptr [result+48],xmm6
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
