@@ -8976,7 +8976,7 @@ begin
        if (fVulkanSwapChain.Width<>fWidth) or
           (fVulkanSwapChain.Height<>fHeight) or
           (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
-        VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
+        VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected! Old width: '+IntToStr(fWidth)+' - Old height: '+IntToStr(fHeight)+' - Old preset mode: '+IntToStr(Int32(fPresentMode))+' - New width: '+IntToStr(fVulkanSwapChain.Width)+' - New height: '+IntToStr(fVulkanSwapChain.Height)+' - New preset mode: '+IntToStr(Int32(fVulkanSwapChain.PresentMode)));
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
        end else begin
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Acquire;
@@ -10378,7 +10378,7 @@ begin
         fCurrentWidth:=fWidth;
         fCurrentHeight:=fHeight;
         if fGraphicsReady then begin
-         VulkanDebugLn('New surface dimension size detected!');
+         VulkanDebugLn('New surface dimension size detected! '+IntToStr(fWidth)+'x'+IntToStr(fHeight));
 {$if true}
          if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                    TAcquireVulkanBackBufferState.RecreateSurface,
@@ -10579,7 +10579,7 @@ begin
       fCurrentWidth:=fWidth;
       fCurrentHeight:=fHeight;
       if fGraphicsReady then begin
-       VulkanDebugLn('New surface dimension size detected!');
+       VulkanDebugLn('New surface dimension size detected! '+IntToStr(fWidth)+'x'+IntToStr(fHeight));
  {$if true}
        if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                  TAcquireVulkanBackBufferState.RecreateSurface,
