@@ -1588,6 +1588,8 @@ type EpvApplication=class(Exception)
        fVulkanWaitFenceCommandBuffers:array of TpvVulkanCommandBuffer;
        fVulkanWaitFenceSemaphores:array of TpvVulkanSemaphore;
 
+       fVulkanDelayResizeBugWorkaround:boolean;
+
        fVulkanNVIDIADiagnosticConfigExtensionFound:boolean;
 
        fVulkanNVIDIADiagnosticCheckPointsExtensionFound:boolean;
@@ -6979,6 +6981,8 @@ begin
 
  fVulkanMultiviewSupportEnabled:=false;
 
+ fVulkanDelayResizeBugWorkaround:=false;
+
  fVulkanInstance:=nil;
 
  fVulkanDevice:=nil;
@@ -7327,6 +7331,7 @@ procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil)
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
     PhysicalDevice:TpvVulkanPhysicalDevice;
+    DriverVersionString:RawByteString;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanDevice');
@@ -7370,7 +7375,19 @@ begin
 
   VulkanDebugLn('Device Vulkan API version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetAPIVersionString));
 
-  VulkanDebugLn('Device driver version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetDriverVersionString));
+  DriverVersionString:=fVulkanDevice.PhysicalDevice.GetDriverVersionString;
+
+  fVulkanDelayResizeBugWorkaround:=false;
+
+  if fVulkanDevice.PhysicalDevice.Properties.vendorID=UInt32(TpvVulkanVendorID.NVIDIA) then begin
+{$if defined(Linux)}
+   if DriverVersionString='525.105.17.0' then begin
+    fVulkanDelayResizeBugWorkaround:=true;
+   end;
+{$ifend}
+  end;
+
+  VulkanDebugLn('Device driver version: '+TpvUTF8String(DriverVersionString));
 
   for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableLayerNames.Count-1 do begin
    VulkanDebugLn('Device layer: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.AvailableLayerNames[Index]));
@@ -8973,8 +8990,9 @@ begin
       end;
 
       TAcquireVulkanBackBufferState.CheckSettings:begin
-       if (fVulkanSwapChain.Width<>fWidth) or
-          (fVulkanSwapChain.Height<>fHeight) or
+       if ((not fVulkanDelayResizeBugWorkaround) and
+           ((fVulkanSwapChain.Width<>fWidth) or
+            (fVulkanSwapChain.Height<>fHeight))) or
           (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
         VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected! Old width: '+IntToStr(fWidth)+' - Old height: '+IntToStr(fHeight)+' - Old preset mode: '+IntToStr(Int32(fPresentMode))+' - New width: '+IntToStr(fVulkanSwapChain.Width)+' - New height: '+IntToStr(fVulkanSwapChain.Height)+' - New preset mode: '+IntToStr(Int32(fVulkanSwapChain.PresentMode)));
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
