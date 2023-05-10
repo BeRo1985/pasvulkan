@@ -63,3 +63,6 @@ __history/
 
 # Castalia statistics file (since XE7 Castalia is distributed with Delphi)
 *.stat
+
+# Binaries
+projectmanager
