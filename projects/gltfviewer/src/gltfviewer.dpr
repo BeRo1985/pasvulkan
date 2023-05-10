@@ -36,12 +36,9 @@ uses
    cthreads,
    BaseUnix,
   {$elseif defined(Windows)}
-   {$ifdef PasVulkanUseJclDebug}
-    JclDebug,
-   {$endif}
    {$ifdef PasVulkanUseFastMM4}
     FastMM4,
-   {$endif}
+   {$endif} 
    Windows,
   {$ifend}
   SysUtils,
@@ -49,11 +46,11 @@ uses
   Vulkan,
   PasVulkan.Types,
   PasVulkan.Android,
-{$if defined(PasVulkanUseSDL2)}
+{$ifdef PasVulkanUseSDL2}
   PasVulkan.SDL2,
-{$ifend}
+{$endif}
   PasVulkan.Framework,
-  PasVulkan.Application,
+  PasVulkan.Application,  
   UnitApplication;
 
 // {$if defined(fpc) and defined(android)}
@@ -148,6 +145,9 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 {$ifend}
 
 {$if not (defined(fpc) and defined(android))}
+
+{$R *.res}
+
 begin
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
  // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo

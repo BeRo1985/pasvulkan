@@ -2086,7 +2086,7 @@ type PEVREye=^TEVREye;
        25:(spatialAnchor:TVREvent_SpatialAnchor_t);
      end;
 
-{$ifdef Linux}{$if defined(fpc) and (fpc_version>=3)}{$push}{$packrecords 4}}{$else}{$align 4}{$ifend}{$endif}
+{$ifdef Linux}{$if defined(fpc) and (fpc_version>=3)}{$push}{$packrecords 4}{$else}{$align 4}{$ifend}{$endif}
      // This structure was originally defined mis-packed on Linux, preserved for compatibility.
      PVREvent_t=^TVREvent_t;
      TVREvent_t=record
