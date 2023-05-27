@@ -106,7 +106,9 @@ type TpvScene3DRendererAntialiasingMode=
        INTERLOCKOIT,
        LOOPOIT,
        WBOIT,
-       MBOIT
+       MBOIT,
+       SPINLOCKDFAOIT,
+       INTERLOCKDFAOIT
       );
 
      PpvScene3DRendererTransparencyMode=^TpvScene3DRendererTransparencyMode;

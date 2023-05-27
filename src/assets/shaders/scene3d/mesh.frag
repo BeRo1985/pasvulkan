@@ -26,7 +26,7 @@
   #endif
 #endif
 
-#if defined(LOCKOIT)
+#if defined(LOCKOIT) || defined(DFAOIT)
   #extension GL_ARB_post_depth_coverage : enable
   #ifdef INTERLOCK
     #extension GL_ARB_fragment_shader_interlock : enable
@@ -295,6 +295,33 @@ layout (std430, set = 1, binding = 7) readonly buffer LightGridClusters {
     } uOIT;
   #endif
 
+#elif defined(DFAOIT)
+
+  #ifdef MSAA
+    layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
+    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCounter;
+    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumlation;
+    layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
+    layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
+  #else
+    layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
+    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCounter;
+    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumlation;
+    layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAverage;
+    layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgBucket;
+  #endif
+  #ifdef SPINLOCK
+    layout(set = 1, binding = 13, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+    /*layout(std140, set = 1, binding = 14) uniform uboOIT {
+      ivec4 oitViewPort;
+    } uOIT;*/
+  #endif
+  #ifdef INTERLOCK
+    /*layout(std140, set = 1, binding = 14) uniform uboOIT {
+      ivec4 oitViewPort;
+    } uOIT;*/
+  #endif
+
 #elif defined(LOOPOIT)
 
   layout(std140, set = 1, binding = 8) uniform uboOIT {
@@ -379,7 +406,7 @@ float iridescenceFactor = 0.0;
 float iridescenceIor = 1.3;
 float iridescenceThickness = 400.0;
 
-#if defined(BLEND) || defined(LOOPOIT) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT)
+#if defined(BLEND) || defined(LOOPOIT) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT) || defined(DFAOIT)
   #define TRANSMISSION
 #endif
 
@@ -1293,7 +1320,7 @@ const uint smPBRMetallicRoughness = 0u,  //
     smPBRSpecularGlossiness = 1u,        //
     smUnlit = 2u;                        //
 
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || !defined(DEPTHONLY)
 
 uvec2 textureFlags;
 vec2 texCoords[2];
@@ -1347,7 +1374,7 @@ void main() {
     material = Material(materialPointer);
   }
 #endif
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || !defined(DEPTHONLY) 
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || !defined(DEPTHONLY)
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;
   texCoords[1] = inTexCoord1;
@@ -1367,7 +1394,7 @@ void main() {
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
 #ifdef DEPTHONLY
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) 
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #endif
 #else
@@ -1466,7 +1493,7 @@ void main() {
       float transparency = 0.0;
       float refractiveAngle = 0.0;
       float shadow = 1.0;
-  #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(BLEND)
+  #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(BLEND)
       ambientOcclusion = 1.0;
   #else
       ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
@@ -1911,7 +1938,7 @@ void main() {
     float fragDepth;
   #endif
   if (alpha < uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x)) {
-  #if defined(WBOIT) || defined(LOCKOIT) || defined(LOCKOIT_PASS2)
+  #if defined(WBOIT) || defined(LOCKOIT) || defined(DFAOIT) || defined(LOCKOIT_PASS2)
     finalColor = vec4(alpha = 0.0);    
   #elif defined(LOCKOIT_PASS1)
     alpha = 0.0;    
@@ -1945,8 +1972,8 @@ void main() {
   #if defined(NODISCARD)  
     fragDepth = gl_FragCoord.z;
   #endif
-  #if defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT) || defined(LOOPOIT)
-    #if defined(WBOIT) || defined(LOCKOIT) || defined(LOOPOIT_PASS2)
+  #if defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT) || defined(LOOPOIT) || defined(DFAOIT)
+    #if defined(WBOIT) || defined(LOCKOIT) || defined(LOOPOIT_PASS2) || defined(DFAOIT)
       finalColor.w = alpha = 1.0;    
     #elif defined(LOOPOIT_PASS1)
       alpha = 1.0;    
@@ -1960,7 +1987,7 @@ void main() {
   #if defined(NODISCARD)  
     gl_FragDepth = fragDepth;
   #endif
-  #if !(defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT) || defined(LOOPOIT))
+  #if !(defined(WBOIT) || defined(MBOIT) || defined(LOCKOIT) || defined(LOOPOIT) || defined(DFAOIT))
     #ifdef MSAA
       #if 0
         vec2 alphaTextureSize = vec2(texture2DSize(0));
@@ -2031,6 +2058,140 @@ void main() {
     outFragColor = vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth);
   } 
 #endif
+
+#elif defined(DFAOIT)
+
+  int oitMultiViewIndex = int(gl_ViewIndex);
+  ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
+  uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+
+#ifdef INTERLOCK
+  beginInvocationInterlock();
+#endif
+
+  // Workaround for missing VK_EXT_post_depth_coverage support on AMD GPUs older than RDNA,
+  // namely, an extra OIT renderpass with an fragment-shader-based depth check on the depth
+  // buffer values from the previous forward rendering pass, which should fix problems with
+  // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
+  // at least I hope it so:
+  uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+ #ifdef MSAA
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r);
+ #else
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r);
+ #endif
+  if(
+#ifdef USE_SPECIALIZATION_CONSTANTS
+     ((UseReversedZ && (oitCurrentDepth >= oitDepth)) ||
+      ((!UseReversedZ) && (oitCurrentDepth <= oitDepth))) &&
+#else
+#ifdef REVERSEDZ
+     (oitCurrentDepth >= oitDepth) &&
+#else
+     (oitCurrentDepth <= oitDepth) &&
+#endif
+#endif
+     (min(alpha, finalColor.w) > 0.0)
+    ){
+
+#ifdef SPINLOCK
+    bool oitDone = /*gl_HelperInvocation ||*/ (oitStoreMask == 0);
+    while(!oitDone){
+      uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
+      if(oitOld == 0u){
+#endif
+
+#ifdef MSAA
+        #define SAMPLE_ID , int(gl_SampleID)
+#else
+        #define SAMPLE_ID
+#endif
+
+        // avg color/alpha
+        vec4 prevAvg = imageLoad(uOITImgAverage, oitCoord SAMPLE_ID );
+        prevAvg += finalColor.w;
+        imageStore(uOITImgAverage, oitCoord SAMPLE_ID , prevAvg);
+
+        // acc - prod
+        vec4 prevAcc = imageLoad(uOITImgAccumlation, oitCoord SAMPLE_ID );
+        prevAcc.xyz += finalColor.xyz * finalColor.w;
+        prevAcc.w *= 1.0 - finalColor.w;
+        imageStore(uOITImgAccumlation, oitCoord SAMPLE_ID , prevAcc);
+
+        // 1st, 2nd fragment
+        vec4 fragments[2];
+        fragments[0] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID );
+        fragments[1] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID );
+
+        // Count +1 fragment
+        uvec3 fragsAndDepths = uvec3(imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ));
+        fragsAndDepths.x += 1U;
+
+        // Increase count before
+        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
+
+        float depth1 = uintBitsToFloat(fragsAndDepths.y);
+        float depth2 = uintBitsToFloat(fragsAndDepths.z);
+
+        bool uOITImgFragmentCounterDirty = false;
+
+        float depth = oitCurrentDepth;
+
+        if
+#ifdef REVERSEDZ
+          (depth >= depth1)
+#else
+          (depth <= depth1)
+#endif
+        {
+          vec4 temp = finalColor;
+          float tempD = depth;
+          finalColor = fragments[0];
+          depth = depth1;
+          fragments[0] = temp;
+          depth1 = tempD;
+          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , temp);
+          uOITImgFragmentCounterDirty = true;
+        }
+
+        if
+#ifdef REVERSEDZ
+          (depth >= depth2)
+#else
+          (depth <= depth2)
+#endif
+        {
+          vec4 temp = finalColor;
+          float tempD = depth;
+          finalColor = fragments[1];
+          depth = depth2;
+          fragments[1] = temp;
+          depth2 = tempD;
+          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID , temp);
+          fragsAndDepths.z = floatBitsToUint(depth2);
+          uOITImgFragmentCounterDirty = true;
+        }
+
+        if(uOITImgFragmentCounterDirty){
+          imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
+        }
+
+        #undef SAMPLE_ID
+
+#ifdef SPINLOCK
+        imageAtomicExchange(uOITImgSpinLock, oitCoord, 0u);
+        oitDone = true;
+      }
+    }
+#endif
+
+  }
+
+#ifdef INTERLOCK
+  endInvocationInterlock();
+#endif
+
+  outFragColor = vec4(0.0);
 
 #elif defined(LOCKOIT)
 

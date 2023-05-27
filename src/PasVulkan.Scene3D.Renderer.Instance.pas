@@ -264,6 +264,12 @@ type { TpvScene3DRendererInstance }
        fApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer;
        fApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
       private
+       fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages:TOrderIndependentTransparencyImages;
+       fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages:TOrderIndependentTransparencyImages;
+       fDeepAndFastApproximateOrderIndependentTransparencyAverageImages:TOrderIndependentTransparencyImages;
+       fDeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages;
+       fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages;
+      private
        fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
        fSceneMipmappedArray2DImages:TMipmappedArray2DImages;
       private
@@ -346,6 +352,12 @@ type { TpvScene3DRendererInstance }
       public
        property ApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer read fApproximationOrderIndependentTransparentUniformBuffer;
        property ApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fApproximationOrderIndependentTransparentUniformVulkanBuffer;
+      public
+       property DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages;
+       property DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages;
+       property DeepAndFastApproximateOrderIndependentTransparencyAverageImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyAverageImages;
+       property DeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyBucketImages;
+       property DeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages;
       public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property SceneMipmappedArray2DImages:TMipmappedArray2DImages read fSceneMipmappedArray2DImages;
@@ -1661,6 +1673,39 @@ begin
 
       end;
 
+      TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
+      TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
+       for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+        fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                                                                                 fHeight,
+                                                                                                                                                                 fCountSurfaceViews,
+                                                                                                                                                                 VK_FORMAT_R32G32B32_UINT,
+                                                                                                                                                                 VK_SAMPLE_COUNT_1_BIT);
+        fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                                                                              fHeight,
+                                                                                                                                                              fCountSurfaceViews,
+                                                                                                                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                                              VK_SAMPLE_COUNT_1_BIT);
+        fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                                                                         fHeight,
+                                                                                                                                                         fCountSurfaceViews,
+                                                                                                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                                         VK_SAMPLE_COUNT_1_BIT);
+        fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                                                                        fHeight,
+                                                                                                                                                        fCountSurfaceViews,
+                                                                                                                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                                        VK_SAMPLE_COUNT_1_BIT);
+        if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
+         fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
+                                                                                                                                                           fHeight,
+                                                                                                                                                           fCountSurfaceViews,
+                                                                                                                                                           VK_FORMAT_R32_UINT,
+                                                                                                                                                           VK_SAMPLE_COUNT_1_BIT);
+        end;
+       end;
+      end;
+
       else begin
       end;
 
@@ -1814,6 +1859,19 @@ begin
     FreeAndNil(fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]);
     FreeAndNil(fLoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex]);
     FreeAndNil(fLoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex]);
+   end;
+  end;
+
+  TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
+  TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
+   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]);
+    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]);
+    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]);
+    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]);
+    if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
+     FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]);
+    end;
    end;
   end;
 
