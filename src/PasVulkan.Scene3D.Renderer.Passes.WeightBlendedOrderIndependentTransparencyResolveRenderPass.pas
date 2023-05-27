@@ -145,7 +145,7 @@ begin
 
  end else begin
 
-  fResourceOpaque:=AddImageInput('resourcetype_msaa_color',
+  fResourceOpaque:=AddImageInput('resourcetype_msaa_color_optimized_non_alpha',
                                  'resource_forwardrendering_msaa_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
@@ -185,14 +185,14 @@ begin
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
-  fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
+{ fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                           'resource_combinedopaquetransparency_final_color',
                                           'resource_combinedopaquetransparency_final_msaa_color',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                        TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                           [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                         );
+                                         );}
 
  end;
 
