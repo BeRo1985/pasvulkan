@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="\home\bero\Projects\GLTF\transparent_cubes_test.glb --depth-of-field-mode none --transparency-mode mboit --antialiasing-mode msaa --max-msaa 4"/>
+        <CommandLineParams Value="\home\bero\Projects\GLTF\transparent_cubes_test.glb --depth-of-field-mode none --transparency-mode wboit --antialiasing-mode msaa --max-msaa 4"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="\home\bero\Projects\GLTF\transparent_cubes_test.glb --depth-of-field-mode none --transparency-mode mboit --antialiasing-mode msaa --max-msaa 4"/>
+            <CommandLineParams Value="\home\bero\Projects\GLTF\transparent_cubes_test.glb --depth-of-field-mode none --transparency-mode wboit --antialiasing-mode msaa --max-msaa 4"/>
           </local>
         </Mode0>
       </Modes>
