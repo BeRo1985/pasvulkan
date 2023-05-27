@@ -1680,22 +1680,22 @@ begin
                                                                                                                                                                  fHeight,
                                                                                                                                                                  fCountSurfaceViews,
                                                                                                                                                                  VK_FORMAT_R32G32B32_UINT,
-                                                                                                                                                                 VK_SAMPLE_COUNT_1_BIT);
+                                                                                                                                                                 Renderer.SurfaceSampleCountFlagBits);
         fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                               fHeight,
                                                                                                                                                               fCountSurfaceViews,
                                                                                                                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                              VK_SAMPLE_COUNT_1_BIT);
+                                                                                                                                                              Renderer.SurfaceSampleCountFlagBits);
         fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                          fHeight,
                                                                                                                                                          fCountSurfaceViews,
                                                                                                                                                          VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                         VK_SAMPLE_COUNT_1_BIT);
+                                                                                                                                                         Renderer.SurfaceSampleCountFlagBits);
         fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                         fHeight,
-                                                                                                                                                        fCountSurfaceViews,
+                                                                                                                                                        fCountSurfaceViews*2,
                                                                                                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                        VK_SAMPLE_COUNT_1_BIT);
+                                                                                                                                                        Renderer.SurfaceSampleCountFlagBits);
         if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
          fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                            fHeight,
