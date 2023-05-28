@@ -168,7 +168,9 @@ std::vector<std::vector<int>> generatePermutations(int size){
   return permutations;
 }
 
-typedef std::array<unsigned int, 16> PermutationIndexCombination; 
+#define MAXIMUM_COLOR_COUNT 16
+
+typedef std::array<unsigned int, MAXIMUM_COLOR_COUNT> PermutationIndexCombination; 
 
 void hash_combine(std::size_t& seed, std::size_t value) {
   seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
@@ -222,7 +224,7 @@ int main() {
 
   // Initialize training set
   TrainingSet trainingSet;
-  for(size_t countColors = 3; countColors <= 16; countColors++) {  
+  for(size_t countColors = 3; countColors <= MAXIMUM_COLOR_COUNT; countColors++) {  
     
     size_t countMinusTwo = countColors - 2;
 
