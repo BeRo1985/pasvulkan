@@ -186,6 +186,10 @@ begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
     end else if Parameter='mboit' then begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.MBOIT;
+    end else if Parameter='spinlockdfaoit' then begin
+     fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT;
+    end else if Parameter='interlockdfaoit' then begin
+     fTransparencyMode:=TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT;
     end else begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.Auto;
     end;

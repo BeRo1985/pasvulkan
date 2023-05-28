@@ -168,7 +168,7 @@ begin
                                                             0,
                                                             1,
                                                             0,
-                                                            0);
+                                                            fInstance.CountSurfaceViews);
 
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
@@ -199,7 +199,7 @@ begin
                                     VK_IMAGE_LAYOUT_GENERAL,
                                     @ClearValues[0],
                                     1,
-                                    @ImageSubresourceRanges[0]);
+                                    @ImageSubresourceRanges[2]);
  end;
 
 {BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
