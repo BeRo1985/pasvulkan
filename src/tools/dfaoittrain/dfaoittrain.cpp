@@ -133,11 +133,6 @@ struct TrainingSample {
 typedef std::vector<TrainingSample> TrainingSet;
 typedef std::vector<size_t> TrainingSampleIndices;
 
-TrainingSet trainingSet;
-TrainingSampleIndices trainingSampleIndices;
-ColorSet colorSet;
-std::vector<ColorSet> colorSetPermutations;
-
 void blendBackToFront(Color& target, const Color& source){
   double oneMinusSourceAlpha = 1.0 - source.m_a;
   target.m_r = (target.m_r * oneMinusSourceAlpha) + (source.m_r * source.m_a);
@@ -173,8 +168,6 @@ std::vector<std::vector<int>> generatePermutations(int size){
   return permutations;
 }
 
-std::vector<std::vector<int>> permutationIndices;
-
 typedef std::array<unsigned int, 16> PermutationIndexCombination; 
 
 void hash_combine(std::size_t& seed, std::size_t value) {
@@ -208,6 +201,7 @@ int main() {
   Network network(sizes);
 
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
+  ColorSet colorSet;
   int32_t percentStep = 10;
   for(int32_t percentR = 0; percentR <= 100; percentR += percentStep) {
     for(int32_t percentG = 0; percentG <= 100; percentG += percentStep) {
@@ -220,12 +214,14 @@ int main() {
   } 
 
   // Generate permutation indices
+  std::vector<std::vector<int>> permutationIndices;
   permutationIndices = generatePermutations(colorSet.size());
 
   // Permutation index combination hash table
   std::unordered_map<PermutationIndexCombination, bool, container_hasher> permutationIndexCombinationHashTable;
 
   // Initialize training set
+  TrainingSet trainingSet;
   for(size_t countColors = 3; countColors <= 16; countColors++) {  
     
     size_t countMinusTwo = countColors - 2;
@@ -308,6 +304,7 @@ int main() {
   }
   
   // Initialize training sample indices
+  TrainingSampleIndices trainingSampleIndices;
   trainingSampleIndices.resize(trainingSet.size());
   for(size_t i = 0; i < trainingSampleIndices.size(); i++) {
     trainingSampleIndices[i] = i;
