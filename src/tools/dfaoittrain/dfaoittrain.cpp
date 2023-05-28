@@ -134,6 +134,7 @@ typedef std::vector<size_t> TrainingSampleIndices;
 TrainingSet trainingSet;
 TrainingSampleIndices trainingSampleIndices;
 ColorSet colorSet;
+std::vector<ColorSet> colorSetPermutations;
 
 void blendBackToFront(Color& target, const Color& source){
   double oneMinusSourceAlpha = 1.0 - source.m_a;
@@ -151,6 +152,26 @@ void blendFrontToBack(Color& target, const Color& source){
   target.m_b += source.m_b * weight;
   target.m_a += weight;  
 }
+
+size_t factorial(size_t n){
+  if (n == 0) {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}
+
+std::vector<std::vector<int>> generatePermutations(int size){
+  std::vector<int> sequence(size);
+  std::iota(sequence.begin(), sequence.end(), 0);
+  std::vector<std::vector<int>> permutations;
+  permutations.reserve(factorial(sequence.size()));
+  do {
+    permutations.emplace_back(sequence);
+  } while (std::next_permutation(sequence.begin(), sequence.end()));
+  return permutations;
+}
+
+std::vector<std::vector<int>> permutationIndices;
 
 int main() {
 
@@ -179,73 +200,79 @@ int main() {
     }
   } 
 
+  // Generate permutation indices
+  permutationIndices = generatePermutations(colorSet.size());
+
   // Initialize training set
   for(size_t countColors = 3; countColors <= 16; countColors++) {  
+    
+    size_t countMinusTwo = countColors - 2;
 
-    std::vector<Color> colors(countColors);
-    for(size_t i = 0; i < colors.size(); i++) {
-      colors[i] = colorSet[rand() % colorSet.size()];
+    for(size_t permutationIndex = 0; permutationIndex < permutationIndices.size(); permutationIndex++) {
+      
+      std::vector<int>& permutation = permutationIndices[permutationIndex];
+
+      std::vector<Color> colors(countColors);
+      for(size_t i = 0; i < colors.size(); i++) {
+        colors[i] = colorSet[permutation[i]];
+      }
+
+      // Compute average color and alpha
+      Color averageColor = { 0.0, 0.0, 0.0, 0.0 };
+      for(size_t i = 2; i < colors.size(); i++) {
+        averageColor.m_r += colors[i].m_r;
+        averageColor.m_g += colors[i].m_g;
+        averageColor.m_b += colors[i].m_b;
+        averageColor.m_a += colors[i].m_a;
+      }
+      averageColor.m_r /= countMinusTwo;
+      averageColor.m_g /= countMinusTwo;
+      averageColor.m_b /= countMinusTwo;
+      averageColor.m_a /= countMinusTwo;
+
+      // Compute accumulated premultiplied alpha color
+      Color accumulatedPremultipliedAlphaColor = { 0.0, 0.0, 0.0, 1.0 };
+      for(size_t i = 0; i < colors.size(); i++) {
+        accumulatedPremultipliedAlphaColor.m_r += colors[i].m_r * colors[i].m_a;
+        accumulatedPremultipliedAlphaColor.m_g += colors[i].m_g * colors[i].m_a;
+        accumulatedPremultipliedAlphaColor.m_b += colors[i].m_b * colors[i].m_a;
+        accumulatedPremultipliedAlphaColor.m_a *= 1.0 - colors[i].m_a;
+      }    
+
+      // Compute correct OIT color for the two front fragments
+      Color correctOITColor = { 0.0, 0.0, 0.0, 0.0 };
+      for(size_t i = 0; i < 2; i++) {
+        blendFrontToBack(correctOITColor, colors[i]);
+      } 
+
+      // Compute correct OIT color for all fragments
+      Color totalOITColor = { 0.0, 0.0, 0.0, 0.0 };
+      for(size_t i = 0; i < colors.size(); i++) {
+        blendFrontToBack(totalOITColor, colors[i]);
+      }
+
+      // Add training sample
+      TrainingSample trainingSample;
+      trainingSample.m_inputs.resize(10);
+      trainingSample.m_targets.resize(3);
+      trainingSample.m_inputs[0] = averageColor.m_a;
+      trainingSample.m_inputs[1] = averageColor.m_r;
+      trainingSample.m_inputs[2] = averageColor.m_g;
+      trainingSample.m_inputs[3] = averageColor.m_b;
+      trainingSample.m_inputs[4] = accumulatedPremultipliedAlphaColor.m_r;
+      trainingSample.m_inputs[5] = accumulatedPremultipliedAlphaColor.m_g;
+      trainingSample.m_inputs[6] = accumulatedPremultipliedAlphaColor.m_b;
+      trainingSample.m_inputs[7] = correctOITColor.m_r;
+      trainingSample.m_inputs[8] = correctOITColor.m_g;
+      trainingSample.m_inputs[9] = correctOITColor.m_b;  
+      trainingSample.m_targets[0] = totalOITColor.m_r;
+      trainingSample.m_targets[1] = totalOITColor.m_g;
+      trainingSample.m_targets[2] = totalOITColor.m_b;
+      trainingSet.push_back(trainingSample);
+    
     }
-
-    // Compute average color and alpha
-    Color averageColor = { 0.0, 0.0, 0.0, 0.0 };
-    for(size_t i = 2; i < colors.size(); i++) {
-      averageColor.m_r += colors[i].m_r;
-      averageColor.m_g += colors[i].m_g;
-      averageColor.m_b += colors[i].m_b;
-      averageColor.m_a += colors[i].m_a;
-    }
-    averageColor.m_r /= colors.size() - 2;
-    averageColor.m_g /= colors.size() - 2;
-    averageColor.m_b /= colors.size() - 2;
-    averageColor.m_a /= colors.size() - 2;
-
-    // Compute accumulated premultiplied alpha color
-    Color accumulatedPremultipliedAlphaColor = { 0.0, 0.0, 0.0, 1.0 };
-    for(size_t i = 0; i < colors.size(); i++) {
-      accumulatedPremultipliedAlphaColor.m_r += colors[i].m_r * colors[i].m_a;
-      accumulatedPremultipliedAlphaColor.m_g += colors[i].m_g * colors[i].m_a;
-      accumulatedPremultipliedAlphaColor.m_b += colors[i].m_b * colors[i].m_a;
-      accumulatedPremultipliedAlphaColor.m_a *= 1.0 - colors[i].m_a;
-    }    
-
-    // Compute correct OIT color for the two front fragments
-    Color correctOITColor = { 0.0, 0.0, 0.0, 0.0 };
-    for(size_t i = 0; i < 2; i++) {
-      blendFrontToBack(correctOITColor, colors[i]);
-    } 
-
-    // Compute correct OIT color for all fragments
-    Color totalOITColor = { 0.0, 0.0, 0.0, 0.0 };
-    for(size_t i = 0; i < colors.size(); i++) {
-      blendFrontToBack(totalOITColor, colors[i]);
-    }
-
-    // Add training sample
-    TrainingSample trainingSample;
-    trainingSample.m_inputs.resize(10);
-    trainingSample.m_targets.resize(3);
-    trainingSample.m_inputs[0] = averageColor.m_a;
-    trainingSample.m_inputs[1] = averageColor.m_r;
-    trainingSample.m_inputs[2] = averageColor.m_g;
-    trainingSample.m_inputs[3] = averageColor.m_b;
-    trainingSample.m_inputs[4] = accumulatedPremultipliedAlphaColor.m_r;
-    trainingSample.m_inputs[5] = accumulatedPremultipliedAlphaColor.m_g;
-    trainingSample.m_inputs[6] = accumulatedPremultipliedAlphaColor.m_b;
-    trainingSample.m_inputs[7] = correctOITColor.m_r;
-    trainingSample.m_inputs[8] = correctOITColor.m_g;
-    trainingSample.m_inputs[9] = correctOITColor.m_b;  
-    trainingSample.m_targets[0] = totalOITColor.m_r;
-    trainingSample.m_targets[1] = totalOITColor.m_g;
-    trainingSample.m_targets[2] = totalOITColor.m_b;
-    trainingSet.push_back(trainingSample);
 
   }
-
-/*TrainingSample& trainingSample = trainingSet[i];
-    trainingSample.m_inputs.resize(10);
-    trainingSample.m_targets.resize(3);*/
-
   
   // Initialize training sample indices
   trainingSampleIndices.resize(trainingSet.size());
