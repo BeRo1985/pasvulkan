@@ -2127,7 +2127,7 @@ void main() {
         uvec3 fragsAndDepths = uvec3(imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ));
         fragsAndDepths.x += 1u;
 
-        float depths[2] = vec2(uintBitsToFloat(fragsAndDepths.yz));
+        vec2 depths = vec2(uintBitsToFloat(fragsAndDepths.yz));
 
         float depth = oitCurrentDepth;
 
