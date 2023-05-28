@@ -12,6 +12,7 @@
 #include <random>
 #include <unordered_map>
 #include <array>
+#include "pcg_random.hpp"
 
 inline static double sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x));
@@ -196,8 +197,11 @@ struct container_hasher {
 
 int main() {
 
-  std::random_device randomDevice;
-  std::mt19937 randomNumberGenerator(randomDevice());
+  //std::random_device randomDevice;
+  ///std::mt19937 randomNumberGenerator(randomDevice());
+
+  pcg_extras::seed_seq_from<std::random_device> seed_source;
+  pcg32 randomNumberGenerator(seed_source);
 
   std::vector<size_t> sizes = {
     10, // 10 inputs (1x: Average opacity, excluding the front two fragments + 
