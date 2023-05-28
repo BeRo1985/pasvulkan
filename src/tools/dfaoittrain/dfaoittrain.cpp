@@ -4,6 +4,8 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <unordered_map>
+#include <array>
 
 inline static double sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x));
@@ -173,6 +175,23 @@ std::vector<std::vector<int>> generatePermutations(int size){
 
 std::vector<std::vector<int>> permutationIndices;
 
+typedef std::array<unsigned int, 16> PermutationIndexCombination; 
+
+void hash_combine(std::size_t& seed, std::size_t value) {
+  seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+struct container_hasher {
+  template<class T>
+  std::size_t operator()(const T& c) const {
+    std::size_t seed = 0;
+    for(const auto& elem : c) {
+      hash_combine(seed, std::hash<typename T::value_type>()(elem));
+    }
+    return seed;
+  }
+};
+
 int main() {
 
   std::vector<size_t> sizes = {
@@ -203,6 +222,9 @@ int main() {
   // Generate permutation indices
   permutationIndices = generatePermutations(colorSet.size());
 
+  // Permutation index combination hash table
+  std::unordered_map<PermutationIndexCombination, bool, container_hasher> permutationIndexCombinationHashTable;
+
   // Initialize training set
   for(size_t countColors = 3; countColors <= 16; countColors++) {  
     
@@ -212,6 +234,17 @@ int main() {
       
       std::vector<int>& permutation = permutationIndices[permutationIndex];
 
+      // Check if permutation index combination of the current color count has already been added to the training set
+      PermutationIndexCombination permutationIndexCombination;
+      for(size_t i = 0; i < permutationIndexCombination.size(); i++) {
+        permutationIndexCombination[i] = (i < countColors) ? permutation[i] : -1;
+      }
+      if(permutationIndexCombinationHashTable.find(permutationIndexCombination) != permutationIndexCombinationHashTable.end()) {
+        continue;
+      }
+      permutationIndexCombinationHashTable.emplace(permutationIndexCombination, true);
+
+      // Compute color set for the current permutation for the current color count
       std::vector<Color> colors(countColors);
       for(size_t i = 0; i < colors.size(); i++) {
         colors[i] = colorSet[permutation[i]];
