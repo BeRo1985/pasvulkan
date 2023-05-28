@@ -2125,56 +2125,43 @@ void main() {
 
         // Count +1 fragment
         uvec3 fragsAndDepths = uvec3(imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ));
-        fragsAndDepths.x += 1U;
+        fragsAndDepths.x += 1u;
 
-        // Increase count before
-        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
-
-        float depth1 = uintBitsToFloat(fragsAndDepths.y);
-        float depth2 = uintBitsToFloat(fragsAndDepths.z);
-
-        bool uOITImgFragmentCounterDirty = false;
+        float depths[2] = vec2(uintBitsToFloat(fragsAndDepths.yz));
 
         float depth = oitCurrentDepth;
 
         if
 #ifdef REVERSEDZ
-          (depth >= depth1)
+          (depth >= depths.x)
 #else
-          (depth <= depth1)
+          (depth <= depths.x)
 #endif
         {
           vec4 temp = finalColor;
-          float tempD = depth;
+          float tempDepth = depth;
           finalColor = fragments[0];
-          depth = depth1;
-          fragments[0] = temp;
-          depth1 = tempD;
-          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , temp);
-          uOITImgFragmentCounterDirty = true;
+          depth = depths.x;
+          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , fragments[0] = temp);
+          fragsAndDepths.y = floatBitsToUint(depths.x = tempDepth);
         }
 
         if
 #ifdef REVERSEDZ
-          (depth >= depth2)
+          (depth >= depths.y)
 #else
-          (depth <= depth2)
+          (depth <= depths.y)
 #endif
         {
-          vec4 temp = finalColor;
-          float tempD = depth;
+          vec4 tempColor = finalColor;
+          float tempDepth = depth;
           finalColor = fragments[1];
-          depth = depth2;
-          fragments[1] = temp;
-          depth2 = tempD;
-          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID , temp);
-          fragsAndDepths.z = floatBitsToUint(depth2);
-          uOITImgFragmentCounterDirty = true;
+          depth = depths.y;          
+          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID , fragments[1] = tempColor);
+          fragsAndDepths.z = floatBitsToUint(depths.y = tempDepth);
         }
 
-        if(uOITImgFragmentCounterDirty){
-          imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
-        }
+        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
 
         #undef SAMPLE_ID
 
