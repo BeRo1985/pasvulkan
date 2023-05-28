@@ -10,7 +10,7 @@ layout(location = 0) out vec4 outColor;
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInputOpaque;
 
-layout(set = 0, binding = 1, rgba32ui) uniform readonly uimage2DMSArray uOITImgFragmentCounter;
+layout(set = 0, binding = 1, rgba32ui) uniform readonly uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
 layout(set = 0, binding = 2, rgba16f) uniform readonly image2DMSArray uOITImgAccumlation;
 layout(set = 0, binding = 3, rgba16f) uniform readonly image2DMSArray uOITImgAverage;
 layout(set = 0, binding = 4, rgba16f) uniform readonly image2DMSArray uOITImgBucket;
@@ -19,7 +19,7 @@ layout(set = 0, binding = 4, rgba16f) uniform readonly image2DMSArray uOITImgBuc
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
-layout(set = 0, binding = 1, rgba32ui) uniform readonly uimage2DArray uOITImgFragmentCounter;
+layout(set = 0, binding = 1, rgba32ui) uniform readonly uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
 layout(set = 0, binding = 2, rgba16f) uniform readonly image2DArray uOITImgAccumlation;
 layout(set = 0, binding = 3, rgba16f) uniform readonly image2DArray uOITImgAverage;
 layout(set = 0, binding = 4, rgba16f) uniform readonly image2DArray uOITImgBucket;
@@ -52,11 +52,11 @@ void main() {
 
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
-  uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord, gl_SampleID).x;
+  uint countFragments = imageLoad(uOITImgFragmentCouterFragmentDepthsSampleMask, oitCoord, gl_SampleID).x;
   vec4 accumulatedColor = imageLoad(uOITImgAccumlation, oitCoord, gl_SampleID);
 #else
   vec4 opaque = subpassLoad(uSubpassInputOpaque);
-  uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord).x;
+  uint countFragments = imageLoad(uOITImgFragmentCouterFragmentDepthsSampleMask, oitCoord).x;
   vec4 accumulatedColor = imageLoad(uOITImgAccumlation, oitCoord);
 #endif
 

@@ -299,13 +299,13 @@ layout (std430, set = 1, binding = 7) readonly buffer LightGridClusters {
 
   #ifdef MSAA
     layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
-    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCounter;
+    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
     layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
     layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
     layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
   #else
     layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
-    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCounter;
+    layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
     layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
     layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAverage;
     layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgBucket;
@@ -2118,7 +2118,7 @@ void main() {
         fragments[0] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID );
         fragments[1] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID );
 
-        uvec4 fragmentCounterFragmentDepthsSampleMask = (imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ) + uvec2(1u, 0u).xyyy) | uvec2(0, oitStoreMask).xxxy;
+        uvec4 fragmentCounterFragmentDepthsSampleMask = (imageLoad(uOITImgFragmentCouterFragmentDepthsSampleMask, oitCoord SAMPLE_ID ) + uvec2(1u, 0u).xyyy) | uvec2(0, oitStoreMask).xxxy;
         uvec2 depths = uvec2(fragmentCounterFragmentDepthsSampleMask.yz); 
 
         uint depth = oitCurrentDepth;
@@ -2153,7 +2153,7 @@ void main() {
           fragmentCounterFragmentDepthsSampleMask.z = depths.y = tempDepth;
         }
 
-        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , fragmentCounterFragmentDepthsSampleMask);
+        imageStore(uOITImgFragmentCouterFragmentDepthsSampleMask, oitCoord SAMPLE_ID , fragmentCounterFragmentDepthsSampleMask);
 
         #undef SAMPLE_ID
 
