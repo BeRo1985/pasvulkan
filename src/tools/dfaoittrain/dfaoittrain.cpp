@@ -1,5 +1,5 @@
 // This tool trains a neural network to approximate the correct OIT color for a given set of colors for usage in a fragment shader.
-// The neural network is trained with all possible color combinations for a given color count. 
+// The neural network is trained with all possible color combinations for a given colo count. 
 
 // Copyright (C) 2023 by Benjamin 'BeRo' Rosseaux - Licensed under the zlib license
 
@@ -156,18 +156,19 @@ void blendFrontToBack(Color& target, const Color& source){
   target.m_a += weight;  
 }
 
-size_t factorial(size_t n){
-  if (n == 0) {
-    return 1;
+size_t getFactorial(size_t n){
+  size_t result = 1;
+  for(size_t i = 1; i <= n; i++){
+    result *= i;
   }
-  return n * factorial(n - 1);
+  return result;
 }
 
 std::vector<std::vector<int>> generatePermutations(int size){
   std::vector<int> sequence(size);
   std::iota(sequence.begin(), sequence.end(), 0);
   std::vector<std::vector<int>> permutations;
-  permutations.reserve(factorial(sequence.size()));
+  permutations.reserve(getFactorial(sequence.size()));
   do {
     permutations.emplace_back(sequence);
   } while (std::next_permutation(sequence.begin(), sequence.end()));
@@ -195,6 +196,9 @@ struct container_hasher {
 
 int main() {
 
+  std::random_device randomDevice;
+  std::mt19937 randomNumberGenerator(randomDevice());
+
   std::vector<size_t> sizes = {
     10, // 10 inputs (1x: Average opacity, excluding the front two fragments + 
         //            3x: Average RGB color, excluding the front two fragments + 
@@ -209,24 +213,25 @@ int main() {
   Network network(sizes);
 
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
-  std::cout << "Computing all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range..." << std::endl;
   ColorSet colorSet;
-  int32_t percentStep = 10;
-  for(int32_t percentR = 0; percentR <= 100; percentR += percentStep) {
-    for(int32_t percentG = 0; percentG <= 100; percentG += percentStep) {
-      for(int32_t percentB = 0; percentB <= 100; percentB += percentStep) {
-        for(int32_t percentA = 0; percentA <= 100; percentA += percentStep) {
-          colorSet.push_back({ percentR * 0.01, percentG * 0.01, percentB * 0.01, percentA * 0.01 });
+  {
+    size_t colorValueSteps = 10;
+    std::cout << "Computing all possible color combinations in " << colorValueSteps << " steps per color channel from 0.0 to 1.0 range..." << std::endl;
+    size_t maximalValue = 1 << 24; // 8.24 bit fixed point
+    double maximalValueReciprocal = 1.0 / maximalValue;
+    size_t step = maximalValue / colorValueSteps;
+    for(size_t r = 0; r <= maximalValue; r += step) {
+      for(size_t g = 0; g <= maximalValue; g += step) {
+        for(size_t b = 0; b <= maximalValue; b += step) {
+          for(size_t a = 0; a <= maximalValue; a += step) {
+            colorSet.push_back({ r * maximalValueReciprocal, g * maximalValueReciprocal, b * maximalValueReciprocal, a * maximalValueReciprocal });
+          }
         }
       }
-    }
-  } 
-
-  // Generate permutation indices
-  std::vector<std::vector<int>> permutationIndices;
-  std::cout << "Generating permutation indices..." << std::endl;
-  permutationIndices = generatePermutations(colorSet.size());
-
+    } 
+    std::cout << "Color combination count: " << colorSet.size() << std::endl;
+  }
+  
   // Permutation index combination hash table
   std::unordered_map<PermutationIndexCombination, bool, container_hasher> permutationIndexCombinationHashTable;
 
@@ -237,11 +242,18 @@ int main() {
     
     size_t countMinusTwo = countColors - 2;
 
-    for(size_t permutationIndex = 0; permutationIndex < permutationIndices.size(); permutationIndex++) {
+    const size_t MAXIMUM_PERMUTATION_COUNT = 65536;
+    for(size_t permutationIndex = 0; permutationIndex < MAXIMUM_PERMUTATION_COUNT; permutationIndex++) {
       
-      std::vector<int>& permutation = permutationIndices[permutationIndex];
+      std::vector<int> permutation(countColors);
 
-      // Check if permutation index combination of the current color count has already been added to the training set
+      // Generate random permutation
+      std::uniform_int_distribution<> distribution(0, countColors - 1);
+      for(size_t i = 0; i < permutation.size(); i++) {
+        permutation[i] = distribution(randomNumberGenerator);
+      }
+
+      // Check if permutation index combination of the current colo count has already been added to the training set
       PermutationIndexCombination permutationIndexCombination;
       for(size_t i = 0; i < permutationIndexCombination.size(); i++) {
         permutationIndexCombination[i] = (i < countColors) ? permutation[i] : -1;
@@ -251,7 +263,7 @@ int main() {
       }
       permutationIndexCombinationHashTable.emplace(permutationIndexCombination, true);
 
-      // Compute color set for the current permutation for the current color count
+      // Compute color set for the current permutation for the current colo count
       std::vector<Color> colors(countColors);
       for(size_t i = 0; i < colors.size(); i++) {
         colors[i] = colorSet[permutation[i]];
@@ -322,9 +334,6 @@ int main() {
     trainingSampleIndices[i] = i;
   }
   
-  std::random_device randomDevice;
-  std::mt19937 randomNumberGenerator(randomDevice());
-
   // Train the network
   std::cout << "Training the network..." << std::endl;
   size_t epochs = 4096;
