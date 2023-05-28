@@ -99,24 +99,22 @@ void main() {
 
       default:{
 
+        vec4 averageColor = ((
 #ifdef MSAA
-        vec4 averageColor = imageLoad(uOITImgAverage, oitCoord, gl_SampleID);
+                              imageLoad(uOITImgAverage, oitCoord, gl_SampleID)
 #else
-        vec4 averageColor = imageLoad(uOITImgAverage, oitCoord);
+                              imageLoad(uOITImgAverage, oitCoord)
 #endif
-
-/*      averageColor = ((averageColor - vec4(fragments[0].xyz, alpha)) - vec4(fragments[1].xyz, alpha)) / float(uint(countFragments - 2u));
-
-        vec3 twoFrontFragmentBlendedColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);*/
-
-        averageColor = ((averageColor - fragments[0]) - fragments[1]) / float(uint(countFragments - 2u));
+                              - fragments[0]) - fragments[1]) / float(uint(countFragments - 2u));
 
         vec3 twoFrontFragmentBlendedColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
 
+        // The neural network expects the following 10 per-pixel float features as input:
         float inputValues[10] = {
-          averageColor.w, averageColor.x, averageColor.y, averageColor.z, 
-          accumulatedColor.x, accumulatedColor.y, accumulatedColor.z, 
-          twoFrontFragmentBlendedColor.x, twoFrontFragmentBlendedColor.y, twoFrontFragmentBlendedColor.z
+          averageColor.w, // Average opacity, excluding the front two fragments
+          averageColor.x, averageColor.y, averageColor.z, // Average RGB color, excluding the front two fragments 
+          accumulatedColor.x, accumulatedColor.y, accumulatedColor.z, //  Accumulated premultiplied alpha RGB color
+          twoFrontFragmentBlendedColor.x, twoFrontFragmentBlendedColor.y, twoFrontFragmentBlendedColor.z // Correct OIT RGB color of the two front fragments
         };
 
         float resultData1[32];
