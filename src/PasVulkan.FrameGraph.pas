@@ -3920,7 +3920,7 @@ var AttachmentIndex,
     AttachmentReference:PVkAttachmentReference;
     Subpass:TSubpass;
     SubpassDependency:PSubpassDependency;
-    RenderPass:TRenderPass;
+    RenderPass,a,b:TRenderPass;
     ResourcePhysicalImageData:TResourcePhysicalImageData;
     AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
 begin
@@ -5475,7 +5475,7 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  end;
  procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependenciesAndExplicitPassDependencies;
-  procedure AddSubpassDependency(const aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
+  procedure AddSubpassDependency(var aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
                                  const aSubpassDependency:TPhysicalRenderPass.TSubpassDependency);
   var Index:TpvSizeInt;
       SubpassDependency:TPhysicalRenderPass.PSubpassDependency;
@@ -5738,6 +5738,10 @@ type TEventBeforeAfter=(Event,Before,After);
         (TPass.TFlag.Used in ToResourceTransition.fPass.fFlags) and
         assigned(FromResourceTransition.fPass.fPhysicalPass) and
         assigned(ToResourceTransition.fPass.fPhysicalPass) then begin
+
+{     if ToResourceTransition.fPass.fName='DeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass' then begin
+       FromDirections:=GetDirections(FromResourceTransition);
+      end;}
 
       FromDirections:=GetDirections(FromResourceTransition);
 
