@@ -37,7 +37,7 @@ vec3 ApplyToneMapping(vec3 color){
   // (y * (6.2 * y + 0.5)) / (y * (6.2 * y + 1.7) + 0.06)
   color = max(vec3(0.0), color - vec3(0.004));
   return (color * (6.2 * color + vec3(0.5))) / (color * (6.2 * color + vec3(1.7)) + vec3(0.06));  
-#elif BIIDRECTIONAL_TONEMAPPING_VARIANT == BIDIRECTIONAL_TONEMAPPING_VARIANT_UNCHARTED2
+#elif BIDIRECTIONAL_TONEMAPPING_VARIANT == BIDIRECTIONAL_TONEMAPPING_VARIANT_UNCHARTED2
   // John Hable - http://filmicworlds.com/blog/filmic-tonemapping-operators/
   float A = 0.15;
   float B = 0.50;
@@ -88,7 +88,7 @@ vec3 ApplyInverseToneMapping(vec3 color){
   // x = (-0.137097 sqrt(701 y^2 - 106 y + 125) + 2.5282 y - 1.53279)/(sqrt(701 y^2 - 106 y + 125) + 26.8328) and sqrt(701 y^2 - 106 y + 125) + 26.8328!=0 and y!=1 
   vec3 t = sqrt(((701.0 * color * color) - (106.0 * color)) + 125.0); 
   return ((((-0.137097 * t) - (2.5282 * color)) + 1.53279) / (t - 26.8328)) + vec3(0.004);
-#elif BIIDRECTIONAL_TONEMAPPING_VARIANT == BIDIRECTIONAL_TONEMAPPING_VARIANT_UNCHARTED2
+#elif BIDIRECTIONAL_TONEMAPPING_VARIANT == BIDIRECTIONAL_TONEMAPPING_VARIANT_UNCHARTED2
   // http://theagentd.blogspot.com/2013/01/hdr-inverse-tone-mapping-msaa-resolve.html
   float A = 0.15;
   float B = 0.50;
