@@ -46,32 +46,27 @@ float relu(float x){
 }
 
 void main() {
+
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
 
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
-  vec4 accumlation = imageLoad(uOITImgAccumlation, oitCoord, gl_SampleID);
+  uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord, gl_SampleID).x;
+  vec4 accumulatedColor = imageLoad(uOITImgAccumlation, oitCoord, gl_SampleID);
 #else
   vec4 opaque = subpassLoad(uSubpassInputOpaque);
-  vec4 accumlation = imageLoad(uOITImgAccumlation, oitCoord);
+  uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord).x;
+  vec4 accumulatedColor = imageLoad(uOITImgAccumlation, oitCoord);
 #endif
 
   vec4 color = vec4(0.0);
 
-  if(abs(accumlation.w - 1.0) < 1e-6){
+  if((abs(1.0 - accumulatedColor.w) < 1e-6) || (countFragments == 0u)){
 
     color = opaque;
 
   }else{
-
-#ifdef MSAA
-    uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord, gl_SampleID).x;
-    vec4 average = imageLoad(uOITImgAverage, oitCoord, gl_SampleID);
-#else
-    uint countFragments = imageLoad(uOITImgFragmentCounter, oitCoord).x;
-    vec4 average = imageLoad(uOITImgAverage, oitCoord);
-#endif
 
     vec4 fragments[2];
 #ifdef MSAA
@@ -92,27 +87,37 @@ void main() {
     switch(countFragments){
       
       case 1:{
-        color = vec4((fragments[0].xyz * fragments[0].w) + (accumlation.w * opaque.xyz), 1.0);
+        color = vec4((fragments[0].xyz * fragments[0].w) + (accumulatedColor.w * opaque.xyz), 1.0);
         break;
       }
 
       case 2:{
-        vec3 bucketColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
-        color = vec4(bucketColor.xyz + (accumlation.w * opaque.xyz), 1.0);
+        vec3 twoFrontFragmentBlendedColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
+        color = vec4(twoFrontFragmentBlendedColor.xyz + (accumulatedColor.w * opaque.xyz), 1.0);
         break;
       }
 
       default:{
 
-/*      average = ((average - vec4(fragments[0].xyz, alpha)) - vec4(fragments[1].xyz, alpha)) / float(uint(countFragments - 2u));
+#ifdef MSAA
+        vec4 averageColor = imageLoad(uOITImgAverage, oitCoord, gl_SampleID);
+#else
+        vec4 averageColor = imageLoad(uOITImgAverage, oitCoord);
+#endif
 
-        vec3 bucketColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);*/
+/*      averageColor = ((averageColor - vec4(fragments[0].xyz, alpha)) - vec4(fragments[1].xyz, alpha)) / float(uint(countFragments - 2u));
 
-        average = ((average - fragments[0]) - fragments[1]) / float(uint(countFragments - 2u));
+        vec3 twoFrontFragmentBlendedColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);*/
 
-        vec3 bucketColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
+        averageColor = ((averageColor - fragments[0]) - fragments[1]) / float(uint(countFragments - 2u));
 
-        float inp[1][10] = {{average.w, average.x, average.y, average.z, accumlation.x, accumlation.y, accumlation.z, bucketColor.x, bucketColor.y, bucketColor.z}};
+        vec3 twoFrontFragmentBlendedColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
+
+        float inputValues[10] = {
+          averageColor.w, averageColor.x, averageColor.y, averageColor.z, 
+          accumulatedColor.x, accumulatedColor.y, accumulatedColor.z, 
+          twoFrontFragmentBlendedColor.x, twoFrontFragmentBlendedColor.y, twoFrontFragmentBlendedColor.z
+        };
 
         float resultData1[32];
 
@@ -123,7 +128,7 @@ void main() {
         for (int j = 0; j < C2; j++) {
           resultData1[j] = 0;
           for (int k = 0; k < R2; k++) {
-            resultData1[j] += inp[0][k] * weights1[k][j];
+            resultData1[j] += inputValues[k] * weights1[k][j];
           }
           resultData1[j] = relu(resultData1[j] + bias1[j]);
         }
@@ -154,7 +159,7 @@ void main() {
           resultData1[j] = sigmoid(resultData1[j] + bias3[j]);
         }
 
-        color = vec4(vec3(vec3(resultData1[0], resultData1[1], resultData1[2]) + (accumlation.w * opaque.xyz)), 1.0);
+        color = vec4(vec3(vec3(resultData1[0], resultData1[1], resultData1[2]) + (accumulatedColor.w * opaque.xyz)), 1.0);
 
         break;
       }
@@ -164,4 +169,10 @@ void main() {
   }
 
   outColor = color;
+
+#ifdef MSAA
+  // In case of MSAA, a extra resolve pass will generate the final color, together with tone mapping and inverse tone mapping for correct HDR handling,
+  // instead to do it in this same shader, for to simplify the complete process.
+#endif    
+
 }

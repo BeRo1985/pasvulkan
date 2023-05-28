@@ -134,28 +134,13 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var ClearValues:array[0..2] of TVkClearColorValue;
+var ClearValue:TVkClearColorValue;
     ImageSubresourceRanges:array[0..2] of TVkImageSubresourceRange;
     //BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
     CountImageMemoryBarriers:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
-
- ClearValues[0].uint32[0]:=0;
- ClearValues[0].uint32[1]:=0;
- ClearValues[0].uint32[2]:=0;
- ClearValues[0].uint32[3]:=0;
-
- ClearValues[1].uint32[0]:=0;
- ClearValues[1].uint32[1]:=$ffffffff;
- ClearValues[1].uint32[2]:=$ffffffff;
- ClearValues[1].uint32[3]:=0;
-
- ClearValues[2].uint32[0]:=0;
- ClearValues[2].uint32[1]:=0;
- ClearValues[2].uint32[2]:=0;
- ClearValues[2].float32[3]:=1.0;
 
  ImageSubresourceRanges[0]:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                             0,
@@ -175,34 +160,61 @@ begin
                                                             0,
                                                             fInstance.CountSurfaceViews);
 
+ if fInstance.ZFar<0.0 then begin
+  ClearValue.uint32[0]:=0;
+  ClearValue.uint32[1]:=0;
+  ClearValue.uint32[2]:=0;
+  ClearValue.uint32[3]:=0;
+ end else begin
+  ClearValue.uint32[0]:=0;
+  ClearValue.uint32[1]:=$ffffffff;
+  ClearValue.uint32[2]:=$ffffffff;
+  ClearValue.uint32[3]:=0;
+ end;
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[IfThen(fInstance.ZFar<0.0,0,1)],
+                                   @ClearValue,
                                    1,
                                    @ImageSubresourceRanges[0]);
 
+ ClearValue.uint32[0]:=0;
+ ClearValue.uint32[1]:=0;
+ ClearValue.uint32[2]:=0;
+ ClearValue.uint32[3]:=0;
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyAverageImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[0],
+                                   @ClearValue,
                                    1,
                                    @ImageSubresourceRanges[0]);
 
+ ClearValue.uint32[0]:=0;
+ ClearValue.uint32[1]:=0;
+ ClearValue.uint32[2]:=0;
+ ClearValue.float32[3]:=1.0;
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[2],
+                                   @ClearValue,
                                    1,
                                    @ImageSubresourceRanges[0]);
 
+ ClearValue.uint32[0]:=0;
+ ClearValue.uint32[1]:=0;
+ ClearValue.uint32[2]:=0;
+ ClearValue.uint32[3]:=0;
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyBucketImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[0],
+                                   @ClearValue,
                                    1,
                                    @ImageSubresourceRanges[1]);
 
  if fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
+  ClearValue.uint32[0]:=0;
+  ClearValue.uint32[1]:=0;
+  ClearValue.uint32[2]:=0;
+  ClearValue.uint32[3]:=0;
   aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
                                     VK_IMAGE_LAYOUT_GENERAL,
-                                    @ClearValues[0],
+                                    @ClearValue,
                                     1,
                                     @ImageSubresourceRanges[2]);
  end;

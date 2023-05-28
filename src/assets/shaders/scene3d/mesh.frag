@@ -300,13 +300,13 @@ layout (std430, set = 1, binding = 7) readonly buffer LightGridClusters {
   #ifdef MSAA
     layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
     layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCounter;
-    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumlation;
+    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
     layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
     layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
   #else
     layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
     layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCounter;
-    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumlation;
+    layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
     layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAverage;
     layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgBucket;
   #endif
@@ -2107,27 +2107,19 @@ void main() {
         #define SAMPLE_ID
 #endif
 
-        // avg color/alpha
-        vec4 prevAvg = imageLoad(uOITImgAverage, oitCoord SAMPLE_ID );
-        prevAvg += finalColor;
-        imageStore(uOITImgAverage, oitCoord SAMPLE_ID , prevAvg);
+        // Average color
+        imageStore(uOITImgAverage, oitCoord SAMPLE_ID , vec4(imageLoad(uOITImgAverage, oitCoord SAMPLE_ID ) + finalColor));
 
-        // acc - prod
-        vec4 prevAcc = imageLoad(uOITImgAccumlation, oitCoord SAMPLE_ID );
-        prevAcc.xyz += finalColor.xyz * finalColor.w;
-        prevAcc.w *= 1.0 - finalColor.w;
-        imageStore(uOITImgAccumlation, oitCoord SAMPLE_ID , prevAcc);
+        // Accumulated color
+        imageStore(uOITImgAccumulation, oitCoord SAMPLE_ID , vec4((imageLoad(uOITImgAccumulation, oitCoord SAMPLE_ID ) + vec4(finalColor.xyz * finalColor.w, 0.0)) * vec2(1.0, 1.0 - finalColor.w).xxxy));
 
-        // 1st, 2nd fragment
+        // Load the first and second fragments
         vec4 fragments[2];
         fragments[0] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID );
         fragments[1] = imageLoad(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID );
 
-        // Count +1 fragment
-        uvec3 fragsAndDepths = uvec3(imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ));
-        fragsAndDepths.x += 1u;
-
-        uvec2 depths = uvec2(fragsAndDepths.yz);
+        uvec4 fragmentCounterFragmentDepthsSampleMask = (imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ) + uvec2(1u, 0u).xyyy) | uvec2(0, oitStoreMask).xxxy;
+        uvec2 depths = uvec2(fragmentCounterFragmentDepthsSampleMask.yz); 
 
         uint depth = oitCurrentDepth;
 
@@ -2138,12 +2130,12 @@ void main() {
           (depth <= depths.x)
 #endif
         {
-          vec4 temp = finalColor;
+          vec4 tempColor = finalColor;
           uint tempDepth = depth;
           finalColor = fragments[0];
           depth = depths.x;
-          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , fragments[0] = temp);
-          fragsAndDepths.y = depths.x = tempDepth;
+          imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , fragments[0] = tempColor);
+          fragmentCounterFragmentDepthsSampleMask.y = depths.x = tempDepth;
         }
 
         if
@@ -2158,10 +2150,10 @@ void main() {
           finalColor = fragments[1];
           depth = depths.y;          
           imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID , fragments[1] = tempColor);
-          fragsAndDepths.z = depths.y = tempDepth;
+          fragmentCounterFragmentDepthsSampleMask.z = depths.y = tempDepth;
         }
 
-        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));
+        imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , fragmentCounterFragmentDepthsSampleMask);
 
         #undef SAMPLE_ID
 
