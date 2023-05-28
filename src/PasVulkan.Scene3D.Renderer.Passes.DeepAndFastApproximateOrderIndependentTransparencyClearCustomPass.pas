@@ -134,7 +134,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var ClearValues:array[0..1] of TVkClearColorValue;
+var ClearValues:array[0..2] of TVkClearColorValue;
     ImageSubresourceRanges:array[0..2] of TVkImageSubresourceRange;
     //BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
@@ -151,6 +151,11 @@ begin
  ClearValues[1].float32[1]:=1.0;
  ClearValues[1].float32[2]:=1.0;
  ClearValues[1].uint32[3]:=0;
+
+ ClearValues[2].uint32[0]:=0;
+ ClearValues[2].uint32[1]:=0;
+ ClearValues[2].uint32[2]:=0;
+ ClearValues[2].float32[3]:=1.0;
 
  ImageSubresourceRanges[0]:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                             0,
@@ -184,7 +189,7 @@ begin
 
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[0],
+                                   @ClearValues[2],
                                    1,
                                    @ImageSubresourceRanges[0]);
 
