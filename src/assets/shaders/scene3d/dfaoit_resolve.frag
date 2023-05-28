@@ -87,27 +87,30 @@ void main() {
 #endif
     }
 
-    //can be added to a texture if many alphas are needed
-    float alpha = 0.15;
+    //float alpha = 0.15;
 
     switch(countFragments){
       
       case 1:{
-        color = vec4((fragments[0].xyz * alpha) + (accumlation.w * opaque.xyz), 1.0);
+        color = vec4((fragments[0].xyz * fragments[0].w) + (accumlation.w * opaque.xyz), 1.0);
         break;
       }
 
       case 2:{
-        vec3 bucketColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);
+        vec3 bucketColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
         color = vec4(bucketColor.xyz + (accumlation.w * opaque.xyz), 1.0);
         break;
       }
 
       default:{
 
-        average = ((average - vec4(fragments[0].xyz, alpha)) - vec4(fragments[1].xyz, alpha)) / float(uint(countFragments - 2u));
+/*      average = ((average - vec4(fragments[0].xyz, alpha)) - vec4(fragments[1].xyz, alpha)) / float(uint(countFragments - 2u));
 
-        vec3 bucketColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);
+        vec3 bucketColor = (alpha * fragments[0].xyz) + (((1.0 - alpha) * alpha) * fragments[1].xyz);*/
+
+        average = ((average - fragments[0]) - fragments[1]) / float(uint(countFragments - 2u));
+
+        vec3 bucketColor = (fragments[0].xyz * fragments[0].w) + (((1.0 - fragments[0].w) * fragments[1].w) * fragments[1].xyz);
 
         float inp[1][10] = {{average.w, average.x, average.y, average.z, accumlation.x, accumlation.y, accumlation.z, bucketColor.x, bucketColor.y, bucketColor.z}};
 
