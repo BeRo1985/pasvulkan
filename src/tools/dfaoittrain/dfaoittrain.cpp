@@ -249,18 +249,13 @@ int main() {
     const size_t MAXIMUM_PERMUTATION_COUNT = 65536;
     for(size_t permutationIndex = 0; permutationIndex < MAXIMUM_PERMUTATION_COUNT; permutationIndex++) {
       
-      std::vector<size_t> permutation(countColors, -1);
-
       // Generate random permutation
-      std::uniform_int_distribution<> distribution(0, countColors - 1);
+      std::vector<size_t> permutation(countColors);
       for(size_t i = 0; i < permutation.size(); i++) {
-        size_t value = distribution(randomNumberGenerator);
-        while(std::find(permutation.begin(), permutation.end(), value) != permutation.end()) {
-          value = distribution(randomNumberGenerator);
-        }
-        permutation[i] = value;
+        permutation[i] = i;
       }
-
+      std::shuffle(permutation.begin(), permutation.end(), randomNumberGenerator);
+      
       // Check if permutation index combination of the current colo count has already been added to the training set
       PermutationIndexCombination permutationIndexCombination;
       for(size_t i = 0; i < permutationIndexCombination.size(); i++) {
