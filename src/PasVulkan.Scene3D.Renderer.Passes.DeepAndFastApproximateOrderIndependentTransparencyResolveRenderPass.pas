@@ -134,13 +134,13 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
-                                'resource_forwardrendering_color',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
-
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+
+  fResourceOpaque:=AddImageInput('resourcetype_color_optimized_non_alpha',
+                                 'resource_forwardrendering_color',
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
 
   fResourceTransparent:=AddImageInput('resourcetype_color',
                                       'resource_orderindependenttransparency_tailblending_color',
@@ -157,6 +157,12 @@ begin
                                   );
 
  end else begin
+
+  fResourceOpaque:=AddImageInput('resourcetype_msaa_color_optimized_non_alpha',
+                                 'resource_forwardrendering_msaa_color',
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
 
   fResourceTransparent:=AddImageInput('resourcetype_msaa_color',
                                       'resource_orderindependenttransparency_tailblending_msaa_color',
