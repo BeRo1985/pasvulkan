@@ -1707,7 +1707,7 @@ begin
         fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                                  fHeight,
                                                                                                                                                                  fCountSurfaceViews,
-                                                                                                                                                                 VK_FORMAT_R32G32B32_UINT,
+                                                                                                                                                                 VK_FORMAT_R32G32B32A32_UINT,
                                                                                                                                                                  Renderer.SurfaceSampleCountFlagBits);
         fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
                                                                                                                                                               fHeight,

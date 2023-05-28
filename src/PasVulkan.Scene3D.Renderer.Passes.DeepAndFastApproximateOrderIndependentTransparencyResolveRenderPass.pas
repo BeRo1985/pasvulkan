@@ -367,7 +367,7 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
- fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
  fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
  fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
  fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
