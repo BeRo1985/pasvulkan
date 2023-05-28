@@ -2109,7 +2109,7 @@ void main() {
 
         // avg color/alpha
         vec4 prevAvg = imageLoad(uOITImgAverage, oitCoord SAMPLE_ID );
-        prevAvg += finalColor.w;
+        prevAvg += finalColor;
         imageStore(uOITImgAverage, oitCoord SAMPLE_ID , prevAvg);
 
         // acc - prod
@@ -2127,9 +2127,9 @@ void main() {
         uvec3 fragsAndDepths = uvec3(imageLoad(uOITImgFragmentCounter, oitCoord SAMPLE_ID ));
         fragsAndDepths.x += 1u;
 
-        vec2 depths = vec2(uintBitsToFloat(fragsAndDepths.yz));
+        uvec2 depths = uvec2(fragsAndDepths.yz);
 
-        float depth = oitCurrentDepth;
+        uint depth = oitCurrentDepth;
 
         if
 #ifdef REVERSEDZ
@@ -2139,11 +2139,11 @@ void main() {
 #endif
         {
           vec4 temp = finalColor;
-          float tempDepth = depth;
+          uint tempDepth = depth;
           finalColor = fragments[0];
           depth = depths.x;
           imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 0) SAMPLE_ID , fragments[0] = temp);
-          fragsAndDepths.y = floatBitsToUint(depths.x = tempDepth);
+          fragsAndDepths.y = depths.x = tempDepth;
         }
 
         if
@@ -2154,11 +2154,11 @@ void main() {
 #endif
         {
           vec4 tempColor = finalColor;
-          float tempDepth = depth;
+          uint tempDepth = depth;
           finalColor = fragments[1];
           depth = depths.y;          
           imageStore(uOITImgBucket, ivec3(oitCoord.xy, (oitCoord.z << 1) | 1) SAMPLE_ID , fragments[1] = tempColor);
-          fragsAndDepths.z = floatBitsToUint(depths.y = tempDepth);
+          fragsAndDepths.z = depths.y = tempDepth;
         }
 
         imageStore(uOITImgFragmentCounter, oitCoord SAMPLE_ID , uvec4(fragsAndDepths, 0U));

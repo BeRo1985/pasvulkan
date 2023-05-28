@@ -148,8 +148,8 @@ begin
  ClearValues[0].uint32[3]:=0;
 
  ClearValues[1].uint32[0]:=0;
- ClearValues[1].float32[1]:=1.0;
- ClearValues[1].float32[2]:=1.0;
+ ClearValues[1].uint32[1]:=$ffffffff;
+ ClearValues[1].uint32[2]:=$ffffffff;
  ClearValues[1].uint32[3]:=0;
 
  ClearValues[2].uint32[0]:=0;
@@ -177,7 +177,7 @@ begin
 
  aCommandBuffer.CmdClearColorImage(fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[aInFlightFrameIndex].VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
-                                   @ClearValues[IfThen(fInstance.ZFar<0.0,1,0)],
+                                   @ClearValues[IfThen(fInstance.ZFar<0.0,0,1)],
                                    1,
                                    @ImageSubresourceRanges[0]);
 
