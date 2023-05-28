@@ -1,3 +1,9 @@
+// This tool trains a neural network to approximate the correct OIT color for a given set of colors for usage in a fragment shader.
+// The neural network is trained with all possible color combinations for a given color count. 
+
+// Copyright (C) 2023 by Benjamin 'BeRo' Rosseaux - Licensed under the zlib license
+
+#include <ostream>
 #include <iostream>
 #include <algorithm>
 #include <cstdint>
@@ -203,6 +209,7 @@ int main() {
   Network network(sizes);
 
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
+  std::cout << "Computing all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range..." << std::endl;
   ColorSet colorSet;
   int32_t percentStep = 10;
   for(int32_t percentR = 0; percentR <= 100; percentR += percentStep) {
@@ -217,12 +224,14 @@ int main() {
 
   // Generate permutation indices
   std::vector<std::vector<int>> permutationIndices;
+  std::cout << "Generating permutation indices..." << std::endl;
   permutationIndices = generatePermutations(colorSet.size());
 
   // Permutation index combination hash table
   std::unordered_map<PermutationIndexCombination, bool, container_hasher> permutationIndexCombinationHashTable;
 
   // Initialize training set
+  std::cout << "Initializing training set..." << std::endl;
   TrainingSet trainingSet;
   for(size_t countColors = 3; countColors <= MAXIMUM_COLOR_COUNT; countColors++) {  
     
@@ -306,6 +315,7 @@ int main() {
   }
   
   // Initialize training sample indices
+  std::cout << "Initializing training sample indices..." << std::endl;
   TrainingSampleIndices trainingSampleIndices;
   trainingSampleIndices.resize(trainingSet.size());
   for(size_t i = 0; i < trainingSampleIndices.size(); i++) {
@@ -316,6 +326,7 @@ int main() {
   std::mt19937 randomNumberGenerator(randomDevice());
 
   // Train the network
+  std::cout << "Training the network..." << std::endl;
   size_t epochs = 4096;
   for(size_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
  
@@ -329,6 +340,8 @@ int main() {
     }
     
   }
+
+  std::cout << "Done!" << std::endl;
 
   return 0;
 }
