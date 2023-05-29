@@ -11964,54 +11964,96 @@ begin
 
    Source:=@aSourceData;
 
-   Destination:=fBuffer.Memory.MapMemory;
-   if assigned(Destination) then begin
+   if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
 
-    try
+    Destination:=fBuffer.Memory.MapMemory;
+    if assigned(Destination) then begin
 
-     Offset:=aDestinationOffset;
+     try
 
-     while Remain>0 do begin
+      Offset:=aDestinationOffset;
 
-      if Remain<aSize then begin
-       ToDo:=Remain;
-      end else begin
-       ToDo:=aSize;
+      while Remain>0 do begin
+
+       if Remain<aSize then begin
+        ToDo:=Remain;
+       end else begin
+        ToDo:=aSize;
+       end;
+
+       if ToDo>0 then begin
+
+        Move(Source^,Destination^,ToDo);
+
+        VkBufferCopy.srcOffset:=0;
+        VkBufferCopy.dstOffset:=Offset;
+        VkBufferCopy.size:=ToDo;
+
+        aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+        aTransferCommandBuffer.BeginRecording;
+        aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
+        aTransferCommandBuffer.EndRecording;
+        aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+        inc(Source,ToDo);
+        inc(Offset,ToDo);
+
+        inc(result,ToDo);
+        dec(Remain,ToDo);
+
+       end else begin
+        break;
+       end;
+
       end;
 
-      if ToDo>0 then begin
-
-       Move(Source^,Destination^,ToDo);
-
-       VkBufferCopy.srcOffset:=0;
-       VkBufferCopy.dstOffset:=Offset;
-       VkBufferCopy.size:=ToDo;
-
-       aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-       aTransferCommandBuffer.BeginRecording;
-       aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
-       aTransferCommandBuffer.EndRecording;
-       aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
-
-       inc(Source,ToDo);
-       inc(Offset,ToDo);
-
-       inc(result,ToDo);
-       dec(Remain,ToDo);
-
-      end else begin
-       break;
-      end;
-
+     finally
+      fBuffer.Memory.UnmapMemory;
      end;
 
-    finally
-     fBuffer.Memory.UnmapMemory;
+    end else begin
+
+     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
     end;
 
    end else begin
 
-    raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+    Offset:=aDestinationOffset;
+
+    while Remain>0 do begin
+
+     if Remain<aSize then begin
+      ToDo:=Remain;
+     end else begin
+      ToDo:=aSize;
+     end;
+
+     if ToDo>0 then begin
+
+      fBuffer.UpdateData(Source^,0,ToDo,true);
+
+      VkBufferCopy.srcOffset:=0;
+      VkBufferCopy.dstOffset:=Offset;
+      VkBufferCopy.size:=ToDo;
+
+      aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+      aTransferCommandBuffer.BeginRecording;
+      aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
+      aTransferCommandBuffer.EndRecording;
+      aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+      inc(Source,ToDo);
+      inc(Offset,ToDo);
+
+      inc(result,ToDo);
+      dec(Remain,ToDo);
+
+     end else begin
+      break;
+     end;
+
+    end;
 
    end;
 
