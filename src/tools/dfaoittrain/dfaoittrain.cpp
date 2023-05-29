@@ -378,7 +378,10 @@ int main() {
       }      
     }
     meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
-    std::cout << "Mean squared error: " << meanSquaredError << std::endl;
+    if (meanSquaredError < 1e-5){
+      // Good enough, stop training
+      break;
+    }
     
   }
   std::cout << "Done!" << std::endl;
