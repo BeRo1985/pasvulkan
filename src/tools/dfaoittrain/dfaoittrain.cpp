@@ -584,7 +584,7 @@ int main() {
 
   // Train the network
   std::cout << "Training the network..." << std::endl;
-  ssize_t epochs = 4096;
+  ssize_t epochs = 8192;
   double meanSquaredError = network.getMeanSquaredError(testInputs, testTargets);
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
 
