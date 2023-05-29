@@ -352,6 +352,8 @@ int main() {
   std::cout << "Training the network..." << std::endl;
   ssize_t epochs = 4096;
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
+
+    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... " << std::flush;
  
     // Shuffle trainingSampleIndices    
     std::shuffle(trainingSampleIndices.begin(), trainingSampleIndices.end(), randomNumberGenerator);
@@ -363,8 +365,7 @@ int main() {
     }
     
   }
-
   std::cout << "Done!" << std::endl;
-
+  
   return 0;
 }
