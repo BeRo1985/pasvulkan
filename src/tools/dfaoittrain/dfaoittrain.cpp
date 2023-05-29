@@ -355,20 +355,9 @@ int main() {
   ssize_t epochs = 4096;
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
 
-    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... ";
- 
-    // Shuffle trainingSampleIndices    
-    std::shuffle(trainingSampleIndices.begin(), trainingSampleIndices.end(), randomNumberGenerator);
- 
-    // Train the network with the shuffled training samples
-    for(ssize_t trainingSampleIndex : trainingSampleIndices) {
-      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
-      network.train(trainingSample.m_inputs, trainingSample.m_targets);
-    }
-
     // Mean squared error
     double meanSquaredError = 0.0;
-    for(ssize_t trainingSampleIndex : trainingSampleIndices) {
+    for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
       TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
       std::vector<double> outputs;
       network.evaluate(trainingSample.m_inputs, outputs);
@@ -382,10 +371,33 @@ int main() {
       // Good enough, stop training
       break;
     }
-    std::cout << "Mean squared error: " << meanSquaredError << " " << std::flush;
+    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... Initial mean squared error: " << meanSquaredError << " " << std::flush;
+ 
+    // Shuffle trainingSampleIndices    
+    std::shuffle(trainingSampleIndices.begin(), trainingSampleIndices.end(), randomNumberGenerator);
+ 
+    // Train the network with the shuffled training samples
+    for(ssize_t trainingSampleIndex : trainingSampleIndices) {
+      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
+      network.train(trainingSample.m_inputs, trainingSample.m_targets);
+    }
     
   }
-  std::cout << "Done!" << std::endl;
+  {
+    // Mean squared error
+    double meanSquaredError = 0.0;
+    for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
+      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
+      std::vector<double> outputs;
+      network.evaluate(trainingSample.m_inputs, outputs);
+      for(ssize_t i = 0; i < outputs.size(); i++) {
+        double error = outputs[i] - trainingSample.m_targets[i];
+        meanSquaredError += error * error;
+      }      
+    }
+    meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
+    std::cout << "\nDone! Final mean squared error: " << meanSquaredError << std::endl;
+  }
   
   return 0;
 }
