@@ -124,11 +124,17 @@ public:
     for(ssize_t i = 1; i < m_layers.size(); i++){
       m_layers[i].forward(m_layers[i - 1].m_outputs);
     }
-    outputs = m_layers.back().m_outputs;
+    if(outputs.size() != m_layers.back().m_outputs.size()) {
+      outputs.resize(m_layers.back().m_outputs.size());
+    }
+    for(ssize_t i = 0; i < outputs.size(); i++){
+      outputs[i] = m_layers.back().m_outputs[i];
+    } 
+    //outputs = m_layers.back().m_outputs;
   }
 
   void train(const std::vector<double>& inputs, const std::vector<double>& targets) {
-   
+      
     // Forward pass
     m_layers[0].forward(inputs);
     for(ssize_t i = 1; i < m_layers.size(); i++){
@@ -147,6 +153,32 @@ public:
       std::vector<std::vector<double>>& nextWeights = m_layers[i + 1].m_weights;
       m_layers[i].backward(inputValues, nextGradients, nextWeights);
     }
+
+  } 
+
+  double getMeanSquaredError(const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& targets) {
+
+    if(inputs.empty() || (inputs.size() != targets.size())) {
+      return INFINITY;
+    }else{
+
+      std::vector<double> outputs;
+      outputs.resize(targets[0].size());
+      
+      double meanSquaredError = 0.0;
+      for(ssize_t i = 0; i < inputs.size(); i++){
+        evaluate(inputs[i], outputs);
+        for(ssize_t j = 0; j < outputs.size(); j++){
+          double error = outputs[j] - targets[i][j];
+          meanSquaredError += error * error;
+        }
+      }
+      
+      meanSquaredError = sqrt(meanSquaredError / (inputs.size() * targets[0].size()));
+      
+      return meanSquaredError;
+
+    } 
 
   }
 
@@ -374,27 +406,21 @@ int main() {
     trainingSampleIndices[i] = i;
   }
   
+  // Initialize test set
+  std::vector<std::vector<double>> testInputs;
+  std::vector<std::vector<double>> testTargets;
+  for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
+    TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
+    testInputs.push_back(trainingSample.m_inputs);
+    testTargets.push_back(trainingSample.m_targets);
+  }
+
   // Train the network
   std::cout << "Training the network..." << std::endl;
   ssize_t epochs = 4096;
+  double meanSquaredError = network.getMeanSquaredError(testInputs, testTargets);
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
 
-    // Mean squared error
-    double meanSquaredError = 0.0;
-    for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
-      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
-      std::vector<double> outputs;
-      network.evaluate(trainingSample.m_inputs, outputs);
-      for(ssize_t i = 0; i < outputs.size(); i++) {
-        double error = outputs[i] - trainingSample.m_targets[i];
-        meanSquaredError += error * error;
-      }      
-    }
-    meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
-    if (meanSquaredError < 1e-5){
-      // Good enough, stop training
-      break;
-    }
     std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... Initial mean squared error: " << meanSquaredError << " " << std::flush;
  
     // Shuffle trainingSampleIndices    
@@ -405,23 +431,16 @@ int main() {
       TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
       network.train(trainingSample.m_inputs, trainingSample.m_targets);
     }
+
+    meanSquaredError = network.getMeanSquaredError(testInputs, testTargets);
+    if (meanSquaredError < 1e-5){
+      // Good enough, stop training
+      break;
+    }
     
   }
-  {
-    // Mean squared error
-    double meanSquaredError = 0.0;
-    for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
-      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
-      std::vector<double> outputs;
-      network.evaluate(trainingSample.m_inputs, outputs);
-      for(ssize_t i = 0; i < outputs.size(); i++) {
-        double error = outputs[i] - trainingSample.m_targets[i];
-        meanSquaredError += error * error;
-      }      
-    }
-    meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
-    std::cout << "\nDone! Final mean squared error: " << meanSquaredError << std::endl;
-  }
+  meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
+  std::cout << "\nDone! Final mean squared error: " << meanSquaredError << std::endl;
   
   return 0;
 }
