@@ -8,12 +8,85 @@
 #include <fstream>
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <cmath>
 #include <random>
 #include <unordered_map>
 #include <array>
 #include "pcg_random.hpp"
+#include <stdexcept>
+#include <iomanip>
+#include <memory>
+#include <string>
+
+#include <immintrin.h>
+
+#define USE_OPENMP 1
+#define ASSERT_MSG(cond, msg) { if (!(cond)) throw std::runtime_error("Assertion (" #cond ") failed at line " + std::to_string(__LINE__) + "! Msg '" + std::string(msg) + "'."); }
+#define ASSERT(cond) ASSERT_MSG(cond, "")
+#if defined(_MSC_VER)
+    #define IS_MSVC 1
+#else
+    #define IS_MSVC 0
+#endif
+
+#if USE_OPENMP
+    #include <omp.h>
+#endif
+
+template <typename T, std::size_t N>
+class AlignmentAllocator {
+  public:
+    typedef T value_type;
+    typedef std::size_t size_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef T * pointer;
+    typedef const T * const_pointer;
+    typedef T & reference;
+    typedef const T & const_reference;
+
+  public:
+    inline AlignmentAllocator() throw() {}
+    template <typename T2> inline AlignmentAllocator(const AlignmentAllocator<T2, N> &) throw() {}
+    inline ~AlignmentAllocator() throw() {}
+    inline pointer adress(reference r) { return &r; }
+    inline const_pointer adress(const_reference r) const { return &r; }
+    inline pointer allocate(size_type n);
+    inline void deallocate(pointer p, size_type);
+    inline void construct(pointer p, const value_type & wert);
+    inline void destroy(pointer p) { p->~value_type(); }
+    inline size_type max_size() const throw() { return size_type(-1) / sizeof(value_type); }
+    template <typename T2> struct rebind { typedef AlignmentAllocator<T2, N> other; };
+    bool operator!=(const AlignmentAllocator<T, N> & other) const { return !(*this == other); }
+    bool operator==(const AlignmentAllocator<T, N> & other) const { return true; }
+};
+
+template <typename T, std::size_t N>
+inline typename AlignmentAllocator<T, N>::pointer AlignmentAllocator<T, N>::allocate(size_type n) {
+    #if IS_MSVC
+        auto p = (pointer)_aligned_malloc(n * sizeof(value_type), N);
+    #else
+        auto p = (pointer)std::aligned_alloc(N, n * sizeof(value_type));
+    #endif
+    ASSERT(p);
+    return p;
+}
+template <typename T, std::size_t N>
+inline void AlignmentAllocator<T, N>::deallocate(pointer p, size_type) {
+    #if IS_MSVC
+        _aligned_free(p);
+    #else
+        std::free(p);
+    #endif
+}
+template <typename T, std::size_t N>
+inline void AlignmentAllocator<T, N>::construct(pointer p, const value_type & wert) {
+    new (p) value_type(wert);
+}
+
+template <typename T>
+using AlignedVector = std::vector<T, AlignmentAllocator<T, 64>>;
 
 //std::random_device randomDevice;
 ///std::mt19937 randomNumberGenerator(randomDevice());
@@ -36,7 +109,7 @@ static double activationFunction_sigmoid(double x) {
 }
 
 static double activationFunction_sigmoid_derivative(double x) {
-  return x * (1.0 - x);
+  return activationFunction_sigmoid(x) * (1.0 - activationFunction_sigmoid(x));
 }
 
 typedef double (*ActivationFunctionFunction)(double);
@@ -52,11 +125,13 @@ static ActivationFunction activationFunctionSigmoid = { activationFunction_sigmo
 
 class Layer {
 public:
-  std::vector<double> m_outputs;
-  std::vector<double> m_gradients;
-  std::vector<std::vector<double>> m_weights;
-  std::vector<double> m_biases; 
+  AlignedVector<double> m_outputs;
+  AlignedVector<double> m_gradients;
+  AlignedVector<double> m_weights;
+  AlignedVector<double> m_biases; 
   ActivationFunction m_activationFunction;
+  ssize_t m_weights_rows;
+  ssize_t m_weights_cols;
   double m_learningRate = 0.00001;
 
   Layer(ssize_t input_size, ssize_t output_size, const ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
@@ -64,47 +139,115 @@ public:
     // Initialize weights and biases with random values between -1 and 1
     std::uniform_real_distribution<> distribution(-1, 1);
 
-    m_weights.resize(output_size, std::vector<double>(input_size));
-    for(ssize_t i = 0; i < output_size; i++){
-      for(ssize_t j = 0; j < input_size; j++){
-        m_weights[i][j] = distribution(randomNumberGenerator);
-      }
+    m_weights_rows = output_size;
+    m_weights_cols = input_size;
+
+    m_weights.resize(m_weights_rows * m_weights_cols);    
+    for(ssize_t i = 0, j = m_weights_rows * m_weights_cols; i < j; i++){
+      m_weights[i] = distribution(randomNumberGenerator);
     }
 
-    m_biases.resize(output_size);
-    for(ssize_t i = 0; i < output_size; i++){
+    m_biases.resize(m_weights_rows);
+    for(ssize_t i = 0; i < m_weights_rows; i++){
       m_biases[i] = distribution(randomNumberGenerator);
     }
 
-    m_outputs.resize(output_size);
-    m_gradients.resize(output_size);
+    m_outputs.resize(m_weights_rows);
+    m_gradients.resize(m_weights_rows);
   }
 
-  void forward(const std::vector<double>& inputs) {
-    for(ssize_t i = 0; i < m_outputs.size(); i++) {
-      m_outputs[i] = 0;
-      for(ssize_t j = 0; j < inputs.size(); j++){
-        m_outputs[i] += inputs[j] * m_weights[i][j];
+  inline double getWeight(ssize_t row, ssize_t col) const {
+    return m_weights[(row * m_weights_cols) + col];
+  }
+
+  inline void setWeight(ssize_t row, ssize_t col, double weight) {
+    m_weights[(row * m_weights_cols) + col] = weight;
+  }
+
+  void forward(const AlignedVector<double>& inputs) {
+   ssize_t rows = m_weights_rows, cols = m_weights_cols; 
+    for(ssize_t i = 0; i < rows; i++) {
+      double output = 0.0;
+      ssize_t j = 0;
+#ifdef __AVX2__      
+      for(; (j + 3) < cols; j += 4){
+        __m256d t = _mm256_mul_pd(_mm256_loadu_pd(&inputs[j]), _mm256_loadu_pd(&m_weights[(i * cols) + j]));
+        t = _mm256_hadd_pd(t, t);
+        output += t[0] + t[2];
       }
-      m_outputs[i] += m_biases[i];
-      m_outputs[i] = m_activationFunction.m_function(m_outputs[i]);
-    }
+#endif
+#ifdef __SSE2__
+      for(; (j + 1) < cols; j += 2){
+        __m128d t = _mm_mul_pd(_mm_loadu_pd(&inputs[j]), _mm_loadu_pd(&m_weights[(i * cols) + j]));
+        t = _mm_hadd_pd(t, t);
+        output += t[0];
+      }      
+#endif
+      for(; j < cols; j++){
+        output += inputs[j] * m_weights[(i * cols) + j];
+      }
+      m_outputs[i] = m_activationFunction.m_function(output + m_biases[i]);
+    }    
   }
 
-  void backward(const std::vector<double>& inputs, const std::vector<double>& nextGradients, const std::vector<std::vector<double>>& nextWeights, const ActivationFunctionFunction activationFunctionDerivative = activationFunction_sigmoid_derivative) {
-    for(ssize_t i = 0; i < m_gradients.size(); i++) {
+  void backward(const AlignedVector<double>& inputs, const Layer& nextLayer, const ActivationFunctionFunction activationFunctionDerivative = activationFunction_sigmoid_derivative) {
+    for(ssize_t i = 0; i < m_weights_rows; i++) {
       
-      m_gradients[i] = 0;
-      for(ssize_t j = 0; j < nextGradients.size(); j++){
-        m_gradients[i] += nextGradients[j] * nextWeights[j][i];
+      double gradient = 0.0;
+      {
+        ssize_t j = 0, rows = nextLayer.m_weights_rows, cols = nextLayer.m_weights_cols; 
+#ifdef __AVX2__
+        for(; (j + 3) < rows; j += 4){
+          __m256d t = _mm256_mul_pd(_mm256_loadu_pd(&nextLayer.m_gradients[j]), 
+                                    _mm256_set_pd(nextLayer.m_weights[((j + 3) * cols) + i], 
+                                                  nextLayer.m_weights[((j + 2) * cols) + i], 
+                                                  nextLayer.m_weights[((j + 1) * cols) + i], 
+                                                  nextLayer.m_weights[((j + 0) * cols) + i]));
+          t = _mm256_hadd_pd(t, t);
+          gradient += t[0] + t[2];
+        }  
+#endif
+#ifdef __SSE2__
+        for(; (j + 1) < rows; j += 2){
+          __m128d t = _mm_mul_pd(_mm_loadu_pd(&nextLayer.m_gradients[j]), 
+                                 _mm_set_pd(nextLayer.m_weights[((j + 1) * cols) + i], 
+                                            nextLayer.m_weights[((j + 0) * cols) + i]));
+          t = _mm_hadd_pd(t, t);
+          gradient += t[0];
+        }
+#endif
+        for(; j < rows; j++){
+          gradient += nextLayer.m_gradients[j] * nextLayer.m_weights[(j * cols) + i];
+        }
+        m_gradients[i] = gradient *= activationFunctionDerivative(m_outputs[i]);
       }
-      m_gradients[i] *= activationFunctionDerivative(m_outputs[i]);
 
-      for(ssize_t j = 0; j < inputs.size(); j++){
-        m_weights[i][j] -= m_learningRate * m_gradients[i] * inputs[j];
-      }
+      double gradientMulLearningRate = gradient * m_learningRate;
 
-      m_biases[i] -= m_learningRate * m_gradients[i];
+      {
+        ssize_t j = 0, cols = m_weights_cols;
+#ifdef __AVX2__
+        {
+          __m256d gradientMulLearningRateSIMD = _mm256_set1_pd(gradientMulLearningRate);
+          for(; (j + 3) < cols; j += 4){
+            _mm256_storeu_pd(&m_weights[(i * cols) + j], _mm256_sub_pd(_mm256_loadu_pd(&m_weights[(i * cols) + j]), _mm256_mul_pd(_mm256_loadu_pd(&inputs[j]), gradientMulLearningRateSIMD)));
+          } 
+        }
+#endif
+#ifdef __SSE2__
+        {
+          __m128d gradientMulLearningRateSIMD = _mm_set1_pd(gradientMulLearningRate);
+          for(; (j + 1) < cols; j += 2){
+            _mm_storeu_pd(&m_weights[(i * cols) + j], _mm_sub_pd(_mm_loadu_pd(&m_weights[(i * cols) + j]), _mm_mul_pd(_mm_loadu_pd(&inputs[j]), gradientMulLearningRateSIMD)));
+          } 
+        }
+#endif
+        for(; j < m_weights_cols; j++){
+          m_weights[(i * m_weights_cols) + j] -= gradientMulLearningRate * inputs[j];
+        }
+      } 
+
+      m_biases[i] -= gradientMulLearningRate;
 
     }
   }
@@ -114,11 +257,11 @@ public:
 class Network {
 public:
 
-  std::vector<Layer> m_layers;
+  AlignedVector<Layer> m_layers;
 
-  std::vector<double> m_outputs;
+  AlignedVector<double> m_outputs;
 
-  Network(const std::vector<ssize_t>& sizes, const std::vector<ActivationFunction>& activationFunctions) {
+  Network(const AlignedVector<ssize_t>& sizes, const AlignedVector<ActivationFunction>& activationFunctions) {
     for(ssize_t i = 0; i < sizes.size() - 1; i++){
       const ActivationFunction& activationFunction = (i < activationFunctions.size()) ? activationFunctions[i] : activationFunctionSigmoid;
       m_layers.push_back(Layer(sizes[i], sizes[i + 1], activationFunction));
@@ -126,7 +269,7 @@ public:
     m_outputs.resize(sizes.back());
   }
 
-  void evaluate(const std::vector<double>& inputs, std::vector<double>& outputs) {
+  void evaluate(const AlignedVector<double>& inputs, AlignedVector<double>& outputs) {
     m_layers[0].forward(inputs);
     for(ssize_t i = 1; i < m_layers.size(); i++){
       m_layers[i].forward(m_layers[i - 1].m_outputs);
@@ -140,7 +283,7 @@ public:
     //outputs = m_layers.back().m_outputs;
   }
 
-  void train(const std::vector<double>& inputs, const std::vector<double>& targets) {
+  void train(const AlignedVector<double>& inputs, const AlignedVector<double>& targets) {
       
     // Forward pass
     m_layers[0].forward(inputs);
@@ -155,21 +298,19 @@ public:
 
     // Backward pass
     for(ssize_t i = m_layers.size() - 2; i >= 0; i--){
-      const std::vector<double>& inputValues = (i > 0) ? m_layers[i - 1].m_outputs : inputs;
-      std::vector<double>& nextGradients = m_layers[i + 1].m_gradients;
-      std::vector<std::vector<double>>& nextWeights = m_layers[i + 1].m_weights;
-      m_layers[i].backward(inputValues, nextGradients, nextWeights, m_layers[i].m_activationFunction.m_derivative);
+      const AlignedVector<double>& inputValues = (i > 0) ? m_layers[i - 1].m_outputs : inputs;
+      m_layers[i].backward(inputValues, m_layers[i + 1], m_layers[i].m_activationFunction.m_derivative);
     }
 
   } 
 
-  double getMeanSquaredError(const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& targets) {
+  double getMeanSquaredError(const AlignedVector<AlignedVector<double>>& inputs, const AlignedVector<AlignedVector<double>>& targets) {
 
     if(inputs.empty() || (inputs.size() != targets.size())) {
       return INFINITY;
     }else{
-
-      std::vector<double>& outputs = m_outputs;
+        
+      AlignedVector<double>& outputs = m_outputs;
       if(outputs.size() != targets[0].size()){
         outputs.resize(targets[0].size());
       }
@@ -177,7 +318,24 @@ public:
       double meanSquaredError = 0.0;
       for(ssize_t i = 0; i < inputs.size(); i++){
         evaluate(inputs[i], outputs);
-        for(ssize_t j = 0; j < outputs.size(); j++){
+        ssize_t j = 0, k = outputs.size();
+#ifdef __AVX2__
+        for(; (j + 3) < k; j += 4){
+          __m256d t = _mm256_sub_pd(_mm256_loadu_pd(&outputs[j]), _mm256_loadu_pd(&targets[i][j]));
+          t = _mm256_mul_pd(t, t);
+          t = _mm256_hadd_pd(t, t);
+          meanSquaredError += t[0] + t[2];
+        }
+#endif
+#ifdef __SSE2__
+        for(; (j + 1) < k; j += 2){
+          __m128d t = _mm_sub_pd(_mm_loadu_pd(&outputs[j]), _mm_loadu_pd(&targets[i][j]));
+          t = _mm_mul_pd(t, t);
+          t = _mm_hadd_pd(t, t);
+          meanSquaredError += t[0];
+        }
+#endif
+        for(; j < k; j++){
           double error = outputs[j] - targets[i][j];
           meanSquaredError += error * error;
         }
@@ -200,15 +358,15 @@ struct Color {
   double m_a;
 };
 
-typedef std::vector<Color> ColorSet;
+typedef AlignedVector<Color> ColorSet;
 
 struct TrainingSample {
-  std::vector<double> m_inputs;
-  std::vector<double> m_targets;
+  AlignedVector<double> m_inputs;
+  AlignedVector<double> m_targets;
 };
 
-typedef std::vector<TrainingSample> TrainingSet;
-typedef std::vector<ssize_t> TrainingSampleIndices;
+typedef AlignedVector<TrainingSample> TrainingSet;
+typedef AlignedVector<ssize_t> TrainingSampleIndices;
 
 void blendBackToFront(Color& target, const Color& source){
   double oneMinusSourceAlpha = 1.0 - source.m_a;
@@ -235,10 +393,10 @@ ssize_t getFactorial(ssize_t n){
   return result;
 }
 
-std::vector<std::vector<ssize_t>> generatePermutations(int size){
-  std::vector<ssize_t> sequence(size);
+AlignedVector<AlignedVector<ssize_t>> generatePermutations(int size){
+  AlignedVector<ssize_t> sequence(size);
   std::iota(sequence.begin(), sequence.end(), 0);
-  std::vector<std::vector<ssize_t>> permutations;
+  AlignedVector<AlignedVector<ssize_t>> permutations;
   permutations.reserve(getFactorial(sequence.size()));
   do {
     permutations.emplace_back(sequence);
@@ -267,7 +425,7 @@ struct container_hasher {
 
 int main() {
 
-  std::vector<ssize_t> sizes = {
+  AlignedVector<ssize_t> sizes = {
     10, // 10 inputs (1x: Average opacity, excluding the front two fragments + 
         //            3x: Average RGB color, excluding the front two fragments + 
         //            3x: Accumulated premultiplied alpha RGB color
@@ -278,7 +436,7 @@ int main() {
     16, // 16 neurons in the second hidden layer 
     3 // 3 outputs as RGB color
   };
-  std::vector<ActivationFunction> activationFunctions = {
+  AlignedVector<ActivationFunction> activationFunctions = {
     activationFunctionRELU,    // Input layer activation function (not used)
     activationFunctionRELU,    // First hidden layer activation function
     activationFunctionRELU,    // Second hidden layer activation function
@@ -322,7 +480,7 @@ int main() {
     }
     for(ssize_t permutationIndex = 0; permutationIndex < MAXIMUM_PERMUTATION_COUNT; permutationIndex++) {
       
-      std::vector<ssize_t> permutation(countColors);
+      AlignedVector<ssize_t> permutation(countColors);
       
       // Generate random permutation, but make sure that it is unique
       {
@@ -344,7 +502,7 @@ int main() {
       }
 
       // Compute color set for the current permutation for the current colo count
-      std::vector<Color> colors(countColors);
+      AlignedVector<Color> colors(countColors);
       for(ssize_t i = 0; i < colors.size(); i++) {
         colors[i] = colorSet[permutation[i]];
       }
@@ -416,8 +574,8 @@ int main() {
   }
   
   // Initialize test set
-  std::vector<std::vector<double>> testInputs;
-  std::vector<std::vector<double>> testTargets;
+  AlignedVector<AlignedVector<double>> testInputs;
+  AlignedVector<AlignedVector<double>> testTargets;
   for(ssize_t trainingSampleIndex = 0; trainingSampleIndex < trainingSet.size(); trainingSampleIndex++) {
     TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
     testInputs.push_back(trainingSample.m_inputs);
@@ -467,18 +625,18 @@ int main() {
     
     Layer& layer = network.m_layers[layerIndex];
 
-    file << "const float weights" << layerIndex +1 << "[" << layer.m_weights[0].size() << "][" << layer.m_weights.size() << "] = {" << std::endl;
-    for(ssize_t i = 0; i < layer.m_weights[0].size(); i++) {
+    file << "const float weights" << layerIndex +1 << "[" << layer.m_weights_cols << "][" << layer.m_weights_rows << "] = {" << std::endl;
+    for(ssize_t i = 0; i < layer.m_weights_cols; i++) {
       file << "  { " << std::endl;
-      for(ssize_t j = 0; j < layer.m_weights.size(); j++) {
-        file << "    " << layer.m_weights[j][i];
+      for(ssize_t j = 0; j < layer.m_weights_rows; j++) {
+        file << "    " << layer.m_weights[(j * layer.m_weights_cols) + i];
         if(j < layer.m_weights.size() - 1) {
           file << ", ";
         }
         file << std::endl;
       }
       file << "  }";
-      if(i < layer.m_weights[0].size() - 1) {
+      if(i < layer.m_weights_rows - 1) {
         file << ",";
       }
       file << std::endl;
