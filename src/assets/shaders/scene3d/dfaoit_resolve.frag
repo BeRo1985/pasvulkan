@@ -2,6 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_multiview : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
@@ -190,28 +191,66 @@ float sigmoid(float x) {
 
 vec3 evalulateNetwork(const in float inputValues[10]){
   
-  float output1[32];
-  for(int i = 0; i < 32; i++) {
+  float output1[LAYER1_WEIGHTS_COUNT];
+  for(int i = 0; i < LAYER1_WEIGHTS_COUNT; i++) {
     float result = 0.0;
-    for(int j = 0; j < 10; j++){
+/*  [[unroll]]
+    for(int j = 0; (j + 3) < LAYER1_WEIGHTS_SIZE; j += 4){
+      result += dot(
+                  vec4(inputValues[j], inputValues[j + 1], inputValues[j + 2], inputValues[j + 3]), 
+                  vec4(weights1[i][j], weights1[i][j + 1], weights1[i][j + 2], weights1[i][j + 3])
+                );
+    } 
+    [[unroll]]
+    for(int j = LAYER1_WEIGHTS_SIZE - ((LAYER1_WEIGHTS_SIZE / 4) * 4); j < LAYER1_WEIGHTS_SIZE; j++){
+      result += inputValues[j] * weights1[i][j];
+    }*/
+    [[unroll]]
+    for(int j = 0; j < LAYER1_WEIGHTS_SIZE; j++){
       result += inputValues[j] * weights1[i][j];
     }
     output1[i] = relu(result + biases1[i]);
   }
 
-  float output2[16];
-  for(int i = 0; i < 16; i++) {
+  float output2[LAYER2_WEIGHTS_COUNT];
+  [[unroll]]
+  for(int i = 0; i < LAYER2_WEIGHTS_COUNT; i++) {
     float result = 0.0;
-    for(int j = 0; j < 32; j++){
+/*  [[unroll]]
+    for(int j = 0; (j + 3) < LAYER2_WEIGHTS_SIZE; j += 4){
+      result += dot(
+                  vec4(output1[j], output1[j + 1], output1[j + 2], output1[j + 3]), 
+                  vec4(weights2[i][j], weights2[i][j + 1], weights2[i][j + 2], weights2[i][j + 3])
+                );
+    } 
+    [[unroll]]
+    for(int j = LAYER2_WEIGHTS_SIZE - ((LAYER2_WEIGHTS_SIZE / 4) * 4); j < LAYER2_WEIGHTS_SIZE; j++){
+      result += output1[j] * weights2[i][j];
+    }*/
+    [[unroll]]
+    for(int j = 0; j < LAYER2_WEIGHTS_SIZE; j++){
       result += output1[j] * weights2[i][j];
     }
     output2[i] = relu(result + biases2[i]);
   }
 
   vec3 output3;
-  for(int i = 0; i < 3; i++) {
+  [[unroll]]
+  for(int i = 0; i < LAYER3_WEIGHTS_COUNT; i++) {
     float result = 0.0;
-    for(int j = 0; j < 16; j++){
+/*  [[unroll]]
+    for(int j = 0; (j + 3) < LAYER3_WEIGHTS_SIZE; j += 4){
+      result += dot(
+                  vec4(output2[j], output2[j + 1], output2[j + 2], output2[j + 3]), 
+                  vec4(weights3[i][j], weights3[i][j + 1], weights3[i][j + 2], weights3[i][j + 3])
+                );
+    } 
+    [[unroll]]
+    for(int j = LAYER3_WEIGHTS_SIZE - ((LAYER3_WEIGHTS_SIZE / 4) * 4); j < LAYER3_WEIGHTS_SIZE; j++){
+      result += output2[j] * weights3[i][j];
+    }*/
+    [[unroll]]
+    for(int j = 0; j < LAYER3_WEIGHTS_SIZE; j++){
       result += output2[j] * weights3[i][j];
     }
     output3[i] = sigmoid(result + biases3[i]);

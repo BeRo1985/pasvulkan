@@ -39,8 +39,12 @@ for countColors in range(3, 16):
     countMinusTwo = countColors - 2
     for colorSetVariantIndex in range(65536):
         
-        # Compute color set for the current permutation for the current colo count
-        colors = np.random.rand(countColors, 4)
+        # Compute color set for the current permutation for the current color count
+        #colors = np.zeros((countColors, 4))
+        #rg = Generator(PCG64(SeedSequence(colorSetVariantIndex + (countColors * 65536))))
+        #for i in range(countColors):
+        #    colors[i] = rg.random(4)
+        colors = np.clip(np.random.rand(countColors, 4), 0.0, 1.0) 
 
         # Compute average color and alpha
         averageColor = np.zeros(4)
@@ -85,10 +89,12 @@ for countColors in range(3, 16):
 print('Finished generating training data!')
 
 # save training set to file
-#with open('trainingdata.txt', 'w') as file:
-#    for trainingSample in trainingSet:
-#        file.write(str(list(trainingSample['inputs'])).replace('[', '').replace(']', '').replace(',', '') + ' ' + str(list(trainingSample['targets'])).replace('[', '').replace(']', '').replace(',', '') + '\n')
-#    file.close()
+print('Saving training data to file...')
+with open('trainingdata.txt', 'w') as file:
+    for trainingSample in trainingSet:
+        file.write(str(list(trainingSample['inputs'])).replace('[', '').replace(']', '').replace(',', '') + ' ' + str(list(trainingSample['targets'])).replace('[', '').replace(']', '').replace(',', '') + '\n')
+    file.close()
+print('Finished saving training data to file!')
 
 # Load training data from file again back
 #data = np.loadtxt('trainingdata.txt')
@@ -163,8 +169,11 @@ with open('dfaoit_network.glsl', 'w') as file:
         biases = layer.bias.cpu().detach().numpy()
 
         # Generate GLSL code for declaring weights
+        file.write(f'// Layer {i + 1}\n')
+        file.write(f'#define LAYER{i + 1}_WEIGHTS_COUNT {len(weights)}\n')
+        file.write(f'#define LAYER{i + 1}_WEIGHTS_SIZE {weights.shape[1]}\n')
+        file.write(f'\n')
         file.write(f'const float weights{i + 1}[{len(weights)}][{weights.shape[1]}] = {{\n')
-        # iterate weights per index
         for j in range(len(weights)):
             file.write(f'  {{\n')
             weightLine = weights[j]
@@ -181,15 +190,13 @@ with open('dfaoit_network.glsl', 'w') as file:
         file.write('};\n\n')
 
         # Generate GLSL code for declaring biases
-        file.write(f'const float biases{i + 1}[{len(biases)}] = {{\n')
-        # iterate biases per index, one bias value per line, a bias is a number, not an array  
+        file.write(f'const float biases{i + 1}[{len(biases)}] = {{\n')    
         for j in range(len(biases)):
             bias = biases[j] 
             file.write('  ' + str(bias));
             if j != len(biases) - 1:
                 file.write(',')
             file.write('\n') 
-#       file.write(str(list(biases)).replace('[', '{').replace(']', '}'))
         file.write('};\n\n')
     file.close()
 
