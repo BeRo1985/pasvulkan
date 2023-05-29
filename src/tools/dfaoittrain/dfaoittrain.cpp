@@ -22,13 +22,29 @@
 
 pcg32 randomNumberGenerator(0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL); // fixed seed for reproducibility (on the same machine with the same compiler)  
 
-inline static double sigmoid(double x) {
+static double relu(double x){
+  return (x > 0.0) ? x : 0.0;
+}
+
+static double relu_derivative(double x){
+  return (x > 0.0) ? 1.0 : 0.0;
+}
+
+static double sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x));
 }
 
-inline static double sigmoid_derivative(double x) {
+static double sigmoid_derivative(double x) {
   return x * (1.0 - x);
 }
+
+struct ActivationFunction {
+  double (*m_function)(double);
+  double (*m_derivative)(double);
+};
+
+static ActivationFunction activationFunctionRELU = { relu, relu_derivative };
+static ActivationFunction activationFunctionSigmoid = { sigmoid, sigmoid_derivative };
 
 class Layer {
 public:
@@ -36,9 +52,10 @@ public:
   std::vector<double> m_gradients;
   std::vector<std::vector<double>> m_weights;
   std::vector<double> m_biases; 
+  ActivationFunction m_activationFunction;
   double m_learningRate = 0.0001;
 
-  Layer(ssize_t input_size, ssize_t output_size) {
+  Layer(ssize_t input_size, ssize_t output_size, ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
 
     // Initialize weights and biases with random values between -1 and 1
     std::uniform_real_distribution<> distribution(-1, 1);
@@ -66,7 +83,7 @@ public:
         m_outputs[i] += inputs[j] * m_weights[i][j];
       }
       m_outputs[i] += m_biases[i];
-      m_outputs[i] = sigmoid(m_outputs[i]);
+      m_outputs[i] = m_activationFunction.m_function(m_outputs[i]);
     }
   }
 
@@ -77,7 +94,7 @@ public:
       for(ssize_t j = 0; j < nextGradients.size(); j++){
         m_gradients[i] += nextGradients[j] * nextWeights[j][i];
       }
-      m_gradients[i] *= sigmoid_derivative(m_outputs[i]);
+      m_gradients[i] *= m_activationFunction.m_derivative(m_outputs[i]);
 
       for(ssize_t j = 0; j < inputs.size(); j++){
         m_weights[i][j] -= m_learningRate * m_gradients[i] * inputs[j];
