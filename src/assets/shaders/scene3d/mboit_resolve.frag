@@ -47,4 +47,10 @@ void main() {
   }
 
   outColor = color;
+
+#ifdef MSAA
+  // In case of MSAA, a extra resolve pass will generate the final color, together with tone mapping and inverse tone mapping for correct HDR handling,
+  // instead to do it in this same shader, for to simplify the complete process.
+#endif    
+
 }
