@@ -237,7 +237,13 @@ int main() {
     16, // 16 neurons in the second hidden layer 
     3 // 3 outputs as RGB color
   };
-  Network network(sizes);
+  std::vector<ActivationFunction> activationFunctions = {
+    activationFunctionRELU,    // Input layer activation function (not used)
+    activationFunctionRELU,    // First hidden layer activation function
+    activationFunctionRELU,    // Second hidden layer activation function
+    activationFunctionSigmoid  // Output layer activation function
+  };
+  Network network(sizes, activationFunctions);
 
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
   ColorSet colorSet;
