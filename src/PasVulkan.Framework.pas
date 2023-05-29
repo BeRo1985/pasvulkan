@@ -11951,7 +11951,6 @@ function TpvVulkanMemoryStaging.Upload(const aTransferQueue:TpvVulkanQueue;const
 var Remain,ToDo,Offset:TVkDeviceSize;
     Source:PpvUInt8;
     Destination:Pointer;
-    VkBufferCopy:TVkBufferCopy;
 begin
 
  if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
@@ -11985,15 +11984,13 @@ begin
 
         Move(Source^,Destination^,ToDo);
 
-        VkBufferCopy.srcOffset:=0;
-        VkBufferCopy.dstOffset:=Offset;
-        VkBufferCopy.size:=ToDo;
-
-        aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-        aTransferCommandBuffer.BeginRecording;
-        aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
-        aTransferCommandBuffer.EndRecording;
-        aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+        aDestinationBuffer.CopyFrom(aTransferQueue,
+                                    aTransferCommandBuffer,
+                                    aTransferFence,
+                                    fBuffer,
+                                    0,
+                                    Offset,
+                                    ToDo);
 
         inc(Source,ToDo);
         inc(Offset,ToDo);
@@ -12033,15 +12030,13 @@ begin
 
       fBuffer.UpdateData(Source^,0,ToDo,true);
 
-      VkBufferCopy.srcOffset:=0;
-      VkBufferCopy.dstOffset:=Offset;
-      VkBufferCopy.size:=ToDo;
-
-      aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-      aTransferCommandBuffer.BeginRecording;
-      aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
-      aTransferCommandBuffer.EndRecording;
-      aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+      aDestinationBuffer.CopyFrom(aTransferQueue,
+                                  aTransferCommandBuffer,
+                                  aTransferFence,
+                                  fBuffer,
+                                  0,
+                                  Offset,
+                                  ToDo);
 
       inc(Source,ToDo);
       inc(Offset,ToDo);
