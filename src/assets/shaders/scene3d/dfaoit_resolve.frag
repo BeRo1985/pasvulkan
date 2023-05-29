@@ -192,32 +192,29 @@ vec3 evalulateNetwork(const in float inputValues[10]){
   
   float output1[32];
   for(int i = 0; i < 32; i++) {
-    output1[i] = 0.0;
+    float result = 0.0;
     for(int j = 0; j < 10; j++){
-      output1[i] += inputValues[j] * weights1[i][j];
+      output1[i] += inputValues[j] * weights1[j][i];
     }
-    output1[i] += biases1[i];
-    output1[i] = relu(output1[i]);
+    output1[i] = relu(result + biases1[i]);
   }
 
   float output2[16];
   for(int i = 0; i < 16; i++) {
-    output2[i] = 0.0;
+    float result = 0.0;
     for(int j = 0; j < 32; j++){
-      output2[i] += output1[j] * weights2[i][j];
+      result += output1[j] * weights2[j][i];
     }
-    output2[i] += biases2[i];
-    output2[i] = relu(output2[i]);
+    output2[i] = relu(result + biases2[i]);
   }
 
   vec3 output3;
   for(int i = 0; i < 3; i++) {
-    output3[i] = 0.0;
+    float result = 0.0;
     for(int j = 0; j < 16; j++){
-      output3[i] += output2[j] * weights3[i][j];
+      result += output2[j] * weights3[j][i];
     }
-    output3[i] += biases3[i];
-    output3[i] = sigmoid(output3[i]);
+    output3[i] = sigmoid(result + biases3[i]);
   }
 
   return output3;

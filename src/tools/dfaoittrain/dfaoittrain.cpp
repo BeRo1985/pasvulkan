@@ -625,18 +625,18 @@ int main() {
     
     Layer& layer = network.m_layers[layerIndex];
 
-    file << "const float weights" << layerIndex +1 << "[" << layer.m_weights_cols << "][" << layer.m_weights_rows << "] = {" << std::endl;
-    for(ssize_t i = 0; i < layer.m_weights_cols; i++) {
+    file << "const float weights" << layerIndex +1 << "[" << layer.m_weights_rows << "][" << layer.m_weights_cols << "] = {" << std::endl;
+    for(ssize_t i = 0; i < layer.m_weights_rows; i++) {
       file << "  { " << std::endl;
-      for(ssize_t j = 0; j < layer.m_weights_rows; j++) {
-        file << "    " << std::setprecision(std::numeric_limits<double>::digits10 + 2) << layer.m_weights[(j * layer.m_weights_cols) + i];
-        if(j < layer.m_weights.size() - 1) {
+      for(ssize_t j = 0; j < layer.m_weights_cols; j++) {
+        file << "    " << std::setprecision(std::numeric_limits<double>::digits10 + 2) << layer.m_weights[(i * layer.m_weights_cols) + j];
+        if((j + 1) < layer.m_weights_cols) {
           file << ", ";
         }
         file << std::endl;
       }
       file << "  }";
-      if(i < layer.m_weights_rows - 1) {
+      if((i + 1) < layer.m_weights_rows) {
         file << ",";
       }
       file << std::endl;
@@ -647,7 +647,7 @@ int main() {
     file << "const float biases" << layerIndex + 1 << "[" << layer.m_biases.size() << "] = { " << std::endl;
     for(ssize_t i = 0; i < layer.m_biases.size(); i++) {
       file << "  " << std::setprecision(std::numeric_limits<double>::digits10 + 2) << layer.m_biases[i];
-      if(i < layer.m_biases.size() - 1) {
+      if((i + 1) < layer.m_biases.size()) {
         file << ", ";
       }
       file << std::endl;
