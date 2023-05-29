@@ -365,6 +365,20 @@ int main() {
       TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
       network.train(trainingSample.m_inputs, trainingSample.m_targets);
     }
+
+    // Mean squared error
+    double meanSquaredError = 0.0;
+    for(ssize_t trainingSampleIndex : trainingSampleIndices) {
+      TrainingSample& trainingSample = trainingSet[trainingSampleIndex];
+      std::vector<double> outputs;
+      network.evaluate(trainingSample.m_inputs, outputs);
+      for(ssize_t i = 0; i < outputs.size(); i++) {
+        double error = outputs[i] - trainingSample.m_targets[i];
+        meanSquaredError += error * error;
+      }      
+    }
+    meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
+    std::cout << "Mean squared error: " << meanSquaredError << std::endl;
     
   }
   std::cout << "Done!" << std::endl;
