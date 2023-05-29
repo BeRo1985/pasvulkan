@@ -629,7 +629,7 @@ int main() {
     for(ssize_t i = 0; i < layer.m_weights_cols; i++) {
       file << "  { " << std::endl;
       for(ssize_t j = 0; j < layer.m_weights_rows; j++) {
-        file << "    " << layer.m_weights[(j * layer.m_weights_cols) + i];
+        file << "    " << std::setprecision(std::numeric_limits<double>::digits10 + 2) << layer.m_weights[(j * layer.m_weights_cols) + i];
         if(j < layer.m_weights.size() - 1) {
           file << ", ";
         }
@@ -646,7 +646,7 @@ int main() {
 
     file << "const float biases" << layerIndex + 1 << "[" << layer.m_biases.size() << "] = { " << std::endl;
     for(ssize_t i = 0; i < layer.m_biases.size(); i++) {
-      file << "  " << layer.m_biases[i];
+      file << "  " << std::setprecision(std::numeric_limits<double>::digits10 + 2) << layer.m_biases[i];
       if(i < layer.m_biases.size() - 1) {
         file << ", ";
       }
