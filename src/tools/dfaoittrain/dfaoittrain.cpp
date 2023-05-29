@@ -53,7 +53,7 @@ public:
   std::vector<std::vector<double>> m_weights;
   std::vector<double> m_biases; 
   ActivationFunction m_activationFunction;
-  double m_learningRate = 0.000001;
+  double m_learningRate = 0.00001;
 
   Layer(ssize_t input_size, ssize_t output_size, const ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
 
@@ -242,7 +242,7 @@ std::vector<std::vector<ssize_t>> generatePermutations(int size){
   return permutations;
 }
 
-#define MAXIMUM_COLOR_COUNT 8
+#define MAXIMUM_COLOR_COUNT 10
 
 typedef std::array<ssize_t, MAXIMUM_COLOR_COUNT> PermutationIndexCombination; 
 
@@ -285,7 +285,7 @@ int main() {
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
   ColorSet colorSet;
   {
-    ssize_t colorValueSteps = 5;
+    ssize_t colorValueSteps = 10;
     std::cout << "Computing all possible color combinations in " << colorValueSteps << " steps per color channel from 0.0 to 1.0 range..." << std::endl;
     ssize_t maximalValue = 1 << 24; // 8.24 bit fixed point
     double maximalValueReciprocal = 1.0 / maximalValue;
@@ -313,8 +313,8 @@ int main() {
     ssize_t countMinusTwo = countColors - 2;
 
     ssize_t MAXIMUM_PERMUTATION_COUNT = getFactorial(countColors);
-    if(MAXIMUM_PERMUTATION_COUNT > 65536) {
-      MAXIMUM_PERMUTATION_COUNT = 65536;
+    if(MAXIMUM_PERMUTATION_COUNT > 131072) {
+      MAXIMUM_PERMUTATION_COUNT = 131072;
     }
     for(ssize_t permutationIndex = 0; permutationIndex < MAXIMUM_PERMUTATION_COUNT; permutationIndex++) {
       
@@ -426,7 +426,7 @@ int main() {
   double meanSquaredError = network.getMeanSquaredError(testInputs, testTargets);
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
 
-    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... Initial mean squared error: " << meanSquaredError << " " << std::flush;
+    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... Mean squared error: " << meanSquaredError << " " << std::flush;
  
     // Shuffle trainingSampleIndices    
     std::shuffle(trainingSampleIndices.begin(), trainingSampleIndices.end(), randomNumberGenerator);
@@ -444,7 +444,6 @@ int main() {
     }
     
   }
-  meanSquaredError = sqrt(meanSquaredError / (trainingSampleIndices.size() * 3));
   std::cout << "\nDone! Final mean squared error: " << meanSquaredError << std::endl;
   
   return 0;
