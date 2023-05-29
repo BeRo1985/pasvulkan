@@ -194,7 +194,7 @@ vec3 evalulateNetwork(const in float inputValues[10]){
   for(int i = 0; i < 32; i++) {
     float result = 0.0;
     for(int j = 0; j < 10; j++){
-      output1[i] += inputValues[j] * weights1[j][i];
+      result += inputValues[j] * weights1[j][i];
     }
     output1[i] = relu(result + biases1[i]);
   }
