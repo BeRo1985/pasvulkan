@@ -1229,6 +1229,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanMemoryStagingFlags=set of TpvVulkanMemoryStagingFlag;
 
+     EpvVulkanMemoryStagingException=class(EpvVulkanException);
+
      TpvVulkanMemoryStaging=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1239,6 +1241,8 @@ type EpvVulkanException=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination]); reintroduce;
        destructor Destroy; override;
+       function Upload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
+       function Download(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Flags:TpvVulkanMemoryStagingFlags read fFlags;
@@ -11936,6 +11940,23 @@ begin
  inherited Destroy;
 end;
 
+function TpvVulkanMemoryStaging.Upload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
+begin
+ if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
+  result:=0;
+ end else begin
+  raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
+ end;
+end;
+
+function TpvVulkanMemoryStaging.Download(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
+begin
+ if TpvVulkanMemoryStagingFlag.Destination in fFlags then begin
+  result:=0;
+ end else begin
+  raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Destination must be used here');
+ end;
+end;
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
                                   const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
