@@ -1224,7 +1224,8 @@ type EpvVulkanException=class(Exception);
      TpvVulkanMemoryStagingFlag=
       (
        Source,
-       Destination
+       Destination,
+       PersistentMapped
       );
 
      TpvVulkanMemoryStagingFlags=set of TpvVulkanMemoryStagingFlag;
@@ -1239,10 +1240,10 @@ type EpvVulkanException=class(Exception);
        fMask:TVkDeviceSize;
        fBuffer:TpvVulkanBuffer;
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination]); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination,TpvVulkanMemoryStagingFlag.PersistentMapped]); reintroduce;
        destructor Destroy; override;
-       function Upload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
-       function Download(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
+       function Upload(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
+       function Download(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Flags:TpvVulkanMemoryStagingFlags read fFlags;
@@ -11898,6 +11899,7 @@ end;
 
 constructor TpvVulkanMemoryStaging.Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags);
 var BufferUsageFlags:TVkBufferUsageFlags;
+    BufferFlags:TpvVulkanBufferFlags;
 begin
  inherited Create;
 
@@ -11916,6 +11918,12 @@ begin
   BufferUsageFlags:=BufferUsageFlags or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT);
  end;
 
+ BufferFlags:=[TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+               TpvVulkanBufferFlag.DedicatedAllocation];
+ if TpvVulkanMemoryStagingFlag.PersistentMapped in fFlags then begin
+  Include(BufferFlags,TpvVulkanBufferFlag.PersistentMapped);
+ end;
+
  fBuffer:=TpvVulkanBuffer.Create(fDevice,
                                  fSize,
                                  BufferUsageFlags,
@@ -11929,8 +11937,7 @@ begin
                                  0,
                                  0,
                                  0,
-                                 [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                  TpvVulkanBufferFlag.DedicatedAllocation]);
+                                 BufferFlags);
 
 end;
 
@@ -11940,22 +11947,160 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanMemoryStaging.Upload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
+function TpvVulkanMemoryStaging.Upload(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
+var Remain,ToDo,Offset:TVkDeviceSize;
+    Source:PpvUInt8;
+    Destination:Pointer;
+    VkBufferCopy:TVkBufferCopy;
 begin
+
  if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
+
   result:=0;
+
+  Remain:=aSize;
+
+  if Remain>0 then begin
+
+   Source:=@aSourceData;
+
+   Destination:=fBuffer.Memory.MapMemory;
+   if assigned(Destination) then begin
+
+    try
+
+     Offset:=aDestinationOffset;
+
+     while Remain>0 do begin
+
+      if Remain<aSize then begin
+       ToDo:=Remain;
+      end else begin
+       ToDo:=aSize;
+      end;
+
+      if ToDo>0 then begin
+
+       Move(Source^,Destination^,ToDo);
+
+       VkBufferCopy.srcOffset:=0;
+       VkBufferCopy.dstOffset:=Offset;
+       VkBufferCopy.size:=ToDo;
+
+       aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+       aTransferCommandBuffer.BeginRecording;
+       aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
+       aTransferCommandBuffer.EndRecording;
+       aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+       inc(Source,ToDo);
+       inc(Offset,ToDo);
+
+       inc(result,ToDo);
+       dec(Remain,ToDo);
+
+      end else begin
+       break;
+      end;
+
+     end;
+
+    finally
+     fBuffer.Memory.UnmapMemory;
+    end;
+
+   end else begin
+
+    raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
+   end;
+
+  end;
+
  end else begin
+
   raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
+
  end;
+
 end;
 
-function TpvVulkanMemoryStaging.Download(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
+function TpvVulkanMemoryStaging.Download(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize):TVkDeviceSize;
+var Remain,ToDo,Offset:TVkDeviceSize;
+    Source:Pointer;
+    Destination:PpvUInt8;
+    VkBufferCopy:TVkBufferCopy;
 begin
+
  if TpvVulkanMemoryStagingFlag.Destination in fFlags then begin
+
   result:=0;
+
+  Remain:=aSize;
+
+  if Remain>0 then begin
+
+   Destination:=@aDestinationData;
+
+   Source:=fBuffer.Memory.MapMemory;
+   if assigned(Source) then begin
+
+    try
+
+     Offset:=aSourceOffset;
+
+     while Remain>0 do begin
+
+      if Remain<aSize then begin
+       ToDo:=Remain;
+      end else begin
+       ToDo:=aSize;
+      end;
+
+      if ToDo>0 then begin
+
+       VkBufferCopy.srcOffset:=Offset;
+       VkBufferCopy.dstOffset:=0;
+       VkBufferCopy.size:=ToDo;
+
+       aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+       aTransferCommandBuffer.BeginRecording;
+       aTransferCommandBuffer.CmdCopyBuffer(aSourceBuffer.Handle,fBuffer.Handle,1,@VkBufferCopy);
+       aTransferCommandBuffer.EndRecording;
+       aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+       Move(Source^,Destination^,ToDo);
+
+       inc(Destination,ToDo);
+       inc(Offset,ToDo);
+
+       inc(result,ToDo);
+       dec(Remain,ToDo);
+
+      end else begin
+       break;
+      end;
+
+     end;
+
+    finally
+     fBuffer.Memory.UnmapMemory;
+    end;
+
+   end else begin
+
+    raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
+   end;
+
+  end;
+
  end else begin
+
   raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Destination must be used here');
+
  end;
+
 end;
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
