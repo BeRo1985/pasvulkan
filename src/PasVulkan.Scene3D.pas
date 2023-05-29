@@ -2091,6 +2091,8 @@ type EpvScene3D=class(Exception);
       private
        fLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
+       fVulkanMemoryStaging:TpvVulkanMemoryStaging;
+       fDoFreeVulkanMemoryStaging:TPasMPBool32;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
@@ -2212,7 +2214,7 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanMemoryStaging:TpvVulkanMemoryStaging=nil;const aDoFreeVulkanMemoryStaging:TPasMPBool32=true); reintroduce;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
@@ -8171,13 +8173,20 @@ var Index:TpvSizeInt;
                                               0,
                                               []
                                              );
-  fVulkanVertexBuffer.UploadData(UniversalQueue,
+  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
+                                             UniversalCommandBuffer,
+                                             UniversalFence,
+                                             fVertices.Items[0],
+                                             fVulkanVertexBuffer,
+                                             0,
+                                             fVertices.Count*SizeOf(TVertex));
+{ fVulkanVertexBuffer.UploadData(UniversalQueue,
                                  UniversalCommandBuffer,
                                  UniversalFence,
                                  fVertices.Items[0],
                                  0,
                                  fVertices.Count*SizeOf(TVertex),
-                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);}
 
   for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
    fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -8195,12 +8204,18 @@ var Index:TpvSizeInt;
                                                              0,
                                                              []
                                                             );
-   fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
+   fSceneInstance.fVulkanMemoryStaging.Zero(UniversalQueue,
+                                            UniversalCommandBuffer,
+                                            UniversalFence,
+                                            fVulkanCachedVertexBuffers[Index],
+                                            0,
+                                            fVertices.Count*SizeOf(TCachedVertex));
+{  fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
                                                UniversalCommandBuffer,
                                                UniversalFence,
                                                0,
                                                fVertices.Count*SizeOf(TCachedVertex),
-                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);}
   end;
 
 { fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -8239,13 +8254,20 @@ var Index:TpvSizeInt;
                                                  0,
                                                  0,
                                                  []);
-  fVulkanDrawIndexBuffer.UploadData(UniversalQueue,
+  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
+                                             UniversalCommandBuffer,
+                                             UniversalFence,
+                                             fDrawChoreographyBatchCondensedIndices.Items[0],
+                                             fVulkanDrawIndexBuffer,
+                                             0,
+                                             fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32));
+{ fVulkanDrawIndexBuffer.UploadData(UniversalQueue,
                                     UniversalCommandBuffer,
                                     UniversalFence,
                                     fDrawChoreographyBatchCondensedIndices.Items[0],
                                     0,
                                     fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32),
-                                    TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+                                    TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);}
 
   fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                        fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32),
@@ -8262,13 +8284,20 @@ var Index:TpvSizeInt;
                                                        0,
                                                        []
                                                       );
-  fVulkanDrawUniqueIndexBuffer.UploadData(UniversalQueue,
+  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
+                                             UniversalCommandBuffer,
+                                             UniversalFence,
+                                             fDrawChoreographyBatchCondensedUniqueIndices.Items[0],
+                                             fVulkanDrawUniqueIndexBuffer,
+                                             0,
+                                             fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32));
+{ fVulkanDrawUniqueIndexBuffer.UploadData(UniversalQueue,
                                           UniversalCommandBuffer,
                                           UniversalFence,
                                           fDrawChoreographyBatchCondensedUniqueIndices.Items[0],
                                           0,
                                           fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32),
-                                          TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+                                          TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);}
 
   fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                          fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex),
@@ -13589,7 +13618,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanMemoryStaging:TpvVulkanMemoryStaging;const aDoFreeVulkanMemoryStaging:TPasMPBool32);
 var Index:TpvSizeInt;
 begin
 
@@ -13601,6 +13630,14 @@ begin
   fVulkanDevice:=pvApplication.VulkanDevice;
  end else begin
   fVulkanDevice:=nil;
+ end;
+
+ if assigned(aVulkanMemoryStaging) then begin
+  fVulkanMemoryStaging:=aVulkanMemoryStaging;
+  fDoFreeVulkanMemoryStaging:=aDoFreeVulkanMemoryStaging;
+ end else begin
+  fVulkanMemoryStaging:=TpvVulkanMemoryStaging.Create(fVulkanDevice,64 shl 20); // 64MB
+  fDoFreeVulkanMemoryStaging:=true;
  end;
 
  fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
@@ -13977,6 +14014,10 @@ begin
  FreeAndNil(fMaterialDataGenerationLock);
 
  FreeAndNil(fPotentiallyVisibleSet);
+
+ if fDoFreeVulkanMemoryStaging then begin
+  FreeAndNil(fVulkanMemoryStaging);
+ end;
 
  FreeAndNil(fLock);
 
