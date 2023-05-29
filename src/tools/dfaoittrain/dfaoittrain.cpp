@@ -17,8 +17,10 @@
 //std::random_device randomDevice;
 ///std::mt19937 randomNumberGenerator(randomDevice());
 
-pcg_extras::seed_seq_from<std::random_device> seed_source;
-pcg32 randomNumberGenerator(seed_source);
+//pcg_extras::seed_seq_from<std::random_device> seed_source;
+//pcg32 randomNumberGenerator(seed_source);
+
+pcg32 randomNumberGenerator(0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL); // fixed seed for reproducibility (on the same machine with the same compiler)  
 
 inline static double sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x));
