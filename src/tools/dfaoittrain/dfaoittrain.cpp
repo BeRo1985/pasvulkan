@@ -20,7 +20,7 @@
 //pcg_extras::seed_seq_from<std::random_device> seed_source;
 //pcg32 randomNumberGenerator(seed_source);
 
-pcg32 randomNumberGenerator(0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL); // fixed seed for reproducibility (on the same machine with the same compiler)  
+pcg32 randomNumberGenerator(0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL); // fixed seed for reproducibility (on the same machine with the same compiler with the same compiler settings)   
 
 static double activationFunction_relu(double x){
   return (x > 0.0) ? x : 0.0;
@@ -53,7 +53,7 @@ public:
   std::vector<std::vector<double>> m_weights;
   std::vector<double> m_biases; 
   ActivationFunction m_activationFunction;
-  double m_learningRate = 0.0001;
+  double m_learningRate = 0.000001;
 
   Layer(ssize_t input_size, ssize_t output_size, const ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
 
