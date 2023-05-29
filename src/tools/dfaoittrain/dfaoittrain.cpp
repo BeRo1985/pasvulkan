@@ -338,6 +338,7 @@ int main() {
     }
 
   }
+  std::cout << "Training sample count: " << trainingSet.size() << std::endl;
   
   // Initialize training sample indices
   std::cout << "Initializing training sample indices..." << std::endl;
