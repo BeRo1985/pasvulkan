@@ -1221,6 +1221,32 @@ type EpvVulkanException=class(Exception);
        property Buffer:TpvVulkanBuffer read fBuffer write fBuffer;
      end;
 
+     TpvVulkanMemoryStagingFlag=
+      (
+       Source,
+       Destination
+      );
+
+     TpvVulkanMemoryStagingFlags=set of TpvVulkanMemoryStagingFlag;
+
+     TpvVulkanMemoryStaging=class(TpvVulkanObject)
+      private
+       fDevice:TpvVulkanDevice;
+       fFlags:TpvVulkanMemoryStagingFlags;
+       fSize:TVkDeviceSize;
+       fMask:TVkDeviceSize;
+       fBuffer:TpvVulkanBuffer;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination]); reintroduce;
+       destructor Destroy; override;
+      published
+       property Device:TpvVulkanDevice read fDevice;
+       property Flags:TpvVulkanMemoryStagingFlags read fFlags;
+       property Size:TVkDeviceSize read fSize;
+       property Mask:TVkDeviceSize read fMask;
+       property Buffer:TpvVulkanBuffer read fBuffer;
+     end;
+
      TpvVulkanEvent=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -11865,6 +11891,51 @@ begin
  end;
  inherited Destroy;
 end;
+
+constructor TpvVulkanMemoryStaging.Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags);
+var BufferUsageFlags:TVkBufferUsageFlags;
+begin
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ fSize:=RoundUpToPowerOfTwo64(aSize);
+ fMask:=fSize-1;
+
+ fFlags:=aFlags;
+
+ BufferUsageFlags:=0;
+ if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
+  BufferUsageFlags:=BufferUsageFlags or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+ end;
+ if TpvVulkanMemoryStagingFlag.Destination in fFlags then begin
+  BufferUsageFlags:=BufferUsageFlags or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+ end;
+
+ fBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                 fSize,
+                                 BufferUsageFlags,
+                                 VK_SHARING_MODE_EXCLUSIVE,
+                                 [],
+                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                  TpvVulkanBufferFlag.DedicatedAllocation]);
+
+end;
+
+destructor TpvVulkanMemoryStaging.Destroy;
+begin
+ FreeAndNil(fBuffer);
+ inherited Destroy;
+end;
+
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
                                   const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
