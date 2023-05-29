@@ -600,7 +600,7 @@ int main() {
     }
 
     meanSquaredError = network.getMeanSquaredError(testInputs, testTargets);
-    if (meanSquaredError < 1e-5){
+    if (meanSquaredError < 1e-6){
       // Good enough, stop training
       break;
     }
