@@ -178,7 +178,7 @@ std::vector<std::vector<int>> generatePermutations(int size){
 
 #define MAXIMUM_COLOR_COUNT 16
 
-typedef std::array<unsigned int, MAXIMUM_COLOR_COUNT> PermutationIndexCombination; 
+typedef std::array<size_t, MAXIMUM_COLOR_COUNT> PermutationIndexCombination; 
 
 void hash_combine(std::size_t& seed, std::size_t value) {
   seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
@@ -246,25 +246,32 @@ int main() {
     
     size_t countMinusTwo = countColors - 2;
 
-    const size_t MAXIMUM_PERMUTATION_COUNT = 65536;
+    size_t MAXIMUM_PERMUTATION_COUNT = getFactorial(countColors);
+    if(MAXIMUM_PERMUTATION_COUNT > 65536) {
+      MAXIMUM_PERMUTATION_COUNT = 65536;
+    }
     for(size_t permutationIndex = 0; permutationIndex < MAXIMUM_PERMUTATION_COUNT; permutationIndex++) {
       
-      // Generate random permutation
       std::vector<size_t> permutation(countColors);
-      for(size_t i = 0; i < permutation.size(); i++) {
-        permutation[i] = i;
-      }
-      std::shuffle(permutation.begin(), permutation.end(), randomNumberGenerator);
       
-      // Check if permutation index combination of the current colo count has already been added to the training set
-      PermutationIndexCombination permutationIndexCombination;
-      for(size_t i = 0; i < permutationIndexCombination.size(); i++) {
-        permutationIndexCombination[i] = (i < countColors) ? permutation[i] : -1;
+      // Generate random permutation, but make sure that it is unique
+      {
+        PermutationIndexCombination permutationIndexCombination;
+        do{
+          for(size_t i = 0; i < permutation.size(); i++) {
+            permutation[i] = i; 
+          }
+          std::shuffle(permutation.begin(), permutation.end(), randomNumberGenerator);
+          for(size_t i = 0; i < permutationIndexCombination.size(); i++) {
+            permutationIndexCombination[i] = (i < countColors) ? permutation[i] : -1;
+          }
+        } while((!permutationIndexCombinationHashTable.empty()) && 
+                 (permutationIndexCombinationHashTable.find(permutationIndexCombination) != permutationIndexCombinationHashTable.end()));
+        permutationIndexCombinationHashTable.emplace(permutationIndexCombination, true);
+        for(size_t i = 0; i < permutation.size(); i++) {
+          permutation[i] = permutationIndexCombination[i];
+        }
       }
-      if(permutationIndexCombinationHashTable.find(permutationIndexCombination) != permutationIndexCombinationHashTable.end()) {
-        continue;
-      }
-      permutationIndexCombinationHashTable.emplace(permutationIndexCombination, true);
 
       // Compute color set for the current permutation for the current colo count
       std::vector<Color> colors(countColors);
