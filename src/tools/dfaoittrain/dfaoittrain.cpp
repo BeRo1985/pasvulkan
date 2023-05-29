@@ -187,7 +187,7 @@ std::vector<std::vector<ssize_t>> generatePermutations(int size){
   return permutations;
 }
 
-#define MAXIMUM_COLOR_COUNT 16
+#define MAXIMUM_COLOR_COUNT 8
 
 typedef std::array<ssize_t, MAXIMUM_COLOR_COUNT> PermutationIndexCombination; 
 
@@ -355,7 +355,7 @@ int main() {
   ssize_t epochs = 4096;
   for(ssize_t epochIndex = 0; epochIndex < epochs; epochIndex++) {    
 
-    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... " << std::flush;
+    std::cout << "\rEpoch " << epochIndex + 1 << " of " << epochs << "... ";
  
     // Shuffle trainingSampleIndices    
     std::shuffle(trainingSampleIndices.begin(), trainingSampleIndices.end(), randomNumberGenerator);
@@ -382,6 +382,7 @@ int main() {
       // Good enough, stop training
       break;
     }
+    std::cout << "Mean squared error: " << meanSquaredError << " " << std::flush;
     
   }
   std::cout << "Done!" << std::endl;
