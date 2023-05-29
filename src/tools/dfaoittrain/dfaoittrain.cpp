@@ -112,11 +112,14 @@ public:
 
   std::vector<Layer> m_layers;
 
+  std::vector<double> m_outputs;
+
   Network(const std::vector<ssize_t>& sizes, const std::vector<ActivationFunction>& activationFunctions) {
     for(ssize_t i = 0; i < sizes.size() - 1; i++){
       const ActivationFunction& activationFunction = (i < activationFunctions.size()) ? activationFunctions[i] : activationFunctionSigmoid;
       m_layers.push_back(Layer(sizes[i], sizes[i + 1], activationFunction));
     }
+    m_outputs.resize(sizes.back());
   }
 
   void evaluate(const std::vector<double>& inputs, std::vector<double>& outputs) {
@@ -162,9 +165,11 @@ public:
       return INFINITY;
     }else{
 
-      std::vector<double> outputs;
-      outputs.resize(targets[0].size());
-      
+      std::vector<double>& outputs = m_outputs;
+      if(outputs.size() != targets[0].size()){
+        outputs.resize(targets[0].size());
+      }
+
       double meanSquaredError = 0.0;
       for(ssize_t i = 0; i < inputs.size(); i++){
         evaluate(inputs[i], outputs);
