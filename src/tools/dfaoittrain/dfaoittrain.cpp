@@ -36,7 +36,7 @@ public:
   std::vector<double> m_gradients;
   std::vector<std::vector<double>> m_weights;
   std::vector<double> m_biases; 
-  double m_learningRate = 0.1;
+  double m_learningRate = 0.0001;
 
   Layer(ssize_t input_size, ssize_t output_size) {
 
@@ -224,7 +224,7 @@ int main() {
   // Compute all possible color combinations in 10 steps per color channel from 0.0 to 1.0 range 
   ColorSet colorSet;
   {
-    ssize_t colorValueSteps = 10;
+    ssize_t colorValueSteps = 5;
     std::cout << "Computing all possible color combinations in " << colorValueSteps << " steps per color channel from 0.0 to 1.0 range..." << std::endl;
     ssize_t maximalValue = 1 << 24; // 8.24 bit fixed point
     double maximalValueReciprocal = 1.0 / maximalValue;
