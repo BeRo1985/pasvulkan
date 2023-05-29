@@ -22,19 +22,19 @@
 
 pcg32 randomNumberGenerator(0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL); // fixed seed for reproducibility (on the same machine with the same compiler)  
 
-static double relu(double x){
+static double activationFunction_relu(double x){
   return (x > 0.0) ? x : 0.0;
 }
 
-static double relu_derivative(double x){
+static double activationFunction_relu_derivative(double x){
   return (x > 0.0) ? 1.0 : 0.0;
 }
 
-static double sigmoid(double x) {
+static double activationFunction_sigmoid(double x) {
   return 1.0 / (1.0 + exp(-x));
 }
 
-static double sigmoid_derivative(double x) {
+static double activationFunction_sigmoid_derivative(double x) {
   return x * (1.0 - x);
 }
 
@@ -43,8 +43,8 @@ struct ActivationFunction {
   double (*m_derivative)(double);
 };
 
-static ActivationFunction activationFunctionRELU = { relu, relu_derivative };
-static ActivationFunction activationFunctionSigmoid = { sigmoid, sigmoid_derivative };
+static ActivationFunction activationFunctionRELU = { activationFunction_relu, activationFunction_relu_derivative };
+static ActivationFunction activationFunctionSigmoid = { activationFunction_sigmoid, activationFunction_sigmoid_derivative };
 
 class Layer {
 public:
@@ -55,7 +55,7 @@ public:
   ActivationFunction m_activationFunction;
   double m_learningRate = 0.0001;
 
-  Layer(ssize_t input_size, ssize_t output_size, ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
+  Layer(ssize_t input_size, ssize_t output_size, const ActivationFunction& activationFunction = activationFunctionSigmoid) : m_activationFunction(activationFunction) {
 
     // Initialize weights and biases with random values between -1 and 1
     std::uniform_real_distribution<> distribution(-1, 1);
@@ -112,9 +112,10 @@ public:
 
   std::vector<Layer> m_layers;
 
-  Network(const std::vector<ssize_t>& sizes) {
+  Network(const std::vector<ssize_t>& sizes, const std::vector<ActivationFunction>& activationFunctions) {
     for(ssize_t i = 0; i < sizes.size() - 1; i++){
-      m_layers.push_back(Layer(sizes[i], sizes[i + 1]));
+      const ActivationFunction& activationFunction = (i < activationFunctions.size()) ? activationFunctions[i] : activationFunctionSigmoid;
+      m_layers.push_back(Layer(sizes[i], sizes[i + 1], activationFunction));
     }
   }
 
@@ -136,7 +137,7 @@ public:
 
     // Compute output gradients
     for(ssize_t i = 0; i < m_layers.back().m_gradients.size(); i++){
-      m_layers.back().m_gradients[i] = (m_layers.back().m_outputs[i] - targets[i]) * sigmoid_derivative(m_layers.back().m_outputs[i]);
+      m_layers.back().m_gradients[i] = (m_layers.back().m_outputs[i] - targets[i]) * m_layers.back().m_activationFunction.m_derivative(m_layers.back().m_outputs[i]);
     }
 
     // Backward pass
