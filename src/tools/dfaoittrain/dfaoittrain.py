@@ -3,6 +3,7 @@ import torch
 import sys
 from torch import nn
 from torch import optim
+from numpy.random import Generator, PCG64, SeedSequence
 
 # Set device to GPU if available
 if torch.cuda.is_available(): 
@@ -34,9 +35,9 @@ def blendFrontToBack(target, source):
 # Generate training data
 print('Generating training data...')
 trainingSet = []
-for countColors in range(3, 11):
+for countColors in range(3, 16):
     countMinusTwo = countColors - 2
-    for colorSetVariantIndex in range(4096):
+    for colorSetVariantIndex in range(65536):
         
         # Compute color set for the current permutation for the current colo count
         colors = np.random.rand(countColors, 4)
@@ -128,10 +129,10 @@ net = Net()
 
 # Define the loss function and the optimizer
 criterion = nn.MSELoss()
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+optimizer = optim.Adam(net.parameters(), lr=0.00001)
 
 # Training loop
-for epoch in range(16384):  # Loop over the dataset multiple times
+for epoch in range(65536):  # Loop over the dataset multiple times
     # Zero the parameter gradients
     optimizer.zero_grad()
 
