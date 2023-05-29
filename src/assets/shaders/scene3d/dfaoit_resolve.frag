@@ -113,7 +113,7 @@ void main() {
         float inputValues[10] = {
           averageColor.w, // Average opacity, excluding the front two fragments
           averageColor.x, averageColor.y, averageColor.z, // Average RGB color, excluding the front two fragments 
-          accumulatedColor.x, accumulatedColor.y, accumulatedColor.z, //  Accumulated premultiplied alpha RGB color
+          accumulatedColor.x, accumulatedColor.y, accumulatedColor.z, // Accumulated premultiplied alpha RGB color
           twoFrontFragmentBlendedColor.x, twoFrontFragmentBlendedColor.y, twoFrontFragmentBlendedColor.z // Correct OIT RGB color of the two front fragments
         };
 
