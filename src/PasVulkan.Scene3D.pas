@@ -13742,7 +13742,7 @@ begin
   fVulkanMemoryStaging:=aVulkanMemoryStaging;
   fDoFreeVulkanMemoryStaging:=aDoFreeVulkanMemoryStaging;
  end else begin
-  fVulkanMemoryStaging:=TpvVulkanMemoryStaging.Create(fVulkanDevice,64 shl 20); // 64MB
+  fVulkanMemoryStaging:=TpvVulkanMemoryStaging.Create(fVulkanDevice);
   fDoFreeVulkanMemoryStaging:=true;
  end;
 

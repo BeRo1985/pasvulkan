@@ -1271,7 +1271,7 @@ type EpvVulkanException=class(Exception);
        fBuffer:TpvVulkanBuffer;
        fLock:TPasMPCriticalSection;
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination,TpvVulkanMemoryStagingFlag.PersistentMapped]); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize=0;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination,TpvVulkanMemoryStagingFlag.PersistentMapped]); reintroduce;
        destructor Destroy; override;
        function Zero(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
        function Upload(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
@@ -12034,7 +12034,13 @@ begin
 
  fDevice:=aDevice;
 
- fSize:=RoundUpToPowerOfTwo64(aSize);
+ if aSize<>0 then begin
+  fSize:=aSize;
+ end else begin
+  fSize:=16 shl 20; // 16MB
+ end;
+
+ fSize:=RoundUpToPowerOfTwo64(fSize);
  fMask:=fSize-1;
 
  fFlags:=aFlags;

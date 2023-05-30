@@ -128,7 +128,8 @@ begin
 {$else}
  StartScreen:=TScreenMainMenu;
 {$endif}
-//StartScreen:=TScreenExampleGUI;
+//
+ StartScreen:=TScreenExampleGUI;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
