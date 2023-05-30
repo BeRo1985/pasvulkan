@@ -12483,6 +12483,15 @@ var Index,Count,FromIndex,ToIndex:TpvSizeInt;
     VkBufferCopy:TVkBufferCopy;
 begin
 
+ // This function tries to merge some items in the queue, when it is possible, to reduce the number of command buffer calls, but for this
+ // these some items must be smaller than the size of the staging buffer, so these can be merged into the staging buffer and then copy them
+ // to the destination buffer in the same command buffer call. All other items, which are bigger than the size of the staging buffer, are
+ // processed item by item, because these can't be merged into the staging buffer. And it is important, that all source and destination
+ // memory are still valid, when this function is called, because it is not checked here, so it is the responsibility of the caller to
+ // ensure this.
+
+ // TODO: Buffer-to-image and image-to-buffer transfers
+
  fLock.Acquire;
  try
 
