@@ -102,6 +102,13 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
 
       VulkanDistanceField2DSpreadValue=4;
 
+      VulkanDeviceLocalHostVisibleCoherentMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+      VulkanHostVisibleCoherentMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
 type EpvVulkanException=class(Exception);
 
      EpvVulkanMemoryAllocationException=class(EpvVulkanException);
@@ -11971,58 +11978,106 @@ end;
 
 procedure TpvVulkanMemoryStagingQueue.EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
 var QueueItem:TpvVulkanMemoryStagingQueueItem;
+    Destination:pointer;
 begin
- fLock.Acquire;
- try
-  try
-   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Zero;
-   QueueItem.Buffer:=aDestinationBuffer;
-   QueueItem.BufferOffset:=aDestinationOffset;
-   QueueItem.Memory:=nil;
-   QueueItem.Size:=aSize;
-  finally
-   Add(QueueItem);
+ if (TpvVulkanBufferFlag.PersistentMapped in aDestinationBuffer.fBufferFlags) and
+    ((aDestinationBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
+  Destination:=aDestinationBuffer.Memory.MapMemory;
+  if assigned(Destination) then begin
+   try
+    inc(PpvUInt8(Destination),aDestinationOffset);
+    FillChar(Destination^,aSize,#0);
+   finally
+    aDestinationBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
   end;
- finally
-  fLock.Release;
+ end else begin
+  fLock.Acquire;
+  try
+   try
+    QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Zero;
+    QueueItem.Buffer:=aDestinationBuffer;
+    QueueItem.BufferOffset:=aDestinationOffset;
+    QueueItem.Memory:=nil;
+    QueueItem.Size:=aSize;
+   finally
+    Add(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
 procedure TpvVulkanMemoryStagingQueue.EnqueueUpload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
 var QueueItem:TpvVulkanMemoryStagingQueueItem;
+    Destination:pointer;
 begin
- fLock.Acquire;
- try
-  try
-   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Upload;
-   QueueItem.Buffer:=aDestinationBuffer;
-   QueueItem.BufferOffset:=aDestinationOffset;
-   QueueItem.Memory:=@aSourceData;
-   QueueItem.Size:=aSize;
-  finally
-   Add(QueueItem);
+ if (TpvVulkanBufferFlag.PersistentMapped in aDestinationBuffer.fBufferFlags) and
+    ((aDestinationBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
+  Destination:=aDestinationBuffer.Memory.MapMemory;
+  if assigned(Destination) then begin
+   try
+    inc(PpvUInt8(Destination),aDestinationOffset);
+    Move(aSourceData,Destination^,aSize);
+   finally
+    aDestinationBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
   end;
- finally
-  fLock.Release;
+ end else begin
+  fLock.Acquire;
+  try
+   try
+    QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Upload;
+    QueueItem.Buffer:=aDestinationBuffer;
+    QueueItem.BufferOffset:=aDestinationOffset;
+    QueueItem.Memory:=@aSourceData;
+    QueueItem.Size:=aSize;
+   finally
+    Add(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
 procedure TpvVulkanMemoryStagingQueue.EnqueueDownload(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize);
 var QueueItem:TpvVulkanMemoryStagingQueueItem;
+    Source:pointer;
 begin
- fLock.Acquire;
- try
-  try
-   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Download;
-   QueueItem.Buffer:=aSourceBuffer;
-   QueueItem.BufferOffset:=aSourceOffset;
-   QueueItem.Memory:=@aDestinationData;
-   QueueItem.Size:=aSize;
-  finally
-   Add(QueueItem);
+ if (TpvVulkanBufferFlag.PersistentMapped in aSourceBuffer.fBufferFlags) and
+    ((aSourceBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
+  Source:=aSourceBuffer.Memory.MapMemory;
+  if assigned(Source) then begin
+   try
+    inc(PpvUInt8(Source),aSourceOffset);
+    Move(Source^,aDestinationData,aSize);
+   finally
+    aSourceBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
   end;
- finally
-  fLock.Release;
+ end else begin
+  fLock.Acquire;
+  try
+   try
+    QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Download;
+    QueueItem.Buffer:=aSourceBuffer;
+    QueueItem.BufferOffset:=aSourceOffset;
+    QueueItem.Memory:=@aDestinationData;
+    QueueItem.Size:=aSize;
+   finally
+    Add(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
@@ -12091,130 +12146,149 @@ var Remain,ToDo,Offset:TVkDeviceSize;
     VkBufferCopy:TVkBufferCopy;
 begin
 
- fLock.Acquire;
- try
+ if (TpvVulkanBufferFlag.PersistentMapped in aDestinationBuffer.fBufferFlags) and
+    ((aDestinationBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
 
-  if assigned(aTransferCommandBuffer) and (aSize>0) and (((aSize and 3)=0) or (aSize=VK_WHOLE_SIZE)) and ((aDestinationOffset and 3)=0) then begin
+  Destination:=aDestinationBuffer.Memory.MapMemory;
+  if assigned(Destination) then begin
+   try
+    inc(PpvUInt8(Destination),aDestinationOffset);
+    FillChar(Destination^,aSize,#0);
+   finally
+    aDestinationBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+  end;
 
-   aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   aTransferCommandBuffer.BeginRecording;
-   aTransferCommandBuffer.CmdFillBuffer(aDestinationBuffer.Handle,aDestinationOffset,aSize,0);
-   aTransferCommandBuffer.EndRecording;
-   aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+ end else begin
 
-  end else if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
+  fLock.Acquire;
+  try
 
-   result:=0;
+   if assigned(aTransferCommandBuffer) and (aSize>0) and (((aSize and 3)=0) or (aSize=VK_WHOLE_SIZE)) and ((aDestinationOffset and 3)=0) then begin
 
-   Remain:=aSize;
+    aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aTransferCommandBuffer.BeginRecording;
+    aTransferCommandBuffer.CmdFillBuffer(aDestinationBuffer.Handle,aDestinationOffset,aSize,0);
+    aTransferCommandBuffer.EndRecording;
+    aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
-   if Remain>0 then begin
+   end else if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
 
-    if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+    result:=0;
 
-     Destination:=fBuffer.Memory.MapMemory;
-     if assigned(Destination) then begin
+    Remain:=aSize;
 
-      try
+    if Remain>0 then begin
 
-       Offset:=aDestinationOffset;
+     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
 
-       while Remain>0 do begin
+      Destination:=fBuffer.Memory.MapMemory;
+      if assigned(Destination) then begin
 
-        if Remain<fSize then begin
-         ToDo:=Remain;
-        end else begin
-         ToDo:=fSize;
+       try
+
+        Offset:=aDestinationOffset;
+
+        while Remain>0 do begin
+
+         if Remain<fSize then begin
+          ToDo:=Remain;
+         end else begin
+          ToDo:=fSize;
+         end;
+
+         if ToDo>0 then begin
+
+          FillChar(Destination^,ToDo,#0);
+
+          VkBufferCopy.srcOffset:=0;
+          VkBufferCopy.dstOffset:=Offset;
+          VkBufferCopy.size:=ToDo;
+
+          aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+          aTransferCommandBuffer.BeginRecording;
+          aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
+          aTransferCommandBuffer.EndRecording;
+          aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+          inc(Offset,ToDo);
+
+          inc(result,ToDo);
+          dec(Remain,ToDo);
+
+         end else begin
+          break;
+         end;
+
         end;
 
-        if ToDo>0 then begin
-
-         FillChar(Destination^,ToDo,#0);
-
-         VkBufferCopy.srcOffset:=0;
-         VkBufferCopy.dstOffset:=Offset;
-         VkBufferCopy.size:=ToDo;
-
-         aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-         aTransferCommandBuffer.BeginRecording;
-         aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
-         aTransferCommandBuffer.EndRecording;
-         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
-
-         inc(Offset,ToDo);
-
-         inc(result,ToDo);
-         dec(Remain,ToDo);
-
-        end else begin
-         break;
-        end;
-
+       finally
+        fBuffer.Memory.UnmapMemory;
        end;
 
-      finally
-       fBuffer.Memory.UnmapMemory;
+      end else begin
+
+       raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
       end;
 
      end else begin
 
-      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+      Offset:=aDestinationOffset;
 
-     end;
+      while Remain>0 do begin
 
-    end else begin
+       if Remain<fSize then begin
+        ToDo:=Remain;
+       end else begin
+        ToDo:=fSize;
+       end;
 
-     Offset:=aDestinationOffset;
+       if ToDo>0 then begin
 
-     while Remain>0 do begin
+        fBuffer.ClearData(aTransferQueue,
+                          aTransferCommandBuffer,
+                          aTransferFence,
+                          0,
+                          ToDo,
+                          TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                          true);
 
-      if Remain<fSize then begin
-       ToDo:=Remain;
-      end else begin
-       ToDo:=fSize;
-      end;
+        aDestinationBuffer.CopyFrom(aTransferQueue,
+                                    aTransferCommandBuffer,
+                                    aTransferFence,
+                                    fBuffer,
+                                    0,
+                                    Offset,
+                                    ToDo);
 
-      if ToDo>0 then begin
+        inc(Offset,ToDo);
 
-       fBuffer.ClearData(aTransferQueue,
-                         aTransferCommandBuffer,
-                         aTransferFence,
-                         0,
-                         ToDo,
-                         TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
-                         true);
+        inc(result,ToDo);
+        dec(Remain,ToDo);
 
-       aDestinationBuffer.CopyFrom(aTransferQueue,
-                                   aTransferCommandBuffer,
-                                   aTransferFence,
-                                   fBuffer,
-                                   0,
-                                   Offset,
-                                   ToDo);
+       end else begin
+        break;
+       end;
 
-       inc(Offset,ToDo);
-
-       inc(result,ToDo);
-       dec(Remain,ToDo);
-
-      end else begin
-       break;
       end;
 
      end;
 
     end;
 
+   end else begin
+
+    raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
+
    end;
 
-  end else begin
-
-   raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
-
+  finally
+   fLock.Release;
   end;
 
- finally
-  fLock.Release;
  end;
 
 end;
@@ -12226,120 +12300,139 @@ var Remain,ToDo,Offset:TVkDeviceSize;
     VkBufferCopy:TVkBufferCopy;
 begin
 
- fLock.Acquire;
- try
+ if (TpvVulkanBufferFlag.PersistentMapped in aDestinationBuffer.fBufferFlags) and
+    ((aDestinationBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
 
-  if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
+  Destination:=aDestinationBuffer.Memory.MapMemory;
+  if assigned(Destination) then begin
+   try
+    inc(PpvUInt8(Destination),aDestinationOffset);
+    Move(aSourceData,Destination^,aSize);
+   finally
+    aDestinationBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+  end;
 
-   result:=0;
+ end else begin
 
-   Remain:=aSize;
+  fLock.Acquire;
+  try
 
-   if Remain>0 then begin
+   if TpvVulkanMemoryStagingFlag.Source in fFlags then begin
 
-    Source:=@aSourceData;
+    result:=0;
 
-    if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+    Remain:=aSize;
 
-     Destination:=fBuffer.Memory.MapMemory;
-     if assigned(Destination) then begin
+    if Remain>0 then begin
 
-      try
+     Source:=@aSourceData;
 
-       Offset:=aDestinationOffset;
+     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
 
-       while Remain>0 do begin
+      Destination:=fBuffer.Memory.MapMemory;
+      if assigned(Destination) then begin
 
-        if Remain<fSize then begin
-         ToDo:=Remain;
-        end else begin
-         ToDo:=fSize;
+       try
+
+        Offset:=aDestinationOffset;
+
+        while Remain>0 do begin
+
+         if Remain<fSize then begin
+          ToDo:=Remain;
+         end else begin
+          ToDo:=fSize;
+         end;
+
+         if ToDo>0 then begin
+
+          Move(Source^,Destination^,ToDo);
+
+          VkBufferCopy.srcOffset:=0;
+          VkBufferCopy.dstOffset:=Offset;
+          VkBufferCopy.size:=ToDo;
+
+          aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+          aTransferCommandBuffer.BeginRecording;
+          aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
+          aTransferCommandBuffer.EndRecording;
+          aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+          inc(Source,ToDo);
+          inc(Offset,ToDo);
+
+          inc(result,ToDo);
+          dec(Remain,ToDo);
+
+         end else begin
+          break;
+         end;
+
         end;
 
-        if ToDo>0 then begin
-
-         Move(Source^,Destination^,ToDo);
-
-         VkBufferCopy.srcOffset:=0;
-         VkBufferCopy.dstOffset:=Offset;
-         VkBufferCopy.size:=ToDo;
-
-         aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-         aTransferCommandBuffer.BeginRecording;
-         aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,aDestinationBuffer.Handle,1,@VkBufferCopy);
-         aTransferCommandBuffer.EndRecording;
-         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
-
-         inc(Source,ToDo);
-         inc(Offset,ToDo);
-
-         inc(result,ToDo);
-         dec(Remain,ToDo);
-
-        end else begin
-         break;
-        end;
-
+       finally
+        fBuffer.Memory.UnmapMemory;
        end;
 
-      finally
-       fBuffer.Memory.UnmapMemory;
+      end else begin
+
+       raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
       end;
 
      end else begin
 
-      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+      Offset:=aDestinationOffset;
 
-     end;
+      while Remain>0 do begin
 
-    end else begin
+       if Remain<fSize then begin
+        ToDo:=Remain;
+       end else begin
+        ToDo:=fSize;
+       end;
 
-     Offset:=aDestinationOffset;
+       if ToDo>0 then begin
 
-     while Remain>0 do begin
+        fBuffer.UpdateData(Source^,0,ToDo,true);
 
-      if Remain<fSize then begin
-       ToDo:=Remain;
-      end else begin
-       ToDo:=fSize;
-      end;
+        aDestinationBuffer.CopyFrom(aTransferQueue,
+                                    aTransferCommandBuffer,
+                                    aTransferFence,
+                                    fBuffer,
+                                    0,
+                                    Offset,
+                                    ToDo);
 
-      if ToDo>0 then begin
+        inc(Source,ToDo);
+        inc(Offset,ToDo);
 
-       fBuffer.UpdateData(Source^,0,ToDo,true);
+        inc(result,ToDo);
+        dec(Remain,ToDo);
 
-       aDestinationBuffer.CopyFrom(aTransferQueue,
-                                   aTransferCommandBuffer,
-                                   aTransferFence,
-                                   fBuffer,
-                                   0,
-                                   Offset,
-                                   ToDo);
+       end else begin
+        break;
+       end;
 
-       inc(Source,ToDo);
-       inc(Offset,ToDo);
-
-       inc(result,ToDo);
-       dec(Remain,ToDo);
-
-      end else begin
-       break;
       end;
 
      end;
 
     end;
 
+   end else begin
+
+    raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
+
    end;
 
-  end else begin
-
-   raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Source must be used here');
-
+  finally
+   fLock.Release;
   end;
 
- finally
-  fLock.Release;
  end;
 
 end;
@@ -12351,120 +12444,139 @@ var Remain,ToDo,Offset:TVkDeviceSize;
     VkBufferCopy:TVkBufferCopy;
 begin
 
- fLock.Acquire;
- try
+ if (TpvVulkanBufferFlag.PersistentMapped in aSourceBuffer.fBufferFlags) and
+    ((aSourceBuffer.fMemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)=VulkanHostVisibleCoherentMemoryPropertyFlags) then begin
 
-  if TpvVulkanMemoryStagingFlag.Destination in fFlags then begin
+  Source:=aSourceBuffer.Memory.MapMemory;
+  if assigned(Source) then begin
+   try
+    inc(PpvUInt8(Source),aSourceOffset);
+    Move(Source^,aDestinationData,aSize);
+   finally
+    aSourceBuffer.Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+  end;
 
-   result:=0;
+ end else begin
 
-   Remain:=aSize;
+  fLock.Acquire;
+  try
 
-   if Remain>0 then begin
+   if TpvVulkanMemoryStagingFlag.Destination in fFlags then begin
 
-    Destination:=@aDestinationData;
+    result:=0;
 
-    if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+    Remain:=aSize;
 
-     Source:=fBuffer.Memory.MapMemory;
-     if assigned(Source) then begin
+    if Remain>0 then begin
 
-      try
+     Destination:=@aDestinationData;
 
-       Offset:=aSourceOffset;
+     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
 
-       while Remain>0 do begin
+      Source:=fBuffer.Memory.MapMemory;
+      if assigned(Source) then begin
 
-        if Remain<fSize then begin
-         ToDo:=Remain;
-        end else begin
-         ToDo:=fSize;
+       try
+
+        Offset:=aSourceOffset;
+
+        while Remain>0 do begin
+
+         if Remain<fSize then begin
+          ToDo:=Remain;
+         end else begin
+          ToDo:=fSize;
+         end;
+
+         if ToDo>0 then begin
+
+          VkBufferCopy.srcOffset:=Offset;
+          VkBufferCopy.dstOffset:=0;
+          VkBufferCopy.size:=ToDo;
+
+          aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+          aTransferCommandBuffer.BeginRecording;
+          aTransferCommandBuffer.CmdCopyBuffer(aSourceBuffer.Handle,fBuffer.Handle,1,@VkBufferCopy);
+          aTransferCommandBuffer.EndRecording;
+          aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+          Move(Source^,Destination^,ToDo);
+
+          inc(Destination,ToDo);
+          inc(Offset,ToDo);
+
+          inc(result,ToDo);
+          dec(Remain,ToDo);
+
+         end else begin
+          break;
+         end;
+
         end;
 
-        if ToDo>0 then begin
-
-         VkBufferCopy.srcOffset:=Offset;
-         VkBufferCopy.dstOffset:=0;
-         VkBufferCopy.size:=ToDo;
-
-         aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-         aTransferCommandBuffer.BeginRecording;
-         aTransferCommandBuffer.CmdCopyBuffer(aSourceBuffer.Handle,fBuffer.Handle,1,@VkBufferCopy);
-         aTransferCommandBuffer.EndRecording;
-         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
-
-         Move(Source^,Destination^,ToDo);
-
-         inc(Destination,ToDo);
-         inc(Offset,ToDo);
-
-         inc(result,ToDo);
-         dec(Remain,ToDo);
-
-        end else begin
-         break;
-        end;
-
+       finally
+        fBuffer.Memory.UnmapMemory;
        end;
 
-      finally
-       fBuffer.Memory.UnmapMemory;
+      end else begin
+
+       raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+
       end;
 
      end else begin
 
-      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+      Offset:=aSourceOffset;
 
-     end;
+      while Remain>0 do begin
 
-    end else begin
+       if Remain<fSize then begin
+        ToDo:=Remain;
+       end else begin
+        ToDo:=fSize;
+       end;
 
-     Offset:=aSourceOffset;
+       if ToDo>0 then begin
 
-     while Remain>0 do begin
+        fBuffer.CopyFrom(aTransferQueue,
+                         aTransferCommandBuffer,
+                         aTransferFence,
+                         aSourceBuffer,
+                         Offset,
+                         0,
+                         ToDo);
 
-      if Remain<fSize then begin
-       ToDo:=Remain;
-      end else begin
-       ToDo:=fSize;
-      end;
+        fBuffer.FetchData(Destination^,0,ToDo);
 
-      if ToDo>0 then begin
+        inc(Destination,ToDo);
+        inc(Offset,ToDo);
 
-       fBuffer.CopyFrom(aTransferQueue,
-                        aTransferCommandBuffer,
-                        aTransferFence,
-                        aSourceBuffer,
-                        Offset,
-                        0,
-                        ToDo);
+        inc(result,ToDo);
+        dec(Remain,ToDo);
 
-       fBuffer.FetchData(Destination^,0,ToDo);
+       end else begin
+        break;
+       end;
 
-       inc(Destination,ToDo);
-       inc(Offset,ToDo);
-
-       inc(result,ToDo);
-       dec(Remain,ToDo);
-
-      end else begin
-       break;
       end;
 
      end;
 
     end;
 
+   end else begin
+
+    raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Destination must be used here');
+
    end;
 
-  end else begin
-
-   raise EpvVulkanMemoryStagingException.Create('TpvVulkanMemoryStagingFlag.Destination must be used here');
-
+  finally
+   fLock.Release;
   end;
 
- finally
-  fLock.Release;
  end;
 
 end;
