@@ -12554,7 +12554,7 @@ end;
 
 procedure TpvVulkanMemoryStaging.ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aQueue:TpvVulkanMemoryStagingQueue); overload;
 var Index,Count,FromIndex,ToIndex:TpvSizeInt;
-    OffsetSize:TVkDeviceSize;
+    OffsetSize{,Alignment,AlignmentMask}:TVkDeviceSize;
     QueueItem:PpvVulkanMemoryStagingQueueItem;
     Mergable:boolean;
     BufferMemory,BufferMemoryEx:PpvUInt8;
@@ -12580,6 +12580,10 @@ begin
    end;
 
    if Mergable then begin
+
+{   Alignment:=fDevice.fPhysicalDevice.Properties.limits.nonCoherentAtomSize;
+
+    AlignmentMask:=Alignment-1;}
 
     aQueue.Sort(TpvVulkanMemoryStagingProcessQueueSortCompareFunction);
 
