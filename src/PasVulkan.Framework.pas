@@ -12461,6 +12461,9 @@ begin
   aQueue.fLock.Acquire;
   try
 
+   // Check if we can merge some items in the queue,w hen we can merge some items, we can reduce the number of command buffer calls, but
+   // for this these some items must be smaller than the size of the staging buffer, so we can merge them into the staging buffer and
+   // then copy them to the destination buffer in the same command buffer call. 
    Mergable:=false;
    for Index:=0 to aQueue.Count-1 do begin
     QueueItem:=aQueue.ItemPointers[Index];
@@ -12479,6 +12482,7 @@ begin
 
     AlignmentMask:=Alignment-1;}
 
+    // Sort the queue by size for to be able to merge items  
     aQueue.Sort(TpvVulkanMemoryStagingProcessQueueSortCompareFunction);
 
     BufferMemory:=fBuffer.Memory.MapMemory;
@@ -12501,6 +12505,7 @@ begin
 
         OffsetSize:=QueueItem^.Size;
 
+        // Find out how many items we can merge in a single command buffer call
         while Index<aQueue.Count do begin
          QueueItem:=aQueue.ItemPointers[Index];
          if (OffsetSize+QueueItem^.Size)<=fSize then begin
@@ -12515,31 +12520,40 @@ begin
         Count:=(ToIndex-FromIndex)+1;
 
         if Count<=1 then begin
+         
+         // Only one item, so we must process the rest of the queue item by item from here
+         
          Index:=FromIndex;
+
         end else begin
 
-         // Write to
+         // Write the data to the staging buffer memory, if necessary
          OffsetSize:=0;
          BufferMemoryEx:=BufferMemory;
          for Index:=FromIndex to ToIndex do begin
           QueueItem:=aQueue.ItemPointers[Index];
           case QueueItem^.Type_ of
            TpvVulkanMemoryStagingQueueItemType.Zero:begin
+            // Check if the buffer offset and size are aligned to 4 bytes, if not, we must fill the buffer memory with zeros, because in the other
+            // case we can use vkCmdFillBuffer instead of vkCmdCopyBuffer, which is faster. vkCmdFillBuffer needs aligned offsets and sizes.   
             if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
              FillChar(BufferMemoryEx^,QueueItem^.Size,#0);
             end;
            end;
            TpvVulkanMemoryStagingQueueItemType.Upload:begin
+            // Move the data from the source memory to the staging buffer memory
             Move(QueueItem^.Memory^,BufferMemoryEx^,QueueItem^.Size);
            end;
            else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+            // Nothing to do here, because we read the data from the staging buffer memory back later  
            end;
           end;
           inc(BufferMemoryEx,QueueItem^.Size);
           inc(OffsetSize,QueueItem^.Size);
          end;
 
-         // Process
+         // Construct the command buffer call for the transfer operations to the destination buffer from the staging buffer and vice versa, and
+         // execute the command buffer call   
          aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
          aTransferCommandBuffer.BeginRecording;
          OffsetSize:=0;
@@ -12548,22 +12562,28 @@ begin
           QueueItem:=aQueue.ItemPointers[Index];
           case QueueItem^.Type_ of
            TpvVulkanMemoryStagingQueueItemType.Zero:begin
+            // Check if the buffer offset and size are aligned to 4 bytes
             if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
+             // In the case, when it is not aligned, we must use vkCmdCopyBuffer instead of vkCmdFillBuffer, because vkCmdFillBuffer needs 
+             // aligned offsets and sizes 
              VkBufferCopy.srcOffset:=OffsetSize;
              VkBufferCopy.dstOffset:=QueueItem^.BufferOffset;
              VkBufferCopy.size:=QueueItem^.Size;
              aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,QueueItem^.Buffer.Handle,1,@VkBufferCopy);
             end else begin
+             // In the case, when everything is aligned, we can use vkCmdFillBuffer instead of vkCmdCopyBuffer, which is faster
              aTransferCommandBuffer.CmdFillBuffer(QueueItem^.Buffer.Handle,QueueItem^.BufferOffset,QueueItem^.Size,0);
             end;
            end;
            TpvVulkanMemoryStagingQueueItemType.Upload:begin
+            // Move the data from the staging buffer memory to the destination buffer memory
             VkBufferCopy.srcOffset:=OffsetSize;
             VkBufferCopy.dstOffset:=QueueItem^.BufferOffset;
             VkBufferCopy.size:=QueueItem^.Size;
             aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,QueueItem^.Buffer.Handle,1,@VkBufferCopy);
            end;
            else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+            // Move the data from the destination buffer memory to the staging buffer memory
             VkBufferCopy.srcOffset:=QueueItem^.BufferOffset;
             VkBufferCopy.dstOffset:=OffsetSize;
             VkBufferCopy.size:=QueueItem^.Size;
@@ -12574,19 +12594,22 @@ begin
           inc(OffsetSize,QueueItem^.Size);
          end;
          aTransferCommandBuffer.EndRecording;
-         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true); // Execute the command buffer and wait until it is finished
 
-         // Read back
+         // Read the data from the staging buffer memory back, if necessary 
          OffsetSize:=0;
          BufferMemoryEx:=BufferMemory;
          for Index:=FromIndex to ToIndex do begin
           QueueItem:=aQueue.ItemPointers[Index];
           case QueueItem^.Type_ of
            TpvVulkanMemoryStagingQueueItemType.Zero:begin
+            // Nothing to do here, because we filled the buffer memory with zeros before
            end;
            TpvVulkanMemoryStagingQueueItemType.Upload:begin
+            // Nothing to do here, because we moved the data from the source memory to the staging buffer memory before
            end;
            else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+            // Move the data from the staging buffer memory to the destination memory
             Move(BufferMemoryEx^,QueueItem^.Memory^,QueueItem^.Size);
            end;
           end;
@@ -12597,9 +12620,11 @@ begin
          Index:=ToIndex+1;
 
         end;
+
        end else begin
         break;
        end;
+       
       end;
 
      finally
@@ -12611,9 +12636,14 @@ begin
     end;
 
    end else begin
+     
+    // Nothing to merge, so we must process the queue item by item in any case 
+
     Index:=0;
+
    end;
 
+   // Process the rest of the queue item by item
    while Index<aQueue.Count do begin
     QueueItem:=aQueue.ItemPointers[Index];
     inc(Index);
@@ -12647,6 +12677,7 @@ begin
     end;
    end;
 
+   // Clear the queue for reuse
    aQueue.Clear;
 
   finally
