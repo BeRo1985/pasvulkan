@@ -12007,10 +12007,10 @@ begin
 
       while Remain>0 do begin
 
-       if Remain<aSize then begin
+       if Remain<fSize then begin
         ToDo:=Remain;
        end else begin
-        ToDo:=aSize;
+        ToDo:=fSize;
        end;
 
        if ToDo>0 then begin
@@ -12054,10 +12054,10 @@ begin
 
     while Remain>0 do begin
 
-     if Remain<aSize then begin
+     if Remain<fSize then begin
       ToDo:=Remain;
      end else begin
-      ToDo:=aSize;
+      ToDo:=fSize;
      end;
 
      if ToDo>0 then begin
@@ -12129,10 +12129,10 @@ begin
 
       while Remain>0 do begin
 
-       if Remain<aSize then begin
+       if Remain<fSize then begin
         ToDo:=Remain;
        end else begin
-        ToDo:=aSize;
+        ToDo:=fSize;
        end;
 
        if ToDo>0 then begin
@@ -12177,10 +12177,10 @@ begin
 
     while Remain>0 do begin
 
-     if Remain<aSize then begin
+     if Remain<fSize then begin
       ToDo:=Remain;
      end else begin
-      ToDo:=aSize;
+      ToDo:=fSize;
      end;
 
      if ToDo>0 then begin
@@ -12247,10 +12247,10 @@ begin
 
       while Remain>0 do begin
 
-       if Remain<aSize then begin
+       if Remain<fSize then begin
         ToDo:=Remain;
        end else begin
-        ToDo:=aSize;
+        ToDo:=fSize;
        end;
 
        if ToDo>0 then begin
@@ -12295,10 +12295,10 @@ begin
 
     while Remain>0 do begin
 
-     if Remain<aSize then begin
+     if Remain<fSize then begin
       ToDo:=Remain;
      end else begin
-      ToDo:=aSize;
+      ToDo:=fSize;
      end;
 
      if ToDo>0 then begin
