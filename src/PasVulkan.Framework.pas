@@ -1248,7 +1248,18 @@ type EpvVulkanException=class(Exception);
      end;
      PpvVulkanMemoryStagingQueueItem=^TpvVulkanMemoryStagingQueueItem;
 
-     TpvVulkanMemoryStagingQueue=TpvDynamicQueue<TpvVulkanMemoryStagingQueueItem>;
+     TpvVulkanMemoryStagingInternalQueue=TpvDynamicQueue<TpvVulkanMemoryStagingQueueItem>;
+
+     TpvVulkanMemoryStagingQueue=class(TpvGenericList<TpvVulkanMemoryStagingQueueItem>)
+      private
+       fLock:TPasMPCriticalSection;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       procedure EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
+       procedure EnqueueUpload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
+       procedure EnqueueDownload(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize);
+     end;
 
      TpvVulkanMemoryStaging=class(TpvVulkanObject)
       private
@@ -1257,7 +1268,7 @@ type EpvVulkanException=class(Exception);
        fSize:TVkDeviceSize;
        fMask:TVkDeviceSize;
        fBuffer:TpvVulkanBuffer;
-       fQueue:TpvVulkanMemoryStagingQueue;
+       fQueue:TpvVulkanMemoryStagingInternalQueue;
        fLock:TPasMPCriticalSection;
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags=[TpvVulkanMemoryStagingFlag.Source,TpvVulkanMemoryStagingFlag.Destination,TpvVulkanMemoryStagingFlag.PersistentMapped]); reintroduce;
@@ -1268,7 +1279,8 @@ type EpvVulkanException=class(Exception);
        procedure EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
        procedure EnqueueUpload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
        procedure EnqueueDownload(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize);
-       procedure ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence);
+       procedure ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence); overload;
+       procedure ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aQueue:TpvVulkanMemoryStagingQueue); overload;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Flags:TpvVulkanMemoryStagingFlags read fFlags;
@@ -11922,6 +11934,75 @@ begin
  inherited Destroy;
 end;
 
+constructor TpvVulkanMemoryStagingQueue.Create;
+begin
+ inherited Create;
+ fLock:=TPasMPCriticalSection.Create;
+end;
+
+destructor TpvVulkanMemoryStagingQueue.Destroy;
+begin
+ FreeAndNil(fLock);
+ inherited Destroy;
+end;
+
+procedure TpvVulkanMemoryStagingQueue.EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
+var QueueItem:TpvVulkanMemoryStagingQueueItem;
+begin
+ fLock.Acquire;
+ try
+  try
+   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Zero;
+   QueueItem.Buffer:=aDestinationBuffer;
+   QueueItem.BufferOffset:=aDestinationOffset;
+   QueueItem.Memory:=nil;
+   QueueItem.Size:=aSize;
+  finally
+   Add(QueueItem);
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvVulkanMemoryStagingQueue.EnqueueUpload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
+var QueueItem:TpvVulkanMemoryStagingQueueItem;
+begin
+ fLock.Acquire;
+ try
+  try
+   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Upload;
+   QueueItem.Buffer:=aDestinationBuffer;
+   QueueItem.BufferOffset:=aDestinationOffset;
+   QueueItem.Memory:=@aSourceData;
+   QueueItem.Size:=aSize;
+  finally
+   Add(QueueItem);
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvVulkanMemoryStagingQueue.EnqueueDownload(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize);
+var QueueItem:TpvVulkanMemoryStagingQueueItem;
+begin
+ fLock.Acquire;
+ try
+  try
+   QueueItem.Type_:=TpvVulkanMemoryStagingQueueItemType.Download;
+   QueueItem.Buffer:=aSourceBuffer;
+   QueueItem.BufferOffset:=aSourceOffset;
+   QueueItem.Memory:=@aDestinationData;
+   QueueItem.Size:=aSize;
+  finally
+   Add(QueueItem);
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 constructor TpvVulkanMemoryStaging.Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize;const aFlags:TpvVulkanMemoryStagingFlags);
 var BufferUsageFlags:TVkBufferUsageFlags;
     BufferFlags:TpvVulkanBufferFlags;
@@ -12459,6 +12540,56 @@ begin
   fLock.Release;
  end;
 end;
+
+procedure TpvVulkanMemoryStaging.ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aQueue:TpvVulkanMemoryStagingQueue); overload;
+var Index:TpvSizeInt;
+    QueueItem:TpvVulkanMemoryStagingQueueItem;
+begin
+ fLock.Acquire;
+ try
+  aQueue.fLock.Acquire;
+  try
+   // TO-DO: Optimize for executing multiple zero/upload/download jobs in the same command buffer per merging
+   for Index:=0 to aQueue.Count-1 do begin
+    QueueItem:=aQueue[Index];
+    case QueueItem.Type_ of
+     TpvVulkanMemoryStagingQueueItemType.Zero:begin
+      Zero(aTransferQueue,
+           aTransferCommandBuffer,
+           aTransferFence,
+           QueueItem.Buffer,
+           QueueItem.BufferOffset,
+           QueueItem.Size);
+     end;
+     TpvVulkanMemoryStagingQueueItemType.Upload:begin
+      Upload(aTransferQueue,
+             aTransferCommandBuffer,
+             aTransferFence,
+             QueueItem.Memory^,
+             QueueItem.Buffer,
+             QueueItem.BufferOffset,
+             QueueItem.Size);
+     end;
+     else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+      Download(aTransferQueue,
+               aTransferCommandBuffer,
+               aTransferFence,
+               QueueItem.Buffer,
+               QueueItem.BufferOffset,
+               QueueItem.Memory^,
+               QueueItem.Size);
+     end;
+    end;
+   end;
+   aQueue.Clear;
+  finally
+   aQueue.fLock.Release;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
                                   const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
