@@ -66,6 +66,7 @@ uses SysUtils,
      PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Utils,
      Generics.Collections;
 
 type TpvDynamicArray<T>=record
@@ -237,7 +238,8 @@ type TpvDynamicArray<T>=record
 
      TpvGenericList<T>=class
       private
-       type TValueEnumerator=record
+       type PT=^T;
+            TValueEnumerator=record
              private
               fGenericList:TpvGenericList<T>;
               fIndex:TpvSizeInt;
@@ -252,7 +254,9 @@ type TpvDynamicArray<T>=record
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        fSorted:boolean;
+       function GetData:pointer;
        procedure SetCount(const pNewCount:TpvSizeInt);
+       function GetItemPointer(const pIndex:TpvSizeInt):PT;
        function GetItem(const pIndex:TpvSizeInt):T;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
       protected
@@ -268,11 +272,14 @@ type TpvDynamicArray<T>=record
        procedure Remove(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
-       procedure Sort;
+       procedure Sort; overload;
+       procedure Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction); overload;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+       property ItemPointers[const pIndex:TpvSizeInt]:PT read GetItemPointer;
        property Sorted:boolean read fSorted;
+       property Data:pointer read GetData;
      end;
 
      EpvHandleMap=class(Exception);
@@ -632,8 +639,7 @@ type TpvDynamicArray<T>=record
 
 implementation
 
-uses Generics.Defaults,
-     PasVulkan.Utils;
+uses Generics.Defaults;
 
 { TpvDynamicArray<T> }
 
@@ -1786,6 +1792,11 @@ begin
  fSorted:=false;
 end;
 
+function TpvGenericList<T>.GetData:pointer;
+begin
+ result:=@fItems[0];
+end;
+
 procedure TpvGenericList<T>.SetCount(const pNewCount:TpvSizeInt);
 var Index,NewAllocated:TpvSizeInt;
     Item:TpvPointer;
@@ -1820,6 +1831,14 @@ begin
   end;
  end;
  fSorted:=false;
+end;
+
+function TpvGenericList<T>.GetItemPointer(const pIndex:TpvSizeInt):TpvGenericList<T>.PT;
+begin
+ if (pIndex<0) or (pIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ result:=@fItems[pIndex];
 end;
 
 function TpvGenericList<T>.GetItem(const pIndex:TpvSizeInt):T;
@@ -2006,6 +2025,16 @@ begin
  if not fSorted then begin
   if fCount>1 then begin
    TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
+  end;
+  fSorted:=true;
+ end;
+end;
+
+procedure TpvGenericList<T>.Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction);
+begin
+ if not fSorted then begin
+  if fCount>1 then begin
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,aCompareFunction);
   end;
   fSorted:=true;
  end;

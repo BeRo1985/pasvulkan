@@ -12541,55 +12541,225 @@ begin
  end;
 end;
 
-procedure TpvVulkanMemoryStaging.ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aQueue:TpvVulkanMemoryStagingQueue); overload;
-var Index:TpvSizeInt;
-    QueueItem:TpvVulkanMemoryStagingQueueItem;
+function TpvVulkanMemoryStagingProcessQueueSortCompareFunction(const a,b:TpvVulkanMemoryStagingQueueItem):TpvInt32;
 begin
+ if a.Size<b.Size then begin
+  result:=-1;
+ end else if a.Size>b.Size then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
+procedure TpvVulkanMemoryStaging.ProcessQueue(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aQueue:TpvVulkanMemoryStagingQueue); overload;
+var Index,Count,FromIndex,ToIndex:TpvSizeInt;
+    OffsetSize:TVkDeviceSize;
+    QueueItem:PpvVulkanMemoryStagingQueueItem;
+    Mergable:boolean;
+    BufferMemory,BufferMemoryEx:PpvUInt8;
+    VkBufferCopy:TVkBufferCopy;
+begin
+
  fLock.Acquire;
  try
+
   aQueue.fLock.Acquire;
   try
-   // TO-DO: Optimize for executing multiple zero/upload/download jobs in the same command buffer per merging
+
+   Mergable:=false;
    for Index:=0 to aQueue.Count-1 do begin
-    QueueItem:=aQueue[Index];
-    case QueueItem.Type_ of
+    QueueItem:=aQueue.ItemPointers[Index];
+    if QueueItem^.Size=VK_WHOLE_SIZE then begin
+     QueueItem^.Size:=QueueItem^.Buffer.Size-QueueItem^.BufferOffset;
+    end;
+    if QueueItem^.Size<fSize then begin
+     Mergable:=true;
+     break;
+    end;
+   end;
+
+   if Mergable then begin
+
+    aQueue.Sort(TpvVulkanMemoryStagingProcessQueueSortCompareFunction);
+
+    BufferMemory:=fBuffer.Memory.MapMemory;
+    if assigned(BufferMemory) then begin
+
+     try
+
+      Index:=0;
+
+      while Index<aQueue.Count do begin
+
+       QueueItem:=aQueue.ItemPointers[Index];
+
+       if QueueItem^.Size<fSize then begin
+
+        FromIndex:=Index;
+        ToIndex:=Index;
+
+        inc(Index);
+
+        OffsetSize:=QueueItem^.Size;
+
+        while Index<aQueue.Count do begin
+         QueueItem:=aQueue.ItemPointers[Index];
+         if (OffsetSize+QueueItem^.Size)<=fSize then begin
+          ToIndex:=Index;
+          inc(Index);
+          inc(OffsetSize,QueueItem^.Size);
+         end else begin
+          break;
+         end;
+        end;
+
+        Count:=(ToIndex-FromIndex)+1;
+
+        if Count<=1 then begin
+         Index:=FromIndex;
+        end else begin
+
+         // Write to
+         OffsetSize:=0;
+         BufferMemoryEx:=BufferMemory;
+         for Index:=FromIndex to ToIndex do begin
+          QueueItem:=aQueue.ItemPointers[Index];
+          case QueueItem^.Type_ of
+           TpvVulkanMemoryStagingQueueItemType.Zero:begin
+            if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
+             FillChar(BufferMemoryEx^,QueueItem^.Size,#0);
+            end;
+           end;
+           TpvVulkanMemoryStagingQueueItemType.Upload:begin
+            Move(QueueItem^.Memory^,BufferMemoryEx^,QueueItem^.Size);
+           end;
+           else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+           end;
+          end;
+          inc(BufferMemoryEx,QueueItem^.Size);
+          inc(OffsetSize,QueueItem^.Size);
+         end;
+
+         // Process
+         aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+         aTransferCommandBuffer.BeginRecording;
+         OffsetSize:=0;
+         BufferMemoryEx:=BufferMemory;
+         for Index:=FromIndex to ToIndex do begin
+          QueueItem:=aQueue.ItemPointers[Index];
+          case QueueItem^.Type_ of
+           TpvVulkanMemoryStagingQueueItemType.Zero:begin
+            if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
+             VkBufferCopy.srcOffset:=OffsetSize;
+             VkBufferCopy.dstOffset:=QueueItem^.BufferOffset;
+             VkBufferCopy.size:=QueueItem^.Size;
+             aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,QueueItem^.Buffer.Handle,1,@VkBufferCopy);
+            end else begin
+             aTransferCommandBuffer.CmdFillBuffer(QueueItem^.Buffer.Handle,QueueItem^.BufferOffset,QueueItem^.Size,0);
+            end;
+           end;
+           TpvVulkanMemoryStagingQueueItemType.Upload:begin
+            VkBufferCopy.srcOffset:=OffsetSize;
+            VkBufferCopy.dstOffset:=QueueItem^.BufferOffset;
+            VkBufferCopy.size:=QueueItem^.Size;
+            aTransferCommandBuffer.CmdCopyBuffer(fBuffer.Handle,QueueItem^.Buffer.Handle,1,@VkBufferCopy);
+           end;
+           else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+            VkBufferCopy.srcOffset:=QueueItem^.BufferOffset;
+            VkBufferCopy.dstOffset:=OffsetSize;
+            VkBufferCopy.size:=QueueItem^.Size;
+            aTransferCommandBuffer.CmdCopyBuffer(QueueItem^.Buffer.Handle,fBuffer.Handle,1,@VkBufferCopy);
+           end;
+          end;
+          inc(BufferMemoryEx,QueueItem^.Size);
+          inc(OffsetSize,QueueItem^.Size);
+         end;
+         aTransferCommandBuffer.EndRecording;
+         aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+         // Read back
+         OffsetSize:=0;
+         BufferMemoryEx:=BufferMemory;
+         for Index:=FromIndex to ToIndex do begin
+          QueueItem:=aQueue.ItemPointers[Index];
+          case QueueItem^.Type_ of
+           TpvVulkanMemoryStagingQueueItemType.Zero:begin
+           end;
+           TpvVulkanMemoryStagingQueueItemType.Upload:begin
+           end;
+           else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
+            Move(BufferMemoryEx^,QueueItem^.Memory^,QueueItem^.Size);
+           end;
+          end;
+          inc(BufferMemoryEx,QueueItem^.Size);
+          inc(OffsetSize,QueueItem^.Size);
+         end;
+
+         Index:=ToIndex+1;
+
+        end;
+       end else begin
+        break;
+       end;
+      end;
+
+     finally
+      fBuffer.Memory.UnmapMemory;
+     end;
+
+    end else begin
+     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+    end;
+
+   end else begin
+    Index:=0;
+   end;
+
+   while Index<aQueue.Count do begin
+    QueueItem:=aQueue.ItemPointers[Index];
+    inc(Index);
+    case QueueItem^.Type_ of
      TpvVulkanMemoryStagingQueueItemType.Zero:begin
       Zero(aTransferQueue,
            aTransferCommandBuffer,
            aTransferFence,
-           QueueItem.Buffer,
-           QueueItem.BufferOffset,
-           QueueItem.Size);
+           QueueItem^.Buffer,
+           QueueItem^.BufferOffset,
+           QueueItem^.Size);
      end;
      TpvVulkanMemoryStagingQueueItemType.Upload:begin
       Upload(aTransferQueue,
              aTransferCommandBuffer,
              aTransferFence,
-             QueueItem.Memory^,
-             QueueItem.Buffer,
-             QueueItem.BufferOffset,
-             QueueItem.Size);
+             QueueItem^.Memory^,
+             QueueItem^.Buffer,
+             QueueItem^.BufferOffset,
+             QueueItem^.Size);
      end;
      else {TpvVulkanMemoryStagingQueueItemType.Download:}begin
       Download(aTransferQueue,
                aTransferCommandBuffer,
                aTransferFence,
-               QueueItem.Buffer,
-               QueueItem.BufferOffset,
-               QueueItem.Memory^,
-               QueueItem.Size);
+               QueueItem^.Buffer,
+               QueueItem^.BufferOffset,
+               QueueItem^.Memory^,
+               QueueItem^.Size);
      end;
     end;
    end;
+
    aQueue.Clear;
+
   finally
    aQueue.fLock.Release;
   end;
+
  finally
   fLock.Release;
  end;
-end;
 
+end;
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
                                   const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
