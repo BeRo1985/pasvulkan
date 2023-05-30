@@ -1167,6 +1167,7 @@ type EpvVulkanException=class(Exception);
                                         const aBarriers:boolean=false;
                                         const aWaitSemaphore:TpvVulkanSemaphore=nil;
                                         const aSignalSemaphore:TpvVulkanSemaphore=nil); overload; static;
+       procedure Flush(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceFlush:boolean=false);
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -11621,6 +11622,33 @@ begin
  end;
 end;
 
+procedure TpvVulkanBuffer.Flush(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceFlush:boolean=false);
+var DataSize,NonCoherentAtomSize:TVkDeviceSize;
+begin
+ if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
+  DataSize:=aDataSize;
+  NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+  if NonCoherentAtomSize>0 then begin
+   if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
+    if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
+     inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
+     if (aDataOffset+aDataSize)>=Memory.Size then begin
+      DataSize:=Memory.Size-(aDataOffset+aDataSize);
+     end;
+    end;
+   end else begin
+    if (DataSize mod NonCoherentAtomSize)=0 then begin
+     inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
+     if (aDataOffset+aDataSize)>=Memory.Size then begin
+      DataSize:=Memory.Size-(aDataOffset+aDataSize);
+     end;
+    end;
+   end;
+  end;
+  Memory.FlushMappedMemoryRange(aMappedMemory,DataSize);
+ end;
+end;
+
 procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
                                      const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                      const aTransferFence:TpvVulkanFence;
@@ -12594,7 +12622,13 @@ begin
           inc(OffsetSize,QueueItem^.Size);
          end;
          aTransferCommandBuffer.EndRecording;
+         if OffsetSize>0 then begin
+          fBuffer.Flush(BufferMemory,0,OffsetSize,false); // Flush the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
+         end; 
          aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true); // Execute the command buffer and wait until it is finished
+         if OffsetSize>0 then begin
+          fBuffer.Flush(BufferMemory,0,OffsetSize,false); // Flush the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
+         end; 
 
          // Read the data from the staging buffer memory back, if necessary 
          OffsetSize:=0;
