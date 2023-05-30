@@ -12092,7 +12092,18 @@ begin
  if aSize<>0 then begin
   fSize:=aSize;
  end else begin
-  fSize:=16 shl 20; // 16MB
+  case fDevice.PhysicalDevice.Properties.vendorID of
+   TpvUInt32(TpvVulkanVendorID.AMD),
+   TpvUInt32(TpvVulkanVendorID.NVIDIA),
+   TpvUInt32(TpvVulkanVendorID.Intel):begin
+    // For desktop/notebook GPUs, like NVIDIA, AMD and Intel GPUs
+    fSize:=64 shl 20; // 64MB
+   end;
+   else begin
+    // And for other (mobile) GPUs, like for example Mali, Adreno and PowerVR
+    fSize:=8 shl 20; // 8MB
+   end;
+  end;
  end;
 
  fSize:=RoundUpToPowerOfTwo64(fSize);
