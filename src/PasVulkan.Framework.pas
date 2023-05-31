@@ -1078,14 +1078,14 @@ type EpvVulkanException=class(Exception);
       published
 
        property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
+       
+       property ReBAR:boolean read fReBAR; //< ReBAR (Resizable BAR) support (approximated by the Vulkan memory heap flags)
 
-       property ReBAR:boolean read fReBAR;
+       property UMA:boolean read fUMA; //< UMA (Unified Memory Architecture) support (approximated by the Vulkan memory heap flags)
 
-       property UMA:boolean read fUMA;
+       property CompleteDeviceMemoryMappable:boolean read fCompleteDeviceMemoryMappable; //< Complete GPU device memory mappable (approximated by the Vulkan memory property flags
 
-       property CompleteDeviceMemoryMappable:boolean read fCompleteDeviceMemoryMappable;
-
-       property CompleteTotalMemoryMappable:boolean read fCompleteTotalMemoryMappable;
+       property CompleteTotalMemoryMappable:boolean read fCompleteTotalMemoryMappable; //< Complete total CPU and GPU memory mappable (approximated by the Vulkan memory property flags      
 
      end;
 
