@@ -593,8 +593,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDevice:TpvVulkanDevice;
        fCanvasCommon:TpvCanvasCommon;
        fPipelineCache:TpvVulkanPipelineCache;
-       fVulkanMemoryStaging:TpvVulkanMemoryStaging;
-       fDoFreeVulkanMemoryStaging:TPasMPBool32;
        fVulkanDescriptors:TpvCanvasVulkanDescriptorLinkedListNode;
        fVulkanDescriptorSetGUINoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
@@ -683,9 +681,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
-                          const aCountProcessingBuffers:TpvInt32=4;
-                          const aVulkanMemoryStaging:TpvVulkanMemoryStaging=nil;
-                          const aDoFreeVulkanMemoryStaging:TPasMPBool32=true); reintroduce;
+                          const aCountProcessingBuffers:TpvInt32=4); reintroduce;
        destructor Destroy; override;
        procedure Start(const aBufferIndex:TpvInt32);
        procedure Stop;
@@ -3261,9 +3257,7 @@ end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aPipelineCache:TpvVulkanPipelineCache;
-                             const aCountProcessingBuffers:TpvInt32;
-                             const aVulkanMemoryStaging:TpvVulkanMemoryStaging=nil;
-                             const aDoFreeVulkanMemoryStaging:TPasMPBool32=true);
+                             const aCountProcessingBuffers:TpvInt32);
 var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -3276,14 +3270,6 @@ begin
  fCanvasCommon:=TpvCanvasCommon.Acquire(fDevice);
 
  fPipelineCache:=aPipelineCache;
-
- if assigned(aVulkanMemoryStaging) then begin
-  fVulkanMemoryStaging:=aVulkanMemoryStaging;
-  fDoFreeVulkanMemoryStaging:=aDoFreeVulkanMemoryStaging;
- end else begin
-  fVulkanMemoryStaging:=TpvVulkanMemoryStaging.Create(fDevice);
-  fDoFreeVulkanMemoryStaging:=true;
- end;
 
  fCountBuffers:=0;
 
@@ -3401,10 +3387,6 @@ begin
 
  fCurrentDestinationVertexBufferPointer:=nil;
  fCurrentDestinationIndexBufferPointer:=nil;
-
- if fDoFreeVulkanMemoryStaging then begin
-  FreeAndNil(fVulkanMemoryStaging);
- end;
 
  fCanvasCommon:=nil;
 
@@ -4367,7 +4349,23 @@ begin
      if CurrentBuffer^.fVertexBufferSizes[Index]>0 then begin
       VulkanBuffer:=CurrentBuffer^.fVulkanVertexBuffers[Index];
       if not assigned(VulkanBuffer) then begin
-       if assigned(fVulkanMemoryStaging) then begin
+       if fDevice.MemoryManager.CompleteTotalMemoryMappable then begin
+        VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                             SizeOf(TpvCanvasVertexBuffer),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             [],
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                            );
+       end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
                                              SizeOf(TpvCanvasVertexBuffer),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -4383,35 +4381,11 @@ begin
                                              0,
                                              []
                                             );
-       end else begin
-        VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                             SizeOf(TpvCanvasVertexBuffer),
-                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                             [],
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             [TpvVulkanBufferFlag.PersistentMapped]
-                                            );
        end;
        CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
       end;
       if assigned(VulkanBuffer) then begin
-       if assigned(fVulkanMemoryStaging) then begin
-        fVulkanMemoryStaging.Upload(aVulkanTransferQueue,
-                                    aVulkanTransferCommandBuffer,
-                                    aVulkanTransferCommandBufferFence,
-                                    CurrentBuffer^.fVertexBuffers[Index,0],
-                                    VulkanBuffer,
-                                    0,
-                                    CurrentBuffer^.fVertexBufferSizes[Index]);
-       end else begin
+       if fDevice.MemoryManager.CompleteTotalMemoryMappable then begin
         VulkanBuffer.UploadData(aVulkanTransferQueue,
                                 aVulkanTransferCommandBuffer,
                                 aVulkanTransferCommandBufferFence,
@@ -4419,13 +4393,37 @@ begin
                                 0,
                                 CurrentBuffer^.fVertexBufferSizes[Index],
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.No);
+       end else begin
+        fDevice.MemoryStaging.Upload(aVulkanTransferQueue,
+                                     aVulkanTransferCommandBuffer,
+                                     aVulkanTransferCommandBufferFence,
+                                     CurrentBuffer^.fVertexBuffers[Index,0],
+                                     VulkanBuffer,
+                                     0,
+                                     CurrentBuffer^.fVertexBufferSizes[Index]);
        end;
       end;
      end;
      if CurrentBuffer^.fIndexBufferSizes[Index]>0 then begin
       VulkanBuffer:=CurrentBuffer^.fVulkanIndexBuffers[Index];
       if not assigned(VulkanBuffer) then begin
-       if assigned(fVulkanMemoryStaging) then begin
+       if fDevice.MemoryManager.CompleteTotalMemoryMappable then begin
+        VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                             SizeOf(TpvCanvasIndexBuffer),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             [],
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                            );
+       end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
                                              SizeOf(TpvCanvasIndexBuffer),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -4441,35 +4439,11 @@ begin
                                              0,
                                              []
                                             );
-       end else begin
-        VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                             SizeOf(TpvCanvasIndexBuffer),
-                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                             [],
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             [TpvVulkanBufferFlag.PersistentMapped]
-                                            );
        end;
        CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
       end;
       if assigned(VulkanBuffer) then begin
-       if assigned(fVulkanMemoryStaging) then begin
-        fVulkanMemoryStaging.Upload(aVulkanTransferQueue,
-                                    aVulkanTransferCommandBuffer,
-                                    aVulkanTransferCommandBufferFence,
-                                    CurrentBuffer^.fIndexBuffers[Index,0],
-                                    VulkanBuffer,
-                                    0,
-                                    CurrentBuffer^.fIndexBufferSizes[Index]);
-       end else begin
+       if fDevice.MemoryManager.CompleteTotalMemoryMappable then begin
         VulkanBuffer.UploadData(aVulkanTransferQueue,
                                 aVulkanTransferCommandBuffer,
                                 aVulkanTransferCommandBufferFence,
@@ -4477,6 +4451,14 @@ begin
                                 0,
                                 CurrentBuffer^.fIndexBufferSizes[Index],
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.No);
+       end else begin
+        fDevice.MemoryStaging.Upload(aVulkanTransferQueue,
+                                     aVulkanTransferCommandBuffer,
+                                     aVulkanTransferCommandBufferFence,
+                                     CurrentBuffer^.fIndexBuffers[Index,0],
+                                     VulkanBuffer,
+                                     0,
+                                     CurrentBuffer^.fIndexBufferSizes[Index]);
        end;
       end;
      end;

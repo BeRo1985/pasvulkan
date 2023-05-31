@@ -2091,8 +2091,6 @@ type EpvScene3D=class(Exception);
       private
        fLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
-       fVulkanMemoryStaging:TpvVulkanMemoryStaging;
-       fDoFreeVulkanMemoryStaging:TPasMPBool32;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
@@ -2214,7 +2212,7 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanMemoryStaging:TpvVulkanMemoryStaging=nil;const aDoFreeVulkanMemoryStaging:TPasMPBool32=true); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
@@ -5867,13 +5865,13 @@ begin
 
     TBufferStreamingMode.Staging:begin
      if fLightItems.Count>0 then begin
-      fSceneInstance.fVulkanMemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                 fSceneInstance.fVulkanStagingCommandBuffer,
-                                                 fSceneInstance.fVulkanStagingFence,
-                                                 fLightItems.Items[0],
-                                                 fLightItemsVulkanBuffer,
-                                                 0,
-                                                 Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem));
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fLightItems.Items[0],
+                                                        fLightItemsVulkanBuffer,
+                                                        0,
+                                                        Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem));
 {     fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex].UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem),FlushUpdateData);
       fLightItemsVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
                                        fSceneInstance.fVulkanLightItemsStagingBuffers[fInFlightFrameIndex],
@@ -5882,13 +5880,13 @@ begin
                                        Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem));}
      end;
      if fLightTree.Count>0 then begin
-      fSceneInstance.fVulkanMemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                 fSceneInstance.fVulkanStagingCommandBuffer,
-                                                 fSceneInstance.fVulkanStagingFence,
-                                                 fLightTree.Items[0],
-                                                 fLightTreeVulkanBuffer,
-                                                 0,
-                                                 Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fLightTree.Items[0],
+                                                        fLightTreeVulkanBuffer,
+                                                        0,
+                                                        Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
 {     fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex].UpdateData(fLightTree.Items[0],0,Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
       fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
                                       fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex],
@@ -5896,13 +5894,13 @@ begin
                                       0,
                                       Min(fLightTree.Count,MaxVisibleLights*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));}
      end else begin
-      fSceneInstance.fVulkanMemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                 fSceneInstance.fVulkanStagingCommandBuffer,
-                                                 fSceneInstance.fVulkanStagingFence,
-                                                 EmptyGPUSkipListNode,
-                                                 fLightTreeVulkanBuffer,
-                                                 0,
-                                                 SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        EmptyGPUSkipListNode,
+                                                        fLightTreeVulkanBuffer,
+                                                        0,
+                                                        SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
 {     fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex].UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
       fLightTreeVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
                                       fSceneInstance.fVulkanLightTreeStagingBuffers[fInFlightFrameIndex],
@@ -5911,13 +5909,13 @@ begin
                                       SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));}
      end;
      if fLightItems.Count>0 then begin
-      fSceneInstance.fVulkanMemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                 fSceneInstance.fVulkanStagingCommandBuffer,
-                                                 fSceneInstance.fVulkanStagingFence,
-                                                 fLightMetaInfos[0],
-                                                 fLightMetaInfoVulkanBuffer,
-                                                 0,
-                                                 Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo));
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fLightMetaInfos[0],
+                                                        fLightMetaInfoVulkanBuffer,
+                                                        0,
+                                                        Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo));
 {     fSceneInstance.fVulkanLightMetaInfoStagingBuffers[fInFlightFrameIndex].UpdateData(fLightMetaInfos[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo),FlushUpdateData);
       fLightMetaInfoVulkanBuffer.CopyFrom(fSceneInstance.fVulkanBufferCopyBatchItemArrays[fInFlightFrameIndex],
                                           fSceneInstance.fVulkanLightMetaInfoStagingBuffers[fInFlightFrameIndex],
@@ -8201,13 +8199,13 @@ var Index:TpvSizeInt;
                                               0,
                                               []
                                              );
-  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                             UniversalCommandBuffer,
-                                             UniversalFence,
-                                             fVertices.Items[0],
-                                             fVulkanVertexBuffer,
-                                             0,
-                                             fVertices.Count*SizeOf(TVertex));
+  fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    fVertices.Items[0],
+                                                    fVulkanVertexBuffer,
+                                                    0,
+                                                    fVertices.Count*SizeOf(TVertex));
 { fVulkanVertexBuffer.UploadData(UniversalQueue,
                                  UniversalCommandBuffer,
                                  UniversalFence,
@@ -8232,12 +8230,12 @@ var Index:TpvSizeInt;
                                                              0,
                                                              []
                                                             );
-   fSceneInstance.fVulkanMemoryStaging.Zero(UniversalQueue,
-                                            UniversalCommandBuffer,
-                                            UniversalFence,
-                                            fVulkanCachedVertexBuffers[Index],
-                                            0,
-                                            fVertices.Count*SizeOf(TCachedVertex));
+   fSceneInstance.fVulkanDevice.MemoryStaging.Zero(UniversalQueue,
+                                                   UniversalCommandBuffer,
+                                                   UniversalFence,
+                                                   fVulkanCachedVertexBuffers[Index],
+                                                   0,
+                                                   fVertices.Count*SizeOf(TCachedVertex));
 {  fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
                                                UniversalCommandBuffer,
                                                UniversalFence,
@@ -8282,13 +8280,13 @@ var Index:TpvSizeInt;
                                                  0,
                                                  0,
                                                  []);
-  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                             UniversalCommandBuffer,
-                                             UniversalFence,
-                                             fDrawChoreographyBatchCondensedIndices.Items[0],
-                                             fVulkanDrawIndexBuffer,
-                                             0,
-                                             fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32));
+  fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    fDrawChoreographyBatchCondensedIndices.Items[0],
+                                                    fVulkanDrawIndexBuffer,
+                                                    0,
+                                                    fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TVkUInt32));
 { fVulkanDrawIndexBuffer.UploadData(UniversalQueue,
                                     UniversalCommandBuffer,
                                     UniversalFence,
@@ -8312,13 +8310,13 @@ var Index:TpvSizeInt;
                                                        0,
                                                        []
                                                       );
-  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                             UniversalCommandBuffer,
-                                             UniversalFence,
-                                             fDrawChoreographyBatchCondensedUniqueIndices.Items[0],
-                                             fVulkanDrawUniqueIndexBuffer,
-                                             0,
-                                             fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32));
+  fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    fDrawChoreographyBatchCondensedUniqueIndices.Items[0],
+                                                    fVulkanDrawUniqueIndexBuffer,
+                                                    0,
+                                                    fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TVkUInt32));
 { fVulkanDrawUniqueIndexBuffer.UploadData(UniversalQueue,
                                           UniversalCommandBuffer,
                                           UniversalFence,
@@ -8342,13 +8340,13 @@ var Index:TpvSizeInt;
                                                          0,
                                                          []
                                                         );
-  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                             UniversalCommandBuffer,
-                                             UniversalFence,
-                                             fMorphTargetVertices.Items[0],
-                                             fVulkanMorphTargetVertexBuffer,
-                                             0,
-                                             fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex));
+  fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    fMorphTargetVertices.Items[0],
+                                                    fVulkanMorphTargetVertexBuffer,
+                                                    0,
+                                                    fMorphTargetVertices.Count*SizeOf(TMorphTargetVertex));
 { fVulkanMorphTargetVertexBuffer.UploadData(UniversalQueue,
                                             UniversalCommandBuffer,
                                             UniversalFence,
@@ -8372,13 +8370,13 @@ var Index:TpvSizeInt;
                                                   0,
                                                   []
                                                  );
-  fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                             UniversalCommandBuffer,
-                                             UniversalFence,
-                                             fJointBlocks.Items[0],
-                                             fVulkanJointBlockBuffer,
-                                             0,
-                                             fJointBlocks.Count*SizeOf(TJointBlock));
+  fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                    UniversalCommandBuffer,
+                                                    UniversalFence,
+                                                    fJointBlocks.Items[0],
+                                                    fVulkanJointBlockBuffer,
+                                                    0,
+                                                    fJointBlocks.Count*SizeOf(TJointBlock));
 { fVulkanJointBlockBuffer.UploadData(UniversalQueue,
                                      UniversalCommandBuffer,
                                      UniversalFence,
@@ -10570,21 +10568,21 @@ begin
 
    TBufferStreamingMode.Staging:begin
 
-    fInstance.fSceneInstance.fVulkanMemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
-                                                         fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                                                         fInstance.fSceneInstance.fVulkanStagingFence,
-                                                         fNodeMatrices[0],
-                                                         fNodeMatricesBuffer,
-                                                         0,
-                                                         length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
+    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                                                fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                fInstance.fSceneInstance.fVulkanStagingFence,
+                                                                fNodeMatrices[0],
+                                                                fNodeMatricesBuffer,
+                                                                0,
+                                                                length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
 
-    fInstance.fSceneInstance.fVulkanMemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
-                                                         fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
-                                                         fInstance.fSceneInstance.fVulkanStagingFence,
-                                                         fMorphTargetVertexWeights[0],
-                                                         fMorphTargetVertexWeightsBuffer,
-                                                         0,
-                                                         length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                                                fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                fInstance.fSceneInstance.fVulkanStagingFence,
+                                                                fMorphTargetVertexWeights[0],
+                                                                fMorphTargetVertexWeightsBuffer,
+                                                                0,
+                                                                length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
 
 {   fInstance.fGroup.fVulkanNodeMatricesStagingBuffers[aInFlightFrameIndex].UpdateData(fNodeMatrices[0],0,length(fNodeMatrices)*SizeOf(TpvMatrix4x4),FlushUpdateData);
 
@@ -11027,13 +11025,13 @@ begin
                                                               []
                                                              );
 
-            fSceneInstance.fVulkanMemoryStaging.Upload(UniversalQueue,
-                                                       UniversalCommandBuffer,
-                                                       UniversalFence,
-                                                       fMaterialMap[0],
-                                                       fVulkanMaterialIDMapBuffer,
-                                                       0,
-                                                       length(fMaterialMap)*SizeOf(TpvUInt32));
+            fSceneInstance.fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                              UniversalCommandBuffer,
+                                                              UniversalFence,
+                                                              fMaterialMap[0],
+                                                              fVulkanMaterialIDMapBuffer,
+                                                              0,
+                                                              length(fMaterialMap)*SizeOf(TpvUInt32));
 
 {          fVulkanMaterialIDMapBuffer.UploadData(UniversalQueue,
                                                  UniversalCommandBuffer,
@@ -13724,7 +13722,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanMemoryStaging:TpvVulkanMemoryStaging;const aDoFreeVulkanMemoryStaging:TPasMPBool32);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
 var Index:TpvSizeInt;
 begin
 
@@ -13738,14 +13736,6 @@ begin
   fVulkanDevice:=nil;
  end;
 
- if assigned(aVulkanMemoryStaging) then begin
-  fVulkanMemoryStaging:=aVulkanMemoryStaging;
-  fDoFreeVulkanMemoryStaging:=aDoFreeVulkanMemoryStaging;
- end else begin
-  fVulkanMemoryStaging:=TpvVulkanMemoryStaging.Create(fVulkanDevice);
-  fDoFreeVulkanMemoryStaging:=true;
- end;
-
  fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
 
  fLock:=TPasMPSpinLock.Create;
@@ -13754,7 +13744,11 @@ begin
 
  fMaterialDataGenerationLock:=TPasMPSpinLock.Create;
 
- fBufferStreamingMode:=TBufferStreamingMode.Staging;//Direct;
+ if assigned(fVulkanDevice) and fVulkanDevice.MemoryManager.CompleteTotalMemoryMappable then begin
+  fBufferStreamingMode:=TBufferStreamingMode.Direct;
+ end else begin
+  fBufferStreamingMode:=TBufferStreamingMode.Staging;
+ end;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
@@ -14120,10 +14114,6 @@ begin
  FreeAndNil(fMaterialDataGenerationLock);
 
  FreeAndNil(fPotentiallyVisibleSet);
-
- if fDoFreeVulkanMemoryStaging then begin
-  FreeAndNil(fVulkanMemoryStaging);
- end;
 
  FreeAndNil(fLock);
 
@@ -14513,13 +14503,13 @@ begin
                                                                         0,
                                                                         [TpvVulkanBufferFlag.PersistentMapped]);
 
-               fVulkanMemoryStaging.Upload(UniversalQueue,
-                                           UniversalCommandBuffer,
-                                           UniversalFence,
-                                           fMaterialBufferData,
-                                           fVulkanMaterialDataBuffers[Index],
-                                           0,
-                                           MaterialBufferDataSize);
+               fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                  UniversalCommandBuffer,
+                                                  UniversalFence,
+                                                  fMaterialBufferData,
+                                                  fVulkanMaterialDataBuffers[Index],
+                                                  0,
+                                                  MaterialBufferDataSize);
 
 {             fVulkanMaterialDataBuffers[Index].UploadData(UniversalQueue,
                                                            UniversalCommandBuffer,
@@ -14550,13 +14540,13 @@ begin
                                                                         0,
                                                                         []);
 
-               fVulkanMemoryStaging.Upload(UniversalQueue,
-                                           UniversalCommandBuffer,
-                                           UniversalFence,
-                                           fMaterialBufferData,
-                                           fVulkanMaterialDataBuffers[Index],
-                                           0,
-                                           MaterialBufferDataSize);
+               fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                  UniversalCommandBuffer,
+                                                  UniversalFence,
+                                                  fMaterialBufferData,
+                                                  fVulkanMaterialDataBuffers[Index],
+                                                  0,
+                                                  MaterialBufferDataSize);
 
 {             fVulkanMaterialDataBuffers[Index].CopyFrom(fVulkanBufferCopyBatchItemArrays[Index],
                                                          fVulkanMaterialDataStagingBuffers[Index],
@@ -14590,13 +14580,13 @@ begin
                                                                           0,
                                                                           0,
                                                                           []);
-             fVulkanMemoryStaging.Upload(UniversalQueue,
-                                         UniversalCommandBuffer,
-                                         UniversalFence,
-                                         DeviceAddress,
-                                         fVulkanMaterialUniformBuffers[Index],
-                                         0,
-                                         SizeOf(TVkDeviceAddress));
+             fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
+                                                UniversalCommandBuffer,
+                                                UniversalFence,
+                                                DeviceAddress,
+                                                fVulkanMaterialUniformBuffers[Index],
+                                                0,
+                                                SizeOf(TVkDeviceAddress));
 {            fVulkanMaterialUniformBuffers[Index].UploadData(UniversalQueue,
                                                              UniversalCommandBuffer,
                                                              UniversalFence,
@@ -15103,13 +15093,13 @@ begin
 
       TBufferStreamingMode.Staging:begin
 
-       fVulkanMemoryStaging.Upload(fVulkanStagingQueue,
-                                   fVulkanStagingCommandBuffer,
-                                   fVulkanStagingFence,
-                                   fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                   fVulkanMaterialDataBuffers[aInFlightFrameIndex],
-                                   fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                   fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
+       fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                          fVulkanStagingCommandBuffer,
+                                          fVulkanStagingFence,
+                                          fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
+                                          fVulkanMaterialDataBuffers[aInFlightFrameIndex],
+                                          fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
+                                          fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
 
 {      fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
                                                                          fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
@@ -15548,13 +15538,13 @@ begin
                                                                     );
     end;
     TBufferStreamingMode.Staging:begin
-     fVulkanMemoryStaging.Upload(fVulkanStagingQueue,
-                                 fVulkanStagingCommandBuffer,
-                                 fVulkanStagingFence,
-                                 fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
-                                 fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex],
-                                 0,
-                                 (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView));
+     fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                        fVulkanStagingCommandBuffer,
+                                        fVulkanStagingFence,
+                                        fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
+                                        fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex],
+                                        0,
+                                        (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView));
 {    fGlobalVulkanViewUniformStagingBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
                                                                             0,
                                                                             (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
