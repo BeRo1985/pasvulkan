@@ -1015,6 +1015,10 @@ type EpvVulkanException=class(Exception);
        fDedicatedAllocationSupport:TDedicatedAllocationSupport;
        fLazilyAllocationSupport:boolean;
        fCountAllocations:TpvSizeInt;
+       fReBAR:boolean;
+       fUMA:boolean;
+       fCompleteDeviceMemoryMappable:boolean;
+       fCompleteTotalMemoryMappable:boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
@@ -1070,6 +1074,14 @@ type EpvVulkanException=class(Exception);
       published
 
        property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
+
+       property ReBAR:boolean read fReBAR;
+
+       property UMA:boolean read fUMA;
+
+       property CompleteDeviceMemoryMappable:boolean read fCompleteDeviceMemoryMappable;
+
+       property CompleteTotalMemoryMappable:boolean read fCompleteTotalMemoryMappable;
 
      end;
 
@@ -10787,8 +10799,9 @@ begin
 end;
 
 procedure TpvVulkanDeviceMemoryManager.Initialize;
-var Index:TpvSizeInt;
+var Index,HeapIndex:TpvSizeInt;
     MemoryPropertyFlags:TVkMemoryPropertyFlags;
+    HeapMemoryPropertyFlags:array of TVkMemoryPropertyFlags;
 begin
 
  if ((((fDevice.fInstance.APIVersion shr 22) and $7f)=1) or
@@ -10811,12 +10824,46 @@ begin
  end;
 
  fLazilyAllocationSupport:=false;
- for Index:=0 to TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount)-1 do begin
-  MemoryPropertyFlags:=fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags;
-  if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
-   fLazilyAllocationSupport:=true;
-   break;
+ fReBAR:=false;
+ fUMA:=true;
+ fCompleteDeviceMemoryMappable:=true;
+ fCompleteTotalMemoryMappable:=true;
+ HeapMemoryPropertyFlags:=nil;
+ try
+  SetLength(HeapMemoryPropertyFlags,fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount);
+  for HeapIndex:=0 to TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount)-1 do begin
+   HeapMemoryPropertyFlags[HeapIndex]:=0;
   end;
+  for Index:=0 to TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount)-1 do begin
+   MemoryPropertyFlags:=fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags;
+   if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
+    fLazilyAllocationSupport:=true;
+   end;
+   HeapIndex:=fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+   if (HeapIndex>=0) and (HeapIndex<TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount)) then begin
+    HeapMemoryPropertyFlags[HeapIndex]:=HeapMemoryPropertyFlags[HeapIndex] or MemoryPropertyFlags;
+   end;
+  end;
+  for HeapIndex:=0 to TpvSizeInt(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount)-1 do begin
+   MemoryPropertyFlags:=HeapMemoryPropertyFlags[HeapIndex];
+   if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+    if (MemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)<>VulkanHostVisibleCoherentMemoryPropertyFlags then begin
+     fCompleteDeviceMemoryMappable:=false;
+    end;
+   end;
+   if (MemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)<>VulkanHostVisibleCoherentMemoryPropertyFlags then begin
+    fCompleteTotalMemoryMappable:=false;
+   end;
+   if (MemoryPropertyFlags and VulkanDeviceLocalHostVisibleCoherentMemoryPropertyFlags)=VulkanDeviceLocalHostVisibleCoherentMemoryPropertyFlags then begin
+    if fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size>(TVkDeviceSize(256) shl 20) then begin
+     fReBAR:=true;
+    end;
+   end else begin
+    fUMA:=false;
+   end;
+  end;
+ finally
+  HeapMemoryPropertyFlags:=nil;
  end;
 
 end;
