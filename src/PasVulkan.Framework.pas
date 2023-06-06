@@ -1313,7 +1313,7 @@ type EpvVulkanException=class(Exception);
        fBuffer:TpvVulkanBuffer;
        fLock:TPasMPCriticalSection;
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize=0;const aFlags:TpvVulkanDeviceMemoryStagingFlags=[TpvVulkanDeviceMemoryStagingFlag.Source,TpvVulkanDeviceMemoryStagingFlag.Destination,TpvVulkanDeviceMemoryStagingFlag.PersistentMapped]); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize=0;const aFlags:TpvVulkanDeviceMemoryStagingFlags=[TpvVulkanDeviceMemoryStagingFlag.Source,TpvVulkanDeviceMemoryStagingFlag.Destination,TpvVulkanDeviceMemoryStagingFlag.PersistentMappedIfPossibe]); reintroduce;
        destructor Destroy; override;
        procedure Initialize;
        function Zero(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
