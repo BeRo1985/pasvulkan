@@ -260,7 +260,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAntialiasingTAARenderPass.AcquireVolatileResources;
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,PreviousInFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
 
@@ -301,6 +301,10 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  PreviousInFlightFrameIndex:=InFlightFrameIndex-1;
+  if PreviousInFlightFrameIndex<0 then begin
+   inc(PreviousInFlightFrameIndex,FrameGraph.CountInFlightFrames);
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -330,7 +334,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fInstance.TAAHistoryColorImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                fInstance.TAAHistoryColorImages[PreviousInFlightFrameIndex].VulkanArrayImageView.Handle,
                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                  [],
                                                                  [],
@@ -341,7 +345,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                                fInstance.TAAHistoryDepthImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                fInstance.TAAHistoryDepthImages[PreviousInFlightFrameIndex].VulkanArrayImageView.Handle,
                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                  [],
                                                                  [],

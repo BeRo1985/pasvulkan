@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="\home\bero\Projects\GLTF\pearl_electron\scene.gltf --depth-of-field-mode none --transparency-mode spinlockoit --antialiasing-mode msaa --max-msaa 4"/>
+        <CommandLineParams Value="\home\bero\Projects\GLTF\DragonAttenuation.glb --antialiasing-mode taa"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="\home\bero\Projects\GLTF\pearl_electron\scene.gltf --depth-of-field-mode none --transparency-mode spinlockoit --antialiasing-mode msaa --max-msaa 4"/>
+            <CommandLineParams Value="\home\bero\Projects\GLTF\DragonAttenuation.glb --antialiasing-mode taa"/>
           </local>
         </Mode0>
       </Modes>
