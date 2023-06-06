@@ -154,7 +154,7 @@ begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                 'resource_cascadedshadowmap_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                []
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',
@@ -171,7 +171,7 @@ begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                 'resource_cascadedshadowmap_data_temporary_blurred',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                []
                                );
 
   fResourceOutput:=AddImageOutput('resourcetype_cascadedshadowmap_data',

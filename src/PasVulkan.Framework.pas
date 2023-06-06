@@ -24130,7 +24130,7 @@ begin
      ImageMemoryBarrier.subresourceRange.levelCount:=fCountStorageLevels;
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
-     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                0,
                                                0,

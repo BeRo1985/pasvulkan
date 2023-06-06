@@ -8,8 +8,8 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outFragColor;
 
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInput;
+layout(set = 0, binding = 0) uniform sampler2D uTextureInput;
 
 void main(){
-  outFragColor = subpassLoad(uSubpassInput);
+  outFragColor = texture(uTextureInput, inTexCoord, 0.0);
 }

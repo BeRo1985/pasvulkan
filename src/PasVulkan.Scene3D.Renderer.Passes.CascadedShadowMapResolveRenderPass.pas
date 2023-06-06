@@ -147,13 +147,13 @@ begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_depth',
                                 'resource_cascadedshadowmap_single_depth',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                []
                                );
  end else begin
   fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_msaa_depth',
                                 'resource_cascadedshadowmap_msaa_depth',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                []
                                );
  end;
 

@@ -140,9 +140,9 @@ begin
                                        fInstance.CountSurfaceViews);
 
  fResourceColor0:=AddImageInput('resourcetype_color',
-                               'resource_depthoffield_prepare_data',
+                                'resource_depthoffield_prepare_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                []);
 
  fResourceColor1:=AddImageInput('resourcetype_color_halfres',
                                 'resource_depthoffield_postblur_halfres_data',

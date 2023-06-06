@@ -148,12 +148,12 @@ begin
 {  fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);}
+                                  []);}
 
    fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                  []);
 
    fResourceColor1:=fResourceColor0;
 
@@ -164,7 +164,7 @@ begin
    fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_combined',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                  []);
 
    fResourceColor1:=fResourceColor0;
 
@@ -175,12 +175,12 @@ begin
    fResourceColor0:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_prepare_data',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                  []);
 
    fResourceColor1:=AddImageInput('resourcetype_color',
                                   'resource_depthoffield_pass2',
                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+                                  []);
 
   end;
 

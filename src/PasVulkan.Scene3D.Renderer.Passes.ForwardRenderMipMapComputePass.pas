@@ -377,6 +377,28 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
+{FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+ ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+ ImageMemoryBarrier.pNext:=nil;
+ ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+ ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+ ImageMemoryBarrier.oldLayout:=fResourceInput.ResourceTransition.Layout;
+ ImageMemoryBarrier.newLayout:=fResourceInput.ResourceTransition.Layout;
+ ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ ImageMemoryBarrier.image:=fResourceInput.VulkanImages[InFlightFrameIndex].Handle;
+ ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+ ImageMemoryBarrier.subresourceRange.levelCount:=1;
+ ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+ ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+ aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);}
+
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
  ImageMemoryBarrier.pNext:=nil;

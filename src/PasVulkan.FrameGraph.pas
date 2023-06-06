@@ -2009,7 +2009,7 @@ begin
                                                                     fCountMipMaps,
                                                                     0,
                                                                     fCountArrayLayers);
-    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
+   fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
   end;
 
  end else if fIsSurface then begin
@@ -5739,9 +5739,9 @@ type TEventBeforeAfter=(Event,Before,After);
         assigned(FromResourceTransition.fPass.fPhysicalPass) and
         assigned(ToResourceTransition.fPass.fPhysicalPass) then begin
 
-{     if ToResourceTransition.fPass.fName='DeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass' then begin
+      if ToResourceTransition.fPass.fName='DepthOfFieldResolveRenderPass' then begin
        FromDirections:=GetDirections(FromResourceTransition);
-      end;}
+      end;
 
       FromDirections:=GetDirections(FromResourceTransition);
 

@@ -106,13 +106,13 @@ begin
  fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
                                'resource_temporal_antialiasing_color',
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               []
                               );
 
  fResourceDepth:=AddImageInput('resourcetype_depth',
                                'resource_depth_data',
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               []
                               );
 
 end;
@@ -290,11 +290,12 @@ begin
   Assert(false);
  end;
  aCommandBuffer.CmdSetEvent(fInstance.fTAAEvents[aInFlightFrameIndex].Handle,
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
-                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT));
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)});
  fInstance.fTAAEventReady[aInFlightFrameIndex]:=true;
 
 end;
