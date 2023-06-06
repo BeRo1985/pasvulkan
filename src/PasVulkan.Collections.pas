@@ -263,7 +263,7 @@ type TpvDynamicArray<T>=record
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Clear;
+       procedure Clear; virtual;
        procedure Assign(const pFrom:TpvGenericList<T>);
        function IndexOf(const pItem:T):TpvSizeInt;
        function Add(const pItem:T):TpvSizeInt;

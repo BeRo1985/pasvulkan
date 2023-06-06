@@ -1274,12 +1274,25 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryStagingInternalQueue=TpvDynamicQueue<TpvVulkanDeviceMemoryStagingQueueItem>;
 
+     TpvVulkanDeviceMemoryStagingQueueInternalFlag=
+      (
+       HasZero,
+       HasUpload,
+       HasDownload
+      );
+
+     TpvVulkanDeviceMemoryStagingQueueInternalFlags=set of TpvVulkanDeviceMemoryStagingQueueInternalFlag;
+
+     { TpvVulkanDeviceMemoryStagingQueue }
+
      TpvVulkanDeviceMemoryStagingQueue=class(TpvGenericList<TpvVulkanDeviceMemoryStagingQueueItem>)
       private
        fLock:TPasMPCriticalSection;
+       fInternalFlags:TpvVulkanDeviceMemoryStagingQueueInternalFlags;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Clear; override;
        procedure EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
        procedure EnqueueUpload(const aSourceData;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
        procedure EnqueueDownload(const aSourceBuffer:TpvVulkanBuffer;const aSourceOffset:TVkDeviceSize;out aDestinationData;const aSize:TVkDeviceSize);
@@ -12025,12 +12038,19 @@ constructor TpvVulkanDeviceMemoryStagingQueue.Create;
 begin
  inherited Create;
  fLock:=TPasMPCriticalSection.Create;
+ fInternalFlags:=[];
 end;
 
 destructor TpvVulkanDeviceMemoryStagingQueue.Destroy;
 begin
  FreeAndNil(fLock);
  inherited Destroy;
+end;
+
+procedure TpvVulkanDeviceMemoryStagingQueue.Clear;
+begin
+ inherited Clear;
+ fInternalFlags:=[];
 end;
 
 procedure TpvVulkanDeviceMemoryStagingQueue.EnqueueZero(const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize);
@@ -12062,6 +12082,7 @@ begin
    finally
     Add(QueueItem);
    end;
+   Include(fInternalFlags,TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasZero);
   finally
    fLock.Release;
   end;
@@ -12097,6 +12118,7 @@ begin
    finally
     Add(QueueItem);
    end;
+   Include(fInternalFlags,TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasUpload);
   finally
    fLock.Release;
   end;
@@ -12132,6 +12154,7 @@ begin
    finally
     Add(QueueItem);
    end;
+   Include(fInternalFlags,TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasDownload);
   finally
    fLock.Release;
   end;
@@ -12763,28 +12786,31 @@ begin
         end else begin
 
          // Write the data to the staging buffer memory, if necessary
-         OffsetSize:=0;
-         BufferMemoryEx:=BufferMemory;
-         for Index:=FromIndex to ToIndex do begin
-          QueueItem:=aQueue.ItemPointers[Index];
-          case QueueItem^.Type_ of
-           TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
-            // Check if the buffer offset and size are aligned to 4 bytes, if not, we must fill the buffer memory with zeros, because in the other
-            // case we can use vkCmdFillBuffer instead of vkCmdCopyBuffer, which is faster. vkCmdFillBuffer needs aligned offsets and sizes.   
-            if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
-             FillChar(BufferMemoryEx^,QueueItem^.Size,#0);
+         if (aQueue.fInternalFlags*[TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasZero,
+                                    TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasUpload])<>[] then begin
+          OffsetSize:=0;
+          BufferMemoryEx:=BufferMemory;
+          for Index:=FromIndex to ToIndex do begin
+           QueueItem:=aQueue.ItemPointers[Index];
+           case QueueItem^.Type_ of
+            TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
+             // Check if the buffer offset and size are aligned to 4 bytes, if not, we must fill the buffer memory with zeros, because in the other
+             // case we can use vkCmdFillBuffer instead of vkCmdCopyBuffer, which is faster. vkCmdFillBuffer needs aligned offsets and sizes.
+             if ((QueueItem^.BufferOffset and 3)<>0) or ((QueueItem^.Size and 3)<>0) then begin
+              FillChar(BufferMemoryEx^,QueueItem^.Size,#0);
+             end;
+            end;
+            TpvVulkanDeviceMemoryStagingQueueItemType.Upload:begin
+             // Move the data from the source memory to the staging buffer memory
+             Move(QueueItem^.Memory^,BufferMemoryEx^,QueueItem^.Size);
+            end;
+            else {TpvVulkanDeviceMemoryStagingQueueItemType.Download:}begin
+             // Nothing to do here, because we read the data from the staging buffer memory back later
             end;
            end;
-           TpvVulkanDeviceMemoryStagingQueueItemType.Upload:begin
-            // Move the data from the source memory to the staging buffer memory
-            Move(QueueItem^.Memory^,BufferMemoryEx^,QueueItem^.Size);
-           end;
-           else {TpvVulkanDeviceMemoryStagingQueueItemType.Download:}begin
-            // Nothing to do here, because we read the data from the staging buffer memory back later  
-           end;
+           inc(BufferMemoryEx,QueueItem^.Size);
+           inc(OffsetSize,QueueItem^.Size);
           end;
-          inc(BufferMemoryEx,QueueItem^.Size);
-          inc(OffsetSize,QueueItem^.Size);
          end;
 
          // Construct the command buffer call for the transfer operations to the destination buffer from the staging buffer and vice versa, and
@@ -12838,24 +12864,26 @@ begin
          end; 
 
          // Read the data from the staging buffer memory back, if necessary 
-         OffsetSize:=0;
-         BufferMemoryEx:=BufferMemory;
-         for Index:=FromIndex to ToIndex do begin
-          QueueItem:=aQueue.ItemPointers[Index];
-          case QueueItem^.Type_ of
-           TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
-            // Nothing to do here, because we filled the buffer memory with zeros before
+         if TpvVulkanDeviceMemoryStagingQueueInternalFlag.HasDownload in aQueue.fInternalFlags then begin
+          OffsetSize:=0;
+          BufferMemoryEx:=BufferMemory;
+          for Index:=FromIndex to ToIndex do begin
+           QueueItem:=aQueue.ItemPointers[Index];
+           case QueueItem^.Type_ of
+            TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
+             // Nothing to do here, because we filled the buffer memory with zeros before
+            end;
+            TpvVulkanDeviceMemoryStagingQueueItemType.Upload:begin
+             // Nothing to do here, because we moved the data from the source memory to the staging buffer memory before
+            end;
+            else {TpvVulkanDeviceMemoryStagingQueueItemType.Download:}begin
+             // Move the data from the staging buffer memory to the destination memory
+             Move(BufferMemoryEx^,QueueItem^.Memory^,QueueItem^.Size);
+            end;
            end;
-           TpvVulkanDeviceMemoryStagingQueueItemType.Upload:begin
-            // Nothing to do here, because we moved the data from the source memory to the staging buffer memory before
-           end;
-           else {TpvVulkanDeviceMemoryStagingQueueItemType.Download:}begin
-            // Move the data from the staging buffer memory to the destination memory
-            Move(BufferMemoryEx^,QueueItem^.Memory^,QueueItem^.Size);
-           end;
+           inc(BufferMemoryEx,QueueItem^.Size);
+           inc(OffsetSize,QueueItem^.Size);
           end;
-          inc(BufferMemoryEx,QueueItem^.Size);
-          inc(OffsetSize,QueueItem^.Size);
          end;
 
          Index:=ToIndex+1;

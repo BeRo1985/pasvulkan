@@ -1178,8 +1178,10 @@ type PpvScalar=^TpvScalar;
        class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
        function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Combine(const aWithRect:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithRect:TpvRect):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithPoint:TpvVector2):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
@@ -15049,6 +15051,11 @@ begin
  result:=(Max.x-Min.x)+(Max.y-Min.y); // Manhattan distance
 end;
 
+function TpvRect.Area:TpvScalar;
+begin
+ result:=abs(Max.x-Min.x)*abs(Max.y-Min.y);
+end;
+
 function TpvRect.Center:TpvVector2;
 begin
  result.x:=(Min.x*0.5)+(Max.x*0.5);
@@ -15061,6 +15068,14 @@ begin
  result.Min.y:=Math.Min(Min.y,aWithRect.Min.y);
  result.Max.x:=Math.Max(Max.x,aWithRect.Max.x);
  result.Max.y:=Math.Max(Max.y,aWithRect.Max.y);
+end;
+
+function TpvRect.Combine(const aWithPoint:TpvVector2):TpvRect;
+begin
+ result.Min.x:=Math.Min(Min.x,aWithPoint.x);
+ result.Min.y:=Math.Min(Min.y,aWithPoint.y);
+ result.Max.x:=Math.Max(Max.x,aWithPoint.x);
+ result.Max.y:=Math.Max(Max.y,aWithPoint.y);
 end;
 
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
