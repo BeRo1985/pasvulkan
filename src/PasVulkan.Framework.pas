@@ -1224,6 +1224,7 @@ type EpvVulkanException=class(Exception);
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkBuffer read fBufferHandle;
        property Size:TVkDeviceSize read fSize;
+       property Flags:TpvVulkanBufferFlags read fBufferFlags;
        property Memory:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
        property DeviceAddress:TVkDeviceAddress read fDeviceAddress;
      end;
