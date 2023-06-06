@@ -753,6 +753,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanDeviceMemoryChunkFlag=
       (
        PersistentMapped,
+       PersistentMappedIfPossibe,
        OwnSingleMemoryChunk,
        DedicatedAllocation,
        BufferDeviceAddress
@@ -950,6 +951,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanDeviceMemoryBlockFlag=
       (
        PersistentMapped,
+       PersistentMappedIfPossibe,
        OwnSingleMemoryChunk,
        DedicatedAllocation,
        BufferDeviceAddress
@@ -1104,6 +1106,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanBufferFlag=
       (
        PersistentMapped,
+       PersistentMappedIfPossibe,
        OwnSingleMemoryChunk,
        DedicatedAllocation,
        BufferDeviceAddress
@@ -1249,7 +1252,8 @@ type EpvVulkanException=class(Exception);
       (
        Source,
        Destination,
-       PersistentMapped
+       PersistentMapped,
+       PersistentMappedIfPossibe
       );
 
      TpvVulkanDeviceMemoryStagingFlags=set of TpvVulkanDeviceMemoryStagingFlag;
@@ -9798,6 +9802,13 @@ begin
  fMemoryChunkList^.First:=self;
  fPreviousMemoryChunk:=nil;
 
+ if TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in fMemoryChunkFlags then begin
+  Exclude(fMemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe);
+  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+   Include(fMemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
+  end;
+ end;
+
  if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
   fLock.Acquire;
   try
@@ -11036,6 +11047,10 @@ begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
  end;
 
+ if TpvVulkanDeviceMemoryBlockFlag.PersistentMappedIfPossibe in aMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe);
+ end;
+
  if TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk);
  end;
@@ -11146,7 +11161,8 @@ begin
       CurrentCost:=TPasMPMath.PopulationCount(aMemoryPreferredPropertyFlags and not MemoryChunk.fMemoryPropertyFlags)+
                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryPropertyFlags and aMemoryPreferredNotPropertyFlags)+
                    TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not MemoryChunk.fMemoryHeapFlags)+
-                   TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags);
+                   TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags)+
+                   TPasMPMath.PopulationCount((ord(TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in MemoryChunkFlags) and 1) and not (ord(TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunk.fMemoryChunkFlags) and 1));
 
       if CurrentCost<BestCost then begin
 
@@ -11361,6 +11377,10 @@ begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMapped);
   end;
 
+  if TpvVulkanBufferFlag.PersistentMappedIfPossibe in fBufferFlags then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMappedIfPossibe);
+  end;
+
   if TpvVulkanBufferFlag.OwnSingleMemoryChunk in fBufferFlags then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk);
   end;
@@ -11397,6 +11417,12 @@ begin
   fMemoryBlock.fAssociatedObject:=self;
 
   Bind;
+
+  Exclude(fBufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossibe);
+
+  if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryBlock.MemoryChunk.fMemoryChunkFlags then begin
+   Include(fBufferFlags,TpvVulkanBufferFlag.PersistentMapped);
+  end;
 
   fMemoryPropertyFlags:=fMemoryBlock.fMemoryChunk.fMemoryPropertyFlags;
 
