@@ -938,6 +938,7 @@ type EpvVulkanException=class(Exception);
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
+       property MemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags read fMemoryChunkFlags;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
        property MemoryHeapFlags:TVkMemoryPropertyFlags read fMemoryHeapFlags;
        property MemoryTypeIndex:TpvUInt32 read fMemoryTypeIndex;
