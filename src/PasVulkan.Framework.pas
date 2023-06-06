@@ -12252,6 +12252,9 @@ begin
   if TpvVulkanDeviceMemoryStagingFlag.PersistentMapped in fFlags then begin
    Include(BufferFlags,TpvVulkanBufferFlag.PersistentMapped);
   end;
+  if TpvVulkanDeviceMemoryStagingFlag.PersistentMappedIfPossibe in fFlags then begin
+   Include(BufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossibe);
+  end;
 
   fBuffer:=TpvVulkanBuffer.Create(fDevice,
                                   fSize,
