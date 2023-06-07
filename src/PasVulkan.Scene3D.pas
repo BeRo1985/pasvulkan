@@ -5845,6 +5845,7 @@ begin
    case fSceneInstance.fBufferStreamingMode of
 
     TBufferStreamingMode.Direct:begin
+
      if fLightItems.Count>0 then begin
       fLightItemsVulkanBuffer.UpdateData(fLightItems.Items[0],0,Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightItem),FlushUpdateData);
      end;
