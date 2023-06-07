@@ -4215,12 +4215,17 @@ procedure TpvFrameGraph.TPhysicalRenderPass.Execute(const aCommandBuffer:TpvVulk
 var SubpassIndex:TpvSizeInt;
     Subpass:TSubpass;
     SubpassContents:TVkSubpassContents;
+    SingleSubpassDebug:boolean;
 begin
  inherited Execute(aCommandBuffer);
  if fHasSecondaryBuffers then begin
   SubpassContents:=VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
  end else begin
   SubpassContents:=VK_SUBPASS_CONTENTS_INLINE;
+ end;
+ SingleSubpassDebug:=(fSubpasses.Count=1) and (fSubpasses[0].fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1]);
+ if SingleSubpassDebug then begin
+  fSubpasses[0].fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
  end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
@@ -4245,9 +4250,13 @@ begin
  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
   Subpass:=fSubpasses[SubpassIndex];
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-   Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+   if not SingleSubpassDebug then begin
+    Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+   end;
    Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
-   Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+   if not SingleSubpassDebug then begin
+    Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+   end;
   end;
   if (SubpassIndex+1)<fSubpasses.Count then begin
    aCommandBuffer.CmdNextSubpass(SubpassContents);
@@ -4256,6 +4265,9 @@ begin
  fVulkanRenderPass.EndRenderPass(aCommandBuffer);
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if SingleSubpassDebug then begin
+  fSubpasses[0].fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+ end;
 end;
 
 { TpvFrameGraph }
