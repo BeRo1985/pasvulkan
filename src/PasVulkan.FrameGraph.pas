@@ -5040,7 +5040,6 @@ type TEventBeforeAfter=(Event,Before,After);
      if (Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
                       TPass.TFlag.SeparateCommandBuffer,
                       TPass.TFlag.Toggleable])=[] then begin
-      break;
       while Index<Count do begin
        OtherPass:=fTopologicalSortedPasses[Index];
        if ((OtherPass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
