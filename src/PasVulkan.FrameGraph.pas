@@ -2542,12 +2542,15 @@ begin
   ResourceTransitions[0]:=Items[Index];
   for OtherIndex:=0 to aWith.Count-1 do begin
    ResourceTransitions[1]:=aWith.Items[OtherIndex];
-   if (ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllImages) then begin
+   if ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllImages)) or
+      ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllDepths)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllDepths)) then begin
     result:=false;
     exit;
    end else begin
-    if (ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages) and
-       (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllImages) then begin
+    if ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages) and
+        (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllImages)) or
+       ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllDepths) and
+        (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllDepths)) then begin
      if (TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[0].fFlags)<>(TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[1].fFlags) then begin
       result:=false;
       exit;
@@ -5318,7 +5321,7 @@ type TEventBeforeAfter=(Event,Before,After);
          CanResourceReused(OtherResource) then begin
        if (not ((ResourceAliasGroup.fMinimumPhysicalPassStepIndex<=OtherResource.fMaximumPhysicalPassStepIndex) and
                (OtherResource.fMinimumPhysicalPassStepIndex<=ResourceAliasGroup.fMaximumPhysicalPassStepIndex))) and
-//        Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
+               Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
           not Resource.fResourceTransitions.HasPhysicalPassesIntersectionWith(OtherResource.fResourceTransitions) then begin
         ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Min(ResourceAliasGroup.fMinimumPhysicalPassStepIndex,OtherResource.fMinimumPhysicalPassStepIndex);
         ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Max(ResourceAliasGroup.fMaximumPhysicalPassStepIndex,OtherResource.fMaximumPhysicalPassStepIndex);
