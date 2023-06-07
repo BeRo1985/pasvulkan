@@ -107,6 +107,9 @@ type EpvFrameGraph=class(Exception);
 
      TpvFrameGraph=class
       public
+       const UsedAsImageDepthInputAttachmentFlag=1 shl 0;
+             UsedAsImageDepthInputNonAttachmentFlag=1 shl 1;
+             ForbiddenUsedImageDepthInputFlagCombination=UsedAsImageDepthInputAttachmentFlag or UsedAsImageDepthInputNonAttachmentFlag;
        type PpvVulkanSemaphore=^TpvVulkanSemaphore;
             TpvVulkanSemaphorePointers=TpvDynamicArray<PpvVulkanSemaphore>;
             TpvVkSemaphorePointers=TpvDynamicArray<PVkSemaphore>;
@@ -519,6 +522,7 @@ type EpvFrameGraph=class(Exception);
               fResources:TResourceList;
               fResourcePhysicalData:TResourcePhysicalData;
               fExternalData:TExternalData;
+              fUsedFlags:TpvUInt32;
               fTransient:boolean;
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
@@ -549,6 +553,7 @@ type EpvFrameGraph=class(Exception);
               fResourceAliasGroup:TResourceAliasGroup;
               fLayoutHistory:TLayoutHistory;
               fExternalData:TExternalData;
+              fUsedFlags:TpvUInt32;
               fTransient:boolean;
               fUsed:boolean;
              public
@@ -567,6 +572,7 @@ type EpvFrameGraph=class(Exception);
               property ResourceType:TResourceType read fResourceType;
               property ResourceAliasGroup:TResourceAliasGroup read fResourceAliasGroup;
               property ExternalData:TExternalData read fExternalData write fExternalData;
+              property UsedFlags:TpvUInt32 read fUsedFlags;
               property Transient:boolean read fTransient;
               property Used:boolean read fUsed;
             end;
@@ -633,6 +639,10 @@ type EpvFrameGraph=class(Exception);
                       AllDepths=[
                        TKind.ImageDepthOutput,
                        TKind.ImageDepthInput
+                      ];
+                      AllBuffers=[
+                       TKind.BufferInput,
+                       TKind.BufferOutput
                       ];
              private
               fFrameGraph:TpvFrameGraph;
@@ -2543,14 +2553,12 @@ begin
   for OtherIndex:=0 to aWith.Count-1 do begin
    ResourceTransitions[1]:=aWith.Items[OtherIndex];
    if ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllImages)) or
-      ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllDepths)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllDepths)) then begin
+      ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllBuffers)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllBuffers)) then begin
     result:=false;
     exit;
    end else begin
-    if ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages) and
-        (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllImages)) or
-       ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllDepths) and
-        (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllDepths)) then begin
+    if (ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages) and
+       (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllImages) then begin
      if (TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[0].fFlags)<>(TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[1].fFlags) then begin
       result:=false;
       exit;
@@ -2569,16 +2577,37 @@ constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameG
                                                      const aResource:TResource;
                                                      const aKind:TKind;
                                                      const aFlags:TFlags);
+var UsedFlags:TpvUInt32;
 begin
+
  inherited Create;
+
  fFrameGraph:=aFrameGraph;
+
  fFrameGraph.fResourceTransitions.Add(self);
+
  fPass:=aPass;
+
  fResource:=aResource;
+
  fKind:=aKind;
+
  fFlags:=aFlags;
+
  fResource.fResourceTransitions.Add(self);
+
  fPass.fResourceTransitions.Add(self);
+
+ UsedFlags:=0;
+ if fKind in TpvFrameGraph.TResourceTransition.AllImageInputs then begin
+  if TpvFrameGraph.TResourceTransition.TFlag.Attachment in fFlags then begin
+   UsedFlags:=UsedFlags or TpvFrameGraph.UsedAsImageDepthInputAttachmentFlag;
+  end else begin
+   UsedFlags:=UsedFlags or TpvFrameGraph.UsedAsImageDepthInputNonAttachmentFlag;
+  end;
+ end;
+ fResource.fUsedFlags:=fResource.fUsedFlags or UsedFlags;
+
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -5321,7 +5350,8 @@ type TEventBeforeAfter=(Event,Before,After);
          CanResourceReused(OtherResource) then begin
        if (not ((ResourceAliasGroup.fMinimumPhysicalPassStepIndex<=OtherResource.fMaximumPhysicalPassStepIndex) and
                (OtherResource.fMinimumPhysicalPassStepIndex<=ResourceAliasGroup.fMaximumPhysicalPassStepIndex))) and
-               Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
+          //Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
+          (((Resource.fUsedFlags or OtherResource.fUsedFlags) and TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination)<>TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination) and
           not Resource.fResourceTransitions.HasPhysicalPassesIntersectionWith(OtherResource.fResourceTransitions) then begin
         ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Min(ResourceAliasGroup.fMinimumPhysicalPassStepIndex,OtherResource.fMinimumPhysicalPassStepIndex);
         ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Max(ResourceAliasGroup.fMaximumPhysicalPassStepIndex,OtherResource.fMaximumPhysicalPassStepIndex);
