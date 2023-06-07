@@ -51,7 +51,9 @@
  ******************************************************************************)
 unit PasVulkan.FrameGraph;
 {$i PasVulkan.inc}
-{$ifndef fpc}
+{$ifdef fpc}
+ {$packset fixed}
+{$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
    {$legacyifend on}
@@ -5038,6 +5040,7 @@ type TEventBeforeAfter=(Event,Before,After);
      if (Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
                       TPass.TFlag.SeparateCommandBuffer,
                       TPass.TFlag.Toggleable])=[] then begin
+      break;
       while Index<Count do begin
        OtherPass:=fTopologicalSortedPasses[Index];
        if ((OtherPass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
@@ -5049,13 +5052,14 @@ type TEventBeforeAfter=(Event,Before,After);
         CountFoundCrossSubpassAttachmentPairs:=0;
         Compatible:=true;
         for ResourceTransition in OtherPass.fResourceTransitions do begin
-         if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) then begin
+         if ResourceTransition.Kind in TResourceTransition.AllImageInputs then begin
           if TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags then begin
-           if not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+           if OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+            inc(CountFoundCrossSubpassAttachmentPairs);
+           end else begin
             Compatible:=false;
             break;
            end;
-           inc(CountFoundCrossSubpassAttachmentPairs);
           end else begin
            if OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
             Compatible:=false;
