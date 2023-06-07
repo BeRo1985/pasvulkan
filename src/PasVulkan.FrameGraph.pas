@@ -5076,7 +5076,8 @@ type TEventBeforeAfter=(Event,Before,After);
                               TPass.TFlag.Toggleable])=[]) and
           (OtherPass is TRenderPass) and
           (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
+          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) and
+          (TRenderPass(OtherPass).fMultiviewMask=TRenderPass(Pass).fMultiviewMask) then begin
         CountFoundCrossSubpassAttachmentPairs:=0;
         Compatible:=true;
         for ResourceTransition in OtherPass.fResourceTransitions do begin
