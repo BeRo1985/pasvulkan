@@ -148,6 +148,8 @@ begin
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                  );
 
+ fInstance.LastOutputResource:=fResourceSurface;
+
 end;
 
 destructor TpvScene3DRendererPassesAntialiasingFXAARenderPass.Destroy;

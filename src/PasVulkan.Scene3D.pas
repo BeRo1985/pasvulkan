@@ -2285,7 +2285,7 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-const FlushUpdateData=true;
+const FlushUpdateData=false;
 
 type TAnimationChannelTargetOverwriteGroupMap=array[TpvScene3D.TGroup.TAnimation.TChannel.TTarget] of TpvUInt64;
 

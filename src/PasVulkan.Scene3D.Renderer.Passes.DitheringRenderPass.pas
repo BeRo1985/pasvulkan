@@ -97,7 +97,7 @@ type { TpvScene3DRendererPassesDitheringRenderPass }
         fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
         fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        public
-        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aLastOutput:boolean); reintroduce;
         destructor Destroy; override;
         procedure AcquirePersistentResources; override;
         procedure ReleasePersistentResources; override;
@@ -111,8 +111,8 @@ implementation
 
 { TpvScene3DRendererPassesDitheringRenderPass }
 
-
-constructor TpvScene3DRendererPassesDitheringRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDitheringRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aLastOutput:boolean);
+var OutputName:TpvUTF8String;
 begin
 
  inherited Create(aFrameGraph);
@@ -135,15 +135,21 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_color_antialiasing',
-                               'resource_antialiasing_color',
+ fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
 
+ if aLastOutput then begin
+  OutputName:='output';
+ end else begin
+  OutputName:='dithering';
+ end;
+
  if assigned(fInstance.ExternalOutputImageData) then begin
-  fResourceSurface:=AddImageOutput('resourcetype_output_color',
-                                   'resource_output',
+  fResourceSurface:=AddImageOutput('resourcetype_'+OutputName+'_color',
+                                   'resource_'+OutputName,
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -152,8 +158,8 @@ begin
                                    fInstance.ExternalOutputImageData
                                   );
  end else begin
-  fResourceSurface:=AddImageOutput('resourcetype_output_color',
-                                   'resource_output',
+  fResourceSurface:=AddImageOutput('resourcetype_'+OutputName+'_color',
+                                   'resource_'+OutputName,
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),

@@ -450,7 +450,8 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAEdgesRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass;
+     PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass;
 
 type TpvScene3DRendererInstancePasses=class
       private
@@ -515,6 +516,7 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingSMAAWeightsRenderPass:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass;
        fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
+       fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
      end;
 
 const CountJitterOffsets=128;
@@ -879,6 +881,16 @@ begin
                                   VK_FORMAT_R8G8B8A8_UNORM
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_dithering_color',
+                                  false,
+                                  VK_FORMAT_R8G8B8A8_SRGB,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_color',
                                   false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -1138,6 +1150,16 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]:=TpvScene3DRendererPassesSSAOBlurRenderPass.Create(fFrameGraph,self,false);
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ case Renderer.ShadowMode of
+  TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
+   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
+  end;
+  TpvScene3DRendererShadowMode.MSM:begin
+   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapBlurRenderPasses[1]);
+  end;
+  else begin
+  end;
+ end;
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLightClusterGridAssignComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
@@ -1390,9 +1412,21 @@ begin
   end;
  end;
 
- TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self);
+ if true then begin
 
- fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass;
+  TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,false);
+
+  TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
+
+  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
+
+ end else begin
+
+  TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,true);
+
+  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass;
+
+ end;
 
  fFrameGraph.DoWaitOnSemaphore:=true;
 
@@ -1782,7 +1816,7 @@ begin
                                                             UniversalFence,
                                                             0,
                                                             SizeOf(TpvFloat),
-                                                            TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                                                           TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 
       fLuminanceEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
       fLuminanceEventReady[InFlightFrameIndex]:=false;
