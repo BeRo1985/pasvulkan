@@ -1028,6 +1028,8 @@ type EpvVulkanException=class(Exception);
        fUMA:boolean;
        fCompleteDeviceMemoryMappable:boolean;
        fCompleteTotalMemoryMappable:boolean;
+       fMaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize;
+       fMaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
@@ -1091,6 +1093,10 @@ type EpvVulkanException=class(Exception);
        property CompleteDeviceMemoryMappable:boolean read fCompleteDeviceMemoryMappable; //< Complete GPU device memory mappable (approximated by the Vulkan memory property flags
 
        property CompleteTotalMemoryMappable:boolean read fCompleteTotalMemoryMappable; //< Complete total CPU and GPU memory mappable (approximated by the Vulkan memory property flags      
+
+       property MaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize read fMaximumMemoryMappableDeviceLocalHeapSize;
+
+       property MaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize read fMaximumMemoryMappableNonDeviceLocalHeapSize;
 
      end;
 
@@ -1315,7 +1321,7 @@ type EpvVulkanException=class(Exception);
        fBuffer:TpvVulkanBuffer;
        fLock:TPasMPCriticalSection;
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize=0;const aFlags:TpvVulkanDeviceMemoryStagingFlags=[TpvVulkanDeviceMemoryStagingFlag.Source,TpvVulkanDeviceMemoryStagingFlag.Destination,TpvVulkanDeviceMemoryStagingFlag.PersistentMappedIfPossibe]); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TVkDeviceSize=0;const aFlags:TpvVulkanDeviceMemoryStagingFlags=[TpvVulkanDeviceMemoryStagingFlag.Source,TpvVulkanDeviceMemoryStagingFlag.Destination,TpvVulkanDeviceMemoryStagingFlag.PersistentMapped]); reintroduce;
        destructor Destroy; override;
        procedure Initialize;
        function Zero(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence;const aDestinationBuffer:TpvVulkanBuffer;const aDestinationOffset,aSize:TVkDeviceSize):TVkDeviceSize;
@@ -10883,6 +10889,8 @@ begin
  fUMA:=true;
  fCompleteDeviceMemoryMappable:=true;
  fCompleteTotalMemoryMappable:=true;
+ fMaximumMemoryMappableDeviceLocalHeapSize:=Low(TVkDeviceSize);
+ fMaximumMemoryMappableNonDeviceLocalHeapSize:=Low(TVkDeviceSize);
  HeapMemoryPropertyFlags:=nil;
  try
   SetLength(HeapMemoryPropertyFlags,fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount);
@@ -10908,6 +10916,13 @@ begin
    end;
    if (MemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)<>VulkanHostVisibleCoherentMemoryPropertyFlags then begin
     fCompleteTotalMemoryMappable:=false;
+   end;
+   if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+    if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+     fMaximumMemoryMappableDeviceLocalHeapSize:=Max(fMaximumMemoryMappableDeviceLocalHeapSize,fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size);
+    end else begin
+     fMaximumMemoryMappableNonDeviceLocalHeapSize:=Max(fMaximumMemoryMappableNonDeviceLocalHeapSize,fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size);
+    end;
    end;
    if (MemoryPropertyFlags and VulkanDeviceLocalHostVisibleCoherentMemoryPropertyFlags)=VulkanDeviceLocalHostVisibleCoherentMemoryPropertyFlags then begin
     if fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size>(TVkDeviceSize(256) shl 20) then begin
@@ -12194,7 +12209,16 @@ end;
 procedure TpvVulkanDeviceMemoryStaging.Initialize;
 var BufferUsageFlags:TVkBufferUsageFlags;
     BufferFlags:TpvVulkanBufferFlags;
+    MemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+    MemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+    MemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+    MemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
 begin
+
+ MemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+ MemoryPreferredPropertyFlags:=0;
+ MemoryAvoidPropertyFlags:=0;
+ MemoryPreferredNotPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
  if fSize=0 then begin
   case fDevice.PhysicalDevice.Properties.vendorID of
@@ -12202,7 +12226,21 @@ begin
    TpvUInt32(TpvVulkanVendorID.NVIDIA),
    TpvUInt32(TpvVulkanVendorID.Intel):begin
     // For desktop/notebook GPUs, like NVIDIA, AMD and Intel GPUs
-    fSize:=64 shl 20; // 64MB
+    if fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize>=(32 shl 20) then begin
+     fSize:=Min(Max(TpvUInt64(fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize shr 5),TpvUInt64(32 shl 20)),TpvUInt64(256 shl 20));
+     MemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+     MemoryPreferredPropertyFlags:=0;
+     MemoryAvoidPropertyFlags:=0;
+     MemoryPreferredNotPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    end else if fDevice.fMemoryManager.fMaximumMemoryMappableDeviceLocalHeapSize>=(32 shl 20) then begin
+     fSize:=Min(Max(TpvUInt64(fDevice.fMemoryManager.fMaximumMemoryMappableDeviceLocalHeapSize shr 5),TpvUInt64(32 shl 20)),TpvUInt64(256 shl 20));
+     MemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+     MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+     MemoryAvoidPropertyFlags:=0;
+     MemoryPreferredNotPropertyFlags:=0;
+    end else begin
+     fSize:=16 shl 20; // 16MB
+    end;
    end;
    else begin
     // And for other (mobile) GPUs, like for example Mali, Adreno and PowerVR
@@ -12238,10 +12276,10 @@ begin
                                   BufferUsageFlags,
                                   VK_SHARING_MODE_EXCLUSIVE,
                                   [],
-                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                  0,
-                                  0,
-                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                  MemoryRequiredPropertyFlags,
+                                  MemoryPreferredPropertyFlags,
+                                  MemoryAvoidPropertyFlags,
+                                  MemoryPreferredNotPropertyFlags,
                                   0,
                                   0,
                                   0,
