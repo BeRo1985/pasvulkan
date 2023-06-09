@@ -621,25 +621,8 @@ var CascadedShadowMapIndex,Index,ViewIndex:TpvSizeInt;
 begin
 
  Renderer:=fInstance.Renderer;
-{$ifdef DEBUG_STRANGE_BUG}
- writeln('1: ',Renderer.Scene3D.BoundingBox.Min.X,' ',Renderer.Scene3D.BoundingBox.Min.Y,' ',Renderer.Scene3D.BoundingBox.Min.Z,' ',Renderer.Scene3D.BoundingBox.Max.X,' ',Renderer.Scene3D.BoundingBox.Max.Y,' ',Renderer.Scene3D.BoundingBox.Max.Z);
 
- fSceneWorldSpaceBoundingBox:=Renderer.Scene3D.BoundingBox;
-
- writeln('2: ',Renderer.Scene3D.BoundingBox.Min.X,' ',Renderer.Scene3D.BoundingBox.Min.Y,' ',Renderer.Scene3D.BoundingBox.Min.Z,' ',Renderer.Scene3D.BoundingBox.Max.X,' ',Renderer.Scene3D.BoundingBox.Max.Y,' ',Renderer.Scene3D.BoundingBox.Max.Z);
-
- writeln('3: ',Renderer.Scene3D.BoundingBox.Min.X,' ',Renderer.Scene3D.BoundingBox.Min.Y,' ',Renderer.Scene3D.BoundingBox.Min.Z,' ',Renderer.Scene3D.BoundingBox.Max.X,' ',Renderer.Scene3D.BoundingBox.Max.Y,' ',Renderer.Scene3D.BoundingBox.Max.Z);
-
- fSceneWorldSpaceBoundingBox:=Renderer.Scene3D.BoundingBox;
-
- writeln('4: ',Renderer.Scene3D.BoundingBox.Min.X,' ',Renderer.Scene3D.BoundingBox.Min.Y,' ',Renderer.Scene3D.BoundingBox.Min.Z,' ',Renderer.Scene3D.BoundingBox.Max.X,' ',Renderer.Scene3D.BoundingBox.Max.Y,' ',Renderer.Scene3D.BoundingBox.Max.Z);
-
- writeln('5: ',Renderer.Scene3D.BoundingBox.Min.X,' ',Renderer.Scene3D.BoundingBox.Min.Y,' ',Renderer.Scene3D.BoundingBox.Min.Z,' ',Renderer.Scene3D.BoundingBox.Max.X,' ',Renderer.Scene3D.BoundingBox.Max.Y,' ',Renderer.Scene3D.BoundingBox.Max.Z);
-{$else}
-
- fSceneWorldSpaceBoundingBox:=Renderer.Scene3D.BoundingBox;
-
-{$endif}
+ fSceneWorldSpaceBoundingBox:=Renderer.Scene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
 
  fSceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(fSceneWorldSpaceBoundingBox);
 

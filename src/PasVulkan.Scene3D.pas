@@ -267,6 +267,7 @@ type EpvScene3D=class(Exception);
               function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0;const aDefaultW:TpvDouble=0.0):TpvVector4; overload; inline;
               function Get(const aDefault:TpvVector4):TpvVector4; overload; inline;
             end;
+            TInFlightFrameAABBs=array[0..MaxInFlightFrames-1] of TpvAABB;
        const MaxViews=65536 div SizeOf(TView);
        type TID=TpvUInt32;
             TIDManager=class(TpvGenericIDManager<TID>);
@@ -2175,6 +2176,7 @@ type EpvScene3D=class(Exception);
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
+       fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
        fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
        fPreviousViews:TViews;
        fViews:TViews;
@@ -2268,6 +2270,7 @@ type EpvScene3D=class(Exception);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
+       property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
        property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
@@ -14894,6 +14897,8 @@ begin
   fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
   fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
  end;
+
+ fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
 end;
 
