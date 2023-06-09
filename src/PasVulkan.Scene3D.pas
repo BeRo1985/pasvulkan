@@ -2285,7 +2285,7 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-const FlushUpdateData=true;
+const FlushUpdateData=false;
 
 type TAnimationChannelTargetOverwriteGroupMap=array[TpvScene3D.TGroup.TAnimation.TChannel.TTarget] of TpvUInt64;
 
@@ -13745,13 +13745,14 @@ begin
 
  fMaterialDataGenerationLock:=TPasMPSpinLock.Create;
 
- if assigned(fVulkanDevice) and fVulkanDevice.MemoryManager.CompleteTotalMemoryMappable then begin
+{$ifdef Linux}
+ if TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA then begin
+  fBufferStreamingMode:=TBufferStreamingMode.Staging;
+ end else {$endif}if assigned(fVulkanDevice) and fVulkanDevice.MemoryManager.CompleteTotalMemoryMappable then begin
   fBufferStreamingMode:=TBufferStreamingMode.Direct;
  end else begin
   fBufferStreamingMode:=TBufferStreamingMode.Staging;
  end;
-
- //fBufferStreamingMode:=TBufferStreamingMode.Staging;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
