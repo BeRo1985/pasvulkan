@@ -13745,10 +13745,10 @@ begin
 
  fMaterialDataGenerationLock:=TPasMPSpinLock.Create;
 
-{$ifdef Linux}
+(*{$ifdef Linux}
  if TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA then begin
   fBufferStreamingMode:=TBufferStreamingMode.Staging;
- end else {$endif}if assigned(fVulkanDevice) and fVulkanDevice.MemoryManager.CompleteTotalMemoryMappable then begin
+ end else {$endif}*)if assigned(fVulkanDevice) and fVulkanDevice.MemoryManager.CompleteTotalMemoryMappable then begin
   fBufferStreamingMode:=TBufferStreamingMode.Direct;
  end else begin
   fBufferStreamingMode:=TBufferStreamingMode.Staging;
