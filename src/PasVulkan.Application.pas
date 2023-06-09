@@ -1383,6 +1383,8 @@ type EpvApplication=class(Exception)
 
        fVulkanDebugging:boolean;
 
+       fVulkanShaderPrintfDebugging:boolean;
+
        fVulkanValidation:boolean;
 
        fVulkanNVIDIAAfterMath:boolean;
@@ -1927,6 +1929,8 @@ type EpvApplication=class(Exception)
        property VulkanRecreateSwapChainOnSuboptimalSurface:boolean read fVulkanRecreateSwapChainOnSuboptimalSurface write fVulkanRecreateSwapChainOnSuboptimalSurface;
 
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
+
+       property VulkanShaderPrintfDebugging:boolean read fVulkanShaderPrintfDebugging write fVulkanShaderPrintfDebugging;
 
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
 
@@ -6969,6 +6973,8 @@ begin
 
  fVulkanDebugging:=false;
 
+ fVulkanShaderPrintfDebugging:=false;
+
  fVulkanDebuggingEnabled:=false;
 
  fVulkanPreferDedicatedGPUs:=true;
@@ -7464,6 +7470,10 @@ begin
    end;
   end;
 
+  if fVulkanShaderPrintfDebugging and (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)>=0) then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+  end;
+
   SetupVulkanDevice(fVulkanDevice);
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -7774,6 +7784,7 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    VulkanDebugLn('Calling TpvVulkanInstance.Initialize() . . .');
 {$ifend}
+   fVulkanInstance.ShaderPrintfDebugging:=fVulkanDebuggingEnabled and fVulkanShaderPrintfDebugging;
    fVulkanInstance.Initialize;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');

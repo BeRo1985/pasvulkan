@@ -1,8 +1,13 @@
 #version 450 core
 
+//#define SHADERDEBUG
+
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#if defined(SHADERDEBUG) && !defined(VELOCITY)
+#extension GL_EXT_debug_printf : enable
+#endif
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in uint inMaterialID;
@@ -82,6 +87,31 @@ void main() {
   tangentSpace[2] = normalize(tangentSpace[2]);
     
   View view = uView.views[viewIndex];
+
+#if defined(SHADERDEBUG) && !defined(VELOCITY)
+  if(gl_VertexIndex == 0){
+    mat4 m = /*view.projectionMatrix * view.viewMatrix;*/ view.inverseProjectionMatrix;
+    debugPrintfEXT("view-index %i matrix: %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+                   viewIndex, 
+                   m[0][0], 
+                   m[0][1],
+                   m[0][2],
+                   m[0][3],
+                   m[1][0], 
+                   m[1][1],
+                   m[1][2],
+                   m[1][3],
+                   m[2][0], 
+                   m[2][1],
+                   m[2][2],
+                   m[2][3],
+                   m[3][0], 
+                   m[3][1],
+                   m[3][2],
+                   m[3][3]);
+  }
+#endif
+
 
 #if 1
   // The actual standard approach

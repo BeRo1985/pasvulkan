@@ -185,6 +185,7 @@ var PreviousInFlightFrameIndex:TpvSizeInt;
     MemoryBarrier:TVkMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
  fInstance.Renderer.Scene3D.UpdateCachedVertices(fPipeline,
                                                  aInFlightFrameIndex,

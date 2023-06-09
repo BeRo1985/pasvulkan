@@ -324,6 +324,7 @@ begin
  if Debugging or fForceUseValidationLayers then begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
+  VulkanShaderPrintfDebugging:=true;
  end;
  Title:='PasVulkan GLTF Viewer';
  PathName:='gltftest.pasvulkan';

@@ -290,6 +290,7 @@ type EpvVulkanException=class(Exception);
        fApplicationName:TpvVulkanCharString;
        fEngineName:TpvVulkanCharString;
        fValidation:longbool;
+       fShaderPrintfDebugging:boolean;
        fAllocationManager:TpvVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fAvailableLayers:TpvVulkanAvailableLayers;
@@ -345,6 +346,7 @@ type EpvVulkanException=class(Exception);
        property EngineVersion:TpvUInt32 read GetEngineVersion write SetEngineVersion;
        property APIVersion:TpvUInt32 read GetAPIVersion write SetAPIVersion;
        property Validation:longbool read fValidation write fValidation;
+       property ShaderPrintfDebugging:boolean read fShaderPrintfDebugging write fShaderPrintfDebugging;
        property AvailableLayers:TpvVulkanAvailableLayers read fAvailableLayers;
        property AvailableExtensions:TpvVulkanAvailableExtensions read fAvailableExtensions;
        property AvailableLayerNames:TStringList read fAvailableLayerNames;
@@ -6862,6 +6864,8 @@ begin
 
  fInstanceVulkan:=nil;
 
+ fShaderPrintfDebugging:=false;
+
  fPhysicalDevices:=TpvVulkanPhysicalDeviceList.Create;
  fNeedToEnumeratePhysicalDevices:=false;
 
@@ -7065,6 +7069,8 @@ procedure TpvVulkanInstance.Initialize;
 var i:TpvInt32;
     InstanceCommands:PVulkanCommands;
     InstanceCreateInfo:TVkInstanceCreateInfo;
+    ValidationFeatures:TVkValidationFeaturesEXT;
+    ValidationFeatureEnable:array[0..0] of TVkValidationFeatureEnableEXT;
 begin
 
  if fInstanceHandle=VK_NULL_INSTANCE then begin
@@ -7100,6 +7106,15 @@ begin
    InstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   InstanceCreateInfo.pApplicationInfo:=@fApplicationInfo;
+  if fShaderPrintfDebugging then begin
+   FillChar(ValidationFeatures,SizeOf(TVkValidationFeaturesEXT),#0);
+   ValidationFeatures.sType:=VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+   ValidationFeatures.enabledValidationFeatureCount:=1;
+   ValidationFeatureEnable[0]:=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+   ValidationFeatures.pEnabledValidationFeatures:=@ValidationFeatureEnable;
+   ValidationFeatures.pNext:=InstanceCreateInfo.pNext;
+   InstanceCreateInfo.pNext:=@ValidationFeatures;
+  end;
   VulkanCheckResult(fVulkan.CreateInstance(@InstanceCreateInfo,fAllocationCallbacks,@fInstanceHandle));
 
   GetMem(InstanceCommands,SizeOf(TVulkanCommands));
@@ -7183,7 +7198,10 @@ begin
  if (fDebugReportCallbackEXT=VK_NULL_HANDLE) and assigned(fInstanceVulkan.Commands.CreateDebugReportCallbackEXT) then begin
   FillChar(fDebugReportCallbackCreateInfoEXT,SizeOf(TVkDebugReportCallbackCreateInfoEXT),#0);
   fDebugReportCallbackCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-  fDebugReportCallbackCreateInfoEXT.flags:=TpvUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TpvUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TpvUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
+  fDebugReportCallbackCreateInfoEXT.flags:=TpvUInt32(VK_DEBUG_REPORT_INFORMATION_BIT_EXT) or
+                                           TpvUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or
+                                           TpvUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or
+                                           TpvUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
   fDebugReportCallbackCreateInfoEXT.pfnCallback:=@TpvVulkanInstanceDebugReportCallbackFunction;
   fDebugReportCallbackCreateInfoEXT.pUserData:=self;
   VulkanCheckResult(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstanceHandle,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
