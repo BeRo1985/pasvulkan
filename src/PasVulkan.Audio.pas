@@ -4204,7 +4204,7 @@ begin
   SetThreadIdealProcessor(GetCurrentThread,GDFW.CPUCores[1]);
 {$endif}
 {$endif}
-{$endif}(**)
+{$endif}//*)
   SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
   while not Terminated do begin
    if AudioEngine.IsReady and AudioEngine.IsActive then begin
