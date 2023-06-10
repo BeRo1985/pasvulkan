@@ -227,6 +227,7 @@ type { TpvScene3DRendererInstance }
               fLightSideVector:TpvVector3;
               fLightUpVector:TpvVector3;
               fLightSpaceCorner:TpvVector3;
+              fUnitsPerTexel:TpvVector2;
 {$ifdef UseSphereBasedCascadedShadowMaps}
               //fSplitCenter:TpvVector3;
               //fSplitBounds:TpvVector3;
@@ -235,7 +236,6 @@ type { TpvScene3DRendererInstance }
               fOffset:TpvVector2;
               fStep:TpvVector2;
 {$else}
-              fUnitsPerTexel:TpvVector2;
               fShadowOrigin:TpvVector2;
               fRoundedOrigin:TpvVector2;
               fRoundOffset:TpvVector2;
@@ -787,7 +787,7 @@ begin
 
   fUnitsPerTexel:=(fLightSpaceAABB.Max.xy-fLightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(fInstance.CascadedShadowMapWidth,fInstance.CascadedShadowMapHeight);
 
-{$ifdef UseSphereBasedCascadedShadowMaps}
+{$if defined(UseSphereBasedCascadedShadowMaps)}
   fLightSpaceSphere:=TpvSphere.CreateFromAABB(fLightSpaceAABB);
 
   Border:=4;
@@ -852,14 +852,15 @@ begin
 
   fLightViewProjectionMatrix:=fLightViewMatrix*fLightProjectionMatrix;
 
-  fShadowOrigin:=(fLightViewProjectionMatrix.MulHomogen(TpvVector3.Origin)).xy*TpvVector2.InlineableCreate(fInstance.CascadedShadowMapWidth*0.5,fInstance.CascadedShadowMapHeight*0.5);
+//fShadowOrigin:=(fLightViewProjectionMatrix.MulHomogen(TpvVector3.Origin)).xy*TpvVector2.InlineableCreate(fInstance.CascadedShadowMapWidth*0.5,fInstance.CascadedShadowMapHeight*0.5);
+  fShadowOrigin:=(fLightProjectionMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xy*TpvVector2.InlineableCreate(fInstance.fCascadedShadowMapWidth*0.5,fInstance.fCascadedShadowMapHeight*0.5);
   fRoundedOrigin.x:=round(fShadowOrigin.x);
   fRoundedOrigin.y:=round(fShadowOrigin.y);
-  fRoundOffset:=(fRoundedOrigin-fShadowOrigin)*TpvVector2.InlineableCreate(2.0/fInstance.CascadedShadowMapWidth,2.0/fInstance.CascadedShadowMapHeight);
+  fRoundOffset:=(fRoundedOrigin-fShadowOrigin)*TpvVector2.InlineableCreate(2.0/fInstance.fCascadedShadowMapWidth,2.0/fInstance.fCascadedShadowMapHeight);
   fLightProjectionMatrix[3,0]:=fLightProjectionMatrix[3,0]+fRoundOffset.x;
   fLightProjectionMatrix[3,1]:=fLightProjectionMatrix[3,1]+fRoundOffset.y;
 
-{$endif}
+{$ifend}
 
   fLightViewProjectionMatrix:=fLightViewMatrix*fLightProjectionMatrix;
 
