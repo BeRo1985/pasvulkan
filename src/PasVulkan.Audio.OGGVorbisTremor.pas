@@ -36,6 +36,7 @@ unit PasVulkan.Audio.OGGVorbisTremor;
   {$ifend}
  {$endif}
 {$endif}
+{$rangechecks off}
 
 interface
 
