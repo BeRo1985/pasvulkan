@@ -4187,7 +4187,7 @@ function oggpack_read(b:Poggpack_buffer;bits:longint):longint;
 {begin
  result:=oggpack_look(b,bits);
  oggpack_adv(b,bits);
-end;{}
+end;//}
 var m,ret:longword;
 begin
  m:=mask[bits];
@@ -4272,7 +4272,7 @@ begin
  end;
  b^.headbit:=bits and 7;
  result:=longint(longword(ret and m));
-end;{}
+end;//}
 
 function oggpack_bytes(b:Poggpack_buffer):longint;
 begin
