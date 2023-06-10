@@ -782,7 +782,7 @@ begin
   //fLightSpaceAABB:=fSceneLightSpaceBoundingBox;
 
   fLightSpaceSphere:=TpvSphere.CreateFromAABB(fLightSpaceAABB);
-  fLightSpaceSphere.Radius:=ceil(fLightSpaceSphere.Radius*16)/16;
+  fLightSpaceSphere.Radius:=ceil(fLightSpaceSphere.Radius*16.0)/16.0;
   fLightSpaceAABB:=fLightSpaceSphere.ToAABB;
 
   fUnitsPerTexel:=(fLightSpaceAABB.Max.xy-fLightSpaceAABB.Min.xy)/TpvVector2.InlineableCreate(fInstance.CascadedShadowMapWidth,fInstance.CascadedShadowMapHeight);
