@@ -250,6 +250,8 @@ type { TpvScene3DRendererInstance }
               fInverseProjectionMatrixRight:TpvMatrix4x4;
               fInverseLightViewProjectionMatrix:TpvMatrix4x4;
               fViewMatrix:TpvMatrix4x4;
+             protected
+              procedure SnapLightFrustum(var aScale,aOffset:TpvVector2;const aMatrix:TpvMatrix4x4;const aWorldOrigin:TpvVector3;const aShadowMapResolution:TpvVector2);
              public
               constructor Create(const aInstance:TpvScene3DRendererInstance); reintroduce;
               destructor Destroy; override;
@@ -600,6 +602,15 @@ end;
 destructor TpvScene3DRendererInstance.TCascadedShadowMapBuilder.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvScene3DRendererInstance.TCascadedShadowMapBuilder.SnapLightFrustum(var aScale,aOffset:TpvVector2;const aMatrix:TpvMatrix4x4;const aWorldOrigin:TpvVector3;const aShadowMapResolution:TpvVector2);
+var Resolution,LightSpaceOrigin:TpvVector2;
+begin
+ Resolution:=aShadowMapResolution*2.0;
+ aOffset:=aOffset-TpvVector2.InlineableCreate(Modulo(aOffset.x,Resolution.x),Modulo(aOffset.y,Resolution.y));
+ LightSpaceOrigin:=aMatrix.MulHomogen(aWorldOrigin).xy*aScale;
+ aOffset:=aOffset-TpvVector2.InlineableCreate(Modulo(LightSpaceOrigin.x,Resolution.x),Modulo(LightSpaceOrigin.y,Resolution.y));
 end;
 
 procedure TpvScene3DRendererInstance.TCascadedShadowMapBuilder.Calculate(const aInFlightFrameIndex:TpvInt32);

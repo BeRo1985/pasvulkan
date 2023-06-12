@@ -32,6 +32,12 @@
   {$ifend}*)
 
 uses
+  {$if defined(fpc) and defined(PasVulkanUseSynFPCx64MM)}
+   SynFPCx64MM,
+  {$ifend}
+  {$if defined(fpc) and defined(PasVulkanUseCMEM)}
+   cmem,
+  {$ifend}
   {$if defined(fpc) and defined(Unix)}
    cthreads,
    BaseUnix,
