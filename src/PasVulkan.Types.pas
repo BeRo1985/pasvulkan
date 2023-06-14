@@ -89,6 +89,10 @@ type PPpvInt8=^PpvInt8;
      PpvUInt16=^TpvUInt16;
      TpvUInt16={$ifdef fpc}UInt16{$else}word{$endif};
 
+     PPpvUInt16Array=^PpvUInt16Array;
+     PpvUInt16Array=^TpvUInt16Array;
+     TpvUInt16Array=array[0..65535] of TpvUInt16;
+
      PPpvInt32=^PpvInt32;
      PpvInt32=^TpvInt32;
      TpvInt32={$ifdef fpc}Int32{$else}longint{$endif};
@@ -96,6 +100,10 @@ type PPpvInt8=^PpvInt8;
      PPpvUInt32=^PpvUInt32;
      PpvUInt32=^TpvUInt32;
      TpvUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
+
+     PPpvUInt32Array=^PpvUInt32Array;
+     PpvUInt32Array=^TpvUInt32Array;
+     TpvUInt32Array=array[0..65535] of TpvUInt32;
 
      TpvUInt32DynamicArray=array of TpvUInt32;
 
@@ -106,6 +114,10 @@ type PPpvInt8=^PpvInt8;
      PPpvUInt64=^PpvUInt64;
      PpvUInt64=^TpvUInt64;
      TpvUInt64=UInt64;
+
+     PPpvUInt64Array=^PpvUInt64Array;
+     PpvUInt64Array=^TpvUInt64Array;
+     TpvUInt64Array=array[0..65535] of TpvUInt64;
 
      PPpvChar=^PChar;
      PpvChar=PAnsiChar;
