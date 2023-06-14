@@ -3524,10 +3524,10 @@ begin
  if (not fDataLoaded) and not fInLoadData then begin
   fInLoadData:=true;
   try
-   if {(fReferenceCounter>0) and} not fDataLoaded then begin
+   if (fReferenceCounter>0) and not fDataLoaded then begin
     fLock.Acquire;
     try
-     if {(fReferenceCounter>0) and} not fDataLoaded then begin
+     if (fReferenceCounter>0) and not fDataLoaded then begin
       try
        fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
        fTexture.DoFreeDataAfterFinish:=false;
@@ -3729,7 +3729,6 @@ begin
  fName:=#0+'WhiteTexture';
  fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
  fResourceDataStream.Clear;
- LoadData;
 end;
 
 procedure TpvScene3D.TImage.AssignFromDefaultNormalMapTexture;
@@ -3737,7 +3736,6 @@ begin
  fName:=#0+'DefaultNormalMapTexture';
  fKind:=TpvScene3D.TImage.TKind.DefaultNormalMapTexture;
  fResourceDataStream.Clear;
- LoadData;
 end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
@@ -3746,7 +3744,6 @@ begin
  fKind:=TpvScene3D.TImage.TKind.ResourceTexture;
  fResourceDataStream.Clear;
  aSourceImage.GetResourceData(fResourceDataStream);
- LoadData;
 end;
 
 { TpvScene3D.TSampler }
@@ -8903,6 +8900,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      end;
      if assigned(CurrentImage) and (NewImages.IndexOf(CurrentImage)<0) then begin
       CurrentImage.IncRef;
+      CurrentImage.LoadData;
       NewImages.Add(CurrentImage);
      end;
     finally
@@ -13906,6 +13904,7 @@ begin
  fWhiteImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fWhiteImage.AssignFromWhiteTexture;
  fWhiteImage.IncRef;
+ fWhiteImage.LoadData;
 
  fWhiteTexture:=TpvScene3D.TTexture.Create(ResourceManager,self);
  fWhiteTexture.AssignFromWhiteTexture;
@@ -13914,6 +13913,7 @@ begin
  fDefaultNormalMapImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fDefaultNormalMapImage.AssignFromDefaultNormalMapTexture;
  fDefaultNormalMapImage.IncRef;
+ fDefaultNormalMapImage.LoadData;
 
  fDefaultNormalMapTexture:=TpvScene3D.TTexture.Create(ResourceManager,self);
  fDefaultNormalMapTexture.AssignFromDefaultNormalMapTexture;
