@@ -3529,6 +3529,7 @@ begin
     try
      if (fReferenceCounter>0) and not fDataLoaded then begin
       try
+       FreeAndNil(fTexture); // to avoid memory leaks already beforehand
        fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
        fTexture.DoFreeDataAfterFinish:=false;
        case fKind of
