@@ -3381,6 +3381,7 @@ type EpvVulkanException=class(Exception);
                                  const aSRGB:boolean;
                                  const aAdditionalSRGB:boolean=false);
        destructor Destroy; override;
+       procedure Unload;
        class procedure GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean); static;
        class procedure SwapEndianness(const aData:TpvPointer;
                                       const aDataSize:TVkSizeInt;
@@ -21156,15 +21157,21 @@ end;
 
 destructor TpvVulkanTexture.Destroy;
 begin
- if not fExternalSampler then begin
-  FreeAndNil(fSampler);
- end;
  if assigned(fData) then begin
   try
    FreeMem(fData);
   finally
    fData:=nil;
   end;
+ end;
+ Unload;
+ inherited Destroy;
+end;
+
+procedure TpvVulkanTexture.Unload;
+begin
+ if not fExternalSampler then begin
+  FreeAndNil(fSampler);
  end;
  FreeAndNil(fSRGBImageView);
  FreeAndNil(fImageView);
@@ -21178,7 +21185,6 @@ begin
  end;
  FreeAndNil(fImage);
  FreeAndNil(fStagingBuffer);
- inherited Destroy;
 end;
 
 class procedure TpvVulkanTexture.GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean);

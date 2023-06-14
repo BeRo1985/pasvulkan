@@ -355,6 +355,8 @@ type EpvScene3D=class(Exception);
               fID:TID;
               fName:TpvUTF8String;
               fReferenceCounter:Int32;
+              fDataLoaded:TPasMPBool32;
+              fInLoadData:TPasMPBool32;
               fUploaded:TPasMPBool32;
               fInUpload:TPasMPBool32;
               fAdded:TPasMPBool32;
@@ -365,6 +367,7 @@ type EpvScene3D=class(Exception);
               procedure BeforeDestruction; override;
               procedure PrepareDeferredFree; override;
               procedure Remove; virtual;
+              procedure LoadData; virtual;
               procedure Upload; virtual;
               procedure Unload; virtual;
               procedure IncRef; virtual;
@@ -374,6 +377,7 @@ type EpvScene3D=class(Exception);
               property ID:TID read fID;
              published
               property Name:TpvUTF8String read fName write fName;
+              property DataLoaded:TPasMPBool32 read fDataLoaded;
               property Uploaded:TPasMPBool32 read fUploaded;
               property ReferenceCounter:Int32 read fReferenceCounter;
             end;
@@ -586,6 +590,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Remove; override;
+              procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
               function BeginLoad(const aStream:TStream):boolean; override;
@@ -622,6 +627,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Remove; override;
+              procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
@@ -648,6 +654,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Remove; override;
+              procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
               function GetHashData:THashData;
@@ -939,6 +946,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Remove; override;
+              procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
               procedure Assign(const aFrom:TMaterial);
@@ -1910,6 +1918,7 @@ type EpvScene3D=class(Exception);
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
                      procedure Remove; override;
+                     procedure LoadData; override;
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
@@ -2040,6 +2049,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Remove; override;
+              procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
               procedure Check(const aInFlightFrameIndex:TpvSizeInt);
@@ -2604,6 +2614,10 @@ begin
  end;}
  ReleaseFrameDelay:=(MaxInFlightFrames*2)+1;
 
+ fDataLoaded:=false;
+
+ fInLoadData:=false;
+
  fUploaded:=false;
 
  fInUpload:=false;
@@ -2635,6 +2649,10 @@ begin
 end;
 
 procedure TpvScene3D.TBaseObject.Remove;
+begin
+end;
+
+procedure TpvScene3D.TBaseObject.LoadData;
 begin
 end;
 
@@ -3423,11 +3441,13 @@ begin
  inherited Create(aResourceManager,aParent);
  fResourceDataStream:=TMemoryStream.Create;
  fLock:=TPasMPSpinLock.Create;
+ fTexture:=nil;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
 begin
  Unload;
+ FreeAndNil(fTexture);
  FreeAndNil(fLock);
  FreeAndNil(fResourceDataStream);
  inherited Destroy;
@@ -3483,6 +3503,98 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TImage.LoadData;
+const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
+                                                    TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff));
+     DefaultNormalMapTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
+                                                              TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
+begin
+ if (not fDataLoaded) and not fInLoadData then begin
+  fInLoadData:=true;
+  try
+   if (fReferenceCounter>0) and not fDataLoaded then begin
+    fLock.Acquire;
+    try
+     if (fReferenceCounter>0) and not fDataLoaded then begin
+      try
+       fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
+       fTexture.DoFreeDataAfterFinish:=false;
+       case fKind of
+        TpvScene3D.TImage.TKind.WhiteTexture:begin
+         fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
+                                 VK_SAMPLE_COUNT_1_BIT,
+                                 8,
+                                 8,
+                                 0,
+                                 0,
+                                 1,
+                                 0,
+                                 [TpvVulkanTextureUsageFlag.General,
+                                  TpvVulkanTextureUsageFlag.TransferDst,
+                                  TpvVulkanTextureUsageFlag.TransferSrc,
+                                  TpvVulkanTextureUsageFlag.Sampled],
+                                 @WhiteTexturePixels,
+                                 SizeOf(TpvUInt32)*64,
+                                 false,
+                                 false,
+                                 0,
+                                 true,
+                                 true);
+        end;
+        TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
+         fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
+                                 VK_SAMPLE_COUNT_1_BIT,
+                                 8,
+                                 8,
+                                 0,
+                                 0,
+                                 1,
+                                 0,
+                                 [TpvVulkanTextureUsageFlag.General,
+                                  TpvVulkanTextureUsageFlag.TransferDst,
+                                  TpvVulkanTextureUsageFlag.TransferSrc,
+                                  TpvVulkanTextureUsageFlag.Sampled],
+                                 @DefaultNormalMapTexturePixels,
+                                 SizeOf(TpvUInt32)*64,
+                                 false,
+                                 false,
+                                 0,
+                                 true,
+                                 false);
+        end;
+        else begin
+         fTexture.LoadFromImage(fResourceDataStream,
+                                true,
+                                false,
+                                true);
+        end;
+       end;
+      finally
+       fDataLoaded:=true;
+      end;
+     end;
+    finally
+     fLock.Release;
+    end;
+   end;
+  finally
+   fInLoadData:=false;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TImage.Upload;
 const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
                                                     TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),TpvUInt32($ffffffff),
@@ -3505,110 +3617,48 @@ var UniversalQueue:TpvVulkanQueue;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
 begin
- if not fInUpload then begin
+ LoadData;
+ if (not fUploaded) and not fInUpload then begin
   fInUpload:=true;
   try
    if (fReferenceCounter>0) and not fUploaded then begin
     fLock.Acquire;
     try
      if (fReferenceCounter>0) and not fUploaded then begin
-      try
-       UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
+      if assigned(fTexture) then begin
        try
-        UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
-                                                          fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+        UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
         try
-         UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                              VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+         UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
+                                                           fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
          try
-          UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
+          UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
           try
-           case fKind of
-            TpvScene3D.TImage.TKind.WhiteTexture:begin
-             fTexture:=TpvVulkanTexture.CreateFromMemory(fSceneInstance.fVulkanDevice,
-                                                         UniversalQueue,
-                                                         UniversalCommandBuffer,
-                                                         UniversalFence,
-                                                         UniversalQueue,
-                                                         UniversalCommandBuffer,
-                                                         UniversalFence,
-                                                         VK_FORMAT_R8G8B8A8_UNORM,
-                                                         VK_SAMPLE_COUNT_1_BIT,
-                                                         8,
-                                                         8,
-                                                         0,
-                                                         0,
-                                                         1,
-                                                         0,
-                                                         [TpvVulkanTextureUsageFlag.General,
-                                                          TpvVulkanTextureUsageFlag.TransferDst,
-                                                          TpvVulkanTextureUsageFlag.TransferSrc,
-                                                          TpvVulkanTextureUsageFlag.Sampled],
-                                                         @WhiteTexturePixels,
-                                                         SizeOf(TpvUInt32)*64,
-                                                         false,
-                                                         false,
-                                                         0,
-                                                         true,
-                                                         true);
-            end;
-            TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
-             fTexture:=TpvVulkanTexture.CreateFromMemory(fSceneInstance.fVulkanDevice,
-                                                         UniversalQueue,
-                                                         UniversalCommandBuffer,
-                                                         UniversalFence,
-                                                         UniversalQueue,
-                                                         UniversalCommandBuffer,
-                                                         UniversalFence,
-                                                         VK_FORMAT_R8G8B8A8_UNORM,
-                                                         VK_SAMPLE_COUNT_1_BIT,
-                                                         8,
-                                                         8,
-                                                         0,
-                                                         0,
-                                                         1,
-                                                         0,
-                                                         [TpvVulkanTextureUsageFlag.General,
-                                                          TpvVulkanTextureUsageFlag.TransferDst,
-                                                          TpvVulkanTextureUsageFlag.TransferSrc,
-                                                          TpvVulkanTextureUsageFlag.Sampled],
-                                                         @DefaultNormalMapTexturePixels,
-                                                         SizeOf(TpvUInt32)*64,
-                                                         false,
-                                                         false,
-                                                         0,
-                                                         true,
-                                                         false);
-            end;
-            else begin
-             fTexture:=TpvVulkanTexture.CreateFromImage(fSceneInstance.fVulkanDevice,
-                                                        UniversalQueue,
-                                                        UniversalCommandBuffer,
-                                                        UniversalFence,
-                                                        UniversalQueue,
-                                                        UniversalCommandBuffer,
-                                                        UniversalFence,
-                                                        fResourceDataStream,
-                                                        true,
-                                                        false,
-                                                        true);
-            end;
+           UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
+           try
+            fTexture.Finish(UniversalQueue,
+                            UniversalCommandBuffer,
+                            UniversalFence,
+                            UniversalQueue,
+                            UniversalCommandBuffer,
+                            UniversalFence);
+           finally
+            FreeAndNil(UniversalFence);
            end;
           finally
-           FreeAndNil(UniversalFence);
+           FreeAndNil(UniversalCommandBuffer);
           end;
          finally
-          FreeAndNil(UniversalCommandBuffer);
+          FreeAndNil(UniversalCommandPool);
          end;
         finally
-         FreeAndNil(UniversalCommandPool);
+         UniversalQueue:=nil;
         end;
        finally
-        UniversalQueue:=nil;
+        fUploaded:=true;
        end;
-      finally
-       fUploaded:=true;
       end;
      end;
     finally
@@ -3628,7 +3678,9 @@ begin
   try
    if fUploaded then begin
     try
-     FreeAndNil(fTexture);
+     if assigned(fTexture) then begin
+      fTexture.Unload;
+     end;
     finally
      fUploaded:=false;
     end;
@@ -3646,6 +3698,7 @@ begin
   try
    aStream.Seek(0,soBeginning);
    fResourceDataStream.CopyFrom(aStream,aStream.Size);
+   LoadData;
    result:=true;
   except
   end;
@@ -3859,6 +3912,10 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TSampler.LoadData;
+begin
+end;
+
 procedure TpvScene3D.TSampler.Upload;
 begin
  if not fInUpload then begin
@@ -4045,6 +4102,10 @@ begin
    fAdded:=false;
   end;
  end;
+end;
+
+procedure TpvScene3D.TTexture.LoadData;
+begin
 end;
 
 procedure TpvScene3D.TTexture.Upload;
@@ -4660,6 +4721,10 @@ begin
    fAdded:=false;
   end;
  end;
+end;
+
+procedure TpvScene3D.TMaterial.LoadData;
+begin
 end;
 
 procedure TpvScene3D.TMaterial.Upload;
@@ -8148,6 +8213,10 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.LoadData;
+begin
+end;
+
 procedure TpvScene3D.TGroup.Upload;
 var Index:TpvSizeInt;
     UniversalQueue:TpvVulkanQueue;
@@ -10965,6 +11034,10 @@ begin
  end else begin
   result:=nil;
  end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.LoadData;
+begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Upload;
