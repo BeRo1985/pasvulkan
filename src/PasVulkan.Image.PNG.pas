@@ -401,101 +401,101 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
     idatasize,idatacapacity,LineFilter:TpvUInt32;
     idataexpandedsize:TpvSizeUInt;
     idataexpanded:TpvPointer;
+    UsingBitGroup,DataIndex:TpvUInt32;
+    Last:TpvUInt64;
  procedure RaiseError;
  begin
   raise EpvLoadPNGImage.Create('Invalid or corrupt PNG stream');
  end;
- function Swap16(x:TpvUInt16):TpvUInt16;
+ function Swap16(x:TpvUInt16):TpvUInt16; {$ifdef fpc}inline;{$endif}
  begin
   result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
  end;
- function Swap32(x:TpvUInt32):TpvUInt32;
+ function Swap32(x:TpvUInt32):TpvUInt32; {$ifdef fpc}inline;{$endif}
  begin
   result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
  end;
- function Swap64(x:TpvUInt64):TpvUInt64;
+ function Swap64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}inline;{$endif}
  begin
   result:=(TpvUInt64(Swap32(x and TpvUInt64($ffffffff))) shl 32) or Swap32((x and TpvUInt64($ffffffff00000000)) shr 32);
  end;
- function GetU8(var p:TpvPointer):TpvUInt8;
+ function GetU8(var p:TpvPointer):TpvUInt8; {$ifdef fpc}inline;{$endif}
  begin
   result:=TpvUInt8(p^);
   inc(PpvRawByteChar(p),sizeof(TpvUInt8));
  end;
- function GetU16(var p:TpvPointer):TpvUInt16;
+ function GetU16(var p:TpvPointer):TpvUInt16; {$ifdef fpc}inline;{$endif}
  begin
   result:=GetU8(p) shl 8;
   result:=result or GetU8(p);
  end;
- function GetU32(var p:TpvPointer):TpvUInt32;
+ function GetU32(var p:TpvPointer):TpvUInt32; {$ifdef fpc}inline;{$endif}
  begin
   result:=GetU16(p) shl 16;
   result:=result or GetU16(p);
  end;
+ function CalcColor:TColorData; {$ifdef fpc}inline;{$endif}
+ var i:TpvInt32;
+     p:TpvPointer;
+     w:PpvUInt16;
+     v:TpvUInt16;
+ begin
+  if UsingBitGroup=0 then begin
+{$ifdef big_endian}
+   result:=0;
+   Move(CurrentLine^[DataIndex],result,ByteWidth);
+{$else}
+   p:=@CurrentLine^[DataIndex];
+   case ByteWidth of
+    1:begin
+     result:=TpvUInt8(p^);
+    end;
+    2:begin
+     result:=TpvUInt16(p^);
+    end;
+    4:begin
+     result:=TpvUInt32(p^);
+    end;
+    8:begin
+     result:=TpvUInt64(p^);
+    end;
+    else begin
+     result:=0;
+     Move(p^,result,ByteWidth);
+    end;
+   end;
+{$endif}
+   if BitDepth=16 then begin
+    p:=@result;
+    w:=p;
+    for i:=1 to ByteWidth div SizeOf(TpvUInt16) do begin
+     v:=w^;
+     w^:=((v and $ff) shl 8) or ((v and $ff00) shr 8);
+     inc(w);
+    end;
+   end;
+{$ifdef big_endian}
+   result:=Swap64(result);
+{$endif}
+   inc(DataIndex,ByteWidth);
+   Last:=result;
+  end else begin
+   result:=Last;
+  end;
+  if ByteWidth=1 then begin
+   result:=(TpvUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
+   inc(UsingBitgroup);
+   if UsingBitGroup>=CountBitsUsed then begin
+    UsingBitGroup:=0;
+   end;
+  end;
+ end;
  procedure HandleScanLine(const y,CurrentPass:TpvInt32;const ScanLine:PByteArray);
  var x,l,pc:TpvInt32;
-     UsingBitGroup,DataIndex:TpvUInt32;
      c:TColorData;
-     Last:TpvUInt64;
      pe:TPNGPixelUI16;
      pui8:PPNGPixelUI8;
      pui16:PPNGPixelUI16;
-  function CalcColor:TColorData;
-  var i:TpvInt32;
-      p:TpvPointer;
-      w:PpvUInt16;
-      v:TpvUInt16;
-  begin
-   if UsingBitGroup=0 then begin
-{$ifdef big_endian}
-    result:=0;
-    Move(CurrentLine^[DataIndex],result,ByteWidth);
-{$else}
-    p:=@CurrentLine^[DataIndex];
-    case ByteWidth of
-     1:begin
-      result:=TpvUInt8(p^);
-     end;
-     2:begin
-      result:=TpvUInt16(p^);
-     end;
-     4:begin
-      result:=TpvUInt32(p^);
-     end;
-     8:begin
-      result:=TpvUInt64(p^);
-     end;
-     else begin
-      result:=0;
-      Move(p^,result,ByteWidth);
-     end;
-    end;
-{$endif}
-    if BitDepth=16 then begin
-     p:=@result;
-     w:=p;
-     for i:=1 to ByteWidth div SizeOf(TpvUInt16) do begin
-      v:=w^;
-      w^:=((v and $ff) shl 8) or ((v and $ff00) shr 8);
-      inc(w);
-     end;
-    end;
-{$ifdef big_endian}
-    result:=Swap64(result);
-{$endif}
-    inc(DataIndex,ByteWidth);
-    Last:=result;
-   end else begin
-    result:=Last;
-   end;
-   if ByteWidth=1 then begin
-    result:=(TpvUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
-    inc(UsingBitgroup);
-    if UsingBitGroup>=CountBitsUsed then begin
-     UsingBitGroup:=0;
-    end;
-   end;
-  end;
  begin
   UsingBitGroup:=0;
   DataIndex:=0;
@@ -741,7 +741,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
    end;
   end;
  end;
- function Paeth(a,b,c:TpvInt32):TpvInt32;
+ function Paeth(a,b,c:TpvInt32):TpvInt32; {$ifdef fpc}inline;{$endif}
  var p,pa,pb,pc:TpvInt32;
  begin
   p:=(a+b)-c;
