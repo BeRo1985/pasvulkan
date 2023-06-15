@@ -58,6 +58,11 @@ unit PasVulkan.Image.PNG;
   {$ifend}
  {$endif}
 {$endif}
+{$if defined(fpc) and defined(Android) and defined(cpuarm)}
+ {$define UsePNGExternalLibrary}
+{$else}
+ {$undef UsePNGExternalLibrary}
+{$ifend}
 
 interface
 
@@ -87,7 +92,7 @@ function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImage
 
 implementation
 
-{$if defined(fpc) and defined(Android) and defined(cpuarm)}
+{$if defined(fpc) and defined(UsePNGExternalLibrary)}
 uses PasVulkan.Image.PNG.ExternalLibrary;
 {$ifend}
 
@@ -115,7 +120,7 @@ begin
  end;
 end;
 
-{$if defined(fpc) and defined(Android) and defined(cpuarm)}
+{$if defined(fpc) and defined(UsePNGExternalLibrary)}
 type POwnStream=^TOwnStream;
      TOwnStream=record
       Data:pointer;
@@ -131,7 +136,7 @@ end;
 {$ifend}
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
-{$if defined(fpc) and defined(Android) and defined(cpuarm)}
+{$if defined(fpc) and defined(UsePNGExternalLibrary)}
 const kPngSignatureLength=8;
 var png_ptr:png_structp;
     info_ptr:png_infop;
