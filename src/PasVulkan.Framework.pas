@@ -3397,6 +3397,7 @@ type EpvVulkanException=class(Exception);
                                       const aSwapEndiannessTexels:TpvInt32=0;
                                       const aDDSStructure:boolean=true);
        procedure ConvertChannelToMonoRedChannel(const aChannelIndex:TpvInt32);
+       procedure AlphaBleeding;
        procedure Finish(const aGraphicsQueue:TpvVulkanQueue;
                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                         const aGraphicsFence:TpvVulkanFence;
@@ -3567,6 +3568,7 @@ procedure VulkanDisableFloatingPointExceptions;
 implementation
 
 uses PasVulkan.Utils,
+     PasVulkan.Image.Utils,
      PasVulkan.Streams,
      PasVulkan.NVIDIA.AfterMath;
 
@@ -21901,6 +21903,31 @@ begin
   end;
   else begin
    raise EpvVulkanTextureException.Create('Non-supported format for this operation');
+  end;
+ end;
+end;
+
+procedure TpvVulkanTexture.AlphaBleeding;
+begin
+ if assigned(fData) and (fDataSize>0) and (fDepth<=1) and (fCountFaces<=1) then begin
+  case fFormat of
+   VK_FORMAT_R8G8B8A8_SINT,
+   VK_FORMAT_R8G8B8A8_SNORM,
+   VK_FORMAT_R8G8B8A8_SRGB,
+   VK_FORMAT_R8G8B8A8_SSCALED,
+   VK_FORMAT_R8G8B8A8_UINT,
+   VK_FORMAT_R8G8B8A8_UNORM,
+   VK_FORMAT_R8G8B8A8_USCALED:begin
+    RGBAAlphaBleeding(fData,fWidth,fHeight,false);
+   end;
+   VK_FORMAT_R16G16B16A16_SINT,
+   VK_FORMAT_R16G16B16A16_SNORM,
+   VK_FORMAT_R16G16B16A16_SSCALED,
+   VK_FORMAT_R16G16B16A16_UINT,
+   VK_FORMAT_R16G16B16A16_UNORM,
+   VK_FORMAT_R16G16B16A16_USCALED:begin
+    RGBAAlphaBleeding(fData,fWidth,fHeight,true);
+   end;
   end;
  end;
 end;
