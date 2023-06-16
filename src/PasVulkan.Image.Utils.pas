@@ -118,7 +118,7 @@ begin
     for k:=Low(Offsets) to High(Offsets) do begin
      s:=Offsets[k,0];
      t:=Offsets[k,1];
-     if ((x+s)>=0) and ((x+s)<aWidth) and ((y+s)>=0) and ((y+s)<aHeight) then begin
+     if ((x+s)>=0) and ((x+s)<aWidth) and ((y+t)>=0) and ((y+t)<aHeight) then begin
       Index:=j+((s+(t*aWidth)) shl 2);
       if ((not a16Bit) and (PpvUInt8Array(aData)^[Index]<>0)) or (a16Bit and (PpvUInt16Array(aData)^[Index]<>0)) then begin
        IsLoose:=false;
@@ -159,7 +159,7 @@ begin
     for k:=Low(Offsets) to High(Offsets) do begin
      s:=Offsets[k,0];
      t:=Offsets[k,1];
-     if ((x+s)>=0) and ((x+s)<aWidth) and ((y+s)>=0) and ((y+s)<aHeight) then begin
+     if ((x+s)>=0) and ((x+s)<aWidth) and ((y+t)>=0) and ((y+t)<aHeight) then begin
       Index:=j+(s+(t*aWidth));
       if (Opaque[Index] and 1)<>0 then begin
        Index:=Index shl 2;
@@ -191,7 +191,7 @@ begin
      for k:=Low(Offsets) to High(Offsets) do begin
       s:=Offsets[k,0];
       t:=Offsets[k,1];
-      if ((x+s)>=0) and ((x+s)<aWidth) and ((y+s)>=0) and ((y+s)<aHeight) then begin
+      if ((x+s)>=0) and ((x+s)<aWidth) and ((y+t)>=0) and ((y+t)<aHeight) then begin
        Index:=j+(s+(t*aWidth));
        if Loose[Index] then begin
         Loose[Index]:=false;
