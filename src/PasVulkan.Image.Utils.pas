@@ -179,13 +179,13 @@ begin
 
     if Count>0 then begin
      if a16Bit then begin
-      PpvUInt16Array(aData)^[Index+0]:=r div Count;
-      PpvUInt16Array(aData)^[Index+1]:=g div Count;
-      PpvUInt16Array(aData)^[Index+2]:=b div Count;
+      PpvUInt16Array(aData)^[i+0]:=r div Count;
+      PpvUInt16Array(aData)^[i+1]:=g div Count;
+      PpvUInt16Array(aData)^[i+2]:=b div Count;
      end else begin
-      PpvUInt8Array(aData)^[Index+0]:=r div Count;
-      PpvUInt8Array(aData)^[Index+1]:=g div Count;
-      PpvUInt8Array(aData)^[Index+2]:=b div Count;
+      PpvUInt8Array(aData)^[i+0]:=r div Count;
+      PpvUInt8Array(aData)^[i+1]:=g div Count;
+      PpvUInt8Array(aData)^[i+2]:=b div Count;
      end;
      Opaque[j]:=$fe;
      for k:=Low(Offsets) to High(Offsets) do begin
