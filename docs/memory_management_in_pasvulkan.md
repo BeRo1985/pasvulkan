@@ -1,5 +1,5 @@
 
-# Vulkan Memory management in PasVulkan
+# Vulkan memory management in PasVulkan
 
 Memory management in Vulkan is a complex and intricate process that gives developers control over how graphics memory is allocated and used. The primary principle of Vulkan's memory management is that it offers a lower-level interface to the GPU than APIs like OpenGL, entrusting developers with the responsibility of managing memory allocations themselves. This can lead to more efficient use of memory and enhanced performance, but it also necessitates a deeper understanding of how the GPU operates and the optimal way to manage its resources.
 
