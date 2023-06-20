@@ -206,7 +206,8 @@ type TpvSignedDistanceField2DVariant=
 
      TpvSignedDistanceField2DMSDFGenerator=class
       public
-       const NegativeInfinityDistance=-1e240;
+       const PositiveInfinityDistance=1e240;
+             NegativeInfinityDistance=-1e240;
        type { TSignedDistance }
             TSignedDistance=record
              public
@@ -220,6 +221,14 @@ type TpvSignedDistanceField2DVariant=
               class operator LessThanOrEqual(const a,b:TSignedDistance):boolean;
               class operator GreaterThan(const a,b:TSignedDistance):boolean;
               class operator GreaterThanOrEqual(const a,b:TSignedDistance):boolean;
+            end;
+            { TMultiSignedDistance }
+            TMultiSignedDistance=record
+             public
+              r:TpvDouble;
+              g:TpvDouble;
+              b:TpvDouble;
+              Median:TpvDouble;
             end;
             { TBounds }
             TBounds=record
@@ -273,6 +282,8 @@ type TpvSignedDistanceField2DVariant=
              public
               Edges:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegments;
               Count:TpvSizeInt;
+              CachedWinding:TpvSizeInt;
+              MultiSignedDistance:TMultiSignedDistance;
               class function Create:TContour; static;
               function AddEdge({$ifdef fpc}constref{$else}const{$endif} aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
               procedure Bounds(var aBounds:TpvSignedDistanceField2DMSDFGenerator.TBounds);
@@ -775,6 +786,7 @@ class function TpvSignedDistanceField2DMSDFGenerator.TContour.Create:TpvSignedDi
 begin
  result.Edges:=nil;
  result.Count:=0;
+ result.CachedWinding:=Low(TpvSizeInt);
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TContour.AddEdge({$ifdef fpc}constref{$else}const{$endif} aEdge:TpvSignedDistanceField2DMSDFGenerator.TEdgeSegment):TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
@@ -826,40 +838,45 @@ var Total:TpvDouble;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
     a,b,c,d,Previous,Current:TpvVectorPathVector;
 begin
- if Count>0 then begin
-  Total:=0.0;
-  case Count of
-   1:Begin
-    a:=Edges[0].Point(0.0);
-    b:=Edges[0].Point(1.0/3.0);
-    c:=Edges[0].Point(2.0/3.0);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,a);
-   end;
-   2:begin
-    a:=Edges[0].Point(0.0);
-    b:=Edges[0].Point(0.5);
-    c:=Edges[1].Point(0.0);
-    d:=Edges[1].Point(0.5);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,d);
-    Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(d,a);
-   end;
-   else begin
-    Previous:=Edges[Count-1].Point(0.0);
-    for Index:=0 to Count-1 do begin
-     Edge:=@Edges[Index];
-     Current:=Edge^.Point(0.0);
-     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(Previous,Current);
-     Previous:=Current;
+ if CachedWinding=Low(TpvSizeInt) then begin
+  if Count>0 then begin
+   Total:=0.0;
+   case Count of
+    1:Begin
+     a:=Edges[0].Point(0.0);
+     b:=Edges[0].Point(1.0/3.0);
+     c:=Edges[0].Point(2.0/3.0);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,a);
+    end;
+    2:begin
+     a:=Edges[0].Point(0.0);
+     b:=Edges[0].Point(0.5);
+     c:=Edges[1].Point(0.0);
+     d:=Edges[1].Point(0.5);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(a,b);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(b,c);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(c,d);
+     Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(d,a);
+    end;
+    else begin
+     Previous:=Edges[Count-1].Point(0.0);
+     for Index:=0 to Count-1 do begin
+      Edge:=@Edges[Index];
+      Current:=Edge^.Point(0.0);
+      Total:=Total+TpvSignedDistanceField2DMSDFGenerator.Shoelace(Previous,Current);
+      Previous:=Current;
+     end;
     end;
    end;
+   result:=TpvSignedDistanceField2DMSDFGenerator.Sign(Total);
+  end else begin
+   result:=0;
   end;
-  result:=TpvSignedDistanceField2DMSDFGenerator.Sign(Total);
+  CachedWinding:=result;
  end else begin
-  result:=0;
+  result:=CachedWinding;
  end;
 end;
 
@@ -1195,7 +1212,7 @@ begin
        Corner:=Corners[0];
        if Contour.Count>=3 then begin
         for EdgeIndex:=0 to Contour.Count-1 do begin
-         Edge:=@Contour^.Edges[EdgeIndex];
+         Edge:=@Contour^.Edges[(EdgeIndex+Corner) mod Contour.Count];
          Edge^.Color:=Colors[3+trunc((((3+((2.875*EdgeIndex)/(Contour.Count-1)))-1.4375)+0.5)-3)];
         end;
        end else if Contour.Count>=1 then begin
@@ -1232,7 +1249,7 @@ begin
        Spline:=0;
        Start:=Corners[0];
        Color:=TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.WHITE;
-       TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Color,aSeed);
+       TpvSignedDistanceField2DMSDFGenerator.SwitchColor(Color,aSeed,TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLACK);
        InitialColor:=Color;
        for EdgeIndex:=0 to Contour^.Count-1 do begin
         Index:=(Start+EdgeIndex) mod Contour^.Count;
@@ -1261,75 +1278,198 @@ type TEdgePoint=Record
       NearEdge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
       NearParam:TpvDouble;
      end;
-var x,y,ContourIndex,EdgeIndex:TpvSizeInt;
+var x,y,ContourIndex,EdgeIndex,Winding:TpvSizeInt;
     Contour:TpvSignedDistanceField2DMSDFGenerator.PContour;
     Edge:TpvSignedDistanceField2DMSDFGenerator.PEdgeSegment;
-    r,g,b:TEdgePoint;
+    r,g,b,sr,sg,sb:TEdgePoint;
     p:TpvVectorPathVector;
-    Param:TpvDouble;
+    Param,MedianMinDistance,MinMedianDistance,
+    PositiveDistance,NegativeDistance:TpvDouble;
     MinDistance,Distance:TpvSignedDistanceField2DMSDFGenerator.TSignedDistance;
     HasMinDistance:boolean;
     Pixel:TpvSignedDistanceField2DMSDFGenerator.PPixel;
+    MultiSignedDistance:TMultiSignedDistance;
 begin
+
  x:=aX;
+
  if aShape.InverseYAxis then begin
   y:=aImage.Height-(aY+1);
  end else begin
   y:=aY;
  end;
+
  p:=(TpvVectorPathVector.Create(x+0.5,y+0.5)/aScale)-aTranslate;
+
+ MinMedianDistance:=abs(TpvSignedDistanceField2DMSDFGenerator.PositiveInfinityDistance);
+
+ PositiveDistance:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
+
+ NegativeDistance:=TpvSignedDistanceField2DMSDFGenerator.PositiveInfinityDistance;
+
  MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
  HasMinDistance:=false;
- r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- r.NearEdge:=nil;
- r.NearParam:=0.0;
- g.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- g.NearEdge:=nil;
- g.NearParam:=0.0;
- b.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
- b.NearEdge:=nil;
- b.NearParam:=0.0;
+
+ sr.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ sr.NearEdge:=nil;
+ sr.NearParam:=0.0;
+
+ sg.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ sg.NearEdge:=nil;
+ sg.NearParam:=0.0;
+
+ sb.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+ sb.NearEdge:=nil;
+ sb.NearParam:=0.0;
+
+ Winding:=0;
+
  for ContourIndex:=0 to aShape.Count-1 do begin
+
+  r.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+  r.NearEdge:=nil;
+  r.NearParam:=0.0;
+
+  g.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+  g.NearEdge:=nil;
+  g.NearParam:=0.0;
+
+  b.MinDistance:=TpvSignedDistanceField2DMSDFGenerator.TSignedDistance.Empty;
+  b.NearEdge:=nil;
+  b.NearParam:=0.0;
+
   Contour:=@aShape.Contours[ContourIndex];
   if Contour^.Count>0 then begin
+
    for EdgeIndex:=0 to Contour^.Count-1 do begin
+
     Edge:=@Contour^.Edges[EdgeIndex];
+
     Distance:=Edge^.MinSignedDistance(p,Param);
+
     if (not HasMinDistance) or (Distance<MinDistance) then begin
      MinDistance:=Distance;
      HasMinDistance:=true;
     end;
+
     if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.RED))<>0) and ((not assigned(r.NearEdge)) or (Distance<r.MinDistance)) then begin
      r.MinDistance:=Distance;
      r.NearEdge:=Edge;
      r.NearParam:=Param;
     end;
+
     if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.GREEN))<>0) and ((not assigned(g.NearEdge)) or (Distance<g.MinDistance)) then begin
      g.MinDistance:=Distance;
      g.NearEdge:=Edge;
      g.NearParam:=Param;
     end;
+
     if ((TpvUInt32(Edge^.Color) and TpvUInt32(TpvSignedDistanceField2DMSDFGenerator.TEdgeColor.BLUE))<>0) and ((not assigned(b.NearEdge)) or (Distance<b.MinDistance)) then begin
      b.MinDistance:=Distance;
      b.NearEdge:=Edge;
      b.NearParam:=Param;
     end;
+
+   end;
+
+  end;
+
+  if (not assigned(sr.NearEdge)) or (r.MinDistance<sr.MinDistance) then begin
+   sr:=r;
+  end;
+
+  if (not assigned(sg.NearEdge)) or (g.MinDistance<sg.MinDistance) then begin
+   sg:=g;
+  end;
+
+  if (not assigned(sb.NearEdge)) or (b.MinDistance<sb.MinDistance) then begin
+   sb:=b;
+  end;
+
+  MedianMinDistance:=abs(TpvSignedDistanceField2DMSDFGenerator.Median(r.MinDistance.Distance,g.MinDistance.Distance,b.MinDistance.Distance));
+  if MedianMinDistance<MinMedianDistance then begin
+   MinMedianDistance:=MedianMinDistance;
+   Winding:=Contour^.Winding;
+  end;
+
+  if assigned(r.NearEdge) then begin
+   r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
+  end;
+
+  if assigned(r.NearEdge) then begin
+   g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
+  end;
+
+  if assigned(r.NearEdge) then begin
+   b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
+  end;
+
+  MedianMinDistance:=abs(TpvSignedDistanceField2DMSDFGenerator.Median(r.MinDistance.Distance,g.MinDistance.Distance,b.MinDistance.Distance));
+  Contour^.MultiSignedDistance.r:=r.MinDistance.Distance;
+  Contour^.MultiSignedDistance.g:=g.MinDistance.Distance;
+  Contour^.MultiSignedDistance.b:=b.MinDistance.Distance;
+  Contour^.MultiSignedDistance.Median:=MedianMinDistance;
+
+  if (Contour^.Winding>0) and (MedianMinDistance>=0) and (abs(MedianMinDistance)<abs(PositiveDistance)) then begin
+   PositiveDistance:=MedianMinDistance;
+  end else if (Contour^.Winding<0) and (MedianMinDistance<=0) and (abs(MedianMinDistance)<abs(NegativeDistance)) then begin
+   NegativeDistance:=MedianMinDistance;
+  end;
+ end;
+
+ if assigned(sr.NearEdge) then begin
+  sr.NearEdge^.DistanceToPseudoDistance(sr.MinDistance,p,sr.NearParam);
+ end;
+
+ if assigned(r.NearEdge) then begin
+  sg.NearEdge^.DistanceToPseudoDistance(sg.MinDistance,p,sg.NearParam);
+ end;
+
+ if assigned(r.NearEdge) then begin
+  sb.NearEdge^.DistanceToPseudoDistance(sb.MinDistance,p,sb.NearParam);
+ end;
+
+ MultiSignedDistance.r:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
+ MultiSignedDistance.g:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
+ MultiSignedDistance.b:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
+ MultiSignedDistance.Median:=TpvSignedDistanceField2DMSDFGenerator.NegativeInfinityDistance;
+
+ if (PositiveDistance>=0.0) and (abs(PositiveDistance)<=abs(NegativeDistance)) then begin
+  Winding:=1;
+  for ContourIndex:=0 to aShape.Count-1 do begin
+   Contour:=@aShape.Contours[ContourIndex];
+   if (Contour^.Winding>0) and (Contour^.MultiSignedDistance.Median>MultiSignedDistance.Median) and (abs(Contour^.MultiSignedDistance.Median)<abs(NegativeDistance)) then begin
+    MultiSignedDistance:=Contour^.MultiSignedDistance;
+   end;
+  end;
+ end else if (NegativeDistance<=0.0) and (abs(NegativeDistance)<=abs(PositiveDistance)) then begin
+  MultiSignedDistance.Median:=-MultiSignedDistance.Median;
+  Winding:=-1;
+  for ContourIndex:=0 to aShape.Count-1 do begin
+   Contour:=@aShape.Contours[ContourIndex];
+   if (Contour^.Winding<0) and (Contour^.MultiSignedDistance.Median<MultiSignedDistance.Median) and (abs(Contour^.MultiSignedDistance.Median)<abs(PositiveDistance)) then begin
+    MultiSignedDistance:=Contour^.MultiSignedDistance;
    end;
   end;
  end;
- if assigned(r.NearEdge) then begin
-  r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
+
+ for ContourIndex:=0 to aShape.Count-1 do begin
+  Contour:=@aShape.Contours[ContourIndex];
+  if (Contour^.Winding<>Winding) and (abs(Contour^.MultiSignedDistance.Median)<abs(MultiSignedDistance.Median)) then begin
+   MultiSignedDistance:=Contour^.MultiSignedDistance;
+  end;
  end;
- if assigned(r.NearEdge) then begin
-  g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
+
+ if SameValue(TpvSignedDistanceField2DMSDFGenerator.Median(sr.MinDistance.Distance,sg.MinDistance.Distance,sb.MinDistance.Distance),MultiSignedDistance.Median) then begin
+  MultiSignedDistance.r:=sr.MinDistance.Distance;
+  MultiSignedDistance.g:=sg.MinDistance.Distance;
+  MultiSignedDistance.b:=sb.MinDistance.Distance;
  end;
- if assigned(r.NearEdge) then begin
-  b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
- end;
+
  Pixel:=@aImage.Pixels[(aY*aImage.Width)+aX];
- Pixel^.r:=(r.MinDistance.Distance/aRange)+0.5;
- Pixel^.g:=(g.MinDistance.Distance/aRange)+0.5;
- Pixel^.b:=(b.MinDistance.Distance/aRange)+0.5;
+ Pixel^.r:=(MultiSignedDistance.r/aRange)+0.5;
+ Pixel^.g:=(MultiSignedDistance.g/aRange)+0.5;
+ Pixel^.b:=(MultiSignedDistance.b/aRange)+0.5;
  Pixel^.a:=(MinDistance.Distance/aRange)+0.5;
 end;
 
