@@ -1596,7 +1596,6 @@ begin
   Clashes:=nil;
  end;
 
-
  Clashes:=nil;
  Count:=0;
  try
