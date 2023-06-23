@@ -1797,7 +1797,7 @@ begin
   end;
  end;
 
- if true then begin
+ if false then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,false);
 
