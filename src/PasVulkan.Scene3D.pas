@@ -329,6 +329,18 @@ type EpvScene3D=class(Exception);
             end;
             PCachedVertex=^TCachedVertex;
             TCachedVertices=array of TCachedVertex;
+            TDebugPrimitiveVertex=packed record
+             case boolean of
+              false:(
+               Position:TpvVector3;                  //  12    0
+               Color:TpvHalfFloatVector4;            // + 8 =  8
+              );                                     //  ==   ==
+              true:(                                 //  24   24 per vertex
+               Padding:array[0..23] of TpvUInt8;
+              );
+            end;
+            PDebugPrimitiveVertex=^TDebugPrimitiveVertex;
+            TDebugPrimitiveVertices=array of TDebugPrimitiveVertex;
             TJointBlock=packed record
              case boolean of
               false:(
@@ -2278,6 +2290,7 @@ type EpvScene3D=class(Exception);
                               out aZNear:TpvScalar;
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
+       procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -15932,6 +15945,13 @@ begin
  if aWithPreviousPosition then begin
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
  end;
+end;
+
+procedure TpvScene3D.InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+begin
+ aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TDebugPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Position)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Color)));
 end;
 
 procedure InitializeAnimationChannelTargetOverwriteGroupMap;
