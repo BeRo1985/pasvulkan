@@ -10916,10 +10916,12 @@ begin
  end;
  FreeAndNil(fMaterials);
  fCacheVerticesNodeDirtyBitmap:=nil;
- for Index:=0 to fDuplicatedMaterials.Count-1 do begin
-  fDuplicatedMaterials[Index].DecRef;
+ if assigned(fDuplicatedMaterials) then begin
+  for Index:=0 to fDuplicatedMaterials.Count-1 do begin
+   fDuplicatedMaterials[Index].DecRef;
+  end;
+  FreeAndNil(fDuplicatedMaterials);
  end;
- FreeAndNil(fDuplicatedMaterials);
  fNodes:=nil;
  fSkins:=nil;
  fMaterialMap:=nil;

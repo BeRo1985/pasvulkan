@@ -98,7 +98,7 @@ type EpvResource=class(Exception);
      IpvResource=interface(IpvReferenceCountedObject)['{AD2C0315-C8AF-4D79-876E-1FA42FB869F9}']
       function GetResource:TpvResource;
       function GetResourceClass:TpvResourceClass;
-      function WaitFor:boolean;
+      function WaitFor(const aFinishing:boolean):boolean;
      end;
 
      TpvResourceOnFinish=procedure(const aResource:TpvResource;const aSuccess:boolean) of object;
@@ -142,7 +142,7 @@ type EpvResource=class(Exception);
        procedure BeforeDestruction; override;
        function GetResource:TpvResource;
        function GetResourceClass:TpvResourceClass;
-       function WaitFor:boolean;
+       function WaitFor(const aFinishing:boolean):boolean;
        function CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function GetStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function LoadMetaData(const aStream:TStream):boolean; overload; virtual;
@@ -195,7 +195,7 @@ type EpvResource=class(Exception);
        fQueueItemResourceMap:TQueueItemResourceMap;
        function QueueResource(const aResource:TpvResource;const aParent:TpvResource):boolean;
        procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
-       procedure WaitForResource(const aResource:TpvResource);
+       procedure WaitForResource(const aResource:TpvResource;const aFinishing:boolean);
        function ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
        function Process(const aTimeout:TpvInt64=5):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
@@ -461,13 +461,13 @@ begin
  result:=TpvResourceClass(ClassType);
 end;
 
-function TpvResource.WaitFor:boolean;
+function TpvResource.WaitFor(const aFinishing:boolean):boolean;
 begin
  result:=fLoaded;
  if (not result) and
     assigned(fResourceManager) and
     assigned(fResourceManager.fBackgroundLoader) then begin
-  fResourceManager.fBackgroundLoader.WaitForResource(self);
+  fResourceManager.fBackgroundLoader.WaitForResource(self,aFinishing);
   result:=fLoaded;
  end;
 end;
@@ -893,7 +893,7 @@ begin
 
 end;
 
-procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource);
+procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource;const aFinishing:boolean);
 var QueueItem:TQueueItem;
 begin
 
@@ -915,14 +915,28 @@ begin
     end;
    end;
 
-   fLock.Release;
-   try
-    FinalizeQueueItem(QueueItem);
-   finally
-    fLock.Acquire;
-   end;
+   if aFinishing then begin
+    fLock.Release;
+    try
+     FinalizeQueueItem(QueueItem);
+    finally
+     fLock.Acquire;
+    end;
 
-   FreeAndNil(QueueItem);
+    FreeAndNil(QueueItem);
+
+   end else begin
+    fLock.Release;
+    try
+     while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Fail,
+                                              TpvResource.TAsyncLoadState.Done]) do begin
+      TPasMP.Yield;
+      Sleep(1);
+     end;
+    finally
+     fLock.Acquire;
+    end;
+   end;
 
   end;
 
@@ -1274,7 +1288,7 @@ begin
    end else begin
     fLock.ReleaseRead;
     try
-     fBackgroundLoader.WaitForResource(Resource);
+     fBackgroundLoader.WaitForResource(Resource,true);
     finally
      fLock.AcquireRead;
     end;

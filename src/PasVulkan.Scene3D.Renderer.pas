@@ -773,7 +773,6 @@ begin
   end;
  end;
 
-
 end;
 
 procedure TpvScene3DRenderer.AcquirePersistentResources;
