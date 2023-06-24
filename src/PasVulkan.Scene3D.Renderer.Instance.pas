@@ -181,9 +181,6 @@ type { TpvScene3DRendererInstance }
             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TDebugPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TpvScene3D.TDebugPrimitiveVertex>)
-            end;
-            TDebugPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TDebugPrimitiveVertexDynamicArray;
             TVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererArray2DImage;
             TMipmappedArray2DImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray2DImage;
@@ -354,8 +351,6 @@ type { TpvScene3DRendererInstance }
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
-      private
-       fDebugPrimitiveVertexDynamicArrays:TDebugPrimitiveVertexDynamicArrays;
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
@@ -378,7 +373,6 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
-       property DebugPrimitiveVertexDynamicArrays:TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
@@ -1081,10 +1075,6 @@ begin
 
  fCascadedShadowMapBuilder:=TCascadedShadowMapBuilder.Create(self);
 
- for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  fDebugPrimitiveVertexDynamicArrays[InFlightFrameIndex]:=TpvScene3DRendererInstance.TDebugPrimitiveVertexDynamicArray.Create;
- end;
-
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
@@ -1094,10 +1084,6 @@ begin
  FreeAndNil(fFrameGraph);
 
  FreeAndNil(fCascadedShadowMapBuilder);
-
- for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  FreeAndNil(fDebugPrimitiveVertexDynamicArrays[InFlightFrameIndex]);
- end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanRenderSemaphores[InFlightFrameIndex]);

@@ -329,18 +329,25 @@ type EpvScene3D=class(Exception);
             end;
             PCachedVertex=^TCachedVertex;
             TCachedVertices=array of TCachedVertex;
+            { TDebugPrimitiveVertex }
             TDebugPrimitiveVertex=packed record
-             case boolean of
-              false:(
-               Position:TpvVector3;                  //  12    0
-               Color:TpvHalfFloatVector4;            // + 8 =  8
-              );                                     //  ==   ==
-              true:(                                 //  24   24 per vertex
-               Padding:array[0..23] of TpvUInt8;
-              );
+             public
+              constructor Create(const aPosition:TpvVector3;const aColor:TpvVector4);
+             public
+              case boolean of
+               false:(
+                Position:TpvVector3;                  //  12    0
+                Color:TpvHalfFloatVector4;            // + 8 =  8
+               );                                     //  ==   ==
+               true:(                                 //  24   24 per vertex
+                Padding:array[0..23] of TpvUInt8;
+               );
             end;
             PDebugPrimitiveVertex=^TDebugPrimitiveVertex;
             TDebugPrimitiveVertices=array of TDebugPrimitiveVertex;
+            TDebugPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TDebugPrimitiveVertex>)
+            end;
+            TDebugPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TDebugPrimitiveVertexDynamicArray;
             TJointBlock=packed record
              case boolean of
               false:(
@@ -2214,6 +2221,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fRenderPassIndexCounter:TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
+       fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2298,6 +2306,7 @@ type EpvScene3D=class(Exception);
        property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
+       property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
       published
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -2597,6 +2606,17 @@ begin
   result.z:=z*Factor;
   result.w:=w*Factor;
  end;
+end;
+
+{ TpvScene3D.TDebugPrimitiveVertex }
+
+constructor TpvScene3D.TDebugPrimitiveVertex.Create(const aPosition:TpvVector3;const aColor:TpvVector4);
+begin
+ Position:=aPosition;
+ Color.x:=aColor.x;
+ Color.y:=aColor.y;
+ Color.z:=aColor.z;
+ Color.w:=aColor.w;
 end;
 
 { TpvScene3D.TBaseObject }
@@ -13844,6 +13864,7 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fVulkanBufferCopyBatchItemArrays[Index].Initialize;
+  fDebugPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TDebugPrimitiveVertexDynamicArray.Create;
  end;
 
  fTechniques:=TpvTechniques.Create;
@@ -14190,6 +14211,7 @@ begin
  fViews.Finalize;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fDebugPrimitiveVertexDynamicArrays[Index]);
   fVulkanBufferCopyBatchItemArrays[Index].Finalize;
  end;
 
