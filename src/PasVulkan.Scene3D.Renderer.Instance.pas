@@ -2480,6 +2480,8 @@ begin
                           false,
                           true);
 
+ Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
 end;

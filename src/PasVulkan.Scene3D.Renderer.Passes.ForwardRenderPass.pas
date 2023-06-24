@@ -741,7 +741,7 @@ begin
   VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
   VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
   VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
-  VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+  VulkanGraphicsPipeline.RasterizationState.LineWidth:=3.0;
 
   VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
   VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
@@ -769,7 +769,7 @@ begin
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-  VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+  VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
   if fInstance.ZFar<0.0 then begin
    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
    end else begin
@@ -844,7 +844,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesForwardRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                 const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+                                                            const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -893,29 +893,29 @@ begin
    end;   *)
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                         -1,
-                         aInFlightFrameIndex,
-                         InFlightFrameState^.ViewRenderPassIndex,
-                         InFlightFrameState^.FinalViewIndex,
-                         InFlightFrameState^.CountViews,
-                         FrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountViews,
+                                   FrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                         -1,
-                         aInFlightFrameIndex,
-                         InFlightFrameState^.ViewRenderPassIndex,
-                         InFlightFrameState^.FinalViewIndex,
-                         InFlightFrameState^.CountViews,
-                         FrameGraph.DrawFrameIndex,
-                         aCommandBuffer,
-                         fVulkanPipelineLayout,
-                         OnSetRenderPassResources,
-                         [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountViews,
+                                   FrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
   end;
 
  { if fInstance.Renderer.UseDepthPrepass then begin
@@ -933,6 +933,17 @@ begin
                                    [TpvScene3D.TMaterial.TAlphaMode.Mask]);
 
    end;}
+
+   fInstance.Renderer.Scene3D.DrawDebugPrimitives(fVulkanDebugPrimitiveGraphicsPipeline,
+                                                  -1,
+                                                  aInFlightFrameIndex,
+                                                  InFlightFrameState^.ViewRenderPassIndex,
+                                                  InFlightFrameState^.FinalViewIndex,
+                                                  InFlightFrameState^.CountViews,
+                                                  FrameGraph.DrawFrameIndex,
+                                                  aCommandBuffer,
+                                                  fVulkanPipelineLayout,
+                                                  OnSetRenderPassResources);
 
   end;
 

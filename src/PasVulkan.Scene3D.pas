@@ -96,6 +96,7 @@ type EpvScene3D=class(Exception);
       public
        const MaxRenderPassIndices=32;
              MaxVisibleLights=65536;
+             MaxDebugPrimitiveVertices=262144;
              LightClusterSizeX=16;
              LightClusterSizeY=8;
              LightClusterSizeZ=32;
@@ -2222,6 +2223,7 @@ type EpvScene3D=class(Exception);
        fRenderPassIndexCounter:TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
+       fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2281,6 +2283,17 @@ type EpvScene3D=class(Exception);
        function NeedFlush(const aInFlightFrameIndex:TpvSizeInt):boolean;
        function Flush(const aInFlightFrameIndex:TpvSizeInt;
                       const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
+       procedure UpdateDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
+       procedure DrawDebugPrimitives(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                     const aInFlightFrameIndex:TpvSizeInt;
+                                     const aRenderPassIndex:TpvSizeInt;
+                                     const aViewBaseIndex:TpvSizeInt;
+                                     const aCountViews:TpvSizeInt;
+                                     const aFrameIndex:TpvSizeInt;
+                                     const aCommandBuffer:TpvVulkanCommandBuffer;
+                                     const aPipelineLayout:TpvVulkanPipelineLayout;
+                                     const aOnSetRenderPassResources:TOnSetRenderPassResources);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
@@ -3653,7 +3666,7 @@ begin
                                                            TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
          try
           UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                               VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+                                                                VK_COMMAND_BUFFER_LEVEL_PRIMARY);
           try
            UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
            try
@@ -14365,6 +14378,20 @@ begin
                                                                          0,
                                                                          0,
                                                                          [TpvVulkanBufferFlag.PersistentMapped]);
+          fVulkanDebugPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            SizeOf(TpvScene3D.TDebugPrimitiveVertex)*MaxDebugPrimitiveVertices,
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PersistentMapped]);
          end;
 
         end;
@@ -14456,6 +14483,20 @@ begin
                                                                          0,
                                                                          0,
                                                                          []);
+          fVulkanDebugPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            SizeOf(TpvScene3D.TDebugPrimitiveVertex)*MaxDebugPrimitiveVertices,
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            []);
          end;
 
         end;
@@ -14855,6 +14896,7 @@ begin
 
      for Index:=0 to fCountInFlightFrames-1 do begin
       FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
+      FreeAndNil(fVulkanDebugPrimitiveVertexBuffers[Index]);
      end;
 
 {    for Index:=0 to fCountInFlightFrames-1 do begin
@@ -15842,6 +15884,51 @@ begin
   finally
    fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex].Count:=0;
   end;
+ end;
+end;
+
+procedure TpvScene3D.UpdateDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+  fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                     fVulkanStagingCommandBuffer,
+                                     fVulkanStagingFence,
+                                     fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+                                     fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex],
+                                     0,
+                                     SizeOf(TpvScene3D.TDebugPrimitiveVertex)*fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count);
+ end;
+end;
+
+procedure TpvScene3D.DrawDebugPrimitives(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                         const aInFlightFrameIndex:TpvSizeInt;
+                                         const aRenderPassIndex:TpvSizeInt;
+                                         const aViewBaseIndex:TpvSizeInt;
+                                         const aCountViews:TpvSizeInt;
+                                         const aFrameIndex:TpvSizeInt;
+                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                         const aPipelineLayout:TpvVulkanPipelineLayout;
+                                         const aOnSetRenderPassResources:TOnSetRenderPassResources);
+const Offsets:TVkDeviceSize=0;
+var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+begin
+ if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+  VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+  VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
+  VertexStagePushConstants^.CountViews:=aCountViews;
+  VertexStagePushConstants^.CountAllViews:=fViews.Count;
+  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
+  VertexStagePushConstants^.Jitter:=TpvVector4.Null;
+
+  fSetGlobalResourcesDone[aRenderPassIndex]:=false;
+  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  aCommandBuffer.CmdDraw(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,1,0,0);
+
  end;
 end;
 
