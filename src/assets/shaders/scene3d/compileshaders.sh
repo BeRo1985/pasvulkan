@@ -498,6 +498,9 @@ compileshaderarguments=(
 
   '-V ssao_blur.frag -o ssao_blur_frag.spv'
 
+  '-V debug_primitive.vert -o debug_primitive_vert.spv'
+  '-V debug_primitive.frag -o debug_primitive_frag.spv'
+
 )
 
 glslangValidatorPath=$(which glslangValidator)
