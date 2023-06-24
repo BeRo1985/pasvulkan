@@ -768,7 +768,7 @@ begin
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
-  VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+  VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
   VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
   if fInstance.ZFar<0.0 then begin
    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
