@@ -192,6 +192,8 @@ type { TpvScene3DRendererInstance }
              LogLuminanceRange:TpvFloat;
              InverseLogLuminanceRange:TpvFloat;
              TimeCoefficient:TpvFloat;
+             MinLuminance:TpvFloat;
+             MaxLuminance:TpvFloat;
              CountPixels:TpvUInt32;
             end;
             PLuminancePushConstants=^TLuminancePushConstants;
@@ -2487,6 +2489,9 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+const MinDeltaTime=1.0/480.0; // 480 Hz
+      MaxDeltaTime=1.0/1.0; // 1 Hz
+var t:TpvDouble;
 begin
 
  FillChar(fLightGridPushConstants,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),#0);
@@ -2510,7 +2515,15 @@ begin
  fLuminancePushConstants.MinLogLuminance:=Renderer.MinLogLuminance;
  fLuminancePushConstants.LogLuminanceRange:=Renderer.MaxLogLuminance-Renderer.MinLogLuminance;
  fLuminancePushConstants.InverseLogLuminanceRange:=1.0/fLuminancePushConstants.LogLuminanceRange;
- fLuminancePushConstants.TimeCoefficient:=1.0-exp(pvApplication.DeltaTime*(-TwoPI));
+ t:=pvApplication.DeltaTime;
+ if t<=MinDeltaTime then begin
+  t:=MinDeltaTime;
+ end else if t>=MaxDeltaTime then begin
+  t:=MaxDeltaTime;
+ end;
+ fLuminancePushConstants.TimeCoefficient:=Clamp(1.0-exp(t*(-TwoPI)),0.025,1.0);
+ fLuminancePushConstants.MinLuminance:=Power(2.0,Renderer.MinLogLuminance);
+ fLuminancePushConstants.MaxLuminance:=Power(2.0,Renderer.MaxLogLuminance);
  fLuminancePushConstants.CountPixels:=fWidth*fHeight*fCountSurfaceViews;
 
  fFrameGraph.Draw(aSwapChainImageIndex,

@@ -1,6 +1,12 @@
 #version 450 core
 
+//#define SHADERDEBUG
+
 #extension GL_EXT_multiview : enable
+
+#if defined(SHADERDEBUG)
+#extension GL_EXT_debug_printf : enable
+#endif
 
 layout(location = 0) in vec2 inTexCoord;
 
@@ -228,7 +234,13 @@ void main() {
   float EV100 = log2(histogramLuminance * (S / K));
   float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
 #endif
+ #if defined(SHADERDEBUG)
+   if(isnan(Lmax) || isinf(Lmax) || (Lmax < 0.25) || (Lmax > 2.5)){
+     debugPrintfEXT("Lmax: %f\n", Lmax);
+   }
+ #endif
   c.xyz = convertYxy2RGB(convertRGB2Yxy(c.xyz) * vec2(1.0 / max(1e-4, Lmax), 1.0).xyy);
+  c.xyz = max(c.xyz, vec3(0.0));  // since the current RGB <=> Yxy routines can produce also negative values
   outColor = vec4(doToneMapping(c.xyz), c.w);
 #else
   outColor = vec4(1.0);

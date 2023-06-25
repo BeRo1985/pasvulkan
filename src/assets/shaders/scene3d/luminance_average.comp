@@ -29,6 +29,8 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   float logLuminanceRange;
   float inverseLogLuminanceRange;
   float timeCoefficient;
+  float minLuminance;
+  float maxLuminance;   
   uint countPixels;
 } pushConstants;
 
@@ -45,6 +47,7 @@ void main() {
   sharedHistogram[gl_LocalInvocationIndex] = countForThisBin * gl_LocalInvocationIndex;
   
   groupMemoryBarrier();
+  barrier();
 
   histogramBuffer[gl_LocalInvocationIndex] = 0;
 
@@ -56,13 +59,24 @@ void main() {
     groupMemoryBarrier();
   }
 
+  barrier();
+
   if(gl_LocalInvocationIndex == 0){
-    float newHistogramLuminance = mix(lastHistogramLuminance, 
-                                      exp2(fma((float(sharedHistogram[0]) / max(1.0, float(pushConstants.countPixels - countForThisBin))) - 1.0, 
-                                                pushConstants.logLuminanceRange / 254.0, 
-                                                pushConstants.minLogLuminance)), 
-                                      pushConstants.timeCoefficient);
-    histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 0.0 : newHistogramLuminance;
+
+    // Compute the new histogram luminance from the histogram 
+    float newHistogramLuminance = exp2(fma((float(sharedHistogram[0]) / max(1.0, float(pushConstants.countPixels - countForThisBin))) - 1.0, 
+                                           pushConstants.logLuminanceRange / 254.0, 
+                                           pushConstants.minLogLuminance));
+
+    // clamp to avoid exploded values, Infinities and NaNs                                       
+    newHistogramLuminance = clamp(newHistogramLuminance, pushConstants.minLuminance, pushConstants.maxLuminance); 
+    newHistogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
+
+    // Interpolate between the last and the new histogram luminance over time for smooth transitions
+    newHistogramLuminance = mix(lastHistogramLuminance, newHistogramLuminance, pushConstants.timeCoefficient);
+
+    // again to avoid Infinities and NaNs just for safety                                       
+    histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
   }
 
 }
