@@ -9950,6 +9950,9 @@ var Index:TpvSizeInt;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
+    GameControllerDBStream:TStream;
+    GameControllerDBMemoryStream:TMemoryStream;
+    SDLRW:PSDL_RWops;
 {$elseif defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
     IDCounter:TpvSizeInt;
     XInputCapabilities:TXINPUT_CAPABILITIES;
@@ -9961,6 +9964,29 @@ var Index:TpvSizeInt;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if aInitial then begin
+  if Assets.ExistAsset('gamecontrollerdb.txt') then begin
+   GameControllerDBStream:=Assets.GetAssetStream('gamecontrollerdb.txt');
+   if assigned(GameControllerDBStream) then begin
+    try
+     GameControllerDBMemoryStream:=TMemoryStream.Create;
+     try
+      GameControllerDBMemoryStream.CopyFrom(GameControllerDBStream,GameControllerDBStream.Size);
+      SDLRW:=SDL_RWFromConstMem(GameControllerDBMemoryStream.Memory,GameControllerDBMemoryStream.Size);
+      if assigned(SDLRW) then begin
+       try
+        SDL_GameControllerAddMappingsFromRW(SDLRW,0);
+       finally
+        SDL_FreeRW(SDLRW);
+       end;
+      end;
+     finally
+      FreeAndNil(GameControllerDBMemoryStream);
+     end;
+    finally
+     FreeAndNil(GameControllerDBStream);
+    end;
+   end;
+  end;
   for Index:=0 to SDL_NumJoysticks-1 do begin
    if SDL_IsGameController(Index)<>0 then begin
     SDLGameController:=SDL_GameControllerOpen(Index);
