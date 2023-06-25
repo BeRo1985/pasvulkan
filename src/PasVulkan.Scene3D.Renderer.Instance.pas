@@ -2491,6 +2491,7 @@ end;
 procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 const MinDeltaTime=1.0/480.0; // 480 Hz
       MaxDeltaTime=1.0/1.0; // 1 Hz
+      LN2=0.6931471805599453;
 var t:TpvDouble;
 begin
 
@@ -2522,8 +2523,8 @@ begin
   t:=MaxDeltaTime;
  end;
  fLuminancePushConstants.TimeCoefficient:=Clamp(1.0-exp(t*(-TwoPI)),0.025,1.0);
- fLuminancePushConstants.MinLuminance:=Power(2.0,Renderer.MinLogLuminance);
- fLuminancePushConstants.MaxLuminance:=Power(2.0,Renderer.MaxLogLuminance);
+ fLuminancePushConstants.MinLuminance:=exp(LN2*Renderer.MinLogLuminance);
+ fLuminancePushConstants.MaxLuminance:=exp(LN2*Renderer.MaxLogLuminance);
  fLuminancePushConstants.CountPixels:=fWidth*fHeight*fCountSurfaceViews;
 
  fFrameGraph.Draw(aSwapChainImageIndex,
