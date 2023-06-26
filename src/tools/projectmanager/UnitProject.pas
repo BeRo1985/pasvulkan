@@ -529,6 +529,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      Parameters.Add('-CX');
      Parameters.Add('-Cg');
      Parameters.Add('-dCompileForWithPIC');
+     Parameters.Add('-dKraftPasMP');
+     Parameters.Add('-dKraftPasJSON');
      Parameters.Add('-dPasVulkanPasMP');
      Parameters.Add('-dPasVulkanUseSDL2');
      Parameters.Add('-dPasVulkanUseSDL2WithVulkanSupport');
