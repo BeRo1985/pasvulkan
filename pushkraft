@@ -23,11 +23,11 @@ cp -f externals/kraft/src/KraftArcadeCarPhysics.pas ../kraft/src/KraftArcadeCarP
 cd externals/kraft
 git stash # Stash the local changes
 git stash drop # Drop the stashed local changes
-git pull -u origin master # For ensuring that the local kraft submodule is on the right branch
+git pull origin master # For ensuring that the local kraft submodule is on the right branch
 cd "${OLD_DIR}"
 
 # Commit the changes in the kraft GIT repository
-cd ../../kraft
+cd ../kraft
 git commit -a -m "Updated kraft"
 git push
 cd "${OLD_DIR}"
