@@ -38,7 +38,7 @@ git submodule update --remote --recursive
 # Commit the changes in the main PasVulkan GIT repository
 git commit -am "Updated submodules"
 git push
-gitz
+
 # Switch to the old directory back
 cd "${OLD_DIR}"
 
