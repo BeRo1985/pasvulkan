@@ -3191,7 +3191,13 @@ begin
   fBakedMesh:=aBakedMesh;
   try
 
-   fTriangleBVH:=TpvTriangleBVH.Create(aPasMPInstance);
+   if assigned(aPasMPInstance) then begin
+    fPasMPInstance:=aPasMPInstance;
+   end else begin
+    fPasMPInstance:=TPasMP.GetGlobalInstance;
+   end;
+
+   fTriangleBVH:=TpvTriangleBVH.Create(fPasMPInstance);
    try
 
     for TriangleIndex:=0 to fBakedMesh.Triangles.Count-1 do begin
@@ -3398,11 +3404,6 @@ begin
        end;
       end;
       if NodeIndexPairList.Count>0 then begin
-       if assigned(aPasMPInstance) then begin
-        fPasMPInstance:=aPasMPInstance;
-       end else begin
-        fPasMPInstance:=TPasMP.GetGlobalInstance;
-       end;
        fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0));
       end;
      finally
