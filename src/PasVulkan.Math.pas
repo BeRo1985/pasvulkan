@@ -13758,7 +13758,25 @@ begin
 end;
 
 function TpvAABB.FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
-var Center,BoxExtents,Diff:TpvVector3;
+var t0,t1:TpvVector3;
+begin
+ // Although it might seem this doesn't address edge cases where
+ // Direction.{x,y,z} equals zero, it is indeed correct. This is
+ // because the comparisons still work as expected when infinities
+ // emerge from zero division. Rays that are parallel to an axis
+ // and positioned outside the box will lead to tmin being infinity
+ // or tmax turning into negative infinity, yet for rays located
+ // within the box, the values for tmin and tmax will remain unchanged.
+ t0:=(Min-Origin)/Direction;
+ t1:=(Max-Origin)/Direction;
+ result:=Math.Max(0.0,Math.Max(Math.Max(Math.Min(Math.Min(t0.x,t1.x),Infinity),
+                               Math.Min(Math.Min(t0.y,t1.y),Infinity)),
+                               Math.Min(Math.Min(t0.z,t1.z),Infinity)))<=
+         Math.Min(Math.Min(Math.Max(Math.Max(t0.x,t1.x),NegInfinity),
+                           Math.Max(Math.Max(t0.y,t1.y),NegInfinity)),
+                           Math.Max(Math.Max(t0.z,t1.z),NegInfinity));
+end;
+{var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(Min+Max)*0.5;
  BoxExtents:=Center-Min;
@@ -13769,10 +13787,28 @@ begin
               ((abs((Direction.y*Diff.z)-(Direction.z*Diff.y))>((BoxExtents.y*abs(Direction.z))+(BoxExtents.z*abs(Direction.y)))) or
                (abs((Direction.z*Diff.x)-(Direction.x*Diff.z))>((BoxExtents.x*abs(Direction.z))+(BoxExtents.z*abs(Direction.x)))) or
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
-end;
+end;}
 
 class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean;
-var Center,BoxExtents,Diff:TpvVector3;
+var t0,t1:TpvVector3;
+begin
+ // Although it might seem this doesn't address edge cases where
+ // Direction.{x,y,z} equals zero, it is indeed correct. This is
+ // because the comparisons still work as expected when infinities
+ // emerge from zero division. Rays that are parallel to an axis
+ // and positioned outside the box will lead to tmin being infinity
+ // or tmax turning into negative infinity, yet for rays located
+ // within the box, the values for tmin and tmax will remain unchanged.
+ t0:=(aAABBMin-Origin)/Direction;
+ t1:=(aAABBMax-Origin)/Direction;
+ result:=Math.Max(0.0,Math.Max(Math.Max(Math.Min(Math.Min(t0.x,t1.x),Infinity),
+                               Math.Min(Math.Min(t0.y,t1.y),Infinity)),
+                               Math.Min(Math.Min(t0.z,t1.z),Infinity)))<=
+         Math.Min(Math.Min(Math.Max(Math.Max(t0.x,t1.x),NegInfinity),
+                           Math.Max(Math.Max(t0.y,t1.y),NegInfinity)),
+                           Math.Max(Math.Max(t0.z,t1.z),NegInfinity));
+end;
+{var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(aAABBMin+aAABBMax)*0.5;
  BoxExtents:=Center-aAABBMin;
@@ -13783,7 +13819,7 @@ begin
               ((abs((Direction.y*Diff.z)-(Direction.z*Diff.y))>((BoxExtents.y*abs(Direction.z))+(BoxExtents.z*abs(Direction.y)))) or
                (abs((Direction.z*Diff.x)-(Direction.x*Diff.z))>((BoxExtents.x*abs(Direction.z))+(BoxExtents.z*abs(Direction.x)))) or
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
-end;
+end;}
 
 function TpvAABB.RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
 var DirFrac:TpvVector3;
