@@ -13906,163 +13906,45 @@ begin
 end;
 
 function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
-var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+var InvDirection,a,b:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin
- if Direction.x<>0.0 then begin
-  InvDirection.x:=1.0/Direction.x;
- end else begin
-  InvDirection.x:=0.0;
- end;
- if Direction.y<>0.0 then begin
-  InvDirection.y:=1.0/Direction.y;
- end else begin
-  InvDirection.y:=0.0;
- end;
- if Direction.z<>0.0 then begin
-  InvDirection.z:=1.0/Direction.z;
- end else begin
-  InvDirection.z:=0.0;
- end;
- a.x:=(Min.x-Origin.x)*InvDirection.x;
- a.y:=(Min.y-Origin.y)*InvDirection.y;
- a.z:=(Min.z-Origin.z)*InvDirection.z;
- b.x:=(Max.x-Origin.x)*InvDirection.x;
- b.y:=(Max.y-Origin.y)*InvDirection.y;
- b.z:=(Max.z-Origin.z)*InvDirection.z;
- if a.x<b.x then begin
-  AABBMin.x:=a.x;
-  AABBMax.x:=b.x;
- end else begin
-  AABBMin.x:=b.x;
-  AABBMax.x:=a.x;
- end;
- if a.y<b.y then begin
-  AABBMin.y:=a.y;
-  AABBMax.y:=b.y;
- end else begin
-  AABBMin.y:=b.y;
-  AABBMax.y:=a.y;
- end;
- if a.z<b.z then begin
-  AABBMin.z:=a.z;
-  AABBMax.z:=b.z;
- end else begin
-  AABBMin.z:=b.z;
-  AABBMax.z:=a.z;
- end;
- if AABBMin.x<AABBMin.y then begin
-  if AABBMin.x<AABBMin.z then begin
-   TimeMin:=AABBMin.x;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end else begin
-  if AABBMin.y<AABBMin.z then begin
-   TimeMin:=AABBMin.y;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end;
- if AABBMax.x>AABBMax.y then begin
-  if AABBMax.x>AABBMax.z then begin
-   TimeMax:=AABBMax.x;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end else begin
-  if AABBMax.y>AABBMax.z then begin
-   TimeMax:=AABBMax.y;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end;
- if (TimeMax<0) or (TimeMin>TimeMax) then begin
+ InvDirection:=TpvVector3.AllAxis/Direction;
+ a:=(Min-Origin)*InvDirection;
+ b:=(Max-Origin)*InvDirection;
+ TimeMin:=Math.Max(Math.Max(Math.Min(a.x,b.x),Math.Min(a.y,b.y)),Math.Min(a.z,b.z));
+ TimeMax:=Math.Min(Math.Min(Math.Max(a.x,b.x),Math.Max(a.y,b.y)),Math.Max(a.z,b.z));
+ if (TimeMax<0.0) or (TimeMin>TimeMax) then begin
   Time:=TimeMax;
   result:=false;
  end else begin
-  Time:=TimeMin;
+  if TimeMin<0.0 then begin
+   Time:=TimeMax;
+  end else begin
+   Time:=TimeMin;
+  end;
   result:=true;
  end;
 end;
 
 class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
-var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+var InvDirection,a,b:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin
- if Direction.x<>0.0 then begin
-  InvDirection.x:=1.0/Direction.x;
- end else begin
-  InvDirection.x:=0.0;
- end;
- if Direction.y<>0.0 then begin
-  InvDirection.y:=1.0/Direction.y;
- end else begin
-  InvDirection.y:=0.0;
- end;
- if Direction.z<>0.0 then begin
-  InvDirection.z:=1.0/Direction.z;
- end else begin
-  InvDirection.z:=0.0;
- end;
- a.x:=(aAABBMin.x-Origin.x)*InvDirection.x;
- a.y:=(aAABBMin.y-Origin.y)*InvDirection.y;
- a.z:=(aAABBMin.z-Origin.z)*InvDirection.z;
- b.x:=(aAABBMax.x-Origin.x)*InvDirection.x;
- b.y:=(aAABBMax.y-Origin.y)*InvDirection.y;
- b.z:=(aAABBMax.z-Origin.z)*InvDirection.z;
- if a.x<b.x then begin
-  AABBMin.x:=a.x;
-  AABBMax.x:=b.x;
- end else begin
-  AABBMin.x:=b.x;
-  AABBMax.x:=a.x;
- end;
- if a.y<b.y then begin
-  AABBMin.y:=a.y;
-  AABBMax.y:=b.y;
- end else begin
-  AABBMin.y:=b.y;
-  AABBMax.y:=a.y;
- end;
- if a.z<b.z then begin
-  AABBMin.z:=a.z;
-  AABBMax.z:=b.z;
- end else begin
-  AABBMin.z:=b.z;
-  AABBMax.z:=a.z;
- end;
- if AABBMin.x<AABBMin.y then begin
-  if AABBMin.x<AABBMin.z then begin
-   TimeMin:=AABBMin.x;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end else begin
-  if AABBMin.y<AABBMin.z then begin
-   TimeMin:=AABBMin.y;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end;
- if AABBMax.x>AABBMax.y then begin
-  if AABBMax.x>AABBMax.z then begin
-   TimeMax:=AABBMax.x;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end else begin
-  if AABBMax.y>AABBMax.z then begin
-   TimeMax:=AABBMax.y;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end;
- if (TimeMax<0) or (TimeMin>TimeMax) then begin
+ InvDirection:=TpvVector3.AllAxis/Direction;
+ a:=(aAABBMin-Origin)*InvDirection;
+ b:=(aAABBMax-Origin)*InvDirection;
+ TimeMin:=Math.Max(Math.Max(Math.Min(a.x,b.x),Math.Min(a.y,b.y)),Math.Min(a.z,b.z));
+ TimeMax:=Math.Min(Math.Min(Math.Max(a.x,b.x),Math.Max(a.y,b.y)),Math.Max(a.z,b.z));
+ if (TimeMax<0.0) or (TimeMin>TimeMax) then begin
   Time:=TimeMax;
   result:=false;
  end else begin
-  Time:=TimeMin;
+  if TimeMin<0.0 then begin
+   Time:=TimeMax;
+  end else begin
+   Time:=TimeMin;
+  end;
   result:=true;
  end;
 end;
@@ -14079,27 +13961,9 @@ begin
   if Len<>0.0 then begin
    Direction:=Direction/Len;
   end;
-  if Direction.x<>0.0 then begin
-   InvDirection.x:=1.0/Direction.x;
-  end else begin
-   InvDirection.x:=Infinity;
-  end;
-  if Direction.y<>0.0 then begin
-   InvDirection.y:=1.0/Direction.y;
-  end else begin
-   InvDirection.y:=Infinity;
-  end;
-  if Direction.z<>0.0 then begin
-   InvDirection.z:=1.0/Direction.z;
-  end else begin
-   InvDirection.z:=Infinity;
-  end;
-  a.x:=((Min.x-EPSILON)-StartPoint.x)*InvDirection.x;
-  a.y:=((Min.y-EPSILON)-StartPoint.y)*InvDirection.y;
-  a.z:=((Min.z-EPSILON)-StartPoint.z)*InvDirection.z;
-  b.x:=((Max.x+EPSILON)-StartPoint.x)*InvDirection.x;
-  b.y:=((Max.y+EPSILON)-StartPoint.y)*InvDirection.y;
-  b.z:=((Max.z+EPSILON)-StartPoint.z)*InvDirection.z;
+  InvDirection:=TpvVector3.AllAxis/Direction;
+  a:=((Min-TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
+  b:=((Max+TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
   TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
   TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
   result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));
@@ -14118,27 +13982,9 @@ begin
   if Len<>0.0 then begin
    Direction:=Direction/Len;
   end;
-  if Direction.x<>0.0 then begin
-   InvDirection.x:=1.0/Direction.x;
-  end else begin
-   InvDirection.x:=Infinity;
-  end;
-  if Direction.y<>0.0 then begin
-   InvDirection.y:=1.0/Direction.y;
-  end else begin
-   InvDirection.y:=Infinity;
-  end;
-  if Direction.z<>0.0 then begin
-   InvDirection.z:=1.0/Direction.z;
-  end else begin
-   InvDirection.z:=Infinity;
-  end;
-  a.x:=((aAABBMin.x-EPSILON)-StartPoint.x)*InvDirection.x;
-  a.y:=((aAABBMin.y-EPSILON)-StartPoint.y)*InvDirection.y;
-  a.z:=((aAABBMin.z-EPSILON)-StartPoint.z)*InvDirection.z;
-  b.x:=((aAABBMax.x+EPSILON)-StartPoint.x)*InvDirection.x;
-  b.y:=((aAABBMax.y+EPSILON)-StartPoint.y)*InvDirection.y;
-  b.z:=((aAABBMax.z+EPSILON)-StartPoint.z)*InvDirection.z;
+  InvDirection:=TpvVector3.AllAxis/Direction;
+  a:=((aAABBMin-TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
+  b:=((aAABBMax+TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
   TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
   TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
   result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));

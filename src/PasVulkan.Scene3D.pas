@@ -2886,7 +2886,7 @@ begin
 
  fSubdivisonMode:=TpvScene3D.TPotentiallyVisibleSet.TSubdivisonMode.MeshBVH;
 
- fSubdivisonOneDimensionSize:=16;
+ fSubdivisonOneDimensionSize:=8;
 
  fManualBoundingBoxes:=TpvScene3D.TPotentiallyVisibleSet.TManualBoundingBoxes.Create;
 
@@ -3065,7 +3065,7 @@ var Index,TapAIndex,TapBIndex:TPasMPNativeInt;
     NodeAIndex,NodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     NodeA,NodeB:TpvScene3D.TPotentiallyVisibleSet.TNode;
     TapA,TapB,RayOrigin,RayDirection:TpvVector3;
-    Time:TpvScalar;
+    Time,Len:TpvScalar;
     Hit:boolean;
     Intersection:TpvTriangleBVHIntersection;
 begin
@@ -3088,12 +3088,12 @@ begin
    TapA:=NodeA.fAABB.Min+((NodeA.fAABB.Max-NodeA.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapAIndex]);
    TapB:=NodeB.fAABB.Min+((NodeB.fAABB.Max-NodeB.fAABB.Min)*TpvScene3D.TPotentiallyVisibleSet.RayCheckTapPoints[TapBIndex]);
 
+   Len:=(TapB-TapA).Length;
+
    RayOrigin:=TapA;
    RayDirection:=(TapB-TapA).Normalize;
-   if NodeB.fAABB.RayIntersection(RayOrigin,RayDirection,Time) then begin
-    Intersection.Time:=1e+30;
-    Hit:=fTriangleBVH.RayIntersection(TpvTriangleBVHRay.Create(RayOrigin,RayDirection),Intersection,true);
-    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+   if NodeB.fAABB.RayIntersection(RayOrigin,RayDirection,Time) and (Time>=0.0) then begin
+    if not fTriangleBVH.LineIntersection(TapA,RayOrigin+(RayDirection*Time)) then begin
      SetNodeVisibility(NodeAIndex,NodeBIndex,true);
      SetNodeVisibility(NodeBIndex,NodeAIndex,true);
      break;
@@ -3102,10 +3102,8 @@ begin
 
    RayOrigin:=TapB;
    RayDirection:=(TapA-TapB).Normalize;
-   if NodeA.fAABB.RayIntersection(RayOrigin,RayDirection,Time) then begin
-    Intersection.Time:=1e+30;
-    Hit:=fTriangleBVH.RayIntersection(TpvTriangleBVHRay.Create(RayOrigin,RayDirection),Intersection,true);
-    if (Hit and (Intersection.Time>=(Time-EPSILON))) or not Hit then begin
+   if NodeA.fAABB.RayIntersection(RayOrigin,RayDirection,Time) and (Time>=0.0) then begin
+    if not fTriangleBVH.LineIntersection(TapB,RayOrigin+(RayDirection*Time)) then begin
      SetNodeVisibility(NodeAIndex,NodeBIndex,true);
      SetNodeVisibility(NodeBIndex,NodeAIndex,true);
      break;
