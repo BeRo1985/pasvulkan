@@ -143,14 +143,12 @@ type { TpvTriangleBVHRay }
      TpvTriangleBVHTreeNodes=array of TpvTriangleBVHTreeNode;
 
      TpvTriangleBVHSkipListItem=record // must be GPU-friendly
-      Min:TpvVector3;
+      Min:TpvVector4;
+      Max:TpvVector4;
       FirstTriangleIndex:TpvInt32;
-      Max:TpvVector3;
       CountTriangles:TpvInt32;
       SkipCount:TpvInt32;
-      Dummy0:TpvInt32;
-      Dummy1:TpvInt32;
-      Dummy2:TpvInt32;
+      Dummy:TpvInt32;
      end; // 48 bytes per Skip list item
      PpvTriangleBVHSkipListItem=^TpvTriangleBVHSkipListItem;
 
@@ -646,8 +644,10 @@ begin
     inc(fCountSkipListItems);
     SkipListItem:=@fSkipListItems[SkipListItemIndex];
     fSkipListItemMap[TreeNodeIndex]:=SkipListItemIndex;
-    SkipListItem^.Min:=TreeNode^.Bounds.Min;
-    SkipListItem^.Max:=TreeNode^.Bounds.Max;
+    SkipListItem^.Min.xyz:=TreeNode^.Bounds.Min;
+    SkipListItem^.Min.w:=0.0;
+    SkipListItem^.Max.xyz:=TreeNode^.Bounds.Max;
+    SkipListItem^.Max.w:=0.0;
     if TreeNode^.FirstLeftChild>=0 then begin
      // No leaf
      SkipListItem^.FirstTriangleIndex:=-1;
@@ -658,9 +658,7 @@ begin
      SkipListItem^.CountTriangles:=TreeNode^.CountTriangles;
     end;
     SkipListItem^.SkipCount:=0;
-    SkipListItem^.Dummy0:=0;
-    SkipListItem^.Dummy1:=0;
-    SkipListItem^.Dummy2:=0;
+    SkipListItem^.Dummy:=0;
     fTreeNodeStack.Push((TpvUInt64(TreeNodeIndex) shl 1) or 1);
     if TreeNode^.FirstLeftChild>=0 then begin
      fTreeNodeStack.Push((TpvUInt64(TreeNode^.FirstLeftChild+1) shl 1) or 0);
@@ -688,7 +686,7 @@ begin
  CountSkipListItems:=fCountSkipListItems;
  while SkipListItemIndex<CountSkipListItems do begin
   SkipListItem:=@fSkipListItems[SkipListItemIndex];
-  if TpvAABB.FastRayIntersection(SkipListItem^.Min,SkipListItem^.Max,aRay.Origin,aRay.Direction) then begin
+  if TpvAABB.FastRayIntersection(SkipListItem^.Min.Vector3,SkipListItem^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
    for TriangleIndex:=SkipListItem^.FirstTriangleIndex to (SkipListItem^.FirstTriangleIndex+SkipListItem^.CountTriangles)-1 do begin
     Triangle:=@fTriangles[TriangleIndex];
     if ((Triangle^.Flags and aFlags)<>0) and ((Triangle^.Flags and aAvoidFlags)=0) then begin
@@ -729,7 +727,7 @@ begin
  CountSkipListItems:=fCountSkipListItems;
  while SkipListItemIndex<CountSkipListItems do begin
   SkipListItem:=@fSkipListItems[SkipListItemIndex];
-  if TpvAABB.FastRayIntersection(SkipListItem^.Min,SkipListItem^.Max,aRay.Origin,aRay.Direction) then begin
+  if TpvAABB.FastRayIntersection(SkipListItem^.Min.Vector3,SkipListItem^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
    for TriangleIndex:=SkipListItem^.FirstTriangleIndex to (SkipListItem^.FirstTriangleIndex+SkipListItem^.CountTriangles)-1 do begin
     Triangle:=@fTriangles[TriangleIndex];
     if ((Triangle^.Flags and aFlags)<>0) and ((Triangle^.Flags and aAvoidFlags)=0) then begin
