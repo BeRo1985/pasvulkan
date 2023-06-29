@@ -427,7 +427,7 @@ type EpvScene3D=class(Exception);
                      MetaFlags:TpvUInt32;
                     public
                      procedure Assign(const aFrom:TpvScene3D.TBakedMesh.TTriangle);
-                     function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,v:TpvScalar):boolean;
+                     function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,aV:TpvScalar):boolean;
                    end;
                    TTriangles=class(TpvObjectGenericList<TpvScene3D.TBakedMesh.TTriangle>)
                    end;
@@ -2737,7 +2737,8 @@ begin
  MetaFlags:=aFrom.MetaFlags;
 end;
 
-function TpvScene3D.TBakedMesh.TTriangle.RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,v:TpvScalar):boolean;
+function TpvScene3D.TBakedMesh.TTriangle.RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;var aTime,aU,aV:TpvScalar):boolean;
+const EPSILON=1e-7;
 var e0,e1,p,t,q:TpvVector3;
     Determinant,InverseDeterminant:TpvScalar;
 begin
@@ -2759,12 +2760,14 @@ begin
   exit;
  end;
 
+ InverseDeterminant:=1.0/Determinant;
+
  t.x:=aRayOrigin.x-Positions[0].x;
  t.y:=aRayOrigin.y-Positions[0].y;
  t.z:=aRayOrigin.z-Positions[0].z;
 
- aU:=(t.x*p.x)+(t.y*p.y)+(t.z*p.z);
- if (aU<0.0) or (aU>Determinant) then begin
+ aU:=((t.x*p.x)+(t.y*p.y)+(t.z*p.z))*InverseDeterminant;
+ if (aU<0.0) or (aU>1.0) then begin
   exit;
  end;
 
@@ -2772,23 +2775,15 @@ begin
  q.y:=(t.z*e0.x)-(t.x*e0.z);
  q.z:=(t.x*e0.y)-(t.y*e0.x);
 
- v:=(aRayDirection.x*q.x)+(aRayDirection.y*q.y)+(aRayDirection.z*q.z);
- if (v<0.0) or ((aU+v)>Determinant) then begin
+ aV:=((aRayDirection.x*q.x)+(aRayDirection.y*q.y)+(aRayDirection.z*q.z))*InverseDeterminant;
+ if (aV<0.0) or ((aU+aV)>1.0) then begin
   exit;
  end;
 
- aTime:=(e1.x*q.x)+(e1.y*q.y)+(e1.z*q.z);
- if abs(Determinant)<EPSILON then begin
-  Determinant:=0.01;
- end;
- InverseDeterminant:=1.0/Determinant;
- aTime:=aTime*InverseDeterminant;
- aU:=aU*InverseDeterminant;
- v:=v*InverseDeterminant;
+ aTime:=((e1.x*q.x)+(e1.y*q.y)+(e1.z*q.z))*InverseDeterminant;
 
  result:=true;
 end;
-
 
 { TpvScene3D.TBakedMesh }
 
