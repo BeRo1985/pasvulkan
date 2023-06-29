@@ -85,6 +85,7 @@ uses {$ifdef Windows}
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.BVH.DynamicAABBTree,
+     PasVulkan.BVH.Triangles,
      PasVulkan.PooledObject,
      PasVulkan.Frustum;
 
