@@ -3210,10 +3210,10 @@ begin
 
     fTriangleBVH.Build;
 
-    if fTriangleBVH.CountSkipListItems>0 then begin
+    if fTriangleBVH.CountSkipListNodes>0 then begin
 
-     fAABB.Min:=fTriangleBVH.SkipListItems[0].Min.Vector3;
-     fAABB.Max:=fTriangleBVH.SkipListItems[0].Max.Vector3;
+     fAABB.Min:=fTriangleBVH.SkipListNodes[0].Min.Vector3;
+     fAABB.Max:=fTriangleBVH.SkipListNodes[0].Max.Vector3;
 
      case fSubdivisonMode of
 

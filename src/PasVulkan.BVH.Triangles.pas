@@ -142,7 +142,7 @@ type { TpvTriangleBVHRay }
 
      TpvTriangleBVHTreeNodes=array of TpvTriangleBVHTreeNode;
 
-     TpvTriangleBVHSkipListItem=record // must be GPU-friendly
+     TpvTriangleBVHSkipListNode=record // must be GPU-friendly
       Min:TpvVector4;
       Max:TpvVector4;
       FirstTriangleIndex:TpvInt32;
@@ -150,9 +150,9 @@ type { TpvTriangleBVHRay }
       SkipCount:TpvInt32;
       Dummy:TpvInt32;
      end; // 48 bytes per Skip list item
-     PpvTriangleBVHSkipListItem=^TpvTriangleBVHSkipListItem;
+     PpvTriangleBVHSkipListNode=^TpvTriangleBVHSkipListNode;
 
-     TpvTriangleBVHSkipListItems=array of TpvTriangleBVHSkipListItem;
+     TpvTriangleBVHSkipListNodes=array of TpvTriangleBVHSkipListNode;
 
      TpvTriangleBVHNodeQueue=TPasMPUnboundedQueue<TpvInt32>;
 
@@ -163,7 +163,7 @@ type { TpvTriangleBVHRay }
        const MaximumTrianglesPerNode=8;
       private
        type TTreeNodeStack=TpvDynamicStack<TpvUInt64>;
-            TSkipListItemMap=array of TpvInt32;
+            TSkipListNodeMap=array of TpvInt32;
       private
        fPasMPInstance:TPasMP;
        fBounds:TpvAABB;
@@ -172,9 +172,9 @@ type { TpvTriangleBVHRay }
        fTreeNodes:TpvTriangleBVHTreeNodes;
        fCountTreeNodes:TpvInt32;
        fTreeNodeRoot:TpvInt32;
-       fSkipListItemMap:TSkipListItemMap;
-       fSkipListItems:TpvTriangleBVHSkipListItems;
-       fCountSkipListItems:TpvInt32;
+       fSkipListNodeMap:TSkipListNodeMap;
+       fSkipListNodes:TpvTriangleBVHSkipListNodes;
+       fCountSkipListNodes:TpvInt32;
        fNodeQueue:TpvTriangleBVHNodeQueue;
        fCountActiveWorkers:TPasMPInt32;
        fTreeNodeStack:TTreeNodeStack;
@@ -202,8 +202,8 @@ type { TpvTriangleBVHRay }
        property TreeNodes:TpvTriangleBVHTreeNodes read fTreeNodes;
        property CountTreeNodes:TpvInt32 read fCountTreeNodes;
        property TreeNodeRoot:TpvInt32 read fTreeNodeRoot;
-       property SkipListItems:TpvTriangleBVHSkipListItems read fSkipListItems;
-       property CountSkipListItems:TpvInt32 read fCountSkipListItems;
+       property SkipListNodes:TpvTriangleBVHSkipListNodes read fSkipListNodes;
+       property CountSkipListNodes:TpvInt32 read fCountSkipListNodes;
      end;
 
 implementation
@@ -292,14 +292,14 @@ begin
  fCountTreeNodes:=0;
  fTreeNodeRoot:=-1;
 
- fSkipListItems:=nil;
- fCountSkipListItems:=0;
+ fSkipListNodes:=nil;
+ fCountSkipListNodes:=0;
 
  fNodeQueue:=TpvTriangleBVHNodeQueue.Create;
 
  fTreeNodeStack.Initialize;
 
- fSkipListItemMap:=nil;
+ fSkipListNodeMap:=nil;
 
 end;
 
@@ -307,10 +307,10 @@ destructor TpvTriangleBVH.Destroy;
 begin
  fTriangles:=nil;
  fTreeNodes:=nil;
- fSkipListItems:=nil;
+ fSkipListNodes:=nil;
  fTreeNodeStack.Finalize;
  FreeAndNil(fNodeQueue);
- fSkipListItemMap:=nil;
+ fSkipListNodeMap:=nil;
  inherited Destroy;
 end;
 
@@ -322,7 +322,7 @@ begin
  fCountTreeNodes:=0;
  fTreeNodeRoot:=-1;
 
- fCountSkipListItems:=0;
+ fCountSkipListNodes:=0;
 
 end;
 
@@ -584,11 +584,11 @@ begin
 end;
 
 procedure TpvTriangleBVH.Build;
-var JobIndex,TreeNodeIndex,SkipListItemIndex:TPasMPInt32;
+var JobIndex,TreeNodeIndex,SkipListNodeIndex:TPasMPInt32;
     TreeNode:PpvTriangleBVHTreeNode;
     Jobs:array of PPasMPJob;
     StackItem:TpvUInt64;
-    SkipListItem:PpvTriangleBVHSkipListItem;
+    SkipListNode:PpvTriangleBVHSkipListNode;
 begin
 
  if length(fTreeNodes)<=Max(1,length(fTriangles)) then begin
@@ -627,38 +627,38 @@ begin
   TreeNode^.CountTriangles:=0;
  end;
 
- if length(fSkipListItemMap)<=fCountTreeNodes then begin
-  SetLength(fSkipListItemMap,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
+ if length(fSkipListNodeMap)<=fCountTreeNodes then begin
+  SetLength(fSkipListNodeMap,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
  end;
- if length(fSkipListItems)<=fCountTreeNodes then begin
-  SetLength(fSkipListItems,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
+ if length(fSkipListNodes)<=fCountTreeNodes then begin
+  SetLength(fSkipListNodes,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
  end;
- fCountSkipListItems:=0;
+ fCountSkipListNodes:=0;
  fTreeNodeStack.Push((TpvUInt64(fTreeNodeRoot) shl 1) or 0);
  while fTreeNodeStack.Pop(StackItem) do begin
   TreeNodeIndex:=StackItem shr 1;
   TreeNode:=@fTreeNodes[TreeNodeIndex];
   case StackItem and 1 of
    0:begin
-    SkipListItemIndex:=fCountSkipListItems;
-    inc(fCountSkipListItems);
-    SkipListItem:=@fSkipListItems[SkipListItemIndex];
-    fSkipListItemMap[TreeNodeIndex]:=SkipListItemIndex;
-    SkipListItem^.Min.xyz:=TreeNode^.Bounds.Min;
-    SkipListItem^.Min.w:=0.0;
-    SkipListItem^.Max.xyz:=TreeNode^.Bounds.Max;
-    SkipListItem^.Max.w:=0.0;
+    SkipListNodeIndex:=fCountSkipListNodes;
+    inc(fCountSkipListNodes);
+    SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+    fSkipListNodeMap[TreeNodeIndex]:=SkipListNodeIndex;
+    SkipListNode^.Min.xyz:=TreeNode^.Bounds.Min;
+    SkipListNode^.Min.w:=0.0;
+    SkipListNode^.Max.xyz:=TreeNode^.Bounds.Max;
+    SkipListNode^.Max.w:=0.0;
     if TreeNode^.FirstLeftChild>=0 then begin
      // No leaf
-     SkipListItem^.FirstTriangleIndex:=-1;
-     SkipListItem^.CountTriangles:=0;
+     SkipListNode^.FirstTriangleIndex:=-1;
+     SkipListNode^.CountTriangles:=0;
     end else begin
      // Leaf
-     SkipListItem^.FirstTriangleIndex:=TreeNode^.FirstTriangleIndex;
-     SkipListItem^.CountTriangles:=TreeNode^.CountTriangles;
+     SkipListNode^.FirstTriangleIndex:=TreeNode^.FirstTriangleIndex;
+     SkipListNode^.CountTriangles:=TreeNode^.CountTriangles;
     end;
-    SkipListItem^.SkipCount:=0;
-    SkipListItem^.Dummy:=0;
+    SkipListNode^.SkipCount:=0;
+    SkipListNode^.Dummy:=0;
     fTreeNodeStack.Push((TpvUInt64(TreeNodeIndex) shl 1) or 1);
     if TreeNode^.FirstLeftChild>=0 then begin
      fTreeNodeStack.Push((TpvUInt64(TreeNode^.FirstLeftChild+1) shl 1) or 0);
@@ -666,8 +666,8 @@ begin
     end;
    end;
    else {1:}begin
-    SkipListItemIndex:=fSkipListItemMap[TreeNodeIndex];
-    fSkipListItems[SkipListItemIndex].SkipCount:=fCountSkipListItems-SkipListItemIndex;
+    SkipListNodeIndex:=fSkipListNodeMap[TreeNodeIndex];
+    fSkipListNodes[SkipListNodeIndex].SkipCount:=fCountSkipListNodes-SkipListNodeIndex;
    end;
   end;
  end;
@@ -675,19 +675,19 @@ begin
 end;
 
 function TpvTriangleBVH.RayIntersection(const aRay:TpvTriangleBVHRay;var aIntersection:TpvTriangleBVHIntersection;const aFastCheck:boolean;const aFlags:TpvUInt32;const aAvoidFlags:TpvUInt32):boolean;
-var SkipListItemIndex,CountSkipListItems,TriangleIndex:TpvInt32;
-    SkipListItem:PpvTriangleBVHSkipListItem;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvTriangleBVHSkipListNode;
     Triangle:PpvTriangleBVHTriangle;
     Time,u,v,w:TpvScalar;
     OK:boolean;
 begin
  result:=false;
- SkipListItemIndex:=0;
- CountSkipListItems:=fCountSkipListItems;
- while SkipListItemIndex<CountSkipListItems do begin
-  SkipListItem:=@fSkipListItems[SkipListItemIndex];
-  if TpvAABB.FastRayIntersection(SkipListItem^.Min.Vector3,SkipListItem^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
-   for TriangleIndex:=SkipListItem^.FirstTriangleIndex to (SkipListItem^.FirstTriangleIndex+SkipListItem^.CountTriangles)-1 do begin
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=fCountSkipListNodes;
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if TpvAABB.FastRayIntersection(SkipListNode^.Min.Vector3,SkipListNode^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangles)-1 do begin
     Triangle:=@fTriangles[TriangleIndex];
     if ((Triangle^.Flags and aFlags)<>0) and ((Triangle^.Flags and aAvoidFlags)=0) then begin
      OK:=Triangle^.RayIntersection(aRay,Time,u,v,w);
@@ -705,30 +705,30 @@ begin
      end;
     end;
    end;
-   inc(SkipListItemIndex);
+   inc(SkipListNodeIndex);
   end else begin
-   if SkipListItem^.SkipCount=0 then begin
+   if SkipListNode^.SkipCount=0 then begin
     break;
    end else begin
-    inc(SkipListItemIndex,SkipListItem^.SkipCount);
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
    end;
   end;
  end;
 end;
 
 function TpvTriangleBVH.CountRayIntersections(const aRay:TpvTriangleBVHRay;const aFlags:TpvUInt32;const aAvoidFlags:TpvUInt32):TpvInt32;
-var SkipListItemIndex,CountSkipListItems,TriangleIndex:TpvInt32;
-    SkipListItem:PpvTriangleBVHSkipListItem;
+var SkipListNodeIndex,CountSkipListNodes,TriangleIndex:TpvInt32;
+    SkipListNode:PpvTriangleBVHSkipListNode;
     Triangle:PpvTriangleBVHTriangle;
     Time,u,v,w:TpvScalar;
 begin
  result:=0;
- SkipListItemIndex:=0;
- CountSkipListItems:=fCountSkipListItems;
- while SkipListItemIndex<CountSkipListItems do begin
-  SkipListItem:=@fSkipListItems[SkipListItemIndex];
-  if TpvAABB.FastRayIntersection(SkipListItem^.Min.Vector3,SkipListItem^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
-   for TriangleIndex:=SkipListItem^.FirstTriangleIndex to (SkipListItem^.FirstTriangleIndex+SkipListItem^.CountTriangles)-1 do begin
+ SkipListNodeIndex:=0;
+ CountSkipListNodes:=fCountSkipListNodes;
+ while SkipListNodeIndex<CountSkipListNodes do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  if TpvAABB.FastRayIntersection(SkipListNode^.Min.Vector3,SkipListNode^.Max.Vector3,aRay.Origin,aRay.Direction) then begin
+   for TriangleIndex:=SkipListNode^.FirstTriangleIndex to (SkipListNode^.FirstTriangleIndex+SkipListNode^.CountTriangles)-1 do begin
     Triangle:=@fTriangles[TriangleIndex];
     if ((Triangle^.Flags and aFlags)<>0) and ((Triangle^.Flags and aAvoidFlags)=0) then begin
      if Triangle^.RayIntersection(aRay,Time,u,v,w) then begin
@@ -736,12 +736,12 @@ begin
      end;
     end;
    end;
-   inc(SkipListItemIndex);
+   inc(SkipListNodeIndex);
   end else begin
-   if SkipListItem^.SkipCount=0 then begin
+   if SkipListNode^.SkipCount=0 then begin
     break;
    end else begin
-    inc(SkipListItemIndex,SkipListItem^.SkipCount);
+    inc(SkipListNodeIndex,SkipListNode^.SkipCount);
    end;
   end;
  end;
