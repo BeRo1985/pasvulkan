@@ -287,6 +287,7 @@ type { TpvScene3DRendererInstance }
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
        fCameraPreset:TpvScene3DRendererCameraPreset;
+       fUseDebugBlit:boolean;
       private
        fViews:TpvScene3D.TViews;
       private
@@ -447,6 +448,7 @@ type { TpvScene3DRendererInstance }
        property FOV:TpvFloat read fFOV write fFOV;
        property ZNear:TpvFloat read fZNear write fZNear;
        property ZFar:TpvFloat read fZFar write fZFar;
+       property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
      end;
 
 implementation
@@ -929,6 +931,8 @@ begin
  fVirtualReality:=aVirtualReality;
 
  fCameraPreset:=TpvScene3DRendererCameraPreset.Create;
+
+ fUseDebugBlit:=false;
 
  fLightGridSizeX:=16;
  fLightGridSizeY:=16;
@@ -1799,7 +1803,7 @@ begin
   end;
  end;
 
- if false then begin
+ if fUseDebugBlit then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,false);
 
