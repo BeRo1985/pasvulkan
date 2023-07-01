@@ -661,7 +661,7 @@ begin
  InFlightFrameState^.ZNear:=Min(RealZNear,1e-4);
  InFlightFrameState^.ZFar:=RealZFar;
 
- CascadedShadowMapSplitLambda:=0.95;
+ CascadedShadowMapSplitLambda:=0.9275;
 
  CascadedShadowMapSplitOverlap:=0.1;
 
