@@ -645,8 +645,8 @@ begin
    end;
    RealZFar:=Max(RealZFar,Value);
   end;
-  RealZNear:=0.1;
-  RealZFar:=1024.0;
+{ RealZNear:=0.1;
+  RealZFar:=1024.0;}
   zNear:=RealZNear;
   zFar:=RealZFar;
   DoNeedRefitNearFarPlanes:=true;
