@@ -631,7 +631,7 @@ begin
 
  if IsInfinite(fInstance.fZFar) then begin
   RealZNear:=0.1;
-  RealZFar:=1.0;
+  RealZFar:=16.0;
   for Index:=0 to fInstance.fViews.Count-1 do begin
    fViewMatrix:=fInstance.fViews.Items[Index].ViewMatrix.SimpleInverse;
    if fSceneWorldSpaceSphere.Contains(fViewMatrix.Translation.xyz) then begin
@@ -661,7 +661,7 @@ begin
  InFlightFrameState^.ZNear:=Min(RealZNear,1e-4);
  InFlightFrameState^.ZFar:=RealZFar;
 
- CascadedShadowMapSplitLambda:=0.9275;
+ CascadedShadowMapSplitLambda:=0.95;
 
  CascadedShadowMapSplitOverlap:=0.1;
 
