@@ -326,13 +326,14 @@ type TpvEntityComponentSystem=class
 
             TEntity=record
              public
-              type TFlag=
+              type TEntityFlag=
                     (
                      Used,
                      Active,
                      Killed
                     );
-                    TFlags=set of TFlag;
+                   TFlag=TEntityFlag;
+                   TFlags=set of TFlag;
              private
               fWorld:TWorld;
               fID:TEntityID;
@@ -417,12 +418,13 @@ type TpvEntityComponentSystem=class
 
             TSystem=class
              public
-              type TFlag=
+              type TSystemFlag=
                     (
                      ParallelProcessing,
                      Secluded,
                      OwnUpdate
                     );
+                   TFlag=TSystemFlag;
                    TFlags=set of TFlag;
              private
               fWorld:TWorld;
