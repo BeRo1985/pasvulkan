@@ -18,7 +18,7 @@ OLD_DIR="$(pwd)"
 # Copy modified files from the kraft submodule to the real directory of the kraft GIT repository
 cp -f externals/kraft/src/kraft.pas ../kraft/src/kraft.pas
 cp -f externals/kraft/src/KraftArcadeCarPhysics.pas ../kraft/src/KraftArcadeCarPhysics.pas
-cp -f externals/kraft/src/KraftRayCastPhysics.pas ../kraft/src/KraftRayCastPhysics.pas
+cp -f externals/kraft/src/KraftRayCastVehicle.pas ../kraft/src/KraftRayCastVehicle.pas
 
 # Clean the kraft submodule from the local changes 
 cd externals/kraft
