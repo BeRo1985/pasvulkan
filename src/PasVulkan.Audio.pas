@@ -2283,23 +2283,27 @@ begin
     Data^[(SampleLength+Counter)*2]:=Data^[(SampleLength-1)*2];
     Data^[((SampleLength+Counter)*2)+1]:=Data^[((SampleLength-1)*2)+1];
    end;
-   if Loop.Mode in [SoundLoopModeFORWARD,SoundLoopModeBACKWARD] then begin
-    LoopStart:=Loop.StartSample;
-    LoopEnd:=Loop.EndSample;
-    if (LoopStart>0) and (LoopEnd>0) and (LoopEnd<=SampleLength) then begin
-     for Counter:=0 to SampleFixUp-1 do begin
-      Data^[(LoopEnd+Counter)*2]:=Data^[(LoopStart+Counter)*2];
-      Data^[((LoopEnd+Counter)*2)+1]:=Data^[((LoopStart+Counter)*2)+1];
+   case Loop.Mode of
+    SoundLoopModeFORWARD,SoundLoopModeBACKWARD:begin
+     LoopStart:=Loop.StartSample;
+     LoopEnd:=Loop.EndSample;
+     if (LoopStart>0) and (LoopEnd>0) and (LoopEnd<=SampleLength) then begin
+      for Counter:=0 to SampleFixUp-1 do begin
+       Data^[(LoopEnd+Counter)*2]:=Data^[(LoopStart+Counter)*2];
+       Data^[((LoopEnd+Counter)*2)+1]:=Data^[((LoopStart+Counter)*2)+1];
+      end;
      end;
     end;
    end;
-   if SustainLoop.Mode in [SoundLoopModeFORWARD,SoundLoopModeBACKWARD] then begin
-    LoopStart:=SustainLoop.StartSample;
-    LoopEnd:=SustainLoop.EndSample;
-    if (LoopStart>0) and (LoopEnd>0) and (LoopEnd<=SampleLength) then begin
-     for Counter:=0 to SampleFixUp-1 do begin
-      Data^[(LoopEnd+Counter)*2]:=Data^[(LoopStart+Counter)*2];
-      Data^[((LoopEnd+Counter)*2)+1]:=Data^[((LoopStart+Counter)*2)+1];
+   case SustainLoop.Mode of
+    SoundLoopModeFORWARD,SoundLoopModeBACKWARD:begin
+     LoopStart:=SustainLoop.StartSample;
+     LoopEnd:=SustainLoop.EndSample;
+     if (LoopStart>0) and (LoopEnd>0) and (LoopEnd<=SampleLength) then begin
+      for Counter:=0 to SampleFixUp-1 do begin
+       Data^[(LoopEnd+Counter)*2]:=Data^[(LoopStart+Counter)*2];
+       Data^[((LoopEnd+Counter)*2)+1]:=Data^[((LoopStart+Counter)*2)+1];
+      end;
      end;
     end;
    end;
