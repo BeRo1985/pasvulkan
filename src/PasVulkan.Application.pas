@@ -9681,10 +9681,10 @@ begin
   FillChar(fSDLWaveFormat,SizeOf(TSDL_AudioSpec),#0);
   fSDLWaveFormat.Channels:=2;
   fSDLWaveFormat.Format:=AUDIO_S16;
-  fSDLWaveFormat.Freq:=44100;
+  fSDLWaveFormat.Freq:=48000;
   fSDLWaveFormat.Callback:=@SDLFillBuffer;
   fSDLWaveFormat.silence:=0;
-  fSDLWaveFormat.Samples:=1024;
+  fSDLWaveFormat.Samples:=512;
   fSDLWaveFormat.Size:=((fSDLWaveFormat.Samples*fSDLWaveFormat.Channels*(fSDLWaveFormat.Format and $ff))+7) shr 3;
   fAudio:=TpvAudio.Create(fSDLWaveFormat.Freq,
                           fSDLWaveFormat.Channels,
