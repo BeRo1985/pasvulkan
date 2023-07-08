@@ -73,8 +73,12 @@ type TpvScene=class;
 
      TpvSceneNodeHashMap=TpvHashMap<TpvSceneNodeClass,TpvSceneNodes>;
 
+     // A scene node can be an entity or even a component for a entity as well, here is no distinction for simplicity, for the contrast to 
+     // the entity-component-system pattern, which is also implemented in the PasVulkan framework, see the PasVulkan.EntityComponentSystem.pas unit.
+     // So it's your choice, if you want to use the entity-component-system pattern or the scene graph pattern or both.
+
      { TpvSceneNode }
-     TpvSceneNode=class
+     TpvSceneNode=class      
       public
       private
        fScene:TpvScene;
