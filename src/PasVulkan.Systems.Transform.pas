@@ -184,7 +184,7 @@ begin
    EntityID:=EntityIDs[EntityIndex];
    if (fVisitedBitmap[EntityID shr 5] and (TpvUInt32(1) shl (EntityID and 31)))=0 then begin
     Entity:=Entities[EntityIndex];
-    ComponentTransform:=TpvComponentTransform(Entity.FastComponentByClassID[fComponentTransformClassID]);
+    ComponentTransform:=TpvComponentTransform(Entity.ComponentByClassID[fComponentTransformClassID]);
     if ComponentTransform.Parent<0 then begin
      fVisitedBitmap[EntityID shr 5]:=fVisitedBitmap[EntityID shr 5] or (TpvUInt32(1) shl (EntityID and 31));
      Matrix:=TpvMatrix4x4.CreateFromQuaternion(ComponentTransform.RawRotation);
@@ -205,14 +205,14 @@ begin
       CurrentEntityID:=fStack[StackPointer];
       if CurrentEntityID<0 then begin
        CurrentEntityID:=-(CurrentEntityID+1);
-       CurrentEntity:=World.SafeEntityByID[CurrentEntityID];
+       CurrentEntity:=World.EntityByID[CurrentEntityID];
        if assigned(CurrentEntity) then begin
-        ComponentTransform:=TpvComponentTransform(CurrentEntity.SafeComponentByClassID[fComponentTransformClassID]);
+        ComponentTransform:=TpvComponentTransform(CurrentEntity.ComponentByClassID[fComponentTransformClassID]);
         if assigned(ComponentTransform) then begin
          if ComponentTransform.Parent>=0 then begin
-          ParentEntity:=World.SafeEntityByID[ComponentTransform.Parent];
+          ParentEntity:=World.EntityByID[ComponentTransform.Parent];
           if assigned(ParentEntity) then begin
-           ParentComponentTransform:=TpvComponentTransform(ParentEntity.SafeComponentByClassID[fComponentTransformClassID]);
+           ParentComponentTransform:=TpvComponentTransform(ParentEntity.ComponentByClassID[fComponentTransformClassID]);
           end else begin
            ParentComponentTransform:=nil;
           end;
@@ -220,8 +220,8 @@ begin
           ParentComponentTransform:=nil;
          end;
          if assigned(ParentComponentTransform) and
-            ((ComponentTransform.Flags*[TpvComponentTransform.TFlag.RelativePosition,TpvComponentTransform.TFlag.RelativeRotation,TpvComponentTransform.TFlag.RelativeScale])<>[]) then begin
-          if (ComponentTransform.Flags*[TpvComponentTransform.TFlag.RelativePosition,TpvComponentTransform.TFlag.RelativeRotation,TpvComponentTransform.TFlag.RelativeScale])=[TpvComponentTransform.TFlag.RelativePosition,TpvComponentTransform.TFlag.RelativeRotation,TpvComponentTransform.TFlag.RelativeScale] then begin
+            ((ComponentTransform.Flags*[TpvComponentTransformFlag.RelativePosition,TpvComponentTransformFlag.RelativeRotation,TpvComponentTransformFlag.RelativeScale])<>[]) then begin
+          if (ComponentTransform.Flags*[TpvComponentTransformFlag.RelativePosition,TpvComponentTransformFlag.RelativeRotation,TpvComponentTransformFlag.RelativeScale])=[TpvComponentTransformFlag.RelativePosition,TpvComponentTransformFlag.RelativeRotation,TpvComponentTransformFlag.RelativeScale] then begin
            Matrix:=TpvMatrix4x4.CreateFromQuaternion(ComponentTransform.RawRotation);
            Matrix.Right.xyz:=Matrix.Right.xyz*ComponentTransform.RawScale.x;
            Matrix.Up.xyz:=Matrix.Up.xyz*ComponentTransform.RawScale.y;
@@ -229,32 +229,32 @@ begin
            Matrix.Translation.xyz:=ComponentTransform.RawPosition.xyz;
            ComponentTransform.RawMatrix:=ParentComponentTransform.RawMatrix*Matrix;
           end else begin
-           if TpvComponentTransform.TFlag.RelativeRotation in ComponentTransform.Flags then begin
+           if TpvComponentTransformFlag.RelativeRotation in ComponentTransform.Flags then begin
             Matrix:=TpvMatrix4x4.CreateFromQuaternion(ComponentTransform.RawRotation);
            end else begin
             Matrix:=TpvMatrix4x4.Identity;
            end;
-           if TpvComponentTransform.TFlag.RelativeScale in ComponentTransform.Flags then begin
+           if TpvComponentTransformFlag.RelativeScale in ComponentTransform.Flags then begin
             Matrix.Right.xyz:=Matrix.Right.xyz*ComponentTransform.RawScale.x;
             Matrix.Up.xyz:=Matrix.Up.xyz*ComponentTransform.RawScale.y;
             Matrix.Forwards.xyz:=Matrix.Forwards.xyz*ComponentTransform.RawScale.z;
            end;
-           if TpvComponentTransform.TFlag.RelativePosition in ComponentTransform.Flags then begin
+           if TpvComponentTransformFlag.RelativePosition in ComponentTransform.Flags then begin
             Matrix.Translation.xyz:=ComponentTransform.RawPosition.xyz;
            end;
            Matrix:=ParentComponentTransform.RawMatrix*Matrix;
-           if not (TpvComponentTransform.TFlag.RelativeRotation in ComponentTransform.Flags) then begin
+           if not (TpvComponentTransformFlag.RelativeRotation in ComponentTransform.Flags) then begin
             OtherMatrix:=TpvMatrix4x4.CreateFromQuaternion(ComponentTransform.RawRotation);
             Matrix.Right:=Matrix.Right.Length*OtherMatrix.Right.Normalize;
             Matrix.Up:=Matrix.Up.Length*OtherMatrix.Up.Normalize;
             Matrix.Forwards:=Matrix.Forwards.Length*OtherMatrix.Forwards.Normalize;
            end;
-           if not (TpvComponentTransform.TFlag.RelativeScale in ComponentTransform.Flags) then begin
+           if not (TpvComponentTransformFlag.RelativeScale in ComponentTransform.Flags) then begin
             Matrix.Right.xyz:=Matrix.Right.xyz.Normalize*ComponentTransform.RawScale.x;
             Matrix.Up.xyz:=Matrix.Up.xyz.Normalize*ComponentTransform.RawScale.y;
             Matrix.Forwards.xyz:=Matrix.Forwards.xyz.Normalize*ComponentTransform.RawScale.z;
            end;
-           if not (TpvComponentTransform.TFlag.RelativePosition in ComponentTransform.Flags) then begin
+           if not (TpvComponentTransformFlag.RelativePosition in ComponentTransform.Flags) then begin
             Matrix.Translation.xyz:=ComponentTransform.RawPosition.xyz;
            end;
            ComponentTransform.RawMatrix:=Matrix;
@@ -277,9 +277,9 @@ begin
        end;
        fStack[StackPointer]:=-(CurrentEntityID+1);
        inc(StackPointer);
-       CurrentEntity:=World.SafeEntityByID[CurrentEntityID];
+       CurrentEntity:=World.EntityByID[CurrentEntityID];
        if assigned(CurrentEntity) then begin
-        ComponentTransform:=TpvComponentTransform(CurrentEntity.SafeComponentByClassID[fComponentTransformClassID]);
+        ComponentTransform:=TpvComponentTransform(CurrentEntity.ComponentByClassID[fComponentTransformClassID]);
         if assigned(ComponentTransform) and (ComponentTransform.Parent>=0) then begin
          fStack[StackPointer]:=ComponentTransform.Parent;
          inc(StackPointer);
