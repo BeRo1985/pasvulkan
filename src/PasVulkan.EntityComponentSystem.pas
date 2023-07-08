@@ -4542,6 +4542,7 @@ begin
  if not assigned(Event) then begin
   GetMem(Event,SizeOf(TpvEvent));
   FillChar(Event^,SizeOf(TpvEvent),#0);
+  System.Initialize(Event^);
   fEventListLock.AcquireWrite;
   try
    fEventList.Add(Event);
