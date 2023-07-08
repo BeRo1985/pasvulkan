@@ -248,18 +248,24 @@ type EpvSystemCircularDependency=class(Exception);
 
      TpvEntityComponents=array of TpvComponent;
 
-     TpvEntityAssignOp=(Replace,Combine);
+     TpvEntityAssignOp=
+      (
+       Replace,
+       Combine
+      );
 
      TpvEntity=class(TpvPooledObject)
       public
        type TEntityFlag=
              (
-              efUsed,
-              efActive,
-              efKilled,
-              efPrefabSynchronized
+              Used,
+              Active,
+              Killed,
+              PrefabSynchronized
              );
             TEntityFlags=set of TEntityFlag;
+            TFlag=TEntityFlag;
+            TFlags=TEntityFlags;
       private
        fWorld:TpvWorld;
        fID:TpvEntityID;
@@ -372,11 +378,13 @@ type EpvSystemCircularDependency=class(Exception);
       public
        type TSystemFlag=
              (
-              sfParallelProcessing,
-              sfSecluded,
-              sfOwnUpdate
+              ParallelProcessing,
+              Secluded,
+              OwnUpdate
              );
             TSystemFlags=set of TSystemFlag;
+            TFlag=TSystemFlag;
+            TFlags=TSystemFlags;
       private
        fWorld:TpvWorld;
        fFlags:TSystemFlags;
@@ -501,17 +509,19 @@ type EpvSystemCircularDependency=class(Exception);
 
      TpvWorldIDManager=class(TpvIDManager{<TpvWorldID>});
 
-     TpvDelayedManagementEventType=(dmetNone,
-                                    dmetCreateEntity,
-                                    dmetActivateEntity,
-                                    dmetDeactivateEntity,
-                                    dmetKillEntity,
-                                    dmetAddComponentToEntity,
-                                    dmetRemoveComponentFromEntity,
-                                    dmetAddSystem,
-                                    dmetRemoveSystem,
-                                    dmetSortSystem
-                                   );
+     TpvDelayedManagementEventType=
+      (
+       None,
+       CreateEntity,
+       ActivateEntity,
+       DeactivateEntity,
+       KillEntity,
+       AddComponentToEntity,
+       RemoveComponentFromEntity,
+       AddSystem,
+       RemoveSystem,
+       SortSystem
+      );
 
      TpvDelayedManagementEventData=array of TpvUInt8;
 
@@ -1737,8 +1747,8 @@ var PrefabEntityComponentIndex,PropIndex,PropCount,PrefabInstanceEntityComponent
     SrcEntityIDs,DstEntityIDs:TpvComponentDataEntityIDs;
     SubSrcObject,SubDstObject:TObject;
 begin
- if not (TEntityFlag.efPrefabSynchronized in fFlags) then begin
-  Include(fFlags,TEntityFlag.efPrefabSynchronized);
+ if not (TEntityFlag.PrefabSynchronized in fFlags) then begin
+  Include(fFlags,TEntityFlag.PrefabSynchronized);
   ComponentPrefabInstance:=TpvComponentPrefabInstance(GetComponent(TpvComponentPrefabInstance));
   if assigned(ComponentPrefabInstance) then begin
    PrefabMetaResource:=pvApplication.ResourceManager.MetaResourceByUUID[ComponentPrefabInstance.SourceWorldUUID];
@@ -2605,7 +2615,7 @@ begin
   ChoreographyStep^.Systems[0]:=System;
   while Index<Systems.Count do begin
    OtherSystem:=Systems.Items[Index];
-   Stop:=TpvSystem.TSystemFlag.sfSecluded in OtherSystem.fFlags;
+   Stop:=TpvSystem.TSystemFlag.Secluded in OtherSystem.fFlags;
    if not Stop then begin
     for SystemIndex:=0 to ChoreographyStep^.Count-1 do begin
      System:=ChoreographyStep^.Systems[SystemIndex];
@@ -2657,7 +2667,7 @@ begin
  if Data^.FirstEventIndex<=Data^.LastEventIndex then begin
   Count:=Data^.LastEventIndex-Data^.FirstEventIndex;
   if (fPasMP.CountJobWorkerThreads<2) or
-     (not (TpvSystem.TSystemFlag.sfParallelProcessing in Data.System.fFlags)) or
+     (not (TpvSystem.TSystemFlag.ParallelProcessing in Data.System.fFlags)) or
      ((Count<=Data^.System.fEventGranularity) or (Count<4)) then begin
    Data^.System.ProcessEvents(Data^.FirstEventIndex,Data^.LastEventIndex);
   end else begin
@@ -2746,11 +2756,11 @@ begin
  Data:=@aJob^.Data;
  if Data^.FirstEntityIndex<=Data^.LastEntityIndex then begin
   Count:=Data^.LastEntityIndex-Data^.FirstEntityIndex;
-  if (TpvSystem.TSystemFlag.sfOwnUpdate in Data.System.fFlags) or
-     (not (TpvSystem.TSystemFlag.sfParallelProcessing in Data.System.fFlags)) or
+  if (TpvSystem.TSystemFlag.OwnUpdate in Data.System.fFlags) or
+     (not (TpvSystem.TSystemFlag.ParallelProcessing in Data.System.fFlags)) or
      (fPasMP.CountJobWorkerThreads<2) or
      ((Count<=Data^.System.fEntityGranularity) or (Count<4)) then begin
-   if TpvSystem.TSystemFlag.sfOwnUpdate in Data.System.fFlags then begin
+   if TpvSystem.TSystemFlag.OwnUpdate in Data.System.fFlags then begin
     Data^.System.Update;
    end else begin
     Data^.System.UpdateEntities(Data^.FirstEntityIndex,Data^.LastEntityIndex);
@@ -3309,7 +3319,7 @@ begin
    fEntities[aEntityID]:=TpvEntity.Create(self);
    Entity:=fEntities[aEntityID];
    Entity.fID:=aEntityID;
-   Entity.fFlags:=[TpvEntity.TEntityFlag.efUsed];
+   Entity.fFlags:=[TpvEntity.TEntityFlag.Used];
    Entity.fUUID:=aEntityUUID;
 {$ifdef PasVulkanEditor}
    Entity.fTreeNode:=nil;
@@ -3443,7 +3453,7 @@ begin
   fReservedEntityHashMapLock.ReleaseRead;
  end;
  if result>=0 then begin
-  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetCreateEntity;
+  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.CreateEntity;
   DelayedManagementEvent.EntityID:=result;
   DelayedManagementEvent.UUID:=EntityUUID^;
   AddDelayedManagementEvent(DelayedManagementEvent);
@@ -3493,7 +3503,7 @@ begin
   fReservedEntityHashMapLock.ReleaseRead;
  end;
  if result>=0 then begin
-  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetCreateEntity;
+  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.CreateEntity;
   DelayedManagementEvent.EntityID:=result;
   DelayedManagementEvent.UUID:=EntityUUID^;
   AddDelayedManagementEvent(DelayedManagementEvent);
@@ -3524,7 +3534,7 @@ begin
   result:=(aEntityID>=0) and
           (aEntityID<fEntityIDCounter) and
           ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) and
-          (TpvEntity.TEntityFlag.efActive in fEntities[aEntityID].Flags);
+          (TpvEntity.TEntityFlag.Active in fEntities[aEntityID].Flags);
  finally
   fLock.ReleaseRead;
  end;
@@ -3533,7 +3543,7 @@ end;
 procedure TpvWorld.ActivateEntity(const aEntityID:TpvEntityID); inline;
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetActivateEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.ActivateEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
@@ -3541,7 +3551,7 @@ end;
 procedure TpvWorld.DeactivateEntity(const aEntityID:TpvEntityID); inline;
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetDeactivateEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.DeactivateEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
@@ -3549,17 +3559,17 @@ end;
 procedure TpvWorld.KillEntity(const aEntityID:TpvEntityID); inline;
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetDeactivateEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.DeactivateEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  AddDelayedManagementEvent(DelayedManagementEvent);
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetKillEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.KillEntity;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
 procedure TpvWorld.AddComponentToEntity(const aEntityID:TpvEntityID;const aComponent:TpvComponent);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetAddComponentToEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.AddComponentToEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  DelayedManagementEvent.Component:=aComponent;
  AddDelayedManagementEvent(DelayedManagementEvent);
@@ -3568,7 +3578,7 @@ end;
 procedure TpvWorld.RemoveComponentFromEntity(const aEntityID:TpvEntityID;const aComponentClass:TpvComponentClass);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetRemoveComponentFromEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.RemoveComponentFromEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  DelayedManagementEvent.ComponentClass:=TpvComponentClass(aComponentClass);
  AddDelayedManagementEvent(DelayedManagementEvent);
@@ -3577,7 +3587,7 @@ end;
 procedure TpvWorld.RemoveComponentFromEntity(const aEntityID:TpvEntityID;const aComponentClassID:TpvComponentClassID);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetRemoveComponentFromEntity;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.RemoveComponentFromEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  DelayedManagementEvent.ComponentClass:=TpvComponentClass(fUniverse.RegisteredComponentClasses.ComponentByID[aComponentClassID]);
  AddDelayedManagementEvent(DelayedManagementEvent);
@@ -3612,7 +3622,7 @@ end;
 procedure TpvWorld.AddSystem(const aSystem:TpvSystem);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetAddSystem;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.AddSystem;
  DelayedManagementEvent.System:=aSystem;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
@@ -3620,7 +3630,7 @@ end;
 procedure TpvWorld.RemoveSystem(const aSystem:TpvSystem);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetRemoveSystem;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.RemoveSystem;
  DelayedManagementEvent.System:=aSystem;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
@@ -3628,7 +3638,7 @@ end;
 procedure TpvWorld.SortSystem(const aSystem:TpvSystem);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
- DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.dmetSortSystem;
+ DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.SortSystem;
  DelayedManagementEvent.System:=aSystem;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
@@ -4031,18 +4041,18 @@ begin
    DelayedManagementEvent:=@fDelayedManagementEvents[DelayedManagementEventIndex];
    inc(DelayedManagementEventIndex);
    case DelayedManagementEvent^.EventType of
-    TpvDelayedManagementEventType.dmetCreateEntity:begin
+    TpvDelayedManagementEventType.CreateEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and (EntityID<fEntityIDCounter) then begin
       DoCreateEntity(EntityID,DelayedManagementEvent^.UUID);
      end;
     end;
-    TpvDelayedManagementEventType.dmetActivateEntity:begin
+    TpvDelayedManagementEventType.ActivateEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
         ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
-        not (TpvEntity.TEntityFlag.efActive in fEntities[EntityID].Flags) then begin
+        not (TpvEntity.TEntityFlag.Active in fEntities[EntityID].Flags) then begin
       for Index:=0 to fSystemList.Count-1 do begin
        System:=TpvSystem(fSystemList.Items[Index]);
        if System.FitsEntityToSystem(EntityID) then begin
@@ -4050,16 +4060,16 @@ begin
         EntitiesWereAdded:=true;
        end;
       end;
-      Include(fEntities[EntityID].fFlags,TpvEntity.TEntityFlag.efActive);
+      Include(fEntities[EntityID].fFlags,TpvEntity.TEntityFlag.Active);
      end;
     end;
-    TpvDelayedManagementEventType.dmetDeactivateEntity:begin
+    TpvDelayedManagementEventType.DeactivateEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
         ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
-        (TpvEntity.TEntityFlag.efActive in fEntities[EntityID].Flags) then begin
-      Exclude(fEntities[EntityID].fFlags,TpvEntity.TEntityFlag.efActive);
+        (TpvEntity.TEntityFlag.Active in fEntities[EntityID].Flags) then begin
+      Exclude(fEntities[EntityID].fFlags,TpvEntity.TEntityFlag.Active);
       for Index:=0 to fSystemList.Count-1 do begin
        System:=TpvSystem(fSystemList.Items[Index]);
        System.RemoveEntityFromSystem(EntityID);
@@ -4067,7 +4077,7 @@ begin
       end;
      end;
     end;
-    TpvDelayedManagementEventType.dmetKillEntity:begin
+    TpvDelayedManagementEventType.KillEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
@@ -4085,14 +4095,14 @@ begin
       end;
      end;
     end;
-    TpvDelayedManagementEventType.dmetAddComponentToEntity:begin
+    TpvDelayedManagementEventType.AddComponentToEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
         ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) then begin
       Component:=DelayedManagementEvent^.Component;
       if assigned(Component) then begin
-       WasActive:=TpvEntity.TEntityFlag.efActive in fEntities[EntityID].Flags;
+       WasActive:=TpvEntity.TEntityFlag.Active in fEntities[EntityID].Flags;
        if WasActive then begin
         for Index:=0 to fSystemList.Count-1 do begin
          System:=TpvSystem(fSystemList.Items[Index]);
@@ -4114,14 +4124,14 @@ begin
       end;
      end;
     end;
-    TpvDelayedManagementEventType.dmetRemoveComponentFromEntity:begin
+    TpvDelayedManagementEventType.RemoveComponentFromEntity:begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
         ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) then begin
       ComponentClass:=DelayedManagementEvent^.ComponentClass;
       if assigned(ComponentClass) then begin
-       WasActive:=TpvEntity.TEntityFlag.efActive in fEntities[EntityID].Flags;
+       WasActive:=TpvEntity.TEntityFlag.Active in fEntities[EntityID].Flags;
        if WasActive then begin
         for Index:=0 to fSystemList.Count-1 do begin
          System:=TpvSystem(fSystemList.Items[Index]);
@@ -4149,7 +4159,7 @@ begin
       end;
      end;
     end;
-    TpvDelayedManagementEventType.dmetAddSystem:begin
+    TpvDelayedManagementEventType.AddSystem:begin
      System:=DelayedManagementEvent^.System;
      if not fSystemPointerIntegerPairHashMap.Values[System] then begin
       fSystemPointerIntegerPairHashMap.Add(System,true);
@@ -4159,7 +4169,7 @@ begin
        if (EntityID>=0) and
            (EntityID<fEntityIDCounter) and
            ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
-           (TpvEntity.TEntityFlag.efActive in fEntities[EntityID].Flags) and
+           (TpvEntity.TEntityFlag.Active in fEntities[EntityID].Flags) and
            System.FitsEntityToSystem(EntityID) then begin
         System.AddEntityToSystem(EntityID);
         EntitiesWereAdded:=true;
@@ -4168,7 +4178,7 @@ begin
       System.Added;
      end;
     end;
-    TpvDelayedManagementEventType.dmetRemoveSystem:begin
+    TpvDelayedManagementEventType.RemoveSystem:begin
      System:=DelayedManagementEvent^.System;
      if fSystemPointerIntegerPairHashMap.Values[System] then begin
       System.Removed;
@@ -4177,7 +4187,7 @@ begin
       InterlockedExchange(fSystemChoreographyNeedToRebuild,-1);
      end;
     end;
-    TpvDelayedManagementEventType.dmetSortSystem:begin
+    TpvDelayedManagementEventType.SortSystem:begin
      System:=DelayedManagementEvent^.System;
      if fSystemPointerIntegerPairHashMap.Values[System] then begin
       System.SortEntities;
