@@ -4565,8 +4565,8 @@ begin
    fEventQueueLock.ReleaseWrite;
   end;
  end;
- Event^.TimeStamp:=fCurrentTime+aDeltaTime;
- Event^.RemainingTime:=aDeltaTime;
+ Event^.TimeStamp:=fCurrentTime+Max(0.0,aDeltaTime);
+ Event^.RemainingTime:=Max(0.0,aDeltaTime);
  Event^.EventID:=aEventToQueue.EventID;
  Event^.EntityID:=aEventToQueue.EntityID;
  Event^.CountParameters:=aEventToQueue.CountParameters;
