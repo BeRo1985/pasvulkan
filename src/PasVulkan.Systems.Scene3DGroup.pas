@@ -485,31 +485,31 @@ end;
 procedure TpvSystemScene3DGroup.PrepareRenderCurrentParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var EntityIndex:TpvInt32;
     EntityID:TpvEntityID;
-    RenderablepvSystemScene3DGroupEntity:TpvSystemScene3DGroupEntity;
+    RenderableScene3DGroupEntity:TpvSystemScene3DGroupEntity;
     LastpvSystemScene3DGroupEntity:TpvSystemScene3DGroupEntity;
-    CurrentpvSystemScene3DGroupEntity:TpvSystemScene3DGroupEntity;
+    CurrentScene3DGroupEntity:TpvSystemScene3DGroupEntity;
     RenderableEntities:TpvSystemScene3DGroupEntities;
 begin
  RenderableEntities:=fCurrentRenderableEntities;
  for EntityIndex:=aFromIndex to aToIndex do begin
   EntityID:=fCurrentRenderableEntityIDs[EntityIndex];
-  RenderablepvSystemScene3DGroupEntity:=RenderableEntities.Entities[EntityID];
+  RenderableScene3DGroupEntity:=RenderableEntities.Entities[EntityID];
   LastpvSystemScene3DGroupEntity:=fLastEntities.Entities[EntityID];
-  CurrentpvSystemScene3DGroupEntity:=fCurrentEntities.Entities[EntityID];
-  if assigned(CurrentpvSystemScene3DGroupEntity) then begin
-   if not assigned(RenderablepvSystemScene3DGroupEntity) then begin
-    RenderablepvSystemScene3DGroupEntity:=TpvSystemScene3DGroupEntity.Create(self,EntityID);
-    RenderableEntities.Entities[EntityID]:=RenderablepvSystemScene3DGroupEntity;
+  CurrentScene3DGroupEntity:=fCurrentEntities.Entities[EntityID];
+  if assigned(CurrentScene3DGroupEntity) then begin
+   if not assigned(RenderableScene3DGroupEntity) then begin
+    RenderableScene3DGroupEntity:=TpvSystemScene3DGroupEntity.Create(self,EntityID);
+    RenderableEntities.Entities[EntityID]:=RenderableScene3DGroupEntity;
    end;
    if assigned(LastpvSystemScene3DGroupEntity) then begin
-    RenderablepvSystemScene3DGroupEntity.Interpolate(LastpvSystemScene3DGroupEntity,
-                                               CurrentpvSystemScene3DGroupEntity,
-                                               fStateInterpolation);
+    RenderableScene3DGroupEntity.Interpolate(LastpvSystemScene3DGroupEntity,
+                                             CurrentScene3DGroupEntity,
+                                             fStateInterpolation);
    end else begin
-    RenderablepvSystemScene3DGroupEntity.Assign(CurrentpvSystemScene3DGroupEntity);
+    RenderableScene3DGroupEntity.Assign(CurrentScene3DGroupEntity);
    end;
-   RenderablepvSystemScene3DGroupEntity.Seen:=true;
-   RenderablepvSystemScene3DGroupEntity.Deleted:=false;
+   RenderableScene3DGroupEntity.Seen:=true;
+   RenderableScene3DGroupEntity.Deleted:=false;
   end;
  end;
 end;
@@ -517,18 +517,18 @@ end;
 procedure TpvSystemScene3DGroup.PrepareRenderLastParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var EntityIndex:TpvInt32;
     EntityID:TpvEntityID;
-    RenderablepvSystemScene3DGroupEntity:TpvSystemScene3DGroupEntity;
+    RenderableScene3DGroupEntity:TpvSystemScene3DGroupEntity;
     RenderableEntities:TpvSystemScene3DGroupEntities;
 begin
  RenderableEntities:=fCurrentRenderableEntities;
  for EntityIndex:=aFromIndex to aToIndex do begin
   EntityID:=fLastRenderableEntityIDs[EntityIndex];
-  RenderablepvSystemScene3DGroupEntity:=RenderableEntities.Entities[EntityID];
-  if assigned(RenderablepvSystemScene3DGroupEntity) then begin
-   if RenderablepvSystemScene3DGroupEntity.Seen then begin
-    RenderablepvSystemScene3DGroupEntity.Seen:=false;
+  RenderableScene3DGroupEntity:=RenderableEntities.Entities[EntityID];
+  if assigned(RenderableScene3DGroupEntity) then begin
+   if RenderableScene3DGroupEntity.Seen then begin
+    RenderableScene3DGroupEntity.Seen:=false;
    end else begin
-    RenderablepvSystemScene3DGroupEntity.Free;
+    RenderableScene3DGroupEntity.Free;
     RenderableEntities.Entities[EntityID]:=nil;
    end;
   end;
