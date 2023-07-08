@@ -121,6 +121,15 @@ type TpvScene=class;
       public
        constructor Create(const aData:TObject=nil); reintroduce; virtual;
        destructor Destroy; override;
+       procedure StartLoad; virtual;
+       procedure BackgroundLoad; virtual;
+       procedure FinishLoad; virtual;
+       procedure WaitForLoaded; virtual;
+       function IsLoaded:boolean; virtual;
+       procedure Store; virtual;
+       procedure Update(const aDeltaTime:TpvDouble); virtual;
+       procedure Interpolate(const aAlpha:TpvDouble); virtual;
+       procedure Render; virtual;
       published
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
@@ -386,6 +395,51 @@ destructor TpvScene.Destroy;
 begin
  FreeAndNil(fRootNode);
  inherited Destroy;
+end;
+
+procedure TpvScene.StartLoad;
+begin
+ fRootNode.StartLoad;
+end;
+
+procedure TpvScene.BackgroundLoad;
+begin
+ fRootNode.BackgroundLoad;
+end;
+
+procedure TpvScene.FinishLoad;
+begin
+ fRootNode.FinishLoad;
+end;
+
+procedure TpvScene.WaitForLoaded;
+begin
+ fRootNode.WaitForLoaded;
+end;
+
+function TpvScene.IsLoaded:boolean;
+begin
+ result:=fRootNode.IsLoaded;
+end;
+
+procedure TpvScene.Store;
+begin
+ fRootNode.Store;
+end;
+
+procedure TpvScene.Update(const aDeltaTime:TpvDouble);
+begin
+ fRootNode.Update(aDeltaTime);
+end;
+
+procedure TpvScene.Interpolate(const aAlpha:TpvDouble);
+begin
+ fRootNode.Interpolate(aAlpha);
+end;
+
+procedure TpvScene.Render;
+begin
+ fRootNode.Render;
 end;
 
 end.
