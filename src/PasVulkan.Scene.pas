@@ -87,6 +87,7 @@ type TpvScene=class;
        fChildren:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
+       fLoaded:boolean;
        fDestroying:boolean;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
@@ -96,6 +97,11 @@ type TpvScene=class;
        function GetNodeListOf(const aNodeClass:TpvSceneNodeClass):TpvSceneNodes;
        function GetNodeOf(const aNodeClass:TpvSceneNodeClass;const aIndex:TpvSizeInt=0):TpvSceneNode;
        function GetNodeCountOf(const aNodeClass:TpvSceneNodeClass):TpvSizeInt;
+       procedure StartLoad; virtual;
+       procedure BackgroundLoad; virtual;
+       procedure FinishLoad; virtual;
+       procedure WaitForLoaded; virtual;
+       function IsLoaded:boolean; virtual;
        procedure Store; virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
@@ -144,6 +150,8 @@ begin
  fChildren.OwnsObjects:=true;
 
  fDestroying:=false;
+
+ fLoaded:=false;
 
  fNodeHashMap:=TpvSceneNodeHashMap.Create(nil);
 
@@ -283,6 +291,45 @@ begin
  end else begin
   result:=0;
  end;
+end;
+
+procedure TpvSceneNode.StartLoad;
+begin
+end;
+
+procedure TpvSceneNode.BackgroundLoad;
+begin
+end;
+
+procedure TpvSceneNode.FinishLoad;
+begin
+end;
+
+procedure TpvSceneNode.WaitForLoaded;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+  ChildNode:=fChildren[ChildNodeIndex];
+  ChildNode.WaitForLoaded;
+ end;
+ while not fLoaded do begin
+  Sleep(1);
+ end;
+end;
+
+function TpvSceneNode.IsLoaded:boolean;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+  ChildNode:=fChildren[ChildNodeIndex];
+  result:=ChildNode.IsLoaded;
+  if not result then begin
+   exit;
+  end;
+ end;
+ result:=fLoaded;
 end;
 
 procedure TpvSceneNode.Store;
