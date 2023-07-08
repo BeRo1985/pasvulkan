@@ -3108,8 +3108,9 @@ begin
 end;
 
 procedure TpvWorldEntityComponentSetQuery.Update;
-var Index,OtherIndex,Count,CommonBitmapSize,CommonComponentBitmapSize:TpvSizeInt;
+var Index,BitmapEntityIndex,EntityIndex,OtherIndex,Count,CommonBitmapSize,CommonComponentBitmapSize:TpvSizeInt;
     Value:TpvUInt64;
+    EntityIDUsedBitmapValue:TpvUInt32;
     Entity:TpvEntity;
     OK:boolean;
 begin
@@ -3123,11 +3124,20 @@ begin
    Count:=0;
    try
 
-    for Index:=0 to fWorld.fEntityIDCounter-1 do begin
+    BitmapEntityIndex:=0;
 
-     if (fWorld.fEntityIDUsedBitmap[Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(Index and 31)))<>0 then begin
+    // Iterate over all used entity bitmap values with bittwiddling per bit scan forward to find the next set lowest bit
+    for Index:=0 to Min(length(fWorld.fEntityIDUsedBitmap),(fWorld.fEntityIDCounter+31) shr 5)-1 do begin
 
-      Entity:=fWorld.fEntities[Index];
+     EntityIDUsedBitmapValue:=fWorld.fEntityIDUsedBitmap[Index];
+
+     // Iterate over all set bits in the used entity bitmap value
+     while EntityIDUsedBitmapValue<>0 do begin
+
+      EntityIndex:=BitmapEntityIndex+TPasMPMath.BitScanForward32(EntityIDUsedBitmapValue);
+      EntityIDUsedBitmapValue:=EntityIDUsedBitmapValue and (EntityIDUsedBitmapValue-1);
+
+      Entity:=fWorld.fEntities[EntityIndex];
 
       OK:=true;
 
@@ -3159,9 +3169,11 @@ begin
         inc(Count);
        end;
 
-      end; 
+      end;
 
      end;
+
+     inc(BitmapEntityIndex,32);
 
     end;
 
