@@ -738,6 +738,7 @@ type EpvSystemCircularDependency=class(Exception);
        constructor Create;
        destructor Destroy; override;
        class procedure GlobalInitialize; static;
+       class procedure GlobalFinalize; static;
        procedure RegisterComponent(const aComponentClass:TpvComponentClass);
        procedure UnregisterComponent(const aComponentClass:TpvComponentClass);
        procedure ScanWorlds;
@@ -5670,8 +5671,19 @@ end;
 
 class procedure TpvUniverse.GlobalInitialize;
 begin
- if not assigned(pvApplication.Universe) then begin
+ if assigned(pvApplication) and not assigned(pvApplication.Universe) then begin
   pvApplication.Universe:=TpvUniverse.Create;
+ end;
+end;
+
+class procedure TpvUniverse.GlobalFinalize;
+begin
+ if assigned(pvApplication) and assigned(pvApplication.Universe) then begin
+  try
+   pvApplication.Universe.Free;
+  finally
+   pvApplication.Universe:=nil;
+  end;
  end;
 end;
 
