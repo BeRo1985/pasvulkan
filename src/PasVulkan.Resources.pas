@@ -685,12 +685,12 @@ begin
  result:=TpvMetaResource;
 end;
 
-function TpvResource._AddRef: TpvInt32; cdecl;
+function TpvResource._AddRef:TpvInt32; cdecl;
 begin
  result:=inherited _AddRef;
 end;
 
-function TpvResource._Release: TpvInt32; cdecl;
+function TpvResource._Release:TpvInt32; cdecl;
 begin
  if (fReleaseFrameDelay>0) and assigned(fResourceManager) and fResourceManager.fActive and assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
   result:=TPasMPInterlocked.Decrement(fReferenceCounter);
