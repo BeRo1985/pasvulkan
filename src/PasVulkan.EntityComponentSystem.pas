@@ -965,8 +965,7 @@ end;
 
 class function TpvComponent.ClassUUID:TpvUUID;
 begin
- result.UInt64s[0]:=$0000000000000000;
- result.UInt64s[1]:=$0000000000000000;
+ result:=TpvUUID.Null;
 end;
 
 class function TpvComponent.ClassInstanceMemoryCopyable:boolean;
