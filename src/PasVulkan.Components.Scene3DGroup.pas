@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.Scene3D;
+unit PasVulkan.Components.Scene3DGroup;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -67,26 +67,29 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentScene3D=class(TpvComponent)
+type TpvComponentScene3DGroup=class(TpvComponent)
       private
-       fDummy:TpvInt32;
+       fAssetFileName:UTF8String;
+       fScene:TpvInt32;
       public
        class function ClassPath:string; override;
        class function ClassUUID:TpvUUID; override;
       published
+       property AssetFileName:UTF8String read fAssetFileName write fAssetFileName;
+       property Scene:Int32 read fScene write fScene;
      end;
 
 implementation
 
-class function TpvComponentScene3D.ClassPath:string;
+class function TpvComponentScene3DGroup.ClassPath:string;
 begin
- result:='Scene3D';
+ result:='Scene3DGroup';
 end;
 
-class function TpvComponentScene3D.ClassUUID:TpvUUID;
+class function TpvComponentScene3DGroup.ClassUUID:TpvUUID;
 begin
- result.UInt64s[0]:=TpvUInt64($8247aab7c9457584);
- result.UInt64s[1]:=TpvUInt64($e47eabe14af3b66c);
+ result.UInt64s[0]:=TpvUInt64($def3584317b438f6);
+ result.UInt64s[1]:=TpvUInt64($135cff37b20a20f7);
 end;
 
 initialization
