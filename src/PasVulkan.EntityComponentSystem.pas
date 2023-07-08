@@ -123,8 +123,8 @@ type EpvSystemCircularDependency=class(Exception);
 
      TpvEvent=record
       LinkedListHead:TpvLinkedListHead;
-      TimeStamp:TTime;
-      RemainingTime:TTime;
+      TimeStamp:TpvTime;
+      RemainingTime:TpvTime;
       EventID:TpvEventID;
       EntityID:TpvEntityID;
       CountParameters:TpvInt32;
@@ -403,7 +403,7 @@ type EpvSystemCircularDependency=class(Exception);
        fCountEntities:TpvInt32;
        fEvents:TpvSystemEvents;
        fCountEvents:TpvInt32;
-       fDeltaTime:TTime;
+       fDeltaTime:TpvTime;
       protected
        function HaveDependencyOnSystem(const aOtherSystem:TpvSystem):boolean;
        function HaveDependencyOnSystemOrViceVersa(const aOtherSystem:TpvSystem):boolean;
@@ -442,7 +442,7 @@ type EpvSystemCircularDependency=class(Exception);
        property EntityGranularity:TpvInt32 read fEntityGranularity write fEntityGranularity;
        property Events:TpvSystemEvents read fEvents;
        property CountEvents:TpvInt32 read fCountEvents;
-       property DeltaTime:TTime read fDeltaTime;
+       property DeltaTime:TpvTime read fDeltaTime;
      end;
 
      TpvSystemChoreography=class
@@ -633,7 +633,7 @@ type EpvSystemCircularDependency=class(Exception);
        fDelayedFreeEventQueue:TpvLinkedListHead;
        fFreeEventQueueLock:TPasMPMultipleReaderSingleWriterLock;
        fFreeEventQueue:TpvLinkedListHead;
-       fCurrentTime:TTime;
+       fCurrentTime:TpvTime;
        fEventInProcessing:longbool;
        fEventRegistrationLock:TPasMPMultipleReaderSingleWriterLock;
        fEventRegistrationList:TList;
@@ -649,7 +649,7 @@ type EpvSystemCircularDependency=class(Exception);
        function DoDestroyEntity(const aEntityID:TpvEntityID):boolean;
        procedure ProcessEvent(const aEvent:PpvEvent);
        procedure ProcessEvents;
-       procedure ProcessDelayedEvents(const aDeltaTime:TTime);
+       procedure ProcessDelayedEvents(const aDeltaTime:TpvTime);
        function CreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):TpvEntityID; overload;
       protected
       public
@@ -679,9 +679,8 @@ type EpvSystemCircularDependency=class(Exception);
        procedure SortSystem(const aSystem:TpvSystem);
        procedure Defragment;
        procedure Refresh;
-       procedure QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TTime); overload;
-       procedure QueueEvent(const aEventToQueue:TpvEvent); overload;
-       procedure Update(const aDeltaTime:TTime);
+       procedure QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TpvTime=0.0); overload;
+       procedure Update(const aDeltaTime:TpvTime);
        procedure Clear;
        procedure ClearEntities;
        procedure Activate;
@@ -710,7 +709,7 @@ type EpvSystemCircularDependency=class(Exception);
        property EntityByID[const ID:TpvEntityID]:TpvEntity read GetEntityByID;
        property EntityByUUID[const UUID:TpvUUID]:TpvEntity read GetEntityByUUID;
        property EntityIDCapacity:TpvInt32 read fEntityIDCounter;
-       property CurrentTime:TTime read fCurrentTime;
+       property CurrentTime:TpvTime read fCurrentTime;
        property OnEvent:TpvWorldOnEvent read fOnEvent write fOnEvent;
      end;
 
@@ -4498,7 +4497,7 @@ begin
  until false;
 end;
 
-procedure TpvWorld.ProcessDelayedEvents(const aDeltaTime:TTime);
+procedure TpvWorld.ProcessDelayedEvents(const aDeltaTime:TpvTime);
 var CurrentEvent,NextEvent:PpvEvent;
 begin
  fDelayedEventQueueLock.AcquireWrite;
@@ -4530,7 +4529,7 @@ begin
  end;
 end;
 
-procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TTime);
+procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TpvTime);
 var ParameterIndex:TpvInt32;
     Event:PpvEvent;
 begin
@@ -4551,7 +4550,7 @@ begin
   end;
  end;
  LinkedListInitialize(pointer(Event));
- if aDeltaTime>0 then begin
+ if aDeltaTime>=0.0 then begin
   fDelayedEventQueueLock.AcquireWrite;
   try
    LinkedListPushBack(@fDelayedEventQueue,pointer(Event));
@@ -4582,12 +4581,7 @@ begin
  end;
 end;
 
-procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent);
-begin
- QueueEvent(aEventToQueue,1.0e-18); // one femtosecond
-end;
-
-procedure TpvWorld.Update(const aDeltaTime:TTime);
+procedure TpvWorld.Update(const aDeltaTime:TpvTime);
 var SystemIndex:TpvInt32;
     System:TpvSystem;
 begin
