@@ -657,6 +657,8 @@ type EpvSystemCircularDependency=class(Exception);
        procedure AddSystem(const aSystem:TpvSystem);
        procedure RemoveSystem(const aSystem:TpvSystem);
        procedure SortSystem(const aSystem:TpvSystem);
+       procedure FindEntitiesWithComponents(var aEntityIDs:TpvEntityIDs;out aCount:TpvSizeInt;const aRequiredComponents:array of TpvComponentClassID;const aExcludedComponents:array of TpvComponentClassID); overload;
+       procedure FindEntitiesWithComponents(var aEntityIDs:TpvEntityIDs;out aCount:TpvSizeInt;const aRequiredComponents:array of TpvComponentClass;const aExcludedComponents:array of TpvComponentClass); overload;
        procedure Defragment;
        procedure Refresh;
        procedure QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TTime); overload;
@@ -3872,6 +3874,113 @@ begin
     end;
    end;
   end;
+ end;
+end;
+
+procedure TpvWorld.FindEntitiesWithComponents(var aEntityIDs:TpvEntityIDs;out aCount:TpvSizeInt;const aRequiredComponents:array of TpvComponentClassID;const aExcludedComponents:array of TpvComponentClassID);
+var Index,OtherIndex,MaxComponentIDPlusOne,BitmapSize,CommonComponentBitmapSize:TpvSizeInt;
+    AndComponentBitmap,AndNotComponentBitmap:TpvEntity.TComponentBitmap;
+    Entity:TpvEntity;
+    OK:Boolean;
+    Value:TpvUInt64;
+begin
+
+ AndComponentBitmap:=nil;
+ try
+  
+  AndNotComponentBitmap:=nil;
+  try
+  
+   // Find the maximum component ID plus one
+   MaxComponentIDPlusOne:=0;
+   for Index:=0 to length(aRequiredComponents)-1 do begin
+    MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aRequiredComponents[Index]+1);
+   end;
+   for Index:=0 to length(aExcludedComponents)-1 do begin
+    MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aExcludedComponents[Index]+1);
+   end;
+
+   // Calculate the bitmap size
+   BitmapSize:=(MaxComponentIDPlusOne+63) shr 6;
+
+   // Initialize the and component bitmap with the required components
+   SetLength(AndComponentBitmap,BitmapSize);
+   FillChar(AndComponentBitmap[0],BitmapSize*SizeOf(TpvUInt64),#0);
+   for Index:=0 to length(aRequiredComponents)-1 do begin
+    AndComponentBitmap[aRequiredComponents[Index] shr 6]:=AndComponentBitmap[aRequiredComponents[Index] shr 6] or (TpvUInt64(1) shl (aRequiredComponents[Index] and 63));
+   end;
+
+   // Initialize the and not component bitmap with the excluded components
+   SetLength(AndNotComponentBitmap,BitmapSize);
+   FillChar(AndNotComponentBitmap[0],BitmapSize*SizeOf(TpvUInt64),#0);
+   for Index:=0 to length(aExcludedComponents)-1 do begin
+    AndNotComponentBitmap[aExcludedComponents[Index] shr 6]:=AndNotComponentBitmap[aExcludedComponents[Index] shr 6] or (TpvUInt64(1) shl (aExcludedComponents[Index] and 63));
+   end;
+
+   // Find the entities with the required components and without the excluded components
+   aCount:=0;
+   for Index:=0 to fEntityIDCounter-1 do begin
+    if (fEntityIDUsedBitmap[Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(Index and 31)))<>0 then begin
+     Entity:=fEntities[Index];
+     OK:=true;
+     CommonComponentBitmapSize:=Min(BitmapSize,length(Entity.fComponentBitmap)); // For the case that when the entity has less components than the requested required and excluded components
+     for OtherIndex:=0 to CommonComponentBitmapSize-1 do begin
+      Value:=Entity.fComponentBitmap[OtherIndex];
+      if ((Value and AndComponentBitmap[OtherIndex])<>AndComponentBitmap[OtherIndex]) or
+         ((Value and AndNotComponentBitmap[OtherIndex])<>0) then begin
+       OK:=false;
+       break;
+      end;
+     end;
+     for OtherIndex:=CommonComponentBitmapSize to BitmapSize-1 do begin // In the case that the entity has less components than the required components
+      if AndComponentBitmap[OtherIndex]<>0 then begin
+       OK:=false;
+       break;
+      end;
+     end;
+     if OK then begin
+      if aCount>=length(aEntityIDs) then begin
+       SetLength(aEntityIDs,(aCount+1)+((aCount+1) shr 1));
+      end;
+      aEntityIDs[aCount]:=fEntities[Index].fID;
+      inc(aCount);
+     end;  
+    end;
+   end;
+
+  finally
+   AndNotComponentBitmap:=nil;
+  end;
+
+ finally
+  AndComponentBitmap:=nil;
+ end;
+
+end;
+
+procedure TpvWorld.FindEntitiesWithComponents(var aEntityIDs:TpvEntityIDs;out aCount:TpvSizeInt;const aRequiredComponents:array of TpvComponentClass;const aExcludedComponents:array of TpvComponentClass);
+var Index:TpvSizeInt;
+    RequiredComponents:array of TpvComponentClassID;
+    ExcludedComponents:array of TpvComponentClassID;
+begin
+ RequiredComponents:=nil;
+ try
+  ExcludedComponents:=nil;
+  try
+   SetLength(RequiredComponents,length(aRequiredComponents));
+   for Index:=0 to length(aRequiredComponents)-1 do begin
+    RequiredComponents[Index]:=aRequiredComponents[Index].ClassID;
+   end;
+   SetLength(ExcludedComponents,length(aExcludedComponents));
+   for Index:=0 to length(aExcludedComponents)-1 do begin
+    ExcludedComponents[Index]:=aExcludedComponents[Index].ClassID;
+   end;
+   FindEntitiesWithComponents(aEntityIDs,aCount,RequiredComponents,ExcludedComponents);
+  finally
+   ExcludedComponents:=nil;
+  end;
+ finally
+  RequiredComponents:=nil;
  end;
 end;
 
