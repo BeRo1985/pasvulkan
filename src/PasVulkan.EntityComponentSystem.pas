@@ -727,6 +727,8 @@ type EpvSystemCircularDependency=class(Exception);
        property WorldByFileName[const aFileName:TpvUTF8String]:TpvWorld read GetWorldByFileName;
      end;
 
+     { TpvUniverse }
+
      TpvUniverse=class(TpvObject)
       private
        fRegisteredComponentClasses:TpvRegisteredComponentClassList;
@@ -735,6 +737,7 @@ type EpvSystemCircularDependency=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
+       class procedure GlobalInitialize; static;
        procedure RegisterComponent(const aComponentClass:TpvComponentClass);
        procedure UnregisterComponent(const aComponentClass:TpvComponentClass);
        procedure ScanWorlds;
@@ -5663,6 +5666,13 @@ begin
  fWorldIDManager.Free;
  fRegisteredComponentClasses.Free;
  inherited Destroy;
+end;
+
+class procedure TpvUniverse.GlobalInitialize;
+begin
+ if not assigned(pvApplication.Universe) then begin
+  pvApplication.Universe:=TpvUniverse.Create;
+ end;
 end;
 
 procedure TpvUniverse.RegisterComponent(const aComponentClass:TpvComponentClass);
