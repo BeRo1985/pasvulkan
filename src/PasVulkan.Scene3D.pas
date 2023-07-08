@@ -382,7 +382,7 @@ type EpvScene3D=class(Exception);
               fInUpload:TPasMPBool32;
               fAdded:TPasMPBool32;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -605,7 +605,7 @@ type EpvScene3D=class(Exception);
               fTexture:TpvVulkanTexture;
               fLock:TPasMPSpinLock;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -642,7 +642,7 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fSampler:TpvVulkanSampler;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -669,7 +669,7 @@ type EpvScene3D=class(Exception);
               fImage:TImage;
               fSampler:TSampler;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -961,7 +961,7 @@ type EpvScene3D=class(Exception);
               fVulkanDescriptorPool:TpvVulkanDescriptorPool;
               fVulkanDescriptorSet:TpvVulkanDescriptorSet;}
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -1933,7 +1933,7 @@ type EpvScene3D=class(Exception);
                                     const aOnSetRenderPassResources:TOnSetRenderPassResources;
                                     const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
-                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
                      destructor Destroy; override;
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
@@ -2064,7 +2064,7 @@ type EpvScene3D=class(Exception);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -2246,7 +2246,7 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
@@ -2634,10 +2634,10 @@ end;
 
 { TpvScene3D.TBaseObject }
 
-constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 var Current:TpvResource;
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  if assigned(Parent) then begin
   Current:=Parent;
@@ -3468,9 +3468,9 @@ end;
 
 { TpvScene3D.TImage }
 
-constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
  fResourceDataStream:=TMemoryStream.Create;
  fLock:=TPasMPSpinLock.Create;
  fTexture:=nil;
@@ -3766,9 +3766,9 @@ end;
 
 { TpvScene3D.TSampler }
 
-constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
  fLock:=TPasMPSpinLock.Create;
 end;
 
@@ -3994,9 +3994,9 @@ end;
 
 { TpvScene3D.TTexture }
 
-constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  fImage:=nil;
 
@@ -4411,9 +4411,9 @@ end;
 
 { TpvScene3D.TMaterial }
 
-constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  fData:=DefaultData;
 
@@ -8028,9 +8028,9 @@ end;
 
 { TpvScene3D.TGroup }
 
-constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  fLock:=TPasMPSpinLock.Create;
 
@@ -10728,7 +10728,7 @@ end;
 
 { TpvScene3D.TGroup.TInstance }
 
-constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
@@ -10739,7 +10739,7 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     MaterialToDuplicate,DuplicatedMaterial,Material:TpvScene3D.TMaterial;
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
 begin
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  if aParent is TGroup then begin
   fGroup:=TpvScene3D.TGroup(aParent);
@@ -13820,11 +13820,11 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
 var Index:TpvSizeInt;
 begin
 
- inherited Create(aResourceManager,aParent);
+ inherited Create(aResourceManager,aParent,aMetaResource);
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
