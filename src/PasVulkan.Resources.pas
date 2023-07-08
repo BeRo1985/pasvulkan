@@ -729,13 +729,22 @@ begin
  if (fReleaseFrameDelay>0) and assigned(fResourceManager) and fResourceManager.fActive and assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
   result:=TPasMPInterlocked.Decrement(fReferenceCounter);
   if result=0 then begin
+   if assigned(fMetaResource) then begin
+    fMetaResource.fResourceLock.Acquire;
+   end;
    try
-    PrepareDeferredFree;
-   finally
     try
-     fResourceManager.fDelayedToFreeResources.Add(self);
+     PrepareDeferredFree;
     finally
-     fIsOnDelayedToFreeResourcesList:=true;
+     try
+      fResourceManager.fDelayedToFreeResources.Add(self);
+     finally
+      fIsOnDelayedToFreeResourcesList:=true;
+     end;
+    end;
+   finally
+    if assigned(fMetaResource) and assigned(fMetaResource.fResourceLock) then begin
+     fMetaResource.fResourceLock.Release;
     end;
    end;
   end;
