@@ -2988,7 +2988,7 @@ end;
 constructor TpvWorld.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource);
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
-// fUniverse:=pvApplication.Universe;
+ fUniverse:=TpvUniverse(pvApplication.Universe);
  fID:=fUniverse.fWorldIDManager.AllocateID;
  fUniverse.fWorlds.Add(self);
  fUniverse.fWorlds.fIDWorldHashMap.Add(fID,self);

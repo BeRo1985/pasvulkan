@@ -1598,6 +1598,8 @@ type EpvApplication=class(Exception)
 
        fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
 
+       fUniverse:TObject;
+
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
 
@@ -2024,6 +2026,8 @@ type EpvApplication=class(Exception)
        property SwapChainImageCounterIndex:TpvInt32 read fSwapChainImageCounterIndex;
 
        property SwapChainImageIndex:TpvInt32 read fSwapChainImageIndex;
+
+       property Universe:TObject read fUniverse write fUniverse;
 
      end;
 
@@ -7093,6 +7097,8 @@ begin
 
  fOnEvent:=nil;
 
+ fUniverse:=nil;
+
  for FrameIndex:=0 to MaxInFlightFrames-1 do begin
   fVulkanInFlightFenceIndices[FrameIndex]:=-1;
  end;
@@ -7110,8 +7116,10 @@ begin
  FreeAndNil(fNativeEventQueue);
 {$ifend}
 
-FreeAndNil(fLifecycleListenerList);
+ FreeAndNil(fLifecycleListenerList);
  FreeAndNil(fLifecycleListenerListCriticalSection);
+
+ FreeAndNil(fUniverse);
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
