@@ -1128,7 +1128,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
        function GetAssetSize(const aFileName:TpvUTF8String):TpVInt64;
-       function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
+       function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
 
@@ -6493,7 +6493,7 @@ begin
 end;
 {$endif}
 
-function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
+function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
 {$ifdef Android}
 var AssetDir:PAAssetDir;
     Count:TpvSizeInt;
@@ -6562,7 +6562,7 @@ begin
    end;
   end;
  end else begin
-  if aRaiseExceptionOnNonExistentDierectory then begin
+  if aRaiseExceptionOnNonExistentDirectory then begin
    raise Exception.Create('Asset directory "'+String(aPath)+'" not found');
   end;
  end;

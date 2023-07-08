@@ -5701,7 +5701,8 @@ procedure TpvUniverse.ScanWorlds;
 var Index:TpvInt32;
     Application:TpvApplication;
     AssetManager:TpvApplicationAssets;
-    WorldFileNameList:TStringList;
+    FileNameList:TpvApplicationAssets.TFileNameList;
+    FileName:TpvUTF8String;
     MetaWorld:TpvMetaWorld;
     Stream:TStream;
 begin
@@ -5712,28 +5713,32 @@ begin
   end;
   AssetManager:=Application.Assets;
   if assigned(AssetManager) then begin
-   WorldFileNameList:=TStringList.Create;
-   try
-{   if AssetManager.GetAssetList('worlds','*.world',WorldFileNameList) then begin
-     for Index:=0 to WorldFileNameList.Count-1 do begin
-      if AssetManager.ExistAsset('worlds',WorldFileNameList[Index]) then begin
-       Stream:=AssetManager.GetAssetStream('worlds',WorldFileNameList[Index]);
-       if assigned(Stream) then begin
-        try
-         Stream.Seek(0,soBeginning);
-         MetaWorld:=TpvMetaWorld.Create;
-         MetaWorld.LoadFromStream(Stream);
-         MetaWorld.FileName:=AssetManager.GetAssetPath('worlds',WorldFileNameList[Index]);
-         MetaWorld.AssetName:=AssetManager.GetAssetName('worlds',WorldFileNameList[Index]);
-        finally
-         Stream.Free;
+   FileNameList:=AssetManager.GetDirectoryFileList('worlds',false);
+   if length(FileNameList)>0 then begin
+    try
+     for Index:=0 to length(FileNameList)-1 do begin
+      FileName:=FileNameList[Index];
+      if LowerCase(ExtractFileExt(FileName))='.world' then begin
+       FileName:='worlds/'+FileName;
+       if AssetManager.ExistAsset(FileName) then begin
+        Stream:=AssetManager.GetAssetStream(FileName);
+        if assigned(Stream) then begin
+         try
+          Stream.Seek(0,soBeginning);
+          MetaWorld:=TpvMetaWorld.Create;
+          MetaWorld.LoadFromStream(Stream);
+          MetaWorld.FileName:=IncludeTrailingPathDelimiter(AssetManager.BasePath)+FileName;
+          MetaWorld.AssetName:=ChangeFileExt(FileName,'');
+         finally
+          FreeAndNil(Stream);
+         end;
         end;
        end;
       end;
      end;
-    end;}
-   finally
-    WorldFileNameList.Free;
+    finally
+     FileNameList:=nil;
+    end;
    end;
   end;
  end;
