@@ -266,12 +266,14 @@ type EpvSystemCircularDependency=class(Exception);
             TEntityFlags=set of TEntityFlag;
             TFlag=TEntityFlag;
             TFlags=TEntityFlags;
+            TComponentBitmap=array of TpvUInt64;
       private
        fWorld:TpvWorld;
        fID:TpvEntityID;
        fUUID:TpvUUID;
        fFlags:TEntityFlags;
        fComponents:TpvEntityComponents;
+       fComponentBitmap:TComponentBitmap;
 {$ifdef PasVulkanEditor}
        fTreeNode:pointer;
 {$endif}
@@ -1683,11 +1685,13 @@ begin
  fWorld:=aWorld;
  fFlags:=[];
  fComponents:=nil;
+ fComponentBitmap:=nil;
 end;
 
 destructor TpvEntity.Destroy;
 begin
- SetLength(fComponents,0);
+ fComponents:=nil;
+ fComponentBitmap:=nil;
  inherited Destroy;
 end;
 
@@ -1900,7 +1904,7 @@ begin
 end;
 
 procedure TpvEntity.AddComponentToEntity(const aComponent:TpvComponent);
-var Index,OldCount,NewCount:TpvInt32;
+var Index,OldCount,NewCount,BitmapIndex:TpvInt32;
     ID:TpvComponentClassID;
 begin
  ID:=aComponent.ClassID;
@@ -1908,25 +1912,44 @@ begin
   raise EpvDuplicateComponentInEntity.Create('Duplicate component "'+ClassName+'" in entity');
  end else begin
   if ID>=0 then begin
-   OldCount:=length(fComponents);
-   if OldCount<=ID then begin
-    NewCount:=RoundUpToPowerOfTwo(ID+1);
-    SetLength(fComponents,NewCount);
-    for Index:=OldCount to NewCount-1 do begin
-     fComponents[Index]:=nil;
+   begin
+    OldCount:=length(fComponents);
+    if OldCount<=ID then begin
+     NewCount:=RoundUpToPowerOfTwo(ID+1);
+     SetLength(fComponents,NewCount);
+     for Index:=OldCount to NewCount-1 do begin
+      fComponents[Index]:=nil;
+     end;
     end;
+    fComponents[ID]:=aComponent;
    end;
-   fComponents[ID]:=aComponent;
+   begin
+    OldCount:=length(fComponentBitmap);
+    BitmapIndex:=(fID+63) shr 6;
+    if OldCount<=BitmapIndex then begin
+     NewCount:=RoundUpToPowerOfTwo(BitmapIndex+1);
+     SetLength(fComponentBitmap,NewCount);
+     FillChar(fComponentBitmap[OldCount],(NewCount-OldCount)*SizeOf(TpvUInt64),#0);
+    end;
+    fComponentBitmap[BitmapIndex]:=fComponentBitmap[BitmapIndex] or (TpvUInt64(1) shl (fID and 63));
+   end;
   end;
  end;
 end;
 
 procedure TpvEntity.RemoveComponentFromEntity(const aComponent:TpvComponent);
 var ID:TpvComponentClassID;
+    BitmapIndex:TpvInt32;
 begin
  ID:=aComponent.ClassID;
  if (ID>=0) and (ID<length(fComponents)) then begin
   fComponents[ID]:=nil;
+ end;
+ begin
+  BitmapIndex:=(fID+63) shr 6;
+  if BitmapIndex<=length(fComponentBitmap) then begin
+   fComponentBitmap[BitmapIndex]:=fComponentBitmap[BitmapIndex] and not (TpvUInt64(1) shl (fID and 63));
+  end;
  end;
 end;
 
