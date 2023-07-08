@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.SortKey;
+unit PasVulkan.Components.RecordBased.Parent;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -66,45 +66,45 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.EntityComponentSystem;
+     PasVulkan.EntityComponentSystem.RecordBased;
 
-type PpvComponentSortKey=^TpvComponentSortKey;
-     TpvComponentSortKey=record
+type PpvComponentParent=^TpvComponentParent;
+     TpvComponentParent=record
       public
-       SortKey:TpvUInt32;
+       Parent:TpvEntityComponentSystem.TEntityID;
      end;
 
-const pvComponentSortKeyDefault:TpvComponentSortKey=
+const pvComponentParentDefault:TpvComponentParent=
        (
-        SortKey:0;
+        Parent:$ffffffff;
        );
 
-var pvComponentSortKey:TpvEntityComponentSystem.TRegisteredComponentType=nil;
+var pvComponentParent:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentSortKeyID:TpvEntityComponentSystem.TComponentID=0;
+    pvComponentParentID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentSortKey:=TpvEntityComponentSystem.TRegisteredComponentType.Create('sortkey',
-                                                                              'Sort key',
-                                                                              ['Base','Sort key'],
-                                                                              SizeOf(TpvComponentSortKey),
-                                                                              @pvComponentSortKeyDefault);
+ pvComponentParent:=TpvEntityComponentSystem.TRegisteredComponentType.Create('parent',
+                                                                             'Parent',
+                                                                             ['Base','Parent'],
+                                                                             SizeOf(TpvComponentParent),
+                                                                             @pvComponentParentDefault);
 
- pvComponentSortKeyID:=pvComponentSortKey.ID;
+ pvComponentParentID:=pvComponentParent.ID;
 
- pvComponentSortKey.Add('sortkey',
-                        'Sort key',
-                        TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.UnsignedInteger,
-                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
-                        1,
-                        TpvPtrUInt(@PpvComponentSortKey(nil)^.SortKey),
-                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
-                        []
-                       );
+ pvComponentParent.Add('parent',
+                       'Parent',
+                       TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.EntityID,
+                       SizeOf(PpvComponentParent(nil)^.Parent),
+                       1,
+                       TpvPtrUInt(@PpvComponentParent(nil)^.Parent),
+                       SizeOf(PpvComponentParent(nil)^.Parent),
+                       []
+                      );
 
 end;
 

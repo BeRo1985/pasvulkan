@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.Parent;
+unit PasVulkan.Components.RecordBased.Name;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -66,50 +66,49 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.EntityComponentSystem;
+     PasVulkan.EntityComponentSystem.RecordBased;
 
-type PpvComponentParent=^TpvComponentParent;
-     TpvComponentParent=record
+type PpvComponentName=^TpvComponentName;
+     TpvComponentName=record
       public
-       Parent:TpvEntityComponentSystem.TEntityID;
+       Name:ShortString;
      end;
 
-const pvComponentParentDefault:TpvComponentParent=
+const pvComponentNameDefault:TpvComponentName=
        (
-        Parent:$ffffffff;
+        Name:'';
        );
 
-var pvComponentParent:TpvEntityComponentSystem.TRegisteredComponentType=nil;
+var pvComponentName:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentParentID:TpvEntityComponentSystem.TComponentID=0;
+    pvComponentNameID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentParent:=TpvEntityComponentSystem.TRegisteredComponentType.Create('parent',
-                                                                             'Parent',
-                                                                             ['Base','Parent'],
-                                                                             SizeOf(TpvComponentParent),
-                                                                             @pvComponentParentDefault);
+ pvComponentName:=TpvEntityComponentSystem.TRegisteredComponentType.Create('name',
+                                                                           'Name',
+                                                                           ['Base','Name'],
+                                                                           SizeOf(TpvComponentName),
+                                                                           @pvComponentNameDefault);
 
- pvComponentParentID:=pvComponentParent.ID;
+ pvComponentNameID:=pvComponentName.ID;
 
- pvComponentParent.Add('parent',
-                       'Parent',
-                       TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.EntityID,
-                       SizeOf(PpvComponentParent(nil)^.Parent),
-                       1,
-                       TpvPtrUInt(@PpvComponentParent(nil)^.Parent),
-                       SizeOf(PpvComponentParent(nil)^.Parent),
-                       []
-                      );
+ pvComponentName.Add('name',
+                     'Name',
+                     TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.LengthPrefixedString,
+                     SizeOf(PpvComponentName(nil)^.Name),
+                     1,
+                     TpvPtrUInt(@PpvComponentName(nil)^.Name),
+                     SizeOf(PpvComponentName(nil)^.Name),
+                     []
+                    );
 
 end;
 
 initialization
  Register;
 end.
-
 

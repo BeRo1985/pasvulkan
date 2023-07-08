@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.Transform;
+unit PasVulkan.Components.RecordBased.Transform;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -67,7 +67,7 @@ uses SysUtils,
      Math,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.EntityComponentSystem;
+     PasVulkan.EntityComponentSystem.RecordBased;
 
 type PpvComponentTransform=^TpvComponentTransform;
      TpvComponentTransform=record

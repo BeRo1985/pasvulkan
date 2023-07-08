@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.Name;
+unit PasVulkan.Components.RecordBased.SortKey;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -66,49 +66,50 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.EntityComponentSystem;
+     PasVulkan.EntityComponentSystem.RecordBased;
 
-type PpvComponentName=^TpvComponentName;
-     TpvComponentName=record
+type PpvComponentSortKey=^TpvComponentSortKey;
+     TpvComponentSortKey=record
       public
-       Name:ShortString;
+       SortKey:TpvUInt32;
      end;
 
-const pvComponentNameDefault:TpvComponentName=
+const pvComponentSortKeyDefault:TpvComponentSortKey=
        (
-        Name:'';
+        SortKey:0;
        );
 
-var pvComponentName:TpvEntityComponentSystem.TRegisteredComponentType=nil;
+var pvComponentSortKey:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentNameID:TpvEntityComponentSystem.TComponentID=0;
+    pvComponentSortKeyID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentName:=TpvEntityComponentSystem.TRegisteredComponentType.Create('name',
-                                                                           'Name',
-                                                                           ['Base','Name'],
-                                                                           SizeOf(TpvComponentName),
-                                                                           @pvComponentNameDefault);
+ pvComponentSortKey:=TpvEntityComponentSystem.TRegisteredComponentType.Create('sortkey',
+                                                                              'Sort key',
+                                                                              ['Base','Sort key'],
+                                                                              SizeOf(TpvComponentSortKey),
+                                                                              @pvComponentSortKeyDefault);
 
- pvComponentNameID:=pvComponentName.ID;
+ pvComponentSortKeyID:=pvComponentSortKey.ID;
 
- pvComponentName.Add('name',
-                     'Name',
-                     TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.LengthPrefixedString,
-                     SizeOf(PpvComponentName(nil)^.Name),
-                     1,
-                     TpvPtrUInt(@PpvComponentName(nil)^.Name),
-                     SizeOf(PpvComponentName(nil)^.Name),
-                     []
-                    );
+ pvComponentSortKey.Add('sortkey',
+                        'Sort key',
+                        TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.UnsignedInteger,
+                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
+                        1,
+                        TpvPtrUInt(@PpvComponentSortKey(nil)^.SortKey),
+                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
+                        []
+                       );
 
 end;
 
 initialization
  Register;
 end.
+
 
