@@ -106,6 +106,8 @@ type TpvScene=class;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
        procedure Render; virtual;
+       procedure UpdateAudioData; virtual;
+       procedure UpdateAudio; virtual;
       published
        property Scene:TpvScene read fScene;
        property Parent:TpvSceneNode read fParent;
@@ -130,6 +132,8 @@ type TpvScene=class;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
        procedure Render; virtual;
+       procedure UpdateAudioData; virtual;
+       procedure UpdateAudio; virtual;
       published
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
@@ -381,6 +385,26 @@ begin
  end;
 end;
 
+procedure TpvSceneNode.UpdateAudioData;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+  ChildNode:=fChildren[ChildNodeIndex];
+  ChildNode.UpdateAudioData;
+ end;
+end;
+
+procedure TpvSceneNode.UpdateAudio;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+  ChildNode:=fChildren[ChildNodeIndex];
+  ChildNode.UpdateAudio;
+ end;
+end;
+
 { TpvScene }
 
 constructor TpvScene.Create(const aData:TObject=nil);
@@ -440,6 +464,16 @@ end;
 procedure TpvScene.Render;
 begin
  fRootNode.Render;
+end;
+
+procedure TpvScene.UpdateAudioData;
+begin
+ fRootNode.UpdateAudioData;
+end;
+
+procedure TpvScene.UpdateAudio;
+begin
+ fRootNode.UpdateAudio;
 end;
 
 end.
