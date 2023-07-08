@@ -244,7 +244,7 @@ type EpvSystemCircularDependency=class(Exception);
        property ComponentIDs[const aComponentClass:TpvComponentClass]:TpvComponentClassID read GetComponentClassID;
      end;
 
-     TpvEntityIDManager=class(TpvIDManager{<TpvEntityID>});
+     TpvEntityIDManager=class(TpvGenericIDManager<TpvEntityID>);
 
      TpvEntityComponents=array of TpvComponent;
 
@@ -507,7 +507,7 @@ type EpvSystemCircularDependency=class(Exception);
        property Items[const aIndex:TpvInt32]:TpvSystemClass read GetSystemClass write SetSystemClass; default;
      end;
 
-     TpvWorldIDManager=class(TpvIDManager{<TpvWorldID>});
+     TpvWorldIDManager=class(TpvGenericIDManager<TpvWorldID>);
 
      TpvDelayedManagementEventType=
       (
