@@ -376,6 +376,8 @@ type EpvSystemCircularDependency=class(Exception);
        property Count:TpvInt32 read fCount;
      end;
 
+     { TpvSystem }
+
      TpvSystem=class(TpvObject)
       public
        type TSystemFlag=
@@ -432,6 +434,8 @@ type EpvSystemCircularDependency=class(Exception);
        procedure Update; virtual;
        procedure UpdateEntities(const aFirstEntityIndex,aLastEntityIndex:TpvInt32); virtual;
        procedure FinalizeUpdate; virtual;
+       procedure Store; virtual;
+       procedure Interpolate(const aAlpha:TpvDouble); virtual;
        property World:TpvWorld read fWorld;
        property Flags:TSystemFlags read fFlags write fFlags;
        property EntityIDs:TpvSystemEntityIDs read fEntityIDs;
@@ -694,6 +698,8 @@ type EpvSystemCircularDependency=class(Exception);
        function LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean=false):TpvEntityID;
        procedure SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TpvEntityID;const aRootEntityID:TpvEntityID=-1);
        function Assign(const aFrom:TpvWorld;const aEntityIDs:array of TpvEntityID;const aRootEntityID:TpvEntityID=-1;const aAssignOp:TpvWorldAssignOp=TpvWorldAssignOp.Replace):TpvEntityID;
+       procedure Store;
+       procedure Interpolate(const aAlpha:TpvDouble);
        property Universe:TpvUniverse read fUniverse;
        property ID:TpvWorldID read fID;
        property UUID:TpvUUID read GetUUID;
@@ -2333,7 +2339,7 @@ begin
  end;
 end;
 
-constructor TpvSystem.Create(const aWorld:TpvWorld);
+constructor TpvSystem.Create(const AWorld: TpvWorld);
 begin
  inherited Create;
  fWorld:=aWorld;
@@ -2581,6 +2587,16 @@ end;
 
 procedure TpvSystem.FinalizeUpdate;
 begin
+end;
+
+procedure TpvSystem.Store;
+begin
+
+end;
+
+procedure TpvSystem.Interpolate(const aAlpha:TpvDouble);
+begin
+
 end;
 
 constructor TpvSystemChoreography.Create(const aWorld:TpvWorld);
@@ -5781,6 +5797,22 @@ begin
   SetLength(FromEntityProcessBitmap,0);
  end;
 
+end;
+
+procedure TpvWorld.Store;
+var System:TpvSystem;
+begin
+ for System in fSystemChoreography.fSortedSystemList do begin
+  System.Store;
+ end;
+end;
+
+procedure TpvWorld.Interpolate(const aAlpha:TpvDouble);
+var System:TpvSystem;
+begin
+ for System in fSystemChoreography.fSortedSystemList do begin
+  System.Interpolate(aAlpha);
+ end;
 end;
 
 constructor TpvSortedWorldList.Create;
