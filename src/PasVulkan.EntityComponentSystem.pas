@@ -3142,20 +3142,24 @@ begin
        end;
       end;
 
-      for OtherIndex:=CommonComponentBitmapSize to CommonBitmapSize-1 do begin
-       if fRequiredComponentBitmap[OtherIndex]<>0 then begin
-        OK:=false;
-        break;
-       end;
-      end;
-
       if OK then begin
-       if Count>=length(fEntityIDs) then begin
-        SetLength(fEntityIDs,(Count+1)+((Count+1) shr 1));
+
+       for OtherIndex:=CommonComponentBitmapSize to CommonBitmapSize-1 do begin
+        if fRequiredComponentBitmap[OtherIndex]<>0 then begin
+         OK:=false;
+         break;
+        end;
        end;
-       fEntityIDs[Count]:=Entity.fID;
-       inc(Count);
-      end;
+
+       if OK then begin
+        if Count>=length(fEntityIDs) then begin
+         SetLength(fEntityIDs,(Count+1)+((Count+1) shr 1));
+        end;
+        fEntityIDs[Count]:=Entity.fID;
+        inc(Count);
+       end;
+
+      end; 
 
      end;
 
