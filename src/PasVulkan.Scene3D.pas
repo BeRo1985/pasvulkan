@@ -2131,6 +2131,7 @@ type EpvScene3D=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
+       fObjectListLock:TPasMPCriticalSection;
        fObjectList:TpvObjectList;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
        fBufferStreamingMode:TBufferStreamingMode;
@@ -2654,7 +2655,12 @@ begin
   end;
   if assigned(Current) and (Current is TpvScene3D) then begin
    fSceneInstance:=TpvScene3D(Current);
-   fSceneInstance.fObjectList.Add(self);
+   fSceneInstance.fObjectListLock.Acquire;
+   try
+    fSceneInstance.fObjectList.Add(self);
+   finally
+    fSceneInstance.fObjectListLock.Release;
+   end;
   end else begin
    fSceneInstance:=nil;
   end;
@@ -2687,9 +2693,14 @@ destructor TpvScene3D.TBaseObject.Destroy;
 var Index:TpvSizeInt;
 begin
  if assigned(fSceneInstance) then begin
-  Index:=fSceneInstance.fObjectList.IndexOf(self);
-  if Index>=0 then begin
-   fSceneInstance.fObjectList.Extract(Index);
+  fSceneInstance.fObjectListLock.Acquire;
+  try
+   Index:=fSceneInstance.fObjectList.IndexOf(self);
+   if Index>=0 then begin
+    fSceneInstance.fObjectList.Extract(Index);
+   end;
+  finally
+   fSceneInstance.fObjectListLock.Release;
   end;
  end;
  inherited Destroy;
@@ -13932,6 +13943,8 @@ begin
   fVulkanDevice:=nil;
  end;
 
+ fObjectListLock:=TPasMPCriticalSection.Create;
+
  fObjectList:=TpvObjectList.Create;
  fObjectList.OwnsObjects:=false;
 
@@ -14330,11 +14343,18 @@ begin
 
  FreeAndNil(fPotentiallyVisibleSet);
 
- Index:=0;
- while fObjectList.Count>0 do begin
-  CurrentObject:=fObjectList.Extract(0);
-  FreeAndNil(CurrentObject);
+ fObjectListLock.Acquire;
+ try
+  Index:=0;
+  while fObjectList.Count>0 do begin
+   CurrentObject:=fObjectList.Extract(0);
+   FreeAndNil(CurrentObject);
+  end;
+ finally
+  fObjectListLock.Release;
  end;
+
+ FreeAndNil(fObjectListLock);
 
  FreeAndNil(fLock);
 
