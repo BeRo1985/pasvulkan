@@ -134,7 +134,7 @@ type TpvScene=class;
        fChildren:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
-       fLoadState:TpvInt32;
+       fLoadState:TPasMPInt32;
        fDestroying:boolean;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
@@ -211,7 +211,7 @@ begin
 
  fDestroying:=false;
 
- fLoadState:=0;
+ TPasMPInterlocked.Write(fLoadState,0);
 
  fNodeHashMap:=TpvSceneNodeHashMap.Create(nil);
 
@@ -361,7 +361,7 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.StartLoad;
  end;
- fLoadState:=1;
+ TPasMPInterlocked.Write(fLoadState,1);
 end;
 
 procedure TpvSceneNode.BackgroundLoad;
@@ -372,7 +372,7 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.BackgroundLoad;
  end;
- fLoadState:=2;
+ TPasMPInterlocked.Write(fLoadState,2);
 end;
 
 procedure TpvSceneNode.FinishLoad;
@@ -383,10 +383,10 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.FinishLoad;
  end;
- while fLoadState<2 do begin
+ while TPasMPInterlocked.Read(fLoadState)<2 do begin
   Sleep(1);
  end;
- fLoadState:=3;
+ TPasMPInterlocked.Write(fLoadState,3);
 end;
 
 procedure TpvSceneNode.WaitForLoaded;
@@ -397,7 +397,7 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.WaitForLoaded;
  end;
- while fLoadState<3 do begin
+ while TPasMPInterlocked.Read(fLoadState)<3 do begin
   Sleep(1);
  end;
 end;
@@ -413,7 +413,7 @@ begin
    exit;
   end;
  end;
- result:=fLoadState>=3;
+ result:=TPasMPInterlocked.Read(fLoadState)>=3;
 end;
 
 procedure TpvSceneNode.Store;
