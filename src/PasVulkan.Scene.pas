@@ -639,7 +639,7 @@ end;
 function TpvSceneNode3D.GetWorldTransform:TpvMatrix4x4;
 begin
  if assigned(fLastNode3DParent) then begin
-  result:=LastNode3D.GetWorldTransform*fTransform;
+  result:=fLastNode3DParent.GetWorldTransform*fTransform;
  end else begin
   result:=fTransform;
  end;
