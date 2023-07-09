@@ -200,7 +200,6 @@ type TpvScene=class;
        fCachedWorldTransform:TpvMatrix4x4;
        function GetWorldTransform:TpvMatrix4x4;
        procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
-       procedure UpdateCachedWorldTransform;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
        destructor Destroy; override;
@@ -209,6 +208,7 @@ type TpvScene=class;
        procedure FrameUpdate; override;
        procedure Render; override;
        procedure UpdateAudio; override;
+       procedure UpdateCachedWorldTransform; virtual;
       public
        property Transform:TpvMatrix4x4 read fTransform write fTransform;
        property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
