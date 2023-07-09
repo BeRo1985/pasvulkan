@@ -52,9 +52,9 @@ uses
   Vulkan,
   PasVulkan.Types,
   PasVulkan.Android,
-{$ifdef PasVulkanUseSDL2}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   PasVulkan.SDL2,
-{$endif}
+{$ifend}
   PasVulkan.Framework,
   PasVulkan.Application,  
   UnitApplication;
@@ -79,7 +79,7 @@ begin
 end;
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 {$if defined(fpc) and defined(android)}
 procedure SDL_main(argc:TpvInt32;arcv:pointer); cdecl;
 var s:string;
@@ -125,8 +125,8 @@ begin
 end;
 {$ifend}
 
-{$if defined(fpc) and defined(android)}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android) and not defined(PasVulkanHeadless)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
         SDL_main name 'SDL_main';
@@ -161,7 +161,7 @@ begin
   AllocConsole;
  end;
 {$ifend}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDLMain;
 {$else}
  TApplication.Main;
@@ -172,7 +172,7 @@ begin
   readln;
  end;
 {$ifend}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_Quit;
 {$ifend}
 {$if defined(fpc) and defined(Linux)}
