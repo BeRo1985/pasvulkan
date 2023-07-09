@@ -1638,9 +1638,30 @@ end;
 
 procedure TpvResourceManager.DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
 var Index:TpvSizeInt;
+    Resource,Current:TpvResource;
+    OK:boolean;
 begin
  Index:=0;
- while Index<fD
+ while Index<fDelayedToFreeResources.Count do begin
+  OK:=false;
+  Resource:=fDelayedToFreeResources[Index];
+  Current:=Resource.fParent;
+  while assigned(Current) do begin
+   if Current=aObject then begin
+    OK:=true;
+    break;
+   end;
+   Current:=Current.fParent;
+  end;
+  if OK then begin
+   Resource:=fDelayedToFreeResources.Extract(Index);
+   if assigned(Resource) then begin
+    FreeAndNil(Resource);
+   end;
+  end else begin
+   inc(Index);
+  end;
+ end;
 end;
 
 function TpvResourceManager.GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
