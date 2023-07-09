@@ -23,7 +23,7 @@ scene graph pattern, or both, depending on your specific needs.
 
 These methods are used for loading of data, which can be done in parallel, like loading of textures, meshes, etc. They should be called
 just once before the beginning of a level or game together with a loading screen. For other resources, which are loaded during the game,
-like textures, meshes, etc. should be loaded in another way, for example, with the resource manager of the PasVulkan framework, (see the
+like textures, meshes, etc. should be loaded in another way, for example, with the resource manager of the PasVulkan framework (see the
 PasVulkan.Resources.pas unit). These loading functions here are just for to simplify the initial loading of a level or game without the 
 actual mess of loading of resources during the game with a resource manager.
 
