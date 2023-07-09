@@ -212,6 +212,7 @@ type TpvScene=class;
       public
        property Transform:TpvMatrix4x4 read fTransform write fTransform;
        property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
+       property CachedWorldTransform:TpvMatrix4x4 read fCachedWorldTransform;
      end;
 
 implementation
