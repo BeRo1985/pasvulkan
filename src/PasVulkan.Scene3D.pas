@@ -6647,11 +6647,13 @@ begin
   if assigned(Primitive^.Material) then begin
    try
     if Primitive^.Material<>EmptyMaterial then begin
-     fGroup.fSceneInstance.fMaterialListLock.Acquire;
-     try
-      Primitive^.Material.DecRef;
-     finally
-      fGroup.fSceneInstance.fMaterialListLock.Release;
+     if assigned(fGroup.fSceneInstance.fMaterialListLock) then begin
+      fGroup.fSceneInstance.fMaterialListLock.Acquire;
+      try
+       Primitive^.Material.DecRef;
+      finally
+       fGroup.fSceneInstance.fMaterialListLock.Release;
+      end;
      end;
     end;
    finally
@@ -8191,16 +8193,18 @@ begin
 
  FreeAndNil(fObjects);
 
- if assigned(fSceneInstance) then begin
-  fSceneInstance.fMaterialListLock.Acquire;
- end;
- try
-  for Material in fMaterials do begin
-   Material.DecRef;
-  end;
- finally
+ if not (assigned(fSceneInstance) and ((not assigned(fSceneInstance.fMaterials)) or (fSceneInstance.fMaterials.Count=0))) then begin
   if assigned(fSceneInstance) then begin
-   fSceneInstance.fMaterialListLock.Release;
+   fSceneInstance.fMaterialListLock.Acquire;
+  end;
+  try
+   for Material in fMaterials do begin
+    Material.DecRef;
+   end;
+  finally
+   if assigned(fSceneInstance) then begin
+    fSceneInstance.fMaterialListLock.Release;
+   end;
   end;
  end;
  FreeAndNil(fMaterials);
@@ -14204,12 +14208,6 @@ var Index:TpvSizeInt;
     CurrentObject:TObject;
 begin
 
- Index:=0;
- while fObjectList.Count>0 do begin
-  CurrentObject:=fObjectList.Extract(0);
-  FreeAndNil(CurrentObject);
- end;
-
  Unload;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -14327,6 +14325,12 @@ begin
  FreeAndNil(fMaterialDataGenerationLock);
 
  FreeAndNil(fPotentiallyVisibleSet);
+
+ Index:=0;
+ while fObjectList.Count>0 do begin
+  CurrentObject:=fObjectList.Extract(0);
+  FreeAndNil(CurrentObject);
+ end;
 
  FreeAndNil(fLock);
 
