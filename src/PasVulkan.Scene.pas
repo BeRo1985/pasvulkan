@@ -198,11 +198,14 @@ type TpvScene=class;
        fLastNode3DParent:TpvSceneNode3D;
        fTransform:TpvMatrix4x4;
        fCachedWorldTransform:TpvMatrix4x4;
+       fLastCachedWorldTransform:TpvMatrix4x4;
+       fInterpolatedCachedWorldTransform:TpvMatrix4x4;
        function GetWorldTransform:TpvMatrix4x4;
        procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
        destructor Destroy; override;
+       procedure Store; override;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Interpolate(const aAlpha:TpvDouble); override;
        procedure FrameUpdate; override;
@@ -213,6 +216,8 @@ type TpvScene=class;
        property Transform:TpvMatrix4x4 read fTransform write fTransform;
        property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
        property CachedWorldTransform:TpvMatrix4x4 read fCachedWorldTransform;
+       property LastCachedWorldTransform:TpvMatrix4x4 read fLastCachedWorldTransform;
+       property InterpolatedCachedWorldTransform:TpvMatrix4x4 read fInterpolatedCachedWorldTransform;
      end;
 
 implementation
@@ -596,11 +601,19 @@ begin
 
  fTransform:=TpvMatrix4x4.Identity;
 
+ fCachedWorldTransform:=TpvMatrix4x4.Identity;
+
 end;
 
 destructor TpvSceneNode3D.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvSceneNode3D.Store;
+begin
+ inherited Store;
+ fLastCachedWorldTransform:=fCachedWorldTransform;
 end;
 
 procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
@@ -610,6 +623,7 @@ end;
 
 procedure TpvSceneNode3D.Interpolate(const aAlpha:TpvDouble);
 begin
+ fInterpolatedCachedWorldTransform:=fLastCachedWorldTransform.Slerp(fCachedWorldTransform,aAlpha);
  inherited Interpolate(aAlpha);
 end;
 
@@ -631,7 +645,7 @@ end;
 procedure TpvSceneNode3D.UpdateCachedWorldTransform;
 begin
  if assigned(fLastNode3DParent) then begin
-  fCachedWorldTransform:=LastNode3DParent.fCachedWorldTransform*fTransform;
+  fCachedWorldTransform:=fLastNode3DParent.fCachedWorldTransform*fTransform;
  end else begin
   fCachedWorldTransform:=fTransform;
  end;
