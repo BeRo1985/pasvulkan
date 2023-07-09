@@ -975,7 +975,7 @@ begin
  inherited Destroy;
 end;
 
-class function TpvComponent.ClassID:TpvComponentClassID; inline;
+class function TpvComponent.ClassID:TpvComponentClassID;
 begin
  result:=PpvPooledObjectClassMetaInfo(pointer(GetClassMetaInfo))^.ID;
 end;
@@ -1164,20 +1164,22 @@ var TemporaryStream:TMemoryStream;
          tkInt64:begin
           WriteInt64(TypInfo.GetInt64Prop(AObject,PropInfo));
          end;
+{$ifdef fpc}
          tkQWord:begin
           WriteUInt64(TypInfo.GetOrdProp(AObject,PropInfo));
          end;
+{$endif}
          tkChar:begin
           WriteUInt8(word(TypInfo.GetOrdProp(AObject,PropInfo)));
          end;
-         tkWChar,tkUChar:begin
+         tkWChar{$ifdef fpc},tkUChar{$endif}:begin
           WriteUInt16(word(TypInfo.GetOrdProp(AObject,PropInfo)));
          end;
          tkEnumeration:begin
           WriteInt64(TypInfo.GetOrdProp(AObject,PropInfo));
          end;
          tkFloat:begin
-          if GetTypeData(PropInfo^.PropType)^.FloatType=ftSingle then begin
+          if {$ifdef fpc}GetTypeData(PropInfo^.PropType)^.FloatType=ftSingle{$else}GetTypeData(PropInfo^.PropType^)^.FloatType=ftSingle{$endif} then begin
            WriteFloat(TypInfo.GetFloatProp(AObject,PropInfo));
           end else begin
            WriteDouble(TypInfo.GetFloatProp(AObject,PropInfo));
@@ -1186,15 +1188,17 @@ var TemporaryStream:TMemoryStream;
          tkSet:begin
           WriteInt64(TypInfo.GetOrdProp(AObject,PropInfo));
          end;
-         tkSString,tkLString,tkAString,tkWString,tkUString:begin
+         {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
           WriteString(TypInfo.GetUnicodeStrProp(AObject,PropInfo));
          end;
          tkClass:begin
           SerializeObject(TypInfo.GetObjectProp(AObject,PropInfo));
          end;
+{$ifdef fpc}
          tkBool:begin
           WriteUInt8(TypInfo.GetOrdProp(AObject,PropInfo));
          end;
+{$endif}
          else begin
          end;
         end;
@@ -1378,20 +1382,22 @@ var MappedStream:TpvChunkStream;
          tkInt64:begin
           TypInfo.SetInt64Prop(AObject,PropInfo,ReadInt64);
          end;
+{$ifdef fpc}
          tkQWord:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadUInt64);
          end;
+{$endif}
          tkChar:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadUInt8);
          end;
-         tkWChar,tkUChar:begin
+         tkWChar{$ifdef fpc},tkUChar{$endif}:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadUInt16);
          end;
          tkEnumeration:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadInt64);
          end;
          tkFloat:begin
-          if GetTypeData(PropInfo^.PropType)^.FloatType=ftSingle then begin
+          if {$ifdef fpc}GetTypeData(PropInfo^.PropType)^.FloatType=ftSingle{$else}GetTypeData(PropInfo^.PropType^)^.FloatType=ftSingle{$endif} then begin
            TypInfo.SetFloatProp(AObject,PropInfo,ReadFloat);
           end else begin
            TypInfo.SetFloatProp(AObject,PropInfo,ReadDouble);
@@ -1400,7 +1406,7 @@ var MappedStream:TpvChunkStream;
          tkSet:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadInt64);
          end;
-         tkSString,tkLString,tkAString,tkWString,tkUString:begin
+         {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
           TypInfo.SetUnicodeStrProp(AObject,PropInfo,ReadString);
          end;
          tkClass:begin
@@ -1411,9 +1417,11 @@ var MappedStream:TpvChunkStream;
           end;
           UnserializeObject(SubObject);
          end;
+{$ifdef fpc}
          tkBool:begin
           TypInfo.SetOrdProp(AObject,PropInfo,ReadUInt8);
          end;
+{$endif}
          else begin
          end;
         end;
@@ -1460,7 +1468,7 @@ procedure TpvComponent.Assign(const aFrom:TpvComponent;const aEntityIDs:TpvEntit
  begin
   ComponentClass:=TpvComponentClass(ClassType);
   try
-   PropCount:=TypInfo.GetPropList(ComponentClass,PropList);
+   PropCount:=TypInfo.GetPropList({$ifdef fpc}ComponentClass{$else}self{$endif},PropList);
    if PropCount>0 then begin
     for PropIndex:=0 to PropCount-1 do begin
      PropInfo:=PropList^[PropIndex];
@@ -1499,13 +1507,15 @@ procedure TpvComponent.Assign(const aFrom:TpvComponent;const aEntityIDs:TpvEntit
         tkInt64:begin
          TypInfo.SetInt64Prop(self,PropInfo,TypInfo.GetInt64Prop(aFrom,PropInfo));
         end;
+{$ifdef fpc}
         tkQWord:begin
          TypInfo.SetOrdProp(self,PropInfo,TypInfo.GetOrdProp(aFrom,PropInfo));
         end;
+{$endif}
         tkChar:begin
          TypInfo.SetOrdProp(self,PropInfo,TypInfo.GetOrdProp(aFrom,PropInfo));
         end;
-        tkWChar,tkUChar:begin
+        tkWChar{$ifdef fpc},tkUChar{$endif}:begin
          TypInfo.SetOrdProp(self,PropInfo,TypInfo.GetOrdProp(aFrom,PropInfo));
         end;
         tkEnumeration:begin
@@ -1517,7 +1527,7 @@ procedure TpvComponent.Assign(const aFrom:TpvComponent;const aEntityIDs:TpvEntit
         tkSet:begin
          TypInfo.SetOrdProp(self,PropInfo,TypInfo.GetOrdProp(aFrom,PropInfo));
         end;
-        tkSString,tkLString,tkAString,tkWString,tkUString:begin
+        {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
          TypInfo.SetUnicodeStrProp(self,PropInfo,TypInfo.GetUnicodeStrProp(aFrom,PropInfo));
         end;
         tkClass:begin
@@ -1533,9 +1543,11 @@ procedure TpvComponent.Assign(const aFrom:TpvComponent;const aEntityIDs:TpvEntit
           end;
          end;
         end;
+{$ifdef fpc}
         tkBool:begin
          TypInfo.SetOrdProp(self,PropInfo,TypInfo.GetOrdProp(aFrom,PropInfo));
         end;
+{$endif}
         else begin
         end;
        end;
@@ -1569,12 +1581,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvComponentList.GetComponent(const aIndex:TpvInt32):TpvComponent; inline;
+function TpvComponentList.GetComponent(const aIndex:TpvInt32):TpvComponent;
 begin
  result:=pointer(inherited Items[aIndex]);
 end;
 
-procedure TpvComponentList.SetComponent(const aIndex:TpvInt32;const aComponent:TpvComponent); inline;
+procedure TpvComponentList.SetComponent(const aIndex:TpvInt32;const aComponent:TpvComponent);
 begin
  inherited Items[aIndex]:=pointer(aComponent);
 end;
@@ -1620,17 +1632,17 @@ begin
  inherited Destroy;
 end;
 
-function TpvRegisteredComponentClassList.GetComponentClass(const aIndex:TpvInt32):TpvComponentClass; inline;
+function TpvRegisteredComponentClassList.GetComponentClass(const aIndex:TpvInt32):TpvComponentClass;
 begin
  result:=pointer(inherited Items[aIndex]);
 end;
 
-procedure TpvRegisteredComponentClassList.SetComponentClass(const aIndex:TpvInt32;const aComponentClass:TpvComponentClass); inline;
+procedure TpvRegisteredComponentClassList.SetComponentClass(const aIndex:TpvInt32;const aComponentClass:TpvComponentClass);
 begin
  inherited Items[aIndex]:=pointer(aComponentClass);
 end;
 
-function TpvRegisteredComponentClassList.GetComponentClassByName(const aComponentClassName:TpvUTF8String):TpvComponentClass; inline;
+function TpvRegisteredComponentClassList.GetComponentClassByName(const aComponentClassName:TpvUTF8String):TpvComponentClass;
 var Index:TpvInt32;
 begin
  Index:=fComponentClassNameStringIntegerPairHashMap.Values[LowerCase(aComponentClassName)];
@@ -1641,7 +1653,7 @@ begin
  end;
 end;
 
-function TpvRegisteredComponentClassList.GetComponentClassByUUID(const aComponentClassUUID:TpvUUID):TpvComponentClass; inline;
+function TpvRegisteredComponentClassList.GetComponentClassByUUID(const aComponentClassUUID:TpvUUID):TpvComponentClass;
 var Index:TpvInt32;
 begin
  Index:=fComponentClassUUIDIntegerPairHashMap.Values[aComponentClassUUID];
@@ -1652,17 +1664,17 @@ begin
  end;
 end;
 
-procedure TpvRegisteredComponentClassList.SetComponentClassByName(const aComponentClassName:TpvUTF8String;const aComponentClass:TpvComponentClass); inline;
+procedure TpvRegisteredComponentClassList.SetComponentClassByName(const aComponentClassName:TpvUTF8String;const aComponentClass:TpvComponentClass);
 begin
  SetComponentClass(fComponentClassNameStringIntegerPairHashMap.Values[LowerCase(aComponentClassName)],aComponentClass);
 end;
 
-procedure TpvRegisteredComponentClassList.SetComponentClassByUUID(const aComponentClassUUID:TpvUUID;const aComponentClass:TpvComponentClass); inline;
+procedure TpvRegisteredComponentClassList.SetComponentClassByUUID(const aComponentClassUUID:TpvUUID;const aComponentClass:TpvComponentClass);
 begin
  SetComponentClass(fComponentClassUUIDIntegerPairHashMap.Values[aComponentClassUUID],aComponentClass);
 end;
 
-function TpvRegisteredComponentClassList.GetComponentClassID(const aComponentClass:TpvComponentClass):TpvComponentClassID; inline;
+function TpvRegisteredComponentClassList.GetComponentClassID(const aComponentClass:TpvComponentClass):TpvComponentClassID;
 begin
  result:=fComponentIDHashMap.Values[aComponentClass];
 end;
@@ -1805,7 +1817,7 @@ begin
            AddComponent(EntityComponent);
            PropList:=nil;
            try
-            PropCount:=TypInfo.GetPropList(PrefabEntityComponentClass,PropList);
+            PropCount:=TypInfo.GetPropList({$ifdef fpc}PrefabEntityComponentClass{$else}EntityComponent{$endif},PropList);
             if PropCount>0 then begin
              for PropIndex:=0 to PropCount-1 do begin
               PropInfo:=PropList^[PropIndex];
@@ -1822,7 +1834,7 @@ begin
           end;
           PropList:=nil;
           try
-           PropCount:=TypInfo.GetPropList(PrefabEntityComponentClass,PropList);
+           PropCount:=TypInfo.GetPropList({$ifdef fpc}PrefabEntityComponentClass{$else}EntityComponent{$endif},PropList);
            if PropCount>0 then begin
             for PropIndex:=0 to PropCount-1 do begin
              PropInfo:=PropList^[PropIndex];
@@ -1863,13 +1875,15 @@ begin
                    tkInt64:begin
                     TypInfo.SetInt64Prop(EntityComponent,PropInfo,TypInfo.GetInt64Prop(PrefabEntityComponent,PropInfo));
                    end;
+{$ifdef fpc}
                    tkQWord:begin
                     TypInfo.SetOrdProp(EntityComponent,PropInfo,TypInfo.GetOrdProp(PrefabEntityComponent,PropInfo));
                    end;
+{$endif}
                    tkChar:begin
                     TypInfo.SetOrdProp(EntityComponent,PropInfo,TypInfo.GetOrdProp(PrefabEntityComponent,PropInfo));
                    end;
-                   tkWChar,tkUChar:begin
+                   tkWChar{$ifdef fpc},tkUChar{$endif}:begin
                     TypInfo.SetOrdProp(EntityComponent,PropInfo,TypInfo.GetOrdProp(PrefabEntityComponent,PropInfo));
                    end;
                    tkEnumeration:begin
@@ -1881,7 +1895,7 @@ begin
                    tkSet:begin
                     TypInfo.SetOrdProp(EntityComponent,PropInfo,TypInfo.GetOrdProp(PrefabEntityComponent,PropInfo));
                    end;
-                   tkSString,tkLString,tkAString,tkWString,tkUString:begin
+                   {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
                     TypInfo.SetUnicodeStrProp(EntityComponent,PropInfo,TypInfo.GetUnicodeStrProp(PrefabEntityComponent,PropInfo));
                    end;
                    tkClass:begin
@@ -1897,9 +1911,11 @@ begin
                      end;
                     end;
                    end;
+{$ifdef fpc}
                    tkBool:begin
                     TypInfo.SetOrdProp(EntityComponent,PropInfo,TypInfo.GetOrdProp(PrefabEntityComponent,PropInfo));
                    end;
+{$endif}
                    else begin
                    end;
                   end;
@@ -1978,54 +1994,54 @@ begin
  end;
 end;
 
-function TpvEntity.Active:boolean; inline;
+function TpvEntity.Active:boolean;
 begin
  result:=fWorld.IsEntityActive(fID);
 end;
 
-procedure TpvEntity.Activate; inline;
+procedure TpvEntity.Activate;
 begin
  fWorld.ActivateEntity(fID);
 end;
 
-procedure TpvEntity.Deactivate; inline;
+procedure TpvEntity.Deactivate;
 begin
  fWorld.DeactivateEntity(fID);
 end;
 
-procedure TpvEntity.Kill; inline;
+procedure TpvEntity.Kill;
 begin
  fWorld.KillEntity(fID);
 end;
 
-procedure TpvEntity.AddComponent(const aComponent:TpvComponent); inline;
+procedure TpvEntity.AddComponent(const aComponent:TpvComponent);
 begin
  fWorld.AddComponentToEntity(fID,aComponent);
 end;
 
-procedure TpvEntity.RemoveComponent(const aComponentClass:TpvComponentClass); inline;
+procedure TpvEntity.RemoveComponent(const aComponentClass:TpvComponentClass);
 begin
  fWorld.RemoveComponentFromEntity(fID,aComponentClass);
 end;
 
-procedure TpvEntity.RemoveComponent(const aComponentClassID:TpvComponentClassID); inline;
+procedure TpvEntity.RemoveComponent(const aComponentClassID:TpvComponentClassID);
 begin
  fWorld.RemoveComponentFromEntity(fID,fWorld.fUniverse.RegisteredComponentClasses.ComponentByID[aComponentClassID]);
 end;
 
-function TpvEntity.HasComponent(const aComponentClass:TpvComponentClass):boolean; inline;
+function TpvEntity.HasComponent(const aComponentClass:TpvComponentClass):boolean;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
  result:=(ComponentClassID>=0) and (ComponentClassID<length(fComponents)) and assigned(fComponents[ComponentClassID]);
 end;
 
-function TpvEntity.HasComponent(const aComponentClassID:TpvComponentClassID):boolean; inline;
+function TpvEntity.HasComponent(const aComponentClassID:TpvComponentClassID):boolean;
 begin
  result:=(aComponentClassID>=0) and (aComponentClassID<length(fComponents)) and assigned(fComponents[aComponentClassID]);
 end;
 
-function TpvEntity.GetComponent(const aComponentClass:TpvComponentClass):TpvComponent; inline;
+function TpvEntity.GetComponent(const aComponentClass:TpvComponentClass):TpvComponent;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
@@ -2036,7 +2052,7 @@ begin
  end;
 end;
 
-function TpvEntity.GetComponent(const aComponentClassID:TpvComponentClassID):TpvComponent; inline;
+function TpvEntity.GetComponent(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
  if (aComponentClassID>=0) and (aComponentClassID<length(fComponents)) then begin
   result:=fComponents[aComponentClassID];
@@ -2045,7 +2061,7 @@ begin
  end;
 end;
 
-function TpvEntity.GetComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent; inline;
+function TpvEntity.GetComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
@@ -2056,7 +2072,7 @@ begin
  end;
 end;
 
-function TpvEntity.GetComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent; inline;
+function TpvEntity.GetComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
  if (aComponentClassID>=0) and (aComponentClassID<length(fComponents)) then begin
   result:=fComponents[aComponentClassID];
@@ -2079,7 +2095,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvEntityList.GetEntity(const aIndex:TpvInt32):TpvEntity; inline;
+function TpvEntityList.GetEntity(const aIndex:TpvInt32):TpvEntity;
 begin
  if (aIndex>=0) and (aIndex<Count) then begin
   result:=pointer(inherited Items[aIndex]);
@@ -2088,17 +2104,17 @@ begin
  end;
 end;
 
-procedure TpvEntityList.SetEntity(const aIndex:TpvInt32;const aEntity:TpvEntity); inline;
+procedure TpvEntityList.SetEntity(const aIndex:TpvInt32;const aEntity:TpvEntity);
 begin
  inherited Items[aIndex]:=pointer(aEntity);
 end;
 
-function TpvEntityList.GetEntityByID(const aEntityID:TpvEntityID):TpvEntity; inline;
+function TpvEntityList.GetEntityByID(const aEntityID:TpvEntityID):TpvEntity;
 begin
  result:=fIDEntityHashMap.Values[aEntityID];
 end;
 
-function TpvEntityList.GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity; inline;
+function TpvEntityList.GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
 begin
  result:=GetEntityByID(fUUIDIDHashMap.Values[aEntityUUID]);
 end;
@@ -2894,12 +2910,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvSystemList.GetSystem(const aIndex:TpvInt32):TpvSystem; inline;
+function TpvSystemList.GetSystem(const aIndex:TpvInt32):TpvSystem;
 begin
  result:=pointer(inherited Items[aIndex]);
 end;
 
-procedure TpvSystemList.SetSystem(const aIndex:TpvInt32;const ASystem:TpvSystem); inline;
+procedure TpvSystemList.SetSystem(const aIndex:TpvInt32;const ASystem:TpvSystem);
 begin
  inherited Items[aIndex]:=pointer(ASystem);
 end;
@@ -2914,12 +2930,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvSystemClassList.GetSystemClass(const aIndex:TpvInt32):TpvSystemClass; inline;
+function TpvSystemClassList.GetSystemClass(const aIndex:TpvInt32):TpvSystemClass;
 begin
  result:=pointer(inherited Items[aIndex]);
 end;
 
-procedure TpvSystemClassList.SetSystemClass(const aIndex:TpvInt32;const ASystemClass:TpvSystemClass); inline;
+procedure TpvSystemClassList.SetSystemClass(const aIndex:TpvInt32;const ASystemClass:TpvSystemClass);
 begin
  inherited Items[aIndex]:=pointer(ASystemClass);
 end;
@@ -3430,7 +3446,7 @@ begin
  end;
 end;
 
-procedure TpvWorld.AddDelayedManagementEvent(const aDelayedManagementEvent:TpvDelayedManagementEvent); inline;
+procedure TpvWorld.AddDelayedManagementEvent(const aDelayedManagementEvent:TpvDelayedManagementEvent);
 var DelayedManagementEventIndex:TpvInt32;
 begin
  fDelayedManagementEventLock.AcquireWrite;
@@ -3736,7 +3752,7 @@ begin
  result:=CreateEntity(TpvUUID.Null);
 end;
 
-function TpvWorld.HasEntity(const aEntityID:TpvEntityID):boolean; inline;
+function TpvWorld.HasEntity(const aEntityID:TpvEntityID):boolean;
 begin
  fLock.AcquireRead;
  try
@@ -3748,7 +3764,7 @@ begin
  end;
 end;
 
-function TpvWorld.IsEntityActive(const aEntityID:TpvEntityID):boolean; inline;
+function TpvWorld.IsEntityActive(const aEntityID:TpvEntityID):boolean;
 begin
  fLock.AcquireRead;
  try
@@ -3761,7 +3777,7 @@ begin
  end;
 end;
 
-procedure TpvWorld.ActivateEntity(const aEntityID:TpvEntityID); inline;
+procedure TpvWorld.ActivateEntity(const aEntityID:TpvEntityID);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.ActivateEntity;
@@ -3769,7 +3785,7 @@ begin
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
-procedure TpvWorld.DeactivateEntity(const aEntityID:TpvEntityID); inline;
+procedure TpvWorld.DeactivateEntity(const aEntityID:TpvEntityID);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.DeactivateEntity;
@@ -3777,7 +3793,7 @@ begin
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
-procedure TpvWorld.KillEntity(const aEntityID:TpvEntityID); inline;
+procedure TpvWorld.KillEntity(const aEntityID:TpvEntityID);
 var DelayedManagementEvent:TpvDelayedManagementEvent;
 begin
  DelayedManagementEvent.EventType:=TpvDelayedManagementEventType.DeactivateEntity;
@@ -5054,8 +5070,8 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
          tkInteger:begin
           ItemValue:=TPasJSONItemNumber.Create(TypInfo.GetOrdProp(AObject,PropInfo));
          end;
-         tkChar,tkWChar,tkUChar:begin
-          ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(UnicodeChar(word(TypInfo.GetOrdProp(AObject,PropInfo)))));
+         tkChar,tkWChar{$ifdef fpc},tkUChar{$endif}:begin
+          ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String({$ifdef fpc}UnicodeChar{$else}WideChar{$endif}(word(TypInfo.GetOrdProp(AObject,PropInfo)))));
          end;
          tkEnumeration:begin
           ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(TypInfo.GetEnumProp(AObject,PropInfo)));
@@ -5066,16 +5082,18 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
          tkSet:begin
           ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(TypInfo.GetSetProp(AObject,PropInfo,false)));
          end;
-         tkSString,tkLString,tkAString,tkWString,tkUString:begin
+         {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
           ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(TypInfo.GetUnicodeStrProp(AObject,PropInfo)));
          end;
          tkClass:begin
           ItemValue:=SerializeObjectToJSON(TypInfo.GetObjectProp(AObject,PropInfo));
          end;
+{$ifdef fpc}
          tkBool:begin
           ItemValue:=TPasJSONItemBoolean.Create(TypInfo.GetOrdProp(AObject,PropInfo)<>0);
          end;
-         tkInt64,tkQWord:begin
+{$endif}
+         tkInt64{$ifdef fpc},tkQWord{$endif}:begin
           ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(IntToStr(TypInfo.GetInt64Prop(AObject,PropInfo))));
          end;
          else begin
@@ -5312,8 +5330,8 @@ var RootUUID:TpvUUIDString;
            end;
           end;
          end;
-         tkChar,tkWChar,tkUChar:begin
-          ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(UnicodeChar(word(TypInfo.GetOrdProp(AObject,PropInfo)))));
+         tkChar,tkWChar{$ifdef fpc},tkUChar{$endif}:begin
+          ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String({$ifdef fpc}UnicodeChar{$else}WideChar{$endif}(word(TypInfo.GetOrdProp(AObject,PropInfo)))));
          end;
          tkEnumeration:begin
           if ItemValue is TPasJSONItemString then begin
@@ -5344,7 +5362,7 @@ var RootUUID:TpvUUIDString;
            end;
           end;
          end;
-         tkSString,tkLString,tkAString,tkWString,tkUString:begin
+         {$ifdef fpc}tkSString,{$endif}tkLString,{$ifdef fpc}tkAString,{$endif}tkWString,tkUString:begin
           if ItemValue is TPasJSONItemBoolean then begin
            TypInfo.SetUnicodeStrProp(AObject,PropInfo,UnicodeString(IntToStr(ord(TPasJSONItemBoolean(ItemValue).Value) and 1)));
            OK:=true;
@@ -5363,6 +5381,7 @@ var RootUUID:TpvUUIDString;
            OK:=true;
           end;
          end;
+{$ifdef fpc}
          tkBool:begin
           if ItemValue is TPasJSONItemBoolean then begin
            TypInfo.SetOrdProp(AObject,PropInfo,ord(TPasJSONItemBoolean(ItemValue).Value));
@@ -5384,7 +5403,8 @@ var RootUUID:TpvUUIDString;
            end;
           end;
          end;
-         tkInt64,tkQWord:begin
+{$endif}
+         tkInt64{$ifdef fpc},tkQWord{$endif}:begin
           if ItemValue is TPasJSONItemBoolean then begin
            TypInfo.SetInt64Prop(AObject,PropInfo,ord(TPasJSONItemBoolean(ItemValue).Value));
            OK:=true;
@@ -5825,7 +5845,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvSortedWorldList.GetWorld(const aIndex:TpvInt32):TpvWorld; inline;
+function TpvSortedWorldList.GetWorld(const aIndex:TpvInt32):TpvWorld;
 begin
  if (aIndex>=0) and (aIndex<Count) then begin
   result:=pointer(inherited Items[aIndex]);
@@ -5834,7 +5854,7 @@ begin
  end;
 end;
 
-procedure TpvSortedWorldList.SetWorld(const aIndex:TpvInt32;const AWorld:TpvWorld); inline;
+procedure TpvSortedWorldList.SetWorld(const aIndex:TpvInt32;const AWorld:TpvWorld);
 begin
  inherited Items[aIndex]:=pointer(AWorld);
 end;
@@ -5855,7 +5875,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvWorldList.GetWorld(const aIndex:TpvInt32):TpvWorld; inline;
+function TpvWorldList.GetWorld(const aIndex:TpvInt32):TpvWorld;
 begin
  if (aIndex>=0) and (aIndex<Count) then begin
   result:=pointer(inherited Items[aIndex]);
@@ -5864,22 +5884,22 @@ begin
  end;
 end;
 
-procedure TpvWorldList.SetWorld(const aIndex:TpvInt32;const aWorld:TpvWorld); inline;
+procedure TpvWorldList.SetWorld(const aIndex:TpvInt32;const aWorld:TpvWorld);
 begin
  inherited Items[aIndex]:=pointer(aWorld);
 end;
 
-function TpvWorldList.GetWorldByID(const aID:TpvWorldID):TpvWorld; inline;
+function TpvWorldList.GetWorldByID(const aID:TpvWorldID):TpvWorld;
 begin
  result:=fIDWorldHashMap.Values[aID];
 end;
 
-function TpvWorldList.GetWorldByUUID(const aUUID:TpvUUID):TpvWorld; inline;
+function TpvWorldList.GetWorldByUUID(const aUUID:TpvUUID):TpvWorld;
 begin
  result:=fUUIDWorldHashMap.Values[aUUID];
 end;
 
-function TpvWorldList.GetWorldByFileName(const aFileName:TpvUTF8String):TpvWorld; inline;
+function TpvWorldList.GetWorldByFileName(const aFileName:TpvUTF8String):TpvWorld;
 begin
  result:=fFileNameWorldHashMap.Values[{NormalizePathForHashing}(aFileName)];
 end;

@@ -129,14 +129,14 @@ type EpvResource=class(Exception);
        fAssetName:TpvUTF8String;
        fName:TpvUTF8String;
        fTemporary:boolean;
-       constructor CreateTemporary; virtual; reintroduce;
+       constructor CreateTemporary; reintroduce; virtual;
        procedure SetUUID(const pUUID:TpvUUID);
        procedure SetFileName(const pFileName:TpvUTF8String);
        procedure SetAssetName(const pAssetName:TpvUTF8String);
        function GetResource:IpvResource; virtual;
       public
-       constructor Create; virtual; reintroduce;
-       constructor CreateNew(const pFileName:TpvUTF8String); virtual; reintroduce;
+       constructor Create; reintroduce; virtual;
+       constructor CreateNew(const pFileName:TpvUTF8String); reintroduce; virtual;
        destructor Destroy; override;
        function HasResourceInstance:boolean; virtual;
        procedure LoadFromStream(const pStream:TStream); virtual;
@@ -719,12 +719,12 @@ begin
  result:=TpvMetaResource;
 end;
 
-function TpvResource._AddRef:TpvInt32; cdecl;
+function TpvResource._AddRef:TpvInt32;
 begin
  result:=inherited _AddRef;
 end;
 
-function TpvResource._Release:TpvInt32; cdecl;
+function TpvResource._Release:TpvInt32;
 begin
  if (fReleaseFrameDelay>0) and assigned(fResourceManager) and fResourceManager.fActive and assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
   result:=TPasMPInterlocked.Decrement(fReferenceCounter);

@@ -12845,7 +12845,7 @@ begin
    // then copy them to the destination buffer in the same command buffer call. 
    Mergable:=false;
    for Index:=0 to aQueue.Count-1 do begin
-    QueueItem:=aQueue.ItemPointers[Index];
+    QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
     if QueueItem^.Size=VK_WHOLE_SIZE then begin
      QueueItem^.Size:=QueueItem^.Buffer.Size-QueueItem^.BufferOffset;
     end;
@@ -12873,7 +12873,7 @@ begin
 
       while Index<aQueue.Count do begin
 
-       QueueItem:=aQueue.ItemPointers[Index];
+       QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
 
        if QueueItem^.Size<fSize then begin
 
@@ -12886,7 +12886,7 @@ begin
 
         // Find out how many items we can merge in a single command buffer call
         while Index<aQueue.Count do begin
-         QueueItem:=aQueue.ItemPointers[Index];
+         QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
          if (OffsetSize+QueueItem^.Size)<=fSize then begin
           ToIndex:=Index;
           inc(Index);
@@ -12912,7 +12912,7 @@ begin
           OffsetSize:=0;
           BufferMemoryEx:=BufferMemory;
           for Index:=FromIndex to ToIndex do begin
-           QueueItem:=aQueue.ItemPointers[Index];
+           QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
            case QueueItem^.Type_ of
             TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
              // Check if the buffer offset and size are aligned to 4 bytes, if not, we must fill the buffer memory with zeros, because in the other
@@ -12941,7 +12941,7 @@ begin
          OffsetSize:=0;
          BufferMemoryEx:=BufferMemory;
          for Index:=FromIndex to ToIndex do begin
-          QueueItem:=aQueue.ItemPointers[Index];
+          QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
           case QueueItem^.Type_ of
            TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
             // Check if the buffer offset and size are aligned to 4 bytes
@@ -12989,7 +12989,7 @@ begin
           OffsetSize:=0;
           BufferMemoryEx:=BufferMemory;
           for Index:=FromIndex to ToIndex do begin
-           QueueItem:=aQueue.ItemPointers[Index];
+           QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
            case QueueItem^.Type_ of
             TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
              // Nothing to do here, because we filled the buffer memory with zeros before
@@ -13035,7 +13035,7 @@ begin
 
    // Process the rest of the queue item by item
    while Index<aQueue.Count do begin
-    QueueItem:=aQueue.ItemPointers[Index];
+    QueueItem:=PpvVulkanDeviceMemoryStagingQueueItem(aQueue.ItemPointers[Index]);
     inc(Index);
     case QueueItem^.Type_ of
      TpvVulkanDeviceMemoryStagingQueueItemType.Zero:begin
