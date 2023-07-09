@@ -2131,6 +2131,7 @@ type EpvScene3D=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
+       fObjectList:TpvObjectList;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
        fBufferStreamingMode:TBufferStreamingMode;
        fDefaultSampler:TSampler;
@@ -2653,6 +2654,7 @@ begin
   end;
   if assigned(Current) and (Current is TpvScene3D) then begin
    fSceneInstance:=TpvScene3D(Current);
+   fSceneInstance.fObjectList.Add(self);
   end else begin
    fSceneInstance:=nil;
   end;
@@ -2682,7 +2684,14 @@ begin
 end;
 
 destructor TpvScene3D.TBaseObject.Destroy;
+var Index:TpvSizeInt;
 begin
+ if assigned(fSceneInstance) then begin
+  Index:=fSceneInstance.fObjectList.IndexOf(self);
+  if Index>=0 then begin
+   fSceneInstance.fObjectList.Extract(Index);
+  end;
+ end;
  inherited Destroy;
 end;
 
@@ -13919,6 +13928,9 @@ begin
   fVulkanDevice:=nil;
  end;
 
+ fObjectList:=TpvObjectList.Create;
+ fObjectList.OwnsObjects:=false;
+
  fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
 
  fLock:=TPasMPSpinLock.Create;
@@ -14189,7 +14201,14 @@ end;
 
 destructor TpvScene3D.Destroy;
 var Index:TpvSizeInt;
+    CurrentObject:TObject;
 begin
+
+ Index:=0;
+ while fObjectList.Count>0 do begin
+  CurrentObject:=fObjectList.Extract(0);
+  FreeAndNil(CurrentObject);
+ end;
 
  Unload;
 
