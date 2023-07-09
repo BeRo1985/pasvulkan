@@ -325,6 +325,7 @@ type EpvResource=class(Exception);
        destructor Destroy; override;
        procedure Shutdown;
        class function SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String; static;
+       procedure DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
        function GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
        function FindResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String):TpvResource;
        function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:TpvResource=nil):TpvResource;
@@ -1633,6 +1634,13 @@ begin
   end;
  end;
 
+end;
+
+procedure TpvResourceManager.DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
+var Index:TpvSizeInt;
+begin
+ Index:=0;
+ while Index<fD
 end;
 
 function TpvResourceManager.GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;

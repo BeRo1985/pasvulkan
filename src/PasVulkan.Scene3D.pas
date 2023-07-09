@@ -14208,6 +14208,10 @@ var Index:TpvSizeInt;
     CurrentObject:TObject;
 begin
 
+ if assigned(ResourceManager) then begin
+  ResourceManager.DestroyDelayedFreeingObjectsWithParent(self);
+ end;
+
  Unload;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
