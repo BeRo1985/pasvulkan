@@ -9811,16 +9811,16 @@ begin
     BufferMemoryBarrier^.offset:=0;
     BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
    end;
-   if Count>0 then begin
-    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
-                                      0,
-                                      0,nil,
-                                      Count,@fCachedVertexBufferMemoryBarriers[0],
-                                      0,nil);
-   end;
+  end;
+  if Count>0 then begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     Count,@fCachedVertexBufferMemoryBarriers[0],
+                                     0,nil);
   end;
  end;
 end;
