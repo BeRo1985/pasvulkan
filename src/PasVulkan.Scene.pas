@@ -200,10 +200,12 @@ type TpvScene=class;
        fCachedWorldTransform:TpvMatrix4x4;
        fLastCachedWorldTransform:TpvMatrix4x4;
        fInterpolatedCachedWorldTransform:TpvMatrix4x4;
+       fBounds:TpvAABB;
       protected
        procedure UpdateCachedWorldTransform; virtual;
        function GetWorldTransform:TpvMatrix4x4; virtual;
        procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4); virtual;
+       procedure UpdateBounds; virtual;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
        destructor Destroy; override;
@@ -216,6 +218,7 @@ type TpvScene=class;
        property CachedWorldTransform:TpvMatrix4x4 read fCachedWorldTransform;
        property LastCachedWorldTransform:TpvMatrix4x4 read fLastCachedWorldTransform;
        property InterpolatedCachedWorldTransform:TpvMatrix4x4 read fInterpolatedCachedWorldTransform;
+       property Bounds:TpvAABB read fBounds write fBounds;
      end;
 
 implementation
@@ -635,13 +638,17 @@ begin
  end;
 end;
 
+procedure TpvSceneNode3D.UpdateBounds;
+begin
+end;
+
 procedure TpvSceneNode3D.Store;
 begin
  inherited Store;
  fLastCachedWorldTransform:=fCachedWorldTransform;
 end;
 
-procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
+procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble); // <- should call UpdateCachedWorldTransform on your own
 begin
  inherited Update(aDeltaTime);
 end;
