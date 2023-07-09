@@ -2020,7 +2020,6 @@ type EpvScene3D=class(Exception);
               fNodeShaderStorageBufferObject:TNodeShaderStorageBufferObject;
               fLock:TPasMPSpinLock;
               fVulkanVertexBuffer:TpvVulkanBuffer;
-//            fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               //fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawUniqueIndexBuffer:TpvVulkanBuffer;
@@ -8342,36 +8341,6 @@ var Index:TpvSizeInt;
                                   fVertices.Count*SizeOf(TVertex),
                                   TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);}
 
-(* for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-    fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                              fVertices.Count*SizeOf(TCachedVertex),
-                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                              [],
-                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                              0,
-                                                              0,
-                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              []
-                                                             );
-    fSceneInstance.fVulkanDevice.MemoryStaging.Zero(UniversalQueue,
-                                                    UniversalCommandBuffer,
-                                                    UniversalFence,
-                                                    fVulkanCachedVertexBuffers[Index],
-                                                    0,
-                                                    fVertices.Count*SizeOf(TCachedVertex));
- {  fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
-                                                UniversalCommandBuffer,
-                                                UniversalFence,
-                                                0,
-                                                fVertices.Count*SizeOf(TCachedVertex),
-                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);}
-   end;         *)
-
  { fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                               fIndices.Count*SizeOf(TVkUInt32),
                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -8650,7 +8619,7 @@ end;
 
 procedure TpvScene3D.TGroup.Unload;
 var Instance:TpvScene3D.TGroup.TInstance;
-    Index:TpvSizeInt;
+//  Index:TpvSizeInt;
 begin
  fLock.Acquire;
  try
@@ -8666,9 +8635,6 @@ begin
    if fUploaded then begin
     try
      FreeAndNil(fVulkanVertexBuffer);
-{    for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-      FreeAndNil(fVulkanCachedVertexBuffers[Index]);
-     end;}
 //   FreeAndNil(fVulkanIndexBuffer);
      FreeAndNil(fVulkanDrawIndexBuffer);
      FreeAndNil(fVulkanDrawUniqueIndexBuffer);
@@ -9802,10 +9768,6 @@ const Offsets:TVkDeviceSize=0;
 begin
  if not fSetGroupResourcesDone[aRenderPassIndex] then begin
   fSetGroupResourcesDone[aRenderPassIndex]:=true;
-{ aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
-  if aPreviousInFlightFrameIndex>=0 then begin
-   aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanCachedVertexBuffers[aPreviousInFlightFrameIndex].Handle,@Offsets);
-  end;}
   aCommandBuffer.CmdBindIndexBuffer(fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  end;
 end;
@@ -11257,7 +11219,7 @@ begin
                                              1,
                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                              [],
-                                             [{fGroup.}fVulkanCachedVertexBuffers[Index].DescriptorBufferInfo],
+                                             [fVulkanCachedVertexBuffers[Index].DescriptorBufferInfo],
                                              [],
                                              false);
           DescriptorSet.WriteToDescriptorSet(2,
@@ -13787,7 +13749,6 @@ begin
   if aPreviousInFlightFrameIndex>=0 then begin
    aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanCachedVertexBuffers[aPreviousInFlightFrameIndex].Handle,@Offsets);
   end;
-//aCommandBuffer.CmdBindIndexBuffer(fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
  end;
 end;
 
