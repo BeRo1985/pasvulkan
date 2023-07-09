@@ -61,7 +61,13 @@ unit PasVulkan.Scene;
 
 interface
 
-uses Classes,SysUtils,PasMP,PasVulkan.Types,PasVulkan.Collections;
+uses Classes,
+     SysUtils,
+     PasMP,
+     PasVulkan.Types,
+     PasVulkan.Math,
+     PasVulkan.Collections,
+     PasVulkan.Scene3D;
 
 {
 
@@ -184,6 +190,28 @@ type TpvScene=class;
       published
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
+     end;
+
+     { TpvSceneNode3D }
+     TpvSceneNode3D=class(TpvSceneNode)
+      private
+       fLastNode3DParent:TpvSceneNode3D;
+       fTransform:TpvMatrix4x4;
+       fCachedWorldTransform:TpvMatrix4x4;
+       function GetWorldTransform:TpvMatrix4x4;
+       procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
+       procedure UpdateCachedWorldTransform;
+      public
+       constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
+       destructor Destroy; override;
+       procedure Update(const aDeltaTime:TpvDouble); override;
+       procedure Interpolate(const aAlpha:TpvDouble); override;
+       procedure FrameUpdate; override;
+       procedure Render; override;
+       procedure UpdateAudio; override;
+      public
+       property Transform:TpvMatrix4x4 read fTransform write fTransform;
+       property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
      end;
 
 implementation
@@ -547,5 +575,83 @@ begin
  fRootNode.UpdateAudio;
 end;
 
-end.
+{ TpvSceneNode3D }
 
+constructor TpvSceneNode3D.Create(const aParent:TpvSceneNode;const aData:TObject=nil);
+var LastNode3D:TpvSceneNode; 
+begin
+
+ inherited Create(aParent,aData);
+
+ LastNode3D:=fParent;
+ while assigned(LastNode3D) and not (LastNode3D is TpvSceneNode3D) do begin
+  LastNode3D:=LastNode3D.fParent;
+ end;
+ if not (assigned(LastNode3D) and (LastNode3D is TpvSceneNode3D)) then begin
+  LastNode3D:=nil; // No parent TpvSceneNode3D found
+ end;
+
+ fLastNode3DParent:=TpvSceneNode3D(LastNode3D);
+
+ fTransform:=TpvMatrix4x4.Identity;
+
+end;
+
+destructor TpvSceneNode3D.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
+begin
+ inherited Update(aDeltaTime);
+end;
+
+procedure TpvSceneNode3D.Interpolate(const aAlpha:TpvDouble);
+begin
+ inherited Interpolate(aAlpha);
+end;
+
+procedure TpvSceneNode3D.FrameUpdate;
+begin
+ inherited FrameUpdate;
+end;
+
+procedure TpvSceneNode3D.Render;
+begin
+ inherited Render;
+end;
+
+procedure TpvSceneNode3D.UpdateAudio;
+begin
+ inherited UpdateAudio;
+end;
+
+procedure TpvSceneNode3D.UpdateCachedWorldTransform;
+begin
+ if assigned(fLastNode3DParent) then begin
+  fCachedWorldTransform:=LastNode3DParent.fCachedWorldTransform*fTransform;
+ end else begin
+  fCachedWorldTransform:=fTransform;
+ end;
+end;
+
+function TpvSceneNode3D.GetWorldTransform:TpvMatrix4x4;
+begin
+ if assigned(fLastNode3DParent) then begin
+  result:=LastNode3D.GetWorldTransform*fTransform;
+ end else begin
+  result:=fTransform;
+ end;
+end;
+
+procedure TpvSceneNode3D.SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
+begin
+ if assigned(fLastNode3DParent) then begin
+  fTransform:=fLastNode3DParent.GetWorldTransform.Inverse*aWorldTransform;
+ end else begin
+  fTransform:=aWorldTransform;
+ end;
+end;
+
+end.
