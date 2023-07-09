@@ -200,18 +200,16 @@ type TpvScene=class;
        fCachedWorldTransform:TpvMatrix4x4;
        fLastCachedWorldTransform:TpvMatrix4x4;
        fInterpolatedCachedWorldTransform:TpvMatrix4x4;
-       function GetWorldTransform:TpvMatrix4x4;
-       procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
+      protected
+       procedure UpdateCachedWorldTransform; virtual;
+       function GetWorldTransform:TpvMatrix4x4; virtual;
+       procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4); virtual;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
        destructor Destroy; override;
        procedure Store; override;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Interpolate(const aAlpha:TpvDouble); override;
-       procedure FrameUpdate; override;
-       procedure Render; override;
-       procedure UpdateAudio; override;
-       procedure UpdateCachedWorldTransform; virtual;
       public
        property Transform:TpvMatrix4x4 read fTransform write fTransform;
        property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
@@ -610,38 +608,6 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvSceneNode3D.Store;
-begin
- inherited Store;
- fLastCachedWorldTransform:=fCachedWorldTransform;
-end;
-
-procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
-begin
- inherited Update(aDeltaTime);
-end;
-
-procedure TpvSceneNode3D.Interpolate(const aAlpha:TpvDouble);
-begin
- fInterpolatedCachedWorldTransform:=fLastCachedWorldTransform.Slerp(fCachedWorldTransform,aAlpha);
- inherited Interpolate(aAlpha);
-end;
-
-procedure TpvSceneNode3D.FrameUpdate;
-begin
- inherited FrameUpdate;
-end;
-
-procedure TpvSceneNode3D.Render;
-begin
- inherited Render;
-end;
-
-procedure TpvSceneNode3D.UpdateAudio;
-begin
- inherited UpdateAudio;
-end;
-
 procedure TpvSceneNode3D.UpdateCachedWorldTransform;
 begin
  if assigned(fLastNode3DParent) then begin
@@ -667,6 +633,23 @@ begin
  end else begin
   fTransform:=aWorldTransform;
  end;
+end;
+
+procedure TpvSceneNode3D.Store;
+begin
+ inherited Store;
+ fLastCachedWorldTransform:=fCachedWorldTransform;
+end;
+
+procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
+begin
+ inherited Update(aDeltaTime);
+end;
+
+procedure TpvSceneNode3D.Interpolate(const aAlpha:TpvDouble);
+begin
+ fInterpolatedCachedWorldTransform:=fLastCachedWorldTransform.Slerp(fCachedWorldTransform,aAlpha);
+ inherited Interpolate(aAlpha);
 end;
 
 end.
