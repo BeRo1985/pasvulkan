@@ -63,6 +63,57 @@ interface
 
 uses Classes,SysUtils,PasMP,PasVulkan.Types,PasVulkan.Collections;
 
+{
+
+A scene node can be an entity or even a component for an entity node as well, here is no distinction for simplicity, for the contrast to 
+the entity-component-system pattern, which is also implemented in the PasVulkan framework, see the PasVulkan.EntityComponentSystem.pas unit.
+So it's your choice, if you want to use the entity-component-system pattern or the scene graph pattern or both.
+
+The scene graph pattern is a tree structure, where each node can have zero or more child nodes, but only one parent node. The root node
+has no parent node. Each node can have zero or more data objects, which can be used for any purpose, even as components for an entity
+node. The scene graph pattern is very useful for rendering, physics, audio, AI, etc. and is very flexible and easy to use. 
+
+GetNodeListOf returns a list of all child nodes of the specified node class.
+
+GetNodeOf returns the child node of the specified node class at the specified index, which is zero by default, and nil if there is out of bounds.
+
+GetNodeCountOf returns the count of child nodes of the specified node class.
+
+StartLoad, BackgroundLoad and FinishLoad are used for loading of data, which can be done in parallel, like loading of textures, meshes, etc. 
+Or to be more precise, StartLoad is called before the background loading of the scene graph, BackgroundLoad is called in a background thread
+and should be used for loading of data, which can be done in parallel and FinishLoad is called after the background loading of the scene graph. 
+
+StartLoad is called before the background loading of the scene graph. It's called in the main thread.
+
+BackgroundLoad is called in a background thread and should be used for loading of data, which can be done in parallel.
+
+FinishLoad is called after the background loading of the scene graph. It's called in the main thread.
+
+WaitForLoaded waits until the scene graph or node is loaded.
+
+IsLoaded returns true, if the scene graph or node is loaded.
+
+These loading functions should be called just once before the beginning of a level or game together with a loading screen, etc. For other
+resources, which are loaded during the game, like textures, meshes, etc. should be loaded in an other way, for example, with the
+resource manager of the PasVulkan framework, see the PasVulkan.Resources.pas unit. These loading functions here are just for to simplify 
+the initial loading of a level or game without the actual mess of loading of resources during the game with a resource manager, etc.  
+
+Store and Interpolate are used for interpolation of the scene graph for the "Fix your timestep" pattern, which means, that the scene graph
+is updated with a fixed timestep, but rendered with a variable timestep, which is interpolated between the last and the current scene graph
+state for smooth rendering. Where Store is called for storing the scene graph state, Interpolate is called for interpolating the scene graph
+with a fixed timestep with aDeltaTime as parameter, Interpolate is called for interpolating the scene graph with a variable timestep with 
+aAlpha as parameter. And FrameUpdate is called after Interpolate for updating some stuff just frame-wise, like audio, etc. and is called
+in the main thread.
+
+Render is called for rendering the scene graph and can be called in the main "or" in a render thread, depending on the settings of the
+PasVulkan main loop, so be careful with thread-safety.
+
+UpdateAudio is called for updating audio and is called in the audio thread, so be careful with thread-safety. So use it in combination with
+FrameUpdate, which is called in the main thread, with a thread safe data ring buffer oder queue for audio data, which is filled in FrameUpdate
+and read in UpdateAudio. You can use the constructs from PasMP for that, see the PasMP.pas unit.
+
+}
+
 type TpvScene=class;
 
      TpvSceneNode=class;
@@ -72,10 +123,6 @@ type TpvScene=class;
      TpvSceneNodes=TpvObjectGenericList<TpvSceneNode>;
 
      TpvSceneNodeHashMap=TpvHashMap<TpvSceneNodeClass,TpvSceneNodes>;
-
-     // A scene node can be an entity or even a component for an entity as well, here is no distinction for simplicity, for the contrast to 
-     // the entity-component-system pattern, which is also implemented in the PasVulkan framework, see the PasVulkan.EntityComponentSystem.pas unit.
-     // So it's your choice, if you want to use the entity-component-system pattern or the scene graph pattern or both.
 
      { TpvSceneNode }
      TpvSceneNode=class      
