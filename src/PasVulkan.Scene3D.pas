@@ -2039,6 +2039,7 @@ type EpvScene3D=class(Exception);
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
               fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
               fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
+              fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
               procedure ConstructBuffers;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
@@ -8123,6 +8124,8 @@ begin
 
  fMorphTargetCount:=0;
 
+ fCachedVertexBufferMemoryBarriers:=nil;
+
  fCulling:=false;
 
  fUsedVisibleDrawNodes:=TUsedVisibleDrawNodes.Create;
@@ -8214,6 +8217,8 @@ begin
  fJointBlocks.Finalize;
 
  fJointBlockOffsets:=nil;
+
+ fCachedVertexBufferMemoryBarriers:=nil;
 
  FreeAndNil(fNodeNameIndexHashMap);
 
@@ -9777,7 +9782,8 @@ procedure TpvScene3D.TGroup.UpdateCachedVertices(const aPipeline:TpvVulkanPipeli
                                                  const aCommandBuffer:TpvVulkanCommandBuffer;
                                                  const aPipelineLayout:TpvVulkanPipelineLayout);
 var Instance:TpvScene3D.TGroup.TInstance;
-    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferMemoryBarrier:PVkBufferMemoryBarrier;
+    Count:TVkSizeInt;
 begin
  fCachedVerticesUpdated:=false;
  for Instance in fInstances do begin
@@ -9787,25 +9793,32 @@ begin
                                 aPipelineLayout);
  end;
  if fCachedVerticesUpdated then begin
+  if length(fCachedVertexBufferMemoryBarriers)<fInstances.Count then begin
+   SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*2);
+  end;
+  Count:=0;
   for Instance in fInstances do begin
    if Instance.fCachedVerticesUpdated then begin
-    FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-    BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    BufferMemoryBarrier.pNext:=nil;
-    BufferMemoryBarrier.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
-    BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-    BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
-    BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-    BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-    BufferMemoryBarrier.offset:=0;
-    BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
+    BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
+    FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
+    BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    BufferMemoryBarrier^.pNext:=nil;
+    BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
+    BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+    BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+    BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarrier^.offset:=0;
+    BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+   end;
+   if Count>0 then begin
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
                                       0,
                                       0,nil,
-                                      1,@BufferMemoryBarrier,
+                                      Count,@fCachedVertexBufferMemoryBarriers[0],
                                       0,nil);
    end;
   end;
