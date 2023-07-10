@@ -271,8 +271,8 @@ type { TpvScene3DRendererInstance }
        fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
-       fCameraMatrix:TpvMatrix4x4;
-       fPointerToCameraMatrix:PpvMatrix4x4;
+       fCameraViewMatrix:TpvMatrix4x4;
+       fPointerToCameraViewMatrix:PpvMatrix4x4;
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
@@ -358,8 +358,8 @@ type { TpvScene3DRendererInstance }
        procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
-       property CameraMatrix:TpvMatrix4x4 read fCameraMatrix write fCameraMatrix;
-       property PointerToCameraMatrix:PpvMatrix4x4 read fPointerToCameraMatrix;
+       property CameraViewMatrix:TpvMatrix4x4 read fCameraViewMatrix write fCameraViewMatrix;
+       property PointerToCameraViewMatrix:PpvMatrix4x4 read fPointerToCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
@@ -880,9 +880,9 @@ begin
 
  fCascadedShadowMapHeight:=Renderer.ShadowMapSize;
 
- fCameraMatrix:=TpvMatrix4x4.Identity;
+ fCameraViewMatrix:=TpvMatrix4x4.Identity;
 
- fPointerToCameraMatrix:=@fCameraMatrix;
+ fPointerToCameraViewMatrix:=@fCameraViewMatrix;
 
  fPointerToInFlightFrameStates:=@fInFlightFrameStates;
 
@@ -2303,7 +2303,7 @@ begin
 
  if fViews.Count=0 then begin
 
-  ViewMatrix:=fCameraMatrix.SimpleInverse;
+  ViewMatrix:=fCameraViewMatrix;
 
   if assigned(fVirtualReality) then begin
 

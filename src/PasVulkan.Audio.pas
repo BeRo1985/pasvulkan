@@ -1234,12 +1234,14 @@ const LeftSpeakerAngle=-(pi*0.5);
 var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,SpatializationVolume,SpatializationDelay,
     LeftHFGain,RightHFGain,Gain,Factor,SpeedOfSound,DopplerListener,DopplerSource,Angle,DirectionGain,
     Elevation,Azimuth,Delta{},Scale,ConeVolume,ConeHF{}:TpvFloat;
-    RelativeVector,NormalizedRelativeVector,Direction,SourceToListenerVector:TpvVector3;
+    RelativeVector,NormalizedRelativeVector,Direction,SourceToListenerVector,ListenerOrigin:TpvVector3;
     Counter:TpvInt32;
     DoIt,IsLocal:boolean;
 begin
 
- RelativeVector:=AudioEngine.ListenerMatrix.Inverse*SpatializationOrigin;
+ ListenerOrigin:=AudioEngine.ListenerMatrix.SimpleInverse.Translation.xyz;
+
+ RelativeVector:=AudioEngine.ListenerMatrix*SpatializationOrigin;
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
