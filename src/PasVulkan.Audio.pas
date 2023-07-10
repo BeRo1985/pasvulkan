@@ -695,7 +695,7 @@ type PpvAudioInt32=^TpvInt32;
        AGCInterval:TpvInt32;
        CriticalSection:TCriticalSection;
        CubicSplineTable:TpvAudioResamplerCubicSplineArray;
-       ListenerMatrix:TpvMatrix4x4;
+       ListenerViewMatrix:TpvMatrix4x4;
        ListenerVelocity:TpvVector3;
        ListenerUnderwater:LongBool;
        LowPassLeft:TpvInt32;
@@ -1238,9 +1238,9 @@ var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,Spat
     DoIt,IsLocal:boolean;
 begin
 
- ListenerOrigin:=AudioEngine.ListenerMatrix.SimpleInverse.Translation.xyz;
+ ListenerOrigin:=AudioEngine.ListenerViewMatrix.SimpleInverse.Translation.xyz;
 
- RelativeVector:=AudioEngine.ListenerMatrix*SpatializationOrigin;
+ RelativeVector:=AudioEngine.ListenerViewMatrix*SpatializationOrigin;
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
@@ -4412,7 +4412,7 @@ begin
    CubicSplineTable[i,3]:=round(((0.5*x*x*x)-(0.5*x*x))*ResamplerCubicSplineValueLength);
   end;
  end;
- ListenerMatrix:=TpvMatrix4x4.Identity;
+ ListenerViewMatrix:=TpvMatrix4x4.Identity;
  ListenerVelocity:=TpvVector3.Null;
  ListenerUnderwater:=false;
  LowPassLeft:=0;
