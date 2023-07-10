@@ -1288,6 +1288,21 @@ begin
   DirectionGain:=sqrt(sqr(NormalizedRelativeVector.x)+sqr(NormalizedRelativeVector.z));
  end;
 
+ DoIt:=false;
+ Direction:=NormalizedRelativeVector;
+ if Age=0 then begin
+  SpatializationVolumeLast:=SpatializationVolume;
+  LastDirection:=Direction;
+ end else begin
+  Delta:=CalculateDelta(SpatializationVolumeLast,SpatializationVolume,LastDirection,Direction);
+  if Delta>0.001 then begin
+   DoIt:=true;
+   RampingSamples:=trunc(Max(floor((Delta*(AudioEngine.SampleRate*0.015))+0.5),1.0));
+   SpatializationVolumeLast:=SpatializationVolume;
+   LastDirection:=Direction;
+  end;
+ end;
+
 {
  if IsLocal then begin
   Angle:=0.0;
@@ -1311,24 +1326,9 @@ begin
     Angle:=0.0;
    end;
   end;
- end;//}
-
- DoIt:=false;
- Direction:=NormalizedRelativeVector;
- if Age=0 then begin
-  SpatializationVolumeLast:=SpatializationVolume;
-  LastDirection:=Direction;
- end else begin
-  Delta:=CalculateDelta(SpatializationVolumeLast,SpatializationVolume,LastDirection,Direction);
-  if Delta>0.001 then begin
-   DoIt:=true;
-   RampingSamples:=trunc(Max(floor((Delta*(AudioEngine.SampleRate*0.015))+0.5),1.0));
-   SpatializationVolumeLast:=SpatializationVolume;
-   LastDirection:=Direction;
-  end;
  end;
 
-{if IsLocal then begin
+ if IsLocal then begin
   Spatialization:=0.0;
  end else begin
   Spatialization:=Angle;
@@ -1341,7 +1341,7 @@ begin
     Spatialization:=(Angle-LeftSpeakerAngle)/((LeftSpeakerAngle-RightSpeakerAngle)+(pi*2.0));
    end;
   end;
- end;}
+ end;//}
 
  if IsLocal then begin
   Spatialization:=0.0;
