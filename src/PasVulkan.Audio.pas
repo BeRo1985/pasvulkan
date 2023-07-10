@@ -164,7 +164,7 @@ const SampleFixUp=1024;
 
       LowPassBits=14;
       LowPassLength=1 shl LowPassBits;
-      LowPassShift=15;
+      LowPassShift=16;
       LowPassShiftLength=1 shl LowPassShift;
 
       SpatializationDelayShift=16;
