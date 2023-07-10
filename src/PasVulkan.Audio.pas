@@ -695,9 +695,8 @@ type PpvAudioInt32=^TpvInt32;
        AGCInterval:TpvInt32;
        CriticalSection:TCriticalSection;
        CubicSplineTable:TpvAudioResamplerCubicSplineArray;
-       ListenerOrigin:TpvVector3;
-       ListenerVelocity:TpvVector3;
        ListenerMatrix:TpvMatrix4x4;
+       ListenerVelocity:TpvVector3;
        ListenerUnderwater:LongBool;
        LowPassLeft:TpvInt32;
        LowPassRight:TpvInt32;
@@ -1245,7 +1244,7 @@ begin
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
- IsLocal:=SpatializationOrigin=AudioEngine.ListenerOrigin;
+ IsLocal:=SpatializationOrigin=ListenerOrigin;
 
  Distance:=RelativeVector.Length;
 
@@ -1447,7 +1446,7 @@ begin
    Factor:=Factor/SpeedOfSound;
    SpeedOfSound:=1.0;
   end;
-  SourceToListenerVector:=(SpatializationOrigin-Sample.AudioEngine.ListenerOrigin).Normalize;
+  SourceToListenerVector:=(SpatializationOrigin-ListenerOrigin).Normalize;
   DopplerListener:=Min(AudioEngine.ListenerVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
   DopplerSource:=Min(SpatializationVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
   DopplerRate:=Clamp(SpeedOfSound+DopplerListener,1.0,(SpeedOfSound*2.0)-1.0)/
@@ -4413,9 +4412,8 @@ begin
    CubicSplineTable[i,3]:=round(((0.5*x*x*x)-(0.5*x*x))*ResamplerCubicSplineValueLength);
   end;
  end;
- ListenerOrigin:=TpvVector3.Null;
- ListenerVelocity:=TpvVector3.Null;
  ListenerMatrix:=TpvMatrix4x4.Identity;
+ ListenerVelocity:=TpvVector3.Null;
  ListenerUnderwater:=false;
  LowPassLeft:=0;
  LowPassRight:=0;
