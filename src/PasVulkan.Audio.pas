@@ -1311,7 +1311,7 @@ begin
   end;
  end;
 
- if IsLocal then begin
+{if IsLocal then begin
   Angle:=0.0;
  end else begin
   Angle:=ArcTan2(NormalizedRelativeVector.x,-NormalizedRelativeVector.z);
@@ -1351,7 +1351,7 @@ begin
   end;
  end;//}
 
-{if IsLocal then begin
+ if IsLocal then begin
   Spatialization:=0.0;
  end else begin
   Spatialization:=NormalizedRelativeVector.x;
