@@ -184,12 +184,6 @@ const SampleFixUp=1024;
       SPATIALIZATION_PSEUDO=1;
       SPATIALIZATION_HRTF=2;
 
-      ConeScale=1.0;
-      InnerAngle=360.0;
-      OuterAngle=360.0;
-      OuterGain=0.0;
-      OuterGainHF=1.0;
-
       MaxAudioSpeakerLayoutListeners=8;
 
 type PpvAudioInt32=^TpvInt32;
@@ -728,6 +722,11 @@ type PpvAudioInt32=^TpvInt32;
        IsReady:LongBool;
        IsMuted:LongBool;
        IsActive:LongBool;
+       ConeScale:TpvScalar;
+       InnerAngle:TpvScalar;
+       OuterAngle:TpvScalar;
+       OuterGain:TpvScalar;
+       OuterGainHF:TpvScalar;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
@@ -1240,11 +1239,11 @@ var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,Spat
     DoIt,IsLocal:boolean;
 begin
 
- RelativeVector:=Sample.AudioEngine.ListenerMatrix.Inverse*SpatializationOrigin;
+ RelativeVector:=AudioEngine.ListenerMatrix.Inverse*SpatializationOrigin;
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
- IsLocal:=SpatializationOrigin=Sample.AudioEngine.ListenerOrigin;
+ IsLocal:=SpatializationOrigin=AudioEngine.ListenerOrigin;
 
  Distance:=RelativeVector.Length;
 
@@ -1256,15 +1255,15 @@ begin
   Attenuation:=1.0;
  end;
 
- if InnerAngle<360.0 then begin
-  Angle:=(ArcCos(NormalizedRelativeVector.z*ConeScale)*RAD2DEG)*2.0;
-  if (Angle>InnerAngle) and (Angle<=OuterAngle) then begin
-   Scale:=(Angle-InnerAngle)/(OuterAngle-InnerAngle);
-   ConeVolume:=FloatLerp(1.0,OuterGain,Scale);
-   ConeHF:=FloatLerp(1.0,OuterGainHF,Scale);
-  end else if Angle>OuterAngle then begin
-   ConeVolume:=OuterGain;
-   ConeHF:=OuterGainHF;
+ if AudioEngine.InnerAngle<360.0 then begin
+  Angle:=(ArcCos(NormalizedRelativeVector.z*AudioEngine.ConeScale)*RAD2DEG)*2.0;
+  if (Angle>AudioEngine.InnerAngle) and (Angle<=AudioEngine.OuterAngle) then begin
+   Scale:=(Angle-AudioEngine.InnerAngle)/(AudioEngine.OuterAngle-AudioEngine.InnerAngle);
+   ConeVolume:=FloatLerp(1.0,AudioEngine.OuterGain,Scale);
+   ConeHF:=FloatLerp(1.0,AudioEngine.OuterGainHF,Scale);
+  end else if Angle>AudioEngine.OuterAngle then begin
+   ConeVolume:=AudioEngine.OuterGain;
+   ConeHF:=AudioEngine.OuterGainHF;
   end else begin
    ConeVolume:=1.0;
    ConeHF:=1.0;
@@ -4439,6 +4438,11 @@ begin
   PanningLUT[i]:=round(sin(HalfPI*(i/high(PanningLUT)))*32768.0);
  end;
  PanningLUT[$10000]:=32768;
+ ConeScale:=1.0;
+ InnerAngle:=360.0;
+ OuterAngle:=360.0;
+ OuterGain:=0.0;
+ OuterGainHF:=1.0;
  RingBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(OutputBufferSize*2);
  Thread:=TpvAudioThread.Create(self);
  IsReady:=true;
