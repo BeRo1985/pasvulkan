@@ -1235,21 +1235,18 @@ const LeftSpeakerAngle=-(pi*0.5);
 var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,SpatializationVolume,SpatializationDelay,
     LeftHFGain,RightHFGain,Gain,Factor,SpeedOfSound,DopplerListener,DopplerSource,Angle,DirectionGain,
     Elevation,Azimuth,Delta{},Scale,ConeVolume,ConeHF{}:TpvFloat;
-    RelativeVector,SourceVector,NormalizedSourceVector,NormalizedRelativeVector,
-    Direction,SourceToListenerVector:TpvVector3;
+    RelativeVector,NormalizedRelativeVector,Direction,SourceToListenerVector:TpvVector3;
     Counter:TpvInt32;
     DoIt,IsLocal:boolean;
 begin
 
  RelativeVector:=Sample.AudioEngine.ListenerMatrix.Inverse*SpatializationOrigin;
 
- SourceVector:=SpatializationOrigin-Sample.AudioEngine.ListenerOrigin;
+ NormalizedRelativeVector:=RelativeVector.Normalize;
 
  IsLocal:=SpatializationOrigin=Sample.AudioEngine.ListenerOrigin;
 
  Distance:=RelativeVector.Length;
-
- NormalizedSourceVector:=SourceVector.Normalize;
 
  ClampedDistance:=Clamp(Distance,Sample.MinDistance,Sample.MaxDistance);
  AttenuationDistance:=Sample.MinDistance+(Sample.AttenuationRollOff*(ClampedDistance-Sample.MinDistance));
@@ -1260,7 +1257,7 @@ begin
  end;
 
  if InnerAngle<360.0 then begin
-  Angle:=(ArcCos(NormalizedSourceVector.Dot(PpvVector3(TpvPointer(@Sample.AudioEngine.ListenerMatrix.RawComponents[2,0]))^)*ConeScale)*RAD2DEG)*2.0;
+  Angle:=(ArcCos(NormalizedRelativeVector.z*ConeScale)*RAD2DEG)*2.0;
   if (Angle>InnerAngle) and (Angle<=OuterAngle) then begin
    Scale:=(Angle-InnerAngle)/(OuterAngle-InnerAngle);
    ConeVolume:=FloatLerp(1.0,OuterGain,Scale);
@@ -1283,9 +1280,6 @@ begin
  end else if SpatializationVolume>1.0 then begin
   SpatializationVolume:=1.0;
  end;
-
- NormalizedRelativeVector:=RelativeVector.Normalize;
-//NormalizedRelativeVector:=Sample.AudioEngine.ListenerMatrix.MulBasis(NormalizedSourceVector).Normalize;
 
  RampingSamples:=AudioEngine.RampingSamples;
 
