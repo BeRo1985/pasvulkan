@@ -1235,15 +1235,19 @@ const LeftSpeakerAngle=-(pi*0.5);
 var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,SpatializationVolume,SpatializationDelay,
     LeftHFGain,RightHFGain,Gain,Factor,SpeedOfSound,DopplerListener,DopplerSource,Angle,DirectionGain,
     Elevation,Azimuth,Delta{},Scale,ConeVolume,ConeHF{}:TpvFloat;
-    SourceVector,NormalizedSourceVector,RotatedSourceVector,Direction,SourceToListenerVector:TpvVector3;
+    RelativeVector,SourceVector,NormalizedSourceVector,NormalizedRelativeVector,
+    Direction,SourceToListenerVector:TpvVector3;
     Counter:TpvInt32;
     DoIt,IsLocal:boolean;
 begin
+
+ RelativeVector:=Sample.AudioEngine.ListenerMatrix.Inverse*SpatializationOrigin;
+
  SourceVector:=SpatializationOrigin-Sample.AudioEngine.ListenerOrigin;
 
  IsLocal:=SpatializationOrigin=Sample.AudioEngine.ListenerOrigin;
 
- Distance:=SourceVector.Length;
+ Distance:=RelativeVector.Length;
 
  NormalizedSourceVector:=SourceVector.Normalize;
 
@@ -1280,27 +1284,27 @@ begin
   SpatializationVolume:=1.0;
  end;
 
- RotatedSourceVector:=(Sample.AudioEngine.ListenerMatrix*NormalizedSourceVector).Normalize;
-//RotatedSourceVector:=Sample.AudioEngine.ListenerMatrix.MulBasis(NormalizedSourceVector).Normalize;
+ NormalizedRelativeVector:=RelativeVector.Normalize;
+//NormalizedRelativeVector:=Sample.AudioEngine.ListenerMatrix.MulBasis(NormalizedSourceVector).Normalize;
 
  RampingSamples:=AudioEngine.RampingSamples;
 
  if IsLocal then begin
   DirectionGain:=1.0;
  end else begin
-  DirectionGain:=sqrt(sqr(RotatedSourceVector.x)+sqr(RotatedSourceVector.z));
+  DirectionGain:=sqrt(sqr(NormalizedRelativeVector.x)+sqr(NormalizedRelativeVector.z));
  end;
 
 {
  if IsLocal then begin
   Angle:=0.0;
  end else begin
-  if abs(RotatedSourceVector.x)>EPSILON then begin
+  if abs(NormalizedRelativeVector.x)>EPSILON then begin
    // x<>0
-   if abs(RotatedSourceVector.z)>EPSILON then begin // x<>0 z<>0
-    Angle:=ArcTan2(RotatedSourceVector.x,-RotatedSourceVector.z);
+   if abs(NormalizedRelativeVector.z)>EPSILON then begin // x<>0 z<>0
+    Angle:=ArcTan2(NormalizedRelativeVector.x,-NormalizedRelativeVector.z);
    end else begin // x<>0 z=0
-    if RotatedSourceVector.x<0 then begin
+    if NormalizedRelativeVector.x<0 then begin
      Angle:=pi*0.5;
     end else begin
      Angle:=-(pi*0.5);
@@ -1308,7 +1312,7 @@ begin
    end;
   end else begin
    // x=0
-   if RotatedSourceVector.z>EPSILON then begin // x=0 z<0
+   if NormalizedRelativeVector.z>EPSILON then begin // x=0 z<0
     Angle:=-pi;
    end else begin // x=0 z>=0
     Angle:=0.0;
@@ -1317,7 +1321,7 @@ begin
  end;//}
 
  DoIt:=false;
- Direction:=RotatedSourceVector;
+ Direction:=NormalizedRelativeVector;
  if Age=0 then begin
   SpatializationVolumeLast:=SpatializationVolume;
   LastDirection:=Direction;
@@ -1349,7 +1353,7 @@ begin
  if IsLocal then begin
   Spatialization:=0.0;
  end else begin
-  Spatialization:=RotatedSourceVector.x;
+  Spatialization:=NormalizedRelativeVector.x;
   if Spatialization<-1.0 then begin
    Spatialization:=-1.0;
   end else if Spatialization>1.0 then begin
@@ -1386,16 +1390,16 @@ begin
     LeftHFGain:=1.0-(Spatialization*HF_DAMP_HALF);
     SpatializationDelayLeft:=round((SpatializationDelay*Spatialization)*SpatializationDelayLength);
    end;
-   if RotatedSourceVector.z>0 then begin
-    Gain:=1.0-(RotatedSourceVector.z*HF_DAMP);
+   if NormalizedRelativeVector.z>0 then begin
+    Gain:=1.0-(NormalizedRelativeVector.z*HF_DAMP);
     LeftHFGain:=LeftHFGain*Gain;
     RightHFGain:=RightHFGain*Gain;
    end;
   end;
   SPATIALIZATION_HRTF:begin
    if Distance>EPSILON then begin
-    Elevation:=AngleClamp(ArcSin(Clamp(RotatedSourceVector.y,-1.0,1.0)));
-    Azimuth:=AngleClamp(ArcTan2(RotatedSourceVector.x,-RotatedSourceVector.z));
+    Elevation:=AngleClamp(ArcSin(Clamp(NormalizedRelativeVector.y,-1.0,1.0)));
+    Azimuth:=AngleClamp(ArcTan2(NormalizedRelativeVector.x,-NormalizedRelativeVector.z));
    end else begin
     Elevation:=0.0;
     Azimuth:=0.0;
