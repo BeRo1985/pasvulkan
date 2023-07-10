@@ -266,6 +266,7 @@ type PpvAudioInt32=^TpvInt32;
        Volume:TpvInt32;
        Panning:TpvInt32;
        Age:TpvInt64;
+       ListenerGeneration:TpvUInt64;
        Position:TpvInt64;
        Increment:TpvInt64;
        IncrementLast:TpvInt64;
@@ -700,6 +701,7 @@ type PpvAudioInt32=^TpvInt32;
        ListenerViewMatrix:TpvMatrix4x4;
        ListenerVelocity:TpvVector3;
        ListenerUnderwater:LongBool;
+       ListenerGeneration:TpvUInt64;
        LowPassLeft:TpvInt32;
        LowPassRight:TpvInt32;
        LowPassLast:TpvInt32;
@@ -1147,6 +1149,7 @@ begin
  IncrementRampingRemain:=0;
  IncrementRampingStepRemain:=0;
  Age:=0;
+ ListenerGeneration:=High(TpvUInt64);
  Position:=0;
  LastElevation:=1e+30;
  LastAzimuth:=1e+30;
@@ -2119,6 +2122,11 @@ begin
  PreClickRemoval(Buffer);
  if Active then begin
   Buf:=TpvPointer(Buffer);
+
+  if ListenerGeneration<>AudioEngine.ListenerGeneration then begin
+   ListenerGeneration:=AudioEngine.ListenerGeneration;
+   Age:=0;
+  end;
 
   if Spatialization then begin
    UpdateSpatialization;
@@ -4428,6 +4436,7 @@ begin
  ListenerViewMatrix:=TpvMatrix4x4.Identity;
  ListenerVelocity:=TpvVector3.Null;
  ListenerUnderwater:=false;
+ ListenerGeneration:=0;
  LowPassLeft:=0;
  LowPassRight:=0;
  LowPassLast:=LowPassLength shl LowPassShift;
