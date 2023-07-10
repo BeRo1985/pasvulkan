@@ -164,7 +164,7 @@ const SampleFixUp=1024;
 
       LowPassBits=14;
       LowPassLength=1 shl LowPassBits;
-      LowPassShift=16;
+      LowPassShift=15;
       LowPassShiftLength=1 shl LowPassShift;
 
       SpatializationDelayShift=16;
@@ -343,6 +343,8 @@ type PpvAudioInt32=^TpvInt32;
        NewLastRight:TpvInt32;
        Rate:TpvFloat;
        DopplerRate:TpvFloat;
+       LastElevation:TpvFloat;
+       LastAzimuth:TpvFloat;
        VoiceIndexPointer:TpvPointer;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
@@ -1146,6 +1148,8 @@ begin
  IncrementRampingStepRemain:=0;
  Age:=0;
  Position:=0;
+ LastElevation:=1e+30;
+ LastAzimuth:=1e+30;
  if AudioEngine.SpatializationMode=SPATIALIZATION_HRTF then begin
   FillChar(HRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
   FillChar(HRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
@@ -1219,8 +1223,8 @@ procedure TpvAudioSoundSampleVoice.UpdateSpatialization;
   end;
   if Gain<0.9999 then begin
    result:=((1.0-(Gain*cw))-sqrt((2.0*(Gain*(1.0-cw)))-(sqr(Gain)*(1.0-sqr(cw)))))/(1.0-Gain);
-   if result<-1.0 then begin
-    result:=-1.0;
+   if result<0.0 then begin
+    result:=0.0;
    end else if result>1.0 then begin
     result:=1.0;
    end;
@@ -1398,7 +1402,11 @@ begin
     Elevation:=0.0;
     Azimuth:=0.0;
    end;
-   if Age=0 then begin
+   if IsNaN(Elevation) or IsInfinite(Elevation) or IsNaN(Azimuth) or IsInfinite(Azimuth) then begin
+    Elevation:=0.0;
+    Azimuth:=0.0;
+   end;
+   if (Age=0) or (abs(LastElevation-Elevation)>=0.25) or (abs(LastAzimuth-Azimuth)>=0.25) then begin
     AudioEngine.GetLerpedHRTFCoefs(Elevation,Azimuth,HRTFLeftCoefs,HRTFRightCoefs,HRTFLeftDelay,HRTFRightDelay);
     HRTFRampingRemain:=0;
     HRTFLeftCoefsCurrent:=HRTFLeftCoefs;
@@ -1421,17 +1429,22 @@ begin
      SpatializationDelayRight:=HRTFRightDelay;
     end;
    end;
+   LastElevation:=Elevation;
+   LastAzimuth:=Azimuth;
   end;
  end;
 
  if AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
-  if Distance>MinAbsorptionDistance then begin                                                     
-   Factor:=power(AirAbsorptionGainHF,AirAbsorptionFactor*((Clamp(Distance,MinAbsorptionDistance,MaxAbsorptionDistance)-MinAbsorptionDistance)*WorldUnitsToMeters));
+  if Distance>MinAbsorptionDistance then begin
+   Factor:=Clamp(power(AirAbsorptionGainHF,AirAbsorptionFactor*((Clamp(Distance,MinAbsorptionDistance,MaxAbsorptionDistance)-MinAbsorptionDistance)*WorldUnitsToMeters)),0.0,1.0);
+   if IsNaN(Factor) or IsInfinite(Factor) then begin
+    Factor:=1.0;
+   end;
    LeftHFGain:=LeftHFGain*Factor;
    RightHFGain:=RightHFGain*Factor;
   end;
-  SpatializationLowPassLeftCoef:=round(LowPassCoef(LeftHFGain,AudioEngine.SpatializationLowPassCW)*(LowPassLength shl LowPassShift));
-  SpatializationLowPassRightCoef:=round(LowPassCoef(RightHFGain,AudioEngine.SpatializationLowPassCW)*(LowPassLength shl LowPassShift));
+  SpatializationLowPassLeftCoef:=Min(Max(round(Clamp(LowPassCoef(LeftHFGain,AudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
+  SpatializationLowPassRightCoef:=Min(Max(round(Clamp(LowPassCoef(RightHFGain,AudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
  end;
 
  Factor:=DopplerFactor;
