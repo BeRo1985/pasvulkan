@@ -1311,11 +1311,11 @@ begin
   end;
  end;
 
-{
  if IsLocal then begin
   Angle:=0.0;
  end else begin
-  if abs(NormalizedRelativeVector.x)>EPSILON then begin
+  Angle:=ArcTan2(NormalizedRelativeVector.x,-NormalizedRelativeVector.z);
+(*if abs(NormalizedRelativeVector.x)>EPSILON then begin
    // x<>0
    if abs(NormalizedRelativeVector.z)>EPSILON then begin // x<>0 z<>0
     Angle:=ArcTan2(NormalizedRelativeVector.x,-NormalizedRelativeVector.z);
@@ -1333,7 +1333,7 @@ begin
    end else begin // x=0 z>=0
     Angle:=0.0;
    end;
-  end;
+  end;//*)
  end;
 
  if IsLocal then begin
@@ -1351,7 +1351,7 @@ begin
   end;
  end;//}
 
- if IsLocal then begin
+{if IsLocal then begin
   Spatialization:=0.0;
  end else begin
   Spatialization:=NormalizedRelativeVector.x;
@@ -1360,7 +1360,7 @@ begin
   end else if Spatialization>1.0 then begin
    Spatialization:=1.0;
   end;
- end;
+ end;//}
  case AudioEngine.SpatializationMode of
   SPATIALIZATION_HRTF:begin
    MulLeft:=round(Clamp(SpatializationVolume,-1.0,1.0)*32768.0);
@@ -1384,10 +1384,10 @@ begin
    end else begin
     SpatializationDelay:=AudioEngine.SpatializationDelayAir;
    end;
-   if Spatialization<0 then begin
+   if Spatialization<0.0 then begin
     RightHFGain:=1.0+(Spatialization*HF_DAMP_HALF);
     SpatializationDelayRight:=round((SpatializationDelay*(-Spatialization))*SpatializationDelayLength);
-   end else if Spatialization>0 then begin
+   end else if Spatialization>0.0 then begin
     LeftHFGain:=1.0-(Spatialization*HF_DAMP_HALF);
     SpatializationDelayLeft:=round((SpatializationDelay*Spatialization)*SpatializationDelayLength);
    end;
