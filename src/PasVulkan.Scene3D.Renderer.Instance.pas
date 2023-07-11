@@ -252,9 +252,10 @@ type { TpvScene3DRendererInstance }
             { THUDRenderPass }
             THUDRenderPass=class(TpvFrameGraph.TRenderPass)
              protected
+              fRendererInstance:TpvScene3DRendererInstance;
               fParent:TObject;
              public
-              constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TObject); reintroduce; virtual;
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
             end;
             THUDRenderPassClass=class of THUDRenderPass;
       private
@@ -515,7 +516,8 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass;
+     PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.BlitRenderPass;
 
 type TpvScene3DRendererInstancePasses=class
       private
@@ -580,7 +582,9 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingSMAAWeightsRenderPass:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass;
        fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
+       fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
+       fBlitRenderPass:TpvScene3DRendererPassesBlitRenderPass;
      end;
 
 const CountJitterOffsets=128;
@@ -845,9 +849,10 @@ end;
 
 { TpvScene3DRendererInstance.THUDRenderPass }
 
-constructor TpvScene3DRendererInstance.THUDRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TObject);
+constructor TpvScene3DRendererInstance.THUDRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject);
 begin
  inherited Create(aFrameGraph);
+ fRendererInstance:=aRendererInstance;
  fParent:=aParent;
 end;
 
@@ -1767,13 +1772,34 @@ begin
   end;
  end;
 
- if fUseDebugBlit then begin
+ if fUseDebugBlit or assigned(fHUDRenderPassClass) then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,false);
 
-  TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
+  if assigned(fHUDRenderPassClass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
+   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass);
+  end;
 
-  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
+  if fUseDebugBlit then begin
+
+   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
+   if assigned(fHUDRenderPassClass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+   end;
+
+   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
+
+  end else begin
+
+   TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass:=TpvScene3DRendererPassesBlitRenderPass.Create(fFrameGraph,self);
+   if assigned(fHUDRenderPassClass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+   end;
+
+   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass;
+
+  end;
 
  end else begin
 
