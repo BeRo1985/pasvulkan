@@ -404,9 +404,11 @@ var RenderPassIndex:TpvInt32;
     VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+ RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].ViewRenderPassIndex;
  VertexStagePushConstants:=fInstance.Renderer.Scene3D.VertexStagePushConstants[RenderPassIndex];
- if not assigned(fInstance.VirtualReality) then begin
+ if assigned(fInstance.VirtualReality) then begin
+  VertexStagePushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].HUDViewIndex;
+ end else begin
   VertexStagePushConstants.CountViews:=0;
  end;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,

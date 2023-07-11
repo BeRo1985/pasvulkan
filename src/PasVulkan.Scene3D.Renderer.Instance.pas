@@ -97,6 +97,7 @@ type { TpvScene3DRendererInstance }
             TInFlightFrameState=record
              Ready:TPasMPBool32;
              FinalViewIndex:TpvSizeInt;
+             HUDViewIndex:TpvSizeInt;
              CountViews:TpvSizeInt;
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
@@ -2389,7 +2390,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-var Index:TpvSizeInt;
+var Index,HUDOffset:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
     ViewMatrix:TpvMatrix4x4;
@@ -2409,6 +2410,20 @@ begin
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
    ViewRight.ViewMatrix:=ViewMatrix*fVirtualReality.GetPositionMatrix(1);
+   ViewRight.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(1),aFrameCounter);
+   ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
+   ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
+
+   fViews.Add([ViewLeft,ViewRight]);
+
+   HUDOffset:=2;
+
+   ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
+   ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
+   ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+
+   ViewRight.ViewMatrix:=fVirtualReality.GetPositionMatrix(1);
    ViewRight.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(1),aFrameCounter);
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
@@ -2449,12 +2464,22 @@ begin
 
    fViews.Add(ViewLeft);
 
+   HUDOffset:=1;
+
+   ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
+   ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace,aFrameCounter);
+   ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+
+   fViews.Add(ViewLeft);
+
   end;
 
  end;
 
  if fViews.Count>0 then begin
   InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddView(fViews.Items[0]);
+  InFlightFrameState^.HUDViewIndex:=InFlightFrameState^.FinalViewIndex+HUDOffset;
   for Index:=1 to fViews.Count-1 do begin
    Renderer.Scene3D.AddView(fViews.Items[Index]);
   end;
