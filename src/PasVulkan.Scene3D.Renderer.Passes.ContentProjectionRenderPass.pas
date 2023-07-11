@@ -143,7 +143,7 @@ begin
                               );
 
  fResourceOverlay:=AddImageInput('resourcetype_hud_color',
-                                 'resourcetype_color',
+                                 'resource_hud_color',
                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  []
                                 );
