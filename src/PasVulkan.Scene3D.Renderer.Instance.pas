@@ -340,6 +340,7 @@ type { TpvScene3DRendererInstance }
        fPasses:TObject;
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
+       fHUDSize:TpvFrameGraph.TImageSize;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -418,6 +419,7 @@ type { TpvScene3DRendererInstance }
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
       public
        property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
+       property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -1048,6 +1050,9 @@ begin
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                    1
                                   );
+
+  fHUDSize:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,Renderer.VirtualRealityHUDWidth,Renderer.VirtualRealityHUDHeight);
+
  end else begin
 
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
@@ -1059,7 +1064,30 @@ begin
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                    1
                                   );
+
+  fHUDSize:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0);
+
  end;
+
+ fFrameGraph.AddImageResourceType('resourcetype_hud_color',
+                                  false,
+                                  VK_FORMAT_R8G8B8A8_SRGB,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  fHUDSize,
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_hud_depth',
+                                  false,
+                                  VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
+                                  fHUDSize,
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or (IfThen(Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),0)),
+                                  1
+                                 );
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color',
                                   false,

@@ -133,6 +133,8 @@ type TpvScene3DRenderer=class;
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
+       fVirtualRealityHUDWidth:TpvInt32;
+       fVirtualRealityHUDHeight:TpvInt32;
        fBufferDeviceAddress:boolean;
        fMeshFragTypeName:TpvUTF8String;
        fMeshFragShadowTypeName:TpvUTF8String;
@@ -191,6 +193,8 @@ type TpvScene3DRenderer=class;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA write fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
+       property VirtualRealityHUDWidth:TpvInt32 read fVirtualRealityHUDWidth write fVirtualRealityHUDWidth;
+       property VirtualRealityHUDHeight:TpvInt32 read fVirtualRealityHUDHeight write fVirtualRealityHUDHeight;
        property BufferDeviceAddress:boolean read fBufferDeviceAddress;
        property MeshFragTypeName:TpvUTF8String read fMeshFragTypeName;
        property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
@@ -352,6 +356,9 @@ begin
  fMaxShadowMSAA:=0;
 
  fShadowMapSize:=0;
+
+ fVirtualRealityHUDWidth:=2048;
+ fVirtualRealityHUDHeight:=1152;
 
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 
