@@ -28,7 +28,8 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 1, binding = 0) uniform sampler2D uTextureContent;
+layout(set = 1, binding = 0) uniform subpassInput uTextureBackground;
+layout(set = 1, binding = 1) uniform sampler2D uTextureContent;
 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 View view = uView.views[viewIndex];
@@ -112,7 +113,7 @@ bool intersectQuad(vec3 rayOrigin, vec3 rayDirection, vec3 position, vec3 dir1, 
 
 void main(){
   
-  vec4 c = vec2(0.0, 1.0).xxxy;
+  vec4 c = subpassLoad(uTextureBackground);
 
   float radialBlurStrength = 0.0;
   
@@ -145,8 +146,8 @@ void main(){
       vec2 aspectCorrect = (texSize.x > texSize.y) ? vec2(1.0, texSize.x / texSize.y) : vec2(texSize.y / texSize.x, 1.0);
       uv = uv * aspectCorrect;
       uv = fma(uv, vec2(0.5), vec2(0.5));
-      c = texture(uTextureContent, uv);
-      c = mix(vec4(uv, 0.0, 1.0), c, 1.0);    
+      vec4 s = texture(uTextureContent, uv);
+      c = mix(c, s, s.w);    
     }
   }
 
