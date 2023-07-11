@@ -501,6 +501,8 @@ compileshaderarguments=(
   '-V contentprojection.frag -o contentprojection_frag.spv'
   '-V contentprojection.frag -DREVERSEDZ -o contentprojection_reversedz_frag.spv'
 
+  '-V mipmap.comp -o mipmap_comp.spv'
+
   '-V debug_primitive.vert -o debug_primitive_vert.spv'
   '-V debug_primitive.frag -o debug_primitive_frag.spv'
 
