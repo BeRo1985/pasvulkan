@@ -2044,6 +2044,7 @@ type EpvScene3D=class(Exception);
               fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
               fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
+              fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               procedure ConstructBuffers;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
@@ -2107,6 +2108,7 @@ type EpvScene3D=class(Exception);
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
+              property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
             end;
             TGroups=TpvObjectGenericList<TGroup>;
             TImageIDHashMap=TpvHashMap<TID,TImage>;
@@ -2239,6 +2241,7 @@ type EpvScene3D=class(Exception);
        fPrimaryLightDirection:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2346,6 +2349,7 @@ type EpvScene3D=class(Exception);
        property UseBufferDeviceAddress:boolean read fUseBufferDeviceAddress write fUseBufferDeviceAddress;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
+       property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
      end;
 
 implementation
@@ -8176,6 +8180,8 @@ begin
 
  fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
+ fOnNodeFilter:=nil;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
@@ -10972,6 +10978,8 @@ begin
  fAABBTreeProxy:=-1;
 
  SetLength(fCacheVerticesNodeDirtyBitmap,((length(fNodes)+31) shr 5)+1);
+
+ fOnNodeFilter:=nil;
 
 end;
 
@@ -13819,9 +13827,13 @@ var IndicesStart,IndicesCount,
     VisibleBit:TpvUInt32;
     DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     Pipeline:TpvVulkanPipeline;
+    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
 begin
 
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+
+  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
 
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
 
@@ -13877,6 +13889,8 @@ begin
 
         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
            ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+           ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+           ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
            (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
@@ -14225,6 +14239,8 @@ begin
  for Index:=0 to fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
  end;
+
+ fOnNodeFilter:=nil;
 
 end;
 
