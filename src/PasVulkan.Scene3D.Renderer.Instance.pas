@@ -450,6 +450,8 @@ type { TpvScene3DRendererInstance }
        property Top:TpvInt32 read fTop write fTop;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
+       property HUDWidth:TpvInt32 read fHUDWidth write fHUDWidth;
+       property HUDHeight:TpvInt32 read fHUDHeight write fHUDHeight;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
        property FOV:TpvFloat read fFOV write fFOV;
@@ -521,6 +523,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.HUDMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.BlitRenderPass;
@@ -589,6 +592,7 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
+       fHUDMipMapComputePass:TpvScene3DRendererPassesHUDMipMapComputePass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
        fBlitRenderPass:TpvScene3DRendererPassesBlitRenderPass;
@@ -1797,8 +1801,11 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
    TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass);
 
+   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapComputePass:=TpvScene3DRendererPassesHUDMipMapComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+
    TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass:=TpvScene3DRendererPassesContentProjectionRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapComputePass);
 
   end;
 
