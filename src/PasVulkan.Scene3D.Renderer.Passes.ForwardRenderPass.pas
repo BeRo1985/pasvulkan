@@ -826,10 +826,10 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesForwardRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                  const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                  const aRenderPassIndex:TpvSizeInt;
-                                                                  const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                                                  const aInFlightFrameIndex:TpvSizeInt);
+                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                             const aRenderPassIndex:TpvSizeInt;
+                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                             const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;

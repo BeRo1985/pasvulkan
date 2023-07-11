@@ -2120,6 +2120,8 @@ type EpvScene3D=class(Exception);
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
+            TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2154,7 +2156,7 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fGlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
@@ -2219,7 +2221,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
        fPreviousViews:TViews;
        fViews:TViews;
-       fVertexStagePushConstants:array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
+       fVertexStagePushConstants:TVertexStagePushConstantArray;
        fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
        fCountInFlightFrames:TpvSizeInt;
        fUseBufferDeviceAddress:boolean;
@@ -2325,6 +2327,8 @@ type EpvScene3D=class(Exception);
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
+       property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
+       property VertexStagePushConstants:TVertexStagePushConstantArray read fVertexStagePushConstants;
        property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;

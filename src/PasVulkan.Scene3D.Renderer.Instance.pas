@@ -516,6 +516,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.BlitRenderPass;
 
