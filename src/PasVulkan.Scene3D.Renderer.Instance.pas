@@ -249,6 +249,14 @@ type { TpvScene3DRendererInstance }
               destructor Destroy; override;
               procedure Calculate(const aInFlightFrameIndex:TpvInt32);
             end;
+            { THUDRenderPass }
+            THUDRenderPass=class(TpvFrameGraph.TRenderPass)
+             protected
+              fParent:TObject;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TObject); reintroduce; virtual;
+            end;
+            THUDRenderPassClass=class of THUDRenderPass;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -341,7 +349,8 @@ type { TpvScene3DRendererInstance }
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
        fHUDSize:TpvFrameGraph.TImageSize;
-       fHUDRenderPassClass:TpvFrameGraph.TRenderPassClass;
+       fHUDRenderPassClass:THUDRenderPassClass;
+       fHUDRenderPassParent:TObject;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -421,7 +430,8 @@ type { TpvScene3DRendererInstance }
       public
        property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
-       property HUDRenderPassClass:TpvFrameGraph.TRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
+       property HUDRenderPassClass:THUDRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
+       property HUDRenderPassParent:TObject read fHUDRenderPassParent write fHUDRenderPassParent;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -833,6 +843,14 @@ begin
 
 end;
 
+{ TpvScene3DRendererInstance.THUDRenderPass }
+
+constructor TpvScene3DRendererInstance.THUDRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TObject);
+begin
+ inherited Create(aFrameGraph);
+ fParent:=aParent;
+end;
+
 { TpvScene3DRendererInstance }
 
 constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality;const aExternalImageFormat:TVkFormat);
@@ -881,6 +899,8 @@ begin
  end;
 
  fHUDRenderPassClass:=nil;
+
+ fHUDRenderPassParent:=nil;
 
  fCascadedShadowMapWidth:=Renderer.ShadowMapSize;
 
