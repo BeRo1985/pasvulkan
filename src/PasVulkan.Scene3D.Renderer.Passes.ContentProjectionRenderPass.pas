@@ -195,7 +195,7 @@ begin
  end;
 
  if fInstance.ZFar<0.0 then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('contentprojection_reversed_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('contentprojection_reversedz_frag.spv');
  end else begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('contentprojection_frag.spv');
  end;
