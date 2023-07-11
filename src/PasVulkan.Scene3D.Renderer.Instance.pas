@@ -273,6 +273,8 @@ type { TpvScene3DRendererInstance }
        fTop:TpvInt32;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fHUDWidth:TpvInt32;
+       fHUDHeight:TpvInt32;
        fLightGridSizeX:TpvInt32;
        fLightGridSizeY:TpvInt32;
        fLightGridSizeZ:TpvInt32;
@@ -333,6 +335,7 @@ type { TpvScene3DRendererInstance }
       private
        fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
        fSceneMipmappedArray2DImages:TMipmappedArray2DImages;
+       fHUDMipmappedArray2DImages:TMipmappedArray2DImages;
       private
        fLuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers;
        fLuminanceVulkanBuffers:TLuminanceVulkanBuffers;
@@ -423,6 +426,7 @@ type { TpvScene3DRendererInstance }
       public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property SceneMipmappedArray2DImages:TMipmappedArray2DImages read fSceneMipmappedArray2DImages;
+       property HUDMipmappedArray2DImages:TMipmappedArray2DImages read fHUDMipmappedArray2DImages;
       public
        property LuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceHistogramVulkanBuffers;
        property LuminanceVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceVulkanBuffers;
@@ -1860,6 +1864,9 @@ begin
 
   fHeight:=fVirtualReality.Height;
 
+  fHUDWidth:=Renderer.VirtualRealityHUDWidth;
+  fHUDHeight:=Renderer.VirtualRealityHUDHeight;
+
  end else if fHasExternalOutputImage then begin
 
   // Nothing
@@ -1869,6 +1876,9 @@ begin
   fWidth:=pvApplication.VulkanSwapChain.Width;
 
   fHeight:=pvApplication.VulkanSwapChain.Height;
+
+  fHUDWidth:=fWidth;
+  fHUDHeight:=fHeight;
 
  end;
 
@@ -2036,6 +2046,11 @@ begin
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
       fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       fSceneMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      if assigned(fHUDRenderPassClass) then begin
+       fHUDMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fHUDWidth,fHUDHeight,1,VK_FORMAT_R16G16B16A16_SFLOAT,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      end else begin
+       fHUDMipmappedArray2DImages[InFlightFrameIndex]:=nil;
+      end;
      end;
 
      case Renderer.TransparencyMode of
@@ -2288,6 +2303,7 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fDepthMipmappedArray2DImages[InFlightFrameIndex]);
   FreeAndNil(fSceneMipmappedArray2DImages[InFlightFrameIndex]);
+  FreeAndNil(fHUDMipmappedArray2DImages[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
