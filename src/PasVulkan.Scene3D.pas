@@ -8160,7 +8160,7 @@ begin
 
  fCachedVertexBufferMemoryBarriers:=nil;
 
- fCulling:=false;
+ fCulling:=true;
 
  fUsedVisibleDrawNodes:=TUsedVisibleDrawNodes.Create;
  fUsedVisibleDrawNodes.OwnsObjects:=false;
@@ -13623,7 +13623,11 @@ begin
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-  if (length(aFrustums)>0) or aPotentiallyVisibleSetCulling then begin
+  if (length(aFrustums)>0) or
+     aPotentiallyVisibleSetCulling or
+     assigned(fOnNodeFilter) or
+     assigned(GroupOnNodeFilter) or
+     assigned(GlobalOnNodeFilter) then begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
    end;
@@ -13835,13 +13839,15 @@ var IndicesStart,IndicesCount,
     VisibleBit:TpvUInt32;
     DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     Pipeline:TpvVulkanPipeline;
-//  GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
+    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
 begin
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+ VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
-{ GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;}
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) then begin
+
+  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
 
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
 
@@ -13850,8 +13856,6 @@ begin
   Scene:=fScenes[aInFlightFrameIndex];
 
   if assigned(Scene) then begin
-
-   VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
    FirstFlush:=true;
 
@@ -13874,10 +13878,12 @@ begin
 
      InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
-     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)){and
-        ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
-        ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
-        ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode))}then begin
+     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) and
+        (Culling or
+         ((not Culling) and
+          ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)))) then begin
 
       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
@@ -13898,10 +13904,12 @@ begin
 
         InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
-        if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)){and
-           ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
-           ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
-           ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode))}and
+        if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
+           (Culling or
+            ((not Culling) and
+             ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+             ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+             ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)))) and
            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
            (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
