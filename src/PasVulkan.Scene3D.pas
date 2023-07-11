@@ -1895,6 +1895,7 @@ type EpvScene3D=class(Exception);
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
+                     fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                      fUploaded:boolean;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
@@ -1939,8 +1940,7 @@ type EpvScene3D=class(Exception);
                                     var aPipeline:TpvVulkanPipeline;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                                    const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter=nil);
+                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
                      constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
                      destructor Destroy; override;
@@ -1987,6 +1987,7 @@ type EpvScene3D=class(Exception);
                     published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
+                     property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
@@ -2070,8 +2071,7 @@ type EpvScene3D=class(Exception);
                              var aPipeline:TpvVulkanPipeline;
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                             const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter=nil);
+                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
              public
@@ -2320,7 +2320,6 @@ type EpvScene3D=class(Exception);
                       const aPipelineLayout:TpvVulkanPipelineLayout;
                       const aOnSetRenderPassResources:TOnSetRenderPassResources;
                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                      const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter=nil;
                       const aJitter:PpvVector4=nil);
        procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
                               const aAspectRatio:TpvScalar;
@@ -9866,8 +9865,7 @@ procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPi
                                  var aPipeline:TpvVulkanPipeline;
                                  const aPipelineLayout:TpvVulkanPipelineLayout;
                                  const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                 const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter=nil);
+                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  fSetGroupResourcesDone[aRenderPassIndex]:=false;
@@ -9880,8 +9878,7 @@ begin
                 aPipeline,
                 aPipelineLayout,
                 aOnSetRenderPassResources,
-                aMaterialAlphaModes,
-                aOnNodeFilter);
+                aMaterialAlphaModes);
  end;
 end;
 
@@ -13811,8 +13808,7 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            var aPipeline:TpvVulkanPipeline;
                                            const aPipelineLayout:TpvVulkanPipelineLayout;
                                            const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                           const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter);
+                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
     CountDrawChoreographyBatchItems:TpvSizeInt;
@@ -13824,6 +13820,7 @@ var IndicesStart,IndicesCount,
     DrawChoreographyBatchItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     Pipeline:TpvVulkanPipeline;
 begin
+
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
 
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
@@ -13879,7 +13876,7 @@ begin
         InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
-           ((not assigned(aOnNodeFilter)) or aOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+           ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
            (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
@@ -16092,7 +16089,6 @@ procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines
                           const aPipelineLayout:TpvVulkanPipelineLayout;
                           const aOnSetRenderPassResources:TOnSetRenderPassResources;
                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                          const aOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                           const aJitter:PpvVector4);
 var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     Group:TpvScene3D.TGroup;
@@ -16142,8 +16138,7 @@ begin
                Pipeline,
                aPipelineLayout,
                aOnSetRenderPassResources,
-               aMaterialAlphaModes,
-               aOnNodeFilter);
+               aMaterialAlphaModes);
    end;
   end;
 
