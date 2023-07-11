@@ -245,11 +245,11 @@ begin
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                    0,
                                                                    1,
                                                                    0,
-                                                                   fInstance.CountSurfaceViews
+                                                                   1
                                                                   );
   for MipMapLevelIndex:=0 to fInstance.HUDMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels-1 do begin
    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
@@ -323,7 +323,6 @@ procedure TpvScene3DRendererPassesHUDMipMapComputePass.Execute(const aCommandBuf
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
-    CountSamples:TpvUInt32;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -344,8 +343,8 @@ begin
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=fInstance.HUDMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels;
  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
- ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
- aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+ ImageMemoryBarrier.subresourceRange.layerCount:=1;
+ aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
@@ -377,7 +376,7 @@ begin
 
   aCommandBuffer.CmdDispatch(Max(1,(fInstance.HUDWidth+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
                              Max(1,(fInstance.HUDHeight+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
-                             fInstance.CountSurfaceViews);
+                             1);
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -393,7 +392,7 @@ begin
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=MipMapLevelIndex;
   ImageMemoryBarrier.subresourceRange.levelCount:=1;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  ImageMemoryBarrier.subresourceRange.layerCount:=1;
   if (MipMapLevelIndex+1)<fInstance.HUDMipmappedArray2DImages[InFlightFrameIndex].MipMapLevels then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
