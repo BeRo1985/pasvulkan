@@ -104,7 +104,7 @@ begin
 
  fInstance:=aInstance;
 
- Name:='HUDMipMapTransferPass';
+ Name:='HUDMipMapCustomPass';
 
  fResourceInput:=AddImageInput('resourcetype_hud_color',
                                'resource_hud_color',
