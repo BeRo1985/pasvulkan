@@ -82,6 +82,8 @@ type { TpvScene3DRendererMipmappedArray2DImage }
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
        fArrayDescriptorImageInfo:TVkDescriptorImageInfo;
+       fWidth:TpvInt32;
+       fHeight:TpvInt32;
        fMipMapLevels:TpvInt32;
       public
 
@@ -111,6 +113,10 @@ type { TpvScene3DRendererMipmappedArray2DImage }
 
        property ArrayDescriptorImageInfo:TVkDescriptorImageInfo read fArrayDescriptorImageInfo;
 
+       property Width:TpvInt32 read fWidth;
+
+       property Height:TpvInt32 read fHeight;
+
        property MipMapLevels:TpvInt32 read fMipMapLevels;
 
      end;
@@ -138,6 +144,10 @@ begin
 
  DescriptorImageInfos:=nil;
 
+ fWidth:=aWidth;
+
+ fHeight:=aHeight;
+
  fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight)+1));
 
  if aLayers>1 then begin
@@ -160,6 +170,7 @@ begin
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
                                      //TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
