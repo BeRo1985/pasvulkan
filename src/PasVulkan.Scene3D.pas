@@ -13551,6 +13551,7 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aFrustums:TpvFrustumDynamicArray;
                                               const aPotentiallyVisibleSetCulling:boolean);
 var VisibleBit:TpvUInt32;
+    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
  var Index,NodeIndex,ViewIndex:TpvSizeInt;
      PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -13598,10 +13599,15 @@ var VisibleBit:TpvUInt32;
       OK:=true;
      end;
      if OK then begin
-      TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
-      Node:=fGroup.fNodes[aNodeIndex];
-      for NodeIndex:=0 to Node.fChildren.Count-1 do begin
-       ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+      OK:=((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode));
+      if OK then begin
+       TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+       Node:=fGroup.fNodes[aNodeIndex];
+       for NodeIndex:=0 to Node.fChildren.Count-1 do begin
+        ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+       end;
       end;
      end;
     end;
@@ -13615,6 +13621,8 @@ var NodeIndex,ViewIndex:TpvSizeInt;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
   if (length(aFrustums)>0) or aPotentiallyVisibleSetCulling then begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
