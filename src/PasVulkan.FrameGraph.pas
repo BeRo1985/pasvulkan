@@ -1169,6 +1169,7 @@ type EpvFrameGraph=class(Exception);
               property VulkanRenderPass:TpvVulkanRenderPass read GetVulkanRenderPass;
               property VulkanRenderPassSubpassIndex:TpvSizeInt read GetVulkanRenderPassSubpassIndex;
             end;
+            TRenderPassClass=class of TRenderPass;
       private
        fVulkanDevice:TpvVulkanDevice;
        fMultiviewEnabled:boolean;

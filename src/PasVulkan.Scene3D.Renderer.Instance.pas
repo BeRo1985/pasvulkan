@@ -341,7 +341,7 @@ type { TpvScene3DRendererInstance }
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
        fHUDSize:TpvFrameGraph.TImageSize;
-       fUseHUD:Boolean;
+       fHUDRenderPassClass:TpvFrameGraph.TRenderPassClass;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -421,10 +421,10 @@ type { TpvScene3DRendererInstance }
       public
        property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
+       property HUDRenderPassClass:TpvFrameGraph.TRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
-       property UseHUD:Boolean read fUseHUD write fUseHUD;
        property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
@@ -880,7 +880,7 @@ begin
 
  end;
 
- fUseHUD:=false;
+ fHUDRenderPassClass:=nil;
 
  fCascadedShadowMapWidth:=Renderer.ShadowMapSize;
 
