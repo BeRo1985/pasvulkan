@@ -1872,6 +1872,7 @@ type EpvScene3D=class(Exception);
                             property MorphTargetVertexWeightsBuffer:TpvVulkanBuffer read fMorphTargetVertexWeightsBuffer;
                           end;
                           TVulkanDatas=array[0..MaxInFlightFrames-1] of TVulkanData;
+                          TOnNodeFilter=function(const aGroup:TpvScene3D.TGroup;const aNode:TpvScene3D.TGroup.TNode):boolean of object;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -1956,7 +1957,8 @@ type EpvScene3D=class(Exception);
                      function GetBakedMesh(const aRelative:boolean=false;
                                            const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
-                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                           const aNodeFilter:TOnNodeFilter=nil):TpvScene3D.TBakedMesh;
                      function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                         out aCameraMatrix:TpvMatrix4x4;
                                         out aViewMatrix:TpvMatrix4x4;
@@ -13215,7 +13217,8 @@ end;
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative:boolean=false;
                                                   const aWithDynamicMeshs:boolean=false;
                                                   const aRootNodeIndex:TpvSizeInt=-1;
-                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                  const aNodeFilter:TOnNodeFilter=nil):TpvScene3D.TBakedMesh;
 var BakedMesh:TpvScene3D.TBakedMesh;
  procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
  type TBakedVertex=record
@@ -13250,7 +13253,8 @@ var BakedMesh:TpvScene3D.TBakedMesh;
          (length(aNode.fWeights)=0) and
          ((aInstanceNode^.CountOverwrites=0) or
           ((aInstanceNode^.CountOverwrites=1) and
-           ((aInstanceNode^.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) then begin
+           ((aInstanceNode^.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) and
+       ((not assigned(aNodeFilter)) or aNodeFilter(fGroup,aNode)) then begin
     Skin:=aNode.fSkin;
     if assigned(Skin) then begin
      InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
