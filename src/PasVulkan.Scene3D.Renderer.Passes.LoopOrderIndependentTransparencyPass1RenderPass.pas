@@ -668,6 +668,7 @@ begin
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
                                    [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   nil,
                                    @InFlightFrameState^.Jitter);
   end;
 
@@ -682,6 +683,7 @@ begin
                                   fVulkanPipelineLayout,
                                   OnSetRenderPassResources,
                                   [TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                  nil,
                                   @InFlightFrameState^.Jitter);
 
  end;
