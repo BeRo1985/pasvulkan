@@ -129,7 +129,8 @@ constructor TpvScene3DRendererMipmappedArray2DImage.Create(const aWidth,aHeight,
 var MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
-    PrefersDedicatedAllocation:boolean;
+    PrefersDedicatedAllocation,
+    StorageBit:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     ImageSubresourceRange:TVkImageSubresourceRange;
     Queue:TpvVulkanQueue;
@@ -156,6 +157,12 @@ begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
  end;
 
+ StorageBit:=(aFormat<>VK_FORMAT_R8G8B8A8_SRGB) and
+             (aFormat<>VK_FORMAT_R8G8B8_SRGB) and
+             (aFormat<>VK_FORMAT_R8G8_SRGB) and
+             (aFormat<>VK_FORMAT_R8_SRGB) and
+             (aFormat<>VK_FORMAT_B8G8R8A8_SRGB);
+
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
@@ -169,7 +176,7 @@ begin
                                      VK_IMAGE_TILING_OPTIMAL,
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
                                      //TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or
-                                     TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                     IfThen(StorageBit,TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),0) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                      VK_SHARING_MODE_EXCLUSIVE,
