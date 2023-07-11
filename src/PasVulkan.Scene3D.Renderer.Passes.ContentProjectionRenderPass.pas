@@ -150,7 +150,7 @@ begin
 
  if assigned(fInstance.ExternalOutputImageData) then begin
   fResourceSurface:=AddImageOutput('resourcetype_output_color',
-                                   'resource_output',
+                                   'resource_hud_contentprojection_output',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -160,7 +160,7 @@ begin
                                   );
  end else begin
   fResourceSurface:=AddImageOutput('resourcetype_output_color',
-                                   'resource_output',
+                                   'resource_hud_contentprojection_output',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
