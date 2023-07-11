@@ -13866,7 +13866,10 @@ begin
 
      InstanceNode:=@fNodes[DrawChoreographyBatchItem.Node.fIndex];
 
-     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) then begin
+     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0))  and
+        ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+        ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) and
+        ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aRenderPassIndex,Group,self,Group.Nodes[DrawChoreographyBatchItem.Node.fIndex],InstanceNode)) then begin
 
       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
