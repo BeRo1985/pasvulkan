@@ -401,14 +401,19 @@ end;
 
 procedure TpvScene3DRendererPassesContentProjectionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var RenderPassIndex:TpvInt32;
+    VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+ VertexStagePushConstants:=fInstance.Renderer.Scene3D.VertexStagePushConstants[RenderPassIndex];
+ if not assigned(fInstance.VirtualReality) then begin
+  VertexStagePushConstants.CountViews:=0;
+ end;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
-                                 @fInstance.Renderer.Scene3D.VertexStagePushConstants[RenderPassIndex]);
+                                 @VertexStagePushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

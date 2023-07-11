@@ -115,44 +115,55 @@ void main(){
   
   vec4 c = subpassLoad(uTextureBackground);
 
-  float radialBlurStrength = 0.0;
-  
-  vec3 rayOrigin,
-       rayDirection,
-       relativeSunPosition;
-  {
-#ifdef REVERSEDZ 
-    vec4 t = inverseViewProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0)), -1.0, 1.0);
-#else
-    vec4 t = inverseViewProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0)), 1.0, 1.0);
-#endif
-    rayOrigin = t.xyz / t.w;  
-  }
-  rayDirection = getRayDirection();
+  if(pushConstants.countViews > 0){
 
-  {
-    float time = 1e+16;
-    vec2 uv = vec2(0.0); 
-    if(intersectQuad(rayOrigin,
-                     rayDirection, 
-                     vec3(-1.0, -1.0, -2.0), 
-                     vec3(2.0, 0.0, 0.0), 
-                     vec3(0.0, 2.0, 0.0), 
-                     time, 
-                     uv)){
-      uv.y = 1.0 - uv.y; // Flip Y coordinate
-      vec2 texSize = vec2(textureSize(uTextureContent, 0));  
-      uv = fma(uv, vec2(2.0), vec2(-1.0)); 
-      vec2 aspectCorrect = (texSize.x > texSize.y) ? vec2(1.0, texSize.x / texSize.y) : vec2(texSize.y / texSize.x, 1.0);
-      uv = uv * aspectCorrect;
-      uv = fma(uv, vec2(0.5), vec2(0.5));
-      vec4 s = texture(uTextureContent, uv);
-      c = mix(c, s, s.w);    
+    // VR => Reprojection into 3D space
+  
+    vec3 rayOrigin,
+        rayDirection,
+        relativeSunPosition;
+    {
+  #ifdef REVERSEDZ 
+      vec4 t = inverseViewProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0)), -1.0, 1.0);
+  #else
+      vec4 t = inverseViewProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0)), 1.0, 1.0);
+  #endif
+      rayOrigin = t.xyz / t.w;  
     }
-  }
+    rayDirection = getRayDirection();
 
-  //c.xyz = rayDirection.xyz;
+    {
+      float time = 1e+16;
+      vec2 uv = vec2(0.0); 
+      if(intersectQuad(rayOrigin,
+                      rayDirection, 
+                      vec3(-1.0, -1.0, -2.0), 
+                      vec3(2.0, 0.0, 0.0), 
+                      vec3(0.0, 2.0, 0.0), 
+                      time, 
+                      uv)){
+        uv.y = 1.0 - uv.y; // Flip Y coordinate
+        vec2 texSize = vec2(textureSize(uTextureContent, 0));  
+        uv = fma(uv, vec2(2.0), vec2(-1.0)); 
+        vec2 aspectCorrect = (texSize.x > texSize.y) ? vec2(1.0, texSize.x / texSize.y) : vec2(texSize.y / texSize.x, 1.0);
+        uv = uv * aspectCorrect;
+        uv = fma(uv, vec2(0.5), vec2(0.5));
+        vec4 s = texture(uTextureContent, uv);
+        c = mix(c, s, s.w);    
+      }
+    }
+
+    //c.xyz = rayDirection.xyz;
+  }else{
+
+    // Non-VR => No reprojection into 3D space
   
+    vec4 s = texture(uTextureContent, inTexCoord);
+
+    c = mix(c, s, s.w);
+
+  }  
+
 	outColor = c;
                              
 }
