@@ -22,11 +22,16 @@ void main() {
   ivec2 xy = invocationPosition.xy;
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
   if (all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, destinationTextureSize))) {
+#ifdef LEVEL0
+    // Just copy the source texture to the destination texture for the first mipmap level
+    vec4 color = texelFetch(uSourceTexture, xy, 0);
+#else    
     // Simple box filter to downsample the source texture, should be good enough for now for mipmapping the user interface stuff for 3D reprojection in the VR compositor 
     vec4 color = (texelFetch(uSourceTexture, xy + ivec2(0, 0), 0) +
                   texelFetch(uSourceTexture, xy + ivec2(1, 0), 0) +
                   texelFetch(uSourceTexture, xy + ivec2(0, 1), 0) + 
                   texelFetch(uSourceTexture, xy + ivec2(1, 1), 0)) * 0.25;                  
+#endif
     imageStore(uDestinationTexture, invocationPosition, color);
   }
 }
