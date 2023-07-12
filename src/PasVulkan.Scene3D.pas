@@ -13158,10 +13158,11 @@ begin
   end;
 
   if aInFlightFrameIndex>=0 then begin
-   if (fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-      ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
-       fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(fBoundingBox)) then begin
-    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
+   if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+      ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+       ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+        fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(fBoundingBox))) then begin
+    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
    end;
   end;
 
@@ -13193,7 +13194,7 @@ begin
    end;
   end;
 
-  fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fSceneInstance.fPotentiallyVisibleSet.NoNodeIndex;
+  fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
 
   fPreviousActive:=false;
 
