@@ -2994,7 +2994,7 @@ begin
    MemoryStream.ReadBuffer(fBitmap[0],length(fBitmap)*SizeOf(TpvUInt32));
 
    for NodeIndex:=0 to FileHeader.CountNodes-1 do begin
-    fNodes.Add(TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,nil));
+    TpvScene3D.TPotentiallyVisibleSet.TNode.Create(self,nil);
    end;
 
    for NodeIndex:=0 to FileHeader.CountNodes-1 do begin
