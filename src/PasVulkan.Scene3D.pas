@@ -13132,7 +13132,7 @@ begin
      Node:=fGroup.fNodes[Index];
      InstanceNode:=@fNodes[Index];
      if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-      if assigned(fSceneInstance.fPotentiallyVisibleSet) and
+      if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
          ((InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           ((InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
            fSceneInstance.fPotentiallyVisibleSet.fNodes[InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(InstanceNode^.BoundingBoxes[aInFlightFrameIndex]))) then begin
