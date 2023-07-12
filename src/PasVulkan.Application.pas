@@ -10309,11 +10309,14 @@ begin
  if fHasNewNextScreen then begin
   fHasNewNextScreen:=false;
   if assigned(fNextScreenClass) then begin
-   SetScreen(fNextScreenClass.Create);
+   if not (assigned(fScreen) and (fScreen is fNextScreenClass)) then begin
+    SetScreen(fNextScreenClass.Create);
+   end;
   end else if fScreen<>fNextScreen then begin
    SetScreen(fNextScreen);
   end;
   fNextScreen:=nil;
+  fNextScreenClass:=nil;
  end;
 
  if fCurrentMaximized<>TpvInt32(fMaximized) then begin
