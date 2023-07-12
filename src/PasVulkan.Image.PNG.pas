@@ -63,6 +63,7 @@ unit PasVulkan.Image.PNG;
 {$else}
  {$undef UsePNGExternalLibrary}
 {$ifend}
+{$undef fpc_}
 
 interface
 
@@ -94,6 +95,8 @@ implementation
 
 {$if defined(fpc) and defined(UsePNGExternalLibrary)}
 uses PasVulkan.Image.PNG.ExternalLibrary;
+{$elseif defined(fpc_)}
+uses FPReadPNG,FPImage;
 {$ifend}
 
 function CRC32(const aData:TpvPointer;const aLength:TpvUInt32):TpvUInt32;
@@ -134,6 +137,18 @@ begin
  inc(p^.Data,Bytes);
 end;
 {$ifend}
+
+{$if defined(fpc_) and not defined(UsePNGExternalLibrary)}
+type TFPImage=class(TFPMemoryImage)
+      public
+       function GetScanline(const y:TpvInt32):pointer;
+      end;
+
+function TFPImage.GetScanline(const y:TpvInt32):pointer;
+begin
+ result:=@fData^[y*Width*2];
+end;
+{$endif}
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
 {$if defined(fpc) and defined(UsePNGExternalLibrary)}
@@ -350,6 +365,65 @@ begin
  png_destroy_read_struct(@png_Ptr,nil,nil);
 
  result:=true;
+end;
+{$elseif defined(fpc_)}
+var Image:TFPMemoryImage;
+    Stream:TMemoryStream;
+    sp,dp:PpvUInt8;
+    y,x:TpvInt32;
+    c:TpvUInt32;
+    Reader:TFPReaderPNG;
+begin
+
+ Reader:=TFPReaderPNG.Create;
+ try
+
+  Stream:=TMemoryStream.Create;
+  try
+   Stream.Write(DataPointer^,DataSize);
+   Stream.Seek(0,soFromBeginning);
+
+   // Load image
+   Image:=TFPMemoryImage.create(0,0);
+   try
+
+    Image.LoadFromStream(Stream,Reader);
+
+    ImageWidth:=Image.Width;
+    ImageHeight:=Image.Height;
+    GetMem(ImageData,ImageWidth*ImageHeight*4);
+
+    for y:=0 to ImageHeight-1 do begin
+     sp:=TFPImage(Image).GetScanline(y);
+     inc(sp);
+     dp:=ImageData;
+     inc(dp,y*ImageWidth);
+     for x:=0 to ImageWidth-1 do begin
+      c:=sp^;
+      inc(sp,2);
+      c:=(c shl 8) or sp^;
+      inc(sp,2);
+      c:=(c shl 8) or sp^;
+      inc(sp,2);
+      PUInt32(dp)^:=(sp^ shl 24) or c;
+      inc(sp,2);
+      inc(dp,4);
+     end;
+    end;
+
+    PixelFormat:=TpvPNGPixelFormat.R8G8B8A8;
+
+    result:=true;
+
+   finally
+    FreeAndNil(Image);
+   end;
+  finally
+   FreeAndNil(Stream);
+  end;
+ finally
+  FreeAndNil(Reader);
+ end;
 end;
 {$else}
 type TBitsUsed=array[0..7] of TpvUInt32;
