@@ -10711,7 +10711,7 @@ begin
  Upload;
  if fUploaded then begin
 
-  case fInstance.fGroup.fSceneInstance.fBufferStreamingMode of
+  case fInstance.fSceneInstance.fBufferStreamingMode of
 
    TBufferStreamingMode.Direct:begin
 
@@ -10723,17 +10723,17 @@ begin
 
    TBufferStreamingMode.Staging:begin
 
-    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fGroup.fSceneInstance.fVulkanStagingQueue,
-                                                                fInstance.fGroup.fSceneInstance.fVulkanStagingCommandBuffer,
-                                                                fInstance.fGroup.fSceneInstance.fVulkanStagingFence,
+    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                                                fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                fInstance.fSceneInstance.fVulkanStagingFence,
                                                                 fNodeMatrices[0],
                                                                 fNodeMatricesBuffer,
                                                                 0,
                                                                 length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
 
-    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fGroup.fSceneInstance.fVulkanStagingQueue,
-                                                                fInstance.fGroup.fSceneInstance.fVulkanStagingCommandBuffer,
-                                                                fInstance.fGroup.fSceneInstance.fVulkanStagingFence,
+    fInstance.fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fInstance.fSceneInstance.fVulkanStagingQueue,
+                                                                fInstance.fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                fInstance.fSceneInstance.fVulkanStagingFence,
                                                                 fMorphTargetVertexWeights[0],
                                                                 fMorphTargetVertexWeightsBuffer,
                                                                 0,
@@ -13944,7 +13944,7 @@ begin
 
         FirstFlush:=false;
 
-        fGroup.fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+        fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
 
         SetGroupInstanceResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
 
