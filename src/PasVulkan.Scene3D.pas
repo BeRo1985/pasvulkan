@@ -11175,7 +11175,7 @@ begin
            try
 
             fVulkanMaterialIDMapBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                               length(fMaterialMap)*SizeOf(TpvUInt32),
+                                                               Max(length(fMaterialMap),1)*SizeOf(TpvUInt32),
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                [],
