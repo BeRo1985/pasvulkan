@@ -148,7 +148,7 @@ function TFPImage.GetScanline(const y:TpvInt32):pointer;
 begin
  result:=@fData^[y*Width*2];
 end;
-{$endif}
+{$ifend}
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
 {$if defined(fpc) and defined(UsePNGExternalLibrary)}
