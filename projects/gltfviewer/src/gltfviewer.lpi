@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="\home\bero\Projects\GLTF\DragonAttenuation.glb --force-use-validation-layers"/>
+        <CommandLineParams Value="\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\karts\1.glb --force-use-validation-layers"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="\home\bero\Projects\GLTF\DragonAttenuation.glb --force-use-validation-layers"/>
+            <CommandLineParams Value="\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\karts\1.glb --force-use-validation-layers"/>
           </local>
         </Mode0>
       </Modes>
