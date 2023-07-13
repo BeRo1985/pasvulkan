@@ -292,6 +292,7 @@ type { TpvScene3DRendererInstance }
        fUseDebugBlit:boolean;
       private
        fViews:TpvScene3D.TViews;
+       fCountRealViews:TpvInt32;
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
@@ -661,7 +662,7 @@ begin
  if IsInfinite(fInstance.fZFar) then begin
   RealZNear:=0.1;
   RealZFar:=16.0;
-  for Index:=0 to fInstance.fViews.Count-1 do begin
+  for Index:=0 to fInstance.fCountRealViews-1 do begin
    fViewMatrix:=fInstance.fViews.Items[Index].ViewMatrix.SimpleInverse;
    if fSceneWorldSpaceSphere.Contains(fViewMatrix.Translation.xyz) then begin
     if fSceneWorldSpaceSphere.RayIntersection(fViewMatrix.Translation.xyz,-fViewMatrix.Forwards.xyz,Value) then begin
@@ -711,7 +712,7 @@ begin
  end;
  CascadedShadowMaps^[CountCascadedShadowMapCascades-1].SplitDepths.y:=Max(ZFar,RealZFar);
 
- for ViewIndex:=0 to fInstance.fViews.Count-1 do begin
+ for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
   fProjectionMatrix:=fInstance.fViews.Items[ViewIndex].ProjectionMatrix;
   if DoNeedRefitNearFarPlanes then begin
    fProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
@@ -751,7 +752,7 @@ begin
  fLightViewMatrix.RawComponents[3,2]:=0.0;
  fLightViewMatrix.RawComponents[3,3]:=1.0;
 
- for ViewIndex:=0 to fInstance.fViews.Count-1 do begin
+ for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
   for Index:=0 to 7 do begin
    fWorldSpaceFrustumCorners[ViewIndex,Index]:=fInverseViewProjectionMatrices[ViewIndex].MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
   end;
@@ -764,7 +765,7 @@ begin
   MinZ:=CascadedShadowMap^.SplitDepths.x;
   MaxZ:=CascadedShadowMap^.SplitDepths.y;
 
-  for ViewIndex:=0 to fInstance.fViews.Count-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
    for Index:=0 to 3 do begin
     fTemporaryFrustumCorners[ViewIndex,Index]:=fWorldSpaceFrustumCorners[ViewIndex,Index].Lerp(fWorldSpaceFrustumCorners[ViewIndex,Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
     fTemporaryFrustumCorners[ViewIndex,Index+4]:=fWorldSpaceFrustumCorners[ViewIndex,Index].Lerp(fWorldSpaceFrustumCorners[ViewIndex,Index+4],(MaxZ-RealZNear)/(RealZFar-RealZNear));
@@ -774,19 +775,19 @@ begin
   FrustumCenterX:=0.0;
   FrustumCenterY:=0.0;
   FrustumCenterZ:=0.0;
-  for ViewIndex:=0 to fInstance.fViews.Count-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
    for Index:=0 to 7 do begin
     FrustumCenterX:=FrustumCenterX+fTemporaryFrustumCorners[ViewIndex,Index].x;
     FrustumCenterY:=FrustumCenterY+fTemporaryFrustumCorners[ViewIndex,Index].y;
     FrustumCenterZ:=FrustumCenterZ+fTemporaryFrustumCorners[ViewIndex,Index].z;
    end;
   end;
-  fFrustumCenter.x:=FrustumCenterX/(8.0*fInstance.fViews.Count);
-  fFrustumCenter.y:=FrustumCenterY/(8.0*fInstance.fViews.Count);
-  fFrustumCenter.z:=FrustumCenterZ/(8.0*fInstance.fViews.Count);
+  fFrustumCenter.x:=FrustumCenterX/(8.0*fInstance.fCountRealViews);
+  fFrustumCenter.y:=FrustumCenterY/(8.0*fInstance.fCountRealViews);
+  fFrustumCenter.z:=FrustumCenterZ/(8.0*fInstance.fCountRealViews);
 
   FrustumRadius:=0.0;
-  for ViewIndex:=0 to fInstance.fViews.Count-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
    for Index:=0 to 7 do begin
     FrustumRadius:=Max(FrustumRadius,fTemporaryFrustumCorners[ViewIndex,Index].DistanceTo(fFrustumCenter));
    end;
@@ -2376,6 +2377,7 @@ end;
 procedure TpvScene3DRendererInstance.Reset;
 begin
  fViews.Count:=0;
+ fCountRealViews:=0;
 end;
 
 procedure TpvScene3DRendererInstance.AddView(const aView:TpvScene3D.TView);
@@ -2439,6 +2441,8 @@ begin
 
    fViews.Add([ViewLeft,ViewRight]);
 
+   fCountRealViews:=fViews.Count;
+
    HUDOffset:=2;
 
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
@@ -2486,6 +2490,8 @@ begin
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
    fViews.Add(ViewLeft);
+
+   fCountRealViews:=fViews.Count;
 
    HUDOffset:=1;
 
