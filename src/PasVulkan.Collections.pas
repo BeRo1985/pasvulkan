@@ -122,9 +122,12 @@ type TpvDynamicArray<T>=record
        function Peek(out aItem:T):boolean;
      end;
 
+     { TpvDynamicArrayList }
+
      TpvDynamicArrayList<T>=class
       public
-       type TItemArray=array of T;
+       type PT=^T;
+            TItemArray=array of T;
       private
        type TValueEnumerator=record
              private
@@ -148,7 +151,9 @@ type TpvDynamicArray<T>=record
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
-       function Add(const pItem:T):TpvSizeInt;
+       function AddNew:PT;
+       function Add(const pItem:T):TpvSizeInt; overload;
+       function Add(const pItems:TpvDynamicArrayList<T>):TpvSizeInt; overload;
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
        procedure Delete(const pIndex:TpvSizeInt);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt); inline;
@@ -1040,6 +1045,16 @@ begin
  fItems[pIndex]:=pItem;
 end;
 
+function TpvDynamicArrayList<T>.AddNew:PT;
+begin
+ inc(fCount);
+ if fAllocated<fCount then begin
+  fAllocated:=fCount+fCount;
+  SetLength(fItems,fAllocated);
+ end;
+ result:=@fItems[fCount-1];
+end;
+
 function TpvDynamicArrayList<T>.Add(const pItem:T):TpvSizeInt;
 begin
  result:=fCount;
@@ -1049,6 +1064,22 @@ begin
   SetLength(fItems,fAllocated);
  end;
  fItems[result]:=pItem;
+end;
+
+function TpvDynamicArrayList<T>.Add(const pItems:TpvDynamicArrayList<T>):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ result:=fCount;
+ if pItems.Count>0 then begin
+  inc(fCount,pItems.Count);
+  if fAllocated<fCount then begin
+   fAllocated:=fCount+fCount;
+   SetLength(fItems,fAllocated);
+  end;
+  for Index:=0 to pItems.Count-1 do begin
+   fItems[result+index]:=pItems.fItems[Index];
+  end;
+ end;
 end;
 
 procedure TpvDynamicArrayList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
@@ -1098,7 +1129,7 @@ begin
  result:=@fItems[0];
 end;
 
-function TpvDynamicArrayList<T>.GetEnumerator:TpvDynamicArrayList<T>.TValueEnumerator;
+function TpvDynamicArrayList<T>.GetEnumerator: TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
 end;
