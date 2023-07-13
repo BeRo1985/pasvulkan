@@ -597,6 +597,7 @@ type EpvScene3D=class(Exception);
                     );
                    THashData=packed record
                     MessageDigest:TpvHashXXHash64.TMessageDigest;
+                    FirstBytes:array[0..127-SizeOf(TpvHashXXHash64.TMessageDigest)] of TpvUInt8;
                    end;
                    PHashData=^THashData;
              private
@@ -3788,9 +3789,10 @@ end;
 
 function TpvScene3D.TImage.GetHashData:THashData;
 begin
- FillChar(result.MessageDigest,SizeOf(TpvHashXXHash64.TMessageDigest),#0);
+ FillChar(result,SizeOf(THashData),#0);
  if fResourceDataStream.Size>0 then begin
   result.MessageDigest:=TpvHashXXHash64.Process(fResourceDataStream.Memory,fResourceDataStream.Size,0);
+  Move(fResourceDataStream.Memory^,result.FirstBytes,Min(SizeOf(result.FirstBytes),fResourceDataStream.Size));
  end;
 end;
 
