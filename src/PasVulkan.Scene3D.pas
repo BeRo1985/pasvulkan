@@ -76,7 +76,7 @@ uses {$ifdef Windows}
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Math,
-     PasVulkan.Hash.SHA3,
+     PasVulkan.Hash.xxHash64,
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
      PasVulkan.IDManager,
@@ -596,7 +596,7 @@ type EpvScene3D=class(Exception);
                      ResourceTexture=2
                     );
                    THashData=packed record
-                    MessageDigest:TpvHashSHA3.TMessageDigest;
+                    MessageDigest:TpvHashXXHash64.TMessageDigest;
                    end;
                    PHashData=^THashData;
              private
@@ -3788,9 +3788,9 @@ end;
 
 function TpvScene3D.TImage.GetHashData:THashData;
 begin
- FillChar(result.MessageDigest,SizeOf(TpvHashSHA3.TMessageDigest),#0);
+ FillChar(result.MessageDigest,SizeOf(TpvHashXXHash64.TMessageDigest),#0);
  if fResourceDataStream.Size>0 then begin
-  TpvHashSHA3.Process(fResourceDataStream.Memory,fResourceDataStream.Size,@result.MessageDigest,SizeOf(TpvHashSHA3.TMessageDigest));
+  result.MessageDigest:=TpvHashXXHash64.Process(fResourceDataStream.Memory,fResourceDataStream.Size,0);
  end;
 end;
 
