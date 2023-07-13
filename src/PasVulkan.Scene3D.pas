@@ -408,7 +408,7 @@ type EpvScene3D=class(Exception);
             TBakedMesh=class
              public
               type { TTriangle }
-                   TTriangle=class(TpvPooledObject)
+                   TTriangle=class//(TpvPooledObject)
                     public
                      type TTriangleFlag=
                            (
@@ -505,7 +505,7 @@ type EpvScene3D=class(Exception);
                      ManualZones
                     );
                    { TNode }
-                   TNode=class(TpvPooledObject)
+                   TNode=class//(TpvPooledObject)
                     private
                      fOwner:TPotentiallyVisibleSet;
                      fParent:TNode;
