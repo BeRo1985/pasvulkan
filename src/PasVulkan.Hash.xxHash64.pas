@@ -83,7 +83,7 @@ type TpvHashXXHash64=class
        fV2:TpvUInt64;
        fV3:TpvUInt64;
        fV4:TpvUInt64;
-       fMemSize:TpvSizeUInt;
+       fDataSize:TpvSizeUInt;
        fData:array[0..31] of TpvUInt8;
 {$if not declared(ROLQWord)}
        class function ROLQWord(const aValue:TpvUInt64;const aBits:TpvSizeUInt):TpvUInt64; static; inline;
@@ -129,7 +129,7 @@ begin
  fV3:=aSeed;
  fV4:=aSeed-PRIME64_1;
  fTotalLength:=0;
- fMemSize:=0;
+ fDataSize:=0;
  FillChar(fData,SizeOf(fData),#0);
 end;
 
@@ -147,26 +147,28 @@ begin
 
  inc(fTotalLength,aDataLength);
 
- if (fMemSize+aDataLength)<TpvSizeUInt(32) then begin
-  Move(CurrentData^,fData[fMemSize],aDataLength);
-  inc(fMemSize,32);
+ if (fDataSize+aDataLength)<TpvSizeUInt(32) then begin
+
+  Move(CurrentData^,fData[fDataSize],aDataLength);
+  inc(fDataSize,32);
   result:=true;
+
  end else begin
 
   DataEnd:=@PpvUInt8Array(aData)^[aDataLength];
 
-  if fMemSize>0 then begin
+  if fDataSize>0 then begin
 
-   Move(CurrentData^,fData[fMemSize],32-fMemSize);
+   Move(CurrentData^,fData[fDataSize],32-fDataSize);
 
    fV1:=PRIME64_1*ROLQWord(fV1+(PRIME64_2*PpvUInt64(pointer(@fData[0]))^),31);
    fV2:=PRIME64_1*ROLQWord(fV2+(PRIME64_2*PpvUInt64(pointer(@fData[8]))^),31);
    fV3:=PRIME64_1*ROLQWord(fV3+(PRIME64_2*PpvUInt64(pointer(@fData[16]))^),31);
    fV4:=PRIME64_1*ROLQWord(fV4+(PRIME64_2*PpvUInt64(pointer(@fData[24]))^),31);
 
-   CurrentData:=@PpvUInt8Array(CurrentData)^[32-fMemSize];
+   CurrentData:=@PpvUInt8Array(CurrentData)^[32-fDataSize];
 
-   fMemSize:=0;
+   fDataSize:=0;
 
   end;
 
@@ -195,19 +197,21 @@ begin
   end;
 
   if TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) then begin
-   fMemSize:=TpvPtrUInt(DataEnd)-TpvPtrUInt(CurrentData);
-   Move(CurrentData^,fData,fMemSize);
+   fDataSize:=TpvPtrUInt(DataEnd)-TpvPtrUInt(CurrentData);
+   Move(CurrentData^,fData,fDataSize);
   end;
 
   result:=true;
 
  end;
+
 end;
 
 function TpvHashXXHash64.Final:TMessageDigest;
 var v1,v2,v3,v4:TpvUInt64;
     CurrentData,DataEnd:Pointer;
 begin
+
  if fTotalLength>=TpvSizeUInt(32) then begin
   v1:=fV1;
   v2:=fV2;
@@ -228,29 +232,30 @@ begin
  inc(result,fTotalLength);
 
  CurrentData:=@fData[0];
- DataEnd:=@fData[fMemSize];
+ DataEnd:=@fData[fDataSize];
 
  while (TpvPtrUInt(CurrentData)+7)<TpvPtrUInt(DataEnd) do begin
   result:=result xor (PRIME64_1*ROLQWord(PRIME64_2*PpvUInt64(CurrentData)^,31));
   result:=(ROLQWord(result,27)*PRIME64_1)+PRIME64_4;
-  inc(PpvUInt64(CurrentData)^);
+  inc(PpvUInt64(CurrentData));
  end;
 
  while (TpvPtrUInt(CurrentData)+3)<TpvPtrUInt(DataEnd) do begin
   result:=result xor (PpvUInt32(CurrentData)^*PRIME64_1);
   result:=(ROLQWord(result,23)*PRIME64_2)+PRIME64_3;
-  inc(PpvUInt32(CurrentData)^);
+  inc(PpvUInt32(CurrentData));
  end;
 
  while TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) do begin
   result:=result xor (PpvUInt8(CurrentData)^*PRIME64_5);
   result:=ROLQWord(result,11)*PRIME64_1;
-  inc(PpvUInt8(CurrentData)^);
+  inc(PpvUInt8(CurrentData));
  end;
 
  result:=(result xor (result shr 33))*PRIME64_2;
  result:=(result xor (result shr 29))*PRIME64_3;
  result:=result xor (result shr 32);
+
 end;
 
 end.
