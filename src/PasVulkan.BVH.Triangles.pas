@@ -99,7 +99,9 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections;
 
-type { TpvTriangleBVHRay }
+type EpvTriangleBVH=class(Exception);
+
+     { TpvTriangleBVHRay }
      TpvTriangleBVHRay=record
       public
        Origin:TpvVector3;
@@ -109,7 +111,7 @@ type { TpvTriangleBVHRay }
      PpvTriangleBVHRay=^TpvTriangleBVHRay;
 
      { TpvTriangleBVHTriangle }
-     TpvTriangleBVHTriangle=record
+     TpvTriangleBVHTriangle=packed record
       public
        Points:array[0..2] of TpvVector3;
        Normal:TpvVector3;
@@ -123,7 +125,7 @@ type { TpvTriangleBVHRay }
 
      TpvTriangleBVHTriangles=array of TpvTriangleBVHTriangle;
 
-     TpvTriangleBVHIntersection=record
+     TpvTriangleBVHIntersection=packed record
       public
        Time:TpvScalar;
        Triangle:PpvTriangleBVHTriangle;
@@ -132,7 +134,8 @@ type { TpvTriangleBVHRay }
      end;
      PpvTriangleBVHIntersection=^TpvTriangleBVHIntersection;
 
-     TpvTriangleBVHTreeNode=record
+     { TpvTriangleBVHTreeNode }
+     TpvTriangleBVHTreeNode=packed record
       Bounds:TpvAABB;
       FirstLeftChild:TpvInt32;
       FirstTriangleIndex:TpvInt32;
@@ -142,7 +145,8 @@ type { TpvTriangleBVHRay }
 
      TpvTriangleBVHTreeNodes=array of TpvTriangleBVHTreeNode;
 
-     TpvTriangleBVHSkipListNode=record // must be GPU-friendly
+     { TpvTriangleBVHSkipListNode }
+     TpvTriangleBVHSkipListNode=packed record // must be GPU-friendly
       Min:TpvVector4;
       Max:TpvVector4;
       FirstTriangleIndex:TpvInt32;
@@ -189,6 +193,8 @@ type { TpvTriangleBVHRay }
        procedure Clear;
        procedure AddTriangle(const aPoint0,aPoint1,aPoint2:TpvVector3;const aNormal:PpvVector3=nil;const aData:TpvPtrInt=0;const aFlags:TpvUInt32=TpvUInt32($ffffffff));
        procedure Build;
+       procedure LoadFromStream(const aStream:TStream);
+       procedure SaveToStream(const aStream:TStream);
        function RayIntersection(const aRay:TpvTriangleBVHRay;var aIntersection:TpvTriangleBVHIntersection;const aFastCheck:boolean=false;const aFlags:TpvUInt32=TpvUInt32($ffffffff);const aAvoidFlags:TpvUInt32=TpvUInt32(0)):boolean;
        function CountRayIntersections(const aRay:TpvTriangleBVHRay;const aFlags:TpvUInt32=TpvUInt32($ffffffff);const aAvoidFlags:TpvUInt32=TpvUInt32(0)):TpvInt32;
        function LineIntersection(const aV0,aV1:TpvVector3;const aFlags:TpvUInt32=TpvUInt32($ffffffff);const aAvoidFlags:TpvUInt32=TpvUInt32(0)):boolean;
@@ -208,6 +214,12 @@ type { TpvTriangleBVHRay }
 
 implementation
 
+type TTriangleBVHFileSignature=array[0..7] of AnsiChar;
+
+const TriangleBVHFileSignature:TTriangleBVHFileSignature=('T','B','V','H','F','i','l','e'); // Triangle BVH File
+
+      TriangleBVHFileVersion=TpvUInt32($00000001);
+      
 { TpvTriangleBVHRay }
 
 constructor TpvTriangleBVHRay.Create(const aOrigin,aDirection:TpvVector3);
@@ -671,6 +683,159 @@ begin
    end;
   end;
  end;
+
+end;
+
+procedure TpvTriangleBVH.LoadFromStream(const aStream:TStream);
+var Signature:TTriangleBVHFileSignature;
+    Version:TpvUInt32;
+    CountTriangles,CountTreeNodes,CountSkipListNodes:TpvUInt32;
+   {TriangleIndex,TreeNodeIndex,SkipListNodeIndex:TpvSizeInt;
+    Triangle:PpvTriangleBVHTriangle;
+    TreeNode:PpvTriangleBVHTreeNode;
+    SkipListNode:PpvTriangleBVHSkipListNode;}
+begin
+
+ aStream.ReadBuffer(Signature,SizeOf(TriangleBVHFileSignature));
+ if Signature<>TriangleBVHFileSignature then begin
+  raise EpvTriangleBVH.Create('Invalid signature');
+ end;
+
+ aStream.ReadBuffer(Version,SizeOf(TpvUInt32));
+ if Version<>TriangleBVHFileVersion then begin
+  raise EpvTriangleBVH.Create('Invalid version');
+ end;
+
+ aStream.ReadBuffer(CountTriangles,SizeOf(TpvUInt32));
+
+ aStream.ReadBuffer(CountTreeNodes,SizeOf(TpvUInt32));
+
+ aStream.ReadBuffer(CountSkipListNodes,SizeOf(TpvUInt32));
+
+ Clear;
+
+ SetLength(fTriangles,CountTriangles);
+
+ SetLength(fTreeNodes,CountTreeNodes);
+
+ SetLength(fSkipListNodes,CountSkipListNodes);
+
+{$if true}
+
+ if CountTriangles>0 then begin
+  aStream.ReadBuffer(fTriangles[0],CountTriangles*SizeOf(TpvTriangleBVHTriangle));
+ end;
+
+ if CountTreeNodes>0 then begin
+  aStream.ReadBuffer(fTreeNodes[0],CountTreeNodes*SizeOf(TpvTriangleBVHTreeNode));
+ end;
+
+ if CountSkipListNodes>0 then begin
+  aStream.ReadBuffer(fSkipListNodes[0],CountSkipListNodes*SizeOf(TpvTriangleBVHSkipListNode));
+ end;
+
+{$else}
+ for TriangleIndex:=0 to CountTriangles-1 do begin
+  Triangle:=@fTriangles[TriangleIndex];
+  aStream.ReadBuffer(Triangle^.Points[0],SizeOf(TpvVector3));
+  aStream.ReadBuffer(Triangle^.Points[1],SizeOf(TpvVector3));
+  aStream.ReadBuffer(Triangle^.Points[2],SizeOf(TpvVector3));
+  aStream.ReadBuffer(Triangle^.Normal,SizeOf(TpvVector3));
+  aStream.ReadBuffer(Triangle^.Center,SizeOf(TpvVector3));
+  aStream.ReadBuffer(Triangle^.Data,SizeOf(TpvPtrInt));
+  aStream.ReadBuffer(Triangle^.Flags,SizeOf(TpvUInt32));
+ end;
+
+ for TreeNodeIndex:=0 to CountTreeNodes-1 do begin
+  TreeNode:=@fTreeNodes[TreeNodeIndex];
+  aStream.ReadBuffer(TreeNode^.Bounds,SizeOf(TpvAABB));
+  aStream.ReadBuffer(TreeNode^.FirstLeftChild,SizeOf(TpvInt32));
+  aStream.ReadBuffer(TreeNode^.FirstTriangleIndex,SizeOf(TpvInt32));
+  aStream.ReadBuffer(TreeNode^.CountTriangles,SizeOf(TpvInt32));
+ end;
+
+ for SkipListNodeIndex:=0 to CountSkipListNodes-1 do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  aStream.ReadBuffer(SkipListNode^.Min,SizeOf(TpvVector4));
+  aStream.ReadBuffer(SkipListNode^.Max,SizeOf(TpvVector4));
+  aStream.ReadBuffer(SkipListNode^.FirstTriangleIndex,SizeOf(TpvInt32));
+  aStream.ReadBuffer(SkipListNode^.CountTriangles,SizeOf(TpvInt32));
+  aStream.ReadBuffer(SkipListNode^.SkipCount,SizeOf(TpvInt32));
+  aStream.ReadBuffer(SkipListNode^.Dummy,SizeOf(TpvInt32));
+ end;
+{$ifend} 
+
+end;
+
+procedure TpvTriangleBVH.SaveToStream(const aStream:TStream);
+var Signature:TTriangleBVHFileSignature;
+    Version:TpvUInt32;
+    CountTriangles,CountTreeNodes,CountSkipListNodes:TpvUInt32;
+   {TriangleIndex,TreeNodeIndex,SkipListNodeIndex:TpvSizeInt;
+    Triangle:PpvTriangleBVHTriangle;
+    TreeNode:PpvTriangleBVHTreeNode;
+    SkipListNode:PpvTriangleBVHSkipListNode;}
+begin
+ 
+ Signature:=TriangleBVHFileSignature;
+ aStream.WriteBuffer(Signature,SizeOf(TriangleBVHFileSignature));
+
+ Version:=TriangleBVHFileVersion;
+ aStream.WriteBuffer(Version,SizeOf(TpvUInt32));
+
+ CountTriangles:=fCountTriangles;
+ aStream.WriteBuffer(CountTriangles,SizeOf(TpvUInt32));
+
+ CountTreeNodes:=fCountTreeNodes;
+ aStream.WriteBuffer(CountTreeNodes,SizeOf(TpvUInt32));
+
+ CountSkipListNodes:=fCountSkipListNodes;
+ aStream.WriteBuffer(CountSkipListNodes,SizeOf(TpvUInt32));
+
+{$if true}
+
+ if fCountTriangles>0 then begin
+  aStream.WriteBuffer(fTriangles[0],fCountTriangles*SizeOf(TpvTriangleBVHTriangle));
+ end; 
+
+ if fCountTreeNodes>0 then begin
+  aStream.WriteBuffer(fTreeNodes[0],fCountTreeNodes*SizeOf(TpvTriangleBVHTreeNode));
+ end; 
+
+ if fCountSkipListNodes>0 then begin 
+  aStream.WriteBuffer(fSkipListNodes[0],fCountSkipListNodes*SizeOf(TpvTriangleBVHSkipListNode));
+ end; 
+
+{$else}
+ for TriangleIndex:=0 to fCountTriangles-1 do begin
+  Triangle:=@fTriangles[TriangleIndex];
+  aStream.WriteBuffer(Triangle^.Points[0],SizeOf(TpvVector3));
+  aStream.WriteBuffer(Triangle^.Points[1],SizeOf(TpvVector3));
+  aStream.WriteBuffer(Triangle^.Points[2],SizeOf(TpvVector3));
+  aStream.WriteBuffer(Triangle^.Normal,SizeOf(TpvVector3));
+  aStream.WriteBuffer(Triangle^.Center,SizeOf(TpvVector3));
+  aStream.WriteBuffer(Triangle^.Data,SizeOf(TpvPtrInt));
+  aStream.WriteBuffer(Triangle^.Flags,SizeOf(TpvUInt32));
+ end;
+
+ for TreeNodeIndex:=0 to fCountTreeNodes-1 do begin
+  TreeNode:=@fTreeNodes[TreeNodeIndex];
+  aStream.WriteBuffer(TreeNode^.Bounds,SizeOf(TpvAABB));
+  aStream.WriteBuffer(TreeNode^.FirstLeftChild,SizeOf(TpvInt32));
+  aStream.WriteBuffer(TreeNode^.FirstTriangleIndex,SizeOf(TpvInt32));
+  aStream.WriteBuffer(TreeNode^.CountTriangles,SizeOf(TpvInt32));
+ end;
+
+ for SkipListNodeIndex:=0 to fCountSkipListNodes-1 do begin
+  SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+  aStream.WriteBuffer(SkipListNode^.Min,SizeOf(TpvVector4));
+  aStream.WriteBuffer(SkipListNode^.Max,SizeOf(TpvVector4));
+  aStream.WriteBuffer(SkipListNode^.FirstTriangleIndex,SizeOf(TpvInt32));
+  aStream.WriteBuffer(SkipListNode^.CountTriangles,SizeOf(TpvInt32));
+  aStream.WriteBuffer(SkipListNode^.SkipCount,SizeOf(TpvInt32));
+  aStream.WriteBuffer(SkipListNode^.Dummy,SizeOf(TpvInt32));
+ end;
+{$ifend} 
 
 end;
 
