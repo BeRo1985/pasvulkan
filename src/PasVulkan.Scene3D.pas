@@ -97,7 +97,7 @@ type EpvScene3D=class(Exception);
       public
        const MaxRenderPassIndices=32;
              MaxVisibleLights=65536;
-             MaxDebugPrimitiveVertices=262144;
+             MaxDebugPrimitiveVertices=1 shl 20;
              LightClusterSizeX=16;
              LightClusterSizeY=8;
              LightClusterSizeZ=32;
