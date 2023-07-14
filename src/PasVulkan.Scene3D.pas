@@ -16078,7 +16078,7 @@ begin
                                      fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                      fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex],
                                      0,
-                                     SizeOf(TpvScene3D.TDebugPrimitiveVertex)*fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count);
+                                     SizeOf(TpvScene3D.TDebugPrimitiveVertex)*Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices));
  end;
 end;
 
@@ -16109,7 +16109,7 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
-  aCommandBuffer.CmdDraw(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,1,0,0);
+  aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
 
  end;
 end;
