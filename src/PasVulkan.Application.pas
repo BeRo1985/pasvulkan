@@ -7395,7 +7395,7 @@ begin
 
   if fVulkanDevice.PhysicalDevice.Properties.vendorID=TpvUInt32(TpvVulkanVendorID.NVIDIA) then begin
 {$if defined(Linux)}
-   if DriverVersionString='525.105.17.0' then begin
+   {if DriverVersionString='525.105.17.0' then}begin
     fVulkanDelayResizeBugWorkaround:=true;
    end;
 {$ifend}
