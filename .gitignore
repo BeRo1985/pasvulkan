@@ -66,3 +66,7 @@ __history/
 
 # Unix binaries
 projectmanager
+examples_x86_64-linux
+
+FPCOutput
+*.spv
